@@ -1026,6 +1026,7 @@
             const denyLocationBtn = document.getElementById('deny-location');
             const currentLocationCheckbox = document.getElementById('current-location');
             const locationLoading = document.getElementById('location-loading');
+            const locationInput = document.getElementById('location-input');
             
             // App state
             let state = {
@@ -1054,9 +1055,6 @@
                 // Show loading state
                 venueGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">Loading venues...</div>';
                 
-                // Request location immediately
-                requestLocation();
-                
                 try {
                     // Load venues data
                     const response = await fetch('https://bundlebooth.github.io/bdb-3.0/venues.json');
@@ -1079,6 +1077,9 @@
                         updateMetadata(data.metadata);
                         renderVenues();
                         setupEventListeners();
+                        
+                        // Request location after everything is loaded
+                        requestLocationWithFeedback();
                     } else {
                         showError("No venue data found");
                     }
@@ -1088,53 +1089,57 @@
                 }
             }
             
-            // Request location function
-            function requestLocation() {
-                if (navigator.geolocation) {
-                    // First try to get high accuracy location quickly
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            handleLocationSuccess(position);
-                        },
-                        (error) => {
-                            // If quick location fails, show permission modal
-                            if (error.code === error.PERMISSION_DENIED) {
-                                locationPermissionModal.style.display = 'flex';
-                            } else {
-                                console.log("Location error:", error);
-                                // Fall back to manual location selection
-                            }
-                        },
-                        {
-                            enableHighAccuracy: true,
-                            timeout: 5000,
-                            maximumAge: 0
-                        }
-                    );
-                } else {
-                    // Geolocation not supported
-                    console.log("Geolocation not supported by browser");
+            // New improved location request function
+            function requestLocationWithFeedback() {
+                console.log("Attempting to get location...");
+                if (!navigator.geolocation) {
+                    console.log("Geolocation not supported by this browser");
+                    return;
                 }
+
+                // Visual feedback
+                locationInput.placeholder = "Detecting your location...";
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        console.log("Location obtained:", position);
+                        handleLocationSuccess(position);
+                    },
+                    (error) => {
+                        console.log("Location error:", error);
+                        locationInput.placeholder = "City or ZIP code";
+                        
+                        if (error.code === error.PERMISSION_DENIED) {
+                            // Only show modal if this is a fresh page load
+                            if (!sessionStorage.getItem('locationRequested')) {
+                                locationPermissionModal.style.display = 'flex';
+                                sessionStorage.setItem('locationRequested', 'true');
+                            }
+                        }
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
             }
             
-            // Handle successful location
+            // Modified location success handler
             function handleLocationSuccess(position) {
                 state.userLocation = {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude
                 };
                 
-                // Update UI to show we're using their location
-                document.getElementById('current-location').checked = true;
+                // Update UI
+                currentLocationCheckbox.checked = true;
                 document.getElementById('within50').checked = true;
+                locationInput.value = "Near You";
+                locationInput.placeholder = "Near You";
                 
-                // Update the location input field with their city
-                document.getElementById('location-input').value = "Near You";
-                
-                // Filter venues based on location
                 filterVenues();
                 
-                // If in map view, center on their location
                 if (state.currentView === 'map' && state.map) {
                     centerMapOnUser();
                 }
@@ -1259,9 +1264,11 @@
                 // Current location checkbox
                 currentLocationCheckbox.addEventListener('change', function() {
                     if (this.checked) {
-                        requestLocation();
+                        requestLocationWithFeedback();
                     } else {
                         state.userLocation = null;
+                        locationInput.value = '';
+                        locationInput.placeholder = 'City or ZIP code';
                         filterVenues();
                     }
                 });
@@ -1330,7 +1337,7 @@
                     if (state.userLocation) {
                         centerMapOnUser();
                     } else {
-                        requestLocation();
+                        requestLocationWithFeedback();
                     }
                 });
                 
@@ -1430,7 +1437,7 @@
                             serviceMatch = venue.services.some(category => 
                                 category.services.some(service => 
                                     service.name.toLowerCase().includes(searchTerm) || 
-                                    service.description.toLowerCase().includes(searchTerm)
+                                    service.description.toLowerCase().includes(searchTerm))
                                 );
                         }
                         
@@ -1464,25 +1471,25 @@
                         if (state.filters.popular.includes('rooftop') && !venue.type.toLowerCase().includes('rooftop')) return false;
                     }
                     
+                    // Location filter
+                    if (useCurrentLocation && state.userLocation && within50Miles) {
+                        // Sort venues by distance (simulated for demo)
+                        state.filteredVenues.sort((a, b) => {
+                            // In a real app, calculate actual distance using Haversine formula
+                            const distA = Math.abs(a.coordinates.lat - state.userLocation.lat) + 
+                                          Math.abs(a.coordinates.lng - state.userLocation.lng);
+                            const distB = Math.abs(b.coordinates.lat - state.userLocation.lat) + 
+                                          Math.abs(b.coordinates.lng - state.userLocation.lng);
+                            return distA - distB;
+                        });
+                        
+                        // Only show the closest 10 venues for demo purposes
+                        // In a real app, you'd filter by actual distance
+                        state.filteredVenues = state.filteredVenues.slice(0, 10);
+                    }
+                    
                     return true;
                 });
-                
-                // Location filter
-                if (useCurrentLocation && state.userLocation && within50Miles) {
-                    // Sort venues by distance (simulated for demo)
-                    state.filteredVenues.sort((a, b) => {
-                        // In a real app, calculate actual distance using Haversine formula
-                        const distA = Math.abs(a.coordinates.lat - state.userLocation.lat) + 
-                                      Math.abs(a.coordinates.lng - state.userLocation.lng);
-                        const distB = Math.abs(b.coordinates.lat - state.userLocation.lat) + 
-                                      Math.abs(b.coordinates.lng - state.userLocation.lng);
-                        return distA - distB;
-                    });
-                    
-                    // Only show the closest 10 venues for demo purposes
-                    // In a real app, you'd filter by actual distance
-                    state.filteredVenues = state.filteredVenues.slice(0, 10);
-                }
                 
                 // Apply sorting
                 sortVenues(false);
