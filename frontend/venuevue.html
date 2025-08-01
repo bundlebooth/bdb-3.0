@@ -1051,99 +1051,186 @@
             // Initialize the app
             init();
             
-            async function init() {
-                // Show loading state
-                venueGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">Loading venues...</div>';
-                
-                try {
-                    // Load venues data
-                    const response = await fetch('https://bundlebooth.github.io/bdb-3.0/venues.json');
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    
-                    const data = await response.json();
-                    if (data && data.venues) {
-                        // Add coordinates to venues (for demo purposes)
-                        state.venues = data.venues.map(venue => ({
-                            ...venue,
-                            coordinates: {
-                                lat: getRandomLat(),
-                                lng: getRandomLng()
-                            }
-                        }));
-                        
-                        state.filteredVenues = [...state.venues];
-                        
-                        // Update UI
-                        updateMetadata(data.metadata);
-                        renderVenues();
-                        setupEventListeners();
-                        
-                        // Request location after everything is loaded
-                        requestLocationWithFeedback();
-                    } else {
-                        showError("No venue data found");
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError("Failed to load venues. Please try again later.");
-                }
-            }
             
-            // New improved location request function
-            function requestLocationWithFeedback() {
-                console.log("Attempting to get location...");
-                if (!navigator.geolocation) {
-                    console.log("Geolocation not supported by this browser");
-                    return;
-                }
-
-                // Visual feedback
-                locationInput.placeholder = "Detecting your location...";
+        async function init() {
+            // Show loading state
+            venueGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">Loading venues...</div>';
+            
+            try {
+                // Load venues data
+                const response = await fetch('https://bundlebooth.github.io/bdb-3.0/venues.json');
+                if (!response.ok) throw new Error('Network response was not ok');
                 
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        console.log("Location obtained:", position);
-                        handleLocationSuccess(position);
-                    },
-                    (error) => {
-                        console.log("Location error:", error);
-                        locationInput.placeholder = "City or ZIP code";
-                        
-                        if (error.code === error.PERMISSION_DENIED) {
-                            // Only show modal if this is a fresh page load
-                            if (!sessionStorage.getItem('locationRequested')) {
-                                locationPermissionModal.style.display = 'flex';
-                                sessionStorage.setItem('locationRequested', 'true');
-                            }
+                const data = await response.json();
+                if (data && data.venues) {
+                    // Add coordinates to venues (for demo purposes)
+                    state.venues = data.venues.map(venue => ({
+                        ...venue,
+                        coordinates: {
+                            lat: getRandomLat(),
+                            lng: getRandomLng()
                         }
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
+                    }));
+                    
+                    state.filteredVenues = [...state.venues];
+                    
+                    // Update UI
+                    updateMetadata(data.metadata);
+                    renderVenues();
+                    setupEventListeners();
+                    
+                    // Request location after everything is loaded
+                    requestLocationWithFeedback();
+                } else {
+                    showError("No venue data found");
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError("Failed to load venues. Please try again later.");
             }
+        }
+
+        // Modified filter function to properly handle location
+        function filterVenues() {
+            // Get search term
+            const searchTerm = searchInput.value.toLowerCase();
             
-            // Modified location success handler
-            function handleLocationSuccess(position) {
-                state.userLocation = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
+            // Get filter values
+            const selectedTypes = [];
+            document.querySelectorAll('.filter-section input[type="checkbox"]:checked').forEach(checkbox => {
+                if (checkbox.id !== 'current-location' && checkbox.id !== 'within50') {
+                    selectedTypes.push(checkbox.id);
+                }
+            });
+            
+            const priceRange = document.getElementById('price-slider').value;
+            const guestSize = document.querySelector('input[name="guests"]:checked').id;
+            const useCurrentLocation = document.getElementById('current-location').checked;
+            const within50Miles = document.getElementById('within50').checked;
+            
+            // Apply filters
+            let filtered = state.venues.filter(venue => {
+                // Search term (venue name, location, or services)
+                if (searchTerm) {
+                    const nameMatch = venue.name.toLowerCase().includes(searchTerm);
+                    const locationMatch = venue.location.toLowerCase().includes(searchTerm);
+                    let serviceMatch = false;
+                    
+                    if (venue.services) {
+                        serviceMatch = venue.services.some(category => 
+                            category.services.some(service => 
+                                service.name.toLowerCase().includes(searchTerm) || 
+                                service.description.toLowerCase().includes(searchTerm))
+                    }
+                    
+                    if (!nameMatch && !locationMatch && !serviceMatch) {
+                        return false;
+                    }
+                }
                 
-                // Update UI
-                currentLocationCheckbox.checked = true;
-                document.getElementById('within50').checked = true;
-                locationInput.value = "Near You";
-                locationInput.placeholder = "Near You";
+                // Venue type
+                const venueType = venue.type.toLowerCase();
+                if (selectedTypes.length > 0 && !selectedTypes.some(type => venueType.includes(type))) {
+                    return false;
+                }
                 
-                filterVenues();
+                // Price range
+                const price = parseInt(venue.price.replace(/\D/g, ''));
+                if (priceRange < 33 && price > 15000) return false;
+                if (priceRange > 66 && price < 25000) return false;
                 
-                if (state.currentView === 'map' && state.map) {
-                    centerMapOnUser();
+                // Guest size
+                const guests = venue.capacity.split('-').map(Number);
+                const maxGuests = guests[1] || guests[0];
+                if (guestSize === 'small' && maxGuests > 50) return false;
+                if (guestSize === 'medium' && (maxGuests <= 50 || maxGuests > 150)) return false;
+                if (guestSize === 'large' && maxGuests <= 150) return false;
+                
+                // Popular filters
+                if (state.filters.popular.length > 0) {
+                    if (state.filters.popular.includes('waterfront') && !venue.type.toLowerCase().includes('ocean')) return false;
+                    if (state.filters.popular.includes('historic') && !venue.type.toLowerCase().includes('historic')) return false;
+                    if (state.filters.popular.includes('rooftop') && !venue.type.toLowerCase().includes('rooftop')) return false;
+                }
+                
+                return true;
+            });
+            
+            // Handle location filter separately
+            if (useCurrentLocation && state.userLocation && within50Miles) {
+                // For demo purposes, we'll simulate nearby venues by filtering the first few
+                const nearbyVenues = filtered.slice(0, 3); // Show first 3 as "nearby"
+                
+                if (nearbyVenues.length > 0) {
+                    filtered = nearbyVenues;
+                } else {
+                    // If no nearby venues, show all with a message
+                    resultsCount.textContent = "No venues near you. Showing all available venues.";
                 }
             }
+            
+            state.filteredVenues = filtered;
+            
+            // Apply sorting
+            sortVenues(false);
+            
+            // Reset to first page
+            state.currentPage = 1;
+            
+            // Update UI
+            updateMetadata({ total: state.filteredVenues.length });
+            renderVenues();
+            
+            // Update map if in map view
+            if (state.currentView === 'map') {
+                updateMapMarkers();
+                renderMapVenueList();
+            }
+        }
+
+        // Improved location handling
+        function handleLocationSuccess(position) {
+            state.userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            
+            // For demo purposes, we'll set a location name
+            const demoLocations = {
+                "Toronto": { lat: 43.6532, lng: -79.3832 },
+                "New York": { lat: 40.7128, lng: -74.0060 },
+                "Los Angeles": { lat: 34.0522, lng: -118.2437 }
+            };
+            
+            // Find closest demo location
+            let closestLocation = "Your Location";
+            let minDistance = Infinity;
+            
+            for (const [name, coords] of Object.entries(demoLocations)) {
+                const distance = Math.sqrt(
+                    Math.pow(coords.lat - state.userLocation.lat, 2) + 
+                    Math.pow(coords.lng - state.userLocation.lng, 2)
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestLocation = name;
+                }
+            }
+            
+            // Update UI
+            currentLocationCheckbox.checked = true;
+            document.getElementById('within50').checked = true;
+            locationInput.value = closestLocation;
+            locationInput.placeholder = closestLocation;
+            
+            filterVenues();
+            
+            if (state.currentView === 'map' && state.map) {
+                centerMapOnUser();
+            }
+        }
+
             
             // Google Maps initialization
             function initMap() {
