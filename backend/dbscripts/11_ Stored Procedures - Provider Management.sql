@@ -20,9 +20,9 @@ CREATE PROCEDURE sp_Provider_Search
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
-GO
+
     -- Create temp table for results
     CREATE TABLE #SearchResults (
         ProviderID INT,
@@ -43,7 +43,7 @@ GO
         IsAvailable BIT,
         RowNum INT
     );
-GO
+
     -- Insert base results
     INSERT INTO #SearchResults (
         ProviderID, BusinessName, BusinessDescription, ProviderType, Category,
@@ -75,20 +75,19 @@ GO
         AND (@Category IS NULL OR pt.Category = @Category)
         AND (@SearchTerm IS NULL OR sp.BusinessName LIKE '%' + @SearchTerm + '%' OR sp.BusinessDescription LIKE '%' + @SearchTerm + '%')
         AND (@Location IS NULL OR pl.City LIKE '%' + @Location + '%' OR pl.StateProvince LIKE '%' + @Location + '%');
-GO
+
     -- Calculate distance if location provided
     IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
     BEGIN
         UPDATE #SearchResults
         SET DistanceMiles = geography::Point(Latitude, Longitude, 4326).STDistance(geography::Point(@Latitude, @Longitude, 4326)) * 0.000621371 -- Convert meters to miles
         WHERE Latitude IS NOT NULL AND Longitude IS NOT NULL;
-GO
+
         -- Filter by radius if specified
         IF @RadiusMiles IS NOT NULL
         BEGIN
             DELETE FROM #SearchResults
             WHERE DistanceMiles > @RadiusMiles OR DistanceMiles IS NULL;
-GO
         END
     END
     
@@ -97,14 +96,12 @@ GO
     BEGIN
         DELETE FROM #SearchResults
         WHERE BasePrice < @MinPrice OR BasePrice IS NULL;
-GO
     END
     
     IF @MaxPrice IS NOT NULL
     BEGIN
         DELETE FROM #SearchResults
         WHERE BasePrice > @MaxPrice;
-GO
     END
     
     -- Filter by rating
@@ -112,7 +109,6 @@ GO
     BEGIN
         DELETE FROM #SearchResults
         WHERE AverageRating < @MinRating OR ReviewCount = 0;
-GO
     END
     
     -- Check availability for specific date
@@ -141,16 +137,14 @@ GO
             ELSE 0
         END
         FROM #SearchResults sr;
-GO
+
         -- Remove unavailable providers
         DELETE FROM #SearchResults
         WHERE IsAvailable = 0;
-GO
     END
     
     -- Apply sorting
     DECLARE @SortSQL NVARCHAR(MAX);
-GO
     SET @SortSQL = N'
     UPDATE #SearchResults
     SET RowNum = ROW_NUMBER() OVER (ORDER BY ' + 
@@ -160,9 +154,8 @@ GO
             WHEN 'distance' THEN 'DistanceMiles'
             ELSE 'AverageRating'
         END + ' ' + @SortDirection + ')';
-GO
     EXEC sp_executesql @SortSQL;
-GO
+
     -- Return paginated results
     SELECT 
         ProviderID,
@@ -187,9 +180,8 @@ GO
         RowNum > @Offset AND RowNum <= @Offset + @PageSize
     ORDER BY 
         RowNum;
-GO
+
     DROP TABLE #SearchResults;
-GO
 END;
 GO
 
@@ -211,9 +203,9 @@ CREATE PROCEDURE sp_Provider_Create
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     BEGIN TRANSACTION;
-GO
+    
     BEGIN TRY
         -- Insert new provider
         INSERT INTO ServiceProviders (
@@ -226,9 +218,9 @@ GO
             @IsMobile, @TravelRadius, @BasePrice, @MinEventSize, @MaxEventSize,
             @IsInsured, @InsuranceDetails, 1
         );
-GO
+
         SET @ProviderID = SCOPE_IDENTITY();
-GO
+
         -- Update user role to include provider role if not already set
         IF NOT EXISTS (
             SELECT 1 FROM UserRoleMappings urm
@@ -237,19 +229,18 @@ GO
         )
         BEGIN
             DECLARE @ProviderRoleID INT;
-GO
+
             -- Try to get ServiceProvider role first
             SELECT @ProviderRoleID = RoleID 
             FROM UserRoles 
             WHERE RoleName = 'ServiceProvider';
-GO
+
             -- Fallback to VenueOwner if ServiceProvider doesn't exist
             IF @ProviderRoleID IS NULL
             BEGIN
                 SELECT @ProviderRoleID = RoleID 
                 FROM UserRoles 
                 WHERE RoleName = 'VenueOwner';
-GO
             END
             
             -- If neither exists, create ServiceProvider role
@@ -257,25 +248,19 @@ GO
             BEGIN
                 INSERT INTO UserRoles (RoleName, Description, IsActive)
                 VALUES ('ServiceProvider', 'Service provider account', 1);
-GO
                 SET @ProviderRoleID = SCOPE_IDENTITY();
-GO
             END
             
             -- Add role mapping
             INSERT INTO UserRoleMappings (UserID, RoleID)
             VALUES (@UserID, @ProviderRoleID);
-GO
         END
         
         COMMIT TRANSACTION;
-GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
-GO
         THROW;
-GO
     END CATCH
 END;
 GO
@@ -298,7 +283,7 @@ CREATE PROCEDURE sp_Provider_Update
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     UPDATE ServiceProviders
     SET 
         BusinessName = @BusinessName,
@@ -316,11 +301,10 @@ GO
         LastUpdated = GETDATE()
     WHERE 
         ProviderID = @ProviderID;
-GO
+
     IF @@ROWCOUNT = 0
     BEGIN
         RAISERROR('Provider not found.', 16, 1);
-GO
     END
 END;
 GO
@@ -331,7 +315,7 @@ CREATE PROCEDURE sp_Provider_GetFullProfile
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     -- Basic provider info
     SELECT 
         sp.ProviderID,
@@ -363,7 +347,7 @@ GO
         INNER JOIN Users u ON sp.UserID = u.UserID
     WHERE 
         sp.ProviderID = @ProviderID;
-GO
+
     -- Location info
     SELECT 
         LocationID,
@@ -382,7 +366,7 @@ GO
         ProviderID = @ProviderID
     ORDER BY 
         IsPrimary DESC;
-GO
+
     -- Services
     SELECT 
         ProviderServiceID,
@@ -398,7 +382,7 @@ GO
         ProviderID = @ProviderID
     ORDER BY 
         ServiceName;
-GO
+
     -- Service packages
     SELECT 
         PackageID,
@@ -413,7 +397,7 @@ GO
         ProviderID = @ProviderID
     ORDER BY 
         PackageName;
-GO
+
     -- Availability
     SELECT 
         AvailabilityID,
@@ -428,7 +412,7 @@ GO
         ProviderID = @ProviderID
     ORDER BY 
         DayOfWeek, StartTime;
-GO
+
     -- Blackout dates
     SELECT 
         BlackoutID,
@@ -444,7 +428,7 @@ GO
         AND (EndDate >= GETDATE() OR IsRecurring = 1)
     ORDER BY 
         StartDate;
-GO
+
     -- Equipment
     SELECT 
         EquipmentID,
@@ -458,7 +442,7 @@ GO
         ProviderID = @ProviderID
     ORDER BY 
         EquipmentName;
-GO
+
     -- Portfolio items
     SELECT 
         PortfolioID,
@@ -474,7 +458,7 @@ GO
         ProviderID = @ProviderID
     ORDER BY 
         IsFeatured DESC, DisplayOrder;
-GO
+
     -- Reviews
     SELECT 
         pr.ReviewID,
@@ -497,7 +481,7 @@ GO
         AND pr.IsApproved = 1
     ORDER BY 
         pr.ReviewDate DESC;
-GO
+
     -- Detailed review categories
     IF EXISTS (SELECT 1 FROM ReviewCategories rc INNER JOIN ProviderTypes pt ON rc.ProviderTypeID = pt.TypeID INNER JOIN ServiceProviders sp ON pt.TypeID = sp.TypeID WHERE sp.ProviderID = @ProviderID)
     BEGIN
@@ -518,7 +502,6 @@ GO
             rc.CategoryID, rc.CategoryName, rc.Description
         ORDER BY 
             rc.CategoryName;
-GO
     END
 END;
 GO
@@ -531,30 +514,25 @@ CREATE PROCEDURE sp_Provider_GetAvailability
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     -- Validate date range
     IF @EndDate < @StartDate
     BEGIN
         RAISERROR('End date must be after start date.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Create temp table for dates
     CREATE TABLE #DateRange (
         DateValue DATE
     );
-GO
+    
     -- Populate date range
     DECLARE @CurrentDate DATE = @StartDate;
-GO
     WHILE @CurrentDate <= @EndDate
     BEGIN
         INSERT INTO #DateRange (DateValue) VALUES (@CurrentDate);
-GO
         SET @CurrentDate = DATEADD(DAY, 1, @CurrentDate);
-GO
     END
     
     -- Get provider's weekly availability
@@ -564,7 +542,7 @@ GO
         EndTime TIME,
         IsAvailable BIT
     );
-GO
+    
     INSERT INTO @WeeklyAvailability
     SELECT 
         DayOfWeek,
@@ -575,13 +553,13 @@ GO
         ProviderAvailability
     WHERE 
         ProviderID = @ProviderID;
-GO
+    
     -- Get blackout dates
     DECLARE @BlackoutDates TABLE (
         StartDate DATE,
         EndDate DATE
     );
-GO
+    
     INSERT INTO @BlackoutDates
     SELECT 
         StartDate,
@@ -594,14 +572,14 @@ GO
             (StartDate <= @EndDate AND EndDate >= @StartDate) OR
             IsRecurring = 1
         );
-GO
+    
     -- Get booked dates
     DECLARE @BookedDates TABLE (
         EventDate DATE,
         StartTime TIME,
         EndTime TIME
     );
-GO
+    
     INSERT INTO @BookedDates
     SELECT 
         b.EventDate,
@@ -614,7 +592,7 @@ GO
         bp.ProviderID = @ProviderID
         AND b.EventDate BETWEEN @StartDate AND @EndDate
         AND b.StatusID IN (SELECT StatusID FROM BookingStatuses WHERE StatusName IN ('Confirmed', 'Completed'));
-GO
+    
     -- Return availability for each date
     SELECT 
         dr.DateValue,
@@ -654,9 +632,8 @@ GO
         LEFT JOIN @WeeklyAvailability wa ON wa.DayOfWeek = DATEPART(WEEKDAY, dr.DateValue)
     ORDER BY 
         dr.DateValue;
-GO
+
     DROP TABLE #DateRange;
-GO
 END;
 GO
 
@@ -672,28 +649,24 @@ CREATE PROCEDURE sp_Provider_CalculatePrice
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     DECLARE @BasePrice DECIMAL(18, 2) = 0;
-GO
     DECLARE @TotalPrice DECIMAL(18, 2) = 0;
-GO
     DECLARE @DurationHours DECIMAL(10, 2);
-GO
     DECLARE @IsAvailable BIT = 1;
-GO
     DECLARE @Message NVARCHAR(255) = '';
-GO
+    
     -- Calculate duration in hours
     SET @DurationHours = DATEDIFF(MINUTE, @StartTime, @EndTime) / 60.0;
-GO
+    
     -- Get provider base price
     SELECT @BasePrice = BasePrice 
     FROM ServiceProviders 
     WHERE ProviderID = @ProviderID;
-GO
+    
     -- Check if provider has pricing tiers for this date
     DECLARE @PriceMultiplier DECIMAL(5, 2) = 1.0;
-GO
+    
     SELECT @PriceMultiplier = PriceMultiplier
     FROM PricingTiers
     WHERE 
@@ -704,12 +677,12 @@ GO
         ProviderID DESC, -- Prefer provider-specific over type-specific
         PriceMultiplier DESC
     OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY;
-GO
+    
     SET @BasePrice = @BasePrice * @PriceMultiplier;
-GO
+    
     -- Check availability
     DECLARE @DayOfWeek TINYINT = DATEPART(WEEKDAY, @EventDate);
-GO
+    
     -- Check blackout dates
     IF EXISTS (
         SELECT 1 FROM ProviderBlackoutDates 
@@ -718,9 +691,7 @@ GO
     )
     BEGIN
         SET @IsAvailable = 0;
-GO
         SET @Message = 'Provider is not available on this date (blackout).';
-GO
     END
     
     -- Check weekly availability
@@ -734,9 +705,7 @@ GO
     )
     BEGIN
         SET @IsAvailable = 0;
-GO
         SET @Message = 'Provider is not available at the requested time.';
-GO
     END
     
     -- Check existing bookings
@@ -754,36 +723,30 @@ GO
     )
     BEGIN
         SET @IsAvailable = 0;
-GO
         SET @Message = 'Provider is already booked at the requested time.';
-GO
     END
     
     -- Check guest count against provider limits
     DECLARE @MinEventSize INT, @MaxEventSize INT;
-GO
+    
     SELECT 
         @MinEventSize = MinEventSize,
         @MaxEventSize = MaxEventSize
     FROM ServiceProviders
     WHERE ProviderID = @ProviderID;
-GO
+    
     IF @GuestCount IS NOT NULL
     BEGIN
         IF @MinEventSize IS NOT NULL AND @GuestCount < @MinEventSize
         BEGIN
             SET @IsAvailable = 0;
-GO
             SET @Message = 'Guest count is below provider minimum of ' + CAST(@MinEventSize AS NVARCHAR(10));
-GO
         END
         
         IF @MaxEventSize IS NOT NULL AND @GuestCount > @MaxEventSize
         BEGIN
             SET @IsAvailable = 0;
-GO
             SET @Message = 'Guest count exceeds provider maximum of ' + CAST(@MaxEventSize AS NVARCHAR(10));
-GO
         END
     END
     
@@ -794,24 +757,22 @@ GO
         SELECT @TotalPrice = Price
         FROM ProviderServicePackages
         WHERE PackageID = @PackageID AND ProviderID = @ProviderID AND IsActive = 1;
-GO
+        
         IF @TotalPrice IS NULL
         BEGIN
             SET @IsAvailable = 0;
-GO
             SET @Message = 'Selected package is not available.';
-GO
         END
     END
     ELSE IF @ServiceIDs IS NOT NULL
     BEGIN
         -- Individual services pricing
         DECLARE @ServiceTable TABLE (ServiceID INT);
-GO
+        
         -- Parse JSON array of service IDs
         INSERT INTO @ServiceTable (ServiceID)
         SELECT value FROM OPENJSON(@ServiceIDs);
-GO
+        
         -- Calculate total price for selected services
         SELECT @TotalPrice = SUM(
             CASE 
@@ -823,25 +784,22 @@ GO
         FROM ProviderServices ps
         INNER JOIN @ServiceTable st ON ps.ProviderServiceID = st.ServiceID
         WHERE ps.ProviderID = @ProviderID AND ps.IsActive = 1;
-GO
+        
         IF @TotalPrice IS NULL
         BEGIN
             SET @IsAvailable = 0;
-GO
             SET @Message = 'One or more selected services are not available.';
-GO
         END
     END
     ELSE
     BEGIN
         -- Base price only
         SET @TotalPrice = @BasePrice;
-GO
     END
     
     -- Apply price multiplier
     SET @TotalPrice = @TotalPrice * @PriceMultiplier;
-GO
+    
     -- Return results
     SELECT 
         @IsAvailable AS IsAvailable,
@@ -850,7 +808,6 @@ GO
         @TotalPrice AS TotalPrice,
         @PriceMultiplier AS PriceMultiplier,
         @DurationHours AS DurationHours;
-GO
 END;
 GO
 
@@ -864,19 +821,19 @@ CREATE PROCEDURE sp_Provider_GetReviews
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
-GO
+    
     -- Get total count
     DECLARE @TotalCount INT;
-GO
+    
     SELECT @TotalCount = COUNT(*)
     FROM ProviderReviews
     WHERE ProviderID = @ProviderID
     AND IsApproved = 1
     AND (@MinRating IS NULL OR Rating >= @MinRating)
     AND (@MaxRating IS NULL OR Rating <= @MaxRating);
-GO
+    
     -- Get paginated reviews
     SELECT 
         pr.ReviewID,
@@ -904,7 +861,7 @@ GO
         pr.ReviewDate DESC
     OFFSET @Offset ROWS
     FETCH NEXT @PageSize ROWS ONLY;
-GO
+    
     -- Get average rating
     SELECT 
         AVG(CAST(Rating AS DECIMAL(5,2))) AS AverageRating,
@@ -914,7 +871,7 @@ GO
     WHERE 
         ProviderID = @ProviderID
         AND IsApproved = 1;
-GO
+    
     -- Get rating distribution
     SELECT 
         Rating,
@@ -928,7 +885,7 @@ GO
         Rating
     ORDER BY 
         Rating DESC;
-GO
+    
     -- Get detailed category ratings if available
     IF EXISTS (
         SELECT 1 FROM ReviewCategories rc 
@@ -952,8 +909,6 @@ GO
             rc.CategoryID, rc.CategoryName, rc.Description
         ORDER BY 
             rc.CategoryName;
-GO
     END
 END;
 GO
-
