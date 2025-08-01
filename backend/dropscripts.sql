@@ -1,4 +1,4 @@
-
+GO
 -- Drop all foreign key constraints
 DECLARE @sql NVARCHAR(MAX) = N'';
 SELECT @sql += 'ALTER TABLE [' + s.name + '].[' + t.name + '] DROP CONSTRAINT [' + fk.name + '];' + CHAR(13)
@@ -8,6 +8,7 @@ JOIN sys.schemas s ON t.schema_id = s.schema_id;
 
 EXEC sp_executesql @sql;
 
+GO
 -- Drop all tables
 DECLARE @sql NVARCHAR(MAX) = N'';
 SELECT @sql += 'DROP TABLE [' + s.name + '].[' + t.name + '];' + CHAR(13)
@@ -16,7 +17,7 @@ JOIN sys.schemas s ON t.schema_id = s.schema_id;
 
 EXEC sp_executesql @sql;
 
-
+GO
 -- Drop all views
 DECLARE @sql NVARCHAR(MAX) = N'';
 SELECT @sql += 'DROP VIEW [' + s.name + '].[' + v.name + '];' + CHAR(13)
@@ -25,7 +26,7 @@ JOIN sys.schemas s ON v.schema_id = s.schema_id;
 
 EXEC sp_executesql @sql;
 
-
+GO
 -- Drop all stored procedures
 DECLARE @sql NVARCHAR(MAX) = N'';
 SELECT @sql += 'DROP PROCEDURE [' + s.name + '].[' + p.name + '];' + CHAR(13)
@@ -34,6 +35,7 @@ JOIN sys.schemas s ON p.schema_id = s.schema_id;
 
 EXEC sp_executesql @sql;
 
+GO
 -- Drop all functions
 DECLARE @sql NVARCHAR(MAX) = N'';
 SELECT @sql += 'DROP FUNCTION [' + s.name + '].[' + o.name + '];' + CHAR(13)
@@ -43,7 +45,7 @@ WHERE o.type IN ('FN', 'IF', 'TF');
 
 EXEC sp_executesql @sql;
 
-
+GO
 -- Drop user-defined types
 DECLARE @sql NVARCHAR(MAX) = N'';
 SELECT @sql += 'DROP TYPE [' + s.name + '].[' + t.name + '];' + CHAR(13)
