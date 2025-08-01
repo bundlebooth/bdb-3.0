@@ -1125,7 +1125,7 @@
                 );
             }
             
-                        // Modified handleLocationSuccess function
+            // Modified location success handler
             function handleLocationSuccess(position) {
                 state.userLocation = {
                     lat: position.coords.latitude,
@@ -1133,42 +1133,282 @@
                 };
                 
                 // Update UI
-                document.getElementById('current-location').checked = true;
+                currentLocationCheckbox.checked = true;
                 document.getElementById('within50').checked = true;
-                document.getElementById('location-input').value = "Near You";
+                locationInput.value = "Near You";
+                locationInput.placeholder = "Near You";
                 
-                // Don't filter - just sort by distance
-                sortVenuesByDistance();
+                filterVenues();
                 
                 if (state.currentView === 'map' && state.map) {
                     centerMapOnUser();
                 }
             }
-
-            // New function to sort by distance without filtering
-            function sortVenuesByDistance() {
-                if (!state.userLocation) return;
+            
+            // Google Maps initialization
+            function initMap() {
+                if (state.filteredVenues.length === 0) return;
                 
-                state.filteredVenues.sort((a, b) => {
-                    // Simple distance calculation for demo purposes
-                    const distA = Math.abs(a.coordinates.lat - state.userLocation.lat) + 
-                                  Math.abs(a.coordinates.lng - state.userLocation.lng);
-                    const distB = Math.abs(b.coordinates.lat - state.userLocation.lat) + 
-                                  Math.abs(b.coordinates.lng - state.userLocation.lng);
-                    return distA - distB;
+                // Default to first venue's location or user location if available
+                const center = state.userLocation || 
+                               { lat: state.filteredVenues[0].coordinates.lat, 
+                                 lng: state.filteredVenues[0].coordinates.lng };
+                
+                // Create map
+                state.map = new google.maps.Map(document.getElementById("map"), {
+                    zoom: 12,
+                    center: center,
+                    styles: [
+                        {
+                            "featureType": "poi",
+                            "stylers": [
+                                { "visibility": "off" }
+                            ]
+                        }
+                    ]
                 });
                 
-                // Update UI
-                updateMetadata();
-                renderVenues();
+                // Add markers
+                updateMapMarkers();
                 
-                if (state.currentView === 'map') {
-                    updateMapMarkers();
+                // Center map on user location if available
+                if (state.userLocation) {
+                    centerMapOnUser();
+                }
+            }
+            
+            // Helper function to generate random coordinates (for demo)
+            function getRandomLat() { return 34.0522 + (Math.random() * 0.2 - 0.1); }
+            function getRandomLng() { return -118.2437 + (Math.random() * 0.2 - 0.1); }
+            
+            // Update map markers based on filtered venues
+            function updateMapMarkers() {
+                // Clear existing markers
+                state.markers.forEach(marker => marker.setMap(null));
+                state.markers = [];
+                
+                if (!state.map || state.filteredVenues.length === 0) return;
+                
+                // Add new markers
+                state.filteredVenues.forEach(venue => {
+                    const marker = new google.maps.Marker({
+                        position: venue.coordinates,
+                        map: state.map,
+                        title: venue.name,
+                        icon: {
+                            url: `https://maps.google.com/mapfiles/ms/icons/red-dot.png`,
+                            scaledSize: new google.maps.Size(32, 32)
+                        }
+                    });
+                    
+                    // Add click event
+                    marker.addListener('click', () => {
+                        openBookingModal(venue);
+                    });
+                    
+                    state.markers.push(marker);
+                });
+                
+                // Fit bounds to show all markers
+                if (state.markers.length > 0) {
+                    const bounds = new google.maps.LatLngBounds();
+                    state.markers.forEach(marker => bounds.extend(marker.getPosition()));
+                    state.map.fitBounds(bounds);
+                }
+            }
+            
+            // Center map on user location
+            function centerMapOnUser() {
+                if (state.map && state.userLocation) {
+                    state.map.setCenter(state.userLocation);
+                    state.map.setZoom(12);
+                    
+                    // Add user location marker
+                    new google.maps.Marker({
+                        position: state.userLocation,
+                        map: state.map,
+                        title: "Your Location",
+                        icon: {
+                            url: `https://maps.google.com/mapfiles/ms/icons/blue-dot.png`,
+                            scaledSize: new google.maps.Size(32, 32)
+                        }
+                    });
+                }
+            }
+            
+            // Setup all event listeners
+            function setupEventListeners() {
+                // View toggle
+                listViewBtn.addEventListener('click', () => toggleView('list'));
+                mapViewBtn.addEventListener('click', () => toggleView('map'));
+                
+                // Search
+                searchInput.addEventListener('input', filterVenues);
+                
+                // Sorting
+                sortSelect.addEventListener('change', sortVenues);
+                
+                // Filter resets
+                filterResetBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const filterType = btn.id.replace('-reset', '');
+                        resetFilter(filterType);
+                    });
+                });
+                
+                // Filter inputs
+                document.querySelectorAll('.filter-section input').forEach(input => {
+                    input.addEventListener('change', filterVenues);
+                });
+                
+                // Current location checkbox
+                currentLocationCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        requestLocationWithFeedback();
+                    } else {
+                        state.userLocation = null;
+                        locationInput.value = '';
+                        locationInput.placeholder = 'City or ZIP code';
+                        filterVenues();
+                    }
+                });
+                
+                // Popular filters
+                trendingTags.forEach(tag => {
+                    tag.addEventListener('click', () => {
+                        tag.classList.toggle('active');
+                        const filter = tag.dataset.filter;
+                        
+                        if (tag.classList.contains('active')) {
+                            if (!state.filters.popular.includes(filter)) {
+                                state.filters.popular.push(filter);
+                            }
+                        } else {
+                            state.filters.popular = state.filters.popular.filter(f => f !== filter);
+                        }
+                        
+                        filterVenues();
+                    });
+                });
+                
+                // Pagination
+                prevPageBtn.addEventListener('click', () => {
+                    if (state.currentPage > 1) {
+                        state.currentPage--;
+                        renderVenues();
+                    }
+                });
+                
+                nextPageBtn.addEventListener('click', () => {
+                    const totalPages = Math.ceil(state.filteredVenues.length / state.itemsPerPage);
+                    if (state.currentPage < totalPages) {
+                        state.currentPage++;
+                        renderVenues();
+                    }
+                });
+                
+                // User nav buttons
+                wishlistBtn.addEventListener('click', () => {
+                    alert(`You have ${state.favorites.length} favorite venues`);
+                });
+                
+                notificationsBtn.addEventListener('click', () => {
+                    alert('No new notifications');
+                });
+                
+                profileBtn.addEventListener('click', () => {
+                    alert('Profile menu would open here');
+                });
+                
+                // Map controls
+                document.getElementById('zoom-in')?.addEventListener('click', () => {
+                    if (state.map) {
+                        state.map.setZoom(state.map.getZoom() + 1);
+                    }
+                });
+                
+                document.getElementById('zoom-out')?.addEventListener('click', () => {
+                    if (state.map) {
+                        state.map.setZoom(state.map.getZoom() - 1);
+                    }
+                });
+                
+                locateMeBtn?.addEventListener('click', () => {
+                    if (state.userLocation) {
+                        centerMapOnUser();
+                    } else {
+                        requestLocationWithFeedback();
+                    }
+                });
+                
+                // Location permission
+                allowLocationBtn.addEventListener('click', () => {
+                    locationLoading.style.display = 'inline-block';
+                    allowLocationBtn.disabled = true;
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            locationPermissionModal.style.display = 'none';
+                            handleLocationSuccess(position);
+                            locationLoading.style.display = 'none';
+                            allowLocationBtn.disabled = false;
+                        },
+                        (error) => {
+                            console.log("Location error:", error);
+                            locationPermissionModal.style.display = 'none';
+                            locationLoading.style.display = 'none';
+                            allowLocationBtn.disabled = false;
+                            currentLocationCheckbox.checked = false;
+                            alert("Could not get your location. Please try again or enter a location manually.");
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000
+                        }
+                    );
+                });
+                
+                denyLocationBtn.addEventListener('click', () => {
+                    locationPermissionModal.style.display = 'none';
+                    currentLocationCheckbox.checked = false;
+                });
+                
+                // Modal close
+                document.querySelector('.close-modal').addEventListener('click', closeBookingModal);
+                modal.addEventListener('click', (e) => e.target === modal && closeBookingModal());
+                
+                // Confirmation modal
+                document.getElementById('conf-done-btn').addEventListener('click', () => {
+                    confirmationModal.style.display = 'none';
+                });
+            }
+            
+            // Toggle between list and map views
+            function toggleView(view) {
+                state.currentView = view;
+                
+                if (view === 'list') {
+                    mapViewContainer.style.display = 'none';
+                    venueGrid.style.display = 'grid';
+                    listViewBtn.classList.add('active');
+                    mapViewBtn.classList.remove('active');
+                } else {
+                    venueGrid.style.display = 'none';
+                    mapViewContainer.style.display = 'flex';
+                    mapViewBtn.classList.add('active');
+                    listViewBtn.classList.remove('active');
+                    
+                    // Initialize map if not already done
+                    if (!state.map) {
+                        initMap();
+                    }
+                    
+                    // Render venue list for map view
                     renderMapVenueList();
                 }
             }
-
-            // Modified filterVenues function to remove location filtering
+            
+            // Filter venues based on current filters
             function filterVenues() {
                 // Get search term
                 const searchTerm = searchInput.value.toLowerCase();
@@ -1181,15 +1421,18 @@
                 
                 const priceRange = document.getElementById('price-slider').value;
                 const guestSize = document.querySelector('input[name="guests"]:checked').id;
+                const useCurrentLocation = document.getElementById('current-location').checked;
+                const within50Miles = document.getElementById('within50').checked;
                 
-                // Apply filters (excluding location)
+                // Apply filters
                 state.filteredVenues = state.venues.filter(venue => {
-                    // Search term
+                    // Search term (venue name, location, or services)
                     if (searchTerm) {
                         const nameMatch = venue.name.toLowerCase().includes(searchTerm);
                         const locationMatch = venue.location.toLowerCase().includes(searchTerm);
                         let serviceMatch = false;
                         
+                        // Check services if they exist
                         if (venue.services) {
                             serviceMatch = venue.services.some(category => 
                                 category.services.some(service => 
@@ -1228,31 +1471,116 @@
                         if (state.filters.popular.includes('rooftop') && !venue.type.toLowerCase().includes('rooftop')) return false;
                     }
                     
+                    // Location filter
+                    if (useCurrentLocation && state.userLocation && within50Miles) {
+                        // Sort venues by distance (simulated for demo)
+                        state.filteredVenues.sort((a, b) => {
+                            // In a real app, calculate actual distance using Haversine formula
+                            const distA = Math.abs(a.coordinates.lat - state.userLocation.lat) + 
+                                          Math.abs(a.coordinates.lng - state.userLocation.lng);
+                            const distB = Math.abs(b.coordinates.lat - state.userLocation.lat) + 
+                                          Math.abs(b.coordinates.lng - state.userLocation.lng);
+                            return distA - distB;
+                        });
+                        
+                        // Only show the closest 10 venues for demo purposes
+                        // In a real app, you'd filter by actual distance
+                        state.filteredVenues = state.filteredVenues.slice(0, 10);
+                    }
+                    
                     return true;
                 });
                 
-                // If we have user location, sort by distance
-                if (state.userLocation && document.getElementById('current-location').checked) {
-                    sortVenuesByDistance();
-                } else {
-                    // Otherwise apply regular sorting
-                    sortVenues(false);
-                }
+                // Apply sorting
+                sortVenues(false);
                 
                 // Reset to first page
                 state.currentPage = 1;
                 
                 // Update UI
-                updateMetadata();
+                updateMetadata({ total: state.filteredVenues.length });
                 renderVenues();
                 
+                // Update map if in map view
                 if (state.currentView === 'map') {
                     updateMapMarkers();
                     renderMapVenueList();
                 }
             }
-
-            // Modified renderVenues function to show distance indicators
+            
+            // Sort venues
+            function sortVenues(shouldRender = true) {
+                const sortValue = sortSelect.value;
+                
+                switch(sortValue) {
+                    case 'price-low':
+                        state.filteredVenues.sort((a, b) => {
+                            const priceA = parseInt(a.price.replace(/\D/g, ''));
+                            const priceB = parseInt(b.price.replace(/\D/g, ''));
+                            return priceA - priceB;
+                        });
+                        break;
+                    case 'price-high':
+                        state.filteredVenues.sort((a, b) => {
+                            const priceA = parseInt(a.price.replace(/\D/g, ''));
+                            const priceB = parseInt(b.price.replace(/\D/g, ''));
+                            return priceB - priceA;
+                        });
+                        break;
+                    case 'popular':
+                        state.filteredVenues.sort((a, b) => {
+                            const ratingA = parseFloat(a.rating.split(' ')[0]);
+                            const ratingB = parseFloat(b.rating.split(' ')[0]);
+                            return ratingB - ratingA;
+                        });
+                        break;
+                    case 'nearest':
+                        if (state.userLocation) {
+                            // In a real app, we would calculate distance properly
+                            // For demo, we'll just shuffle the array
+                            state.filteredVenues.sort(() => Math.random() - 0.5);
+                        }
+                        break;
+                    default: // recommended
+                        // Default sorting (could be by relevance, etc.)
+                        break;
+                }
+                
+                if (shouldRender) {
+                    renderVenues();
+                    if (state.currentView === 'map') {
+                        updateMapMarkers();
+                        renderMapVenueList();
+                    }
+                }
+            }
+            
+            // Reset specific filter
+            function resetFilter(filterType) {
+                switch(filterType) {
+                    case 'location':
+                        document.getElementById('location-input').value = '';
+                        document.getElementById('current-location').checked = false;
+                        document.getElementById('within50').checked = false;
+                        state.userLocation = null;
+                        break;
+                    case 'type':
+                        document.querySelectorAll('.filter-section input[type="checkbox"]').forEach(checkbox => {
+                            checkbox.checked = ['hotel', 'garden'].includes(checkbox.id);
+                        });
+                        break;
+                    case 'price':
+                        document.getElementById('price-slider').value = 40;
+                        break;
+                    case 'guests':
+                        document.getElementById('small').checked = true;
+                        break;
+                }
+                
+                filterVenues();
+            }
+            
+            // Render venue cards
             function renderVenues() {
                 if (!state.filteredVenues || state.filteredVenues.length === 0) {
                     venueGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">No venues match your filters</div>';
@@ -1260,22 +1588,21 @@
                     return;
                 }
                 
+                // Pagination
                 const startIndex = (state.currentPage - 1) * state.itemsPerPage;
                 const endIndex = startIndex + state.itemsPerPage;
                 const paginatedVenues = state.filteredVenues.slice(startIndex, endIndex);
                 
                 venueGrid.innerHTML = '';
                 
-                paginatedVenues.forEach((venue, index) => {
+                paginatedVenues.forEach(venue => {
                     const isFavorite = state.favorites.includes(venue.id);
-                    const isNearby = state.userLocation && index < 5; // First 5 are considered "nearby"
                     
                     const venueCard = document.createElement('div');
                     venueCard.className = 'venue-card';
                     venueCard.innerHTML = `
                         <div class="venue-image">
                             ${venue.image || '🏨'}
-                            ${isNearby ? '<div class="venue-badge">Near You</div>' : ''}
                             ${venue.badge ? `<div class="venue-badge">${venue.badge}</div>` : ''}
                             <div class="venue-favorite ${isFavorite ? 'active' : ''}" data-id="${venue.id}">❤</div>
                         </div>
@@ -1283,13 +1610,46 @@
                             <h3 class="venue-name">${venue.name}</h3>
                             <div class="venue-location">
                                 📍 ${venue.location}
-                                ${isNearby ? '<span style="color: var(--primary); font-size:0.8em;"> (closest)</span>' : ''}
                             </div>
-                            <!-- [Rest of venue details remains the same] -->
+                            <div class="venue-features">
+                                <div class="feature">
+                                    <span class="feature-icon">👫</span>
+                                    <span>${venue.capacity}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">⭐</span>
+                                    <span>${venue.rating}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">${getTypeIcon(venue.type)}</span>
+                                    <span>${venue.type}</span>
+                                </div>
+                            </div>
+                            <div class="venue-footer">
+                                <div class="venue-price">${venue.price} <span>starting</span></div>
+                                <div class="venue-actions">
+                                    <button class="btn btn-outline save-btn" data-id="${venue.id}">Save</button>
+                                    <button class="btn btn-primary view-btn" data-id="${venue.id}">View</button>
+                                </div>
+                            </div>
                         </div>
                     `;
+                    venueGrid.appendChild(venueCard);
                     
-                    // [Rest of the renderVenues function remains the same]
+                    // Add event listeners to buttons
+                    venueCard.querySelector('.view-btn').addEventListener('click', () => {
+                        openBookingModal(venue);
+                    });
+                    
+                    venueCard.querySelector('.save-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleFavorite(venue.id);
+                    });
+                    
+                    venueCard.querySelector('.venue-favorite').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleFavorite(venue.id);
+                    });
                 });
                 
                 updatePagination();
