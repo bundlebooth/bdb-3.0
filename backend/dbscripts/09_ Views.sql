@@ -96,40 +96,57 @@ GROUP BY
     sp.ProviderID, sp.BusinessName, pt.TypeName, YEAR(b.EventDate), MONTH(b.EventDate);
 GO
 -- vw_AvailabilityCalendar: Visual representation of availability
+-- Drop the view if it already exists
+IF EXISTS (SELECT * FROM sys.views WHERE name = 'vw_AvailabilityCalendar')
+BEGIN
+    DROP VIEW vw_AvailabilityCalendar;
+END
+GO
+
+-- Create the view with reliable date generation
 CREATE VIEW vw_AvailabilityCalendar AS
 WITH DateRange AS (
-    SELECT DATEADD(DAY, number, GETDATE()) AS CalendarDate
-    FROM master.dbo.spt_values
-    WHERE type = 'P' AND number BETWEEN 0 AND 365 -- Next year
+    -- Generate dates for the next 365 days using a numbers table approach
+    SELECT DATEADD(DAY, number, CAST(GETDATE() AS DATE)) AS CalendarDate
+    FROM (
+        SELECT ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS number
+        FROM sys.objects a
+        CROSS JOIN sys.objects b  -- Generates enough rows for 365 days
+    ) AS numbers
+    WHERE number <= 364  -- Next 365 days
 )
 SELECT 
-    p.ProviderID,
-    p.BusinessName,
+    sp.ProviderID,
+    sp.BusinessName,
     pt.TypeName AS ProviderType,
     dr.CalendarDate,
     CASE 
-        WHEN EXISTS (SELECT 1 FROM ProviderBlackoutDates bd WHERE bd.ProviderID = p.ProviderID AND dr.CalendarDate BETWEEN bd.StartDate AND bd.EndDate) THEN 0
+        WHEN EXISTS (
+            SELECT 1 FROM ProviderBlackoutDates bd 
+            WHERE bd.ProviderID = sp.ProviderID 
+            AND dr.CalendarDate BETWEEN bd.StartDate AND bd.EndDate
+        ) THEN 0
         WHEN EXISTS (
             SELECT 1 FROM Bookings b 
             INNER JOIN BookingProviders bp ON b.BookingID = bp.BookingID
-            WHERE bp.ProviderID = p.ProviderID 
+            WHERE bp.ProviderID = sp.ProviderID 
             AND b.StatusID IN (SELECT StatusID FROM BookingStatuses WHERE StatusName IN ('Confirmed', 'Completed'))
             AND dr.CalendarDate = b.EventDate
         ) THEN 0
         WHEN EXISTS (
             SELECT 1 FROM ProviderAvailability pa 
-            WHERE pa.ProviderID = p.ProviderID 
+            WHERE pa.ProviderID = sp.ProviderID 
             AND pa.DayOfWeek = DATEPART(WEEKDAY, dr.CalendarDate)
             AND pa.IsAvailable = 1
         ) THEN 1
         ELSE 0
     END AS IsAvailable
 FROM 
-    ServiceProviders p
+    ServiceProviders sp
     CROSS JOIN DateRange dr
-    INNER JOIN ProviderTypes pt ON p.TypeID = pt.TypeID
+    INNER JOIN ProviderTypes pt ON sp.TypeID = pt.TypeID
 WHERE 
-    p.IsActive = 1;
+    sp.IsActive = 1;
 GO
 -- vw_CustomerFavorites: User's saved providers
 CREATE VIEW vw_CustomerFavorites AS
