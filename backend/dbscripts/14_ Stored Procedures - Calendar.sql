@@ -8,30 +8,26 @@ CREATE PROCEDURE sp_Calendar_GetAvailability
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     -- Validate date range
     IF @EndDate < @StartDate
     BEGIN
         RAISERROR('End date must be after start date.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Create temp table for dates
     CREATE TABLE #DateRange (
         DateValue DATE
     );
-GO
+    
     -- Populate date range
     DECLARE @CurrentDate DATE = @StartDate;
-GO
+    
     WHILE @CurrentDate <= @EndDate
     BEGIN
         INSERT INTO #DateRange (DateValue) VALUES (@CurrentDate);
-GO
         SET @CurrentDate = DATEADD(DAY, 1, @CurrentDate);
-GO
     END
     
     -- Get provider's weekly availability
@@ -41,7 +37,7 @@ GO
         EndTime TIME,
         IsAvailable BIT
     );
-GO
+    
     INSERT INTO @WeeklyAvailability
     SELECT 
         DayOfWeek,
@@ -52,14 +48,14 @@ GO
         ProviderAvailability
     WHERE 
         ProviderID = @ProviderID;
-GO
+    
     -- Get blackout dates
     DECLARE @BlackoutDates TABLE (
         StartDate DATE,
         EndDate DATE,
         Reason NVARCHAR(255)
     );
-GO
+    
     INSERT INTO @BlackoutDates
     SELECT 
         StartDate,
@@ -73,14 +69,14 @@ GO
             (StartDate <= @EndDate AND EndDate >= @StartDate) OR
             IsRecurring = 1
         );
-GO
+    
     -- Get booked dates
     DECLARE @BookedDates TABLE (
         EventDate DATE,
         StartTime TIME,
         EndTime TIME
     );
-GO
+    
     INSERT INTO @BookedDates
     SELECT 
         b.EventDate,
@@ -93,7 +89,7 @@ GO
         bp.ProviderID = @ProviderID
         AND b.EventDate BETWEEN @StartDate AND @EndDate
         AND b.StatusID IN (SELECT StatusID FROM BookingStatuses WHERE StatusName IN ('Confirmed', 'Completed'));
-GO
+    
     -- Return availability for each date
     SELECT 
         dr.DateValue,
@@ -132,9 +128,8 @@ GO
         LEFT JOIN @WeeklyAvailability wa ON wa.DayOfWeek = DATEPART(WEEKDAY, dr.DateValue)
     ORDER BY 
         dr.DateValue;
-GO
+    
     DROP TABLE #DateRange;
-GO
 END;
 GO
 
@@ -149,14 +144,12 @@ CREATE PROCEDURE sp_Calendar_BlockDates
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     -- Validate date range
     IF @EndDate < @StartDate
     BEGIN
         RAISERROR('End date must be after start date.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Check for existing bookings in this range
@@ -170,9 +163,7 @@ GO
     )
     BEGIN
         RAISERROR('Cannot block dates with existing bookings.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Insert blackout dates
@@ -182,7 +173,6 @@ GO
     VALUES (
         @ProviderID, @StartDate, @EndDate, @Reason, @IsRecurring, @RecurrencePattern
     );
-GO
 END;
 GO
 
@@ -197,14 +187,12 @@ CREATE PROCEDURE sp_Calendar_GetConflicts
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     -- Validate time range
     IF @EndTime <= @StartTime
     BEGIN
         RAISERROR('End time must be after start time.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Check blackout dates
@@ -223,7 +211,7 @@ GO
             (StartDate BETWEEN @StartDate AND @EndDate) OR
             (EndDate BETWEEN @StartDate AND @EndDate)
         );
-GO
+    
     -- Check existing bookings
     SELECT 
         'Booking' AS ConflictType,
@@ -246,10 +234,10 @@ GO
             (@EndTime > b.StartTime AND @EndTime <= b.EndTime) OR
             (@StartTime <= b.StartTime AND @EndTime >= b.EndTime)
         );
-GO
+    
     -- Check weekly availability
     DECLARE @DayOfWeek INT = DATEPART(WEEKDAY, @StartDate);
-GO
+    
     IF NOT EXISTS (
         SELECT 1 
         FROM ProviderAvailability 
@@ -265,8 +253,6 @@ GO
             @StartDate AS StartDate,
             @EndDate AS EndDate,
             'Provider is not available at the requested time on this day of week.' AS ConflictReason;
-GO
     END
 END;
 GO
-
