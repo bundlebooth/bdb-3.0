@@ -1,0 +1,241 @@
+{
+  "venues": [
+    {
+      "id": 1,
+      "name": "The Beverly Hills Hotel",
+      "location": "Beverly Hills, CA",
+      "image": "🏨",
+      "badge": "Popular",
+      "capacity": "50-300",
+      "rating": "4.9 (142)",
+      "type": "Hotel",
+      "rooms": "208 rooms",
+      "price": "$25,000",
+      "description": "The iconic Beverly Hills Hotel offers timeless Hollywood glamour with its legendary service and luxurious settings. The hotel's elegant ballrooms and lush gardens provide the perfect backdrop for your dream wedding.",
+      "services": [
+        {
+          "category": "Catering",
+          "services": [
+            {
+              "name": "Platinum Package",
+              "description": "5-course gourmet meal with premium open bar",
+              "price": "$125 per person"
+            },
+            {
+              "name": "Gold Package",
+              "description": "4-course meal with standard open bar",
+              "price": "$95 per person"
+            },
+            {
+              "name": "Vegetarian Option",
+              "description": "Full vegetarian menu",
+              "price": "$85 per person"
+            }
+          ]
+        },
+        {
+          "category": "Photography",
+          "services": [
+            {
+              "name": "Premium Photography",
+              "description": "8 hours coverage with 2 photographers",
+              "price": "$3,500"
+            },
+            {
+              "name": "Standard Photography",
+              "description": "6 hours coverage with 1 photographer",
+              "price": "$2,200"
+            }
+          ]
+        },
+        {
+          "category": "Entertainment",
+          "services": [
+            {
+              "name": "Live Band",
+              "description": "5-piece band for 4 hours",
+              "price": "$4,500"
+            },
+            {
+              "name": "DJ Services",
+              "description": "Professional DJ for 5 hours",
+              "price": "$1,800"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Terranea Resort",
+      "location": "Rancho Palos Verdes, CA",
+      "image": "🌊",
+      "capacity": "50-250",
+      "rating": "4.8 (98)",
+      "type": "Oceanview",
+      "price": "$22,000",
+      "description": "Perched on the Palos Verdes Peninsula, Terranea Resort offers breathtaking ocean views and coastal elegance. Choose from stunning cliffside ceremony sites and elegant reception spaces.",
+      "services": [
+        {
+          "category": "Catering",
+          "services": [
+            {
+              "name": "Oceanview Package",
+              "description": "Seafood-focused menu with oceanview dining",
+              "price": "$145 per person"
+            },
+            {
+              "name": "California Package",
+              "description": "Farm-to-table cuisine with wine pairing",
+              "price": "$110 per person"
+            }
+          ]
+        },
+        {
+          "category": "Accommodations",
+          "services": [
+            {
+              "name": "Bridal Suite",
+              "description": "Luxury suite for wedding night",
+              "price": "$650/night"
+            },
+            {
+              "name": "Guest Room Block",
+              "description": "20 rooms at discounted rate",
+              "price": "$250/night"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "The Getty Villa",
+      "location": "Malibu, CA",
+      "image": "🏛️",
+      "badge": "New",
+      "capacity": "50-150",
+      "rating": "4.7 (76)",
+      "type": "Historic",
+      "price": "$18,000",
+      "description": "Inspired by ancient Roman architecture, The Getty Villa offers a unique cultural setting for your wedding. The outdoor courtyard and ocean-view terraces create a magical atmosphere.",
+      "services": [
+        {
+          "category": "Venue Services",
+          "services": [
+            {
+              "name": "Exclusive Use",
+              "description": "Private access to entire villa",
+              "price": "$18,000"
+            },
+            {
+              "name": "After Hours",
+              "description": "Extended event hours",
+              "price": "$2,500"
+            }
+          ]
+        },
+        {
+          "category": "Guided Tours",
+          "services": [
+            {
+              "name": "Wedding Group Tour",
+              "description": "Private guided tour for wedding guests",
+              "price": "$500"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Malibu Wines",
+      "location": "Malibu, CA",
+      "image": "🍇",
+      "capacity": "30-120",
+      "rating": "4.6 (87)",
+      "type": "Vineyard",
+      "price": "$12,000",
+      "description": "Nestled in the Santa Monica Mountains, Malibu Wines offers a rustic yet sophisticated vineyard setting. The rolling hills and vineyard views provide a picturesque backdrop for your special day.",
+      "services": [
+        {
+          "category": "Wine Services",
+          "services": [
+            {
+              "name": "Wine Tasting",
+              "description": "Premium wine tasting for guests",
+              "price": "$35 per person"
+            },
+            {
+              "name": "Custom Wine Label",
+              "description": "Personalized wine bottles for favors",
+              "price": "$25 per bottle"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "The Ace Hotel",
+      "location": "Downtown LA, CA",
+      "image": "🏙️",
+      "badge": "Urban",
+      "capacity": "50-200",
+      "rating": "4.5 (65)",
+      "type": "Rooftop",
+      "price": "$15,000",
+      "description": "The Ace Hotel's rooftop venue offers panoramic views of downtown LA with a chic, urban vibe. The space features a pool, lounge areas, and stunning cityscape views.",
+      "services": [
+        {
+          "category": "Rooftop Services",
+          "services": [
+            {
+              "name": "Rooftop Ceremony",
+              "description": "Exclusive use of rooftop space",
+              "price": "$5,000"
+            },
+            {
+              "name": "Sunset Reception",
+              "description": "4-hour rooftop reception",
+              "price": "$8,000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "The Langham Huntington",
+      "location": "Pasadena, CA",
+      "image": "🌴",
+      "capacity": "100-300",
+      "rating": "4.8 (113)",
+      "type": "Gardens",
+      "price": "$20,000",
+      "description": "Set on 23 acres of beautifully landscaped gardens, The Langham Huntington offers classic elegance with modern amenities. The property features multiple ceremony sites and elegant ballrooms.",
+      "services": [
+        {
+          "category": "Garden Services",
+          "services": [
+            {
+              "name": "Garden Ceremony",
+              "description": "Floral arch and aisle decoration",
+              "price": "$3,500"
+            },
+            {
+              "name": "Garden Reception",
+              "description": "Outdoor dinner under the stars",
+              "price": "$7,500"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "total": 28,
+    "location": "Los Angeles",
+    "popularFilters": ["Waterfront", "All-Inclusive", "Historic", "Luxury", "Rooftop"]
+  }
+}
