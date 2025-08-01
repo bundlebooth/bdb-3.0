@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <title>VenueVue | Modern Wedding Venue Finder</title>
     <style>
         :root {
@@ -750,6 +751,36 @@
             margin-left: 8px;
         }
 
+        /* Profile Modal Styles */
+        .profile-modal .modal-content {
+            max-width: 400px;
+        }
+
+        .profile-modal .modal-body {
+            padding: 20px;
+        }
+
+        .profile-modal input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: white;
+            font-size: 2rem;
+        }
+
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -994,8 +1025,93 @@
         </div>
     </div>
 
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 id="profile-modal-title">Welcome to VenueVue</h3>
+                <span class="close-modal" id="close-profile-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Login Form (shown by default) -->
+                <div id="login-form">
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email</label>
+                        <input type="email" id="login-email" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;">
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Password</label>
+                        <input type="password" id="login-password" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;">
+                    </div>
+                    <button class="btn btn-primary" id="login-btn" style="width: 100%; margin-bottom: 1rem;">Log In</button>
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <a href="#" id="show-signup" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">Don't have an account? Sign up</a>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
+                        <div style="flex: 1; height: 1px; background-color: var(--border);"></div>
+                        <div style="padding: 0 1rem; color: var(--text-light); font-size: 0.9rem;">OR</div>
+                        <div style="flex: 1; height: 1px; background-color: var(--border);"></div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <button class="btn btn-outline" id="google-login" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="20" height="20">
+                            <span>Continue with Google</span>
+                        </button>
+                        <button class="btn btn-outline" id="facebook-login" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" width="20" height="20">
+                            <span>Continue with Facebook</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Signup Form (hidden by default) -->
+                <div id="signup-form" style="display: none;">
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Full Name</label>
+                        <input type="text" id="signup-name" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;">
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email</label>
+                        <input type="email" id="signup-email" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;">
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Password</label>
+                        <input type="password" id="signup-password" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;">
+                    </div>
+                    <button class="btn btn-primary" id="signup-btn" style="width: 100%; margin-bottom: 1rem;">Create Account</button>
+                    <div style="text-align: center;">
+                        <a href="#" id="show-login" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">Already have an account? Log in</a>
+                    </div>
+                </div>
+
+                <!-- Logged In View (hidden by default) -->
+                <div id="logged-in-view" style="display: none; text-align: center;">
+                    <div class="profile-avatar" id="profile-avatar">
+                        U
+                    </div>
+                    <h3 style="margin-bottom: 0.5rem;" id="profile-name">User Name</h3>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;" id="profile-email">user@example.com</p>
+                    <button class="btn btn-outline" id="logout-btn" style="width: 100%;">Log Out</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Google Maps API -->
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places&v=weekly" defer></script>
+
+    <!-- Facebook SDK -->
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId: 'YOUR_FACEBOOK_APP_ID',  // Replace with your actual Facebook App ID
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        });
+      };
+    </script>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -1028,6 +1144,20 @@
             const locationLoading = document.getElementById('location-loading');
             const locationInput = document.getElementById('location-input');
             
+            // Profile modal elements
+            const profileModal = document.getElementById('profile-modal');
+            const closeProfileModal = document.getElementById('close-profile-modal');
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const loggedInView = document.getElementById('logged-in-view');
+            const showSignup = document.getElementById('show-signup');
+            const showLogin = document.getElementById('show-login');
+            const loginBtn = document.getElementById('login-btn');
+            const signupBtn = document.getElementById('signup-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const googleLoginBtn = document.getElementById('google-login');
+            const facebookLoginBtn = document.getElementById('facebook-login');
+            
             // App state
             let state = {
                 venues: [],
@@ -1047,6 +1177,9 @@
                     popular: []
                 }
             };
+            
+            // User state
+            let currentUser = null;
             
             // Initialize the app
             init();
@@ -1316,8 +1449,118 @@
                     alert('No new notifications');
                 });
                 
+                // Profile button click handler
                 profileBtn.addEventListener('click', () => {
-                    alert('Profile menu would open here');
+                    // Check if user is logged in
+                    if (currentUser) {
+                        showLoggedInView();
+                    } else {
+                        showLoginView();
+                    }
+                    profileModal.style.display = 'flex';
+                });
+                
+                // Close profile modal
+                closeProfileModal.addEventListener('click', () => {
+                    profileModal.style.display = 'none';
+                });
+                profileModal.addEventListener('click', (e) => e.target === profileModal && (profileModal.style.display = 'none'));
+                
+                // Toggle between login and signup forms
+                showSignup.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showSignupView();
+                });
+                
+                showLogin.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showLoginView();
+                });
+                
+                // Login with email/password
+                loginBtn.addEventListener('click', () => {
+                    const email = document.getElementById('login-email').value;
+                    const password = document.getElementById('login-password').value;
+                    
+                    if (!email || !password) {
+                        alert('Please enter both email and password');
+                        return;
+                    }
+                    
+                    // In a real app, you would call your authentication API here
+                    // For demo purposes, we'll simulate a successful login
+                    simulateLogin({
+                        name: email.split('@')[0], // Use the part before @ as name for demo
+                        email: email,
+                        avatar: email[0].toUpperCase() // First letter as avatar
+                    });
+                });
+                
+                // Sign up with email/password
+                signupBtn.addEventListener('click', () => {
+                    const name = document.getElementById('signup-name').value;
+                    const email = document.getElementById('signup-email').value;
+                    const password = document.getElementById('signup-password').value;
+                    
+                    if (!name || !email || !password) {
+                        alert('Please fill in all fields');
+                        return;
+                    }
+                    
+                    if (password.length < 6) {
+                        alert('Password should be at least 6 characters');
+                        return;
+                    }
+                    
+                    // In a real app, you would call your authentication API here
+                    // For demo purposes, we'll simulate a successful signup and login
+                    simulateLogin({
+                        name: name,
+                        email: email,
+                        avatar: name[0].toUpperCase() // First letter as avatar
+                    });
+                });
+                
+                // Google Login Handler
+                googleLoginBtn.addEventListener('click', () => {
+                    google.accounts.id.initialize({
+                        client_id: '900405597637-50g402qo0kbh2msi9bqii8e9od6oq0fk.apps.googleusercontent.com', // Replace with your actual Google Client ID
+                        callback: handleGoogleSignIn
+                    });
+                    google.accounts.id.prompt();
+                });
+
+                // Facebook Login Handler
+                facebookLoginBtn.addEventListener('click', () => {
+                    FB.login(function(response) {
+                        if (response.authResponse) {
+                            FB.api('/me', {fields: 'name,email'}, function(response) {
+                                const user = {
+                                    name: response.name,
+                                    email: response.email,
+                                    avatar: response.name[0].toUpperCase()
+                                };
+                                simulateLogin(user);
+                            });
+                        }
+                    }, {scope: 'public_profile,email'});
+                });
+                
+                // Logout handler
+                logoutBtn.addEventListener('click', () => {
+                    currentUser = null;
+                    showLoginView();
+                    alert('You have been logged out');
+                    // Reset profile button
+                    profileBtn.textContent = '👤';
+                    profileBtn.style.backgroundColor = '';
+                    profileBtn.style.color = '';
+                    profileBtn.style.borderRadius = '';
+                    profileBtn.style.width = '';
+                    profileBtn.style.height = '';
+                    profileBtn.style.display = '';
+                    profileBtn.style.alignItems = '';
+                    profileBtn.style.justifyContent = '';
                 });
                 
                 // Map controls
@@ -1416,7 +1659,9 @@
                 // Get filter values
                 const selectedTypes = [];
                 document.querySelectorAll('.filter-section input[type="checkbox"]:checked').forEach(checkbox => {
-                    selectedTypes.push(checkbox.id);
+                    if (checkbox.id !== 'current-location' && checkbox.id !== 'within50') {
+                        selectedTypes.push(checkbox.id);
+                    }
                 });
                 
                 const priceRange = document.getElementById('price-slider').value;
@@ -1424,21 +1669,20 @@
                 const useCurrentLocation = document.getElementById('current-location').checked;
                 const within50Miles = document.getElementById('within50').checked;
                 
-                // Apply filters
-                state.filteredVenues = state.venues.filter(venue => {
+                // First apply all filters EXCEPT location
+                let filtered = state.venues.filter(venue => {
                     // Search term (venue name, location, or services)
                     if (searchTerm) {
                         const nameMatch = venue.name.toLowerCase().includes(searchTerm);
                         const locationMatch = venue.location.toLowerCase().includes(searchTerm);
                         let serviceMatch = false;
                         
-                        // Check services if they exist
                         if (venue.services) {
                             serviceMatch = venue.services.some(category => 
                                 category.services.some(service => 
                                     service.name.toLowerCase().includes(searchTerm) || 
                                     service.description.toLowerCase().includes(searchTerm))
-                                );
+                            );
                         }
                         
                         if (!nameMatch && !locationMatch && !serviceMatch) {
@@ -1471,25 +1715,28 @@
                         if (state.filters.popular.includes('rooftop') && !venue.type.toLowerCase().includes('rooftop')) return false;
                     }
                     
-                    // Location filter
-                    if (useCurrentLocation && state.userLocation && within50Miles) {
-                        // Sort venues by distance (simulated for demo)
-                        state.filteredVenues.sort((a, b) => {
-                            // In a real app, calculate actual distance using Haversine formula
-                            const distA = Math.abs(a.coordinates.lat - state.userLocation.lat) + 
-                                          Math.abs(a.coordinates.lng - state.userLocation.lng);
-                            const distB = Math.abs(b.coordinates.lat - state.userLocation.lat) + 
-                                          Math.abs(b.coordinates.lng - state.userLocation.lng);
-                            return distA - distB;
-                        });
-                        
-                        // Only show the closest 10 venues for demo purposes
-                        // In a real app, you'd filter by actual distance
-                        state.filteredVenues = state.filteredVenues.slice(0, 10);
-                    }
-                    
                     return true;
                 });
+                
+                // Handle location filter
+                let locationMessage = '';
+                if (useCurrentLocation && state.userLocation && within50Miles) {
+                    // For demo purposes, we'll simulate nearby venues by filtering the first few
+                    const nearbyVenues = filtered.slice(0, 3); // Show first 3 as "nearby"
+                    
+                    if (nearbyVenues.length > 0) {
+                        filtered = nearbyVenues;
+                        locationMessage = `${filtered.length} venues available near you`;
+                    } else {
+                        // If no nearby venues, show ALL venues that match other filters
+                        locationMessage = "No venues near you. Showing all available venues.";
+                    }
+                } else {
+                    locationMessage = `${filtered.length} venues available`;
+                }
+                
+                state.filteredVenues = filtered;
+                resultsCount.textContent = locationMessage;
                 
                 // Apply sorting
                 sortVenues(false);
@@ -1723,6 +1970,27 @@
                 });
             }
             
+            // Handle Google Sign-In
+            function handleGoogleSignIn(response) {
+                const responsePayload = decodeJWT(response.credential);
+                const user = {
+                    name: responsePayload.name,
+                    email: responsePayload.email,
+                    avatar: responsePayload.given_name[0].toUpperCase()
+                };
+                simulateLogin(user);
+            }
+
+            // Decode JWT token
+            function decodeJWT(token) {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            }
+
             // Toggle venue favorite status
             function toggleFavorite(venueId) {
                 const index = state.favorites.indexOf(venueId);
@@ -1916,6 +2184,61 @@
             function closeBookingModal() {
                 modal.style.display = 'none';
                 document.body.style.overflow = 'auto';
+            }
+            
+            // Show login view in profile modal
+            function showLoginView() {
+                loginForm.style.display = 'block';
+                signupForm.style.display = 'none';
+                loggedInView.style.display = 'none';
+                document.getElementById('profile-modal-title').textContent = 'Welcome to VenueVue';
+                // Clear form fields
+                document.getElementById('login-email').value = '';
+                document.getElementById('login-password').value = '';
+            }
+            
+            // Show signup view in profile modal
+            function showSignupView() {
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'block';
+                loggedInView.style.display = 'none';
+                document.getElementById('profile-modal-title').textContent = 'Create an Account';
+                // Clear form fields
+                document.getElementById('signup-name').value = '';
+                document.getElementById('signup-email').value = '';
+                document.getElementById('signup-password').value = '';
+            }
+            
+            // Show logged in view in profile modal
+            function showLoggedInView() {
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'none';
+                loggedInView.style.display = 'block';
+                document.getElementById('profile-modal-title').textContent = 'My Account';
+                
+                // Update user info
+                document.getElementById('profile-name').textContent = currentUser.name;
+                document.getElementById('profile-email').textContent = currentUser.email;
+                document.getElementById('profile-avatar').textContent = currentUser.avatar;
+            }
+            
+            // Simulate user login (for demo purposes)
+            function simulateLogin(user) {
+                currentUser = user;
+                showLoggedInView();
+                profileModal.style.display = 'none';
+                alert(`Welcome, ${user.name}! You are now logged in.`);
+                
+                // Update profile button to show user is logged in
+                profileBtn.textContent = user.avatar; // Show first initial
+                profileBtn.style.backgroundColor = 'var(--primary)';
+                profileBtn.style.color = 'white';
+                profileBtn.style.borderRadius = '50%';
+                profileBtn.style.width = '36px';
+                profileBtn.style.height = '36px';
+                profileBtn.style.display = 'flex';
+                profileBtn.style.alignItems = 'center';
+                profileBtn.style.justifyContent = 'center';
             }
         });
     </script>
