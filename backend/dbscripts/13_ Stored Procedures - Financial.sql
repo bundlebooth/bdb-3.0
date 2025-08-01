@@ -13,23 +13,16 @@ CREATE PROCEDURE sp_Payment_Process
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     DECLARE @BookingStatus NVARCHAR(50);
-GO
     DECLARE @TotalPrice DECIMAL(18, 2);
-GO
     DECLARE @TotalPaid DECIMAL(18, 2);
-GO
     DECLARE @DepositAmount DECIMAL(18, 2);
-GO
     DECLARE @DepositPaid BIT;
-GO
     DECLARE @BalanceDueDate DATE;
-GO
     DECLARE @FeeAmount DECIMAL(18, 2) = 0;
-GO
     DECLARE @NetAmount DECIMAL(18, 2) = @Amount;
-GO
+
     -- Get booking details if provided
     IF @BookingID IS NOT NULL
     BEGIN
@@ -44,40 +37,34 @@ GO
             INNER JOIN BookingStatuses bs ON b.StatusID = bs.StatusID
         WHERE 
             b.BookingID = @BookingID;
-GO
+
         IF @BookingStatus IS NULL
         BEGIN
             RAISERROR('Booking not found.', 16, 1);
-GO
             RETURN;
-GO
         END
         
         -- Calculate total paid so far
         SELECT @TotalPaid = ISNULL(SUM(Amount), 0)
         FROM Payments
         WHERE BookingID = @BookingID AND Status = 'Completed';
-GO
+
         -- Check if payment exceeds remaining balance
         IF @Amount > (@TotalPrice - @TotalPaid)
         BEGIN
             RAISERROR('Payment amount exceeds remaining balance.', 16, 1);
-GO
             RETURN;
-GO
         END
         
         -- Calculate processing fee if method has one
         SELECT @FeeAmount = @Amount * (ProcessingFeePercent / 100)
         FROM PaymentMethods
         WHERE MethodID = @MethodID;
-GO
+
         SET @NetAmount = @Amount - @FeeAmount;
-GO
     END
     
     BEGIN TRANSACTION;
-GO
     BEGIN TRY
         -- Insert payment record
         INSERT INTO Payments (
@@ -96,22 +83,21 @@ GO
             @FeeAmount,
             @NetAmount,
             @Notes;
-GO
+
         SET @PaymentID = SCOPE_IDENTITY();
-GO
+
         -- If payment is for a booking and status is Completed, update booking
         IF @BookingID IS NOT NULL AND @Status = 'Completed'
         BEGIN
             -- Update total paid amount
             SET @TotalPaid = @TotalPaid + @Amount;
-GO
+
             -- Check if deposit is now paid
             DECLARE @NewDepositPaid BIT = @DepositPaid;
-GO
             IF @DepositPaid = 0 AND @TotalPaid >= @DepositAmount
             BEGIN
                 SET @NewDepositPaid = 1;
-GO
+
                 -- Add timeline event for deposit paid
                 INSERT INTO BookingTimeline (
                     BookingID, EventDate, EventType, Title, Description
@@ -121,17 +107,15 @@ GO
                     'Deposit Paid', 
                     'Deposit of ' + FORMAT(@DepositAmount, 'C') + ' has been paid.'
                 );
-GO
             END
             
             -- Check if booking is now fully paid
             DECLARE @NewStatusID INT;
-GO
             IF @TotalPaid >= @TotalPrice
             BEGIN
                 -- Booking is fully paid
                 SELECT @NewStatusID = StatusID FROM BookingStatuses WHERE StatusName = 'Confirmed';
-GO
+
                 -- Add timeline event for full payment
                 INSERT INTO BookingTimeline (
                     BookingID, EventDate, EventType, Title, Description
@@ -141,14 +125,12 @@ GO
                     'Fully Paid', 
                     'Booking has been fully paid. Thank you!'
                 );
-GO
             END
             ELSE
             BEGIN
                 -- Booking is partially paid
                 SELECT @NewStatusID = StatusID FROM BookingStatuses WHERE StatusName = 
                     CASE WHEN @BookingStatus = 'Pending' AND @NewDepositPaid = 1 THEN 'Confirmed' ELSE @BookingStatus END;
-GO
             END
             
             -- Update booking
@@ -159,7 +141,7 @@ GO
                 LastUpdated = GETDATE()
             WHERE 
                 BookingID = @BookingID;
-GO
+
             -- Update booking providers if deposit is now paid
             IF @NewDepositPaid = 1 AND @DepositPaid = 0
             BEGIN
@@ -169,18 +151,16 @@ GO
                     ModifiedDate = GETDATE()
                 WHERE 
                     BookingID = @BookingID;
-GO
             END
         END
         
         COMMIT TRANSACTION;
-GO
     END TRY
     BEGIN CATCH
-        ROLLBACK TRANSACTION;
-GO
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        
         THROW;
-GO
     END CATCH
 END;
 GO
@@ -195,17 +175,13 @@ CREATE PROCEDURE sp_Invoice_Generate
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     DECLARE @UserID INT;
-GO
     DECLARE @EventDate DATE;
-GO
     DECLARE @TotalPrice DECIMAL(18, 2);
-GO
     DECLARE @TotalPaid DECIMAL(18, 2);
-GO
     DECLARE @TaxAmount DECIMAL(18, 2) = 0;
-GO
+
     -- Get booking details
     SELECT 
         @UserID = b.UserID,
@@ -216,13 +192,11 @@ GO
         Bookings b
     WHERE 
         b.BookingID = @BookingID;
-GO
+
     IF @UserID IS NULL
     BEGIN
         RAISERROR('Booking not found.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Calculate tax (simplified for example)
@@ -231,24 +205,20 @@ GO
     
     -- Set default dates if not provided
     IF @IssueDate IS NULL SET @IssueDate = GETDATE();
-GO
     IF @DueDate IS NULL SET @DueDate = DATEADD(DAY, 14, @IssueDate);
-GO
+
     -- Generate invoice number if not provided (YYYYMMDD-XXXXX)
     IF @InvoiceNumber IS NULL
     BEGIN
         DECLARE @NextNum INT;
-GO
-        SELECT @NextNum = ISNULL(MAX(CAST(SUBSTRING(InvoiceNumber, 10, 5) AS INT), 0) + 1
+        SELECT @NextNum = ISNULL(MAX(CAST(SUBSTRING(InvoiceNumber, 10, 5) AS INT)), 0) + 1
         FROM Invoices
         WHERE InvoiceNumber LIKE FORMAT(GETDATE(), 'yyyyMMdd') + '-%';
-GO
+        
         SET @InvoiceNumber = FORMAT(GETDATE(), 'yyyyMMdd') + '-' + RIGHT('00000' + CAST(@NextNum AS NVARCHAR(5)), 5);
-GO
     END
     
     BEGIN TRANSACTION;
-GO
     BEGIN TRY
         -- Insert invoice record
         INSERT INTO Invoices (
@@ -260,9 +230,9 @@ GO
             CASE WHEN @TotalPaid >= @TotalPrice THEN 'Paid' ELSE 'Pending' END,
             @TotalPrice - @TaxAmount, @TaxAmount, @TotalPrice, @TotalPaid, @TotalPrice - @TotalPaid
         );
-GO
+
         SET @InvoiceID = SCOPE_IDENTITY();
-GO
+
         -- Add timeline event for invoice generation
         INSERT INTO BookingTimeline (
             BookingID, EventDate, EventType, Title, Description
@@ -272,15 +242,14 @@ GO
             'Invoice Generated', 
             'Invoice #' + @InvoiceNumber + ' has been generated. Amount due: ' + FORMAT(@TotalPrice - @TotalPaid, 'C')
         );
-GO
+
         COMMIT TRANSACTION;
-GO
     END TRY
     BEGIN CATCH
-        ROLLBACK TRANSACTION;
-GO
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        
         THROW;
-GO
     END CATCH
 END;
 GO
@@ -296,19 +265,16 @@ CREATE PROCEDURE sp_Revenue_Report
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     -- Set default date range if not provided
     IF @StartDate IS NULL SET @StartDate = DATEADD(YEAR, -1, GETDATE());
-GO
     IF @EndDate IS NULL SET @EndDate = GETDATE();
-GO
+
     -- Validate date range
     IF @EndDate < @StartDate
     BEGIN
         RAISERROR('End date must be after start date.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Generate report based on grouping
@@ -336,7 +302,6 @@ GO
             CAST(b.EventDate AS DATE)
         ORDER BY 
             CAST(b.EventDate AS DATE);
-GO
     END
     ELSE IF @GroupBy = 'week'
     BEGIN
@@ -367,7 +332,6 @@ GO
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(WEEK, b.EventDate);
-GO
     END
     ELSE IF @GroupBy = 'month'
     BEGIN
@@ -398,7 +362,6 @@ GO
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(MONTH, b.EventDate);
-GO
     END
     ELSE IF @GroupBy = 'quarter'
     BEGIN
@@ -429,7 +392,6 @@ GO
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(QUARTER, b.EventDate);
-GO
     END
     ELSE -- year
     BEGIN
@@ -455,7 +417,6 @@ GO
             DATEPART(YEAR, b.EventDate)
         ORDER BY 
             DATEPART(YEAR, b.EventDate);
-GO
     END
     
     -- Get summary totals
@@ -476,7 +437,6 @@ GO
         AND (@ProviderTypeID IS NULL OR sp.TypeID = @ProviderTypeID)
         AND (@EventTypeID IS NULL OR b.EventTypeID = @EventTypeID)
         AND p.Status = 'Completed';
-GO
 END;
 GO
 
@@ -491,15 +451,12 @@ CREATE PROCEDURE sp_Refund_Process
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     DECLARE @OriginalAmount DECIMAL(18, 2);
-GO
     DECLARE @BookingID INT;
-GO
     DECLARE @UserID INT;
-GO
     DECLARE @ProviderID INT;
-GO
+
     -- Get original payment details
     SELECT 
         @OriginalAmount = Amount,
@@ -508,26 +465,21 @@ GO
         @ProviderID = ProviderID
     FROM Payments
     WHERE PaymentID = @PaymentID;
-GO
+
     IF @OriginalAmount IS NULL
     BEGIN
         RAISERROR('Original payment not found.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Validate refund amount
     IF @RefundAmount <= 0 OR @RefundAmount > ABS(@OriginalAmount)
     BEGIN
         RAISERROR('Invalid refund amount.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     BEGIN TRANSACTION;
-GO
     BEGIN TRY
         -- Record refund payment (negative amount)
         INSERT INTO Payments (
@@ -547,39 +499,36 @@ GO
             -@RefundAmount,
             @Notes
         );
-GO
+
         SET @RefundID = SCOPE_IDENTITY();
-GO
+
         -- Update original payment if this is a partial refund
         IF @RefundAmount < ABS(@OriginalAmount)
         BEGIN
             UPDATE Payments
             SET Notes = ISNULL(Notes, '') + ' Partially refunded: ' + FORMAT(@RefundAmount, 'C')
             WHERE PaymentID = @PaymentID;
-GO
         END
         
         -- If this is a booking refund, update booking totals
         IF @BookingID IS NOT NULL
         BEGIN
             DECLARE @TotalPaid DECIMAL(18, 2);
-GO
             DECLARE @DepositAmount DECIMAL(18, 2);
-GO
             DECLARE @DepositPaid BIT;
-GO
+
             -- Get current paid amount
             SELECT @TotalPaid = ISNULL(SUM(Amount), 0)
             FROM Payments
             WHERE BookingID = @BookingID AND Status = 'Completed';
-GO
+
             -- Get deposit info
             SELECT 
                 @DepositAmount = DepositAmount,
                 @DepositPaid = DepositPaid
             FROM Bookings
             WHERE BookingID = @BookingID;
-GO
+
             -- Check if deposit should be marked as unpaid
             IF @DepositPaid = 1 AND @TotalPaid < @DepositAmount
             BEGIN
@@ -589,7 +538,7 @@ GO
                     LastUpdated = GETDATE()
                 WHERE 
                     BookingID = @BookingID;
-GO
+
                 -- Update booking providers
                 UPDATE BookingProviders
                 SET 
@@ -597,7 +546,7 @@ GO
                     ModifiedDate = GETDATE()
                 WHERE 
                     BookingID = @BookingID;
-GO
+
                 -- Add timeline event
                 INSERT INTO BookingTimeline (
                     BookingID, EventDate, EventType, Title, Description
@@ -607,18 +556,16 @@ GO
                     'Deposit Refunded', 
                     'Deposit has been partially refunded. New amount paid: ' + FORMAT(@TotalPaid, 'C')
                 );
-GO
             END
         END
         
         COMMIT TRANSACTION;
-GO
     END TRY
     BEGIN CATCH
-        ROLLBACK TRANSACTION;
-GO
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        
         THROW;
-GO
     END CATCH
 END;
 GO
@@ -634,29 +581,25 @@ CREATE PROCEDURE sp_Payment_ProcessPayout
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     -- Validate provider exists
     IF NOT EXISTS (SELECT 1 FROM ServiceProviders WHERE ProviderID = @ProviderID AND IsActive = 1)
     BEGIN
         RAISERROR('Provider not found or inactive.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Calculate processing fee if method has one
     DECLARE @FeeAmount DECIMAL(18, 2) = 0;
-GO
     DECLARE @NetAmount DECIMAL(18, 2) = @Amount;
-GO
+
     SELECT @FeeAmount = @Amount * (ProcessingFeePercent / 100)
     FROM PaymentMethods
     WHERE MethodID = @MethodID;
-GO
+
     SET @NetAmount = @Amount - @FeeAmount;
-GO
+
     BEGIN TRANSACTION;
-GO
     BEGIN TRY
         -- Record payout
         INSERT INTO Payouts (
@@ -667,9 +610,9 @@ GO
             @ProviderID, @Amount, GETDATE(), @MethodID, 'Completed',
             @TransactionID, @FeeAmount, @NetAmount, @Notes
         );
-GO
+
         SET @PayoutID = SCOPE_IDENTITY();
-GO
+
         -- Record corresponding payment (negative amount from system to provider)
         INSERT INTO Payments (
             BookingID, UserID, ProviderID, Amount, PaymentDate, 
@@ -688,15 +631,14 @@ GO
             -@NetAmount, -- Negative net amount
             'Payout to provider: ' + ISNULL(@Notes, '')
         );
-GO
+
         COMMIT TRANSACTION;
-GO
     END TRY
     BEGIN CATCH
-        ROLLBACK TRANSACTION;
-GO
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        
         THROW;
-GO
     END CATCH
 END;
 GO
@@ -710,19 +652,16 @@ CREATE PROCEDURE sp_Financial_GetProviderEarnings
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     -- Set default date range if not provided
     IF @StartDate IS NULL SET @StartDate = DATEADD(YEAR, -1, GETDATE());
-GO
     IF @EndDate IS NULL SET @EndDate = GETDATE();
-GO
+
     -- Validate date range
     IF @EndDate < @StartDate
     BEGIN
         RAISERROR('End date must be after start date.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Generate report based on grouping
@@ -747,7 +686,6 @@ GO
             CAST(b.EventDate AS DATE)
         ORDER BY 
             CAST(b.EventDate AS DATE);
-GO
     END
     ELSE IF @GroupBy = 'week'
     BEGIN
@@ -775,7 +713,6 @@ GO
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(WEEK, b.EventDate);
-GO
     END
     ELSE IF @GroupBy = 'month'
     BEGIN
@@ -803,7 +740,6 @@ GO
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(MONTH, b.EventDate);
-GO
     END
     ELSE IF @GroupBy = 'quarter'
     BEGIN
@@ -831,7 +767,6 @@ GO
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(QUARTER, b.EventDate);
-GO
     END
     ELSE -- year
     BEGIN
@@ -854,7 +789,6 @@ GO
             DATEPART(YEAR, b.EventDate)
         ORDER BY 
             DATEPART(YEAR, b.EventDate);
-GO
     END
     
     -- Get summary totals
@@ -872,7 +806,7 @@ GO
         bp.ProviderID = @ProviderID
         AND b.EventDate BETWEEN @StartDate AND @EndDate
         AND b.StatusID IN (SELECT StatusID FROM BookingStatuses WHERE StatusName IN ('Confirmed', 'Completed'));
-GO
+
     -- Get upcoming earnings (confirmed but not yet completed bookings)
     SELECT 
         COUNT(DISTINCT b.BookingID) AS UpcomingBookingCount,
@@ -884,7 +818,5 @@ GO
         bp.ProviderID = @ProviderID
         AND b.EventDate > GETDATE()
         AND b.StatusID IN (SELECT StatusID FROM BookingStatuses WHERE StatusName = 'Confirmed');
-GO
 END;
 GO
-
