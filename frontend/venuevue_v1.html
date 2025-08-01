@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VenueVue | Modern Wedding Venue Finder</title>
+    <style>
+        :root {
+            --primary: #5e72e4;
+            --secondary: #f7fafc;
+            --accent: #ff6b6b;
+            --text: #2d3748;
+            --text-light: #718096;
+            --border: #e2e8f0;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            color: var(--text);
+        }
+        
+        .app-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+        
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            background-color: white;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .search-container {
+            flex: 1;
+            max-width: 600px;
+            margin: 0 2rem;
+        }
+        
+        .search-bar {
+            position: relative;
+        }
+        
+        .search-bar input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        
+        .search-bar input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.1);
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-light);
+        }
+        
+        .user-nav {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        
+        .nav-icon {
+            position: relative;
+            color: var(--text);
+            cursor: pointer;
+        }
+        
+        .nav-icon .badge {
+            position: absolute;
+            top: -0.5rem;
+            right: -0.5rem;
+            background-color: var(--accent);
+            color: white;
+            border-radius: 50%;
+            width: 1.25rem;
+            height: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            background-color: white;
+            padding: 1.5rem;
+            border-right: 1px solid var(--border);
+            height: calc(100vh - 72px);
+            position: sticky;
+            top: 72px;
+            overflow-y: auto;
+        }
+        
+        .filter-section {
+            margin-bottom: 2rem;
+        }
+        
+        .filter-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text);
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .filter-reset {
+            color: var(--primary);
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .filter-option {
+            display: flex;
+            align-items: center;
+        }
+        
+        .filter-option input {
+            margin-right: 0.75rem;
+            accent-color: var(--primary);
+        }
+        
+        .filter-option label {
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+        
+        .range-slider {
+            width: 100%;
+            height: 4px;
+            margin: 1rem 0;
+            -webkit-appearance: none;
+            background: var(--border);
+            border-radius: 2px;
+        }
+        
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .price-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+        
+        .trending-section {
+            margin-top: 2rem;
+        }
+        
+        .trending-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .trending-tag {
+            padding: 0.5rem 0.75rem;
+            background-color: var(--secondary);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--text);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .trending-tag:hover {
+            background-color: #e6e9ff;
+            color: var(--primary);
+        }
+        
+        .trending-tag.active {
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+        }
+        
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .results-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .results-count {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+        
+        .view-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .sort-select {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background-color: white;
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+        
+        .view-toggle {
+            display: flex;
+            background-color: var(--secondary);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        
+        .view-btn {
+            padding: 0.5rem 1rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        
+        .view-btn.active {
+            background-color: white;
+            color: var(--primary);
+            font-weight: 500;
+            box-shadow: var(--shadow);
+        }
+        
+        .map-view-container {
+            display: none;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .map-container {
+            height: 400px;
+            background-color: white;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .map-controls {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            z-index: 100;
+        }
+        
+        .map-btn {
+            width: 32px;
+            height: 32px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            border: 1px solid var(--border);
+        }
+        
+        .map-venue-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .venue-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .venue-card {
+            background-color: white;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+        
+        .venue-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .venue-image {
+            height: 180px;
+            background-color: #f1f5f9;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+        }
+        
+        .venue-badge {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background-color: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .venue-favorite {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 32px;
+            height: 32px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-light);
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+        }
+        
+        .venue-favorite.active {
+            color: var(--accent);
+        }
+        
+        .venue-details {
+            padding: 1.25rem;
+        }
+        
+        .venue-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .venue-location {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+        
+        .venue-features {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+            color: var(--text);
+        }
+        
+        .feature-icon {
+            color: var(--primary);
+        }
+        
+        .venue-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+        
+        .venue-price {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        
+        .venue-price span {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: var(--text-light);
+        }
+        
+        .venue-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-outline:hover {
+            background-color: rgba(94, 114, 228, 0.1);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            border: 1px solid var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #4a5acf;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 3rem;
+            gap: 0.5rem;
+        }
+        
+        .page-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: white;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+        
+        .page-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .page-btn.active {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Booking Modal Styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(90vh - 70px);
+        }
+        
+        .close-modal {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close-modal:hover {
+            color: var(--primary);
+        }
+
+        /* Venue Details in Modal */
+        .venue-detail-header {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .venue-detail-image {
+            width: 200px;
+            height: 150px;
+            background-color: #f1f5f9;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+        
+        .venue-detail-info {
+            flex: 1;
+        }
+        
+        .venue-detail-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .venue-detail-location {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+        
+        .venue-detail-features {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .venue-detail-price {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        
+        .venue-detail-description {
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            color: var(--text);
+        }
+        
+        /* Services Section */
+        .services-section {
+            margin-top: 2rem;
+        }
+        
+        .services-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .service-category {
+            margin-bottom: 2rem;
+        }
+        
+        .category-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+        
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        .service-card {
+            background-color: white;
+            border-radius: var(--radius);
+            padding: 1rem;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+        
+        .service-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+        
+        .service-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .service-description {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+        
+        .service-price {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .service-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.8rem;
+        }
+
+        /* Booking confirmation */
+        .booking-confirmation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .confirmation-content {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--radius);
+            max-width: 500px;
+            width: 90%;
+            animation: fadeIn 0.3s;
+        }
+
+        /* Location permission modal */
+        .location-permission {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1002;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .location-content {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--radius);
+            max-width: 500px;
+            width: 90%;
+            animation: fadeIn 0.3s;
+            text-align: center;
+        }
+
+        .location-loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(94, 114, 228, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 8px;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .modal-content {
+                width: 95%;
+                height: 90vh;
+            }
+            
+            .modal-body {
+                max-height: calc(90vh - 60px);
+            }
+            
+            .venue-detail-header {
+                flex-direction: column;
+            }
+            
+            .venue-detail-image {
+                width: 100%;
+                height: 200px;
+            }
+            
+            .view-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <span>💒</span>
+                VenueVue
+            </div>
+            
+            <div class="search-container">
+                <div class="search-bar">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" placeholder="Search venues, locations, or styles..." id="search-input">
+                </div>
+            </div>
+            
+            <div class="user-nav">
+                <div class="nav-icon" id="wishlist-btn">
+                    ❤
+                    <span class="badge">0</span>
+                </div>
+                <div class="nav-icon" id="notifications-btn">🔔</div>
+                <div class="nav-icon" id="profile-btn">👤</div>
+            </div>
+        </header>
+        
+        <aside class="sidebar">
+            <div class="filter-section">
+                <h3 class="filter-title">
+                    Location
+                    <span class="filter-reset" id="location-reset">Reset</span>
+                </h3>
+                <input type="text" placeholder="City or ZIP code" class="search-input" id="location-input" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;">
+                <div class="filter-group">
+                    <div class="filter-option">
+                        <input type="checkbox" id="current-location">
+                        <label for="current-location">Use my location</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="within50">
+                        <label for="within50">Within 50 miles</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h3 class="filter-title">
+                    Venue Type
+                    <span class="filter-reset" id="type-reset">Reset</span>
+                </h3>
+                <div class="filter-group">
+                    <div class="filter-option">
+                        <input type="checkbox" id="hotel" checked>
+                        <label for="hotel">Hotel</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="garden" checked>
+                        <label for="garden">Garden</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="barn">
+                        <label for="barn">Barn</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="vineyard">
+                        <label for="vineyard">Vineyard</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="checkbox" id="beach">
+                        <label for="beach">Beach</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h3 class="filter-title">
+                    Price Range
+                    <span class="filter-reset" id="price-reset">Reset</span>
+                </h3>
+                <input type="range" class="range-slider" min="0" max="100" value="40" id="price-slider">
+                <div class="price-labels">
+                    <span>$5K</span>
+                    <span>$25K</span>
+                    <span>$50K+</span>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <h3 class="filter-title">
+                    Guest Count
+                    <span class="filter-reset" id="guests-reset">Reset</span>
+                </h3>
+                <div class="filter-group">
+                    <div class="filter-option">
+                        <input type="radio" id="small" name="guests" checked>
+                        <label for="small">Small (1-50)</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="radio" id="medium" name="guests">
+                        <label for="medium">Medium (50-150)</label>
+                    </div>
+                    <div class="filter-option">
+                        <input type="radio" id="large" name="guests">
+                        <label for="large">Large (150+)</label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="trending-section">
+                <h3 class="filter-title">Popular Filters</h3>
+                <div class="trending-tags">
+                    <div class="trending-tag" data-filter="waterfront">Waterfront</div>
+                    <div class="trending-tag" data-filter="all-inclusive">All-Inclusive</div>
+                    <div class="trending-tag" data-filter="historic">Historic</div>
+                    <div class="trending-tag" data-filter="luxury">Luxury</div>
+                    <div class="trending-tag" data-filter="rooftop">Rooftop</div>
+                </div>
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <div class="content-header">
+                <div>
+                    <h1 class="results-title">Loading venues...</h1>
+                    <p class="results-count">Please wait</p>
+                </div>
+                
+                <div class="view-controls">
+                    <div class="view-toggle">
+                        <button class="view-btn active" id="list-view">List</button>
+                        <button class="view-btn" id="map-view">Map</button>
+                    </div>
+                    <select class="sort-select" id="sort-select">
+                        <option value="recommended">Sort: Recommended</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                        <option value="popular">Most Popular</option>
+                        <option value="nearest">Nearest to Me</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="map-view-container" id="map-view-container">
+                <div class="map-container">
+                    <div id="map"></div>
+                    <div class="map-controls">
+                        <button class="map-btn" id="zoom-in">+</button>
+                        <button class="map-btn" id="zoom-out">-</button>
+                        <button class="map-btn" id="locate-me">📍</button>
+                    </div>
+                </div>
+                <div class="map-venue-list" id="map-venue-list"></div>
+            </div>
+            
+            <div class="venue-grid" id="venue-grid">
+                <!-- Venues will be loaded dynamically here -->
+                <div style="grid-column:1/-1;text-align:center;padding:2rem;">Loading venues...</div>
+            </div>
+            
+            <div class="pagination" id="pagination">
+                <div class="page-btn" id="prev-page">«</div>
+                <div class="page-btn active">1</div>
+                <div class="page-btn">2</div>
+                <div class="page-btn">3</div>
+                <div class="page-btn" id="next-page">»</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Booking Modal -->
+    <div id="booking-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Venue Details & Services</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- This will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Confirmation -->
+    <div id="confirmation-modal" class="booking-confirmation" style="display: none;">
+        <div class="confirmation-content">
+            <h3>🎉 Booking Confirmed!</h3>
+            <p><strong>Venue:</strong> <span id="conf-venue-name"></span></p>
+            <p><strong>Services:</strong> <span id="conf-services"></span></p>
+            <p><strong>Date:</strong> <span id="conf-date"></span></p>
+            <p><strong>Confirmation #:</strong> <span id="conf-id"></span></p>
+            <button class="btn btn-primary" id="conf-done-btn">Done</button>
+        </div>
+    </div>
+
+    <!-- Location Permission Modal -->
+    <div id="location-permission" class="location-permission" style="display: none;">
+        <div class="location-content">
+            <h3>Find Venues Near You</h3>
+            <p>VenueVue would like to access your location to show venues near you.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
+                <button class="btn btn-outline" id="deny-location">Not Now</button>
+                <button class="btn btn-primary" id="allow-location">
+                    Allow
+                    <span id="location-loading" class="location-loading" style="display: none;"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places&v=weekly" defer></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize variables
+            const modal = document.getElementById('booking-modal');
+            const modalBody = document.querySelector('.modal-body');
+            const confirmationModal = document.getElementById('confirmation-modal');
+            const locationPermissionModal = document.getElementById('location-permission');
+            const venueGrid = document.getElementById('venue-grid');
+            const mapVenueList = document.getElementById('map-venue-list');
+            const resultsTitle = document.querySelector('.results-title');
+            const resultsCount = document.querySelector('.results-count');
+            const mapViewContainer = document.getElementById('map-view-container');
+            const listViewBtn = document.getElementById('list-view');
+            const mapViewBtn = document.getElementById('map-view');
+            const searchInput = document.getElementById('search-input');
+            const sortSelect = document.getElementById('sort-select');
+            const wishlistBtn = document.getElementById('wishlist-btn');
+            const notificationsBtn = document.getElementById('notifications-btn');
+            const profileBtn = document.getElementById('profile-btn');
+            const filterResetBtns = document.querySelectorAll('.filter-reset');
+            const trendingTags = document.querySelectorAll('.trending-tag');
+            const pagination = document.getElementById('pagination');
+            const prevPageBtn = document.getElementById('prev-page');
+            const nextPageBtn = document.getElementById('next-page');
+            const locateMeBtn = document.getElementById('locate-me');
+            const allowLocationBtn = document.getElementById('allow-location');
+            const denyLocationBtn = document.getElementById('deny-location');
+            const currentLocationCheckbox = document.getElementById('current-location');
+            const locationLoading = document.getElementById('location-loading');
+            const locationInput = document.getElementById('location-input');
+            
+            // App state
+            let state = {
+                venues: [],
+                filteredVenues: [],
+                favorites: [],
+                currentPage: 1,
+                itemsPerPage: 6,
+                map: null,
+                markers: [],
+                currentView: 'list',
+                userLocation: null,
+                filters: {
+                    location: '',
+                    types: ['hotel', 'garden'],
+                    price: 40,
+                    guests: 'small',
+                    popular: []
+                }
+            };
+            
+            // Initialize the app
+            init();
+            
+            async function init() {
+                // Show loading state
+                venueGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">Loading venues...</div>';
+                
+                try {
+                    // Load venues data
+                    const response = await fetch('https://bundlebooth.github.io/bdb-3.0/venues.json');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    
+                    const data = await response.json();
+                    if (data && data.venues) {
+                        // Add coordinates to venues (for demo purposes)
+                        state.venues = data.venues.map(venue => ({
+                            ...venue,
+                            coordinates: {
+                                lat: getRandomLat(),
+                                lng: getRandomLng()
+                            }
+                        }));
+                        
+                        state.filteredVenues = [...state.venues];
+                        
+                        // Update UI
+                        updateMetadata(data.metadata);
+                        renderVenues();
+                        setupEventListeners();
+                        
+                        // Request location after everything is loaded
+                        requestLocationWithFeedback();
+                    } else {
+                        showError("No venue data found");
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showError("Failed to load venues. Please try again later.");
+                }
+            }
+            
+            // New improved location request function
+            function requestLocationWithFeedback() {
+                console.log("Attempting to get location...");
+                if (!navigator.geolocation) {
+                    console.log("Geolocation not supported by this browser");
+                    return;
+                }
+
+                // Visual feedback
+                locationInput.placeholder = "Detecting your location...";
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        console.log("Location obtained:", position);
+                        handleLocationSuccess(position);
+                    },
+                    (error) => {
+                        console.log("Location error:", error);
+                        locationInput.placeholder = "City or ZIP code";
+                        
+                        if (error.code === error.PERMISSION_DENIED) {
+                            // Only show modal if this is a fresh page load
+                            if (!sessionStorage.getItem('locationRequested')) {
+                                locationPermissionModal.style.display = 'flex';
+                                sessionStorage.setItem('locationRequested', 'true');
+                            }
+                        }
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            }
+            
+            // Modified location success handler
+            function handleLocationSuccess(position) {
+                state.userLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                
+                // Update UI
+                currentLocationCheckbox.checked = true;
+                document.getElementById('within50').checked = true;
+                locationInput.value = "Near You";
+                locationInput.placeholder = "Near You";
+                
+                filterVenues();
+                
+                if (state.currentView === 'map' && state.map) {
+                    centerMapOnUser();
+                }
+            }
+            
+            // Google Maps initialization
+            function initMap() {
+                if (state.filteredVenues.length === 0) return;
+                
+                // Default to first venue's location or user location if available
+                const center = state.userLocation || 
+                               { lat: state.filteredVenues[0].coordinates.lat, 
+                                 lng: state.filteredVenues[0].coordinates.lng };
+                
+                // Create map
+                state.map = new google.maps.Map(document.getElementById("map"), {
+                    zoom: 12,
+                    center: center,
+                    styles: [
+                        {
+                            "featureType": "poi",
+                            "stylers": [
+                                { "visibility": "off" }
+                            ]
+                        }
+                    ]
+                });
+                
+                // Add markers
+                updateMapMarkers();
+                
+                // Center map on user location if available
+                if (state.userLocation) {
+                    centerMapOnUser();
+                }
+            }
+            
+            // Helper function to generate random coordinates (for demo)
+            function getRandomLat() { return 34.0522 + (Math.random() * 0.2 - 0.1); }
+            function getRandomLng() { return -118.2437 + (Math.random() * 0.2 - 0.1); }
+            
+            // Update map markers based on filtered venues
+            function updateMapMarkers() {
+                // Clear existing markers
+                state.markers.forEach(marker => marker.setMap(null));
+                state.markers = [];
+                
+                if (!state.map || state.filteredVenues.length === 0) return;
+                
+                // Add new markers
+                state.filteredVenues.forEach(venue => {
+                    const marker = new google.maps.Marker({
+                        position: venue.coordinates,
+                        map: state.map,
+                        title: venue.name,
+                        icon: {
+                            url: `https://maps.google.com/mapfiles/ms/icons/red-dot.png`,
+                            scaledSize: new google.maps.Size(32, 32)
+                        }
+                    });
+                    
+                    // Add click event
+                    marker.addListener('click', () => {
+                        openBookingModal(venue);
+                    });
+                    
+                    state.markers.push(marker);
+                });
+                
+                // Fit bounds to show all markers
+                if (state.markers.length > 0) {
+                    const bounds = new google.maps.LatLngBounds();
+                    state.markers.forEach(marker => bounds.extend(marker.getPosition()));
+                    state.map.fitBounds(bounds);
+                }
+            }
+            
+            // Center map on user location
+            function centerMapOnUser() {
+                if (state.map && state.userLocation) {
+                    state.map.setCenter(state.userLocation);
+                    state.map.setZoom(12);
+                    
+                    // Add user location marker
+                    new google.maps.Marker({
+                        position: state.userLocation,
+                        map: state.map,
+                        title: "Your Location",
+                        icon: {
+                            url: `https://maps.google.com/mapfiles/ms/icons/blue-dot.png`,
+                            scaledSize: new google.maps.Size(32, 32)
+                        }
+                    });
+                }
+            }
+            
+            // Setup all event listeners
+            function setupEventListeners() {
+                // View toggle
+                listViewBtn.addEventListener('click', () => toggleView('list'));
+                mapViewBtn.addEventListener('click', () => toggleView('map'));
+                
+                // Search
+                searchInput.addEventListener('input', filterVenues);
+                
+                // Sorting
+                sortSelect.addEventListener('change', sortVenues);
+                
+                // Filter resets
+                filterResetBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const filterType = btn.id.replace('-reset', '');
+                        resetFilter(filterType);
+                    });
+                });
+                
+                // Filter inputs
+                document.querySelectorAll('.filter-section input').forEach(input => {
+                    input.addEventListener('change', filterVenues);
+                });
+                
+                // Current location checkbox
+                currentLocationCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        requestLocationWithFeedback();
+                    } else {
+                        state.userLocation = null;
+                        locationInput.value = '';
+                        locationInput.placeholder = 'City or ZIP code';
+                        filterVenues();
+                    }
+                });
+                
+                // Popular filters
+                trendingTags.forEach(tag => {
+                    tag.addEventListener('click', () => {
+                        tag.classList.toggle('active');
+                        const filter = tag.dataset.filter;
+                        
+                        if (tag.classList.contains('active')) {
+                            if (!state.filters.popular.includes(filter)) {
+                                state.filters.popular.push(filter);
+                            }
+                        } else {
+                            state.filters.popular = state.filters.popular.filter(f => f !== filter);
+                        }
+                        
+                        filterVenues();
+                    });
+                });
+                
+                // Pagination
+                prevPageBtn.addEventListener('click', () => {
+                    if (state.currentPage > 1) {
+                        state.currentPage--;
+                        renderVenues();
+                    }
+                });
+                
+                nextPageBtn.addEventListener('click', () => {
+                    const totalPages = Math.ceil(state.filteredVenues.length / state.itemsPerPage);
+                    if (state.currentPage < totalPages) {
+                        state.currentPage++;
+                        renderVenues();
+                    }
+                });
+                
+                // User nav buttons
+                wishlistBtn.addEventListener('click', () => {
+                    alert(`You have ${state.favorites.length} favorite venues`);
+                });
+                
+                notificationsBtn.addEventListener('click', () => {
+                    alert('No new notifications');
+                });
+                
+                profileBtn.addEventListener('click', () => {
+                    alert('Profile menu would open here');
+                });
+                
+                // Map controls
+                document.getElementById('zoom-in')?.addEventListener('click', () => {
+                    if (state.map) {
+                        state.map.setZoom(state.map.getZoom() + 1);
+                    }
+                });
+                
+                document.getElementById('zoom-out')?.addEventListener('click', () => {
+                    if (state.map) {
+                        state.map.setZoom(state.map.getZoom() - 1);
+                    }
+                });
+                
+                locateMeBtn?.addEventListener('click', () => {
+                    if (state.userLocation) {
+                        centerMapOnUser();
+                    } else {
+                        requestLocationWithFeedback();
+                    }
+                });
+                
+                // Location permission
+                allowLocationBtn.addEventListener('click', () => {
+                    locationLoading.style.display = 'inline-block';
+                    allowLocationBtn.disabled = true;
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            locationPermissionModal.style.display = 'none';
+                            handleLocationSuccess(position);
+                            locationLoading.style.display = 'none';
+                            allowLocationBtn.disabled = false;
+                        },
+                        (error) => {
+                            console.log("Location error:", error);
+                            locationPermissionModal.style.display = 'none';
+                            locationLoading.style.display = 'none';
+                            allowLocationBtn.disabled = false;
+                            currentLocationCheckbox.checked = false;
+                            alert("Could not get your location. Please try again or enter a location manually.");
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000
+                        }
+                    );
+                });
+                
+                denyLocationBtn.addEventListener('click', () => {
+                    locationPermissionModal.style.display = 'none';
+                    currentLocationCheckbox.checked = false;
+                });
+                
+                // Modal close
+                document.querySelector('.close-modal').addEventListener('click', closeBookingModal);
+                modal.addEventListener('click', (e) => e.target === modal && closeBookingModal());
+                
+                // Confirmation modal
+                document.getElementById('conf-done-btn').addEventListener('click', () => {
+                    confirmationModal.style.display = 'none';
+                });
+            }
+            
+            // Toggle between list and map views
+            function toggleView(view) {
+                state.currentView = view;
+                
+                if (view === 'list') {
+                    mapViewContainer.style.display = 'none';
+                    venueGrid.style.display = 'grid';
+                    listViewBtn.classList.add('active');
+                    mapViewBtn.classList.remove('active');
+                } else {
+                    venueGrid.style.display = 'none';
+                    mapViewContainer.style.display = 'flex';
+                    mapViewBtn.classList.add('active');
+                    listViewBtn.classList.remove('active');
+                    
+                    // Initialize map if not already done
+                    if (!state.map) {
+                        initMap();
+                    }
+                    
+                    // Render venue list for map view
+                    renderMapVenueList();
+                }
+            }
+            
+            // Filter venues based on current filters
+            function filterVenues() {
+                // Get search term
+                const searchTerm = searchInput.value.toLowerCase();
+                
+                // Get filter values
+                const selectedTypes = [];
+                document.querySelectorAll('.filter-section input[type="checkbox"]:checked').forEach(checkbox => {
+                    selectedTypes.push(checkbox.id);
+                });
+                
+                const priceRange = document.getElementById('price-slider').value;
+                const guestSize = document.querySelector('input[name="guests"]:checked').id;
+                const useCurrentLocation = document.getElementById('current-location').checked;
+                const within50Miles = document.getElementById('within50').checked;
+                
+                // Apply filters
+                state.filteredVenues = state.venues.filter(venue => {
+                    // Search term (venue name, location, or services)
+                    if (searchTerm) {
+                        const nameMatch = venue.name.toLowerCase().includes(searchTerm);
+                        const locationMatch = venue.location.toLowerCase().includes(searchTerm);
+                        let serviceMatch = false;
+                        
+                        // Check services if they exist
+                        if (venue.services) {
+                            serviceMatch = venue.services.some(category => 
+                                category.services.some(service => 
+                                    service.name.toLowerCase().includes(searchTerm) || 
+                                    service.description.toLowerCase().includes(searchTerm))
+                                );
+                        }
+                        
+                        if (!nameMatch && !locationMatch && !serviceMatch) {
+                            return false;
+                        }
+                    }
+                    
+                    // Venue type
+                    const venueType = venue.type.toLowerCase();
+                    if (selectedTypes.length > 0 && !selectedTypes.some(type => venueType.includes(type))) {
+                        return false;
+                    }
+                    
+                    // Price range
+                    const price = parseInt(venue.price.replace(/\D/g, ''));
+                    if (priceRange < 33 && price > 15000) return false;
+                    if (priceRange > 66 && price < 25000) return false;
+                    
+                    // Guest size
+                    const guests = venue.capacity.split('-').map(Number);
+                    const maxGuests = guests[1] || guests[0];
+                    if (guestSize === 'small' && maxGuests > 50) return false;
+                    if (guestSize === 'medium' && (maxGuests <= 50 || maxGuests > 150)) return false;
+                    if (guestSize === 'large' && maxGuests <= 150) return false;
+                    
+                    // Popular filters
+                    if (state.filters.popular.length > 0) {
+                        if (state.filters.popular.includes('waterfront') && !venue.type.toLowerCase().includes('ocean')) return false;
+                        if (state.filters.popular.includes('historic') && !venue.type.toLowerCase().includes('historic')) return false;
+                        if (state.filters.popular.includes('rooftop') && !venue.type.toLowerCase().includes('rooftop')) return false;
+                    }
+                    
+                    // Location filter
+                    if (useCurrentLocation && state.userLocation && within50Miles) {
+                        // Sort venues by distance (simulated for demo)
+                        state.filteredVenues.sort((a, b) => {
+                            // In a real app, calculate actual distance using Haversine formula
+                            const distA = Math.abs(a.coordinates.lat - state.userLocation.lat) + 
+                                          Math.abs(a.coordinates.lng - state.userLocation.lng);
+                            const distB = Math.abs(b.coordinates.lat - state.userLocation.lat) + 
+                                          Math.abs(b.coordinates.lng - state.userLocation.lng);
+                            return distA - distB;
+                        });
+                        
+                        // Only show the closest 10 venues for demo purposes
+                        // In a real app, you'd filter by actual distance
+                        state.filteredVenues = state.filteredVenues.slice(0, 10);
+                    }
+                    
+                    return true;
+                });
+                
+                // Apply sorting
+                sortVenues(false);
+                
+                // Reset to first page
+                state.currentPage = 1;
+                
+                // Update UI
+                updateMetadata({ total: state.filteredVenues.length });
+                renderVenues();
+                
+                // Update map if in map view
+                if (state.currentView === 'map') {
+                    updateMapMarkers();
+                    renderMapVenueList();
+                }
+            }
+            
+            // Sort venues
+            function sortVenues(shouldRender = true) {
+                const sortValue = sortSelect.value;
+                
+                switch(sortValue) {
+                    case 'price-low':
+                        state.filteredVenues.sort((a, b) => {
+                            const priceA = parseInt(a.price.replace(/\D/g, ''));
+                            const priceB = parseInt(b.price.replace(/\D/g, ''));
+                            return priceA - priceB;
+                        });
+                        break;
+                    case 'price-high':
+                        state.filteredVenues.sort((a, b) => {
+                            const priceA = parseInt(a.price.replace(/\D/g, ''));
+                            const priceB = parseInt(b.price.replace(/\D/g, ''));
+                            return priceB - priceA;
+                        });
+                        break;
+                    case 'popular':
+                        state.filteredVenues.sort((a, b) => {
+                            const ratingA = parseFloat(a.rating.split(' ')[0]);
+                            const ratingB = parseFloat(b.rating.split(' ')[0]);
+                            return ratingB - ratingA;
+                        });
+                        break;
+                    case 'nearest':
+                        if (state.userLocation) {
+                            // In a real app, we would calculate distance properly
+                            // For demo, we'll just shuffle the array
+                            state.filteredVenues.sort(() => Math.random() - 0.5);
+                        }
+                        break;
+                    default: // recommended
+                        // Default sorting (could be by relevance, etc.)
+                        break;
+                }
+                
+                if (shouldRender) {
+                    renderVenues();
+                    if (state.currentView === 'map') {
+                        updateMapMarkers();
+                        renderMapVenueList();
+                    }
+                }
+            }
+            
+            // Reset specific filter
+            function resetFilter(filterType) {
+                switch(filterType) {
+                    case 'location':
+                        document.getElementById('location-input').value = '';
+                        document.getElementById('current-location').checked = false;
+                        document.getElementById('within50').checked = false;
+                        state.userLocation = null;
+                        break;
+                    case 'type':
+                        document.querySelectorAll('.filter-section input[type="checkbox"]').forEach(checkbox => {
+                            checkbox.checked = ['hotel', 'garden'].includes(checkbox.id);
+                        });
+                        break;
+                    case 'price':
+                        document.getElementById('price-slider').value = 40;
+                        break;
+                    case 'guests':
+                        document.getElementById('small').checked = true;
+                        break;
+                }
+                
+                filterVenues();
+            }
+            
+            // Render venue cards
+            function renderVenues() {
+                if (!state.filteredVenues || state.filteredVenues.length === 0) {
+                    venueGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">No venues match your filters</div>';
+                    updatePagination();
+                    return;
+                }
+                
+                // Pagination
+                const startIndex = (state.currentPage - 1) * state.itemsPerPage;
+                const endIndex = startIndex + state.itemsPerPage;
+                const paginatedVenues = state.filteredVenues.slice(startIndex, endIndex);
+                
+                venueGrid.innerHTML = '';
+                
+                paginatedVenues.forEach(venue => {
+                    const isFavorite = state.favorites.includes(venue.id);
+                    
+                    const venueCard = document.createElement('div');
+                    venueCard.className = 'venue-card';
+                    venueCard.innerHTML = `
+                        <div class="venue-image">
+                            ${venue.image || '🏨'}
+                            ${venue.badge ? `<div class="venue-badge">${venue.badge}</div>` : ''}
+                            <div class="venue-favorite ${isFavorite ? 'active' : ''}" data-id="${venue.id}">❤</div>
+                        </div>
+                        <div class="venue-details">
+                            <h3 class="venue-name">${venue.name}</h3>
+                            <div class="venue-location">
+                                📍 ${venue.location}
+                            </div>
+                            <div class="venue-features">
+                                <div class="feature">
+                                    <span class="feature-icon">👫</span>
+                                    <span>${venue.capacity}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">⭐</span>
+                                    <span>${venue.rating}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">${getTypeIcon(venue.type)}</span>
+                                    <span>${venue.type}</span>
+                                </div>
+                            </div>
+                            <div class="venue-footer">
+                                <div class="venue-price">${venue.price} <span>starting</span></div>
+                                <div class="venue-actions">
+                                    <button class="btn btn-outline save-btn" data-id="${venue.id}">Save</button>
+                                    <button class="btn btn-primary view-btn" data-id="${venue.id}">View</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    venueGrid.appendChild(venueCard);
+                    
+                    // Add event listeners to buttons
+                    venueCard.querySelector('.view-btn').addEventListener('click', () => {
+                        openBookingModal(venue);
+                    });
+                    
+                    venueCard.querySelector('.save-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleFavorite(venue.id);
+                    });
+                    
+                    venueCard.querySelector('.venue-favorite').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleFavorite(venue.id);
+                    });
+                });
+                
+                updatePagination();
+            }
+            
+            // Render venue list for map view
+            function renderMapVenueList() {
+                if (!state.filteredVenues || state.filteredVenues.length === 0) {
+                    mapVenueList.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">No venues match your filters</div>';
+                    return;
+                }
+                
+                // Show all venues in map view (no pagination)
+                mapVenueList.innerHTML = '';
+                
+                state.filteredVenues.forEach(venue => {
+                    const isFavorite = state.favorites.includes(venue.id);
+                    
+                    const venueCard = document.createElement('div');
+                    venueCard.className = 'venue-card';
+                    venueCard.innerHTML = `
+                        <div class="venue-image">
+                            ${venue.image || '🏨'}
+                            ${venue.badge ? `<div class="venue-badge">${venue.badge}</div>` : ''}
+                            <div class="venue-favorite ${isFavorite ? 'active' : ''}" data-id="${venue.id}">❤</div>
+                        </div>
+                        <div class="venue-details">
+                            <h3 class="venue-name">${venue.name}</h3>
+                            <div class="venue-location">
+                                📍 ${venue.location}
+                            </div>
+                            <div class="venue-features">
+                                <div class="feature">
+                                    <span class="feature-icon">👫</span>
+                                    <span>${venue.capacity}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">⭐</span>
+                                    <span>${venue.rating}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">${getTypeIcon(venue.type)}</span>
+                                    <span>${venue.type}</span>
+                                </div>
+                            </div>
+                            <div class="venue-footer">
+                                <div class="venue-price">${venue.price} <span>starting</span></div>
+                                <div class="venue-actions">
+                                    <button class="btn btn-outline save-btn" data-id="${venue.id}">Save</button>
+                                    <button class="btn btn-primary view-btn" data-id="${venue.id}">View</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    mapVenueList.appendChild(venueCard);
+                    
+                    // Add event listeners to buttons
+                    venueCard.querySelector('.view-btn').addEventListener('click', () => {
+                        openBookingModal(venue);
+                    });
+                    
+                    venueCard.querySelector('.save-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleFavorite(venue.id);
+                    });
+                    
+                    venueCard.querySelector('.venue-favorite').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleFavorite(venue.id);
+                    });
+                });
+            }
+            
+            // Toggle venue favorite status
+            function toggleFavorite(venueId) {
+                const index = state.favorites.indexOf(venueId);
+                if (index === -1) {
+                    state.favorites.push(venueId);
+                } else {
+                    state.favorites.splice(index, 1);
+                }
+                
+                // Update UI
+                document.querySelectorAll(`.venue-favorite[data-id="${venueId}"]`).forEach(icon => {
+                    icon.classList.toggle('active');
+                });
+                
+                // Update badge
+                document.querySelector('.badge').textContent = state.favorites.length;
+            }
+            
+            // Update pagination controls
+            function updatePagination() {
+                const totalPages = Math.ceil(state.filteredVenues.length / state.itemsPerPage);
+                
+                if (totalPages <= 1) {
+                    pagination.style.display = 'none';
+                    return;
+                }
+                
+                pagination.style.display = 'flex';
+                
+                // Clear existing page buttons (except prev/next)
+                const pageBtns = pagination.querySelectorAll('.page-btn:not(#prev-page):not(#next-page)');
+                pageBtns.forEach(btn => btn.remove());
+                
+                // Add page buttons
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageBtn = document.createElement('div');
+                    pageBtn.className = `page-btn ${i === state.currentPage ? 'active' : ''}`;
+                    pageBtn.textContent = i;
+                    pageBtn.addEventListener('click', () => {
+                        state.currentPage = i;
+                        renderVenues();
+                    });
+                    
+                    pagination.insertBefore(pageBtn, nextPageBtn);
+                }
+                
+                // Update prev/next button states
+                prevPageBtn.classList.toggle('disabled', state.currentPage === 1);
+                nextPageBtn.classList.toggle('disabled', state.currentPage === totalPages);
+            }
+            
+            // Update metadata in header
+            function updateMetadata(metadata) {
+                const usingLocation = state.userLocation && document.getElementById('current-location').checked;
+                const locationText = usingLocation ? "Near You" : (metadata?.location || 'Los Angeles');
+                
+                resultsTitle.textContent = `${locationText} Venues`;
+                resultsCount.textContent = `${state.filteredVenues.length} venues available${usingLocation ? ' near you' : ''}`;
+            }
+            
+            // Show error message
+            function showError(message) {
+                venueGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--accent)">${message}</div>`;
+                resultsTitle.textContent = "Error";
+                resultsCount.textContent = message;
+            }
+            
+            // Open modal with venue details and services
+            function openBookingModal(venue) {
+                // Create modal content
+                modalBody.innerHTML = `
+                    <div class="venue-detail-header">
+                        <div class="venue-detail-image">${venue.image || '🏨'}</div>
+                        <div class="venue-detail-info">
+                            <h2 class="venue-detail-name">${venue.name}</h2>
+                            <div class="venue-detail-location">📍 ${venue.location}</div>
+                            <div class="venue-detail-features">
+                                <div class="feature">
+                                    <span class="feature-icon">👫</span>
+                                    <span>${venue.capacity} guests</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">⭐</span>
+                                    <span>${venue.rating}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">${getTypeIcon(venue.type)}</span>
+                                    <span>${venue.type}</span>
+                                </div>
+                            </div>
+                            <div class="venue-detail-price">${venue.price}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="venue-detail-description">
+                        <p>${venue.description || "A beautiful venue for your special day. Contact us for more details about hosting your wedding at this location."}</p>
+                    </div>
+                    
+                    <div class="services-section">
+                        <h3 class="services-title">Available Services</h3>
+                        ${venue.services && venue.services.length > 0 ? 
+                            renderServices(venue.services) : 
+                            '<p>No services available for this venue.</p>'}
+                    </div>
+                    
+                    <div class="venue-actions" style="margin-top: 2rem; justify-content: center;">
+                        <button class="btn btn-primary" id="book-now-btn">Book Now</button>
+                    </div>
+                `;
+                
+                // Add event listeners to service buttons
+                document.querySelectorAll('.add-service-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        this.classList.toggle('active');
+                        this.textContent = this.classList.contains('active') ? 'Added' : 'Add';
+                    });
+                });
+                
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                
+                // Add event listener for book now button
+                document.getElementById('book-now-btn').addEventListener('click', function() {
+                    bookVenue(venue);
+                });
+            }
+            
+            // Helper function to get type icon
+            function getTypeIcon(type) {
+                const icons = {
+                    "Hotel": "🏨",
+                    "Oceanview": "🌊",
+                    "Historic": "🏛️",
+                    "Vineyard": "🍇",
+                    "Rooftop": "🏙️",
+                    "Gardens": "🌳"
+                };
+                return icons[type] || "💒";
+            }
+            
+            // Render services for a venue
+            function renderServices(services) {
+                return services.map(category => `
+                    <div class="service-category">
+                        <h4 class="category-title">${category.category}</h4>
+                        <div class="service-grid">
+                            ${category.services.map(service => `
+                                <div class="service-card">
+                                    <div class="service-name">${service.name}</div>
+                                    <div class="service-description">${service.description}</div>
+                                    <div class="service-price">${service.price}</div>
+                                    <div class="service-actions">
+                                        <button class="btn btn-outline btn-sm add-service-btn" data-service="${service.name}">Add</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            // Book venue function
+            function bookVenue(venue) {
+                // Generate random booking data
+                const bookingId = 'BK-' + Math.floor(Math.random() * 1000000);
+                const eventDate = new Date();
+                eventDate.setDate(eventDate.getDate() + Math.floor(Math.random() * 90) + 30);
+                const formattedDate = eventDate.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                
+                // Get selected services
+                const selectedServices = [];
+                document.querySelectorAll('.add-service-btn.active').forEach(btn => {
+                    selectedServices.push(btn.dataset.service);
+                });
+                
+                // Update confirmation modal
+                document.getElementById('conf-venue-name').textContent = venue.name;
+                document.getElementById('conf-services').textContent = selectedServices.join(', ') || 'Venue rental';
+                document.getElementById('conf-date').textContent = formattedDate;
+                document.getElementById('conf-id').textContent = bookingId;
+                
+                // Show confirmation
+                confirmationModal.style.display = 'flex';
+            }
+            
+            // Close modal
+            function closeBookingModal() {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+    </script>
+</body>
+</html>
