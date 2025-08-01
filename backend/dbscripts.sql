@@ -14,12 +14,17 @@ IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'EventBookingPlatform
 BEGIN
     CREATE DATABASE EventBookingPlatform
     COLLATE SQL_Latin1_General_CP1_CI_AS;
-    
+GO
     ALTER DATABASE EventBookingPlatform SET RECOVERY FULL;
+GO
     ALTER DATABASE EventBookingPlatform SET AUTO_CLOSE OFF;
+GO
     ALTER DATABASE EventBookingPlatform SET AUTO_SHRINK OFF;
+GO
     ALTER DATABASE EventBookingPlatform SET ALLOW_SNAPSHOT_ISOLATION ON;
+GO
     ALTER DATABASE EventBookingPlatform SET READ_COMMITTED_SNAPSHOT ON;
+GO
 END
 GO
 
@@ -40,7 +45,7 @@ CREATE TABLE UserRoles (
     ModifiedDate DATETIME NULL,
     CONSTRAINT UQ_UserRoles_RoleName UNIQUE (RoleName)
 );
-
+GO
 -- Users table
 CREATE TABLE Users (
     UserID INT IDENTITY(1,1) PRIMARY KEY,
@@ -64,7 +69,7 @@ CREATE TABLE Users (
     ModifiedDate DATETIME NULL,
     CONSTRAINT UQ_Users_Email UNIQUE (Email)
 );
-
+GO
 -- UserRoles mapping table
 CREATE TABLE UserRoleMappings (
     MappingID INT IDENTITY(1,1) PRIMARY KEY,
@@ -75,7 +80,7 @@ CREATE TABLE UserRoleMappings (
     CONSTRAINT FK_UserRoleMappings_RoleID FOREIGN KEY (RoleID) REFERENCES UserRoles(RoleID),
     CONSTRAINT UQ_UserRoleMappings_UserRole UNIQUE (UserID, RoleID)
 );
-
+GO
 -- UserSessions table
 CREATE TABLE UserSessions (
     SessionID UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
@@ -89,7 +94,7 @@ CREATE TABLE UserSessions (
     LastActivityDate DATETIME NOT NULL DEFAULT GETDATE(),
     CONSTRAINT FK_UserSessions_UserID FOREIGN KEY (UserID) REFERENCES Users(UserID)
 );
-
+GO
 -- SocialLoginProviders table
 CREATE TABLE SocialLoginProviders (
     ProviderID INT IDENTITY(1,1) PRIMARY KEY,
@@ -105,7 +110,7 @@ CREATE TABLE SocialLoginProviders (
     ModifiedDate DATETIME NULL,
     CONSTRAINT UQ_SocialLoginProviders_ProviderName UNIQUE (ProviderName)
 );
-
+GO
 -- UserSocialLogins table
 CREATE TABLE UserSocialLogins (
     UserSocialLoginID INT IDENTITY(1,1) PRIMARY KEY,
@@ -125,7 +130,7 @@ CREATE TABLE UserSocialLogins (
     CONSTRAINT FK_UserSocialLogins_ProviderID FOREIGN KEY (ProviderID) REFERENCES SocialLoginProviders(ProviderID),
     CONSTRAINT UQ_UserSocialLogins_ProviderKey UNIQUE (ProviderID, ProviderKey)
 );
-
+GO
 -- UserPreferences table
 CREATE TABLE UserPreferences (
     PreferenceID INT IDENTITY(1,1) PRIMARY KEY,
@@ -139,7 +144,7 @@ CREATE TABLE UserPreferences (
     CONSTRAINT FK_UserPreferences_UserID FOREIGN KEY (UserID) REFERENCES Users(UserID),
     CONSTRAINT UQ_UserPreferences_UserID UNIQUE (UserID)
 );
-
+GO
 -- =============================================
 -- Section 2: Service Provider Tables
 -- =============================================
@@ -157,7 +162,7 @@ CREATE TABLE ProviderTypes (
     ModifiedDate DATETIME NULL,
     CONSTRAINT UQ_ProviderTypes_TypeName UNIQUE (TypeName)
 );
-
+GO
 -- ServiceProviders table
 CREATE TABLE ServiceProviders (
     ProviderID INT IDENTITY(1,1) PRIMARY KEY,
@@ -181,7 +186,7 @@ CREATE TABLE ServiceProviders (
     CONSTRAINT FK_ServiceProviders_UserID FOREIGN KEY (UserID) REFERENCES Users(UserID),
     CONSTRAINT FK_ServiceProviders_TypeID FOREIGN KEY (TypeID) REFERENCES ProviderTypes(TypeID)
 );
-
+GO
 -- ProviderServices table
 CREATE TABLE ProviderServices (
     ProviderServiceID INT IDENTITY(1,1) PRIMARY KEY,
@@ -196,7 +201,7 @@ CREATE TABLE ProviderServices (
     ModifiedDate DATETIME NULL,
     CONSTRAINT FK_ProviderServices_ProviderID FOREIGN KEY (ProviderID) REFERENCES ServiceProviders(ProviderID)
 );
-
+GO
 -- ProviderServicePackages table
 CREATE TABLE ProviderServicePackages (
     PackageID INT IDENTITY(1,1) PRIMARY KEY,
@@ -210,7 +215,7 @@ CREATE TABLE ProviderServicePackages (
     ModifiedDate DATETIME NULL,
     CONSTRAINT FK_ProviderServicePackages_ProviderID FOREIGN KEY (ProviderID) REFERENCES ServiceProviders(ProviderID)
 );
-
+GO
 -- ProviderAvailability table
 CREATE TABLE ProviderAvailability (
     AvailabilityID INT IDENTITY(1,1) PRIMARY KEY,
@@ -223,7 +228,7 @@ CREATE TABLE ProviderAvailability (
     CONSTRAINT FK_ProviderAvailability_ProviderID FOREIGN KEY (ProviderID) REFERENCES ServiceProviders(ProviderID),
     CONSTRAINT CK_ProviderAvailability_DayOfWeek CHECK (DayOfWeek BETWEEN 1 AND 7)
 );
-
+GO
 -- ProviderBlackoutDates table
 CREATE TABLE ProviderBlackoutDates (
     BlackoutID INT IDENTITY(1,1) PRIMARY KEY,
@@ -237,7 +242,7 @@ CREATE TABLE ProviderBlackoutDates (
     CONSTRAINT FK_ProviderBlackoutDates_ProviderID FOREIGN KEY (ProviderID) REFERENCES ServiceProviders(ProviderID),
     CONSTRAINT CK_ProviderBlackoutDates_DateRange CHECK (EndDate >= StartDate)
 );
-
+GO
 -- ProviderEquipment table
 CREATE TABLE ProviderEquipment (
     EquipmentID INT IDENTITY(1,1) PRIMARY KEY,
@@ -250,7 +255,7 @@ CREATE TABLE ProviderEquipment (
     ModifiedDate DATETIME NULL,
     CONSTRAINT FK_ProviderEquipment_ProviderID FOREIGN KEY (ProviderID) REFERENCES ServiceProviders(ProviderID)
 );
-
+GO
 -- ProviderPortfolio table
 CREATE TABLE ProviderPortfolio (
     PortfolioID INT IDENTITY(1,1) PRIMARY KEY,
@@ -265,7 +270,7 @@ CREATE TABLE ProviderPortfolio (
     ModifiedDate DATETIME NULL,
     CONSTRAINT FK_ProviderPortfolio_ProviderID FOREIGN KEY (ProviderID) REFERENCES ServiceProviders(ProviderID)
 );
-
+GO
 -- ProviderLocations table (for mobile providers or providers with multiple locations)
 CREATE TABLE ProviderLocations (
     LocationID INT IDENTITY(1,1) PRIMARY KEY,
@@ -283,7 +288,7 @@ CREATE TABLE ProviderLocations (
     ModifiedDate DATETIME NULL,
     CONSTRAINT FK_ProviderLocations_ProviderID FOREIGN KEY (ProviderID) REFERENCES ServiceProviders(ProviderID)
 );
-
+GO
 -- =============================================
 -- Section 3: Event and Booking Tables
 -- =============================================
@@ -299,7 +304,7 @@ CREATE TABLE EventTypes (
     ModifiedDate DATETIME NULL,
     CONSTRAINT UQ_EventTypes_TypeName UNIQUE (TypeName)
 );
-
+GO
 -- BookingStatuses table
 CREATE TABLE BookingStatuses (
     StatusID INT IDENTITY(1,1) PRIMARY KEY,
@@ -310,7 +315,7 @@ CREATE TABLE BookingStatuses (
     ModifiedDate DATETIME NULL,
     CONSTRAINT UQ_BookingStatuses_StatusName UNIQUE (StatusName)
 );
-
+GO
 -- Bookings table
 CREATE TABLE Bookings (
     BookingID INT IDENTITY(1,1) PRIMARY KEY,
@@ -334,7 +339,7 @@ CREATE TABLE Bookings (
     CONSTRAINT FK_Bookings_StatusID FOREIGN KEY (StatusID) REFERENCES BookingStatuses(StatusID),
     CONSTRAINT CK_Bookings_Time CHECK (EndTime > StartTime)
 );
-
+GO
 -- BookingProviders table
 CREATE TABLE BookingProviders (
     BookingProviderID INT IDENTITY(1,1) PRIMARY KEY,
@@ -355,7 +360,7 @@ CREATE TABLE BookingProviders (
     CONSTRAINT FK_BookingProviders_ProviderTypeID FOREIGN KEY (ProviderTypeID) REFERENCES ProviderTypes(TypeID),
     CONSTRAINT FK_BookingProviders_StatusID FOREIGN KEY (StatusID) REFERENCES BookingStatuses(StatusID)
 );
-
+GO
 -- BookingTimeline table
 CREATE TABLE BookingTimeline (
     TimelineID INT IDENTITY(1,1) PRIMARY KEY,
@@ -371,7 +376,7 @@ CREATE TABLE BookingTimeline (
     ModifiedDate DATETIME NULL,
     CONSTRAINT FK_BookingTimeline_BookingID FOREIGN KEY (BookingID) REFERENCES Bookings(BookingID)
 );
-
+GO
 -- BookingMessages table (communication between users and providers)
 CREATE TABLE BookingMessages (
     MessageID INT IDENTITY(1,1) PRIMARY KEY,
@@ -384,7 +389,7 @@ CREATE TABLE BookingMessages (
     CONSTRAINT FK_BookingMessages_BookingID FOREIGN KEY (BookingID) REFERENCES Bookings(BookingID),
     CONSTRAINT FK_BookingMessages_SenderID FOREIGN KEY (SenderID) REFERENCES Users(UserID)
 );
-
+GO
 -- =============================================
 -- Section 4: Financial Tables
 -- =============================================
@@ -400,7 +405,7 @@ CREATE TABLE PaymentMethods (
     ModifiedDate DATETIME NULL,
     CONSTRAINT UQ_PaymentMethods_MethodName UNIQUE (MethodName)
 );
-
+GO
 -- Payments table
 CREATE TABLE Payments (
     PaymentID INT IDENTITY(1,1) PRIMARY KEY,
@@ -420,7 +425,7 @@ CREATE TABLE Payments (
     CONSTRAINT FK_Payments_ProviderID FOREIGN KEY (ProviderID) REFERENCES ServiceProviders(ProviderID),
     CONSTRAINT FK_Payments_MethodID FOREIGN KEY (MethodID) REFERENCES PaymentMethods(MethodID)
 );
-
+GO
 -- Payouts table
 CREATE TABLE Payouts (
     PayoutID INT IDENTITY(1,1) PRIMARY KEY,
@@ -436,7 +441,7 @@ CREATE TABLE Payouts (
     CONSTRAINT FK_Payouts_ProviderID FOREIGN KEY (ProviderID) REFERENCES ServiceProviders(ProviderID),
     CONSTRAINT FK_Payouts_MethodID FOREIGN KEY (MethodID) REFERENCES PaymentMethods(MethodID)
 );
-
+GO
 -- Invoices table
 CREATE TABLE Invoices (
     InvoiceID INT IDENTITY(1,1) PRIMARY KEY,
@@ -456,7 +461,7 @@ CREATE TABLE Invoices (
     CONSTRAINT FK_Invoices_BookingID FOREIGN KEY (BookingID) REFERENCES Bookings(BookingID),
     CONSTRAINT UQ_Invoices_InvoiceNumber UNIQUE (InvoiceNumber)
 );
-
+GO
 -- TaxRates table
 CREATE TABLE TaxRates (
     TaxRateID INT IDENTITY(1,1) PRIMARY KEY,
@@ -471,7 +476,7 @@ CREATE TABLE TaxRates (
     CreatedDate DATETIME NOT NULL DEFAULT GETDATE(),
     ModifiedDate DATETIME NULL
 );
-
+GO
 -- PricingTiers table
 CREATE TABLE PricingTiers (
     TierID INT IDENTITY(1,1) PRIMARY KEY,
@@ -489,7 +494,7 @@ CREATE TABLE PricingTiers (
     CONSTRAINT FK_PricingTiers_ProviderTypeID FOREIGN KEY (ProviderTypeID) REFERENCES ProviderTypes(TypeID),
     CONSTRAINT CK_PricingTiers_DateRange CHECK (EndDate >= StartDate)
 );
-
+GO
 -- =============================================
 -- Section 5: Reviews and Ratings
 -- =============================================
@@ -511,7 +516,7 @@ CREATE TABLE ProviderReviews (
     CONSTRAINT FK_ProviderReviews_BookingID FOREIGN KEY (BookingID) REFERENCES Bookings(BookingID),
     CONSTRAINT CK_ProviderReviews_Rating CHECK (Rating BETWEEN 1 AND 5)
 );
-
+GO
 -- ReviewCategories table (for detailed ratings)
 CREATE TABLE ReviewCategories (
     CategoryID INT IDENTITY(1,1) PRIMARY KEY,
@@ -523,7 +528,7 @@ CREATE TABLE ReviewCategories (
     ModifiedDate DATETIME NULL,
     CONSTRAINT FK_ReviewCategories_ProviderTypeID FOREIGN KEY (ProviderTypeID) REFERENCES ProviderTypes(TypeID)
 );
-
+GO
 -- ReviewCategoryRatings table
 CREATE TABLE ReviewCategoryRatings (
     RatingID INT IDENTITY(1,1) PRIMARY KEY,
@@ -534,7 +539,7 @@ CREATE TABLE ReviewCategoryRatings (
     CONSTRAINT FK_ReviewCategoryRatings_CategoryID FOREIGN KEY (CategoryID) REFERENCES ReviewCategories(CategoryID),
     CONSTRAINT CK_ReviewCategoryRatings_Rating CHECK (Rating BETWEEN 1 AND 5)
 );
-
+GO
 -- =============================================
 -- Section 6: Marketing and Analytics
 -- =============================================
@@ -556,7 +561,7 @@ CREATE TABLE Promotions (
     CONSTRAINT UQ_Promotions_PromotionCode UNIQUE (PromotionCode),
     CONSTRAINT CK_Promotions_DateRange CHECK (EndDate >= StartDate)
 );
-
+GO
 -- PromotionRedemptions table
 CREATE TABLE PromotionRedemptions (
     RedemptionID INT IDENTITY(1,1) PRIMARY KEY,
@@ -569,7 +574,7 @@ CREATE TABLE PromotionRedemptions (
     CONSTRAINT FK_PromotionRedemptions_BookingID FOREIGN KEY (BookingID) REFERENCES Bookings(BookingID),
     CONSTRAINT FK_PromotionRedemptions_UserID FOREIGN KEY (UserID) REFERENCES Users(UserID)
 );
-
+GO
 -- Wishlists table
 CREATE TABLE Wishlists (
     WishlistID INT IDENTITY(1,1) PRIMARY KEY,
@@ -581,7 +586,7 @@ CREATE TABLE Wishlists (
     CONSTRAINT FK_Wishlists_ProviderID FOREIGN KEY (ProviderID) REFERENCES ServiceProviders(ProviderID),
     CONSTRAINT UQ_Wishlists_UserProvider UNIQUE (UserID, ProviderID)
 );
-
+GO
 -- SearchHistory table
 CREATE TABLE SearchHistory (
     SearchID INT IDENTITY(1,1) PRIMARY KEY,
@@ -592,7 +597,7 @@ CREATE TABLE SearchHistory (
     IPAddress NVARCHAR(45) NULL,
     CONSTRAINT FK_SearchHistory_UserID FOREIGN KEY (UserID) REFERENCES Users(UserID)
 );
-
+GO
 -- UserSavedSearches table
 CREATE TABLE UserSavedSearches (
     SavedSearchID INT IDENTITY(1,1) PRIMARY KEY,
@@ -605,7 +610,7 @@ CREATE TABLE UserSavedSearches (
     ModifiedDate DATETIME NULL,
     CONSTRAINT FK_UserSavedSearches_UserID FOREIGN KEY (UserID) REFERENCES Users(UserID)
 );
-
+GO
 -- AnalyticsEvents table
 CREATE TABLE AnalyticsEvents (
     EventID INT IDENTITY(1,1) PRIMARY KEY,
@@ -618,7 +623,7 @@ CREATE TABLE AnalyticsEvents (
     EventDate DATETIME NOT NULL DEFAULT GETDATE(),
     CONSTRAINT FK_AnalyticsEvents_UserID FOREIGN KEY (UserID) REFERENCES Users(UserID)
 );
-
+GO
 -- =============================================
 -- Section 7: System Administration
 -- =============================================
@@ -634,7 +639,7 @@ CREATE TABLE SystemSettings (
     ModifiedDate DATETIME NULL,
     CONSTRAINT UQ_SystemSettings_SettingKey UNIQUE (SettingKey)
 );
-
+GO
 -- AuditLogs table
 CREATE TABLE AuditLogs (
     LogID INT IDENTITY(1,1) PRIMARY KEY,
@@ -648,7 +653,7 @@ CREATE TABLE AuditLogs (
     ActionDate DATETIME NOT NULL DEFAULT GETDATE(),
     CONSTRAINT FK_AuditLogs_UserID FOREIGN KEY (UserID) REFERENCES Users(UserID)
 );
-
+GO
 -- ErrorLogs table
 CREATE TABLE ErrorLogs (
     ErrorID INT IDENTITY(1,1) PRIMARY KEY,
@@ -662,7 +667,7 @@ CREATE TABLE ErrorLogs (
     IPAddress NVARCHAR(45) NULL,
     CONSTRAINT FK_ErrorLogs_UserID FOREIGN KEY (UserID) REFERENCES Users(UserID)
 );
-
+GO
 -- EmailTemplates table
 CREATE TABLE EmailTemplates (
     TemplateID INT IDENTITY(1,1) PRIMARY KEY,
@@ -674,7 +679,7 @@ CREATE TABLE EmailTemplates (
     ModifiedDate DATETIME NULL,
     CONSTRAINT UQ_EmailTemplates_TemplateName UNIQUE (TemplateName)
 );
-
+GO
 -- SentEmails table
 CREATE TABLE SentEmails (
     EmailID INT IDENTITY(1,1) PRIMARY KEY,
@@ -687,7 +692,7 @@ CREATE TABLE SentEmails (
     ErrorMessage NVARCHAR(MAX) NULL,
     CONSTRAINT FK_SentEmails_TemplateID FOREIGN KEY (TemplateID) REFERENCES EmailTemplates(TemplateID)
 );
-
+GO
 -- MaintenanceWindows table
 CREATE TABLE MaintenanceWindows (
     WindowID INT IDENTITY(1,1) PRIMARY KEY,
@@ -699,37 +704,48 @@ CREATE TABLE MaintenanceWindows (
     ModifiedDate DATETIME NULL,
     CONSTRAINT CK_MaintenanceWindows_TimeRange CHECK (EndTime > StartTime)
 );
-
+GO
 -- =============================================
 -- Section 8: Indexes for Performance
 -- =============================================
 
 -- Users table indexes
 CREATE INDEX IX_Users_Email ON Users(Email);
+GO
 CREATE INDEX IX_Users_LastName_FirstName ON Users(LastName, FirstName);
-
+GO
 -- ServiceProviders table indexes
 CREATE INDEX IX_ServiceProviders_TypeID ON ServiceProviders(TypeID);
+GO
 CREATE INDEX IX_ServiceProviders_UserID ON ServiceProviders(UserID);
+GO
 CREATE INDEX IX_ServiceProviders_IsActive ON ServiceProviders(IsActive) WHERE IsActive = 1;
-
+GO
 -- Bookings table indexes
 CREATE INDEX IX_Bookings_UserID ON Bookings(UserID);
+GO
 CREATE INDEX IX_Bookings_EventTypeID ON Bookings(EventTypeID);
+GO
 CREATE INDEX IX_Bookings_StatusID ON Bookings(StatusID);
+GO
 CREATE INDEX IX_Bookings_EventDate ON Bookings(EventDate);
-
+GO
 -- Payments table indexes
 CREATE INDEX IX_Payments_BookingID ON Payments(BookingID);
+GO
 CREATE INDEX IX_Payments_UserID ON Payments(UserID);
+GO
 CREATE INDEX IX_Payments_ProviderID ON Payments(ProviderID);
+GO
 CREATE INDEX IX_Payments_Status ON Payments(Status);
-
+GO
 -- ProviderReviews table indexes
 CREATE INDEX IX_ProviderReviews_ProviderID ON ProviderReviews(ProviderID);
+GO
 CREATE INDEX IX_ProviderReviews_UserID ON ProviderReviews(UserID);
+GO
 CREATE INDEX IX_ProviderReviews_IsApproved ON ProviderReviews(IsApproved) WHERE IsApproved = 1;
-
+GO
 -- Spatial index for location-based searches
 IF EXISTS (SELECT * FROM sys.tables WHERE name = 'ProviderLocations' AND type = 'U')
 BEGIN
@@ -737,12 +753,13 @@ BEGIN
     BEGIN
         -- Add geography column for spatial queries
         ALTER TABLE ProviderLocations ADD GeoLocation AS geography::Point(Latitude, Longitude, 4326);
-        
+GO
         -- Create spatial index
         CREATE SPATIAL INDEX SIX_ProviderLocations_GeoLocation ON ProviderLocations(GeoLocation);
+GO
     END
 END
-
+GO
 -- =============================================
 -- Section 9: Views
 -- =============================================
@@ -772,7 +789,7 @@ FROM
     LEFT JOIN ProviderLocations pl ON sp.ProviderID = pl.ProviderID AND pl.IsPrimary = 1
 WHERE 
     sp.IsActive = 1;
-
+GO
 -- vw_UserBookings: All bookings for a user
 CREATE VIEW vw_UserBookings AS
 SELECT 
@@ -798,7 +815,7 @@ FROM
     INNER JOIN BookingStatuses bs ON b.StatusID = bs.StatusID
     INNER JOIN EventTypes et ON b.EventTypeID = et.EventTypeID
     INNER JOIN Users u ON b.UserID = u.UserID;
-
+GO
 -- vw_ProviderDashboard: Summary for service providers
 CREATE VIEW vw_ProviderDashboard AS
 SELECT 
@@ -817,7 +834,7 @@ FROM
     ServiceProviders sp
     INNER JOIN ProviderTypes pt ON sp.TypeID = pt.TypeID
     INNER JOIN Users u ON sp.UserID = u.UserID;
-
+GO
 -- vw_RevenueByProvider: Financial performance by provider
 CREATE VIEW vw_RevenueByProvider AS
 SELECT 
@@ -841,7 +858,7 @@ WHERE
     p.Status = 'Completed'
 GROUP BY 
     sp.ProviderID, sp.BusinessName, pt.TypeName, YEAR(b.EventDate), MONTH(b.EventDate);
-
+GO
 -- vw_AvailabilityCalendar: Visual representation of availability
 CREATE VIEW vw_AvailabilityCalendar AS
 WITH DateRange AS (
@@ -877,7 +894,7 @@ FROM
     INNER JOIN ProviderTypes pt ON p.TypeID = pt.TypeID
 WHERE 
     p.IsActive = 1;
-
+GO
 -- vw_CustomerFavorites: User's saved providers
 CREATE VIEW vw_CustomerFavorites AS
 SELECT 
@@ -897,7 +914,7 @@ FROM
     INNER JOIN Users u ON w.UserID = u.UserID
     INNER JOIN ServiceProviders sp ON w.ProviderID = sp.ProviderID
     INNER JOIN ProviderTypes pt ON sp.TypeID = pt.TypeID;
-
+GO
 -- vw_TopRatedProviders: Highest rated providers
 CREATE VIEW vw_TopRatedProviders AS
 SELECT 
@@ -923,7 +940,7 @@ GROUP BY
     sp.ProviderID, sp.BusinessName, pt.TypeName, pt.Category, sp.BasePrice, pl.City, pl.StateProvince, pl.Country
 HAVING 
     COUNT(pr.ReviewID) >= 5;
-
+GO
 -- vw_UpcomingBookings: Bookings in next 30 days
 CREATE VIEW vw_UpcomingBookings AS
 SELECT 
@@ -951,7 +968,7 @@ FROM
 WHERE 
     b.EventDate BETWEEN GETDATE() AND DATEADD(DAY, 30, GETDATE())
     AND b.StatusID IN (SELECT StatusID FROM BookingStatuses WHERE StatusName IN ('Confirmed'));
-
+GO
 -- =============================================
 -- Section 10: Stored Procedures - User Management
 -- =============================================
@@ -972,8 +989,9 @@ CREATE PROCEDURE sp_User_Create
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     BEGIN TRANSACTION;
+GO
     BEGIN TRY
         -- Check if email already exists
         IF EXISTS (SELECT 1 FROM Users WHERE Email = @Email)
@@ -982,11 +1000,13 @@ BEGIN
             BEGIN
                 -- For social login, return existing user ID
                 SELECT @UserID = UserID FROM Users WHERE Email = @Email;
+GO
             END
             ELSE
             BEGIN
                 -- For regular registration, email must be unique
                 THROW 50001, 'Email address is already registered.', 1;
+GO
             END
         END
         ELSE
@@ -1000,13 +1020,14 @@ BEGIN
                 @Email, @PasswordHash, @PasswordSalt, @FirstName, @LastName, 
                 @PhoneNumber, @AvatarURL, @DateOfBirth, CASE WHEN @IsSocialLogin = 1 THEN 1 ELSE 0 END, 1
             );
-            
+GO
             SET @UserID = SCOPE_IDENTITY();
-            
+GO
             -- Add user role
             DECLARE @RoleID INT;
+GO
             SELECT @RoleID = RoleID FROM UserRoles WHERE RoleName = @RoleName;
-            
+GO
             IF @RoleID IS NULL
             BEGIN
                 SET @RoleID = 3; -- Default to Customer if role not found
@@ -1014,13 +1035,17 @@ BEGIN
             
             INSERT INTO UserRoleMappings (UserID, RoleID)
             VALUES (@UserID, @RoleID);
+GO
         END
         
         COMMIT TRANSACTION;
+GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
+GO
         THROW;
+GO
     END CATCH
 END;
 GO
@@ -1032,13 +1057,17 @@ CREATE PROCEDURE sp_User_Authenticate
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @UserID INT;
+GO
     DECLARE @IsLockedOut BIT;
+GO
     DECLARE @LockoutEndDate DATETIME;
+GO
     DECLARE @StoredHash NVARCHAR(255);
+GO
     DECLARE @StoredSalt NVARCHAR(255);
-    
+GO
     -- Get user data
     SELECT 
         @UserID = UserID,
@@ -1048,19 +1077,23 @@ BEGIN
         @StoredSalt = PasswordSalt
     FROM Users 
     WHERE Email = @Email;
-    
+GO
     -- Check if account exists
     IF @UserID IS NULL
     BEGIN
         RAISERROR('Invalid email or password.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Check if account is locked
     IF @IsLockedOut = 1 AND (@LockoutEndDate IS NULL OR @LockoutEndDate > GETDATE())
     BEGIN
         RAISERROR('Account is temporarily locked. Please try again later or reset your password.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Verify password
@@ -1072,9 +1105,11 @@ BEGIN
             IsLockedOut = CASE WHEN FailedLoginAttempts + 1 >= 5 THEN 1 ELSE 0 END,
             LockoutEndDate = CASE WHEN FailedLoginAttempts + 1 >= 5 THEN DATEADD(MINUTE, 30, GETDATE()) ELSE NULL END
         WHERE UserID = @UserID;
-        
+GO
         RAISERROR('Invalid email or password.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Successful login - reset failed attempts and update last login
@@ -1084,7 +1119,7 @@ BEGIN
         LockoutEndDate = NULL,
         LastLoginDate = GETDATE()
     WHERE UserID = @UserID;
-    
+GO
     -- Return user data
     SELECT 
         u.UserID,
@@ -1099,6 +1134,7 @@ BEGIN
     INNER JOIN UserRoleMappings m ON u.UserID = m.UserID
     INNER JOIN UserRoles r ON m.RoleID = r.RoleID
     WHERE u.UserID = @UserID;
+GO
 END;
 GO
 
@@ -1113,7 +1149,7 @@ CREATE PROCEDURE sp_User_UpdateProfile
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     UPDATE Users
     SET 
         FirstName = @FirstName,
@@ -1123,10 +1159,11 @@ BEGIN
         DateOfBirth = @DateOfBirth,
         ModifiedDate = GETDATE()
     WHERE UserID = @UserID;
-    
+GO
     IF @@ROWCOUNT = 0
     BEGIN
         RAISERROR('User not found.', 16, 1);
+GO
     END
 END;
 GO
@@ -1139,7 +1176,7 @@ CREATE PROCEDURE sp_User_ResetPassword
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     UPDATE Users
     SET 
         PasswordHash = @NewPasswordHash,
@@ -1149,10 +1186,11 @@ BEGIN
         LockoutEndDate = NULL,
         ModifiedDate = GETDATE()
     WHERE Email = @Email;
-    
+GO
     IF @@ROWCOUNT = 0
     BEGIN
         RAISERROR('User not found.', 16, 1);
+GO
     END
 END;
 GO
@@ -1163,7 +1201,7 @@ CREATE PROCEDURE sp_User_GetFavorites
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     SELECT 
         w.WishlistID,
         w.ProviderID,
@@ -1182,6 +1220,7 @@ BEGIN
         w.UserID = @UserID
     ORDER BY 
         w.CreatedDate DESC;
+GO
 END;
 GO
 
@@ -1200,29 +1239,32 @@ CREATE PROCEDURE sp_UserSocialLogin_CreateOrUpdate
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @ProviderID INT;
-    
+GO
     -- Get provider ID
     SELECT @ProviderID = ProviderID 
     FROM SocialLoginProviders 
     WHERE ProviderName = @ProviderName;
-    
+GO
     IF @ProviderID IS NULL
     BEGIN
         RAISERROR('Social login provider not supported.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     BEGIN TRANSACTION;
+GO
     BEGIN TRY
         -- Check if social login already exists
         DECLARE @ExistingUserID INT;
-        
+GO
         SELECT @ExistingUserID = UserID 
         FROM UserSocialLogins 
         WHERE ProviderID = @ProviderID AND ProviderKey = @ProviderKey;
-        
+GO
         IF @ExistingUserID IS NOT NULL
         BEGIN
             -- Update existing social login
@@ -1238,13 +1280,14 @@ BEGIN
                 LastLoginDate = GETDATE()
             WHERE 
                 ProviderID = @ProviderID AND ProviderKey = @ProviderKey;
-            
+GO
             SET @UserID = @ExistingUserID;
-            
+GO
             -- Update user's last login
             UPDATE Users
             SET LastLoginDate = GETDATE()
             WHERE UserID = @UserID;
+GO
         END
         ELSE
         BEGIN
@@ -1252,7 +1295,7 @@ BEGIN
             SELECT @UserID = UserID 
             FROM Users 
             WHERE Email = @Email;
-            
+GO
             -- Create new user if not exists
             IF @UserID IS NULL
             BEGIN
@@ -1263,6 +1306,7 @@ BEGIN
                     @AvatarURL = @ProfilePictureURL,
                     @IsSocialLogin = 1,
                     @UserID = @UserID OUTPUT;
+GO
             END
             
             -- Add social login
@@ -1274,20 +1318,24 @@ BEGIN
                 @UserID, @ProviderID, @ProviderKey, @Email, @FirstName, @LastName, 
                 @ProfilePictureURL, @AccessToken, @RefreshToken, @TokenExpiration
             );
-            
+GO
             -- Update user's last login
             UPDATE Users
             SET 
                 LastLoginDate = GETDATE(),
                 AvatarURL = ISNULL(AvatarURL, @ProfilePictureURL)
             WHERE UserID = @UserID;
+GO
         END
         
         COMMIT TRANSACTION;
+GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
+GO
         THROW;
+GO
     END CATCH
 END;
 GO
@@ -1298,7 +1346,7 @@ CREATE PROCEDURE sp_User_GetSocialLogins
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     SELECT 
         usl.UserSocialLoginID,
         slp.ProviderName,
@@ -1313,6 +1361,7 @@ BEGIN
         INNER JOIN SocialLoginProviders slp ON usl.ProviderID = slp.ProviderID
     WHERE 
         usl.UserID = @UserID;
+GO
 END;
 GO
 
@@ -1323,37 +1372,44 @@ CREATE PROCEDURE sp_UserSocialLogin_Unlink
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @ProviderID INT;
-    
+GO
     -- Get provider ID
     SELECT @ProviderID = ProviderID 
     FROM SocialLoginProviders 
     WHERE ProviderName = @ProviderName;
-    
+GO
     IF @ProviderID IS NULL
     BEGIN
         RAISERROR('Social login provider not supported.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Check if user has other login methods
     DECLARE @PasswordHash NVARCHAR(255);
+GO
     DECLARE @SocialLoginCount INT;
-    
+GO
     SELECT @PasswordHash = PasswordHash FROM Users WHERE UserID = @UserID;
+GO
     SELECT @SocialLoginCount = COUNT(*) FROM UserSocialLogins WHERE UserID = @UserID;
-    
+GO
     -- User must have at least one login method
     IF @PasswordHash IS NULL AND @SocialLoginCount <= 1
     BEGIN
         RAISERROR('Cannot unlink the only login method. Please set a password first.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Remove social login
     DELETE FROM UserSocialLogins 
     WHERE UserID = @UserID AND ProviderID = @ProviderID;
+GO
 END;
 GO
 
@@ -1381,9 +1437,9 @@ CREATE PROCEDURE sp_Provider_Search
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
-    
+GO
     -- Create temp table for results
     CREATE TABLE #SearchResults (
         ProviderID INT,
@@ -1404,7 +1460,7 @@ BEGIN
         IsAvailable BIT,
         RowNum INT
     );
-    
+GO
     -- Insert base results
     INSERT INTO #SearchResults (
         ProviderID, BusinessName, BusinessDescription, ProviderType, Category,
@@ -1436,19 +1492,20 @@ BEGIN
         AND (@Category IS NULL OR pt.Category = @Category)
         AND (@SearchTerm IS NULL OR sp.BusinessName LIKE '%' + @SearchTerm + '%' OR sp.BusinessDescription LIKE '%' + @SearchTerm + '%')
         AND (@Location IS NULL OR pl.City LIKE '%' + @Location + '%' OR pl.StateProvince LIKE '%' + @Location + '%');
-    
+GO
     -- Calculate distance if location provided
     IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
     BEGIN
         UPDATE #SearchResults
         SET DistanceMiles = geography::Point(Latitude, Longitude, 4326).STDistance(geography::Point(@Latitude, @Longitude, 4326)) * 0.000621371 -- Convert meters to miles
         WHERE Latitude IS NOT NULL AND Longitude IS NOT NULL;
-        
+GO
         -- Filter by radius if specified
         IF @RadiusMiles IS NOT NULL
         BEGIN
             DELETE FROM #SearchResults
             WHERE DistanceMiles > @RadiusMiles OR DistanceMiles IS NULL;
+GO
         END
     END
     
@@ -1457,12 +1514,14 @@ BEGIN
     BEGIN
         DELETE FROM #SearchResults
         WHERE BasePrice < @MinPrice OR BasePrice IS NULL;
+GO
     END
     
     IF @MaxPrice IS NOT NULL
     BEGIN
         DELETE FROM #SearchResults
         WHERE BasePrice > @MaxPrice;
+GO
     END
     
     -- Filter by rating
@@ -1470,6 +1529,7 @@ BEGIN
     BEGIN
         DELETE FROM #SearchResults
         WHERE AverageRating < @MinRating OR ReviewCount = 0;
+GO
     END
     
     -- Check availability for specific date
@@ -1498,14 +1558,16 @@ BEGIN
             ELSE 0
         END
         FROM #SearchResults sr;
-        
+GO
         -- Remove unavailable providers
         DELETE FROM #SearchResults
         WHERE IsAvailable = 0;
+GO
     END
     
     -- Apply sorting
     DECLARE @SortSQL NVARCHAR(MAX);
+GO
     SET @SortSQL = N'
     UPDATE #SearchResults
     SET RowNum = ROW_NUMBER() OVER (ORDER BY ' + 
@@ -1515,9 +1577,9 @@ BEGIN
             WHEN 'distance' THEN 'DistanceMiles'
             ELSE 'AverageRating'
         END + ' ' + @SortDirection + ')';
-    
+GO
     EXEC sp_executesql @SortSQL;
-    
+GO
     -- Return paginated results
     SELECT 
         ProviderID,
@@ -1542,8 +1604,9 @@ BEGIN
         RowNum > @Offset AND RowNum <= @Offset + @PageSize
     ORDER BY 
         RowNum;
-    
+GO
     DROP TABLE #SearchResults;
+GO
 END;
 GO
 
@@ -1565,8 +1628,9 @@ CREATE PROCEDURE sp_Provider_Create
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     BEGIN TRANSACTION;
+GO
     BEGIN TRY
         -- Insert new provider
         INSERT INTO ServiceProviders (
@@ -1579,9 +1643,9 @@ BEGIN
             @IsMobile, @TravelRadius, @BasePrice, @MinEventSize, @MaxEventSize,
             @IsInsured, @InsuranceDetails, 1
         );
-        
+GO
         SET @ProviderID = SCOPE_IDENTITY();
-        
+GO
         -- Update user role to include provider role if not already set
         IF NOT EXISTS (
             SELECT 1 FROM UserRoleMappings urm
@@ -1590,18 +1654,19 @@ BEGIN
         )
         BEGIN
             DECLARE @ProviderRoleID INT;
-            
+GO
             -- Try to get ServiceProvider role first
             SELECT @ProviderRoleID = RoleID 
             FROM UserRoles 
             WHERE RoleName = 'ServiceProvider';
-            
+GO
             -- Fallback to VenueOwner if ServiceProvider doesn't exist
             IF @ProviderRoleID IS NULL
             BEGIN
                 SELECT @ProviderRoleID = RoleID 
                 FROM UserRoles 
                 WHERE RoleName = 'VenueOwner';
+GO
             END
             
             -- If neither exists, create ServiceProvider role
@@ -1609,20 +1674,25 @@ BEGIN
             BEGIN
                 INSERT INTO UserRoles (RoleName, Description, IsActive)
                 VALUES ('ServiceProvider', 'Service provider account', 1);
-                
+GO
                 SET @ProviderRoleID = SCOPE_IDENTITY();
+GO
             END
             
             -- Add role mapping
             INSERT INTO UserRoleMappings (UserID, RoleID)
             VALUES (@UserID, @ProviderRoleID);
+GO
         END
         
         COMMIT TRANSACTION;
+GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
+GO
         THROW;
+GO
     END CATCH
 END;
 GO
@@ -1645,7 +1715,7 @@ CREATE PROCEDURE sp_Provider_Update
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     UPDATE ServiceProviders
     SET 
         BusinessName = @BusinessName,
@@ -1663,10 +1733,11 @@ BEGIN
         LastUpdated = GETDATE()
     WHERE 
         ProviderID = @ProviderID;
-    
+GO
     IF @@ROWCOUNT = 0
     BEGIN
         RAISERROR('Provider not found.', 16, 1);
+GO
     END
 END;
 GO
@@ -1677,7 +1748,7 @@ CREATE PROCEDURE sp_Provider_GetFullProfile
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     -- Basic provider info
     SELECT 
         sp.ProviderID,
@@ -1709,7 +1780,7 @@ BEGIN
         INNER JOIN Users u ON sp.UserID = u.UserID
     WHERE 
         sp.ProviderID = @ProviderID;
-    
+GO
     -- Location info
     SELECT 
         LocationID,
@@ -1728,7 +1799,7 @@ BEGIN
         ProviderID = @ProviderID
     ORDER BY 
         IsPrimary DESC;
-    
+GO
     -- Services
     SELECT 
         ProviderServiceID,
@@ -1744,7 +1815,7 @@ BEGIN
         ProviderID = @ProviderID
     ORDER BY 
         ServiceName;
-    
+GO
     -- Service packages
     SELECT 
         PackageID,
@@ -1759,7 +1830,7 @@ BEGIN
         ProviderID = @ProviderID
     ORDER BY 
         PackageName;
-    
+GO
     -- Availability
     SELECT 
         AvailabilityID,
@@ -1774,7 +1845,7 @@ BEGIN
         ProviderID = @ProviderID
     ORDER BY 
         DayOfWeek, StartTime;
-    
+GO
     -- Blackout dates
     SELECT 
         BlackoutID,
@@ -1790,7 +1861,7 @@ BEGIN
         AND (EndDate >= GETDATE() OR IsRecurring = 1)
     ORDER BY 
         StartDate;
-    
+GO
     -- Equipment
     SELECT 
         EquipmentID,
@@ -1804,7 +1875,7 @@ BEGIN
         ProviderID = @ProviderID
     ORDER BY 
         EquipmentName;
-    
+GO
     -- Portfolio items
     SELECT 
         PortfolioID,
@@ -1820,7 +1891,7 @@ BEGIN
         ProviderID = @ProviderID
     ORDER BY 
         IsFeatured DESC, DisplayOrder;
-    
+GO
     -- Reviews
     SELECT 
         pr.ReviewID,
@@ -1843,7 +1914,7 @@ BEGIN
         AND pr.IsApproved = 1
     ORDER BY 
         pr.ReviewDate DESC;
-    
+GO
     -- Detailed review categories
     IF EXISTS (SELECT 1 FROM ReviewCategories rc INNER JOIN ProviderTypes pt ON rc.ProviderTypeID = pt.TypeID INNER JOIN ServiceProviders sp ON pt.TypeID = sp.TypeID WHERE sp.ProviderID = @ProviderID)
     BEGIN
@@ -1864,6 +1935,7 @@ BEGIN
             rc.CategoryID, rc.CategoryName, rc.Description
         ORDER BY 
             rc.CategoryName;
+GO
     END
 END;
 GO
@@ -1876,26 +1948,30 @@ CREATE PROCEDURE sp_Provider_GetAvailability
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     -- Validate date range
     IF @EndDate < @StartDate
     BEGIN
         RAISERROR('End date must be after start date.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Create temp table for dates
     CREATE TABLE #DateRange (
         DateValue DATE
     );
-    
+GO
     -- Populate date range
     DECLARE @CurrentDate DATE = @StartDate;
-    
+GO
     WHILE @CurrentDate <= @EndDate
     BEGIN
         INSERT INTO #DateRange (DateValue) VALUES (@CurrentDate);
+GO
         SET @CurrentDate = DATEADD(DAY, 1, @CurrentDate);
+GO
     END
     
     -- Get provider's weekly availability
@@ -1905,7 +1981,7 @@ BEGIN
         EndTime TIME,
         IsAvailable BIT
     );
-    
+GO
     INSERT INTO @WeeklyAvailability
     SELECT 
         DayOfWeek,
@@ -1916,13 +1992,13 @@ BEGIN
         ProviderAvailability
     WHERE 
         ProviderID = @ProviderID;
-    
+GO
     -- Get blackout dates
     DECLARE @BlackoutDates TABLE (
         StartDate DATE,
         EndDate DATE
     );
-    
+GO
     INSERT INTO @BlackoutDates
     SELECT 
         StartDate,
@@ -1935,14 +2011,14 @@ BEGIN
             (StartDate <= @EndDate AND EndDate >= @StartDate) OR
             IsRecurring = 1
         );
-    
+GO
     -- Get booked dates
     DECLARE @BookedDates TABLE (
         EventDate DATE,
         StartTime TIME,
         EndTime TIME
     );
-    
+GO
     INSERT INTO @BookedDates
     SELECT 
         b.EventDate,
@@ -1955,7 +2031,7 @@ BEGIN
         bp.ProviderID = @ProviderID
         AND b.EventDate BETWEEN @StartDate AND @EndDate
         AND b.StatusID IN (SELECT StatusID FROM BookingStatuses WHERE StatusName IN ('Confirmed', 'Completed'));
-    
+GO
     -- Return availability for each date
     SELECT 
         dr.DateValue,
@@ -1995,8 +2071,9 @@ BEGIN
         LEFT JOIN @WeeklyAvailability wa ON wa.DayOfWeek = DATEPART(WEEKDAY, dr.DateValue)
     ORDER BY 
         dr.DateValue;
-    
+GO
     DROP TABLE #DateRange;
+GO
 END;
 GO
 
@@ -2012,24 +2089,28 @@ CREATE PROCEDURE sp_Provider_CalculatePrice
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @BasePrice DECIMAL(18, 2) = 0;
+GO
     DECLARE @TotalPrice DECIMAL(18, 2) = 0;
+GO
     DECLARE @DurationHours DECIMAL(10, 2);
+GO
     DECLARE @IsAvailable BIT = 1;
+GO
     DECLARE @Message NVARCHAR(255) = '';
-    
+GO
     -- Calculate duration in hours
     SET @DurationHours = DATEDIFF(MINUTE, @StartTime, @EndTime) / 60.0;
-    
+GO
     -- Get provider base price
     SELECT @BasePrice = BasePrice 
     FROM ServiceProviders 
     WHERE ProviderID = @ProviderID;
-    
+GO
     -- Check if provider has pricing tiers for this date
     DECLARE @PriceMultiplier DECIMAL(5, 2) = 1.0;
-    
+GO
     SELECT @PriceMultiplier = PriceMultiplier
     FROM PricingTiers
     WHERE 
@@ -2040,12 +2121,12 @@ BEGIN
         ProviderID DESC, -- Prefer provider-specific over type-specific
         PriceMultiplier DESC
     OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY;
-    
+GO
     SET @BasePrice = @BasePrice * @PriceMultiplier;
-    
+GO
     -- Check availability
     DECLARE @DayOfWeek TINYINT = DATEPART(WEEKDAY, @EventDate);
-    
+GO
     -- Check blackout dates
     IF EXISTS (
         SELECT 1 FROM ProviderBlackoutDates 
@@ -2054,7 +2135,9 @@ BEGIN
     )
     BEGIN
         SET @IsAvailable = 0;
+GO
         SET @Message = 'Provider is not available on this date (blackout).';
+GO
     END
     
     -- Check weekly availability
@@ -2068,7 +2151,9 @@ BEGIN
     )
     BEGIN
         SET @IsAvailable = 0;
+GO
         SET @Message = 'Provider is not available at the requested time.';
+GO
     END
     
     -- Check existing bookings
@@ -2086,30 +2171,36 @@ BEGIN
     )
     BEGIN
         SET @IsAvailable = 0;
+GO
         SET @Message = 'Provider is already booked at the requested time.';
+GO
     END
     
     -- Check guest count against provider limits
     DECLARE @MinEventSize INT, @MaxEventSize INT;
-    
+GO
     SELECT 
         @MinEventSize = MinEventSize,
         @MaxEventSize = MaxEventSize
     FROM ServiceProviders
     WHERE ProviderID = @ProviderID;
-    
+GO
     IF @GuestCount IS NOT NULL
     BEGIN
         IF @MinEventSize IS NOT NULL AND @GuestCount < @MinEventSize
         BEGIN
             SET @IsAvailable = 0;
+GO
             SET @Message = 'Guest count is below provider minimum of ' + CAST(@MinEventSize AS NVARCHAR(10));
+GO
         END
         
         IF @MaxEventSize IS NOT NULL AND @GuestCount > @MaxEventSize
         BEGIN
             SET @IsAvailable = 0;
+GO
             SET @Message = 'Guest count exceeds provider maximum of ' + CAST(@MaxEventSize AS NVARCHAR(10));
+GO
         END
     END
     
@@ -2120,22 +2211,24 @@ BEGIN
         SELECT @TotalPrice = Price
         FROM ProviderServicePackages
         WHERE PackageID = @PackageID AND ProviderID = @ProviderID AND IsActive = 1;
-        
+GO
         IF @TotalPrice IS NULL
         BEGIN
             SET @IsAvailable = 0;
+GO
             SET @Message = 'Selected package is not available.';
+GO
         END
     END
     ELSE IF @ServiceIDs IS NOT NULL
     BEGIN
         -- Individual services pricing
         DECLARE @ServiceTable TABLE (ServiceID INT);
-        
+GO
         -- Parse JSON array of service IDs
         INSERT INTO @ServiceTable (ServiceID)
         SELECT value FROM OPENJSON(@ServiceIDs);
-        
+GO
         -- Calculate total price for selected services
         SELECT @TotalPrice = SUM(
             CASE 
@@ -2147,22 +2240,25 @@ BEGIN
         FROM ProviderServices ps
         INNER JOIN @ServiceTable st ON ps.ProviderServiceID = st.ServiceID
         WHERE ps.ProviderID = @ProviderID AND ps.IsActive = 1;
-        
+GO
         IF @TotalPrice IS NULL
         BEGIN
             SET @IsAvailable = 0;
+GO
             SET @Message = 'One or more selected services are not available.';
+GO
         END
     END
     ELSE
     BEGIN
         -- Base price only
         SET @TotalPrice = @BasePrice;
+GO
     END
     
     -- Apply price multiplier
     SET @TotalPrice = @TotalPrice * @PriceMultiplier;
-    
+GO
     -- Return results
     SELECT 
         @IsAvailable AS IsAvailable,
@@ -2171,6 +2267,7 @@ BEGIN
         @TotalPrice AS TotalPrice,
         @PriceMultiplier AS PriceMultiplier,
         @DurationHours AS DurationHours;
+GO
 END;
 GO
 
@@ -2184,19 +2281,19 @@ CREATE PROCEDURE sp_Provider_GetReviews
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
-    
+GO
     -- Get total count
     DECLARE @TotalCount INT;
-    
+GO
     SELECT @TotalCount = COUNT(*)
     FROM ProviderReviews
     WHERE ProviderID = @ProviderID
     AND IsApproved = 1
     AND (@MinRating IS NULL OR Rating >= @MinRating)
     AND (@MaxRating IS NULL OR Rating <= @MaxRating);
-    
+GO
     -- Get paginated reviews
     SELECT 
         pr.ReviewID,
@@ -2224,7 +2321,7 @@ BEGIN
         pr.ReviewDate DESC
     OFFSET @Offset ROWS
     FETCH NEXT @PageSize ROWS ONLY;
-    
+GO
     -- Get average rating
     SELECT 
         AVG(CAST(Rating AS DECIMAL(5,2))) AS AverageRating,
@@ -2234,7 +2331,7 @@ BEGIN
     WHERE 
         ProviderID = @ProviderID
         AND IsApproved = 1;
-    
+GO
     -- Get rating distribution
     SELECT 
         Rating,
@@ -2248,7 +2345,7 @@ BEGIN
         Rating
     ORDER BY 
         Rating DESC;
-    
+GO
     -- Get detailed category ratings if available
     IF EXISTS (
         SELECT 1 FROM ReviewCategories rc 
@@ -2272,6 +2369,7 @@ BEGIN
             rc.CategoryID, rc.CategoryName, rc.Description
         ORDER BY 
             rc.CategoryName;
+GO
     END
 END;
 GO
@@ -2297,26 +2395,35 @@ CREATE PROCEDURE sp_Booking_Create
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @TotalPrice DECIMAL(18, 2) = 0;
+GO
     DECLARE @DepositAmount DECIMAL(18, 2) = 0;
+GO
     DECLARE @PromotionDiscount DECIMAL(18, 2) = 0;
+GO
     DECLARE @PromotionID INT = NULL;
+GO
     DECLARE @IsAvailable BIT = 1;
+GO
     DECLARE @ErrorMessage NVARCHAR(255) = '';
-    
+GO
     -- Validate event date is in the future
     IF @EventDate < CAST(GETDATE() AS DATE)
     BEGIN
         RAISERROR('Event date must be in the future.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Validate time range
     IF @EndTime <= @StartTime
     BEGIN
         RAISERROR('End time must be after start time.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Check promotion code if provided
@@ -2335,15 +2442,18 @@ BEGIN
             AND StartDate <= GETDATE()
             AND EndDate >= GETDATE()
             AND (MaxUses IS NULL OR CurrentUses < MaxUses);
-        
+GO
         IF @PromotionID IS NULL
         BEGIN
             RAISERROR('Invalid or expired promotion code.', 16, 1);
+GO
             RETURN;
+GO
         END
     END
     
     BEGIN TRANSACTION;
+GO
     BEGIN TRY
         -- Parse provider details JSON
         DECLARE @ProviderTable TABLE (
@@ -2352,7 +2462,7 @@ BEGIN
             PackageID INT,
             Price DECIMAL(18, 2)
         );
-        
+GO
         INSERT INTO @ProviderTable (ProviderID, ServiceDetails, PackageID)
         SELECT 
             ProviderID,
@@ -2364,29 +2474,38 @@ BEGIN
             ServiceDetails NVARCHAR(MAX) '$.ServiceDetails' AS JSON,
             PackageID INT '$.PackageID'
         );
-        
+GO
         -- Calculate price and check availability for each provider
         DECLARE @CurrentProviderID INT;
+GO
         DECLARE @CurrentServiceDetails NVARCHAR(MAX);
+GO
         DECLARE @CurrentPackageID INT;
+GO
         DECLARE @CurrentPrice DECIMAL(18, 2);
-        
+GO
         DECLARE provider_cursor CURSOR FOR
         SELECT ProviderID, ServiceDetails, PackageID FROM @ProviderTable;
-        
+GO
         OPEN provider_cursor;
+GO
         FETCH NEXT FROM provider_cursor INTO @CurrentProviderID, @CurrentServiceDetails, @CurrentPackageID;
-        
+GO
         WHILE @@FETCH_STATUS = 0
         BEGIN
             -- Check availability and calculate price
             DECLARE @ProviderAvailable BIT;
+GO
             DECLARE @ProviderMessage NVARCHAR(255);
+GO
             DECLARE @ProviderBasePrice DECIMAL(18, 2);
+GO
             DECLARE @ProviderTotalPrice DECIMAL(18, 2);
+GO
             DECLARE @ProviderMultiplier DECIMAL(5, 2);
+GO
             DECLARE @ProviderDuration DECIMAL(10, 2);
-            
+GO
             EXEC sp_Provider_CalculatePrice
                 @ProviderID = @CurrentProviderID,
                 @EventDate = @EventDate,
@@ -2401,49 +2520,59 @@ BEGIN
                 @TotalPrice = @ProviderTotalPrice OUTPUT,
                 @PriceMultiplier = @ProviderMultiplier OUTPUT,
                 @DurationHours = @ProviderDuration OUTPUT;
-            
+GO
             IF @ProviderAvailable = 0
             BEGIN
                 SET @IsAvailable = 0;
+GO
                 SET @ErrorMessage = @ProviderMessage;
+GO
                 BREAK;
+GO
             END
             
             -- Update provider price in temp table
             UPDATE @ProviderTable
             SET Price = @ProviderTotalPrice
             WHERE ProviderID = @CurrentProviderID;
-            
+GO
             -- Add to total price
             SET @TotalPrice = @TotalPrice + @ProviderTotalPrice;
-            
+GO
             FETCH NEXT FROM provider_cursor INTO @CurrentProviderID, @CurrentServiceDetails, @CurrentPackageID;
+GO
         END
         
         CLOSE provider_cursor;
+GO
         DEALLOCATE provider_cursor;
-        
+GO
         -- If any provider is unavailable, cancel the booking
         IF @IsAvailable = 0
         BEGIN
             RAISERROR(@ErrorMessage, 16, 1);
+GO
             RETURN;
+GO
         END
         
         -- Apply promotion discount
         IF @PromotionID IS NOT NULL
         BEGIN
             SET @TotalPrice = @TotalPrice - @PromotionDiscount;
+GO
             IF @TotalPrice < 0 SET @TotalPrice = 0;
+GO
         END
         
         -- Calculate deposit (30% of total price)
         SET @DepositAmount = @TotalPrice * 0.3;
-        
+GO
         -- Get default "Pending" status
         DECLARE @StatusID INT;
+GO
         SELECT @StatusID = StatusID FROM BookingStatuses WHERE StatusName = 'Pending';
-        
+GO
         IF @StatusID IS NULL
         BEGIN
             SET @StatusID = 1; -- Fallback to first status
@@ -2460,9 +2589,9 @@ BEGIN
             @StartTime, @EndTime, @GuestCount, @StatusID, @TotalPrice, 
             @DepositAmount, 0, DATEADD(DAY, 14, GETDATE()) -- Balance due in 14 days
         );
-        
+GO
         SET @BookingID = SCOPE_IDENTITY();
-        
+GO
         -- Add booking providers
         INSERT INTO BookingProviders (
             BookingID, ProviderID, ProviderTypeID, ServiceDetails, SpecialRequests, 
@@ -2482,7 +2611,7 @@ BEGIN
         FROM 
             @ProviderTable pt
             INNER JOIN ServiceProviders sp ON pt.ProviderID = sp.ProviderID;
-        
+GO
         -- Add booking timeline events
         INSERT INTO BookingTimeline (
             BookingID, EventDate, EventType, Title, Description
@@ -2495,7 +2624,7 @@ BEGIN
             (@BookingID, DATEADD(DAY, -7, @EventDate), 'Reminder', 'Upcoming Event', 'Event is coming up in 7 days.'),
             (@BookingID, DATEADD(DAY, -1, @EventDate), 'Reminder', 'Event Tomorrow', 'Event is happening tomorrow.'),
             (@BookingID, @EventDate, 'Event', 'Event Day', 'Event is happening today.');
-        
+GO
         -- Record promotion redemption if applicable
         IF @PromotionID IS NOT NULL
         BEGIN
@@ -2505,18 +2634,22 @@ BEGIN
             VALUES (
                 @PromotionID, @BookingID, @UserID, @PromotionDiscount
             );
-            
+GO
             -- Increment promotion uses
             UPDATE Promotions
             SET CurrentUses = CurrentUses + 1
             WHERE PromotionID = @PromotionID;
+GO
         END
         
         COMMIT TRANSACTION;
+GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
+GO
         THROW;
+GO
     END CATCH
 END;
 GO
@@ -2529,21 +2662,26 @@ CREATE PROCEDURE sp_Booking_UpdateStatus
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @StatusID INT;
+GO
     DECLARE @OldStatus NVARCHAR(50);
+GO
     DECLARE @UserID INT;
+GO
     DECLARE @EventDate DATE;
-    
+GO
     -- Get new status ID
     SELECT @StatusID = StatusID 
     FROM BookingStatuses 
     WHERE StatusName = @StatusName;
-    
+GO
     IF @StatusID IS NULL
     BEGIN
         RAISERROR('Invalid status name.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Get current status and user ID
@@ -2556,11 +2694,13 @@ BEGIN
         INNER JOIN BookingStatuses bs ON b.StatusID = bs.StatusID
     WHERE 
         b.BookingID = @BookingID;
-    
+GO
     IF @UserID IS NULL
     BEGIN
         RAISERROR('Booking not found.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Update booking status
@@ -2570,7 +2710,7 @@ BEGIN
         LastUpdated = GETDATE()
     WHERE 
         BookingID = @BookingID;
-    
+GO
     -- Update all booking providers to same status
     UPDATE BookingProviders
     SET 
@@ -2578,7 +2718,7 @@ BEGIN
         ModifiedDate = GETDATE()
     WHERE 
         BookingID = @BookingID;
-    
+GO
     -- Add timeline event for status change
     INSERT INTO BookingTimeline (
         BookingID, EventDate, EventType, Title, Description
@@ -2589,7 +2729,7 @@ BEGIN
         'Booking status changed from ' + @OldStatus + ' to ' + @StatusName + 
         CASE WHEN @Notes IS NOT NULL THEN '. Notes: ' + @Notes ELSE '' END
     );
-    
+GO
     -- If booking is confirmed, send deposit reminders
     IF @StatusName = 'Confirmed'
     BEGIN
@@ -2600,6 +2740,7 @@ BEGIN
         VALUES 
             (@BookingID, DATEADD(DAY, 1, GETDATE()), 'Reminder', 'Deposit Reminder', 'Reminder to pay deposit.'),
             (@BookingID, DATEADD(DAY, 7, GETDATE()), 'Reminder', 'Deposit Due', 'Deposit payment is due.');
+GO
     END
     
     -- If booking is completed, create review reminders
@@ -2612,6 +2753,7 @@ BEGIN
         VALUES 
             (@BookingID, DATEADD(DAY, 1, GETDATE()), 'Reminder', 'Leave a Review', 'Please leave a review for your providers.'),
             (@BookingID, DATEADD(DAY, 7, GETDATE()), 'Reminder', 'Review Reminder', 'Reminder to leave a review for your providers.');
+GO
     END
 END;
 GO
@@ -2626,12 +2768,12 @@ CREATE PROCEDURE sp_Booking_GetByUser
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
-    
+GO
     -- Get total count
     DECLARE @TotalCount INT;
-    
+GO
     SELECT @TotalCount = COUNT(*)
     FROM Bookings b
     WHERE b.UserID = @UserID
@@ -2640,7 +2782,7 @@ BEGIN
         WHERE bs.StatusID = b.StatusID AND bs.StatusName = @StatusFilter
     ))
     AND (@UpcomingOnly = 0 OR b.EventDate >= GETDATE());
-    
+GO
     -- Get paginated bookings
     SELECT 
         b.BookingID,
@@ -2674,6 +2816,7 @@ BEGIN
         b.EventDate
     OFFSET @Offset ROWS
     FETCH NEXT @PageSize ROWS ONLY;
+GO
 END;
 GO
 
@@ -2687,13 +2830,13 @@ CREATE PROCEDURE sp_Booking_CheckAvailability
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     -- Parse provider IDs from JSON
     DECLARE @ProviderTable TABLE (ProviderID INT);
-    
+GO
     INSERT INTO @ProviderTable (ProviderID)
     SELECT value FROM OPENJSON(@ProviderIDs);
-    
+GO
     -- Check availability for each provider
     SELECT 
         sp.ProviderID,
@@ -2765,6 +2908,7 @@ BEGIN
         INNER JOIN @ProviderTable ptbl ON sp.ProviderID = ptbl.ProviderID
     WHERE 
         sp.IsActive = 1;
+GO
 END;
 GO
 
@@ -2777,12 +2921,15 @@ CREATE PROCEDURE sp_Booking_Cancel
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @UserID INT;
+GO
     DECLARE @CurrentStatus NVARCHAR(50);
+GO
     DECLARE @TotalPaid DECIMAL(18, 2) = 0;
+GO
     DECLARE @CancellationFee DECIMAL(18, 2) = 0;
-    
+GO
     -- Get booking details
     SELECT 
         @UserID = b.UserID,
@@ -2793,18 +2940,22 @@ BEGIN
         INNER JOIN BookingStatuses bs ON b.StatusID = bs.StatusID
     WHERE 
         b.BookingID = @BookingID;
-    
+GO
     IF @UserID IS NULL
     BEGIN
         RAISERROR('Booking not found.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Check if booking is already cancelled
     IF @CurrentStatus = 'Cancelled'
     BEGIN
         RAISERROR('Booking is already cancelled.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Calculate cancellation fee if not specified
@@ -2815,45 +2966,56 @@ BEGIN
         -- - 50% refund if cancelled 7-30 days before event
         -- - No refund if cancelled less than 7 days before event
         DECLARE @EventDate DATE;
+GO
         DECLARE @DaysUntilEvent INT;
-        
+GO
         SELECT @EventDate = EventDate FROM Bookings WHERE BookingID = @BookingID;
+GO
         SET @DaysUntilEvent = DATEDIFF(DAY, GETDATE(), @EventDate);
-        
+GO
         IF @DaysUntilEvent > 30
         BEGIN
             SET @RefundAmount = @TotalPaid;
+GO
             SET @CancellationFee = 0;
+GO
         END
         ELSE IF @DaysUntilEvent > 7
         BEGIN
             SET @RefundAmount = @TotalPaid * 0.5;
+GO
             SET @CancellationFee = @TotalPaid * 0.5;
+GO
         END
         ELSE
         BEGIN
             SET @RefundAmount = 0;
+GO
             SET @CancellationFee = @TotalPaid;
+GO
         END
     END
     ELSE
     BEGIN
         SET @CancellationFee = @TotalPaid - @RefundAmount;
+GO
     END
     
     BEGIN TRANSACTION;
+GO
     BEGIN TRY
         -- Update booking status to Cancelled
         DECLARE @CancelledStatusID INT;
+GO
         SELECT @CancelledStatusID = StatusID FROM BookingStatuses WHERE StatusName = 'Cancelled';
-        
+GO
         UPDATE Bookings
         SET 
             StatusID = @CancelledStatusID,
             LastUpdated = GETDATE()
         WHERE 
             BookingID = @BookingID;
-        
+GO
         -- Update all booking providers to Cancelled status
         UPDATE BookingProviders
         SET 
@@ -2861,7 +3023,7 @@ BEGIN
             ModifiedDate = GETDATE()
         WHERE 
             BookingID = @BookingID;
-        
+GO
         -- Add timeline event for cancellation
         INSERT INTO BookingTimeline (
             BookingID, EventDate, EventType, Title, Description
@@ -2873,7 +3035,7 @@ BEGIN
             CASE WHEN @CancellationReason IS NOT NULL THEN 'Reason: ' + @CancellationReason ELSE '' END + 
             CASE WHEN @RefundAmount > 0 THEN ' Refund amount: ' + FORMAT(@RefundAmount, 'C') ELSE '' END
         );
-        
+GO
         -- Process refund if requested and applicable
         IF @ProcessRefund = 1 AND @RefundAmount > 0
         BEGIN
@@ -2897,12 +3059,12 @@ BEGIN
             AND p.Status = 'Completed'
             ORDER BY p.PaymentDate DESC
             OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY;
-            
+GO
             -- Update booking to mark deposit as refunded
             UPDATE Bookings
             SET DepositPaid = 0
             WHERE BookingID = @BookingID;
-            
+GO
             -- Add timeline event for refund
             INSERT INTO BookingTimeline (
                 BookingID, EventDate, EventType, Title, Description
@@ -2912,6 +3074,7 @@ BEGIN
                 'Refund Processed', 
                 'Refund of ' + FORMAT(@RefundAmount, 'C') + ' was processed for cancelled booking.'
             );
+GO
         END
         
         -- Record cancellation fee
@@ -2926,13 +3089,17 @@ BEGIN
                 'Cancellation Fee Applied', 
                 'Cancellation fee of ' + FORMAT(@CancellationFee, 'C') + ' was applied.'
             );
+GO
         END
         
         COMMIT TRANSACTION;
+GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
+GO
         THROW;
+GO
     END CATCH
 END;
 GO
@@ -2945,14 +3112,19 @@ CREATE PROCEDURE sp_Booking_AddMultipleProviders
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @EventDate DATE;
+GO
     DECLARE @StartTime TIME;
+GO
     DECLARE @EndTime TIME;
+GO
     DECLARE @GuestCount INT;
+GO
     DECLARE @IsAvailable BIT = 1;
+GO
     DECLARE @ErrorMessage NVARCHAR(255) = '';
-    
+GO
     -- Get booking details
     SELECT 
         @EventDate = EventDate,
@@ -2961,11 +3133,13 @@ BEGIN
         @GuestCount = GuestCount
     FROM Bookings
     WHERE BookingID = @BookingID;
-    
+GO
     IF @EventDate IS NULL
     BEGIN
         RAISERROR('Booking not found.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Parse provider details JSON
@@ -2975,7 +3149,7 @@ BEGIN
         PackageID INT,
         Price DECIMAL(18, 2)
     );
-    
+GO
     INSERT INTO @ProviderTable (ProviderID, ServiceDetails, PackageID)
     SELECT 
         ProviderID,
@@ -2987,37 +3161,49 @@ BEGIN
         ServiceDetails NVARCHAR(MAX) '$.ServiceDetails' AS JSON,
         PackageID INT '$.PackageID'
     );
-    
+GO
     -- Check availability and calculate price for each new provider
     DECLARE @CurrentProviderID INT;
+GO
     DECLARE @CurrentServiceDetails NVARCHAR(MAX);
+GO
     DECLARE @CurrentPackageID INT;
+GO
     DECLARE @CurrentPrice DECIMAL(18, 2);
-    
+GO
     DECLARE provider_cursor CURSOR FOR
     SELECT ProviderID, ServiceDetails, PackageID FROM @ProviderTable;
-    
+GO
     OPEN provider_cursor;
+GO
     FETCH NEXT FROM provider_cursor INTO @CurrentProviderID, @CurrentServiceDetails, @CurrentPackageID;
-    
+GO
     WHILE @@FETCH_STATUS = 0
     BEGIN
         -- Check if provider is already part of this booking
         IF EXISTS (SELECT 1 FROM BookingProviders WHERE BookingID = @BookingID AND ProviderID = @CurrentProviderID)
         BEGIN
             SET @IsAvailable = 0;
+GO
             SET @ErrorMessage = 'Provider is already part of this booking.';
+GO
             BREAK;
+GO
         END
         
         -- Check availability and calculate price
         DECLARE @ProviderAvailable BIT;
+GO
         DECLARE @ProviderMessage NVARCHAR(255);
+GO
         DECLARE @ProviderBasePrice DECIMAL(18, 2);
+GO
         DECLARE @ProviderTotalPrice DECIMAL(18, 2);
+GO
         DECLARE @ProviderMultiplier DECIMAL(5, 2);
+GO
         DECLARE @ProviderDuration DECIMAL(10, 2);
-        
+GO
         EXEC sp_Provider_CalculatePrice
             @ProviderID = @CurrentProviderID,
             @EventDate = @EventDate,
@@ -3032,41 +3218,49 @@ BEGIN
             @TotalPrice = @ProviderTotalPrice OUTPUT,
             @PriceMultiplier = @ProviderMultiplier OUTPUT,
             @DurationHours = @ProviderDuration OUTPUT;
-        
+GO
         IF @ProviderAvailable = 0
         BEGIN
             SET @IsAvailable = 0;
+GO
             SET @ErrorMessage = @ProviderMessage;
+GO
             BREAK;
+GO
         END
         
         -- Update provider price in temp table
         UPDATE @ProviderTable
         SET Price = @ProviderTotalPrice
         WHERE ProviderID = @CurrentProviderID;
-        
+GO
         FETCH NEXT FROM provider_cursor INTO @CurrentProviderID, @CurrentServiceDetails, @CurrentPackageID;
+GO
     END
     
     CLOSE provider_cursor;
+GO
     DEALLOCATE provider_cursor;
-    
+GO
     -- If any provider is unavailable, cancel the operation
     IF @IsAvailable = 0
     BEGIN
         RAISERROR(@ErrorMessage, 16, 1);
+GO
         RETURN;
+GO
     END
     
     BEGIN TRANSACTION;
+GO
     BEGIN TRY
         -- Get booking status
         DECLARE @StatusID INT;
-        
+GO
         SELECT @StatusID = StatusID 
         FROM Bookings 
         WHERE BookingID = @BookingID;
-        
+GO
         -- Add new booking providers
         INSERT INTO BookingProviders (
             BookingID, ProviderID, ProviderTypeID, ServiceDetails, SpecialRequests, 
@@ -3086,13 +3280,13 @@ BEGIN
         FROM 
             @ProviderTable pt
             INNER JOIN ServiceProviders sp ON pt.ProviderID = sp.ProviderID;
-        
+GO
         -- Update booking total price
         DECLARE @AdditionalCost DECIMAL(18, 2);
-        
+GO
         SELECT @AdditionalCost = SUM(Price) 
         FROM @ProviderTable;
-        
+GO
         UPDATE Bookings
         SET 
             TotalPrice = TotalPrice + @AdditionalCost,
@@ -3100,7 +3294,7 @@ BEGIN
             LastUpdated = GETDATE()
         WHERE 
             BookingID = @BookingID;
-        
+GO
         -- Add timeline event for added providers
         INSERT INTO BookingTimeline (
             BookingID, EventDate, EventType, Title, Description
@@ -3111,12 +3305,15 @@ BEGIN
             'Added ' + CAST((SELECT COUNT(*) FROM @ProviderTable) AS NVARCHAR(10)) + 
             ' providers to the booking. Additional cost: ' + FORMAT(@AdditionalCost, 'C')
         );
-        
+GO
         COMMIT TRANSACTION;
+GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
+GO
         THROW;
+GO
     END CATCH
 END;
 GO
@@ -3138,16 +3335,23 @@ CREATE PROCEDURE sp_Payment_Process
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @BookingStatus NVARCHAR(50);
+GO
     DECLARE @TotalPrice DECIMAL(18, 2);
+GO
     DECLARE @TotalPaid DECIMAL(18, 2);
+GO
     DECLARE @DepositAmount DECIMAL(18, 2);
+GO
     DECLARE @DepositPaid BIT;
+GO
     DECLARE @BalanceDueDate DATE;
+GO
     DECLARE @FeeAmount DECIMAL(18, 2) = 0;
+GO
     DECLARE @NetAmount DECIMAL(18, 2) = @Amount;
-    
+GO
     -- Get booking details if provided
     IF @BookingID IS NOT NULL
     BEGIN
@@ -3162,34 +3366,40 @@ BEGIN
             INNER JOIN BookingStatuses bs ON b.StatusID = bs.StatusID
         WHERE 
             b.BookingID = @BookingID;
-        
+GO
         IF @BookingStatus IS NULL
         BEGIN
             RAISERROR('Booking not found.', 16, 1);
+GO
             RETURN;
+GO
         END
         
         -- Calculate total paid so far
         SELECT @TotalPaid = ISNULL(SUM(Amount), 0)
         FROM Payments
         WHERE BookingID = @BookingID AND Status = 'Completed';
-        
+GO
         -- Check if payment exceeds remaining balance
         IF @Amount > (@TotalPrice - @TotalPaid)
         BEGIN
             RAISERROR('Payment amount exceeds remaining balance.', 16, 1);
+GO
             RETURN;
+GO
         END
         
         -- Calculate processing fee if method has one
         SELECT @FeeAmount = @Amount * (ProcessingFeePercent / 100)
         FROM PaymentMethods
         WHERE MethodID = @MethodID;
-        
+GO
         SET @NetAmount = @Amount - @FeeAmount;
+GO
     END
     
     BEGIN TRANSACTION;
+GO
     BEGIN TRY
         -- Insert payment record
         INSERT INTO Payments (
@@ -3208,22 +3418,22 @@ BEGIN
             @FeeAmount,
             @NetAmount,
             @Notes;
-        
+GO
         SET @PaymentID = SCOPE_IDENTITY();
-        
+GO
         -- If payment is for a booking and status is Completed, update booking
         IF @BookingID IS NOT NULL AND @Status = 'Completed'
         BEGIN
             -- Update total paid amount
             SET @TotalPaid = @TotalPaid + @Amount;
-            
+GO
             -- Check if deposit is now paid
             DECLARE @NewDepositPaid BIT = @DepositPaid;
-            
+GO
             IF @DepositPaid = 0 AND @TotalPaid >= @DepositAmount
             BEGIN
                 SET @NewDepositPaid = 1;
-                
+GO
                 -- Add timeline event for deposit paid
                 INSERT INTO BookingTimeline (
                     BookingID, EventDate, EventType, Title, Description
@@ -3233,16 +3443,17 @@ BEGIN
                     'Deposit Paid', 
                     'Deposit of ' + FORMAT(@DepositAmount, 'C') + ' has been paid.'
                 );
+GO
             END
             
             -- Check if booking is now fully paid
             DECLARE @NewStatusID INT;
-            
+GO
             IF @TotalPaid >= @TotalPrice
             BEGIN
                 -- Booking is fully paid
                 SELECT @NewStatusID = StatusID FROM BookingStatuses WHERE StatusName = 'Confirmed';
-                
+GO
                 -- Add timeline event for full payment
                 INSERT INTO BookingTimeline (
                     BookingID, EventDate, EventType, Title, Description
@@ -3252,12 +3463,14 @@ BEGIN
                     'Fully Paid', 
                     'Booking has been fully paid. Thank you!'
                 );
+GO
             END
             ELSE
             BEGIN
                 -- Booking is partially paid
                 SELECT @NewStatusID = StatusID FROM BookingStatuses WHERE StatusName = 
                     CASE WHEN @BookingStatus = 'Pending' AND @NewDepositPaid = 1 THEN 'Confirmed' ELSE @BookingStatus END;
+GO
             END
             
             -- Update booking
@@ -3268,7 +3481,7 @@ BEGIN
                 LastUpdated = GETDATE()
             WHERE 
                 BookingID = @BookingID;
-            
+GO
             -- Update booking providers if deposit is now paid
             IF @NewDepositPaid = 1 AND @DepositPaid = 0
             BEGIN
@@ -3278,14 +3491,18 @@ BEGIN
                     ModifiedDate = GETDATE()
                 WHERE 
                     BookingID = @BookingID;
+GO
             END
         END
         
         COMMIT TRANSACTION;
+GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
+GO
         THROW;
+GO
     END CATCH
 END;
 GO
@@ -3300,13 +3517,17 @@ CREATE PROCEDURE sp_Invoice_Generate
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @UserID INT;
+GO
     DECLARE @EventDate DATE;
+GO
     DECLARE @TotalPrice DECIMAL(18, 2);
+GO
     DECLARE @TotalPaid DECIMAL(18, 2);
+GO
     DECLARE @TaxAmount DECIMAL(18, 2) = 0;
-    
+GO
     -- Get booking details
     SELECT 
         @UserID = b.UserID,
@@ -3317,11 +3538,13 @@ BEGIN
         Bookings b
     WHERE 
         b.BookingID = @BookingID;
-    
+GO
     IF @UserID IS NULL
     BEGIN
         RAISERROR('Booking not found.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Calculate tax (simplified for example)
@@ -3330,21 +3553,24 @@ BEGIN
     
     -- Set default dates if not provided
     IF @IssueDate IS NULL SET @IssueDate = GETDATE();
+GO
     IF @DueDate IS NULL SET @DueDate = DATEADD(DAY, 14, @IssueDate);
-    
+GO
     -- Generate invoice number if not provided (YYYYMMDD-XXXXX)
     IF @InvoiceNumber IS NULL
     BEGIN
         DECLARE @NextNum INT;
-        
+GO
         SELECT @NextNum = ISNULL(MAX(CAST(SUBSTRING(InvoiceNumber, 10, 5) AS INT), 0) + 1
         FROM Invoices
         WHERE InvoiceNumber LIKE FORMAT(GETDATE(), 'yyyyMMdd') + '-%';
-        
+GO
         SET @InvoiceNumber = FORMAT(GETDATE(), 'yyyyMMdd') + '-' + RIGHT('00000' + CAST(@NextNum AS NVARCHAR(5)), 5);
+GO
     END
     
     BEGIN TRANSACTION;
+GO
     BEGIN TRY
         -- Insert invoice record
         INSERT INTO Invoices (
@@ -3356,9 +3582,9 @@ BEGIN
             CASE WHEN @TotalPaid >= @TotalPrice THEN 'Paid' ELSE 'Pending' END,
             @TotalPrice - @TaxAmount, @TaxAmount, @TotalPrice, @TotalPaid, @TotalPrice - @TotalPaid
         );
-        
+GO
         SET @InvoiceID = SCOPE_IDENTITY();
-        
+GO
         -- Add timeline event for invoice generation
         INSERT INTO BookingTimeline (
             BookingID, EventDate, EventType, Title, Description
@@ -3368,12 +3594,15 @@ BEGIN
             'Invoice Generated', 
             'Invoice #' + @InvoiceNumber + ' has been generated. Amount due: ' + FORMAT(@TotalPrice - @TotalPaid, 'C')
         );
-        
+GO
         COMMIT TRANSACTION;
+GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
+GO
         THROW;
+GO
     END CATCH
 END;
 GO
@@ -3389,16 +3618,19 @@ CREATE PROCEDURE sp_Revenue_Report
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     -- Set default date range if not provided
     IF @StartDate IS NULL SET @StartDate = DATEADD(YEAR, -1, GETDATE());
+GO
     IF @EndDate IS NULL SET @EndDate = GETDATE();
-    
+GO
     -- Validate date range
     IF @EndDate < @StartDate
     BEGIN
         RAISERROR('End date must be after start date.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Generate report based on grouping
@@ -3426,6 +3658,7 @@ BEGIN
             CAST(b.EventDate AS DATE)
         ORDER BY 
             CAST(b.EventDate AS DATE);
+GO
     END
     ELSE IF @GroupBy = 'week'
     BEGIN
@@ -3456,6 +3689,7 @@ BEGIN
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(WEEK, b.EventDate);
+GO
     END
     ELSE IF @GroupBy = 'month'
     BEGIN
@@ -3486,6 +3720,7 @@ BEGIN
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(MONTH, b.EventDate);
+GO
     END
     ELSE IF @GroupBy = 'quarter'
     BEGIN
@@ -3516,6 +3751,7 @@ BEGIN
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(QUARTER, b.EventDate);
+GO
     END
     ELSE -- year
     BEGIN
@@ -3541,6 +3777,7 @@ BEGIN
             DATEPART(YEAR, b.EventDate)
         ORDER BY 
             DATEPART(YEAR, b.EventDate);
+GO
     END
     
     -- Get summary totals
@@ -3561,6 +3798,7 @@ BEGIN
         AND (@ProviderTypeID IS NULL OR sp.TypeID = @ProviderTypeID)
         AND (@EventTypeID IS NULL OR b.EventTypeID = @EventTypeID)
         AND p.Status = 'Completed';
+GO
 END;
 GO
 
@@ -3575,12 +3813,15 @@ CREATE PROCEDURE sp_Refund_Process
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @OriginalAmount DECIMAL(18, 2);
+GO
     DECLARE @BookingID INT;
+GO
     DECLARE @UserID INT;
+GO
     DECLARE @ProviderID INT;
-    
+GO
     -- Get original payment details
     SELECT 
         @OriginalAmount = Amount,
@@ -3589,21 +3830,26 @@ BEGIN
         @ProviderID = ProviderID
     FROM Payments
     WHERE PaymentID = @PaymentID;
-    
+GO
     IF @OriginalAmount IS NULL
     BEGIN
         RAISERROR('Original payment not found.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Validate refund amount
     IF @RefundAmount <= 0 OR @RefundAmount > ABS(@OriginalAmount)
     BEGIN
         RAISERROR('Invalid refund amount.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     BEGIN TRANSACTION;
+GO
     BEGIN TRY
         -- Record refund payment (negative amount)
         INSERT INTO Payments (
@@ -3623,36 +3869,39 @@ BEGIN
             -@RefundAmount,
             @Notes
         );
-        
+GO
         SET @RefundID = SCOPE_IDENTITY();
-        
+GO
         -- Update original payment if this is a partial refund
         IF @RefundAmount < ABS(@OriginalAmount)
         BEGIN
             UPDATE Payments
             SET Notes = ISNULL(Notes, '') + ' Partially refunded: ' + FORMAT(@RefundAmount, 'C')
             WHERE PaymentID = @PaymentID;
+GO
         END
         
         -- If this is a booking refund, update booking totals
         IF @BookingID IS NOT NULL
         BEGIN
             DECLARE @TotalPaid DECIMAL(18, 2);
+GO
             DECLARE @DepositAmount DECIMAL(18, 2);
+GO
             DECLARE @DepositPaid BIT;
-            
+GO
             -- Get current paid amount
             SELECT @TotalPaid = ISNULL(SUM(Amount), 0)
             FROM Payments
             WHERE BookingID = @BookingID AND Status = 'Completed';
-            
+GO
             -- Get deposit info
             SELECT 
                 @DepositAmount = DepositAmount,
                 @DepositPaid = DepositPaid
             FROM Bookings
             WHERE BookingID = @BookingID;
-            
+GO
             -- Check if deposit should be marked as unpaid
             IF @DepositPaid = 1 AND @TotalPaid < @DepositAmount
             BEGIN
@@ -3662,7 +3911,7 @@ BEGIN
                     LastUpdated = GETDATE()
                 WHERE 
                     BookingID = @BookingID;
-                
+GO
                 -- Update booking providers
                 UPDATE BookingProviders
                 SET 
@@ -3670,7 +3919,7 @@ BEGIN
                     ModifiedDate = GETDATE()
                 WHERE 
                     BookingID = @BookingID;
-                
+GO
                 -- Add timeline event
                 INSERT INTO BookingTimeline (
                     BookingID, EventDate, EventType, Title, Description
@@ -3680,14 +3929,18 @@ BEGIN
                     'Deposit Refunded', 
                     'Deposit has been partially refunded. New amount paid: ' + FORMAT(@TotalPaid, 'C')
                 );
+GO
             END
         END
         
         COMMIT TRANSACTION;
+GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
+GO
         THROW;
+GO
     END CATCH
 END;
 GO
@@ -3703,25 +3956,29 @@ CREATE PROCEDURE sp_Payment_ProcessPayout
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     -- Validate provider exists
     IF NOT EXISTS (SELECT 1 FROM ServiceProviders WHERE ProviderID = @ProviderID AND IsActive = 1)
     BEGIN
         RAISERROR('Provider not found or inactive.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Calculate processing fee if method has one
     DECLARE @FeeAmount DECIMAL(18, 2) = 0;
+GO
     DECLARE @NetAmount DECIMAL(18, 2) = @Amount;
-    
+GO
     SELECT @FeeAmount = @Amount * (ProcessingFeePercent / 100)
     FROM PaymentMethods
     WHERE MethodID = @MethodID;
-    
+GO
     SET @NetAmount = @Amount - @FeeAmount;
-    
+GO
     BEGIN TRANSACTION;
+GO
     BEGIN TRY
         -- Record payout
         INSERT INTO Payouts (
@@ -3732,9 +3989,9 @@ BEGIN
             @ProviderID, @Amount, GETDATE(), @MethodID, 'Completed',
             @TransactionID, @FeeAmount, @NetAmount, @Notes
         );
-        
+GO
         SET @PayoutID = SCOPE_IDENTITY();
-        
+GO
         -- Record corresponding payment (negative amount from system to provider)
         INSERT INTO Payments (
             BookingID, UserID, ProviderID, Amount, PaymentDate, 
@@ -3753,12 +4010,15 @@ BEGIN
             -@NetAmount, -- Negative net amount
             'Payout to provider: ' + ISNULL(@Notes, '')
         );
-        
+GO
         COMMIT TRANSACTION;
+GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
+GO
         THROW;
+GO
     END CATCH
 END;
 GO
@@ -3772,16 +4032,19 @@ CREATE PROCEDURE sp_Financial_GetProviderEarnings
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     -- Set default date range if not provided
     IF @StartDate IS NULL SET @StartDate = DATEADD(YEAR, -1, GETDATE());
+GO
     IF @EndDate IS NULL SET @EndDate = GETDATE();
-    
+GO
     -- Validate date range
     IF @EndDate < @StartDate
     BEGIN
         RAISERROR('End date must be after start date.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Generate report based on grouping
@@ -3806,6 +4069,7 @@ BEGIN
             CAST(b.EventDate AS DATE)
         ORDER BY 
             CAST(b.EventDate AS DATE);
+GO
     END
     ELSE IF @GroupBy = 'week'
     BEGIN
@@ -3833,6 +4097,7 @@ BEGIN
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(WEEK, b.EventDate);
+GO
     END
     ELSE IF @GroupBy = 'month'
     BEGIN
@@ -3860,6 +4125,7 @@ BEGIN
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(MONTH, b.EventDate);
+GO
     END
     ELSE IF @GroupBy = 'quarter'
     BEGIN
@@ -3887,6 +4153,7 @@ BEGIN
         ORDER BY 
             DATEPART(YEAR, b.EventDate),
             DATEPART(QUARTER, b.EventDate);
+GO
     END
     ELSE -- year
     BEGIN
@@ -3909,6 +4176,7 @@ BEGIN
             DATEPART(YEAR, b.EventDate)
         ORDER BY 
             DATEPART(YEAR, b.EventDate);
+GO
     END
     
     -- Get summary totals
@@ -3926,7 +4194,7 @@ BEGIN
         bp.ProviderID = @ProviderID
         AND b.EventDate BETWEEN @StartDate AND @EndDate
         AND b.StatusID IN (SELECT StatusID FROM BookingStatuses WHERE StatusName IN ('Confirmed', 'Completed'));
-    
+GO
     -- Get upcoming earnings (confirmed but not yet completed bookings)
     SELECT 
         COUNT(DISTINCT b.BookingID) AS UpcomingBookingCount,
@@ -3938,6 +4206,7 @@ BEGIN
         bp.ProviderID = @ProviderID
         AND b.EventDate > GETDATE()
         AND b.StatusID IN (SELECT StatusID FROM BookingStatuses WHERE StatusName = 'Confirmed');
+GO
 END;
 GO
 
@@ -3953,26 +4222,30 @@ CREATE PROCEDURE sp_Calendar_GetAvailability
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     -- Validate date range
     IF @EndDate < @StartDate
     BEGIN
         RAISERROR('End date must be after start date.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Create temp table for dates
     CREATE TABLE #DateRange (
         DateValue DATE
     );
-    
+GO
     -- Populate date range
     DECLARE @CurrentDate DATE = @StartDate;
-    
+GO
     WHILE @CurrentDate <= @EndDate
     BEGIN
         INSERT INTO #DateRange (DateValue) VALUES (@CurrentDate);
+GO
         SET @CurrentDate = DATEADD(DAY, 1, @CurrentDate);
+GO
     END
     
     -- Get provider's weekly availability
@@ -3982,7 +4255,7 @@ BEGIN
         EndTime TIME,
         IsAvailable BIT
     );
-    
+GO
     INSERT INTO @WeeklyAvailability
     SELECT 
         DayOfWeek,
@@ -3993,14 +4266,14 @@ BEGIN
         ProviderAvailability
     WHERE 
         ProviderID = @ProviderID;
-    
+GO
     -- Get blackout dates
     DECLARE @BlackoutDates TABLE (
         StartDate DATE,
         EndDate DATE,
         Reason NVARCHAR(255)
     );
-    
+GO
     INSERT INTO @BlackoutDates
     SELECT 
         StartDate,
@@ -4014,14 +4287,14 @@ BEGIN
             (StartDate <= @EndDate AND EndDate >= @StartDate) OR
             IsRecurring = 1
         );
-    
+GO
     -- Get booked dates
     DECLARE @BookedDates TABLE (
         EventDate DATE,
         StartTime TIME,
         EndTime TIME
     );
-    
+GO
     INSERT INTO @BookedDates
     SELECT 
         b.EventDate,
@@ -4034,7 +4307,7 @@ BEGIN
         bp.ProviderID = @ProviderID
         AND b.EventDate BETWEEN @StartDate AND @EndDate
         AND b.StatusID IN (SELECT StatusID FROM BookingStatuses WHERE StatusName IN ('Confirmed', 'Completed'));
-    
+GO
     -- Return availability for each date
     SELECT 
         dr.DateValue,
@@ -4073,8 +4346,9 @@ BEGIN
         LEFT JOIN @WeeklyAvailability wa ON wa.DayOfWeek = DATEPART(WEEKDAY, dr.DateValue)
     ORDER BY 
         dr.DateValue;
-    
+GO
     DROP TABLE #DateRange;
+GO
 END;
 GO
 
@@ -4089,12 +4363,14 @@ CREATE PROCEDURE sp_Calendar_BlockDates
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     -- Validate date range
     IF @EndDate < @StartDate
     BEGIN
         RAISERROR('End date must be after start date.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Check for existing bookings in this range
@@ -4108,7 +4384,9 @@ BEGIN
     )
     BEGIN
         RAISERROR('Cannot block dates with existing bookings.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Insert blackout dates
@@ -4118,6 +4396,7 @@ BEGIN
     VALUES (
         @ProviderID, @StartDate, @EndDate, @Reason, @IsRecurring, @RecurrencePattern
     );
+GO
 END;
 GO
 
@@ -4132,12 +4411,14 @@ CREATE PROCEDURE sp_Calendar_GetConflicts
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     -- Validate time range
     IF @EndTime <= @StartTime
     BEGIN
         RAISERROR('End time must be after start time.', 16, 1);
+GO
         RETURN;
+GO
     END
     
     -- Check blackout dates
@@ -4156,7 +4437,7 @@ BEGIN
             (StartDate BETWEEN @StartDate AND @EndDate) OR
             (EndDate BETWEEN @StartDate AND @EndDate)
         );
-    
+GO
     -- Check existing bookings
     SELECT 
         'Booking' AS ConflictType,
@@ -4179,10 +4460,10 @@ BEGIN
             (@EndTime > b.StartTime AND @EndTime <= b.EndTime) OR
             (@StartTime <= b.StartTime AND @EndTime >= b.EndTime)
         );
-    
+GO
     -- Check weekly availability
     DECLARE @DayOfWeek INT = DATEPART(WEEKDAY, @StartDate);
-    
+GO
     IF NOT EXISTS (
         SELECT 1 
         FROM ProviderAvailability 
@@ -4198,6 +4479,7 @@ BEGIN
             @StartDate AS StartDate,
             @EndDate AS EndDate,
             'Provider is not available at the requested time on this day of week.' AS ConflictReason;
+GO
     END
 END;
 GO
@@ -4219,14 +4501,19 @@ AS
 BEGIN
     DECLARE @EarthRadius FLOAT = 3958.8; -- miles
     DECLARE @dLat FLOAT = RADIANS(@Lat2 - @Lat1);
+GO
     DECLARE @dLon FLOAT = RADIANS(@Lon2 - @Lon1);
+GO
     DECLARE @a FLOAT = SIN(@dLat / 2) * SIN(@dLat / 2) + 
                       COS(RADIANS(@Lat1)) * COS(RADIANS(@Lat2)) * 
                       SIN(@dLon / 2) * SIN(@dLon / 2);
+GO
     DECLARE @c FLOAT = 2 * ATN2(SQRT(@a), SQRT(1 - @a));
+GO
     DECLARE @Distance FLOAT = @EarthRadius * @c;
-    
+GO
     RETURN @Distance;
+GO
 END;
 GO
 
@@ -4242,7 +4529,7 @@ RETURNS BIT
 AS
 BEGIN
     DECLARE @IsAvailable BIT = 0;
-    
+GO
     -- Check blackout dates first
     IF EXISTS (
         SELECT 1 FROM ProviderBlackoutDates 
@@ -4251,6 +4538,7 @@ BEGIN
     )
     BEGIN
         RETURN 0;
+GO
     END
     
     -- Check existing bookings
@@ -4268,11 +4556,12 @@ BEGIN
     )
     BEGIN
         RETURN 0;
+GO
     END
     
     -- Check weekly availability
     DECLARE @DayOfWeek INT = DATEPART(WEEKDAY, @Date);
-    
+GO
     IF EXISTS (
         SELECT 1 FROM ProviderAvailability 
         WHERE ProviderID = @ProviderID
@@ -4283,9 +4572,11 @@ BEGIN
     )
     BEGIN
         SET @IsAvailable = 1;
+GO
     END
     
     RETURN @IsAvailable;
+GO
 END;
 GO
 
@@ -4302,8 +4593,9 @@ RETURNS DECIMAL(18, 2)
 AS
 BEGIN
     DECLARE @TotalPrice DECIMAL(18, 2) = 0;
+GO
     DECLARE @PriceMultiplier DECIMAL(5, 2) = 1.0;
-    
+GO
     -- Check for pricing tiers
     SELECT @PriceMultiplier = PriceMultiplier
     FROM PricingTiers
@@ -4314,7 +4606,7 @@ BEGIN
     ORDER BY 
         ProviderID DESC -- Prefer provider-specific over type-specific
     OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY;
-    
+GO
     -- Calculate price based on services/packages
     IF @PackageID IS NOT NULL
     BEGIN
@@ -4322,6 +4614,7 @@ BEGIN
         SELECT @TotalPrice = Price
         FROM ProviderServicePackages
         WHERE PackageID = @PackageID AND ProviderID = @ProviderID AND IsActive = 1;
+GO
     END
     ELSE IF @ServiceIDs IS NOT NULL
     BEGIN
@@ -4330,17 +4623,20 @@ BEGIN
         FROM ProviderServices
         WHERE ProviderServiceID IN (SELECT value FROM OPENJSON(@ServiceIDs))
         AND ProviderID = @ProviderID AND IsActive = 1;
+GO
     END
     ELSE
     BEGIN
         -- Base price only
         SET @TotalPrice = @BasePrice;
+GO
     END
     
     -- Apply price multiplier
     SET @TotalPrice = @TotalPrice * @PriceMultiplier;
-    
+GO
     RETURN @TotalPrice;
+GO
 END;
 GO
 
@@ -4461,70 +4757,96 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'EventBookingAdmin' AND type = 'R')
 BEGIN
     CREATE ROLE EventBookingAdmin;
+GO
     GRANT CONTROL ON DATABASE::EventBookingPlatform TO EventBookingAdmin;
+GO
 END
-
+GO
 IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'EventBookingProvider' AND type = 'R')
 BEGIN
     CREATE ROLE EventBookingProvider;
-    
+GO
     -- Basic read permissions
     GRANT SELECT ON SCHEMA::dbo TO EventBookingProvider;
-    
+GO
     -- Provider-specific permissions
     GRANT INSERT, UPDATE ON ServiceProviders TO EventBookingProvider;
+GO
     GRANT INSERT, UPDATE ON ProviderServices TO EventBookingProvider;
+GO
     GRANT INSERT, UPDATE ON ProviderServicePackages TO EventBookingProvider;
+GO
     GRANT INSERT, UPDATE ON ProviderAvailability TO EventBookingProvider;
+GO
     GRANT INSERT, UPDATE ON ProviderBlackoutDates TO EventBookingProvider;
+GO
     GRANT INSERT, UPDATE ON ProviderEquipment TO EventBookingProvider;
+GO
     GRANT INSERT, UPDATE ON ProviderPortfolio TO EventBookingProvider;
+GO
     GRANT INSERT, UPDATE ON ProviderLocations TO EventBookingProvider;
-    
+GO
     -- Booking-related permissions
     GRANT SELECT, UPDATE ON Bookings TO EventBookingProvider;
+GO
     GRANT SELECT, UPDATE ON BookingProviders TO EventBookingProvider;
+GO
     GRANT SELECT, INSERT, UPDATE ON BookingMessages TO EventBookingProvider;
+GO
     GRANT SELECT ON BookingTimeline TO EventBookingProvider;
-    
+GO
     -- Financial permissions
     GRANT SELECT ON Payments TO EventBookingProvider;
+GO
     GRANT SELECT ON Payouts TO EventBookingProvider;
+GO
     GRANT SELECT ON Invoices TO EventBookingProvider;
+GO
 END
-
+GO
 IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'EventBookingCustomer' AND type = 'R')
 BEGIN
     CREATE ROLE EventBookingCustomer;
-    
+GO
     -- Basic read permissions
     GRANT SELECT ON SCHEMA::dbo TO EventBookingCustomer;
-    
+GO
     -- User-specific permissions
     GRANT INSERT, UPDATE ON Users TO EventBookingCustomer;
+GO
     GRANT INSERT, UPDATE ON UserPreferences TO EventBookingCustomer;
+GO
     GRANT INSERT, UPDATE ON UserSocialLogins TO EventBookingCustomer;
+GO
     GRANT INSERT, UPDATE ON Wishlists TO EventBookingCustomer;
-    
+GO
     -- Booking-related permissions
     GRANT INSERT, SELECT, UPDATE ON Bookings TO EventBookingCustomer;
+GO
     GRANT SELECT ON BookingProviders TO EventBookingCustomer;
+GO
     GRANT SELECT, INSERT ON BookingMessages TO EventBookingCustomer;
+GO
     GRANT SELECT ON BookingTimeline TO EventBookingCustomer;
-    
+GO
     -- Financial permissions
     GRANT SELECT, INSERT ON Payments TO EventBookingCustomer;
+GO
     GRANT SELECT ON Invoices TO EventBookingCustomer;
+GO
 END
-
+GO
 -- Create application user
 IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'EventBookingApp' AND type = 'S')
 BEGIN
     CREATE USER EventBookingApp WITH PASSWORD = 'StrongPassword123!';
+GO
     GRANT CONNECT TO EventBookingApp;
+GO
     GRANT EXECUTE ON SCHEMA::dbo TO EventBookingApp;
+GO
 END
-
+GO
 -- =============================================
 -- Section 18: Audit Triggers
 -- =============================================
@@ -4536,20 +4858,23 @@ AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @ActionType NVARCHAR(50);
-    
+GO
     IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
         SET @ActionType = 'UPDATE';
+GO
     ELSE IF EXISTS (SELECT * FROM inserted)
         SET @ActionType = 'INSERT';
+GO
     ELSE
         SET @ActionType = 'DELETE';
-    
+GO
     -- Get current user from application context or system user
     DECLARE @CurrentUser NVARCHAR(128);
+GO
     SET @CurrentUser = ISNULL(CAST(CONTEXT_INFO() AS NVARCHAR(128)), SYSTEM_USER);
-    
+GO
     -- Log changes
     INSERT INTO AuditLogs (UserID, ActionType, TableName, RecordID, OldValues, NewValues, IPAddress)
     SELECT 
@@ -4565,6 +4890,7 @@ BEGIN
         FULL OUTER JOIN deleted d ON i.UserID = d.UserID
     WHERE 
         (i.UserID IS NOT NULL OR d.UserID IS NOT NULL);
+GO
 END;
 GO
 
@@ -4575,20 +4901,23 @@ AFTER INSERT, UPDATE, DELETE
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @ActionType NVARCHAR(50);
-    
+GO
     IF EXISTS (SELECT * FROM inserted) AND EXISTS (SELECT * FROM deleted)
         SET @ActionType = 'UPDATE';
+GO
     ELSE IF EXISTS (SELECT * FROM inserted)
         SET @ActionType = 'INSERT';
+GO
     ELSE
         SET @ActionType = 'DELETE';
-    
+GO
     -- Get current user from application context or system user
     DECLARE @CurrentUser NVARCHAR(128);
+GO
     SET @CurrentUser = ISNULL(CAST(CONTEXT_INFO() AS NVARCHAR(128)), SYSTEM_USER);
-    
+GO
     -- Log changes
     INSERT INTO AuditLogs (UserID, ActionType, TableName, RecordID, OldValues, NewValues, IPAddress)
     SELECT 
@@ -4604,6 +4933,7 @@ BEGIN
         FULL OUTER JOIN deleted d ON i.BookingID = d.BookingID
     WHERE 
         (i.BookingID IS NOT NULL OR d.BookingID IS NOT NULL);
+GO
 END;
 GO
 
@@ -4617,11 +4947,12 @@ CREATE PROCEDURE sp_CleanupOldSessions
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DELETE FROM UserSessions
     WHERE ExpiryDate < GETDATE() OR LastActivityDate < DATEADD(DAY, -@DaysToKeep, GETDATE());
-    
+GO
     RETURN @@ROWCOUNT;
+GO
 END;
 GO
 
@@ -4631,19 +4962,19 @@ CREATE PROCEDURE sp_ArchiveCompletedBookings
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     -- In a real system, you would move these to an archive table first
     -- This is just a simplified example
     
     DECLARE @ArchivedCount INT = 0;
-    
+GO
     -- Archive bookings completed more than @MonthsToKeep ago
     SELECT @ArchivedCount = COUNT(*)
     FROM Bookings b
     INNER JOIN BookingStatuses bs ON b.StatusID = bs.StatusID
     WHERE bs.StatusName = 'Completed'
     AND b.EventDate < DATEADD(MONTH, -@MonthsToKeep, GETDATE());
-    
+GO
     -- In a real implementation, you would:
     -- 1. Insert into archive tables
     -- 2. Delete related records (messages, timeline events, etc.)
@@ -4651,6 +4982,7 @@ BEGIN
     
     -- For this example, we'll just return the count that would be archived
     RETURN @ArchivedCount;
+GO
 END;
 GO
 
@@ -4659,29 +4991,35 @@ CREATE PROCEDURE sp_RebuildIndexes
 AS
 BEGIN
     SET NOCOUNT ON;
-    
+GO
     DECLARE @TableName NVARCHAR(255);
+GO
     DECLARE @SQL NVARCHAR(500);
-    
+GO
     DECLARE TableCursor CURSOR FOR
     SELECT table_name
     FROM information_schema.tables
     WHERE table_type = 'BASE TABLE'
     AND table_name NOT LIKE 'sys%';
-    
+GO
     OPEN TableCursor;
+GO
     FETCH NEXT FROM TableCursor INTO @TableName;
-    
+GO
     WHILE @@FETCH_STATUS = 0
     BEGIN
         SET @SQL = 'ALTER INDEX ALL ON ' + @TableName + ' REBUILD';
+GO
         EXEC sp_executesql @SQL;
-        
+GO
         FETCH NEXT FROM TableCursor INTO @TableName;
+GO
     END
     
     CLOSE TableCursor;
+GO
     DEALLOCATE TableCursor;
+GO
 END;
 GO
 
@@ -4696,35 +5034,36 @@ Recommended backup strategy for production:
    BACKUP DATABASE EventBookingPlatform 
    TO DISK = 'D:\Backups\EventBookingPlatform_Full.bak'
    WITH COMPRESSION, CHECKSUM;
-
+GO
 2. Differential backups: Every 4 hours during business hours
    BACKUP DATABASE EventBookingPlatform 
    TO DISK = 'D:\Backups\EventBookingPlatform_Diff.bak'
    WITH DIFFERENTIAL, COMPRESSION, CHECKSUM;
-
+GO
 3. Transaction log backups: Every 15 minutes
    BACKUP LOG EventBookingPlatform 
    TO DISK = 'D:\Backups\EventBookingPlatform_Log.trn'
    WITH COMPRESSION, CHECKSUM;
-
+GO
 4. Verify backups regularly:
    RESTORE VERIFYONLY 
    FROM DISK = 'D:\Backups\EventBookingPlatform_Full.bak';
-
+GO
 5. Implement a backup retention policy (e.g., keep 30 days of backups)
 
 For point-in-time recovery:
    RESTORE DATABASE EventBookingPlatform 
    FROM DISK = 'D:\Backups\EventBookingPlatform_Full.bak'
    WITH NORECOVERY;
-   
+GO
    RESTORE DATABASE EventBookingPlatform 
    FROM DISK = 'D:\Backups\EventBookingPlatform_Diff.bak'
    WITH NORECOVERY;
-   
+GO
    RESTORE LOG EventBookingPlatform 
    FROM DISK = 'D:\Backups\EventBookingPlatform_Log.trn'
    WITH STOPAT = '2023-11-15 14:00:00', RECOVERY;
+GO
 */
 
 -- =============================================
