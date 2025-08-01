@@ -2,7 +2,7 @@
   "venues": [
     {
       "id": 1,
-      "name": "The Beverly Hills Hotel",
+      "name": "TEST The Beverly Hills Hotel",
       "location": "Beverly Hills, CA",
       "image": "🏨",
       "badge": "Popular",
