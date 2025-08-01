@@ -16,9 +16,9 @@ CREATE PROCEDURE sp_User_Create
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     BEGIN TRANSACTION;
-GO
+    
     BEGIN TRY
         -- Check if email already exists
         IF EXISTS (SELECT 1 FROM Users WHERE Email = @Email)
@@ -27,13 +27,11 @@ GO
             BEGIN
                 -- For social login, return existing user ID
                 SELECT @UserID = UserID FROM Users WHERE Email = @Email;
-GO
             END
             ELSE
             BEGIN
                 -- For regular registration, email must be unique
                 THROW 50001, 'Email address is already registered.', 1;
-GO
             END
         END
         ELSE
@@ -47,14 +45,14 @@ GO
                 @Email, @PasswordHash, @PasswordSalt, @FirstName, @LastName, 
                 @PhoneNumber, @AvatarURL, @DateOfBirth, CASE WHEN @IsSocialLogin = 1 THEN 1 ELSE 0 END, 1
             );
-GO
+
             SET @UserID = SCOPE_IDENTITY();
-GO
+
             -- Add user role
             DECLARE @RoleID INT;
-GO
+            
             SELECT @RoleID = RoleID FROM UserRoles WHERE RoleName = @RoleName;
-GO
+            
             IF @RoleID IS NULL
             BEGIN
                 SET @RoleID = 3; -- Default to Customer if role not found
@@ -62,17 +60,13 @@ GO
             
             INSERT INTO UserRoleMappings (UserID, RoleID)
             VALUES (@UserID, @RoleID);
-GO
         END
         
         COMMIT TRANSACTION;
-GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
-GO
         THROW;
-GO
     END CATCH
 END;
 GO
@@ -84,17 +78,13 @@ CREATE PROCEDURE sp_User_Authenticate
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     DECLARE @UserID INT;
-GO
     DECLARE @IsLockedOut BIT;
-GO
     DECLARE @LockoutEndDate DATETIME;
-GO
     DECLARE @StoredHash NVARCHAR(255);
-GO
     DECLARE @StoredSalt NVARCHAR(255);
-GO
+    
     -- Get user data
     SELECT 
         @UserID = UserID,
@@ -104,23 +94,19 @@ GO
         @StoredSalt = PasswordSalt
     FROM Users 
     WHERE Email = @Email;
-GO
+    
     -- Check if account exists
     IF @UserID IS NULL
     BEGIN
         RAISERROR('Invalid email or password.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Check if account is locked
     IF @IsLockedOut = 1 AND (@LockoutEndDate IS NULL OR @LockoutEndDate > GETDATE())
     BEGIN
         RAISERROR('Account is temporarily locked. Please try again later or reset your password.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Verify password
@@ -132,11 +118,9 @@ GO
             IsLockedOut = CASE WHEN FailedLoginAttempts + 1 >= 5 THEN 1 ELSE 0 END,
             LockoutEndDate = CASE WHEN FailedLoginAttempts + 1 >= 5 THEN DATEADD(MINUTE, 30, GETDATE()) ELSE NULL END
         WHERE UserID = @UserID;
-GO
+        
         RAISERROR('Invalid email or password.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Successful login - reset failed attempts and update last login
@@ -146,7 +130,7 @@ GO
         LockoutEndDate = NULL,
         LastLoginDate = GETDATE()
     WHERE UserID = @UserID;
-GO
+    
     -- Return user data
     SELECT 
         u.UserID,
@@ -161,7 +145,6 @@ GO
     INNER JOIN UserRoleMappings m ON u.UserID = m.UserID
     INNER JOIN UserRoles r ON m.RoleID = r.RoleID
     WHERE u.UserID = @UserID;
-GO
 END;
 GO
 
@@ -176,7 +159,7 @@ CREATE PROCEDURE sp_User_UpdateProfile
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     UPDATE Users
     SET 
         FirstName = @FirstName,
@@ -186,11 +169,10 @@ GO
         DateOfBirth = @DateOfBirth,
         ModifiedDate = GETDATE()
     WHERE UserID = @UserID;
-GO
+    
     IF @@ROWCOUNT = 0
     BEGIN
         RAISERROR('User not found.', 16, 1);
-GO
     END
 END;
 GO
@@ -203,7 +185,7 @@ CREATE PROCEDURE sp_User_ResetPassword
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     UPDATE Users
     SET 
         PasswordHash = @NewPasswordHash,
@@ -213,11 +195,10 @@ GO
         LockoutEndDate = NULL,
         ModifiedDate = GETDATE()
     WHERE Email = @Email;
-GO
+    
     IF @@ROWCOUNT = 0
     BEGIN
         RAISERROR('User not found.', 16, 1);
-GO
     END
 END;
 GO
@@ -228,7 +209,7 @@ CREATE PROCEDURE sp_User_GetFavorites
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     SELECT 
         w.WishlistID,
         w.ProviderID,
@@ -247,7 +228,6 @@ GO
         w.UserID = @UserID
     ORDER BY 
         w.CreatedDate DESC;
-GO
 END;
 GO
 
@@ -266,32 +246,30 @@ CREATE PROCEDURE sp_UserSocialLogin_CreateOrUpdate
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     DECLARE @ProviderID INT;
-GO
+    
     -- Get provider ID
     SELECT @ProviderID = ProviderID 
     FROM SocialLoginProviders 
     WHERE ProviderName = @ProviderName;
-GO
+    
     IF @ProviderID IS NULL
     BEGIN
         RAISERROR('Social login provider not supported.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     BEGIN TRANSACTION;
-GO
+    
     BEGIN TRY
         -- Check if social login already exists
         DECLARE @ExistingUserID INT;
-GO
+        
         SELECT @ExistingUserID = UserID 
         FROM UserSocialLogins 
         WHERE ProviderID = @ProviderID AND ProviderKey = @ProviderKey;
-GO
+        
         IF @ExistingUserID IS NOT NULL
         BEGIN
             -- Update existing social login
@@ -307,14 +285,13 @@ GO
                 LastLoginDate = GETDATE()
             WHERE 
                 ProviderID = @ProviderID AND ProviderKey = @ProviderKey;
-GO
+                
             SET @UserID = @ExistingUserID;
-GO
+            
             -- Update user's last login
             UPDATE Users
             SET LastLoginDate = GETDATE()
             WHERE UserID = @UserID;
-GO
         END
         ELSE
         BEGIN
@@ -322,7 +299,7 @@ GO
             SELECT @UserID = UserID 
             FROM Users 
             WHERE Email = @Email;
-GO
+            
             -- Create new user if not exists
             IF @UserID IS NULL
             BEGIN
@@ -333,7 +310,6 @@ GO
                     @AvatarURL = @ProfilePictureURL,
                     @IsSocialLogin = 1,
                     @UserID = @UserID OUTPUT;
-GO
             END
             
             -- Add social login
@@ -345,24 +321,20 @@ GO
                 @UserID, @ProviderID, @ProviderKey, @Email, @FirstName, @LastName, 
                 @ProfilePictureURL, @AccessToken, @RefreshToken, @TokenExpiration
             );
-GO
+            
             -- Update user's last login
             UPDATE Users
             SET 
                 LastLoginDate = GETDATE(),
                 AvatarURL = ISNULL(AvatarURL, @ProfilePictureURL)
             WHERE UserID = @UserID;
-GO
         END
         
         COMMIT TRANSACTION;
-GO
     END TRY
     BEGIN CATCH
         ROLLBACK TRANSACTION;
-GO
         THROW;
-GO
     END CATCH
 END;
 GO
@@ -373,7 +345,7 @@ CREATE PROCEDURE sp_User_GetSocialLogins
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     SELECT 
         usl.UserSocialLoginID,
         slp.ProviderName,
@@ -388,7 +360,6 @@ GO
         INNER JOIN SocialLoginProviders slp ON usl.ProviderID = slp.ProviderID
     WHERE 
         usl.UserID = @UserID;
-GO
 END;
 GO
 
@@ -399,44 +370,37 @@ CREATE PROCEDURE sp_UserSocialLogin_Unlink
 AS
 BEGIN
     SET NOCOUNT ON;
-GO
+
     DECLARE @ProviderID INT;
-GO
+    
     -- Get provider ID
     SELECT @ProviderID = ProviderID 
     FROM SocialLoginProviders 
     WHERE ProviderName = @ProviderName;
-GO
+    
     IF @ProviderID IS NULL
     BEGIN
         RAISERROR('Social login provider not supported.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Check if user has other login methods
     DECLARE @PasswordHash NVARCHAR(255);
-GO
     DECLARE @SocialLoginCount INT;
-GO
+    
     SELECT @PasswordHash = PasswordHash FROM Users WHERE UserID = @UserID;
-GO
+    
     SELECT @SocialLoginCount = COUNT(*) FROM UserSocialLogins WHERE UserID = @UserID;
-GO
+    
     -- User must have at least one login method
     IF @PasswordHash IS NULL AND @SocialLoginCount <= 1
     BEGIN
         RAISERROR('Cannot unlink the only login method. Please set a password first.', 16, 1);
-GO
         RETURN;
-GO
     END
     
     -- Remove social login
     DELETE FROM UserSocialLogins 
     WHERE UserID = @UserID AND ProviderID = @ProviderID;
-GO
 END;
 GO
-
