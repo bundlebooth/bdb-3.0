@@ -4779,4 +4779,5 @@ Database Documentation:
    - Flexible pricing and availability system
 
 For detailed documentation of each table, column, and stored procedure, 
-refer
+refer to the database schema diagrams and data dictionary.
+*/
