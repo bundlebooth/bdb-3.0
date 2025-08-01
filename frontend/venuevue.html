@@ -1156,21 +1156,25 @@
         return true;
     });
     
-    // Handle location filter separately
+    // Handle location filter
+    let locationMessage = '';
     if (useCurrentLocation && state.userLocation && within50Miles) {
         // For demo purposes, we'll simulate nearby venues by filtering the first few
         const nearbyVenues = filtered.slice(0, 3); // Show first 3 as "nearby"
         
         if (nearbyVenues.length > 0) {
             filtered = nearbyVenues;
-            resultsCount.textContent = `${filtered.length} venues available near you`;
+            locationMessage = `${filtered.length} venues available near you`;
         } else {
-            // If no nearby venues, keep all filtered venues but show message
-            resultsCount.textContent = "No venues near you. Showing all available venues.";
+            // If no nearby venues, show ALL venues that match other filters
+            locationMessage = "No venues near you. Showing all available venues.";
         }
+    } else {
+        locationMessage = `${filtered.length} venues available`;
     }
     
     state.filteredVenues = filtered;
+    resultsCount.textContent = locationMessage;
     
     // Apply sorting
     sortVenues(false);
