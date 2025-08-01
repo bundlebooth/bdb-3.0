@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <title>VenueVue | Modern Wedding Venue Finder</title>
     <style>
         :root {
@@ -1053,9 +1054,11 @@
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                         <button class="btn btn-outline" id="google-login" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="20" height="20">
                             <span>Continue with Google</span>
                         </button>
                         <button class="btn btn-outline" id="facebook-login" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" width="20" height="20">
                             <span>Continue with Facebook</span>
                         </button>
                     </div>
@@ -1096,6 +1099,19 @@
 
     <!-- Google Maps API -->
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places&v=weekly" defer></script>
+
+    <!-- Facebook SDK -->
+    <script>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId: 'YOUR_FACEBOOK_APP_ID',  // Replace with your actual Facebook App ID
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        });
+      };
+    </script>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -1505,27 +1521,29 @@
                     });
                 });
                 
-                // Social login handlers
+                // Google Login Handler
                 googleLoginBtn.addEventListener('click', () => {
-                    // In a real app, you would implement Google OAuth here
-                    alert('In a real app, this would redirect to Google login');
-                    // For demo, simulate login with Google
-                    simulateLogin({
-                        name: 'Google User',
-                        email: 'googleuser@example.com',
-                        avatar: 'G'
+                    google.accounts.id.initialize({
+                        client_id: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com', // Replace with your actual Google Client ID
+                        callback: handleGoogleSignIn
                     });
+                    google.accounts.id.prompt();
                 });
-                
+
+                // Facebook Login Handler
                 facebookLoginBtn.addEventListener('click', () => {
-                    // In a real app, you would implement Facebook OAuth here
-                    alert('In a real app, this would redirect to Facebook login');
-                    // For demo, simulate login with Facebook
-                    simulateLogin({
-                        name: 'Facebook User',
-                        email: 'fbuser@example.com',
-                        avatar: 'F'
-                    });
+                    FB.login(function(response) {
+                        if (response.authResponse) {
+                            FB.api('/me', {fields: 'name,email'}, function(response) {
+                                const user = {
+                                    name: response.name,
+                                    email: response.email,
+                                    avatar: response.name[0].toUpperCase()
+                                };
+                                simulateLogin(user);
+                            });
+                        }
+                    }, {scope: 'public_profile,email'});
                 });
                 
                 // Logout handler
@@ -1952,6 +1970,27 @@
                 });
             }
             
+            // Handle Google Sign-In
+            function handleGoogleSignIn(response) {
+                const responsePayload = decodeJWT(response.credential);
+                const user = {
+                    name: responsePayload.name,
+                    email: responsePayload.email,
+                    avatar: responsePayload.given_name[0].toUpperCase()
+                };
+                simulateLogin(user);
+            }
+
+            // Decode JWT token
+            function decodeJWT(token) {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            }
+
             // Toggle venue favorite status
             function toggleFavorite(venueId) {
                 const index = state.favorites.indexOf(venueId);
@@ -2093,6 +2132,7 @@
             }
             
             // Render services for a venue
+           // Render services for a venue
             function renderServices(services) {
                 return services.map(category => `
                     <div class="service-category">
