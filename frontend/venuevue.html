@@ -286,16 +286,18 @@
             box-shadow: var(--shadow);
         }
         
+        .map-view-container {
+            display: none;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
         .map-container {
-            height: 250px;
+            height: 400px;
             background-color: white;
             border-radius: var(--radius);
-            margin-bottom: 1.5rem;
             border: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-light);
             position: relative;
             overflow: hidden;
         }
@@ -326,6 +328,12 @@
             box-shadow: var(--shadow);
             cursor: pointer;
             border: 1px solid var(--border);
+        }
+        
+        .map-venue-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
         }
         
         .venue-grid {
@@ -707,6 +715,30 @@
             animation: fadeIn 0.3s;
         }
 
+        /* Location permission modal */
+        .location-permission {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1002;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .location-content {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--radius);
+            max-width: 500px;
+            width: 90%;
+            animation: fadeIn 0.3s;
+            text-align: center;
+        }
+
         /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -773,7 +805,7 @@
                 <input type="text" placeholder="City or ZIP code" class="search-input" id="location-input" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;">
                 <div class="filter-group">
                     <div class="filter-option">
-                        <input type="checkbox" id="current-location" checked>
+                        <input type="checkbox" id="current-location">
                         <label for="current-location">Use my location</label>
                     </div>
                     <div class="filter-option">
@@ -875,16 +907,21 @@
                         <option value="price-low">Price: Low to High</option>
                         <option value="price-high">Price: High to Low</option>
                         <option value="popular">Most Popular</option>
+                        <option value="nearest">Nearest to Me</option>
                     </select>
                 </div>
             </div>
             
-            <div class="map-container" id="map-container" style="display: none;">
-                <div id="map"></div>
-                <div class="map-controls">
-                    <button class="map-btn" id="zoom-in">+</button>
-                    <button class="map-btn" id="zoom-out">-</button>
+            <div class="map-view-container" id="map-view-container">
+                <div class="map-container">
+                    <div id="map"></div>
+                    <div class="map-controls">
+                        <button class="map-btn" id="zoom-in">+</button>
+                        <button class="map-btn" id="zoom-out">-</button>
+                        <button class="map-btn" id="locate-me">📍</button>
+                    </div>
                 </div>
+                <div class="map-venue-list" id="map-venue-list"></div>
             </div>
             
             <div class="venue-grid" id="venue-grid">
@@ -927,8 +964,20 @@
         </div>
     </div>
 
+    <!-- Location Permission Modal -->
+    <div id="location-permission" class="location-permission" style="display: none;">
+        <div class="location-content">
+            <h3>Find Venues Near You</h3>
+            <p>VenueVue would like to access your location to show venues near you.</p>
+            <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
+                <button class="btn btn-outline" id="deny-location">Not Now</button>
+                <button class="btn btn-primary" id="allow-location">Allow</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&callback=initMap&libraries=places&v=weekly" defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places&v=weekly" defer></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -936,10 +985,12 @@
             const modal = document.getElementById('booking-modal');
             const modalBody = document.querySelector('.modal-body');
             const confirmationModal = document.getElementById('confirmation-modal');
+            const locationPermissionModal = document.getElementById('location-permission');
             const venueGrid = document.getElementById('venue-grid');
+            const mapVenueList = document.getElementById('map-venue-list');
             const resultsTitle = document.querySelector('.results-title');
             const resultsCount = document.querySelector('.results-count');
-            const mapContainer = document.getElementById('map-container');
+            const mapViewContainer = document.getElementById('map-view-container');
             const listViewBtn = document.getElementById('list-view');
             const mapViewBtn = document.getElementById('map-view');
             const searchInput = document.getElementById('search-input');
@@ -952,6 +1003,10 @@
             const pagination = document.getElementById('pagination');
             const prevPageBtn = document.getElementById('prev-page');
             const nextPageBtn = document.getElementById('next-page');
+            const locateMeBtn = document.getElementById('locate-me');
+            const allowLocationBtn = document.getElementById('allow-location');
+            const denyLocationBtn = document.getElementById('deny-location');
+            const currentLocationCheckbox = document.getElementById('current-location');
             
             // App state
             let state = {
@@ -963,6 +1018,7 @@
                 map: null,
                 markers: [],
                 currentView: 'list',
+                userLocation: null,
                 filters: {
                     location: '',
                     types: ['hotel', 'garden'],
@@ -986,7 +1042,15 @@
                     
                     const data = await response.json();
                     if (data && data.venues) {
-                        state.venues = data.venues;
+                        // Add coordinates to venues (for demo purposes)
+                        state.venues = data.venues.map(venue => ({
+                            ...venue,
+                            coordinates: {
+                                lat: getRandomLat(),
+                                lng: getRandomLng()
+                            }
+                        }));
+                        
                         state.filteredVenues = [...state.venues];
                         
                         // Update UI
@@ -994,7 +1058,10 @@
                         renderVenues();
                         setupEventListeners();
                         
-                        // Initialize map (will be called by Google Maps API callback)
+                        // Show location permission modal if current location checkbox is checked
+                        if (currentLocationCheckbox.checked) {
+                            requestLocationPermission();
+                        }
                     } else {
                         showError("No venue data found");
                     }
@@ -1008,9 +1075,10 @@
             function initMap() {
                 if (state.filteredVenues.length === 0) return;
                 
-                // Default to first venue's location
-                const firstVenue = state.filteredVenues[0];
-                const center = { lat: getRandomLat(), lng: getRandomLng() };
+                // Default to first venue's location or user location if available
+                const center = state.userLocation || 
+                               { lat: state.filteredVenues[0].coordinates.lat, 
+                                 lng: state.filteredVenues[0].coordinates.lng };
                 
                 // Create map
                 state.map = new google.maps.Map(document.getElementById("map"), {
@@ -1028,6 +1096,11 @@
                 
                 // Add markers
                 updateMapMarkers();
+                
+                // Center map on user location if available
+                if (state.userLocation) {
+                    centerMapOnUser();
+                }
             }
             
             // Helper function to generate random coordinates (for demo)
@@ -1045,7 +1118,7 @@
                 // Add new markers
                 state.filteredVenues.forEach(venue => {
                     const marker = new google.maps.Marker({
-                        position: { lat: getRandomLat(), lng: getRandomLng() }, // Random location for demo
+                        position: venue.coordinates,
                         map: state.map,
                         title: venue.name,
                         icon: {
@@ -1068,6 +1141,30 @@
                     state.markers.forEach(marker => bounds.extend(marker.getPosition()));
                     state.map.fitBounds(bounds);
                 }
+            }
+            
+            // Center map on user location
+            function centerMapOnUser() {
+                if (state.map && state.userLocation) {
+                    state.map.setCenter(state.userLocation);
+                    state.map.setZoom(12);
+                    
+                    // Add user location marker
+                    new google.maps.Marker({
+                        position: state.userLocation,
+                        map: state.map,
+                        title: "Your Location",
+                        icon: {
+                            url: `https://maps.google.com/mapfiles/ms/icons/blue-dot.png`,
+                            scaledSize: new google.maps.Size(32, 32)
+                        }
+                    });
+                }
+            }
+            
+            // Request location permission
+            function requestLocationPermission() {
+                locationPermissionModal.style.display = 'flex';
             }
             
             // Setup all event listeners
@@ -1093,6 +1190,16 @@
                 // Filter inputs
                 document.querySelectorAll('.filter-section input').forEach(input => {
                     input.addEventListener('change', filterVenues);
+                });
+                
+                // Current location checkbox
+                currentLocationCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        requestLocationPermission();
+                    } else {
+                        state.userLocation = null;
+                        filterVenues();
+                    }
                 });
                 
                 // Popular filters
@@ -1155,6 +1262,25 @@
                     }
                 });
                 
+                locateMeBtn?.addEventListener('click', () => {
+                    if (state.userLocation) {
+                        centerMapOnUser();
+                    } else {
+                        requestLocationPermission();
+                    }
+                });
+                
+                // Location permission
+                allowLocationBtn.addEventListener('click', () => {
+                    locationPermissionModal.style.display = 'none';
+                    getLocation();
+                });
+                
+                denyLocationBtn.addEventListener('click', () => {
+                    locationPermissionModal.style.display = 'none';
+                    currentLocationCheckbox.checked = false;
+                });
+                
                 // Modal close
                 document.querySelector('.close-modal').addEventListener('click', closeBookingModal);
                 modal.addEventListener('click', (e) => e.target === modal && closeBookingModal());
@@ -1165,18 +1291,49 @@
                 });
             }
             
+            // Get user location
+            function getLocation() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            state.userLocation = {
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            };
+                            
+                            // Update filters
+                            document.getElementById('within50').checked = true;
+                            filterVenues();
+                            
+                            // Update map if in map view
+                            if (state.currentView === 'map' && state.map) {
+                                centerMapOnUser();
+                            }
+                        },
+                        (error) => {
+                            console.error("Error getting location:", error);
+                            alert("Could not get your location. Please try again or enter a location manually.");
+                            currentLocationCheckbox.checked = false;
+                        }
+                    );
+                } else {
+                    alert("Geolocation is not supported by this browser.");
+                    currentLocationCheckbox.checked = false;
+                }
+            }
+            
             // Toggle between list and map views
             function toggleView(view) {
                 state.currentView = view;
                 
                 if (view === 'list') {
-                    mapContainer.style.display = 'none';
+                    mapViewContainer.style.display = 'none';
                     venueGrid.style.display = 'grid';
                     listViewBtn.classList.add('active');
                     mapViewBtn.classList.remove('active');
                 } else {
                     venueGrid.style.display = 'none';
-                    mapContainer.style.display = 'block';
+                    mapViewContainer.style.display = 'flex';
                     mapViewBtn.classList.add('active');
                     listViewBtn.classList.remove('active');
                     
@@ -1184,6 +1341,9 @@
                     if (!state.map) {
                         initMap();
                     }
+                    
+                    // Render venue list for map view
+                    renderMapVenueList();
                 }
             }
             
@@ -1200,42 +1360,68 @@
                 
                 const priceRange = document.getElementById('price-slider').value;
                 const guestSize = document.querySelector('input[name="guests"]:checked').id;
+                const useCurrentLocation = document.getElementById('current-location').checked;
+                const within50Miles = document.getElementById('within50').checked;
                 
                 // Apply filters
                 state.filteredVenues = state.venues.filter(venue => {
-                    // Search term
-                    if (searchTerm && !venue.name.toLowerCase().includes(searchTerm) && 
-                        !venue.location.toLowerCase().includes(searchTerm)) {
-                        return false;
+                    // Search term (venue name, location, or services)
+                    if (searchTerm) {
+                        const nameMatch = venue.name.toLowerCase().includes(searchTerm);
+                        const locationMatch = venue.location.toLowerCase().includes(searchTerm);
+                        let serviceMatch = false;
+                        
+                        // Check services if they exist
+                        if (venue.services) {
+                            serviceMatch = venue.services.some(category => 
+                                category.services.some(service => 
+                                    service.name.toLowerCase().includes(searchTerm) || 
+                                    service.description.toLowerCase().includes(searchTerm)
+                                );
+                        }
+                        
+                        if (!nameMatch && !locationMatch && !serviceMatch) {
+                            return false;
+                        }
                     }
                     
-                    // Venue type (simplified for demo)
+                    // Venue type
                     const venueType = venue.type.toLowerCase();
                     if (selectedTypes.length > 0 && !selectedTypes.some(type => venueType.includes(type))) {
                         return false;
                     }
                     
-                    // Price range (simplified for demo)
+                    // Price range
                     const price = parseInt(venue.price.replace(/\D/g, ''));
                     if (priceRange < 33 && price > 15000) return false;
                     if (priceRange > 66 && price < 25000) return false;
                     
-                    // Guest size (simplified for demo)
+                    // Guest size
                     const guests = venue.capacity.split('-').map(Number);
                     const maxGuests = guests[1] || guests[0];
                     if (guestSize === 'small' && maxGuests > 50) return false;
                     if (guestSize === 'medium' && (maxGuests <= 50 || maxGuests > 150)) return false;
                     if (guestSize === 'large' && maxGuests <= 150) return false;
                     
-                    // Popular filters (simplified for demo)
+                    // Popular filters
                     if (state.filters.popular.length > 0) {
                         if (state.filters.popular.includes('waterfront') && !venue.type.toLowerCase().includes('ocean')) return false;
                         if (state.filters.popular.includes('historic') && !venue.type.toLowerCase().includes('historic')) return false;
                         if (state.filters.popular.includes('rooftop') && !venue.type.toLowerCase().includes('rooftop')) return false;
                     }
                     
+                    // Location filter
+                    if (useCurrentLocation && state.userLocation && within50Miles) {
+                        // In a real app, we would calculate distance using Haversine formula
+                        // For demo, we'll just randomly filter some venues when this is enabled
+                        if (Math.random() > 0.7) return false;
+                    }
+                    
                     return true;
                 });
+                
+                // Apply sorting
+                sortVenues(false);
                 
                 // Reset to first page
                 state.currentPage = 1;
@@ -1243,11 +1429,16 @@
                 // Update UI
                 updateMetadata({ total: state.filteredVenues.length });
                 renderVenues();
-                updateMapMarkers();
+                
+                // Update map if in map view
+                if (state.currentView === 'map') {
+                    updateMapMarkers();
+                    renderMapVenueList();
+                }
             }
             
             // Sort venues
-            function sortVenues() {
+            function sortVenues(shouldRender = true) {
                 const sortValue = sortSelect.value;
                 
                 switch(sortValue) {
@@ -1272,12 +1463,25 @@
                             return ratingB - ratingA;
                         });
                         break;
+                    case 'nearest':
+                        if (state.userLocation) {
+                            // In a real app, we would calculate distance properly
+                            // For demo, we'll just shuffle the array
+                            state.filteredVenues.sort(() => Math.random() - 0.5);
+                        }
+                        break;
                     default: // recommended
                         // Default sorting (could be by relevance, etc.)
                         break;
                 }
                 
-                renderVenues();
+                if (shouldRender) {
+                    renderVenues();
+                    if (state.currentView === 'map') {
+                        updateMapMarkers();
+                        renderMapVenueList();
+                    }
+                }
             }
             
             // Reset specific filter
@@ -1285,7 +1489,9 @@
                 switch(filterType) {
                     case 'location':
                         document.getElementById('location-input').value = '';
-                        document.getElementById('current-location').checked = true;
+                        document.getElementById('current-location').checked = false;
+                        document.getElementById('within50').checked = false;
+                        state.userLocation = null;
                         break;
                     case 'type':
                         document.querySelectorAll('.filter-section input[type="checkbox"]').forEach(checkbox => {
@@ -1376,6 +1582,74 @@
                 });
                 
                 updatePagination();
+            }
+            
+            // Render venue list for map view
+            function renderMapVenueList() {
+                if (!state.filteredVenues || state.filteredVenues.length === 0) {
+                    mapVenueList.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">No venues match your filters</div>';
+                    return;
+                }
+                
+                // Show all venues in map view (no pagination)
+                mapVenueList.innerHTML = '';
+                
+                state.filteredVenues.forEach(venue => {
+                    const isFavorite = state.favorites.includes(venue.id);
+                    
+                    const venueCard = document.createElement('div');
+                    venueCard.className = 'venue-card';
+                    venueCard.innerHTML = `
+                        <div class="venue-image">
+                            ${venue.image || '🏨'}
+                            ${venue.badge ? `<div class="venue-badge">${venue.badge}</div>` : ''}
+                            <div class="venue-favorite ${isFavorite ? 'active' : ''}" data-id="${venue.id}">❤</div>
+                        </div>
+                        <div class="venue-details">
+                            <h3 class="venue-name">${venue.name}</h3>
+                            <div class="venue-location">
+                                📍 ${venue.location}
+                            </div>
+                            <div class="venue-features">
+                                <div class="feature">
+                                    <span class="feature-icon">👫</span>
+                                    <span>${venue.capacity}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">⭐</span>
+                                    <span>${venue.rating}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">${getTypeIcon(venue.type)}</span>
+                                    <span>${venue.type}</span>
+                                </div>
+                            </div>
+                            <div class="venue-footer">
+                                <div class="venue-price">${venue.price} <span>starting</span></div>
+                                <div class="venue-actions">
+                                    <button class="btn btn-outline save-btn" data-id="${venue.id}">Save</button>
+                                    <button class="btn btn-primary view-btn" data-id="${venue.id}">View</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    mapVenueList.appendChild(venueCard);
+                    
+                    // Add event listeners to buttons
+                    venueCard.querySelector('.view-btn').addEventListener('click', () => {
+                        openBookingModal(venue);
+                    });
+                    
+                    venueCard.querySelector('.save-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleFavorite(venue.id);
+                    });
+                    
+                    venueCard.querySelector('.venue-favorite').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        toggleFavorite(venue.id);
+                    });
+                });
             }
             
             // Toggle venue favorite status
@@ -1487,6 +1761,14 @@
                     </div>
                 `;
                 
+                // Add event listeners to service buttons
+                document.querySelectorAll('.add-service-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        this.classList.toggle('active');
+                        this.textContent = this.classList.contains('active') ? 'Added' : 'Add';
+                    });
+                });
+                
                 modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
                 
@@ -1544,10 +1826,8 @@
                 
                 // Get selected services
                 const selectedServices = [];
-                document.querySelectorAll('.add-service-btn').forEach(btn => {
-                    if (btn.classList.contains('active')) {
-                        selectedServices.push(btn.dataset.service);
-                    }
+                document.querySelectorAll('.add-service-btn.active').forEach(btn => {
+                    selectedServices.push(btn.dataset.service);
                 });
                 
                 // Update confirmation modal
