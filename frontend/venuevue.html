@@ -1410,103 +1410,107 @@
             
             // Filter venues based on current filters
             function filterVenues() {
-                // Get search term
-                const searchTerm = searchInput.value.toLowerCase();
-                
-                // Get filter values
-                const selectedTypes = [];
-                document.querySelectorAll('.filter-section input[type="checkbox"]:checked').forEach(checkbox => {
-                    selectedTypes.push(checkbox.id);
-                });
-                
-                const priceRange = document.getElementById('price-slider').value;
-                const guestSize = document.querySelector('input[name="guests"]:checked').id;
-                const useCurrentLocation = document.getElementById('current-location').checked;
-                const within50Miles = document.getElementById('within50').checked;
-                
-                // Apply filters
-                state.filteredVenues = state.venues.filter(venue => {
-                    // Search term (venue name, location, or services)
-                    if (searchTerm) {
-                        const nameMatch = venue.name.toLowerCase().includes(searchTerm);
-                        const locationMatch = venue.location.toLowerCase().includes(searchTerm);
-                        let serviceMatch = false;
-                        
-                        // Check services if they exist
-                        if (venue.services) {
-                            serviceMatch = venue.services.some(category => 
-                                category.services.some(service => 
-                                    service.name.toLowerCase().includes(searchTerm) || 
-                                    service.description.toLowerCase().includes(searchTerm))
-                                );
-                        }
-                        
-                        if (!nameMatch && !locationMatch && !serviceMatch) {
-                            return false;
-                        }
-                    }
-                    
-                    // Venue type
-                    const venueType = venue.type.toLowerCase();
-                    if (selectedTypes.length > 0 && !selectedTypes.some(type => venueType.includes(type))) {
-                        return false;
-                    }
-                    
-                    // Price range
-                    const price = parseInt(venue.price.replace(/\D/g, ''));
-                    if (priceRange < 33 && price > 15000) return false;
-                    if (priceRange > 66 && price < 25000) return false;
-                    
-                    // Guest size
-                    const guests = venue.capacity.split('-').map(Number);
-                    const maxGuests = guests[1] || guests[0];
-                    if (guestSize === 'small' && maxGuests > 50) return false;
-                    if (guestSize === 'medium' && (maxGuests <= 50 || maxGuests > 150)) return false;
-                    if (guestSize === 'large' && maxGuests <= 150) return false;
-                    
-                    // Popular filters
-                    if (state.filters.popular.length > 0) {
-                        if (state.filters.popular.includes('waterfront') && !venue.type.toLowerCase().includes('ocean')) return false;
-                        if (state.filters.popular.includes('historic') && !venue.type.toLowerCase().includes('historic')) return false;
-                        if (state.filters.popular.includes('rooftop') && !venue.type.toLowerCase().includes('rooftop')) return false;
-                    }
-                    
-                    // Location filter
-                    if (useCurrentLocation && state.userLocation && within50Miles) {
-                        // Sort venues by distance (simulated for demo)
-                        state.filteredVenues.sort((a, b) => {
-                            // In a real app, calculate actual distance using Haversine formula
-                            const distA = Math.abs(a.coordinates.lat - state.userLocation.lat) + 
-                                          Math.abs(a.coordinates.lng - state.userLocation.lng);
-                            const distB = Math.abs(b.coordinates.lat - state.userLocation.lat) + 
-                                          Math.abs(b.coordinates.lng - state.userLocation.lng);
-                            return distA - distB;
-                        });
-                        
-                        // Only show the closest 10 venues for demo purposes
-                        // In a real app, you'd filter by actual distance
-                        state.filteredVenues = state.filteredVenues.slice(0, 10);
-                    }
-                    
-                    return true;
-                });
-                
-                // Apply sorting
-                sortVenues(false);
-                
-                // Reset to first page
-                state.currentPage = 1;
-                
-                // Update UI
-                updateMetadata({ total: state.filteredVenues.length });
-                renderVenues();
-                
-                // Update map if in map view
-                if (state.currentView === 'map') {
-                    updateMapMarkers();
-                    renderMapVenueList();
-                }
+    // Get search term
+    const searchTerm = searchInput.value.toLowerCase();
+    
+    // Get filter values
+    const selectedTypes = [];
+    document.querySelectorAll('.filter-section input[type="checkbox"]:checked').forEach(checkbox => {
+        if (checkbox.id !== 'current-location' && checkbox.id !== 'within50') {
+            selectedTypes.push(checkbox.id);
+        }
+    });
+    
+    const priceRange = document.getElementById('price-slider').value;
+    const guestSize = document.querySelector('input[name="guests"]:checked').id;
+    const useCurrentLocation = document.getElementById('current-location').checked;
+    const within50Miles = document.getElementById('within50').checked;
+    
+    // First apply all filters EXCEPT location
+    let filtered = state.venues.filter(venue => {
+        // Search term (venue name, location, or services)
+        if (searchTerm) {
+            const nameMatch = venue.name.toLowerCase().includes(searchTerm);
+            const locationMatch = venue.location.toLowerCase().includes(searchTerm);
+            let serviceMatch = false;
+            
+            if (venue.services) {
+                serviceMatch = venue.services.some(category => 
+                    category.services.some(service => 
+                        service.name.toLowerCase().includes(searchTerm) || 
+                        service.description.toLowerCase().includes(searchTerm))
+                );
             }
+            
+            if (!nameMatch && !locationMatch && !serviceMatch) {
+                return false;
+            }
+        }
+        
+        // Venue type
+        const venueType = venue.type.toLowerCase();
+        if (selectedTypes.length > 0 && !selectedTypes.some(type => venueType.includes(type))) {
+            return false;
+        }
+        
+        // Price range
+        const price = parseInt(venue.price.replace(/\D/g, ''));
+        if (priceRange < 33 && price > 15000) return false;
+        if (priceRange > 66 && price < 25000) return false;
+        
+        // Guest size
+        const guests = venue.capacity.split('-').map(Number);
+        const maxGuests = guests[1] || guests[0];
+        if (guestSize === 'small' && maxGuests > 50) return false;
+        if (guestSize === 'medium' && (maxGuests <= 50 || maxGuests > 150)) return false;
+        if (guestSize === 'large' && maxGuests <= 150) return false;
+        
+        // Popular filters
+        if (state.filters.popular.length > 0) {
+            if (state.filters.popular.includes('waterfront') && !venue.type.toLowerCase().includes('ocean')) return false;
+            if (state.filters.popular.includes('historic') && !venue.type.toLowerCase().includes('historic')) return false;
+            if (state.filters.popular.includes('rooftop') && !venue.type.toLowerCase().includes('rooftop')) return false;
+        }
+        
+        return true;
+    });
+    
+    // Handle location filter
+    let locationMessage = '';
+    if (useCurrentLocation && state.userLocation && within50Miles) {
+        // For demo purposes, we'll simulate nearby venues by filtering the first few
+        const nearbyVenues = filtered.slice(0, 3); // Show first 3 as "nearby"
+        
+        if (nearbyVenues.length > 0) {
+            filtered = nearbyVenues;
+            locationMessage = `${filtered.length} venues available near you`;
+        } else {
+            // If no nearby venues, show ALL venues that match other filters
+            locationMessage = "No venues near you. Showing all available venues.";
+        }
+    } else {
+        locationMessage = `${filtered.length} venues available`;
+    }
+    
+    state.filteredVenues = filtered;
+    resultsCount.textContent = locationMessage;
+    
+    // Apply sorting
+    sortVenues(false);
+    
+    // Reset to first page
+    state.currentPage = 1;
+    
+    // Update UI
+    updateMetadata({ total: state.filteredVenues.length });
+    renderVenues();
+    
+    // Update map if in map view
+    if (state.currentView === 'map') {
+        updateMapMarkers();
+        renderMapVenueList();
+    }
+}
             
             // Sort venues
             function sortVenues(shouldRender = true) {
