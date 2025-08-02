@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const { poolPromise } = require('./config/db');
+const indexRouter = require('./routes/index');
 
 const app = express();
 
