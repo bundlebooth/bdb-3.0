@@ -100,21 +100,63 @@ router.post('/login', async (req, res) => {
 });
 
 // Get user profile
+// Get user profile
 router.get('/:id', authenticate, async (req, res) => {
   try {
+    // Validate user ID parameter
+    const userId = parseInt(req.params.id);
+    if (!userId || userId <= 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid user ID' 
+      });
+    }
+
+    // Verify the authenticated user can access this profile
+    if (userId !== req.userId) {
+      return res.status(403).json({ 
+        success: false,
+        message: 'Unauthorized to access this profile' 
+      });
+    }
+
     const pool = await poolPromise;
     const result = await pool.request()
-      .input('UserID', sql.Int, req.params.id)
+      .input('UserID', sql.Int, userId)
       .execute('sp_User_GetProfile');
       
     if (result.recordset.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
     }
     
-    res.json(result.recordset[0]);
+    // Sanitize user data before sending (remove sensitive fields)
+    const userProfile = result.recordset[0];
+    const { PasswordHash, ResetToken, ...safeUserData } = userProfile;
+    
+    res.json({
+      success: true,
+      data: safeUserData
+    });
+    
   } catch (err) {
     console.error('Profile error:', err);
-    res.status(500).json({ message: 'Failed to fetch profile' });
+    
+    // Handle specific database errors
+    if (err.name === 'ConnectionError') {
+      return res.status(503).json({ 
+        success: false,
+        message: 'Service unavailable' 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch profile',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 });
 
