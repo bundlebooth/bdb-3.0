@@ -1,8 +1,14 @@
+-- VenueVue Database Setup for Microsoft SQL Server
+
 -- Database creation (uncomment if needed)
 -- CREATE DATABASE VenueVue;
 -- GO
 -- USE VenueVue;
 -- GO
+
+-- ======================
+-- TABLES
+-- ======================
 
 -- Users Table
 CREATE TABLE Users (
@@ -89,7 +95,7 @@ CREATE TABLE Bookings (
     VendorID INT FOREIGN KEY REFERENCES Vendors(VendorID),
     BookingDate DATETIME NOT NULL,
     EventDate DATETIME NOT NULL,
-    Status NVARCHAR(20) DEFAULT 'pending', -- 'pending', 'confirmed', 'cancelled', 'completed'
+    Status NVARCHAR(20) DEFAULT 'pending',
     TotalAmount DECIMAL(10, 2),
     Notes NVARCHAR(MAX),
     CreatedAt DATETIME DEFAULT GETDATE(),
@@ -133,72 +139,7 @@ CREATE TABLE Notifications (
 GO
 
 -- ======================
--- VIEWS
--- ======================
-
--- Vendor Details View
-CREATE VIEW vw_VendorDetails AS
-SELECT 
-    v.VendorID,
-    v.Name,
-    v.Description,
-    v.Category,
-    v.Location,
-    v.Latitude,
-    v.Longitude,
-    v.PriceLevel,
-    v.Rating,
-    v.ReviewCount,
-    v.IsPremium,
-    v.IsEcoFriendly,
-    v.IsAwardWinning,
-    u.UserID AS OwnerID,
-    u.Name AS OwnerName,
-    (SELECT COUNT(*) FROM Favorites f WHERE f.VendorID = v.VendorID) AS FavoriteCount,
-    (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorID = v.VendorID AND IsPrimary = 1) AS PrimaryImage
-FROM Vendors v
-JOIN Users u ON v.UserID = u.UserID
-WHERE v.IsActive = 1;
-GO
-
--- Vendor Services View
-CREATE VIEW vw_VendorServices AS
-SELECT 
-    s.ServiceID,
-    s.Name AS ServiceName,
-    s.Description,
-    s.Price,
-    s.DurationMinutes,
-    sc.CategoryID,
-    sc.Name AS CategoryName,
-    sc.VendorID,
-    v.Name AS VendorName,
-    v.Category AS VendorCategory
-FROM Services s
-JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
-JOIN Vendors v ON sc.VendorID = v.VendorID
-WHERE s.IsActive = 1 AND v.IsActive = 1;
-GO
-
--- User Favorites View
-CREATE VIEW vw_UserFavorites AS
-SELECT 
-    f.FavoriteID,
-    f.UserID,
-    f.VendorID,
-    v.Name AS VendorName,
-    v.Category AS VendorCategory,
-    v.Location,
-    v.Rating,
-    v.PriceLevel,
-    (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorID = v.VendorID AND IsPrimary = 1) AS PrimaryImage
-FROM Favorites f
-JOIN Vendors v ON f.VendorID = v.VendorID
-WHERE v.IsActive = 1;
-GO
-
--- ======================
--- FUNCTIONS
+-- FUNCTIONS (must be created before procedures that use them)
 -- ======================
 
 -- Calculate distance between two coordinates (simplified)
@@ -206,7 +147,7 @@ CREATE FUNCTION dbo.CalculateDistance(
     @Lat1 DECIMAL(10, 8),
     @Lng1 DECIMAL(11, 8),
     @Lat2 DECIMAL(10, 8),
-    @Lng2 DECIMAL(11, 8)
+    @Lng2 DECIMAL(11, 8))
 RETURNS DECIMAL(10, 2)
 AS
 BEGIN
@@ -312,6 +253,71 @@ BEGIN
         AND RowNum > @StartRow AND RowNum <= @EndRow
     ORDER BY RowNum
 END;
+GO
+
+-- ======================
+-- VIEWS
+-- ======================
+
+-- Vendor Details View
+CREATE VIEW vw_VendorDetails AS
+SELECT 
+    v.VendorID,
+    v.Name,
+    v.Description,
+    v.Category,
+    v.Location,
+    v.Latitude,
+    v.Longitude,
+    v.PriceLevel,
+    v.Rating,
+    v.ReviewCount,
+    v.IsPremium,
+    v.IsEcoFriendly,
+    v.IsAwardWinning,
+    u.UserID AS OwnerID,
+    u.Name AS OwnerName,
+    (SELECT COUNT(*) FROM Favorites f WHERE f.VendorID = v.VendorID) AS FavoriteCount,
+    (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorID = v.VendorID AND IsPrimary = 1) AS PrimaryImage
+FROM Vendors v
+JOIN Users u ON v.UserID = u.UserID
+WHERE v.IsActive = 1;
+GO
+
+-- Vendor Services View
+CREATE VIEW vw_VendorServices AS
+SELECT 
+    s.ServiceID,
+    s.Name AS ServiceName,
+    s.Description,
+    s.Price,
+    s.DurationMinutes,
+    sc.CategoryID,
+    sc.Name AS CategoryName,
+    sc.VendorID,
+    v.Name AS VendorName,
+    v.Category AS VendorCategory
+FROM Services s
+JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+JOIN Vendors v ON sc.VendorID = v.VendorID
+WHERE s.IsActive = 1 AND v.IsActive = 1;
+GO
+
+-- User Favorites View
+CREATE VIEW vw_UserFavorites AS
+SELECT 
+    f.FavoriteID,
+    f.UserID,
+    f.VendorID,
+    v.Name AS VendorName,
+    v.Category AS VendorCategory,
+    v.Location,
+    v.Rating,
+    v.PriceLevel,
+    (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorID = v.VendorID AND IsPrimary = 1) AS PrimaryImage
+FROM Favorites f
+JOIN Vendors v ON f.VendorID = v.VendorID
+WHERE v.IsActive = 1;
 GO
 
 -- ======================
