@@ -1,16 +1,10 @@
 -- VenueVue Database Setup for Microsoft SQL Server
-
--- Database creation (uncomment if needed)
--- CREATE DATABASE VenueVue;
--- GO
--- USE VenueVue;
--- GO
+-- Complete script with simplified search procedure
 
 -- ======================
 -- TABLES
 -- ======================
 
--- Users Table
 CREATE TABLE Users (
     UserID INT PRIMARY KEY IDENTITY(1,1),
     Name NVARCHAR(100) NOT NULL,
@@ -24,7 +18,6 @@ CREATE TABLE Users (
 );
 GO
 
--- Vendors Table
 CREATE TABLE Vendors (
     VendorID INT PRIMARY KEY IDENTITY(1,1),
     UserID INT FOREIGN KEY REFERENCES Users(UserID),
@@ -46,7 +39,6 @@ CREATE TABLE Vendors (
 );
 GO
 
--- VendorImages Table
 CREATE TABLE VendorImages (
     ImageID INT PRIMARY KEY IDENTITY(1,1),
     VendorID INT FOREIGN KEY REFERENCES Vendors(VendorID),
@@ -56,7 +48,6 @@ CREATE TABLE VendorImages (
 );
 GO
 
--- ServiceCategories Table
 CREATE TABLE ServiceCategories (
     CategoryID INT PRIMARY KEY IDENTITY(1,1),
     VendorID INT FOREIGN KEY REFERENCES Vendors(VendorID),
@@ -66,7 +57,6 @@ CREATE TABLE ServiceCategories (
 );
 GO
 
--- Services Table
 CREATE TABLE Services (
     ServiceID INT PRIMARY KEY IDENTITY(1,1),
     CategoryID INT FOREIGN KEY REFERENCES ServiceCategories(CategoryID),
@@ -78,7 +68,6 @@ CREATE TABLE Services (
 );
 GO
 
--- Favorites Table
 CREATE TABLE Favorites (
     FavoriteID INT PRIMARY KEY IDENTITY(1,1),
     UserID INT FOREIGN KEY REFERENCES Users(UserID),
@@ -88,7 +77,6 @@ CREATE TABLE Favorites (
 );
 GO
 
--- Bookings Table
 CREATE TABLE Bookings (
     BookingID INT PRIMARY KEY IDENTITY(1,1),
     UserID INT FOREIGN KEY REFERENCES Users(UserID),
@@ -103,7 +91,6 @@ CREATE TABLE Bookings (
 );
 GO
 
--- BookingServices Table
 CREATE TABLE BookingServices (
     BookingServiceID INT PRIMARY KEY IDENTITY(1,1),
     BookingID INT FOREIGN KEY REFERENCES Bookings(BookingID),
@@ -113,7 +100,6 @@ CREATE TABLE BookingServices (
 );
 GO
 
--- Reviews Table
 CREATE TABLE Reviews (
     ReviewID INT PRIMARY KEY IDENTITY(1,1),
     UserID INT FOREIGN KEY REFERENCES Users(UserID),
@@ -126,7 +112,6 @@ CREATE TABLE Reviews (
 );
 GO
 
--- Notifications Table
 CREATE TABLE Notifications (
     NotificationID INT PRIMARY KEY IDENTITY(1,1),
     UserID INT FOREIGN KEY REFERENCES Users(UserID),
@@ -139,27 +124,9 @@ CREATE TABLE Notifications (
 GO
 
 -- ======================
--- FUNCTIONS (must be created before procedures that use them)
+-- FUNCTIONS
 -- ======================
 
--- Calculate distance between two coordinates (simplified)
-CREATE FUNCTION dbo.CalculateDistance(
-    @Lat1 DECIMAL(10, 8),
-    @Lng1 DECIMAL(11, 8),
-    @Lat2 DECIMAL(10, 8),
-    @Lng2 DECIMAL(11, 8))
-RETURNS DECIMAL(10, 2)
-AS
-BEGIN
-    -- Simplified calculation for demo purposes
-    -- In production, use more accurate formula
-    DECLARE @Distance DECIMAL(10, 2)
-    SET @Distance = SQRT(POWER(@Lat2 - @Lat1, 2) + POWER(@Lng2 - @Lng1, 2)) * 69.0 -- Approx miles
-    RETURN @Distance
-END;
-GO
-
--- Get vendor rating
 CREATE FUNCTION dbo.GetVendorRating(@VendorID INT)
 RETURNS DECIMAL(2, 1)
 AS
@@ -178,8 +145,7 @@ GO
 -- STORED PROCEDURES
 -- ======================
 
--- Update vendor rating
-CREATE PROCEDURE sp_UpdateVendorRating
+CREATE OR ALTER PROCEDURE sp_UpdateVendorRating
     @VendorID INT
 AS
 BEGIN
@@ -200,58 +166,45 @@ BEGIN
 END;
 GO
 
--- Search vendors
-CREATE PROCEDURE sp_SearchVendors
+-- SIMPLIFIED SEARCH PROCEDURE (NO PAGINATION)
+CREATE OR ALTER PROCEDURE sp_SearchVendors
     @SearchTerm NVARCHAR(100) = NULL,
     @Category NVARCHAR(50) = NULL,
     @MinPrice DECIMAL(10, 2) = NULL,
     @MaxPrice DECIMAL(10, 2) = NULL,
-    @Latitude DECIMAL(10, 8) = NULL,
-    @Longitude DECIMAL(11, 8) = NULL,
-    @MaxDistance INT = NULL,
     @IsPremium BIT = NULL,
     @IsEcoFriendly BIT = NULL,
-    @IsAwardWinning BIT = NULL,
-    @PageNumber INT = 1,
-    @PageSize INT = 10
+    @IsAwardWinning BIT = NULL
 AS
 BEGIN
-    DECLARE @StartRow INT = (@PageNumber - 1) * @PageSize
-    DECLARE @EndRow INT = @PageNumber * @PageSize
+    SET NOCOUNT ON;
     
-    SELECT *
-    FROM (
-        SELECT 
-            v.*,
-            u.Name AS OwnerName,
-            (SELECT COUNT(*) FROM Favorites f WHERE f.VendorID = v.VendorID) AS FavoriteCount,
-            (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorID = v.VendorID AND IsPrimary = 1) AS PrimaryImage,
-            CASE 
-                WHEN @Latitude IS NOT NULL AND @Longitude IS NOT NULL 
-                THEN dbo.CalculateDistance(@Latitude, @Longitude, v.Latitude, v.Longitude)
-                ELSE NULL
-            END AS Distance,
-            ROW_NUMBER() OVER (
-                ORDER BY 
-                    CASE WHEN @Latitude IS NOT NULL AND @Longitude IS NOT NULL 
-                         THEN dbo.CalculateDistance(@Latitude, @Longitude, v.Latitude, v.Longitude)
-                         ELSE 0 
-                    END,
-                    v.Rating DESC
-            ) AS RowNum
-        FROM Vendors v
-        JOIN Users u ON v.UserID = u.UserID
-        WHERE v.IsActive = 1
-        AND (@Category IS NULL OR v.Category = @Category)
-        AND (@SearchTerm IS NULL OR v.Name LIKE '%' + @SearchTerm + '%' OR v.Description LIKE '%' + @SearchTerm + '%')
-        AND (@IsPremium IS NULL OR v.IsPremium = @IsPremium)
-        AND (@IsEcoFriendly IS NULL OR v.IsEcoFriendly = @IsEcoFriendly)
-        AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
-    ) AS Temp
-    WHERE 
-        (@MaxDistance IS NULL OR Distance <= @MaxDistance OR Distance IS NULL)
-        AND RowNum > @StartRow AND RowNum <= @EndRow
-    ORDER BY RowNum
+    SELECT 
+        v.VendorID,
+        v.Name,
+        v.Description,
+        v.Category,
+        v.Location,
+        v.Latitude,
+        v.Longitude,
+        v.PriceLevel,
+        v.Rating,
+        v.ReviewCount,
+        v.IsPremium,
+        v.IsEcoFriendly,
+        v.IsAwardWinning,
+        u.Name AS OwnerName,
+        (SELECT COUNT(*) FROM Favorites f WHERE f.VendorID = v.VendorID) AS FavoriteCount,
+        (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorID = v.VendorID AND IsPrimary = 1) AS PrimaryImage
+    FROM Vendors v
+    JOIN Users u ON v.UserID = u.UserID
+    WHERE v.IsActive = 1
+    AND (@Category IS NULL OR v.Category = @Category)
+    AND (@SearchTerm IS NULL OR v.Name LIKE '%' + @SearchTerm + '%' OR v.Description LIKE '%' + @SearchTerm + '%')
+    AND (@IsPremium IS NULL OR v.IsPremium = @IsPremium)
+    AND (@IsEcoFriendly IS NULL OR v.IsEcoFriendly = @IsEcoFriendly)
+    AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
+    ORDER BY v.Name;
 END;
 GO
 
@@ -259,7 +212,6 @@ GO
 -- VIEWS
 -- ======================
 
--- Vendor Details View
 CREATE VIEW vw_VendorDetails AS
 SELECT 
     v.VendorID,
@@ -284,7 +236,6 @@ JOIN Users u ON v.UserID = u.UserID
 WHERE v.IsActive = 1;
 GO
 
--- Vendor Services View
 CREATE VIEW vw_VendorServices AS
 SELECT 
     s.ServiceID,
@@ -303,7 +254,6 @@ JOIN Vendors v ON sc.VendorID = v.VendorID
 WHERE s.IsActive = 1 AND v.IsActive = 1;
 GO
 
--- User Favorites View
 CREATE VIEW vw_UserFavorites AS
 SELECT 
     f.FavoriteID,
@@ -435,4 +385,23 @@ VALUES
 (1, 'Booking Confirmed', 'Your booking with Grand Ballroom has been confirmed', '/bookings/1'),
 (2, 'New Review', 'You have a new review from John Doe', '/reviews'),
 (3, 'Payment Received', 'Payment for your booking has been processed', '/bookings/3');
+GO
+
+-- ======================
+-- TEST THE SEARCH PROCEDURE
+-- ======================
+
+-- Get all vendors
+EXEC sp_SearchVendors;
+GO
+
+-- Get all premium venues
+EXEC sp_SearchVendors 
+    @Category = 'venue',
+    @IsPremium = 1;
+GO
+
+-- Search for vendors with "wedding" in name/description
+EXEC sp_SearchVendors 
+    @SearchTerm = 'wedding';
 GO
