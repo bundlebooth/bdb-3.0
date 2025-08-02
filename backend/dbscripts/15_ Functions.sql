@@ -13,19 +13,13 @@ AS
 BEGIN
     DECLARE @EarthRadius FLOAT = 3958.8; -- miles
     DECLARE @dLat FLOAT = RADIANS(@Lat2 - @Lat1);
-GO
     DECLARE @dLon FLOAT = RADIANS(@Lon2 - @Lon1);
-GO
     DECLARE @a FLOAT = SIN(@dLat / 2) * SIN(@dLat / 2) + 
                       COS(RADIANS(@Lat1)) * COS(RADIANS(@Lat2)) * 
                       SIN(@dLon / 2) * SIN(@dLon / 2);
-GO
     DECLARE @c FLOAT = 2 * ATN2(SQRT(@a), SQRT(1 - @a));
-GO
     DECLARE @Distance FLOAT = @EarthRadius * @c;
-GO
     RETURN @Distance;
-GO
 END;
 GO
 
@@ -41,7 +35,7 @@ RETURNS BIT
 AS
 BEGIN
     DECLARE @IsAvailable BIT = 0;
-GO
+    
     -- Check blackout dates first
     IF EXISTS (
         SELECT 1 FROM ProviderBlackoutDates 
@@ -50,7 +44,6 @@ GO
     )
     BEGIN
         RETURN 0;
-GO
     END
     
     -- Check existing bookings
@@ -68,12 +61,10 @@ GO
     )
     BEGIN
         RETURN 0;
-GO
     END
     
     -- Check weekly availability
     DECLARE @DayOfWeek INT = DATEPART(WEEKDAY, @Date);
-GO
     IF EXISTS (
         SELECT 1 FROM ProviderAvailability 
         WHERE ProviderID = @ProviderID
@@ -84,11 +75,9 @@ GO
     )
     BEGIN
         SET @IsAvailable = 1;
-GO
     END
     
     RETURN @IsAvailable;
-GO
 END;
 GO
 
@@ -105,9 +94,8 @@ RETURNS DECIMAL(18, 2)
 AS
 BEGIN
     DECLARE @TotalPrice DECIMAL(18, 2) = 0;
-GO
     DECLARE @PriceMultiplier DECIMAL(5, 2) = 1.0;
-GO
+    
     -- Check for pricing tiers
     SELECT @PriceMultiplier = PriceMultiplier
     FROM PricingTiers
@@ -118,7 +106,7 @@ GO
     ORDER BY 
         ProviderID DESC -- Prefer provider-specific over type-specific
     OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY;
-GO
+    
     -- Calculate price based on services/packages
     IF @PackageID IS NOT NULL
     BEGIN
@@ -126,7 +114,6 @@ GO
         SELECT @TotalPrice = Price
         FROM ProviderServicePackages
         WHERE PackageID = @PackageID AND ProviderID = @ProviderID AND IsActive = 1;
-GO
     END
     ELSE IF @ServiceIDs IS NOT NULL
     BEGIN
@@ -135,20 +122,15 @@ GO
         FROM ProviderServices
         WHERE ProviderServiceID IN (SELECT value FROM OPENJSON(@ServiceIDs))
         AND ProviderID = @ProviderID AND IsActive = 1;
-GO
     END
     ELSE
     BEGIN
         -- Base price only
         SET @TotalPrice = @BasePrice;
-GO
     END
     
     -- Apply price multiplier
     SET @TotalPrice = @TotalPrice * @PriceMultiplier;
-GO
     RETURN @TotalPrice;
-GO
 END;
 GO
-
