@@ -37,7 +37,7 @@ app.get('/ping', async (req, res) => {
 const venuesRouter = require('./routes/venues');
 const usersRouter = require('./routes/users');
 const bookingsRouter = require('./routes/bookings');
-const bookingsRouter = require('./routes/vendors');
+const vendorsRouter = require('./routes/vendors');
 
 app.use('/api/venues', venuesRouter);
 app.use('/api/users', usersRouter);
