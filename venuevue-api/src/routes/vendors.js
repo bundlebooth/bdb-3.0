@@ -17,17 +17,14 @@ router.get('/', async (req, res) => {
       isAwardWinning 
     } = req.query;
 
-    // Get a connection pool
     pool = await poolPromise;
     
-    // Validate connection
     if (!pool.connected) {
       throw new Error('Database connection not established');
     }
 
     const request = new sql.Request(pool);
 
-    // Set parameters with proper null handling
     request.input('SearchTerm', sql.NVarChar(100), searchTerm || null);
     request.input('Category', sql.NVarChar(50), category || null);
     request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
@@ -38,10 +35,9 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
-    // The stored procedure now returns data in the correct format
     res.json({
       success: true,
-      data: result.recordset
+      venues: result.recordset // Wrap in "venues" property
     });
 
   } catch (err) {
