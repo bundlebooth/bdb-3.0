@@ -10,7 +10,7 @@ const app = express();
 
 // Configure CORS
 app.use(cors({
-  origin: ['https://bundlebooth.github.io', 'https://bdb-3-0-venuevue-api.onrender.com']
+  origin: ['https://bundlebooth.github.io', 'https://bdb-3-0-venuevue-api.onrender.com'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
