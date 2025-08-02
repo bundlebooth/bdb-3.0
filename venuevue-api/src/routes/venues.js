@@ -9,7 +9,6 @@ router.get('/', async (req, res) => {
   try {
     const pool = await poolPromise;
     const result = await pool.request()
-      .input('isActive', sql.Bit, 1)
       .execute('sp_Provider_Search');
       
     res.json(result.recordset);
