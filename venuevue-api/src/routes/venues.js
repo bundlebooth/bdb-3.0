@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise } = require('../config/db');
 const { authenticate } = require('../middlewares/auth');
+const sql = require('mssql');  
 
 // Get all venues
 router.get('/', async (req, res) => {
