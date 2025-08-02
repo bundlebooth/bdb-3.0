@@ -8,6 +8,13 @@ const indexRouter = require('./routes/index');
 
 const app = express();
 
+// Configure CORS
+app.use(cors({
+  origin: 'https://bundlebooth.github.io',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 // Middleware
 app.use(cors());
 app.use(helmet());
