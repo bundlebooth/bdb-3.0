@@ -3,7 +3,6 @@ const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const sql = require('mssql');  
 
 // Import authentication middleware (ensure this exports a function)
 const authenticate = (req, res, next) => {
