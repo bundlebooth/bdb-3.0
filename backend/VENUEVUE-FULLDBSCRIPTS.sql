@@ -1585,17 +1585,24 @@ BEGIN
     END
     
     -- Apply sorting
-    DECLARE @SortSQL NVARCHAR(MAX);
-    SET @SortSQL = N'
-    UPDATE #SearchResults
-    SET RowNum = ROW_NUMBER() OVER (ORDER BY ' + 
-        CASE @SortBy
-            WHEN 'price' THEN 'BasePrice'
-            WHEN 'name' THEN 'BusinessName'
-            WHEN 'distance' THEN 'DistanceMiles'
-            ELSE 'AverageRating'
-        END + ' ' + @SortDirection + ')';
-    EXEC sp_executesql @SortSQL;
+DECLARE @SortSQL NVARCHAR(MAX);
+SET @SortSQL = N'
+SELECT *, 
+    ROW_NUMBER() OVER (ORDER BY ' + 
+    CASE @SortBy
+        WHEN 'price' THEN 'BasePrice'
+        WHEN 'name' THEN 'BusinessName'
+        WHEN 'distance' THEN 'DistanceMiles'
+        ELSE 'AverageRating'
+    END + ' ' + @SortDirection + ') AS RowNum
+INTO #SortedResults
+FROM #SearchResults';
+
+EXEC sp_executesql @SortSQL;
+
+-- Replace the original table with the sorted one
+DROP TABLE #SearchResults;
+EXEC sp_rename '#SortedResults', '#SearchResults';
 
     -- Return paginated results
     SELECT 
