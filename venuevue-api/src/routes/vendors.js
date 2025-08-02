@@ -5,6 +5,7 @@ const sql = require('mssql');
 
 // Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
+  let pool;
   try {
     const { 
       searchTerm, 
@@ -16,10 +17,17 @@ router.get('/', async (req, res) => {
       isAwardWinning 
     } = req.query;
 
-    const pool = await poolPromise;
-    const request = pool.request();
+    // Get a connection pool
+    pool = await poolPromise;
+    
+    // Validate connection
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
 
-    // Map exactly to the stored procedure parameters
+    const request = new sql.Request(pool);
+
+    // Set parameters with proper null handling
     request.input('SearchTerm', sql.NVarChar(100), searchTerm || null);
     request.input('Category', sql.NVarChar(50), category || null);
     request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
@@ -34,42 +42,19 @@ router.get('/', async (req, res) => {
       success: true,
       data: result.recordset
     });
+
   } catch (err) {
-    console.error('Error executing sp_SearchVendors:', err);
+    console.error('Database error:', err);
     res.status(500).json({ 
       success: false,
-      message: 'Error searching vendors',
+      message: 'Database operation failed',
       error: err.message 
     });
-  }
-});
-
-// Get vendor details using sp_GetVendorDetails
-router.get('/:id', async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('VendorID', sql.Int, parseInt(req.params.id))
-      .execute('sp_GetVendorDetails');
-
-    if (!result.recordset || result.recordset.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
-      });
+  } finally {
+    // Release connection if needed
+    if (pool) {
+      // For mssql, connections are automatically returned to the pool
     }
-    
-    res.json({
-      success: true,
-      data: result.recordset[0]
-    });
-  } catch (err) {
-    console.error('Error executing sp_GetVendorDetails:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching vendor details',
-      error: err.message
-    });
   }
 });
 
