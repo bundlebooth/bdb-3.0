@@ -38,6 +38,7 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
+    // The stored procedure now returns data in the correct format
     res.json({
       success: true,
       data: result.recordset
@@ -50,11 +51,6 @@ router.get('/', async (req, res) => {
       message: 'Database operation failed',
       error: err.message 
     });
-  } finally {
-    // Release connection if needed
-    if (pool) {
-      // For mssql, connections are automatically returned to the pool
-    }
   }
 });
 
