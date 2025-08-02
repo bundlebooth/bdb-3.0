@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise, sql } = require('../config/db');
 const { authenticate } = require('../middlewares/auth');
-const sql = require('mssql');  
 
 // Create a booking
 router.post('/', authenticate, async (req, res) => {
