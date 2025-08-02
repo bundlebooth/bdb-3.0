@@ -5,7 +5,6 @@ const sql = require('mssql');
 
 // Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
-  let pool;
   try {
     const { 
       searchTerm, 
@@ -17,7 +16,7 @@ router.get('/', async (req, res) => {
       isAwardWinning 
     } = req.query;
 
-    pool = await poolPromise;
+    const pool = await poolPromise;
     
     if (!pool.connected) {
       throw new Error('Database connection not established');
@@ -35,15 +34,13 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
-    res.json({
-      success: true,
-      venues: result.recordset // Wrap in "venues" property
-    });
+    // Return just the array of venues without the success wrapper
+    res.json(result.recordset);
 
   } catch (err) {
     console.error('Database error:', err);
+    // Return error as simple JSON object without success wrapper
     res.status(500).json({ 
-      success: false,
       message: 'Database operation failed',
       error: err.message 
     });
