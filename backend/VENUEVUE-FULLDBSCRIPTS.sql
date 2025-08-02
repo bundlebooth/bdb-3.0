@@ -1442,7 +1442,14 @@ GO
 -- Section 11: Stored Procedures - Provider Management
 
 -- sp_Provider_Search: Search providers with filters
-CREATE PROCEDURE sp_Provider_Search
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- Section 11: Stored Procedures - Provider Management
+
+-- sp_Provider_Search: Search providers with filters
+CREATE PROCEDURE [dbo].[sp_Provider_Search]
     @SearchTerm NVARCHAR(100) = NULL,
     @ProviderTypeID INT = NULL,
     @Category NVARCHAR(50) = NULL,
@@ -1463,8 +1470,8 @@ BEGIN
     SET NOCOUNT ON;
 
     DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
-
-    -- Create temp table for results
+   
+    -- Create temp table for results (remove RowNum from definition)
     CREATE TABLE #SearchResults (
         ProviderID INT,
         BusinessName NVARCHAR(255),
@@ -1481,15 +1488,14 @@ BEGIN
         BasePrice DECIMAL(18, 2),
         PrimaryImage NVARCHAR(255),
         DistanceMiles FLOAT,
-        IsAvailable BIT,
-        RowNum INT
+        IsAvailable BIT
     );
 
     -- Insert base results
     INSERT INTO #SearchResults (
         ProviderID, BusinessName, BusinessDescription, ProviderType, Category,
         City, StateProvince, Country, Latitude, Longitude, AverageRating,
-        ReviewCount, BasePrice, PrimaryImage
+        ReviewCount, BasePrice, PrimaryImage, IsAvailable
     )
     SELECT 
         sp.ProviderID,
@@ -1505,7 +1511,8 @@ BEGIN
         ISNULL((SELECT AVG(CAST(pr.Rating AS DECIMAL(5,2))) FROM ProviderReviews pr WHERE pr.ProviderID = sp.ProviderID AND pr.IsApproved = 1), 0) AS AverageRating,
         ISNULL((SELECT COUNT(*) FROM ProviderReviews pr WHERE pr.ProviderID = sp.ProviderID AND pr.IsApproved = 1), 0) AS ReviewCount,
         sp.BasePrice,
-        (SELECT TOP 1 ImageURL FROM ProviderPortfolio pp WHERE pp.ProviderID = sp.ProviderID ORDER BY pp.IsFeatured DESC, pp.DisplayOrder) AS PrimaryImage
+        (SELECT TOP 1 ImageURL FROM ProviderPortfolio pp WHERE pp.ProviderID = sp.ProviderID ORDER BY pp.IsFeatured DESC, pp.DisplayOrder) AS PrimaryImage,
+        1 AS IsAvailable -- Default to available
     FROM 
         ServiceProviders sp
         INNER JOIN ProviderTypes pt ON sp.TypeID = pt.TypeID
@@ -1584,27 +1591,21 @@ BEGIN
         WHERE IsAvailable = 0;
     END
     
-    -- Apply sorting
-DECLARE @SortSQL NVARCHAR(MAX);
-SET @SortSQL = N'
-SELECT *, 
-    ROW_NUMBER() OVER (ORDER BY ' + 
-    CASE @SortBy
-        WHEN 'price' THEN 'BasePrice'
-        WHEN 'name' THEN 'BusinessName'
-        WHEN 'distance' THEN 'DistanceMiles'
-        ELSE 'AverageRating'
-    END + ' ' + @SortDirection + ') AS RowNum
-INTO #SortedResults
-FROM #SearchResults';
-
-EXEC sp_executesql @SortSQL;
-
--- Replace the original table with the sorted one
-DROP TABLE #SearchResults;
-EXEC sp_rename '#SortedResults', '#SearchResults';
-
-    -- Return paginated results
+    -- Apply sorting and row numbers directly to the existing table
+    DECLARE @SortSQL NVARCHAR(MAX);
+    SET @SortSQL = N'
+    WITH SortedResults AS (
+        SELECT 
+            *,
+            ROW_NUMBER() OVER (ORDER BY ' + 
+            CASE @SortBy
+                WHEN 'price' THEN 'BasePrice'
+                WHEN 'name' THEN 'BusinessName'
+                WHEN 'distance' THEN 'DistanceMiles'
+                ELSE 'AverageRating'
+            END + ' ' + @SortDirection + ') AS RowNum
+        FROM #SearchResults
+    )
     SELECT 
         ProviderID,
         BusinessName,
@@ -1623,11 +1624,13 @@ EXEC sp_rename '#SortedResults', '#SearchResults';
         DistanceMiles,
         (SELECT COUNT(*) FROM #SearchResults) AS TotalCount
     FROM 
-        #SearchResults
+        SortedResults
     WHERE 
         RowNum > @Offset AND RowNum <= @Offset + @PageSize
     ORDER BY 
-        RowNum;
+        RowNum';
+
+    EXEC sp_executesql @SortSQL, N'@Offset INT, @PageSize INT', @Offset, @PageSize;
 
     DROP TABLE #SearchResults;
 END;
