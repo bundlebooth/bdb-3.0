@@ -1239,16 +1239,33 @@
                     
                     const data = await response.json();
                     if (data && data.length > 0) {
-                        // Add coordinates to vendors (for demo purposes)
-                        state.vendors = data.map(vendor => ({
-                            ...vendor,
-                            coordinates: {
-                                lat: getRandomLat(),
-                                lng: getRandomLng()
-                            },
-                            priceLevel: getRandomPriceLevel(),
-                            category: getRandomCategory()
-                        }));
+                        // Process vendor data
+                        state.vendors = data.map(vendor => {
+                            // Parse services JSON string
+                            let services = [];
+                            try {
+                                services = vendor.services ? JSON.parse(vendor.services) : [];
+                            } catch (e) {
+                                console.error('Error parsing services:', e);
+                            }
+                            
+                            // Map type to category
+                            const category = mapTypeToCategory(vendor.type);
+                            
+                            return {
+                                ...vendor,
+                                services: services,
+                                category: category,
+                                coordinates: {
+                                    lat: getRandomLat(),
+                                    lng: getRandomLng()
+                                },
+                                priceLevel: vendor.priceLevel || getRandomPriceLevel(),
+                                isPremium: vendor.IsPremium || false,
+                                isEcoFriendly: vendor.IsEcoFriendly || false,
+                                isAwardWinning: vendor.IsAwardWinning || false
+                            };
+                        });
                         
                         state.filteredVendors = [...state.vendors];
                         
@@ -1268,6 +1285,29 @@
                 }
             }
             
+            // Helper function to map vendor types to categories
+            function mapTypeToCategory(type) {
+                const typeMap = {
+                    "Photography": "photo",
+                    "Entertainment": "music",
+                    "decor": "decor",
+                    "Catering": "catering",
+                    "Hotel": "venue",
+                    "transport": "transport"
+                };
+                return typeMap[type] || "other";
+            }
+
+            // Helper function to safely parse JSON
+            function safeJsonParse(str) {
+                try {
+                    return JSON.parse(str);
+                } catch (e) {
+                    console.error("Failed to parse JSON:", str);
+                    return [];
+                }
+            }
+
             // Check for existing user session
             async function checkAuthStatus() {
                 const token = localStorage.getItem('token');
@@ -1390,67 +1430,6 @@
             function getRandomPriceLevel() {
                 const levels = ['$', '$$', '$$$'];
                 return levels[Math.floor(Math.random() * levels.length)];
-            }
-            
-            // Helper function to generate random category (for demo)
-            function getRandomCategory() {
-                const categories = ['venue', 'photo', 'music', 'catering', 'entertainment', 'experiences', 'decor', 'beauty', 'cake', 'transport', 'planner', 'fashion', 'stationery'];
-                return categories[Math.floor(Math.random() * categories.length)];
-            }
-            
-            // Update map markers based on filtered vendors
-            function updateMapMarkers() {
-                // Clear existing markers
-                state.markers.forEach(marker => marker.setMap(null));
-                state.markers = [];
-                
-                if (!state.map || state.filteredVendors.length === 0) return;
-                
-                // Add new markers
-                state.filteredVendors.forEach(vendor => {
-                    const marker = new google.maps.Marker({
-                        position: vendor.coordinates,
-                        map: state.map,
-                        title: vendor.name,
-                        icon: {
-                            url: `https://maps.google.com/mapfiles/ms/icons/red-dot.png`,
-                            scaledSize: new google.maps.Size(32, 32)
-                        }
-                    });
-                    
-                    // Add click event
-                    marker.addListener('click', () => {
-                        openBookingModal(vendor);
-                    });
-                    
-                    state.markers.push(marker);
-                });
-                
-                // Fit bounds to show all markers
-                if (state.markers.length > 0) {
-                    const bounds = new google.maps.LatLngBounds();
-                    state.markers.forEach(marker => bounds.extend(marker.getPosition()));
-                    state.map.fitBounds(bounds);
-                }
-            }
-            
-            // Center map on user location
-            function centerMapOnUser() {
-                if (state.map && state.userLocation) {
-                    state.map.setCenter(state.userLocation);
-                    state.map.setZoom(12);
-                    
-                    // Add user location marker
-                    new google.maps.Marker({
-                        position: state.userLocation,
-                        map: state.map,
-                        title: "Your Location",
-                        icon: {
-                            url: `https://maps.google.com/mapfiles/ms/icons/blue-dot.png`,
-                            scaledSize: new google.maps.Size(32, 32)
-                        }
-                    });
-                }
             }
             
             // Setup all event listeners
@@ -1979,7 +1958,7 @@
                     vendorCard.className = 'vendor-card';
                     vendorCard.innerHTML = `
                         <div class="vendor-image">
-                            ${vendor.image || getCategoryIcon(vendor.category)}
+                            ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
                             ${vendor.badge ? `<div class="vendor-badge">${vendor.badge}</div>` : ''}
                             <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
                         </div>
@@ -2141,7 +2120,9 @@
                 // Create modal content
                 modalBody.innerHTML = `
                     <div class="vendor-detail-header">
-                        <div class="vendor-detail-image">${vendor.image || getCategoryIcon(vendor.category)}</div>
+                        <div class="vendor-detail-image">
+                            ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);">` : getCategoryIcon(vendor.category)}
+                        </div>
                         <div class="vendor-detail-info">
                             <h2 class="vendor-detail-name">${vendor.name}</h2>
                             <div class="vendor-detail-location">📍 ${vendor.location}</div>
