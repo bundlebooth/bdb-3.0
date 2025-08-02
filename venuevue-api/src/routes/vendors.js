@@ -3,6 +3,7 @@ const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 
+// Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
   try {
     const { 
@@ -33,12 +34,12 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
-    // Parse the JSON result from the stored procedure
-    const jsonResult = JSON.parse(result.recordset[0].result);
-    res.json(jsonResult);
+    // Return just the array of venues without the success wrapper
+    res.json(result.recordset);
 
   } catch (err) {
     console.error('Database error:', err);
+    // Return error as simple JSON object without success wrapper
     res.status(500).json({ 
       message: 'Database operation failed',
       error: err.message 
