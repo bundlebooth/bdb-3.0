@@ -4,16 +4,33 @@ const { poolPromise, sql } = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+// Import authentication middleware
+const authenticate = require('../middlewares/auth');
+
 // User registration
 router.post('/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName } = req.body;
     
+    // Validate input
+    if (!email || !password || !firstName || !lastName) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Check if user already exists
+    const pool = await poolPromise;
+    const checkUser = await pool.request()
+      .input('Email', sql.NVarChar(255), email)
+      .query('SELECT UserID FROM Users WHERE Email = @Email');
+
+    if (checkUser.recordset.length > 0) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+    
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
     
-    const pool = await poolPromise;
     const result = await pool.request()
       .input('Email', sql.NVarChar(255), email)
       .input('PasswordHash', sql.NVarChar(255), hashedPassword)
@@ -25,11 +42,18 @@ router.post('/register', async (req, res) => {
     const userId = result.output.UserID;
     
     // Generate JWT token
-    const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, { 
+      expiresIn: '1h' 
+    });
     
-    res.status(201).json({ userId, token });
+    res.status(201).json({ 
+      userId, 
+      token,
+      message: 'User registered successfully' 
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Registration error:', err);
+    res.status(500).json({ message: 'Registration failed' });
   }
 });
 
@@ -38,11 +62,14 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
     const pool = await poolPromise;
     const result = await pool.request()
       .input('Email', sql.NVarChar(255), email)
-      .input('PasswordHash', sql.NVarChar(255), password)
-      .execute('sp_User_Authenticate');
+      .query('SELECT UserID, PasswordHash FROM Users WHERE Email = @Email');
       
     if (result.recordset.length === 0) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -50,12 +77,25 @@ router.post('/login', async (req, res) => {
     
     const user = result.recordset[0];
     
-    // Generate JWT token
-    const token = jwt.sign({ id: user.UserID }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Compare passwords
+    const isMatch = await bcrypt.compare(password, user.PasswordHash);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
     
-    res.json({ user, token });
+    // Generate JWT token
+    const token = jwt.sign({ id: user.UserID }, process.env.JWT_SECRET, { 
+      expiresIn: '1h' 
+    });
+    
+    res.json({ 
+      userId: user.UserID,
+      token,
+      message: 'Login successful' 
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Login failed' });
   }
 });
 
@@ -73,7 +113,8 @@ router.get('/:id', authenticate, async (req, res) => {
     
     res.json(result.recordset[0]);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Profile error:', err);
+    res.status(500).json({ message: 'Failed to fetch profile' });
   }
 });
 
