@@ -2,14 +2,15 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise } = require('../config/db');
 const { authenticate } = require('../middlewares/auth');
-const sql = require('mssql');  
+const sql = require('mssql');
 
 // Get all venues
 router.get('/', async (req, res) => {
+  let pool;
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .execute('sp_SearchVendors');
+    pool = await poolPromise;
+    const request = pool.request();
+    const result = await request.execute('sp_SearchVendors');
     
     // Transform the data to match expected format
     const transformed = result.recordset.map(vendor => ({
@@ -19,7 +20,7 @@ router.get('/', async (req, res) => {
       category: vendor.Category,
       type: vendor.Name.includes(' ') ? 'company' : 'independent',
       priceLevel: vendor.PriceLevel,
-      price: `$${Math.floor(Math.random() * 900) + 100}`, 
+      price: `$${Math.floor(Math.random() * 900) + 100}`, // Temporary placeholder
       rating: `${vendor.Rating} (${vendor.ReviewCount})`,
       description: vendor.Description,
       image: vendor.PrimaryImage,
@@ -37,15 +38,22 @@ router.get('/', async (req, res) => {
       
     res.json(transformed);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ message: err.message });
+  } finally {
+    if (pool) {
+      // No need to close the pool as it's managed by poolPromise
+    }
   }
 });
 
 // Get venue details
 router.get('/:id', async (req, res) => {
+  let pool;
   try {
-    const pool = await poolPromise;
-    const result = await pool.request()
+    pool = await poolPromise;
+    const request = pool.request();
+    const result = await request
       .input('ProviderID', sql.Int, req.params.id)
       .execute('sp_Provider_GetFullProfile');
       
@@ -65,17 +73,24 @@ router.get('/:id', async (req, res) => {
     
     res.json(vendorData);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ message: err.message });
+  } finally {
+    if (pool) {
+      // No need to close the pool as it's managed by poolPromise
+    }
   }
 });
 
 // Search venues
 router.post('/search', async (req, res) => {
+  let pool;
   try {
     const { searchTerm, category, minPrice, maxPrice, minRating, isPremium, isEcoFriendly, isAwardWinning } = req.body;
     
-    const pool = await poolPromise;
-    const result = await pool.request()
+    pool = await poolPromise;
+    const request = pool.request();
+    const result = await request
       .input('SearchTerm', sql.NVarChar(100), searchTerm || null)
       .input('Category', sql.NVarChar(50), category || null)
       .input('MinPrice', sql.Decimal(10, 2), minPrice || null)
@@ -93,7 +108,7 @@ router.post('/search', async (req, res) => {
       category: vendor.Category,
       type: vendor.Name.includes(' ') ? 'company' : 'independent',
       priceLevel: vendor.PriceLevel,
-      price: `$${Math.floor(Math.random() * 900) + 100}`, 
+      price: `$${Math.floor(Math.random() * 900) + 100}`, // Temporary placeholder
       rating: `${vendor.Rating} (${vendor.ReviewCount})`,
       description: vendor.Description,
       image: vendor.PrimaryImage,
@@ -111,7 +126,12 @@ router.post('/search', async (req, res) => {
       
     res.json(transformed);
   } catch (err) {
+    console.error('Database error:', err);
     res.status(500).json({ message: err.message });
+  } finally {
+    if (pool) {
+      // No need to close the pool as it's managed by poolPromise
+    }
   }
 });
 
