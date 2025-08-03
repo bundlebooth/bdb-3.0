@@ -34,15 +34,23 @@ app.get('/ping', async (req, res) => {
 });
 
 // API Routes
-const venuesRouter = require('./routes/venues');
-const usersRouter = require('./routes/users');
-const bookingsRouter = require('./routes/bookings');
 const vendorsRouter = require('./routes/vendors');
+const bookingsRouter = require('./routes/bookings');
+const favoritesRouter = require('./routes/favorites');
+const messagesRouter = require('./routes/messages');
+const reviewsRouter = require('./routes/reviews');
+const usersRouter = require('./routes/users');
+const notificationsRouter = require('./routes/notifications');
+const vendorDashboardRouter = require('./routes/vendorDashboard');
 
-app.use('/api/venues', venuesRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/vendors', vendorsRouter);
+app.use('/api/favorites', favoritesRouter);
+app.use('/api/messages', messagesRouter);
+app.use('/api/reviews', reviewsRouter);
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/vendorDashboard', vendorDashboardRouter);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
