@@ -1432,6 +1432,9 @@
         }
         
         /* Reviews Styles */
+        .reviews-section {
+            margin-top: 2rem;
+        }
         .review-item {
             margin-bottom: 2rem;
             padding-bottom: 2rem;
@@ -1538,7 +1541,6 @@
             .dashboard-container {
                 grid-template-columns: 1fr;
             }
-            
             .chat-container {
                 grid-template-columns: 1fr;
                 height: auto;
@@ -1549,59 +1551,48 @@
             .app-container {
                 grid-template-columns: 1fr;
             }
-            
             .sidebar {
                 display: none;
             }
-            
             .header {
                 flex-direction: column;
                 gap: 1rem;
                 padding: 1rem;
             }
-            
             .search-container {
                 width: 100%;
                 margin: 0;
             }
-            
             .vendor-detail-header {
                 flex-direction: column;
             }
-            
             .vendor-detail-image {
                 width: 100%;
                 height: 200px;
                 margin-bottom: 1rem;
             }
-            
             .form-row {
                 flex-direction: column;
                 gap: 0;
             }
-            
             .dashboard-card-header {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 1rem;
             }
-            
             .booking-item {
                 flex-direction: column;
                 align-items: flex-start;
             }
-            
             .booking-image {
                 margin-right: 0;
                 margin-bottom: 1rem;
             }
-            
             .booking-actions {
                 margin-left: 0;
                 margin-top: 1rem;
                 width: 100%;
             }
-            
             .booking-actions .btn {
                 width: 100%;
             }
@@ -1609,30 +1600,36 @@
         
         /* Animations */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         @keyframes spin {
-            to { transform: rotate(360deg); }
+            to {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="app-container">
         <header class="header">
             <a href="/" class="logo">
-                <span>🎉</span>
-                VenueVue
+                <span>🎉</span> VenueVue
             </a>
-            
             <div class="search-container">
                 <div class="search-bar">
                     <span class="search-icon">🔍</span>
                     <input type="text" placeholder="Search for event vendors..." id="search-input">
                 </div>
             </div>
-            
             <div class="user-nav">
                 <div class="nav-icon" id="wishlist-btn">
                     <i class="far fa-heart"></i>
@@ -1642,11 +1639,14 @@
                     <i class="far fa-bell"></i>
                     <span class="badge" id="notification-badge">0</span>
                 </div>
+                <div class="nav-icon" id="chat-btn">
+                    <i class="far fa-comment-dots"></i>
+                    <span class="badge" id="chat-badge">0</span>
+                </div>
                 <div class="user-avatar" id="profile-btn">U</div>
             </div>
         </header>
-        
-        <!-- Categories Navigation -->
+
         <nav class="categories-nav">
             <div class="categories-list">
                 <div class="category-item active" data-category="all">All Categories</div>
@@ -1665,557 +1665,421 @@
                 <div class="category-item" data-category="stationery">Stationery</div>
             </div>
         </nav>
-        
+
         <aside class="sidebar">
             <div class="filter-section">
                 <h3 class="filter-title">
                     Location
-                    <span class="filter-reset" id="location-reset">Reset</span>
+                    <span class="filter-reset">Reset</span>
                 </h3>
-                <input type="text" placeholder="City or ZIP code" class="search-input" id="location-input">
                 <div class="filter-group">
                     <div class="filter-option">
-                        <input type="checkbox" id="current-location">
-                        <label for="current-location">Use my location</label>
+                        <input type="radio" id="location-any" name="location" checked>
+                        <label for="location-any">Anywhere</label>
                     </div>
                     <div class="filter-option">
-                        <input type="checkbox" id="within50">
-                        <label for="within50">Within 50 miles</label>
+                        <input type="radio" id="location-nearme" name="location">
+                        <label for="location-nearme">Near Me</label>
                     </div>
+                    </div>
+            </div>
+
+            <div class="filter-section">
+                <h3 class="filter-title">
+                    Availability
+                    <span class="filter-reset">Reset</span>
+                </h3>
+                <div class="form-group">
+                    <label for="availability-date" class="form-label">Select Date</label>
+                    <input type="text" class="form-control" id="availability-date" placeholder="Choose a date...">
                 </div>
             </div>
-            
+
             <div class="filter-section">
                 <h3 class="filter-title">
                     Price Range
-                    <span class="filter-reset" id="price-reset">Reset</span>
+                    <span class="filter-reset">Reset</span>
                 </h3>
-                <input type="range" class="range-slider" min="0" max="100" value="40" id="price-slider">
+                <input type="range" min="0" max="5000" value="2500" class="range-slider">
                 <div class="price-labels">
-                    <span>$</span>
-                    <span>$$</span>
-                    <span>$$$</span>
+                    <span>$0</span>
+                    <span>$5000+</span>
                 </div>
             </div>
-            
+
             <div class="filter-section">
                 <h3 class="filter-title">
                     Vendor Type
-                    <span class="filter-reset" id="type-reset">Reset</span>
+                    <span class="filter-reset">Reset</span>
                 </h3>
                 <div class="filter-group">
                     <div class="filter-option">
-                        <input type="checkbox" id="independent" checked>
-                        <label for="independent">Independent</label>
+                        <input type="checkbox" id="vendor-pro" checked>
+                        <label for="vendor-pro">Professional (Verified)</label>
                     </div>
                     <div class="filter-option">
-                        <input type="checkbox" id="company" checked>
-                        <label for="company">Company</label>
+                        <input type="checkbox" id="vendor-indie">
+                        <label for="vendor-indie">Independent</label>
                     </div>
                 </div>
             </div>
-            
-            <div class="filter-section">
-                <h3 class="filter-title">
-                    Rating
-                    <span class="filter-reset" id="rating-reset">Reset</span>
-                </h3>
-                <div class="filter-group">
-                    <div class="filter-option">
-                        <input type="checkbox" id="rating-5">
-                        <label for="rating-5">
-                            <span class="review-rating">
-                                <i class="fas fa-star review-star"></i>
-                                <i class="fas fa-star review-star"></i>
-                                <i class="fas fa-star review-star"></i>
-                                <i class="fas fa-star review-star"></i>
-                                <i class="fas fa-star review-star"></i>
-                            </span>
-                        </label>
-                    </div>
-                    <div class="filter-option">
-                        <input type="checkbox" id="rating-4">
-                        <label for="rating-4">
-                            <span class="review-rating">
-                                <i class="fas fa-star review-star"></i>
-                                <i class="fas fa-star review-star"></i>
-                                <i class="fas fa-star review-star"></i>
-                                <i class="fas fa-star review-star"></i>
-                                <i class="far fa-star review-star"></i>
-                                4+
-                            </span>
-                        </label>
-                    </div>
-                    <div class="filter-option">
-                        <input type="checkbox" id="rating-3">
-                        <label for="rating-3">
-                            <span class="review-rating">
-                                <i class="fas fa-star review-star"></i>
-                                <i class="fas fa-star review-star"></i>
-                                <i class="fas fa-star review-star"></i>
-                                <i class="far fa-star review-star"></i>
-                                <i class="far fa-star review-star"></i>
-                                3+
-                            </span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-            
+
             <div class="trending-section">
-                <h3 class="filter-title">Popular Filters</h3>
+                <h3 class="filter-title">Trending Now</h3>
                 <div class="trending-tags">
-                    <div class="trending-tag" data-filter="premium">Premium</div>
-                    <div class="trending-tag" data-filter="eco-friendly">Eco-Friendly</div>
-                    <div class="trending-tag" data-filter="award-winning">Award Winning</div>
-                    <div class="trending-tag" data-filter="last-minute">Last Minute</div>
+                    <div class="trending-tag active">Weddings</div>
+                    <div class="trending-tag">Birthday Parties</div>
+                    <div class="trending-tag">Corporate Events</div>
+                    <div class="trending-tag">Holiday Parties</div>
                 </div>
             </div>
         </aside>
-        
+
         <main class="main-content">
             <div class="content-header">
                 <div>
-                    <h1 class="results-title">Loading vendors...</h1>
-                    <p class="results-count">Please wait</p>
+                    <h1 class="results-title">Event Vendors</h1>
+                    <p class="results-count">Showing 1-12 of 120 results</p>
                 </div>
-                
                 <div class="view-controls">
-                    <select class="sort-select" id="sort-select">
-                        <option value="recommended">Sort: Recommended</option>
-                        <option value="price-low">Price: Low to High</option>
-                        <option value="price-high">Price: High to Low</option>
-                        <option value="popular">Most Popular</option>
-                        <option value="nearest">Nearest to Me</option>
+                    <select class="sort-select">
+                        <option>Sort by: Best Match</option>
+                        <option>Sort by: Price (Low to High)</option>
+                        <option>Sort by: Price (High to Low)</option>
+                        <option>Sort by: Rating</option>
                     </select>
+                    <div class="view-toggle">
+                        <button class="view-btn active" id="grid-view-btn">
+                            <i class="fas fa-th-large"></i>
+                        </button>
+                        <button class="view-btn" id="map-view-btn">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
-            
+
             <div class="map-view-container" id="map-view-container">
                 <div class="map-container">
                     <div id="map"></div>
                     <div class="map-controls">
-                        <button class="map-btn" id="zoom-in">+</button>
-                        <button class="map-btn" id="zoom-out">-</button>
-                        <button class="map-btn" id="locate-me">📍</button>
+                        <button class="map-btn" id="zoom-in-btn">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="map-btn" id="zoom-out-btn">
+                            <i class="fas fa-minus"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="map-venue-list" id="map-venue-list"></div>
+                <div class="map-venue-list">
+                    </div>
             </div>
-            
+
             <div class="vendor-grid" id="vendor-grid">
-                <div style="grid-column:1/-1;text-align:center;padding:2rem;">Loading vendors...</div>
-            </div>
-            
-            <div class="pagination" id="pagination">
-                <div class="page-btn" id="prev-page">«</div>
-                <div class="page-btn active">1</div>
-                <div class="page-btn">2</div>
-                <div class="page-btn">3</div>
-                <div class="page-btn" id="next-page">»</div>
+                <div class="vendor-card" data-vendor-id="1">
+                    <div class="vendor-image">
+                        <img src="https://via.placeholder.com/350x200" alt="Vendor Image">
+                        <div class="vendor-badge">Venue</div>
+                        <div class="vendor-favorite" role="button" aria-label="Add to favorites">
+                            <i class="far fa-heart"></i>
+                        </div>
+                    </div>
+                    <div class="vendor-details">
+                        <h4 class="vendor-name">The Grand Ballroom</h4>
+                        <div class="vendor-location">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>New York, NY</span>
+                        </div>
+                        <div class="vendor-features">
+                            <div class="feature">
+                                <i class="feature-icon fas fa-users"></i>
+                                <span>200 guests</span>
+                            </div>
+                            <div class="feature">
+                                <i class="feature-icon fas fa-utensils"></i>
+                                <span>Catering</span>
+                            </div>
+                        </div>
+                        <div class="vendor-footer">
+                            <div class="vendor-price">$2,500 <span>/ event</span></div>
+                            <div class="vendor-actions">
+                                <button class="btn btn-outline" data-action="view">View</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+            <div class="pagination">
+                <button class="page-btn">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="page-btn active">1</button>
+                <button class="page-btn">2</button>
+                <button class="page-btn">3</button>
+                <button class="page-btn">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </main>
     </div>
 
-    <!-- Booking Modal -->
-    <div id="booking-modal" class="modal">
+    <div id="vendor-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Vendor Details & Services</h3>
+                <h3 id="modal-vendor-name">The Grand Ballroom</h3>
                 <span class="close-modal">&times;</span>
             </div>
             <div class="modal-body">
-                <!-- Populated by JavaScript -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Booking Confirmation -->
-    <div id="confirmation-modal" class="booking-confirmation">
-        <div class="confirmation-content">
-            <h3>🎉 Booking Confirmed!</h3>
-            <div class="confirmation-details">
-                <div class="confirmation-row">
-                    <div class="confirmation-label">Vendor:</div>
-                    <div class="confirmation-value" id="conf-venue-name"></div>
-                </div>
-                <div class="confirmation-row">
-                    <div class="confirmation-label">Services:</div>
-                    <div class="confirmation-value" id="conf-services"></div>
-                </div>
-                <div class="confirmation-row">
-                    <div class="confirmation-label">Date:</div>
-                    <div class="confirmation-value" id="conf-date"></div>
-                </div>
-                <div class="confirmation-row">
-                    <div class="confirmation-label">Confirmation #:</div>
-                    <div class="confirmation-value" id="conf-id"></div>
-                </div>
-                <div class="confirmation-row">
-                    <div class="confirmation-label">Total:</div>
-                    <div class="confirmation-value" id="conf-total"></div>
-                </div>
-            </div>
-            <button class="btn btn-primary" id="conf-done-btn">Done</button>
-        </div>
-    </div>
-
-    <!-- Location Permission Modal -->
-    <div id="location-permission" class="location-permission">
-        <div class="location-content">
-            <h3>Find Vendors Near You</h3>
-            <p>VenueVue would like to access your location to show vendors near you.</p>
-            <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
-                <button class="btn btn-outline" id="deny-location">Not Now</button>
-                <button class="btn btn-primary" id="allow-location">
-                    Allow
-                    <span id="location-loading" class="location-loading"></span>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Profile Modal -->
-    <div id="profile-modal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h3 id="profile-modal-title">Welcome to VenueVue</h3>
-                <span class="close-modal" id="close-profile-modal">&times;</span>
-            </div>
-            <div class="modal-body">
-                <!-- Login Form (shown by default) -->
-                <div id="login-form">
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email</label>
-                        <input type="email" id="login-email" class="form-control">
+                <div class="vendor-detail-header">
+                    <div class="vendor-detail-image">
+                        <img id="modal-vendor-image" src="https://via.placeholder.com/350x200" alt="Vendor Image">
                     </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Password</label>
-                        <input type="password" id="login-password" class="form-control">
-                    </div>
-                    <button class="btn btn-primary" id="login-btn" style="width: 100%; margin-bottom: 1rem;">Log In</button>
-                    <div style="text-align: center; margin-bottom: 1.5rem;">
-                        <a href="#" id="show-signup" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">Don't have an account? Sign up</a>
-                    </div>
-                    <div style="display: flex; align-items: center; margin-bottom: 1.5rem;">
-                        <div style="flex: 1; height: 1px; background-color: var(--border);"></div>
-                        <div style="padding: 0 1rem; color: var(--text-light); font-size: 0.9rem;">OR</div>
-                        <div style="flex: 1; height: 1px; background-color: var(--border);"></div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <button class="btn btn-outline" id="google-login" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="20" height="20">
-                            <span>Continue with Google</span>
-                        </button>
-                        <button class="btn btn-outline" id="facebook-login" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" width="20" height="20">
-                            <span>Continue with Facebook</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Signup Form (hidden by default) -->
-                <div id="signup-form" style="display: none;">
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Full Name</label>
-                        <input type="text" id="signup-name" class="form-control">
-                    </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email</label>
-                        <input type="email" id="signup-email" class="form-control">
-                    </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Password</label>
-                        <input type="password" id="signup-password" class="form-control">
-                    </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Account Type</label>
-                        <div style="display: flex; gap: 1rem;">
-                            <div class="filter-option" style="flex: 1;">
-                                <input type="radio" id="account-type-client" name="account-type" value="client" checked>
-                                <label for="account-type-client">Client</label>
+                    <div class="vendor-detail-info">
+                        <h1 id="modal-vendor-name-full" class="vendor-detail-name">The Grand Ballroom</h1>
+                        <div class="vendor-detail-location">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span id="modal-vendor-location">New York, NY</span>
+                        </div>
+                        <div class="vendor-detail-ratings">
+                            <div class="review-rating" id="modal-vendor-rating">
+                                <i class="fas fa-star review-star"></i>
+                                <i class="fas fa-star review-star"></i>
+                                <i class="fas fa-star review-star"></i>
+                                <i class="fas fa-star review-star"></i>
+                                <i class="far fa-star review-star"></i>
+                                <span>(4.0) | 12 Reviews</span>
                             </div>
-                            <div class="filter-option" style="flex: 1;">
-                                <input type="radio" id="account-type-vendor" name="account-type" value="vendor">
-                                <label for="account-type-vendor">Vendor</label>
+                        </div>
+                        <div class="vendor-detail-features" id="modal-vendor-features">
+                            <div class="feature">
+                                <i class="feature-icon fas fa-users"></i>
+                                <span id="modal-vendor-capacity">200 guests</span>
+                            </div>
+                            <div class="feature">
+                                <i class="feature-icon fas fa-utensils"></i>
+                                <span id="modal-vendor-services-offered">Catering</span>
+                            </div>
+                        </div>
+                        <p class="vendor-detail-price" id="modal-vendor-price">$2,500 <span>/ event</span></p>
+                    </div>
+                </div>
+                
+                <div class="vendor-profile-enhancements">
+                    <h3>Contact Information</h3>
+                    <p><strong>Email:</strong> vendor@example.com</p>
+                    <p><strong>Phone:</strong> (123) 456-7890</p>
+                    <p><strong>Website:</strong> <a href="#">https://vendorwebsite.com</a></p>
+                    <h3>Social Media</h3>
+                    <div class="social-links">
+                        <a href="#"><i class="fab fa-facebook-square"></i></a>
+                        <a href="#"><i class="fab fa-instagram-square"></i></a>
+                        <a href="#"><i class="fab fa-twitter-square"></i></a>
+                    </div>
+                    <h3>Verification Status</h3>
+                    <p class="verified-badge">
+                        <i class="fas fa-check-circle text-success"></i>
+                        Verified Vendor
+                    </p>
+                </div>
+                <br>
+                
+                <h3 class="services-title">About Us</h3>
+                <p id="modal-vendor-description" class="vendor-detail-description">
+                    The Grand Ballroom is a premier event venue located in the heart of New York City...
+                </p>
+
+                <div id="services-section" class="services-section">
+                    <h3 class="services-title">Our Services</h3>
+                    <div class="service-category">
+                        <h4 class="category-title">Event Packages</h4>
+                        <div class="service-grid" id="event-packages-list">
+                            <div class="service-card">
+                                <h5 class="service-name">Standard Package</h5>
+                                <p class="service-description">Includes venue rental for up to 5 hours, basic catering for 100 guests, and sound system.</p>
+                                <p class="service-price">$5,000</p>
+                                <div class="service-actions">
+                                    <button class="btn btn-primary btn-sm">Add to Booking</button>
+                                </div>
+                            </div>
+                            <div class="service-card">
+                                <h5 class="service-name">Premium Package</h5>
+                                <p class="service-description">Includes venue rental for up to 8 hours, premium catering, and full A/V support.</p>
+                                <p class="service-price">$8,500</p>
+                                <div class="service-actions">
+                                    <button class="btn btn-primary btn-sm">Add to Booking</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <button class="btn btn-primary" id="signup-btn" style="width: 100%; margin-bottom: 1rem;">Create Account</button>
-                    <div style="text-align: center;">
-                        <a href="#" id="show-login" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">Already have an account? Log in</a>
-                    </div>
                 </div>
-
-                <!-- Logged In View (hidden by default) -->
-                <div id="logged-in-view" style="display: none; text-align: center;">
-                    <div class="profile-avatar" id="profile-avatar">
-                        U
+                
+                <div class="booking-flow">
+                    <h3 class="services-title">Book This Vendor</h3>
+                    <div class="form-group">
+                        <label for="booking-date-picker" class="form-label">Select a Date and Time</label>
+                        <input type="text" id="booking-date-picker" class="form-control" placeholder="Choose a date and time">
                     </div>
-                    <h3 style="margin-bottom: 0.5rem;" id="profile-name">User Name</h3>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;" id="profile-email">user@example.com</p>
-                    <button class="btn btn-primary" id="dashboard-btn" style="width: 100%; margin-bottom: 1rem;">Go to Dashboard</button>
-                    <button class="btn btn-outline" id="logout-btn" style="width: 100%;">Log Out</button>
+                    <button class="btn btn-success" id="open-booking-modal-btn">
+                        <i class="fas fa-calendar-check"></i> Book Now
+                    </button>
+                    <button class="btn btn-outline" id="open-chat-btn">
+                        <i class="fas fa-comment-dots"></i> Message Vendor
+                    </button>
+                </div>
+                
+                <div class="reviews-section">
+                    <h3 class="services-title">Reviews (12)</h3>
+                    <div class="reviews-list">
+                        <div class="review-item">
+                            <div class="review-header">
+                                <div class="review-avatar">J</div>
+                                <div>
+                                    <h4 class="review-name">John Doe</h4>
+                                    <p class="review-date">January 15, 2025</p>
+                                    <div class="review-rating">
+                                        <i class="fas fa-star review-star"></i>
+                                        <i class="fas fa-star review-star"></i>
+                                        <i class="fas fa-star review-star"></i>
+                                        <i class="fas fa-star review-star"></i>
+                                        <i class="far fa-star review-star"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <h5 class="review-title">Amazing service and beautiful venue!</h5>
+                            <p class="review-content">The team at The Grand Ballroom was fantastic. Our event went off without a hitch and the venue was stunning.</p>
+                            <div class="review-response">
+                                <p class="review-response-label">Response from Vendor:</p>
+                                <p>Thank you so much for the kind words, John! We loved hosting your event and look forward to seeing you again.</p>
+                            </div>
+                        </div>
+                        </div>
+                    
+                    <div class="review-form-section">
+                        <h4>Leave a Review</h4>
+                        <form id="review-form">
+                            <div class="form-group">
+                                <label for="review-title-input" class="form-label">Review Title</label>
+                                <input type="text" id="review-title-input" class="form-control" placeholder="Summarize your experience">
+                            </div>
+                            <div class="form-group">
+                                <label for="review-rating-input" class="form-label">Rating</label>
+                                <select id="review-rating-input" class="form-control">
+                                    <option value="5">5 Stars</option>
+                                    <option value="4">4 Stars</option>
+                                    <option value="3">3 Stars</option>
+                                    <option value="2">2 Stars</option>
+                                    <option value="1">1 Star</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="review-content-input" class="form-label">Your Review</label>
+                                <textarea id="review-content-input" class="form-control" rows="4" placeholder="Share your detailed experience"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Submit Review</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Dashboard Modal -->
+    
     <div id="dashboard-modal" class="modal">
-        <div class="modal-content" style="max-width: 1200px; width: 95%;">
+        <div class="modal-content" style="max-width: 900px; height: 90vh;">
             <div class="modal-header">
-                <h3 id="dashboard-title">My Dashboard</h3>
-                <span class="close-modal" id="close-dashboard-modal">&times;</span>
+                <h3 id="modal-dashboard-title">My Dashboard</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body dashboard-container">
+                <aside class="dashboard-sidebar">
+                    <h4 class="dashboard-card-title">Menu</h4>
+                    <ul class="sidebar-menu">
+                        <li><a href="#" class="active"><i class="fas fa-tachometer-alt"></i> Overview</a></li>
+                        <li><a href="#"><i class="fas fa-calendar-check"></i> My Bookings</a></li>
+                        <li><a href="#"><i class="fas fa-heart"></i> My Favorites</a></li>
+                        <li><a href="#"><i class="fas fa-comment-dots"></i> Messages</a></li>
+                        <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
+                    </ul>
+                    <hr>
+                    <h4 class="dashboard-card-title" style="margin-top: 1.5rem;">Vendor Account</h4>
+                    <ul class="sidebar-menu">
+                        <li><a href="#"><i class="fas fa-chart-line"></i> Analytics</a></li>
+                        <li><a href="#"><i class="fas fa-calendar-alt"></i> Bookings Calendar</a></li>
+                        <li><a href="#"><i class="fas fa-inbox"></i> Inbox</a></li>
+                        <li><a href="#"><i class="fas fa-store"></i> Manage Profile</a></li>
+                    </ul>
+                </aside>
+                <div class="dashboard-content">
+                    <div class="dashboard-card">
+                        <div class="dashboard-card-header">
+                            <h4 class="dashboard-card-title">Recent Bookings</h4>
+                            <button class="btn btn-sm btn-outline">View All</button>
+                        </div>
+                        <div class="dashboard-card-body">
+                            <div class="booking-item">
+                                <div class="booking-image">
+                                    <img src="https://via.placeholder.com/80x60" alt="Vendor Image">
+                                </div>
+                                <div class="booking-info">
+                                    <div class="booking-name">The Grand Ballroom</div>
+                                    <div class="booking-date">December 25, 2025</div>
+                                    <span class="booking-status status-confirmed">Confirmed</span>
+                                </div>
+                                <div class="booking-actions">
+                                    <button class="btn btn-sm btn-primary">View Details</button>
+                                </div>
+                            </div>
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="chat-modal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3>Messages</h3>
+                <span class="close-modal">&times;</span>
             </div>
             <div class="modal-body">
-                <div class="dashboard-container">
-                    <div class="dashboard-sidebar">
-                        <div class="profile-avatar" id="dashboard-avatar">
-                            U
+                <div class="chat-container">
+                    <div class="chat-sidebar">
+                        <div class="chat-header">Conversations</div>
+                        <div class="chat-search">
+                            <input type="text" placeholder="Search chats...">
                         </div>
-                        <h4 id="dashboard-username" style="text-align: center; margin-bottom: 1.5rem;">User Name</h4>
-                        <ul class="sidebar-menu">
-                            <li><a href="#" class="dashboard-tab active" data-tab="overview"><i class="fas fa-home"></i> Overview</a></li>
-                            <li><a href="#" class="dashboard-tab" data-tab="bookings"><i class="fas fa-calendar-check"></i> My Bookings</a></li>
-                            <li><a href="#" class="dashboard-tab" data-tab="favorites"><i class="fas fa-heart"></i> Favorites</a></li>
-                            <li><a href="#" class="dashboard-tab" data-tab="messages"><i class="fas fa-envelope"></i> Messages</a></li>
-                            <li><a href="#" class="dashboard-tab" data-tab="reviews"><i class="fas fa-star"></i> Reviews</a></li>
-                            <li><a href="#" class="dashboard-tab" data-tab="settings"><i class="fas fa-cog"></i> Settings</a></li>
-                            <li id="vendor-dashboard-link" style="display: none;"><a href="#" class="dashboard-tab" data-tab="vendor-dashboard"><i class="fas fa-store"></i> Vendor Dashboard</a></li>
-                        </ul>
+                        <div class="chat-conversations">
+                            <div class="chat-conversation active">
+                                <div class="chat-conversation-header">
+                                    <span class="chat-conversation-name">The Grand Ballroom</span>
+                                    <span class="chat-conversation-time">10:30 AM</span>
+                                </div>
+                                <div class="chat-conversation-preview">
+                                    Hi there! We have received your booking request...
+                                </div>
+                            </div>
+                            </div>
                     </div>
-                    <div class="dashboard-content">
-                        <!-- Overview Tab -->
-                        <div class="dashboard-tab-content active" id="overview-tab">
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">Quick Stats</h4>
-                                </div>
-                                <div class="dashboard-card-body">
-                                    <div class="stats-grid" id="quick-stats">
-                                        <!-- Populated by JavaScript -->
-                                    </div>
-                                </div>
+                    <div class="chat-main">
+                        <div class="chat-main-header">
+                            <div class="chat-main-avatar">G</div>
+                            <div class="chat-main-name">The Grand Ballroom</div>
+                        </div>
+                        <div class="chat-main-body">
+                            <div class="chat-message chat-message-received">
+                                Hi! Thanks for your interest in our venue. How can I help you?
+                                <div class="chat-message-time">10:28 AM</div>
                             </div>
-                            
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">Upcoming Bookings</h4>
-                                    <a href="#" class="btn btn-outline btn-sm view-all-btn" data-tab="bookings">View All</a>
-                                </div>
-                                <div class="dashboard-card-body" id="upcoming-bookings">
-                                    <!-- Populated by JavaScript -->
-                                </div>
-                            </div>
-                            
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">Recent Favorites</h4>
-                                    <a href="#" class="btn btn-outline btn-sm view-all-btn" data-tab="favorites">View All</a>
-                                </div>
-                                <div class="dashboard-card-body" id="recent-favorites">
-                                    <!-- Populated by JavaScript -->
-                                </div>
+                            <div class="chat-message chat-message-sent">
+                                I'd like to ask about availability on December 25th.
+                                <div class="chat-message-time">10:30 AM</div>
                             </div>
                         </div>
-                        
-                        <!-- Bookings Tab -->
-                        <div class="dashboard-tab-content" id="bookings-tab">
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">My Bookings</h4>
-                                </div>
-                                <div class="dashboard-card-body" id="all-bookings">
-                                    <!-- Populated by JavaScript -->
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Favorites Tab -->
-                        <div class="dashboard-tab-content" id="favorites-tab">
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">My Favorites</h4>
-                                </div>
-                                <div class="dashboard-card-body">
-                                    <div class="vendor-grid" id="favorites-grid">
-                                        <!-- Populated by JavaScript -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Messages Tab -->
-                        <div class="dashboard-tab-content" id="messages-tab">
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">Messages</h4>
-                                </div>
-                                <div class="dashboard-card-body">
-                                    <div class="chat-container">
-                                        <div class="chat-sidebar">
-                                            <div class="chat-header">Conversations</div>
-                                            <div class="chat-search">
-                                                <input type="text" placeholder="Search conversations..." id="chat-search">
-                                            </div>
-                                            <div class="chat-conversations" id="conversations-list">
-                                                <!-- Populated by JavaScript -->
-                                            </div>
-                                        </div>
-                                        <div class="chat-main" id="chat-main">
-                                            <div class="chat-main-header">
-                                                <div class="chat-main-avatar" id="chat-avatar">
-                                                    <i class="fas fa-store"></i>
-                                                </div>
-                                                <div class="chat-main-name" id="chat-name">Select a conversation</div>
-                                            </div>
-                                            <div class="chat-main-body" id="chat-messages">
-                                                <div style="text-align: center; color: var(--text-light); margin-top: 2rem;">
-                                                    Select a conversation to view messages
-                                                </div>
-                                            </div>
-                                            <div class="chat-main-footer" id="chat-footer" style="display: none;">
-                                                <div class="chat-input">
-                                                    <textarea id="message-input" placeholder="Type your message..."></textarea>
-                                                    <button class="btn btn-primary chat-send-btn" id="send-message-btn">
-                                                        <i class="fas fa-paper-plane"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Reviews Tab -->
-                        <div class="dashboard-tab-content" id="reviews-tab">
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">My Reviews</h4>
-                                </div>
-                                <div class="dashboard-card-body" id="user-reviews">
-                                    <!-- Populated by JavaScript -->
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Settings Tab -->
-                        <div class="dashboard-tab-content" id="settings-tab">
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">Profile Settings</h4>
-                                </div>
-                                <div class="dashboard-card-body">
-                                    <form id="profile-settings-form">
-                                        <div class="form-group">
-                                            <label class="form-label">Profile Photo</label>
-                                            <div style="display: flex; align-items: center; gap: 1rem;">
-                                                <div class="profile-avatar" id="settings-avatar">
-                                                    U
-                                                </div>
-                                                <button type="button" class="btn btn-outline btn-sm" id="upload-avatar-btn">Change Photo</button>
-                                                <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
-                                            </div>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Full Name</label>
-                                            <input type="text" id="settings-name" class="form-control">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Email</label>
-                                            <input type="email" id="settings-email" class="form-control" disabled>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Phone Number</label>
-                                            <input type="tel" id="settings-phone" class="form-control">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Bio</label>
-                                            <textarea id="settings-bio" class="form-control" rows="3"></textarea>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                                    </form>
-                                </div>
-                            </div>
-                            
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">Change Password</h4>
-                                </div>
-                                <div class="dashboard-card-body">
-                                    <form id="password-change-form">
-                                        <div class="form-group">
-                                            <label class="form-label">Current Password</label>
-                                            <input type="password" id="current-password" class="form-control">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">New Password</label>
-                                            <input type="password" id="new-password" class="form-control">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Confirm New Password</label>
-                                            <input type="password" id="confirm-password" class="form-control">
-                                        </div>
-                                        <button type="submit" class="btn btn-primary">Change Password</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Vendor Dashboard Tab -->
-                        <div class="dashboard-tab-content" id="vendor-dashboard-tab">
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">Vendor Overview</h4>
-                                </div>
-                                <div class="dashboard-card-body">
-                                    <div class="stats-grid" id="vendor-quick-stats">
-                                        <!-- Populated by JavaScript -->
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">Recent Bookings</h4>
-                                    <a href="#" class="btn btn-outline btn-sm" id="view-all-bookings-btn">View All</a>
-                                </div>
-                                <div class="dashboard-card-body" id="vendor-bookings">
-                                    <!-- Populated by JavaScript -->
-                                </div>
-                            </div>
-                            
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">Recent Reviews</h4>
-                                    <a href="#" class="btn btn-outline btn-sm" id="view-all-reviews-btn">View All</a>
-                                </div>
-                                <div class="dashboard-card-body" id="vendor-reviews">
-                                    <!-- Populated by JavaScript -->
-                                </div>
-                            </div>
-                            
-                            <div class="dashboard-card">
-                                <div class="dashboard-card-header">
-                                    <h4 class="dashboard-card-title">Calendar</h4>
-                                </div>
-                                <div class="dashboard-card-body">
-                                    <div class="calendar-container">
-                                        <div class="calendar-header">
-                                            <div class="calendar-nav">
-                                                <button class="btn btn-outline btn-sm" id="prev-month"><i class="fas fa-chevron-left"></i></button>
-                                                <div class="calendar-title" id="calendar-month">June 2023</div>
-                                                <button class="btn btn-outline btn-sm" id="next-month"><i class="fas fa-chevron-right"></i></button>
-                                            </div>
-                                            <button class="btn btn-primary btn-sm" id="today-btn">Today</button>
-                                        </div>
-                                        <div class="calendar-grid" id="calendar-grid">
-                                            <!-- Populated by JavaScript -->
-                                        </div>
-                                    </div>
-                                </div>
+                        <div class="chat-main-footer">
+                            <div class="chat-input">
+                                <textarea placeholder="Type a message..."></textarea>
+                                <button class="btn btn-primary chat-send-btn">Send</button>
                             </div>
                         </div>
                     </div>
@@ -2223,1681 +2087,277 @@
             </div>
         </div>
     </div>
-
-    <!-- Review Modal -->
-    <div id="review-modal" class="modal">
+    
+    <div id="vendor-signup-modal" class="modal">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h3>Leave a Review</h3>
+                <h3>Vendor Registration</h3>
                 <span class="close-modal">&times;</span>
             </div>
             <div class="modal-body">
-                <div id="review-vendor-info" style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                    <div class="profile-avatar" id="review-vendor-avatar">
-                        <i class="fas fa-store"></i>
-                    </div>
-                    <div>
-                        <h4 id="review-vendor-name">Vendor Name</h4>
-                        <p id="review-booking-details">Booking on June 20, 2023</p>
-                    </div>
-                </div>
-                <form id="review-form">
-                    <div class="form-group">
-                        <label class="form-label">Rating</label>
-                        <div class="review-rating" id="review-rating-stars">
-                            <i class="far fa-star review-star" data-rating="1"></i>
-                            <i class="far fa-star review-star" data-rating="2"></i>
-                            <i class="far fa-star review-star" data-rating="3"></i>
-                            <i class="far fa-star review-star" data-rating="4"></i>
-                            <i class="far fa-star review-star" data-rating="5"></i>
-                        </div>
-                        <input type="hidden" id="review-rating" value="0">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Review Title</label>
-                        <input type="text" id="review-title" class="form-control" placeholder="Summarize your experience">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Your Review</label>
-                        <textarea id="review-content" class="form-control" rows="5" placeholder="Share details of your experience with this vendor"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Upload Photos (Optional)</label>
-                        <div style="border: 1px dashed var(--border); border-radius: var(--radius); padding: 1rem; text-align: center;">
-                            <input type="file" id="review-photos" multiple accept="image/*" style="display: none;">
-                            <button type="button" class="btn btn-outline" id="upload-review-photos-btn">
-                                <i class="fas fa-camera"></i> Add Photos
-                            </button>
-                            <div id="review-photos-preview" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div class="filter-option">
-                            <input type="checkbox" id="review-anonymous">
-                            <label for="review-anonymous">Post anonymously</label>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Submit Review</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Booking Details Modal -->
-    <div id="booking-details-modal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <div class="modal-header">
-                <h3>Booking Details</h3>
-                <span class="close-modal">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div id="booking-details-content">
-                    <!-- Populated by JavaScript -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Vendor Registration Modal -->
-    <div id="vendor-registration-modal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <div class="modal-header">
-                <h3>Become a Vendor</h3>
-                <span class="close-modal">&times;</span>
-            </div>
-            <div class="modal-body">
+                <p>Register your business to start reaching clients!</p>
                 <form id="vendor-registration-form">
                     <div class="form-group">
-                        <label class="form-label">Business Name</label>
-                        <input type="text" id="vendor-business-name" class="form-control" required>
+                        <label for="business-name" class="form-label">Business Name</label>
+                        <input type="text" id="business-name" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Business Description</label>
-                        <textarea id="vendor-business-description" class="form-control" rows="3" required></textarea>
+                        <label for="service-type" class="form-label">Service Type</label>
+                        <select id="service-type" class="form-control" required>
+                            <option>Venue</option>
+                            <option>Photography</option>
+                            <option>Music</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Business Phone</label>
-                        <input type="tel" id="vendor-business-phone" class="form-control" required>
+                        <label for="vendor-documents" class="form-label">Upload Business Documents (e.g., license)</label>
+                        <input type="file" id="vendor-documents" class="form-control">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Business Email</label>
-                        <input type="email" id="vendor-business-email" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Website (Optional)</label>
-                        <input type="url" id="vendor-website" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Business Categories</label>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                            <div class="filter-option">
-                                <input type="checkbox" id="vendor-category-venue" value="venue">
-                                <label for="vendor-category-venue">Venue</label>
-                            </div>
-                            <div class="filter-option">
-                                <input type="checkbox" id="vendor-category-photo" value="photo">
-                                <label for="vendor-category-photo">Photo/Video</label>
-                            </div>
-                            <div class="filter-option">
-                                <input type="checkbox" id="vendor-category-music" value="music">
-                                <label for="vendor-category-music">Music/DJ</label>
-                            </div>
-                            <div class="filter-option">
-                                <input type="checkbox" id="vendor-category-catering" value="catering">
-                                <label for="vendor-category-catering">Catering</label>
-                            </div>
-                            <div class="filter-option">
-                                <input type="checkbox" id="vendor-category-entertainment" value="entertainment">
-                                <label for="vendor-category-entertainment">Entertainment</label>
-                            </div>
-                            <div class="filter-option">
-                                <input type="checkbox" id="vendor-category-decor" value="decor">
-                                <label for="vendor-category-decor">Decorations</label>
-                            </div>
-                            <div class="filter-option">
-                                <input type="checkbox" id="vendor-category-planner" value="planner">
-                                <label for="vendor-category-planner">Planner</label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Service Areas</label>
-                        <div id="service-areas-container">
-                            <div class="form-row" style="margin-bottom: 0.5rem;">
-                                <div class="form-group" style="flex: 2;">
-                                    <input type="text" class="form-control service-area-city" placeholder="City" required>
-                                </div>
-                                <div class="form-group" style="flex: 2;">
-                                    <input type="text" class="form-control service-area-state" placeholder="State" required>
-                                </div>
-                                <div class="form-group" style="flex: 1;">
-                                    <input type="number" class="form-control service-area-radius" placeholder="Radius (miles)" min="1" required>
-                                </div>
-                                <button type="button" class="btn btn-outline btn-sm remove-service-area" style="align-self: flex-end;">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-outline btn-sm" id="add-service-area-btn">
-                            <i class="fas fa-plus"></i> Add Service Area
-                        </button>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Business Hours</label>
-                        <div id="business-hours-container">
-                            <!-- Populated by JavaScript -->
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Business Logo</label>
-                        <div style="border: 1px dashed var(--border); border-radius: var(--radius); padding: 1rem; text-align: center;">
-                            <input type="file" id="vendor-logo-upload" accept="image/*" style="display: none;">
-                            <button type="button" class="btn btn-outline" id="upload-vendor-logo-btn">
-                                <i class="fas fa-camera"></i> Upload Logo
-                            </button>
-                            <div id="vendor-logo-preview" style="margin-top: 1rem;"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Portfolio Images</label>
-                        <div style="border: 1px dashed var(--border); border-radius: var(--radius); padding: 1rem; text-align: center;">
-                            <input type="file" id="vendor-portfolio-upload" multiple accept="image/*" style="display: none;">
-                            <button type="button" class="btn btn-outline" id="upload-vendor-portfolio-btn">
-                                <i class="fas fa-images"></i> Upload Portfolio Images
-                            </button>
-                            <div id="vendor-portfolio-preview" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem;"></div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Social Media Links</label>
-                        <div id="social-media-container">
-                            <div class="form-row" style="margin-bottom: 0.5rem;">
-                                <div class="form-group" style="flex: 1;">
-                                    <select class="form-control social-media-platform">
-                                        <option value="facebook">Facebook</option>
-                                        <option value="instagram">Instagram</option>
-                                        <option value="twitter">Twitter</option>
-                                        <option value="linkedin">LinkedIn</option>
-                                        <option value="pinterest">Pinterest</option>
-                                        <option value="youtube">YouTube</option>
-                                    </select>
-                                </div>
-                                <div class="form-group" style="flex: 3;">
-                                    <input type="url" class="form-control social-media-url" placeholder="URL" required>
-                                </div>
-                                <button type="button" class="btn btn-outline btn-sm remove-social-media" style="align-self: flex-end;">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-outline btn-sm" id="add-social-media-btn">
-                            <i class="fas fa-plus"></i> Add Social Media
-                        </button>
-                    </div>
-                    <div class="form-group">
-                        <button type="submit" class="btn btn-primary">Complete Registration</button>
-                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Complete Registration</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Payment Modal -->
+    <div id="booking-confirmation-modal" class="modal">
+        <div class="modal-content confirmation-content">
+            <h3 class="text-success">Booking Request Sent!</h3>
+            <p>Your booking request for <span id="conf-vendor-name">The Grand Ballroom</span> on <span id="conf-booking-date"></span> has been sent. The vendor will confirm your request shortly.</p>
+            <div class="confirmation-details">
+                <div class="confirmation-row">
+                    <span class="confirmation-label">Vendor:</span>
+                    <span class="confirmation-value" id="conf-vendor">The Grand Ballroom</span>
+                </div>
+                <div class="confirmation-row">
+                    <span class="confirmation-label">Date:</span>
+                    <span class="confirmation-value" id="conf-date"></span>
+                </div>
+                <div class="confirmation-row">
+                    <span class="confirmation-label">Total Price:</span>
+                    <span class="confirmation-value" id="conf-price">$2,500</span>
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <button class="btn btn-primary">Go to Dashboard</button>
+            </div>
+        </div>
+    </div>
+    
     <div id="payment-modal" class="modal">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
-                <h3>Payment</h3>
+                <h3>Complete Your Booking</h3>
                 <span class="close-modal">&times;</span>
             </div>
             <div class="modal-body">
-                <div id="payment-details">
-                    <div style="margin-bottom: 1.5rem;">
-                        <h4 style="margin-bottom: 0.5rem;">Booking Summary</h4>
-                        <div style="background-color: var(--secondary); padding: 1rem; border-radius: var(--radius);">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <span>Service:</span>
-                                <span id="payment-service-name">Wedding Photography</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                                <span>Date:</span>
-                                <span id="payment-service-date">June 20, 2023</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; font-weight: 600;">
-                                <span>Total:</span>
-                                <span id="payment-service-total">$500.00</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 1.5rem;">
-                        <h4 style="margin-bottom: 0.5rem;">Payment Method</h4>
-                        <div id="payment-methods-list">
-                            <!-- Populated by JavaScript -->
-                        </div>
-                        <button class="btn btn-outline btn-sm" id="add-payment-method-btn" style="margin-top: 0.5rem;">
-                            <i class="fas fa-plus"></i> Add New Payment Method
-                        </button>
-                    </div>
-                    
-                    <div id="new-payment-method-form" style="display: none; margin-bottom: 1.5rem;">
-                        <h4 style="margin-bottom: 0.5rem;">Add Payment Method</h4>
-                        <div id="card-element" style="margin-bottom: 1rem;"></div>
-                        <button class="btn btn-primary btn-sm" id="save-payment-method-btn">Save Payment Method</button>
-                        <button class="btn btn-outline btn-sm" id="cancel-add-payment-method-btn">Cancel</button>
-                    </div>
-                    
-                    <button class="btn btn-primary" id="complete-payment-btn" style="width: 100%;">Complete Payment</button>
+                <div id="booking-summary">
+                    <h4>Booking Details</h4>
+                    <p><strong>Vendor:</strong> The Grand Ballroom</p>
+                    <p><strong>Date:</strong> <span id="payment-date-summary"></span></p>
+                    <p><strong>Total:</strong> <span id="payment-amount-summary">$2,500</span></p>
                 </div>
+                <hr>
+                <form id="payment-form">
+                    <div class="form-group">
+                        <label for="card-element" class="form-label">
+                            Credit or debit card
+                        </label>
+                        <div id="card-element" class="form-control" style="height: 40px; padding: 10px;">
+                            </div>
+                    </div>
+                    <button id="submit-payment" class="btn btn-primary" style="width: 100%;">
+                        <i class="fas fa-credit-card"></i> Pay Now
+                    </button>
+                </form>
+                <div id="payment-result" style="margin-top: 1rem; text-align: center;"></div>
             </div>
         </div>
     </div>
-
-    <!-- Loading Spinner -->
-    <div id="loading-spinner" class="modal" style="display: flex; background-color: rgba(255,255,255,0.8); z-index: 2000;">
-        <div style="margin: auto; text-align: center;">
-            <div style="width: 50px; height: 50px; border: 5px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-            <p id="loading-text">Loading...</p>
+    
+    <div id="notifications-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>Notifications</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <ul id="notifications-list" style="list-style: none;">
+                    <li style="padding: 1rem; border-bottom: 1px solid var(--border);">
+                        <div style="font-weight: 600;">Booking Confirmed</div>
+                        <div style="font-size: 0.9rem; color: var(--text-light);">Your booking with The Grand Ballroom has been confirmed.</div>
+                        <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem;">2 minutes ago</div>
+                    </li>
+                    <li style="padding: 1rem; border-bottom: 1px solid var(--border);">
+                        <div style="font-weight: 600;">New Message</div>
+                        <div style="font-size: 0.9rem; color: var(--text-light);">You have a new message from a client.</div>
+                        <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem;">1 hour ago</div>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
+    
+    <div id="profile-modal" class="modal profile-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Profile</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="profile-avatar" id="profile-modal-avatar">U</div>
+                <form id="profile-form">
+                    <div class="form-group">
+                        <label for="profile-name" class="form-label">Full Name</label>
+                        <input type="text" id="profile-name" class="form-control" value="User Name">
+                    </div>
+                    <div class="form-group">
+                        <label for="profile-email" class="form-label">Email</label>
+                        <input type="email" id="profile-email" class="form-control" value="user@example.com" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-role" class="form-label">Account Type</label>
+                        <select id="user-role" class="form-control">
+                            <option value="client">Client</option>
+                            <option value="vendor">Vendor</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Save Changes</button>
+                    <button type="button" class="btn btn-outline" style="width: 100%; margin-top: 0.5rem;">Logout</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
 
-    <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places&v=weekly" defer></script>
-
-    <!-- Flatpickr -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
-    <!-- Facebook SDK -->
     <script>
-      window.fbAsyncInit = function() {
-        FB.init({
-          appId: 'YOUR_FACEBOOK_APP_ID',
-          cookie: true,
-          xfbml: true,
-          version: 'v18.0'
-        });
-      };
-    </script>
-    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize Stripe
-            const stripe = Stripe('YOUR_STRIPE_PUBLIC_KEY');
-            let elements;
-            let cardElement;
-            
-            // Initialize variables
-            const modal = document.getElementById('booking-modal');
-            const modalBody = modal.querySelector('.modal-body');
-            const confirmationModal = document.getElementById('confirmation-modal');
-            const locationPermissionModal = document.getElementById('location-permission');
+        document.addEventListener('DOMContentLoaded', () => {
+            // Modal functionality
+            const vendorModal = document.getElementById('vendor-modal');
+            const bookingConfirmationModal = document.getElementById('booking-confirmation-modal');
             const profileModal = document.getElementById('profile-modal');
-            const dashboardModal = document.getElementById('dashboard-modal');
-            const reviewModal = document.getElementById('review-modal');
-            const bookingDetailsModal = document.getElementById('booking-details-modal');
-            const vendorRegistrationModal = document.getElementById('vendor-registration-modal');
+            const chatModal = document.getElementById('chat-modal');
+            const notificationsModal = document.getElementById('notifications-modal');
             const paymentModal = document.getElementById('payment-modal');
-            const loadingSpinner = document.getElementById('loading-spinner');
-            
-            const vendorGrid = document.getElementById('vendor-grid');
-            const mapVenueList = document.getElementById('map-venue-list');
-            const resultsTitle = document.querySelector('.results-title');
-            const resultsCount = document.querySelector('.results-count');
-            const mapViewContainer = document.getElementById('map-view-container');
-            const searchInput = document.getElementById('search-input');
-            const sortSelect = document.getElementById('sort-select');
-            const wishlistBtn = document.getElementById('wishlist-btn');
-            const notificationsBtn = document.getElementById('notifications-btn');
-            const profileBtn = document.getElementById('profile-btn');
-            const notificationBadge = document.getElementById('notification-badge');
-            const filterResetBtns = document.querySelectorAll('.filter-reset');
-            const trendingTags = document.querySelectorAll('.trending-tag');
-            const pagination = document.getElementById('pagination');
-            const prevPageBtn = document.getElementById('prev-page');
-            const nextPageBtn = document.getElementById('next-page');
-            const locateMeBtn = document.getElementById('locate-me');
-            const allowLocationBtn = document.getElementById('allow-location');
-            const denyLocationBtn = document.getElementById('deny-location');
-            const currentLocationCheckbox = document.getElementById('current-location');
-            const locationLoading = document.getElementById('location-loading');
-            const locationInput = document.getElementById('location-input');
-            const categoryItems = document.querySelectorAll('.category-item');
-            
-            // Profile modal elements
-            const closeProfileModal = document.getElementById('close-profile-modal');
-            const loginForm = document.getElementById('login-form');
-            const signupForm = document.getElementById('signup-form');
-            const loggedInView = document.getElementById('logged-in-view');
-            const showSignup = document.getElementById('show-signup');
-            const showLogin = document.getElementById('show-login');
-            const loginBtn = document.getElementById('login-btn');
-            const signupBtn = document.getElementById('signup-btn');
-            const logoutBtn = document.getElementById('logout-btn');
-            const googleLoginBtn = document.getElementById('google-login');
-            const facebookLoginBtn = document.getElementById('facebook-login');
-            const dashboardBtn = document.getElementById('dashboard-btn');
-            
-            // Dashboard elements
-            const dashboardTabs = document.querySelectorAll('.dashboard-tab');
-            const dashboardTabContents = document.querySelectorAll('.dashboard-tab-content');
-            const closeDashboardModal = document.getElementById('close-dashboard-modal');
-            const vendorDashboardLink = document.getElementById('vendor-dashboard-link');
-            
-            // App state
-            let state = {
-                vendors: [],
-                filteredVendors: [],
-                favorites: [],
-                currentPage: 1,
-                itemsPerPage: 6,
-                map: null,
-                markers: [],
-                currentView: 'list',
-                userLocation: null,
-                currentCategory: 'all',
-                filters: {
-                    location: '',
-                    types: ['independent', 'company'],
-                    price: 40,
-                    popular: [],
-                    ratings: []
-                },
-                currentBooking: null,
-                currentConversation: null,
-                currentCalendarMonth: new Date().getMonth(),
-                currentCalendarYear: new Date().getFullYear()
-            };
-            
-            // User state
-            let currentUser = null;
-            
-            // Initialize the app
-            init();
-            
-            async function init() {
-                // Check for existing user session
-                await checkAuthStatus();
-                
-                // Show loading state
-                vendorGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">Loading vendors...</div>';
-                
-                try {
-                    // Load vendors data from API
-                    const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/vendors');
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    
-                    const data = await response.json();
-                    if (data && data.length > 0) {
-                        // Process vendor data
-                        state.vendors = data.map(vendor => {
-                            // Parse services JSON string
-                            let services = [];
-                            try {
-                                services = vendor.services ? JSON.parse(vendor.services) : [];
-                            } catch (e) {
-                                console.error('Error parsing services:', e);
-                            }
-                            
-                            // Map type to category
-                            const category = mapTypeToCategory(vendor.type);
-                            
-                            return {
-                                ...vendor,
-                                services: services,
-                                category: category,
-                                coordinates: {
-                                    lat: getRandomLat(),
-                                    lng: getRandomLng()
-                                },
-                                priceLevel: vendor.priceLevel || getRandomPriceLevel(),
-                                isPremium: vendor.IsPremium || false,
-                                isEcoFriendly: vendor.IsEcoFriendly || false,
-                                isAwardWinning: vendor.IsAwardWinning || false
-                            };
-                        });
-                        
-                        state.filteredVendors = [...state.vendors];
-                        
-                        // Update UI
-                        updateMetadata({ total: state.filteredVendors.length });
-                        renderVendors();
-                        setupEventListeners();
-                        
-                        // Request location after everything is loaded
-                        requestLocationWithFeedback();
-                    } else {
-                        showError("No vendor data found");
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError("Failed to load vendors. Please try again later.");
-                }
-            }
-            
-            // Helper function to map vendor types to categories
-            function mapTypeToCategory(type) {
-                const typeMap = {
-                    "Photography": "photo",
-                    "Photo": "photo",
-                    "Videography": "photo",
-                    "Entertainment": "entertainment",
-                    "Music": "music",
-                    "DJ": "music",
-                    "Decor": "decor",
-                    "Florist": "decor",
-                    "Catering": "catering",
-                    "Food": "catering",
-                    "Venue": "venue",
-                    "Hotel": "venue",
-                    "Transportation": "transport",
-                };
-                return typeMap[type] || type.toLowerCase();
+            const dashboardModal = document.getElementById('dashboard-modal');
+            const vendorSignupModal = document.getElementById('vendor-signup-modal');
+
+            function openModal(modal) {
+                modal.classList.add('active');
             }
 
-            // Check for existing user session
-            async function checkAuthStatus() {
-                const token = localStorage.getItem('token');
-                if (!token) return;
-                
-                try {
-                    const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/users/me', {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const userData = await response.json();
-                        loginUser({
-                            id: userData.userId,
-                            name: userData.name || userData.email.split('@')[0],
-                            email: userData.email,
-                            avatar: userData.avatar || (userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase()),
-                            phone: userData.phone,
-                            bio: userData.bio,
-                            isVendor: userData.isVendor
-                        });
-                        
-                        // Load user favorites
-                        await loadUserFavorites();
-                        
-                        // Load user notifications
-                        await loadUserNotifications();
-                    }
-                } catch (error) {
-                    console.error('Auth check failed:', error);
-                    localStorage.removeItem('token');
-                }
+            function closeModal(modal) {
+                modal.classList.remove('active');
             }
-            
-            // Load user favorites
-            async function loadUserFavorites() {
-                if (!currentUser) return;
-                
-                try {
-                    const response = await fetch(`https://bdb-3-0-venuevue-api.onrender.com/api/users/${currentUser.id}/favorites`, {
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const favorites = await response.json();
-                        state.favorites = favorites.map(f => f.vendorId);
-                        
-                        // Update favorites badge
-                        document.querySelector('.badge').textContent = state.favorites.length;
-                    }
-                } catch (error) {
-                    console.error('Failed to load favorites:', error);
-                }
-            }
-            
-            // Load user notifications
-            async function loadUserNotifications() {
-                if (!currentUser) return;
-                
-                try {
-                    const response = await fetch(`https://bdb-3-0-venuevue-api.onrender.com/api/users/${currentUser.id}/notifications`, {
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const notifications = await response.json();
-                        const unreadCount = notifications.filter(n => !n.isRead).length;
-                        notificationBadge.textContent = unreadCount;
-                    }
-                } catch (error) {
-                    console.error('Failed to load notifications:', error);
-                }
-            }
-            
-            // New improved location request function
-            function requestLocationWithFeedback() {
-                if (!navigator.geolocation) {
-                    console.log("Geolocation not supported by this browser");
-                    return;
-                }
 
-                // Visual feedback
-                locationInput.placeholder = "Detecting your location...";
-                
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        handleLocationSuccess(position);
-                    },
-                    (error) => {
-                        console.log("Location error:", error);
-                        locationInput.placeholder = "City or ZIP code";
-                        
-                        if (error.code === error.PERMISSION_DENIED) {
-                            // Only show modal if this is a fresh page load
-                            if (!sessionStorage.getItem('locationRequested')) {
-                                showModal(locationPermissionModal);
-                                sessionStorage.setItem('locationRequested', 'true');
-                            }
-                        }
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const modal = e.target.closest('.modal');
+                    if (modal) {
+                        closeModal(modal);
                     }
-                );
-            }
+                });
+            });
+
+            document.querySelectorAll('.vendor-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'I') {
+                        // Populate modal with vendor data
+                        openModal(vendorModal);
+                    }
+                });
+            });
+
+            document.getElementById('profile-btn').addEventListener('click', () => {
+                openModal(profileModal);
+            });
             
-            // Modified location success handler
-            function handleLocationSuccess(position) {
-                state.userLocation = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                
-                // Update UI
-                currentLocationCheckbox.checked = true;
-                document.getElementById('within50').checked = true;
-                locationInput.value = "Near You";
-                locationInput.placeholder = "Near You";
-                
-                filterVendors();
-                
-                if (state.map) {
-                    centerMapOnUser();
+            document.getElementById('wishlist-btn').addEventListener('click', () => {
+                // This would be a server-side call in a real app,
+                // for now, we'll just show the profile modal.
+                openModal(dashboardModal);
+            });
+            
+            document.getElementById('notifications-btn').addEventListener('click', () => {
+                openModal(notificationsModal);
+            });
+
+            // Open chat modal from header or vendor profile
+            document.getElementById('chat-btn').addEventListener('click', () => {
+                openModal(chatModal);
+            });
+            document.getElementById('open-chat-btn').addEventListener('click', () => {
+                closeModal(vendorModal);
+                openModal(chatModal);
+            });
+
+            document.getElementById('open-booking-modal-btn').addEventListener('click', () => {
+                // In a real app, this would validate the form and proceed to payment or confirmation
+                openModal(paymentModal);
+            });
+            
+            // Payment form submission
+            document.getElementById('payment-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                // Simulate payment processing
+                document.getElementById('payment-result').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing payment...';
+                setTimeout(() => {
+                    closeModal(paymentModal);
+                    openModal(bookingConfirmationModal);
+                }, 2000);
+            });
+            
+            // Wishlist button toggle
+            document.querySelectorAll('.vendor-favorite').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btn.querySelector('i').classList.toggle('fas');
+                    btn.querySelector('i').classList.toggle('far');
+                    btn.classList.toggle('active');
+                    // This is where you would call a backend API to save the favorite
+                });
+            });
+
+            // Date picker for availability filter
+            flatpickr("#availability-date", {
+                dateFormat: "Y-m-d",
+            });
+            
+            // Date picker for booking
+            flatpickr("#booking-date-picker", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                minuteIncrement: 15,
+            });
+
+            // Vendor/Client role switch
+            document.getElementById('user-role').addEventListener('change', (e) => {
+                if (e.target.value === 'vendor') {
+                    // Open a separate registration flow for vendors
+                    openModal(vendorSignupModal);
                 }
-            }
-            
-            // Google Maps initialization
-            function initMap() {
-                if (state.filteredVendors.length === 0) return;
-                
-                // Default to first vendor's location or user location if available
-                const center = state.userLocation || 
-                               { lat: state.filteredVendors[0].coordinates.lat, 
-                                 lng: state.filteredVendors[0].coordinates.lng };
-                
-                // Create map
-                state.map = new google.maps.Map(document.getElementById("map"), {
-                    zoom: 12,
-                    center: center,
-                    styles: [
-                        {
-                            "featureType": "poi",
-                            "stylers": [
-                                { "visibility": "off" }
-                            ]
-                        }
-                    ]
-                });
-                
-                // Add markers
-                updateMapMarkers();
-                
-                // Center map on user location if available
-                if (state.userLocation) {
-                    centerMapOnUser();
-                }
-            }
-            
-            // Helper function to generate random coordinates (for demo)
-            function getRandomLat() { return 34.0522 + (Math.random() * 0.2 - 0.1); }
-            function getRandomLng() { return -118.2437 + (Math.random() * 0.2 - 0.1); }
-            
-            // Helper function to generate random price level (for demo)
-            function getRandomPriceLevel() {
-                const levels = ['$', '$$', '$$$'];
-                return levels[Math.floor(Math.random() * levels.length)];
-            }
-            
-            // Setup all event listeners
-            function setupEventListeners() {
-                // Category selection
-                categoryItems.forEach(item => {
-                    item.addEventListener('click', () => {
-                        // Update active category
-                        categoryItems.forEach(i => i.classList.remove('active'));
-                        item.classList.add('active');
-                        
-                        // Set current category
-                        state.currentCategory = item.dataset.category;
-                        
-                        // Filter vendors
-                        filterVendors();
-                    });
-                });
-                
-                // Search
-                searchInput.addEventListener('input', filterVendors);
-                
-                // Sorting
-                sortSelect.addEventListener('change', sortVendors);
-                
-                // Filter resets
-                filterResetBtns.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        const filterType = btn.id.replace('-reset', '');
-                        resetFilter(filterType);
-                    });
-                });
-                
-                // Filter inputs
-                document.querySelectorAll('.filter-section input').forEach(input => {
-                    input.addEventListener('change', filterVendors);
-                });
-                
-                // Current location checkbox
-                currentLocationCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        requestLocationWithFeedback();
-                    } else {
-                        state.userLocation = null;
-                        locationInput.value = '';
-                        locationInput.placeholder = 'City or ZIP code';
-                        filterVendors();
-                    }
-                });
-                
-                // Popular filters
-                trendingTags.forEach(tag => {
-                    tag.addEventListener('click', () => {
-                        tag.classList.toggle('active');
-                        const filter = tag.dataset.filter;
-                        
-                        if (tag.classList.contains('active')) {
-                            if (!state.filters.popular.includes(filter)) {
-                                state.filters.popular.push(filter);
-                            }
-                        } else {
-                            state.filters.popular = state.filters.popular.filter(f => f !== filter);
-                        }
-                        
-                        filterVendors();
-                    });
-                });
-                
-                // Rating filters
-                document.querySelectorAll('#rating-5, #rating-4, #rating-3').forEach(checkbox => {
-                    checkbox.addEventListener('change', function() {
-                        const rating = parseInt(this.id.split('-')[1]);
-                        
-                        if (this.checked) {
-                            if (!state.filters.ratings.includes(rating)) {
-                                state.filters.ratings.push(rating);
-                            }
-                        } else {
-                            state.filters.ratings = state.filters.ratings.filter(r => r !== rating);
-                        }
-                        
-                        filterVendors();
-                    });
-                });
-                
-                // Pagination
-                prevPageBtn.addEventListener('click', () => {
-                    if (state.currentPage > 1) {
-                        state.currentPage--;
-                        renderVendors();
-                    }
-                });
-                
-                nextPageBtn.addEventListener('click', () => {
-                    const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
-                    if (state.currentPage < totalPages) {
-                        state.currentPage++;
-                        renderVendors();
-                    }
-                });
-                
-                // User nav buttons
-                wishlistBtn.addEventListener('click', () => {
-                    if (currentUser) {
-                        showDashboard('favorites');
-                    } else {
-                        showModal(profileModal);
-                    }
-                });
-                
-                notificationsBtn.addEventListener('click', () => {
-                    if (currentUser) {
-                        showDashboard();
-                    } else {
-                        showModal(profileModal);
-                    }
-                });
-                
-                // Profile button click handler
-                profileBtn.addEventListener('click', () => {
-                    if (currentUser) {
-                        showLoggedInView();
-                    } else {
-                        showLoginView();
-                    }
-                    showModal(profileModal);
-                });
-                
-                // Close profile modal
-                closeProfileModal.addEventListener('click', () => {
-                    hideModal(profileModal);
-                });
-                
-                // Toggle between login and signup forms
-                showSignup.addEventListener('click', (e) => {
+            });
+
+            // Handle dashboard menu clicks
+            document.querySelectorAll('.dashboard-sidebar a').forEach(link => {
+                link.addEventListener('click', (e) => {
                     e.preventDefault();
-                    showSignupView();
-                });
-                
-                showLogin.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    showLoginView();
-                });
-                
-                // Login with email/password
-                loginBtn.addEventListener('click', async () => {
-                    const email = document.getElementById('login-email').value;
-                    const password = document.getElementById('login-password').value;
-                    
-                    if (!email || !password) {
-                        alert('Please enter both email and password');
-                        return;
-                    }
-                    
-                    showLoading('Logging in...');
-                    
-                    try {
-                        const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/users/login', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ email, password }),
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error('Login failed');
-                        }
-                        
-                        const userData = await response.json();
-                        
-                        // Store the token in localStorage
-                        localStorage.setItem('token', userData.token);
-                        
-                        // Update UI with user data
-                        loginUser({
-                            id: userData.userId,
-                            name: userData.name || userData.email.split('@')[0],
-                            email: userData.email,
-                            avatar: userData.avatar || (userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase()),
-                            phone: userData.phone,
-                            bio: userData.bio,
-                            isVendor: userData.isVendor
-                        });
-                        
-                        // Load user favorites
-                        await loadUserFavorites();
-                        
-                        // Load user notifications
-                        await loadUserNotifications();
-                        
-                        hideLoading();
-                        hideModal(profileModal);
-                        
-                        // Show welcome message
-                        alert(`Welcome back, ${userData.name || userData.email.split('@')[0]}!`);
-                    } catch (error) {
-                        hideLoading();
-                        console.error('Login error:', error);
-                        alert('Login failed. Please check your credentials and try again.');
-                    }
-                });
-                
-                // Sign up with email/password
-                signupBtn.addEventListener('click', async () => {
-                    const name = document.getElementById('signup-name').value;
-                    const email = document.getElementById('signup-email').value;
-                    const password = document.getElementById('signup-password').value;
-                    const accountType = document.querySelector('input[name="account-type"]:checked').value;
-                    
-                    if (!name || !email || !password) {
-                        alert('Please fill in all fields');
-                        return;
-                    }
-                    
-                    if (password.length < 6) {
-                        alert('Password should be at least 6 characters');
-                        return;
-                    }
-                    
-                    showLoading('Creating account...');
-                    
-                    try {
-                        const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/users', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ 
-                                name, 
-                                email, 
-                                password,
-                                isVendor: accountType === 'vendor'
-                            }),
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error('Signup failed');
-                        }
-                        
-                        const userData = await response.json();
-                        
-                        // Store the token
-                        localStorage.setItem('token', userData.token);
-                        
-                        // Update UI with user data
-                        loginUser({
-                            id: userData.userId,
-                            name: userData.name,
-                            email: userData.email,
-                            avatar: userData.name[0].toUpperCase(),
-                            isVendor: accountType === 'vendor'
-                        });
-                        
-                        hideLoading();
-                        hideModal(profileModal);
-                        
-                        // Show welcome message
-                        alert(`Welcome to VenueVue, ${name}!`);
-                        
-                        // If vendor, show vendor registration form
-                        if (accountType === 'vendor') {
-                            showModal(vendorRegistrationModal);
-                        }
-                    } catch (error) {
-                        hideLoading();
-                        console.error('Signup error:', error);
-                        alert('Signup failed. The email might already be in use.');
-                    }
-                });
-                
-                // Google Login Handler
-                googleLoginBtn.addEventListener('click', () => {
-                    google.accounts.id.initialize({
-                        client_id: 'YOUR_GOOGLE_CLIENT_ID',
-                        callback: handleGoogleSignIn
-                    });
-                    google.accounts.id.prompt();
-                });
-
-                // Handle Google Sign-In
-                function handleGoogleSignIn(response) {
-                    showLoading('Signing in with Google...');
-                    
-                    const responsePayload = decodeJWT(response.credential);
-                    
-                    // In a real app, you would send this to your backend for verification
-                    // For demo, we'll simulate the login
-                    loginUser({
-                        name: responsePayload.name,
-                        email: responsePayload.email,
-                        avatar: responsePayload.picture || responsePayload.given_name[0].toUpperCase(),
-                        authProvider: 'google'
-                    });
-                    
-                    hideLoading();
-                    hideModal(profileModal);
-                }
-
-                // Decode JWT token
-                function decodeJWT(token) {
-                    const base64Url = token.split('.')[1];
-                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                    }).join(''));
-                    return JSON.parse(jsonPayload);
-                }
-
-                // Facebook Login Handler
-                facebookLoginBtn.addEventListener('click', () => {
-                    showLoading('Signing in with Facebook...');
-                    
-                    FB.login(function(response) {
-                        if (response.authResponse) {
-                            FB.api('/me', {fields: 'name,email,picture'}, function(response) {
-                                loginUser({
-                                    name: response.name,
-                                    email: response.email,
-                                    avatar: response.picture?.data?.url || response.name[0].toUpperCase(),
-                                    authProvider: 'facebook'
-                                });
-                                
-                                hideLoading();
-                                hideModal(profileModal);
-                            });
-                        } else {
-                            hideLoading();
-                            console.log('User cancelled login or did not fully authorize.');
-                        }
-                    }, {scope: 'public_profile,email'});
-                });
-                
-                // Logout handler
-                logoutBtn.addEventListener('click', () => {
-                    // Clear the token from storage
-                    localStorage.removeItem('token');
-                    
-                    // Reset user state
-                    currentUser = null;
-                    
-                    // Reset UI
-                    showLoginView();
-                    document.querySelector('.badge').textContent = '0';
-                    notificationBadge.textContent = '0';
-                    
-                    // Reset profile button
-                    profileBtn.textContent = '👤';
-                    profileBtn.className = 'user-avatar';
-                    
-                    alert('You have been logged out');
-                });
-                
-                // Dashboard button
-                dashboardBtn.addEventListener('click', () => {
-                    hideModal(profileModal);
-                    showDashboard();
-                });
-                
-                // Dashboard tab switching
-                dashboardTabs.forEach(tab => {
-                    tab.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        
-                        // Update active tab
-                        dashboardTabs.forEach(t => t.classList.remove('active'));
-                        tab.classList.add('active');
-                        
-                        // Show corresponding content
-                        const tabId = tab.dataset.tab + '-tab';
-                        dashboardTabContents.forEach(content => {
-                            content.classList.remove('active');
-                            if (content.id === tabId) {
-                                content.classList.add('active');
-                            }
-                        });
-                        
-                        // Load data if needed
-                        if (tab.dataset.tab === 'messages') {
-                            loadConversations();
-                        } else if (tab.dataset.tab === 'vendor-dashboard') {
-                            loadVendorDashboard();
-                        }
-                    });
-                });
-                
-                // Close dashboard modal
-                closeDashboardModal.addEventListener('click', () => {
-                    hideModal(dashboardModal);
-                });
-                
-                // View all buttons in dashboard
-                document.querySelectorAll('.view-all-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const tab = btn.dataset.tab;
-                        
-                        // Find and click the corresponding tab
-                        const tabElement = document.querySelector(`.dashboard-tab[data-tab="${tab}"]`);
-                        if (tabElement) {
-                            tabElement.click();
-                        }
-                    });
-                });
-                
-                // Map controls
-                document.getElementById('zoom-in')?.addEventListener('click', () => {
-                    if (state.map) {
-                        state.map.setZoom(state.map.getZoom() + 1);
-                    }
-                });
-                
-                document.getElementById('zoom-out')?.addEventListener('click', () => {
-                    if (state.map) {
-                        state.map.setZoom(state.map.getZoom() - 1);
-                    }
-                });
-                
-                locateMeBtn?.addEventListener('click', () => {
-                    if (state.userLocation) {
-                        centerMapOnUser();
-                    } else {
-                        requestLocationWithFeedback();
-                    }
-                });
-                
-                  // Location permission
-                allowLocationBtn.addEventListener('click', () => {
-                    locationLoading.style.display = 'inline-block';
-                    allowLocationBtn.disabled = true;
-                    
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            locationPermissionModal.style.display = 'none';
-                            handleLocationSuccess(position);
-                            locationLoading.style.display = 'none';
-                            allowLocationBtn.disabled = false;
-                        },
-                        (error) => {
-                            console.log("Location error:", error);
-                            locationPermissionModal.style.display = 'none';
-                            locationLoading.style.display = 'none';
-                            allowLocationBtn.disabled = false;
-                            currentLocationCheckbox.checked = false;
-                            alert("Could not get your location. Please try again or enter a location manually.");
-                        },
-                        {
-                            enableHighAccuracy: true,
-                            timeout: 10000
-                        }
-                    );
-                });
-                
-                denyLocationBtn.addEventListener('click', () => {
-                    locationPermissionModal.style.display = 'none';
-                    currentLocationCheckbox.checked = false;
-                });
-                
-                // Modal close
-                document.querySelector('.close-modal').addEventListener('click', closeBookingModal);
-                modal.addEventListener('click', (e) => e.target === modal && closeBookingModal());
-                
-                // Confirmation modal
-                document.getElementById('conf-done-btn').addEventListener('click', () => {
-                    confirmationModal.style.display = 'none';
-                });
-            }
-            
-            // Filter vendors based on current filters
-            function filterVendors() {
-                // Get search term
-                const searchTerm = searchInput.value.toLowerCase();
-                
-                // Get filter values
-                const selectedTypes = [];
-                document.querySelectorAll('.filter-section input[type="checkbox"]:checked').forEach(checkbox => {
-                    if (checkbox.id !== 'current-location' && checkbox.id !== 'within50') {
-                        selectedTypes.push(checkbox.id);
-                    }
-                });
-                
-                const priceRange = document.getElementById('price-slider').value;
-                const useCurrentLocation = document.getElementById('current-location').checked;
-                const within50Miles = document.getElementById('within50').checked;
-                
-                // First apply all filters EXCEPT location
-                let filtered = state.vendors.filter(vendor => {
-                    // Category filter
-                    if (state.currentCategory !== 'all' && vendor.category !== state.currentCategory) {
-                        return false;
-                    }
-                    
-                    // Search term (vendor name, location, or services)
-                    if (searchTerm) {
-                        const nameMatch = vendor.name.toLowerCase().includes(searchTerm);
-                        const locationMatch = vendor.location.toLowerCase().includes(searchTerm);
-                        let serviceMatch = false;
-                        
-                        if (vendor.services) {
-                            serviceMatch = vendor.services.some(category => 
-                                category.services.some(service => 
-                                    service.name.toLowerCase().includes(searchTerm) || 
-                                    service.description.toLowerCase().includes(searchTerm))
-                            );
-                        }
-                        
-                        if (!nameMatch && !locationMatch && !serviceMatch) {
-                            return false;
-                        }
-                    }
-                    
-                    // Vendor type
-                    const vendorType = vendor.type?.toLowerCase() || 'independent';
-                    if (selectedTypes.length > 0 && !selectedTypes.includes(vendorType)) {
-                        return false;
-                    }
-                    
-                    // Price range
-                    if (priceRange < 33 && vendor.priceLevel === '$$$') return false;
-                    if (priceRange > 66 && vendor.priceLevel === '$') return false;
-                    
-                    // Popular filters
-                    if (state.filters.popular.length > 0) {
-                        if (state.filters.popular.includes('premium') && !vendor.isPremium) return false;
-                        if (state.filters.popular.includes('eco-friendly') && !vendor.isEcoFriendly) return false;
-                        if (state.filters.popular.includes('award-winning') && !vendor.isAwardWinning) return false;
-                    }
-                    
-                    return true;
-                });
-                
-                // Handle location filter
-                let locationMessage = '';
-                if (useCurrentLocation && state.userLocation && within50Miles) {
-                    // For demo purposes, we'll simulate nearby vendors by filtering the first few
-                    const nearbyVendors = filtered.slice(0, 3); // Show first 3 as "nearby"
-                    
-                    if (nearbyVendors.length > 0) {
-                        filtered = nearbyVendors;
-                        locationMessage = `${filtered.length} vendors available near you`;
-                    } else {
-                        // If no nearby vendors, show ALL vendors that match other filters
-                        locationMessage = "No vendors near you. Showing all available vendors.";
-                    }
-                } else {
-                    locationMessage = `${filtered.length} vendors available`;
-                }
-                
-                state.filteredVendors = filtered;
-                resultsCount.textContent = locationMessage;
-                
-                // Apply sorting
-                sortVendors(false);
-                
-                // Reset to first page
-                state.currentPage = 1;
-                
-                // Update UI
-                updateMetadata({ total: state.filteredVendors.length });
-                renderVendors();
-                
-                // Update map if in map view
-                if (state.map) {
-                    updateMapMarkers();
-                }
-            }
-            
-            // Sort vendors
-            function sortVendors(shouldRender = true) {
-                const sortValue = sortSelect.value;
-                
-                switch(sortValue) {
-                    case 'price-low':
-                        state.filteredVendors.sort((a, b) => {
-                            const priceA = a.priceLevel === '$' ? 1 : a.priceLevel === '$$' ? 2 : 3;
-                            const priceB = b.priceLevel === '$' ? 1 : b.priceLevel === '$$' ? 2 : 3;
-                            return priceA - priceB;
-                        });
-                        break;
-                    case 'price-high':
-                        state.filteredVendors.sort((a, b) => {
-                            const priceA = a.priceLevel === '$' ? 1 : a.priceLevel === '$$' ? 2 : 3;
-                            const priceB = b.priceLevel === '$' ? 1 : b.priceLevel === '$$' ? 2 : 3;
-                            return priceB - priceA;
-                        });
-                        break;
-                    case 'popular':
-                        state.filteredVendors.sort((a, b) => {
-                            const ratingA = parseFloat(a.rating?.split(' ')[0] || 0);
-                            const ratingB = parseFloat(b.rating?.split(' ')[0] || 0);
-                            return ratingB - ratingA;
-                        });
-                        break;
-                    case 'nearest':
-                        if (state.userLocation) {
-                            // In a real app, we would calculate distance properly
-                            // For demo, we'll just shuffle the array
-                            state.filteredVendors.sort(() => Math.random() - 0.5);
-                        }
-                        break;
-                    default: // recommended
-                        // Default sorting (could be by relevance, etc.)
-                        break;
-                }
-                
-                if (shouldRender) {
-                    renderVendors();
-                    if (state.map) {
-                        updateMapMarkers();
-                    }
-                }
-            }
-            
-            // Reset specific filter
-            function resetFilter(filterType) {
-                switch(filterType) {
-                    case 'location':
-                        document.getElementById('location-input').value = '';
-                        document.getElementById('current-location').checked = false;
-                        document.getElementById('within50').checked = false;
-                        state.userLocation = null;
-                        break;
-                    case 'type':
-                        document.querySelectorAll('.filter-section input[type="checkbox"]').forEach(checkbox => {
-                            checkbox.checked = ['independent', 'company'].includes(checkbox.id);
-                        });
-                        break;
-                    case 'price':
-                        document.getElementById('price-slider').value = 40;
-                        break;
-                }
-                
-                filterVendors();
-            }
-            
-            // Render vendor cards
-            function renderVendors() {
-                if (!state.filteredVendors || state.filteredVendors.length === 0) {
-                    vendorGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">No vendors match your filters</div>';
-                    updatePagination();
-                    return;
-                }
-                
-                // Pagination
-                const startIndex = (state.currentPage - 1) * state.itemsPerPage;
-                const endIndex = startIndex + state.itemsPerPage;
-                const paginatedVendors = state.filteredVendors.slice(startIndex, endIndex);
-                
-                vendorGrid.innerHTML = '';
-                
-                paginatedVendors.forEach(vendor => {
-                    const isFavorite = state.favorites.includes(vendor.id);
-                    
-                    const vendorCard = document.createElement('div');
-                    vendorCard.className = 'vendor-card';
-                    vendorCard.innerHTML = `
-                        <div class="vendor-image">
-                            ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
-                            ${vendor.badge ? `<div class="vendor-badge">${vendor.badge}</div>` : ''}
-                            <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
-                        </div>
-                        <div class="vendor-details">
-                            <h3 class="vendor-name">${vendor.name}</h3>
-                            <div class="vendor-location">
-                                📍 ${vendor.location}
+                    document.querySelectorAll('.dashboard-sidebar a').forEach(el => el.classList.remove('active'));
+                    e.target.classList.add('active');
+                    // In a real app, this would load different content into .dashboard-content
+                    const content = document.querySelector('.dashboard-content');
+                    content.innerHTML = `
+                        <div class="dashboard-card">
+                            <div class="dashboard-card-header">
+                                <h4 class="dashboard-card-title">Dashboard for: ${e.target.textContent.trim()}</h4>
                             </div>
-                            <div class="vendor-features">
-                                <div class="feature">
-                                    <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
-                                    <span>${getCategoryName(vendor.category)}</span>
-                                </div>
-                                <div class="feature">
-                                    <span class="feature-icon">⭐</span>
-                                    <span>${vendor.rating || '4.5 (25)'}</span>
-                                </div>
-                                <div class="feature">
-                                    <div class="price-indicator">
-                                        ${renderPriceIndicator(vendor.priceLevel)}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="vendor-footer">
-                                <div class="vendor-price">${vendor.price || '$500'}<span>starting</span></div>
-                                <div class="vendor-actions">
-                                    <button class="btn btn-outline save-btn" data-id="${vendor.id}">Save</button>
-                                    <button class="btn btn-primary view-btn" data-id="${vendor.id}">View</button>
-                                </div>
+                            <div class="dashboard-card-body">
+                                <p>Content for the "${e.target.textContent.trim()}" section goes here.</p>
                             </div>
                         </div>
                     `;
-                    vendorGrid.appendChild(vendorCard);
-                    
-                    // Add event listeners to buttons
-                    vendorCard.querySelector('.view-btn').addEventListener('click', () => {
-                        openBookingModal(vendor);
-                    });
-                    
-                    vendorCard.querySelector('.save-btn').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        toggleFavorite(vendor.id);
-                    });
-                    
-                    vendorCard.querySelector('.vendor-favorite').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        toggleFavorite(vendor.id);
-                    });
                 });
-                
-                updatePagination();
-            }
+            });
             
-            // Helper function to get category icon
-            function getCategoryIcon(category) {
-                const icons = {
-                    "venue": "🏨",
-                    "photo": "📷",
-                    "music": "🎵",
-                    "catering": "🍽️",
-                    "entertainment": "🎭",
-                    "experiences": "🌟",
-                    "decor": "🎀",
-                    "beauty": "💄",
-                    "cake": "🎂",
-                    "transport": "🚗",
-                    "planner": "📋",
-                    "fashion": "👗",
-                    "stationery": "✉️"
-                };
-                return icons[category] || "🎉";
-            }
-            
-            // Helper function to get category name
-            function getCategoryName(category) {
-                const names = {
-                    "venue": "Venue",
-                    "photo": "Photo/Video",
-                    "music": "Music/DJ",
-                    "catering": "Catering",
-                    "entertainment": "Entertainment",
-                    "experiences": "Experiences",
-                    "decor": "Decorations",
-                    "beauty": "Beauty",
-                    "cake": "Cake",
-                    "transport": "Transportation",
-                    "planner": "Planner",
-                    "fashion": "Fashion",
-                    "stationery": "Stationery"
-                };
-                return names[category] || "Vendor";
-            }
-            
-            // Render price indicator
-            function renderPriceIndicator(priceLevel) {
-                const levels = priceLevel || '$';
-                let html = '';
-                
-                for (let i = 0; i < 3; i++) {
-                    const isFilled = i < levels.length;
-                    html += `<span class="price-dot ${isFilled ? 'filled' : ''}"></span>`;
-                }
-                
-                return html;
-            }
-            
-            // Update pagination controls
-            function updatePagination() {
-                const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
-                
-                if (totalPages <= 1) {
-                    pagination.style.display = 'none';
-                    return;
-                }
-                
-                pagination.style.display = 'flex';
-                
-                // Clear existing page buttons (except prev/next)
-                const pageBtns = pagination.querySelectorAll('.page-btn:not(#prev-page):not(#next-page)');
-                pageBtns.forEach(btn => btn.remove());
-                
-                // Add page buttons
-                for (let i = 1; i <= totalPages; i++) {
-                    const pageBtn = document.createElement('div');
-                    pageBtn.className = `page-btn ${i === state.currentPage ? 'active' : ''}`;
-                    pageBtn.textContent = i;
-                    pageBtn.addEventListener('click', () => {
-                        state.currentPage = i;
-                        renderVendors();
-                    });
-                    
-                    pagination.insertBefore(pageBtn, nextPageBtn);
-                }
-                
-                // Update prev/next button states
-                prevPageBtn.classList.toggle('disabled', state.currentPage === 1);
-                nextPageBtn.classList.toggle('disabled', state.currentPage === totalPages);
-            }
-            
-            // Update metadata in header
-            function updateMetadata(metadata) {
-                const usingLocation = state.userLocation && document.getElementById('current-location').checked;
-                const locationText = usingLocation ? "Near You" : (metadata?.location || 'Los Angeles');
-                const categoryText = state.currentCategory === 'all' ? '' : getCategoryName(state.currentCategory) + ' ';
-                
-                resultsTitle.textContent = `${categoryText}Vendors in ${locationText}`;
-                resultsCount.textContent = `${state.filteredVendors.length} vendors available${usingLocation ? ' near you' : ''}`;
-            }
-            
-            // Show error message
-            function showError(message) {
-                vendorGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--accent)">${message}</div>`;
-                resultsTitle.textContent = "Error";
-                resultsCount.textContent = message;
-            }
-            
-            // Open modal with vendor details and services
-            function openBookingModal(vendor) {
-                // Create modal content
-                modalBody.innerHTML = `
-                    <div class="vendor-detail-header">
-                        <div class="vendor-detail-image">
-                            ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);">` : getCategoryIcon(vendor.category)}
-                        </div>
-                        <div class="vendor-detail-info">
-                            <h2 class="vendor-detail-name">${vendor.name}</h2>
-                            <div class="vendor-detail-location">📍 ${vendor.location}</div>
-                            <div class="vendor-detail-features">
-                                <div class="feature">
-                                    <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
-                                    <span>${getCategoryName(vendor.category)}</span>
-                                </div>
-                                <div class="feature">
-                                    <span class="feature-icon">⭐</span>
-                                    <span>${vendor.rating || '4.5 (25)'}</span>
-                                </div>
-                                <div class="feature">
-                                    <div class="price-indicator">
-                                        ${renderPriceIndicator(vendor.priceLevel)}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="vendor-detail-price">${vendor.price || '$500'}</div>
-                        </div>
-                    </div>
-                    
-                    <div class="vendor-detail-description">
-                        <p>${vendor.description || "A professional vendor for your special event. Contact us for more details about our services."}</p>
-                    </div>
-                    
-                    <div class="services-section">
-                        <h3 class="services-title">Available Services</h3>
-                        ${vendor.services && vendor.services.length > 0 ? 
-                            renderServices(vendor.services) : 
-                            '<p>No services available for this vendor.</p>'}
-                    </div>
-                    
-                    <div class="vendor-actions" style="margin-top: 2rem; justify-content: center;">
-                        <button class="btn btn-primary" id="book-now-btn">Book Now</button>
-                    </div>
-                `;
-                
-                // Add event listeners to service buttons
-                document.querySelectorAll('.add-service-btn').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        this.classList.toggle('active');
-                        this.textContent = this.classList.contains('active') ? 'Added' : 'Add';
-                    });
-                });
-                
-                modal.style.display = 'flex';
-                document.body.style.overflow = 'hidden';
-                
-                // Add event listener for book now button
-                document.getElementById('book-now-btn').addEventListener('click', function() {
-                    bookVendor(vendor);
-                });
-            }
-            
-            // Book vendor function
-            async function bookVendor(vendor) {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    alert('Please login to book a vendor');
-                    profileModal.style.display = 'flex';
-                    showLoginView();
-                    return;
-                }
-
-                // Get selected services
-                const selectedServices = [];
-                document.querySelectorAll('.add-service-btn.active').forEach(btn => {
-                    selectedServices.push(btn.dataset.service);
-                });
-
-                try {
-                    const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/bookings', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            vendorId: vendor.id,
-                            services: selectedServices,
-                            date: new Date().toISOString() // In a real app, you'd have a date picker
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Booking failed');
-                    }
-
-                    const bookingData = await response.json();
-                    
-                    // Update confirmation modal
-                    document.getElementById('conf-venue-name').textContent = vendor.name;
-                    document.getElementById('conf-services').textContent = selectedServices.join(', ') || 'Vendor services';
-                    document.getElementById('conf-date').textContent = new Date(bookingData.date).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                    });
-                    document.getElementById('conf-id').textContent = bookingData._id;
-                    
-                    // Show confirmation
-                    confirmationModal.style.display = 'flex';
-                } catch (error) {
-                    console.error('Booking error:', error);
-                    alert('Booking failed. Please try again.');
-                }
-            }
-            
-            // Render services for a vendor
-            function renderServices(services) {
-                return services.map(category => `
-                    <div class="service-category">
-                        <h4 class="category-title">${category.category}</h4>
-                        <div class="service-grid">
-                            ${category.services.map(service => `
-                                <div class="service-card">
-                                    <div class="service-name">${service.name}</div>
-                                    <div class="service-description">${service.description}</div>
-                                    <div class="service-price">${service.price}</div>
-                                    <div class="service-actions">
-                                        <button class="btn btn-outline btn-sm add-service-btn" data-service="${service.name}">Add</button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('');
-            }
-            
-            // Close modal
-            function closeBookingModal() {
-                modal.style.display = 'none';
-                document.body.style.overflow = 'auto';
-            }
-            
-            // Show login view in profile modal
-            function showLoginView() {
-                loginForm.style.display = 'block';
-                signupForm.style.display = 'none';
-                loggedInView.style.display = 'none';
-                document.getElementById('profile-modal-title').textContent = 'Welcome to VenueVue';
-                // Clear form fields
-                document.getElementById('login-email').value = '';
-                document.getElementById('login-password').value = '';
-            }
-            
-            // Show signup view in profile modal
-            function showSignupView() {
-                loginForm.style.display = 'none';
-                signupForm.style.display = 'block';
-                loggedInView.style.display = 'none';
-                document.getElementById('profile-modal-title').textContent = 'Create an Account';
-                // Clear form fields
-                document.getElementById('signup-name').value = '';
-                document.getElementById('signup-email').value = '';
-                document.getElementById('signup-password').value = '';
-            }
-            
-            // Show logged in view in profile modal
-            function showLoggedInView() {
-                loginForm.style.display = 'none';
-                signupForm.style.display = 'none';
-                loggedInView.style.display = 'block';
-                document.getElementById('profile-modal-title').textContent = 'My Account';
-                
-                // Update user info
-                document.getElementById('profile-name').textContent = currentUser.name;
-                document.getElementById('profile-email').textContent = currentUser.email;
-                document.getElementById('profile-avatar').textContent = currentUser.avatar;
-            }
-            
-            // Simulate user login (for demo purposes)
-            function simulateLogin(user) {
-                currentUser = user;
-                showLoggedInView();
-                profileModal.style.display = 'none';
-                alert(`Welcome, ${user.name}! You are now logged in.`);
-                
-                // Update profile button to show user is logged in
-                profileBtn.textContent = user.avatar; // Show first initial
-                profileBtn.style.backgroundColor = 'var(--primary)';
-                profileBtn.style.color = 'white';
-                profileBtn.style.borderRadius = '50%';
-                profileBtn.style.width = '36px';
-                profileBtn.style.height = '36px';
-                profileBtn.style.display = 'flex';
-                profileBtn.style.alignItems = 'center';
-                profileBtn.style.justifyContent = 'center';
-            }
-            
-            // Toggle vendor favorite status
-            function toggleFavorite(vendorId) {
-                const index = state.favorites.indexOf(vendorId);
-                if (index === -1) {
-                    state.favorites.push(vendorId);
-                } else {
-                    state.favorites.splice(index, 1);
-                }
-                
-                // Update UI
-                document.querySelectorAll(`.vendor-favorite[data-id="${vendorId}"]`).forEach(icon => {
-                    icon.classList.toggle('active');
-                });
-                
-                // Update badge
-                document.querySelector('.badge').textContent = state.favorites.length;
-            }
         });
     </script>
 </body>
