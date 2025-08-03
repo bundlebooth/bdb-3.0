@@ -622,155 +622,77 @@ CREATE OR ALTER PROCEDURE sp_SearchVendors
     @Category NVARCHAR(50) = NULL,
     @MinPrice DECIMAL(10, 2) = NULL,
     @MaxPrice DECIMAL(10, 2) = NULL,
-    @Latitude DECIMAL(10, 8) = NULL,
-    @Longitude DECIMAL(11, 8) = NULL,
-    @RadiusMiles INT = 25,
     @IsPremium BIT = NULL,
     @IsEcoFriendly BIT = NULL,
-    @IsAwardWinning BIT = NULL,
-    @IsVerified BIT = NULL,
-    @MinRating DECIMAL(2,1) = NULL,
-    @PageNumber INT = 1,
-    @PageSize INT = 10,
-    @SortBy NVARCHAR(50) = 'relevance'
+    @IsAwardWinning BIT = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
     
-    DECLARE @StartRow INT = (@PageNumber - 1) * @PageSize;
-    DECLARE @EndRow INT = @PageNumber * @PageSize;
-    
-    -- Create temp table for results with distance calculation
-    CREATE TABLE #Results (
-        RowNum INT IDENTITY(1,1),
-        VendorProfileID INT,
-        BusinessName NVARCHAR(100),
-        BusinessDescription NVARCHAR(MAX),
-        Categories NVARCHAR(MAX),
-        AverageRating DECIMAL(3,1),
-        ReviewCount INT,
-        FavoriteCount INT,
-        DistanceMiles FLOAT,
-        PrimaryImage NVARCHAR(255)
-    
-    -- Insert into temp table with basic filtering
-    INSERT INTO #Results (
-        VendorProfileID,
-        BusinessName,
-        BusinessDescription,
-        Categories,
-        AverageRating,
-        ReviewCount,
-        FavoriteCount,
-        PrimaryImage
-    )
+    -- Return results in the exact format expected by frontend
     SELECT 
-        v.VendorProfileID,
-        v.BusinessName,
-        v.BusinessDescription,
-        (SELECT STRING_AGG(vc.Category, ', ') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID),
-        (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1)) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1),
-        (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1),
-        (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID),
-        (SELECT TOP 1 p.ImageURL FROM VendorPortfolio p WHERE p.VendorProfileID = v.VendorProfileID ORDER BY p.DisplayOrder)
-    FROM VendorProfiles v
+        v.VendorID AS id,
+        v.Name AS name,
+        -- Extract city/state from location (simplified)
+        CASE 
+            WHEN CHARINDEX(',', v.Location) > 0 
+            THEN SUBSTRING(v.Location, CHARINDEX(',', v.Location) + 2, LEN(v.Location))
+            ELSE v.Location
+        END AS location,
+        CASE 
+            WHEN v.Category = 'venue' THEN 'Hotel'
+            WHEN v.Category = 'photo' THEN 'Photography'
+            WHEN v.Category = 'music' THEN 'Entertainment'
+            WHEN v.Category = 'catering' THEN 'Catering'
+            ELSE v.Category
+        END AS type,
+        v.PriceLevel AS priceLevel,
+        -- Format price as string (using first service price as example)
+        (SELECT TOP 1 '$' + FORMAT(Price, 'N0') 
+         FROM Services s
+         JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+         WHERE sc.VendorID = v.VendorID
+         ORDER BY s.Price DESC) AS price,
+        CAST(v.Rating AS NVARCHAR(10)) + ' (' + CAST(v.ReviewCount AS NVARCHAR(10)) + ')' AS rating,
+        v.Description AS description,
+        COALESCE((SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorID = v.VendorID), '🏨') AS image,
+        CASE 
+            WHEN (SELECT COUNT(*) FROM Favorites WHERE VendorID = v.VendorID) > 20 THEN 'Popular'
+            WHEN v.IsPremium = 1 THEN 'Premium'
+            ELSE NULL
+        END AS badge,
+        '50-300' AS capacity, -- Placeholder - would normally come from vendor data
+        '208 rooms' AS rooms, -- Placeholder - would normally come from vendor data
+        v.IsPremium,
+        v.IsEcoFriendly,
+        v.IsAwardWinning,
+        JSON_QUERY((
+            SELECT 
+                sc.Name AS category,
+                JSON_QUERY((
+                    SELECT 
+                        s.Name AS name,
+                        s.Description AS description,
+                        '$' + FORMAT(s.Price, 'N0') + CASE WHEN s.DurationMinutes IS NOT NULL 
+                                                      THEN ' for ' + CAST(s.DurationMinutes/60 AS VARCHAR) + ' hours'
+                                                      ELSE ' per person' END AS price
+                    FROM Services s
+                    WHERE s.CategoryID = sc.CategoryID AND s.IsActive = 1
+                    FOR JSON PATH
+                )) AS services
+            FROM ServiceCategories sc
+            WHERE sc.VendorID = v.VendorID
+            FOR JSON PATH
+        )) AS services
+    FROM Vendors v
     JOIN Users u ON v.UserID = u.UserID
-    WHERE u.IsActive = 1
-    AND (@SearchTerm IS NULL OR v.BusinessName LIKE '%' + @SearchTerm + '%' OR v.BusinessDescription LIKE '%' + @SearchTerm + '%')
+    WHERE v.IsActive = 1
+    AND (@Category IS NULL OR v.Category = @Category)
+    AND (@SearchTerm IS NULL OR v.Name LIKE '%' + @SearchTerm + '%' OR v.Description LIKE '%' + @SearchTerm + '%')
     AND (@IsPremium IS NULL OR v.IsPremium = @IsPremium)
     AND (@IsEcoFriendly IS NULL OR v.IsEcoFriendly = @IsEcoFriendly)
     AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
-    AND (@IsVerified IS NULL OR v.IsVerified = @IsVerified)
-    AND (@Category IS NULL OR EXISTS (
-        SELECT 1 FROM VendorCategories vc 
-        WHERE vc.VendorProfileID = v.VendorProfileID 
-        AND vc.Category = @Category))
-    AND (@MinRating IS NULL OR (
-        SELECT AVG(CAST(r.Rating AS DECIMAL(3,1)) 
-        FROM Reviews r 
-        WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) >= @MinRating)
-    AND (@MinPrice IS NULL OR EXISTS (
-        SELECT 1 FROM Services s 
-        JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
-        WHERE sc.VendorProfileID = v.VendorProfileID
-        AND s.Price >= @MinPrice))
-    AND (@MaxPrice IS NULL OR EXISTS (
-        SELECT 1 FROM Services s 
-        JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
-        WHERE sc.VendorProfileID = v.VendorProfileID
-        AND s.Price <= @MaxPrice));
-    
-    -- Calculate distance if location provided
-    IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
-    BEGIN
-        UPDATE #Results
-        SET DistanceMiles = (
-            SELECT 3959 * ACOS(
-                COS(RADIANS(@Latitude)) * COS(RADIANS(v.Latitude)) * 
-                COS(RADIANS(v.Longitude) - RADIANS(@Longitude)) + 
-                SIN(RADIANS(@Latitude)) * SIN(RADIANS(v.Latitude))
-            )
-            FROM VendorProfiles v
-            WHERE v.VendorProfileID = #Results.VendorProfileID
-        )
-        
-        -- Filter by radius
-        DELETE FROM #Results WHERE DistanceMiles > @RadiusMiles OR DistanceMiles IS NULL;
-    END
-    
-    -- Get total count before pagination
-    DECLARE @TotalCount INT = (SELECT COUNT(*) FROM #Results);
-    
-    -- Apply sorting
-    DECLARE @SQL NVARCHAR(MAX);
-    SET @SQL = N'
-    SELECT 
-        VendorProfileID,
-        BusinessName,
-        BusinessDescription,
-        Categories,
-        AverageRating,
-        ReviewCount,
-        FavoriteCount,
-        DistanceMiles,
-        PrimaryImage
-    FROM #Results
-    ORDER BY ';
-    
-    IF @SortBy = 'rating'
-        SET @SQL = @SQL + 'AverageRating DESC';
-    ELSE IF @SortBy = 'reviews'
-        SET @SQL = @SQL + 'ReviewCount DESC';
-    ELSE IF @SortBy = 'favorites'
-        SET @SQL = @SQL + 'FavoriteCount DESC';
-    ELSE IF @SortBy = 'distance' AND @Latitude IS NOT NULL
-        SET @SQL = @SQL + 'DistanceMiles';
-    ELSE -- default to relevance
-        SET @SQL = @SQL + 'AverageRating DESC, ReviewCount DESC';
-    
-    SET @SQL = @SQL + ' OFFSET ' + CAST(@StartRow AS NVARCHAR(10)) + ' ROWS FETCH NEXT ' + CAST(@PageSize AS NVARCHAR(10)) + ' ROWS ONLY';
-    
-    -- Execute dynamic SQL for sorted results
-    DECLARE @Results TABLE (
-        VendorProfileID INT,
-        BusinessName NVARCHAR(100),
-        BusinessDescription NVARCHAR(MAX),
-        Categories NVARCHAR(MAX),
-        AverageRating DECIMAL(3,1),
-        ReviewCount INT,
-        FavoriteCount INT,
-        DistanceMiles FLOAT,
-        PrimaryImage NVARCHAR(255)
-    );
-    
-    INSERT INTO @Results
-    EXEC sp_executesql @SQL;
-    
-    -- Return results with total count
-    SELECT * FROM @Results;
-    SELECT @TotalCount AS TotalCount;
-    
-    DROP TABLE #Results;
+    ORDER BY v.Name;
 END;
 GO
 
