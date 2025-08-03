@@ -931,49 +931,96 @@ BEGIN
         s.Price,
         s.DurationMinutes,
         s.MinDuration,
-
--- Toggle favorite status
-CREATE OR ALTER PROCEDURE sp_ToggleFavorite
-    @UserID INT,
-    @VendorProfileID INT
-AS
-BEGIN
-    SET NOCOUNT ON;
+        s.MaxAttendees,
+        s.RequiresDeposit,
+        s.DepositPercentage,
+        s.CancellationPolicy
+    FROM ServiceCategories sc
+    JOIN Services s ON sc.CategoryID = s.CategoryID
+    WHERE sc.VendorProfileID = @VendorProfileID
+    AND s.IsActive = 1
+    ORDER BY sc.DisplayOrder, sc.Name, s.Name;
     
-    BEGIN TRY
-        BEGIN TRANSACTION;
-        
-        DECLARE @IsFavorite BIT;
-        
-        -- Check if already favorite
-        IF EXISTS (SELECT 1 FROM Favorites WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID)
-        BEGIN
-            -- Remove favorite
-            DELETE FROM Favorites 
-            WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID;
-            
-            SET @IsFavorite = 0;
-        END
-        ELSE
-        BEGIN
-            -- Add favorite
-            INSERT INTO Favorites (UserID, VendorProfileID)
-            VALUES (@UserID, @VendorProfileID);
-            
-            SET @IsFavorite = 1;
-        END
-        
-        -- Update favorite count
-        DECLARE @FavoriteCount INT = (SELECT COUNT(*) FROM Favorites WHERE VendorProfileID = @VendorProfileID);
-        
-        COMMIT TRANSACTION;
-        
-        SELECT @IsFavorite AS IsFavorite, @FavoriteCount AS FavoriteCount;
-    END TRY
-    BEGIN CATCH
-        ROLLBACK TRANSACTION;
-        THROW;
-    END CATCH
+    -- Service add-ons
+    SELECT 
+        sa.AddOnID,
+        sa.ServiceID,
+        sa.Name,
+        sa.Description,
+        sa.Price
+    FROM ServiceAddOns sa
+    JOIN Services s ON sa.ServiceID = s.ServiceID
+    JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    WHERE sc.VendorProfileID = @VendorProfileID
+    AND sa.IsActive = 1
+    ORDER BY sa.ServiceID, sa.Name;
+    
+    -- Vendor portfolio
+    SELECT * FROM VendorPortfolio WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder;
+    
+    -- Vendor reviews
+    SELECT * FROM vw_VendorReviews WHERE VendorProfileID = @VendorProfileID ORDER BY IsFeatured DESC, CreatedAt DESC;
+    
+    -- Vendor FAQs
+    SELECT * FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder;
+    
+    -- Vendor team
+    SELECT * FROM VendorTeam WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder;
+    
+    -- Vendor social media
+    SELECT * FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder;
+    
+    -- Vendor business hours
+    SELECT * FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID ORDER BY DayOfWeek;
+    
+    -- Vendor images
+    SELECT * FROM VendorImages WHERE VendorProfileID = @VendorProfileID ORDER BY IsPrimary DESC, DisplayOrder;
+    
+    -- Is favorite for current user
+    IF @UserID IS NOT NULL
+    BEGIN
+        SELECT CAST(CASE WHEN EXISTS (
+            SELECT 1 FROM Favorites 
+            WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+        ) THEN 1 ELSE 0 END AS BIT) AS IsFavorite;
+    END
+    
+    -- Available time slots for next 30 days (simplified date calculation)
+    DECLARE @Today DATE = GETDATE();
+    DECLARE @EndDate DATE = DATEADD(DAY, 30, @Today);
+    
+    SELECT 
+        ts.SlotID,
+        ts.ServiceID,
+        ts.DayOfWeek,
+        ts.Date,
+        ts.StartTime,
+        ts.EndTime,
+        ts.MaxCapacity,
+        (SELECT COUNT(*) FROM Bookings b 
+         WHERE b.ServiceID = ts.ServiceID 
+         AND b.Status NOT IN ('cancelled', 'rejected')
+         AND (
+             (ts.Date IS NOT NULL AND CONVERT(DATE, b.EventDate) = ts.Date)
+             OR
+             (ts.Date IS NULL AND DATEPART(WEEKDAY, b.EventDate) = ts.DayOfWeek + 1)
+         )
+         AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime
+        ) AS BookedCount
+    FROM TimeSlots ts
+    JOIN Services s ON ts.ServiceID = s.ServiceID
+    JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    WHERE sc.VendorProfileID = @VendorProfileID
+    AND ts.IsAvailable = 1
+    AND (
+        (ts.Date IS NULL) OR -- Recurring weekly slots
+        (ts.Date BETWEEN @Today AND @EndDate) -- Specific date slots
+    )
+    ORDER BY 
+        CASE WHEN ts.Date IS NULL THEN DATEADD(DAY, ts.DayOfWeek - DATEPART(WEEKDAY, @Today) + 7, @Today)
+             ELSE ts.Date
+        END,
+        ts.StartTime;
 END;
 GO
 
@@ -1080,7 +1127,7 @@ BEGIN
     )
     ORDER BY EventDate;
     
-    -- Get available time slots
+    -- Get available time slots (simplified date calculation)
     SELECT 
         ts.SlotID,
         ts.DayOfWeek,
@@ -1091,16 +1138,25 @@ BEGIN
         (SELECT COUNT(*) FROM Bookings b 
          WHERE b.ServiceID = @ServiceID 
          AND b.Status NOT IN ('cancelled', 'rejected')
-         AND CONVERT(DATE, b.EventDate) = ISNULL(ts.Date, DATEADD(DAY, ts.DayOfWeek, DATEADD(DAY, DATEDIFF(DAY, 0, @StartDate), 0))
-         AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime) AS BookedCount
+         AND (
+             (ts.Date IS NOT NULL AND CONVERT(DATE, b.EventDate) = ts.Date)
+             OR
+             (ts.Date IS NULL AND DATEPART(WEEKDAY, b.EventDate) = ts.DayOfWeek + 1)
+         )
+         AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime
+        ) AS BookedCount
     FROM TimeSlots ts
     WHERE ts.ServiceID = @ServiceID
     AND ts.IsAvailable = 1
     AND (
-        (ts.Date IS NULL AND ts.DayOfWeek IS NOT NULL) OR -- Recurring weekly slots
-        (ts.Date IS NOT NULL AND ts.Date BETWEEN @StartDate AND @EndDate) -- Specific date slots
+        (ts.Date IS NULL) OR -- Recurring weekly slots
+        (ts.Date BETWEEN @StartDate AND @EndDate) -- Specific date slots
     )
-    ORDER BY ISNULL(ts.Date, DATEADD(DAY, ts.DayOfWeek, DATEADD(DAY, DATEDIFF(DAY, 0, @StartDate), 0)), ts.StartTime;
+    ORDER BY 
+        CASE WHEN ts.Date IS NULL THEN DATEADD(DAY, ts.DayOfWeek - DATEPART(WEEKDAY, @StartDate) + 7, @StartDate)
+             ELSE ts.Date
+        END,
+        ts.StartTime;
 END;
 GO
 
