@@ -4,45 +4,49 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
 
-// Helper function to validate email format
-const isValidEmail = (email) => {
+// Helper functions for validation
+const validateEmail = (email) => {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(String(email).toLowerCase());
 };
 
-// User Registration with validation
-router.post('/register', [
-  body('name').trim().notEmpty().withMessage('Name is required'),
-  body('email')
-    .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Invalid email format')
-    .normalizeEmail(),
-  body('password')
-    .notEmpty().withMessage('Password is required')
-    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  body('isVendor').optional().isBoolean()
-], async (req, res) => {
+const validatePassword = (password) => {
+  return password && password.length >= 8;
+};
+
+// User Registration
+router.post('/register', async (req, res) => {
   try {
-    // Validate request
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    const { name, email, password, isVendor = false } = req.body;
+
+    // Manual validation
+    if (!name || !name.trim()) {
       return res.status(400).json({ 
         success: false,
-        message: 'Validation failed',
-        errors: errors.array() 
+        message: 'Name is required' 
       });
     }
 
-    const { name, email, password, isVendor = false } = req.body;
+    if (!email || !validateEmail(email)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Valid email is required' 
+      });
+    }
+
+    if (!validatePassword(password)) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Password must be at least 8 characters' 
+      });
+    }
 
     // Check if email exists
     const pool = await poolPromise;
-    const checkEmailRequest = pool.request();
-    checkEmailRequest.input('Email', sql.NVarChar(100), email);
-    const emailCheck = await checkEmailRequest.query(
+    const checkRequest = pool.request();
+    checkRequest.input('Email', sql.NVarChar(100), email);
+    const emailCheck = await checkRequest.query(
       'SELECT 1 FROM Users WHERE Email = @Email'
     );
 
@@ -59,8 +63,8 @@ router.post('/register', [
 
     // Create user
     const request = pool.request();
-    request.input('Name', sql.NVarChar(100), name);
-    request.input('Email', sql.NVarChar(100), email);
+    request.input('Name', sql.NVarChar(100), name.trim());
+    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
     request.input('PasswordHash', sql.NVarChar(255), passwordHash);
     request.input('IsVendor', sql.Bit, isVendor);
     request.input('AuthProvider', sql.NVarChar(20), 'email');
@@ -78,8 +82,8 @@ router.post('/register', [
     res.status(201).json({
       success: true,
       userId,
-      name,
-      email,
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
       isVendor,
       token
     });
@@ -95,29 +99,29 @@ router.post('/register', [
 });
 
 // User Login
-router.post('/login', [
-  body('email')
-    .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Invalid email format'),
-  body('password')
-    .notEmpty().withMessage('Password is required')
-], async (req, res) => {
+router.post('/login', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    const { email, password } = req.body;
+
+    // Basic validation
+    if (!email || !validateEmail(email)) {
       return res.status(400).json({
         success: false,
-        message: 'Validation failed',
-        errors: errors.array()
+        message: 'Valid email is required'
       });
     }
 
-    const { email, password } = req.body;
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password is required'
+      });
+    }
+
     const pool = await poolPromise;
     const request = pool.request();
-    
-    request.input('Email', sql.NVarChar(100), email);
+    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
+
     const result = await request.query(`
       SELECT 
         UserID, 
@@ -196,7 +200,7 @@ router.get('/:id/dashboard', async (req, res) => {
 
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('UserID', sql.Int, id);
+    request.input('UserID', sql.Int, parseInt(id));
 
     const result = await request.execute('sp_GetUserDashboard');
     
@@ -229,29 +233,32 @@ router.get('/:id/dashboard', async (req, res) => {
 });
 
 // Update user location
-router.post('/:id/location', [
-  body('latitude').isDecimal().withMessage('Valid latitude required'),
-  body('longitude').isDecimal().withMessage('Valid longitude required')
-], async (req, res) => {
+router.post('/:id/location', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    const { id } = req.params;
+    const { latitude, longitude, city, state, country } = req.body;
+
+    // Basic validation
+    if (isNaN(latitude) || isNaN(longitude)) {
       return res.status(400).json({
         success: false,
-        message: 'Validation failed',
-        errors: errors.array()
+        message: 'Valid latitude and longitude are required'
       });
     }
 
-    const { id } = req.params;
-    const { latitude, longitude, city, state, country } = req.body;
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
 
     const pool = await poolPromise;
     const request = pool.request();
     
-    request.input('UserID', sql.Int, id);
-    request.input('Latitude', sql.Decimal(10, 8), latitude);
-    request.input('Longitude', sql.Decimal(11, 8), longitude);
+    request.input('UserID', sql.Int, parseInt(id));
+    request.input('Latitude', sql.Decimal(10, 8), parseFloat(latitude));
+    request.input('Longitude', sql.Decimal(11, 8), parseFloat(longitude));
     request.input('City', sql.NVarChar(100), city || null);
     request.input('State', sql.NVarChar(50), state || null);
     request.input('Country', sql.NVarChar(50), country || null);
