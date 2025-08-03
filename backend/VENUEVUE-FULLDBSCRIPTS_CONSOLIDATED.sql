@@ -776,7 +776,7 @@ END;
 GO
 
 -- Enhanced vendor search procedure with location filtering
-CREATE OR ALTER PROCEDURE sp_SearchVendors
+CREATE OR ALTER PROCEDURE [dbo].[sp_SearchVendors]
     @SearchTerm NVARCHAR(100) = NULL,
     @Category NVARCHAR(50) = NULL,
     @MinPrice DECIMAL(10, 2) = NULL,
@@ -793,6 +793,11 @@ CREATE OR ALTER PROCEDURE sp_SearchVendors
 AS
 BEGIN
     SET NOCOUNT ON;
+    
+    -- Validate pagination parameters
+    IF @PageNumber < 1 SET @PageNumber = 1;
+    IF @PageSize < 1 SET @PageSize = 10;
+    IF @PageSize > 100 SET @PageSize = 100;
     
     -- Calculate distance if location provided
     DECLARE @DistanceCalculation NVARCHAR(MAX) = '';
@@ -815,7 +820,7 @@ BEGIN
         WHEN 'rating' THEN 'AverageRating DESC'
         WHEN 'popular' THEN 'FavoriteCount DESC'
         WHEN 'nearest' THEN 'DistanceMiles ASC'
-        ELSE 'v.BusinessName ASC' -- Default/recommended
+        ELSE 'name ASC'  -- Changed from v.BusinessName to name
     END;
     
     -- Build the full query
@@ -894,16 +899,22 @@ BEGIN
         (SELECT COUNT(*) FROM FilteredVendors) AS TotalCount
     FROM FilteredVendors
     ORDER BY ' + @SortExpression + '
-    OFFSET (@PageNumber - 1) * @PageSize ROWS
-    FETCH NEXT @PageSize ROWS ONLY'
+    OFFSET (' + CAST((@PageNumber - 1) * @PageSize AS NVARCHAR(10)) + ') ROWS
+    FETCH NEXT ' + CAST(@PageSize AS NVARCHAR(10)) + ' ROWS ONLY'
     
     -- Execute the dynamic SQL
-    EXEC sp_executesql @SQL, 
-        N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), 
-          @IsPremium BIT, @IsEcoFriendly BIT, @IsAwardWinning BIT, @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), 
-          @RadiusMiles INT, @PageNumber INT, @PageSize INT',
-        @SearchTerm, @Category, @MinPrice, @MaxPrice, @IsPremium, @IsEcoFriendly, @IsAwardWinning, 
-        @Latitude, @Longitude, @RadiusMiles, @PageNumber, @PageSize
+    BEGIN TRY
+        EXEC sp_executesql @SQL, 
+            N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), 
+              @IsPremium BIT, @IsEcoFriendly BIT, @IsAwardWinning BIT, @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), 
+              @RadiusMiles INT',
+            @SearchTerm, @Category, @MinPrice, @MaxPrice, @IsPremium, @IsEcoFriendly, @IsAwardWinning, 
+            @Latitude, @Longitude, @RadiusMiles
+    END TRY
+    BEGIN CATCH
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR('Error searching vendors: %s', 16, 1, @ErrorMessage);
+    END CATCH
 END;
 GO
 
