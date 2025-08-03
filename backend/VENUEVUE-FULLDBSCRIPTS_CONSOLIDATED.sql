@@ -502,8 +502,8 @@ CREATE OR ALTER VIEW vw_VendorServices AS
 SELECT 
     s.ServiceID,
     s.CategoryID,
+    sc.VendorProfileID,  -- Changed to get from ServiceCategories
     sc.Name AS CategoryName,
-    s.VendorProfileID,
     v.BusinessName AS VendorName,
     s.Name AS ServiceName,
     s.Description,
@@ -987,27 +987,27 @@ BEGIN
     
     -- Available time slots for next 30 days
     SELECT 
-        ts.SlotID,
-        ts.ServiceID,
-        ts.DayOfWeek,
-        ts.Date,
-        ts.StartTime,
-        ts.EndTime,
-        ts.MaxCapacity,
-        (SELECT COUNT(*) FROM Bookings b 
-         WHERE b.ServiceID = ts.ServiceID 
-         AND b.Status NOT IN ('cancelled', 'rejected')
-         AND CONVERT(DATE, b.EventDate) = ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, GETDATE()) + ts.DayOfWeek)
-         AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime) AS BookedCount
-    FROM TimeSlots ts
-    JOIN Services s ON ts.ServiceID = s.ServiceID
-    JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
-    WHERE sc.VendorProfileID = @VendorProfileID
-    AND ts.IsAvailable = 1
-    AND (
-        (ts.Date IS NULL AND ts.DayOfWeek IS NOT NULL) OR -- Recurring weekly slots
-        (ts.Date IS NOT NULL AND ts.Date BETWEEN GETDATE() AND DATEADD(DAY, 30, GETDATE())) -- Specific date slots
-    ORDER BY ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, GETDATE()) + ts.DayOfWeek), ts.StartTime;
+    ts.SlotID,
+    ts.ServiceID,
+    ts.DayOfWeek,
+    ts.Date,
+    ts.StartTime,
+    ts.EndTime,
+    ts.MaxCapacity,
+    (SELECT COUNT(*) FROM Bookings b 
+     WHERE b.ServiceID = ts.ServiceID 
+     AND b.Status NOT IN ('cancelled', 'rejected')
+     AND CONVERT(DATE, b.EventDate) = ISNULL(ts.Date, DATEADD(day, ts.DayOfWeek, DATEADD(day, DATEDIFF(day, 0, GETDATE())))
+     AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime) AS BookedCount
+FROM TimeSlots ts
+JOIN Services s ON ts.ServiceID = s.ServiceID
+JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+WHERE sc.VendorProfileID = @VendorProfileID
+AND ts.IsAvailable = 1
+AND (
+    (ts.Date IS NULL AND ts.DayOfWeek IS NOT NULL) OR -- Recurring weekly slots
+    (ts.Date IS NOT NULL AND ts.Date BETWEEN GETDATE() AND DATEADD(day, 30, GETDATE())) -- Specific date slots
+ORDER BY ISNULL(ts.Date, DATEADD(day, ts.DayOfWeek, DATEADD(day, DATEDIFF(day, 0, GETDATE()))), ts.StartTime;
 END;
 GO
 
@@ -1078,27 +1078,26 @@ BEGIN
     )
     ORDER BY EventDate;
     
-    -- Get available time slots
     SELECT 
-        ts.SlotID,
-        ts.DayOfWeek,
-        ts.Date,
-        ts.StartTime,
-        ts.EndTime,
-        ts.MaxCapacity,
-        (SELECT COUNT(*) FROM Bookings b 
-         WHERE b.ServiceID = @ServiceID 
-         AND b.Status NOT IN ('cancelled', 'rejected')
-         AND CONVERT(DATE, b.EventDate) = ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, @StartDate) + ts.DayOfWeek))
-         AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime) AS BookedCount
-    FROM TimeSlots ts
-    WHERE ts.ServiceID = @ServiceID
-    AND ts.IsAvailable = 1
-    AND (
-        (ts.Date IS NULL AND ts.DayOfWeek IS NOT NULL) OR -- Recurring weekly slots
-        (ts.Date IS NOT NULL AND ts.Date BETWEEN @StartDate AND @EndDate) -- Specific date slots
-    )
-    ORDER BY ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, @StartDate) + ts.DayOfWeek)), ts.StartTime;
+    ts.SlotID,
+    ts.DayOfWeek,
+    ts.Date,
+    ts.StartTime,
+    ts.EndTime,
+    ts.MaxCapacity,
+    (SELECT COUNT(*) FROM Bookings b 
+     WHERE b.ServiceID = @ServiceID 
+     AND b.Status NOT IN ('cancelled', 'rejected')
+     AND CONVERT(DATE, b.EventDate) = ISNULL(ts.Date, DATEADD(day, ts.DayOfWeek, DATEADD(day, DATEDIFF(day, 0, @StartDate))))
+     AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime) AS BookedCount
+FROM TimeSlots ts
+WHERE ts.ServiceID = @ServiceID
+AND ts.IsAvailable = 1
+AND (
+    (ts.Date IS NULL AND ts.DayOfWeek IS NOT NULL) OR -- Recurring weekly slots
+    (ts.Date IS NOT NULL AND ts.Date BETWEEN @StartDate AND @EndDate) -- Specific date slots
+)
+ORDER BY ISNULL(ts.Date, DATEADD(day, ts.DayOfWeek, DATEADD(day, DATEDIFF(day, 0, @StartDate)))), ts.StartTime;
 END;
 GO
 
