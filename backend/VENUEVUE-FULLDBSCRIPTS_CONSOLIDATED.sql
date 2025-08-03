@@ -1014,6 +1014,96 @@ BEGIN
 END;
 GO
 
+CREATE OR ALTER PROCEDURE sp_GetServiceAvailability
+    @ServiceID INT,
+    @StartDate DATE,
+    @EndDate DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Get service details
+    SELECT 
+        s.ServiceID,
+        s.Name,
+        s.DurationMinutes,
+        sc.Name AS CategoryName,
+        vp.BusinessName AS VendorName,
+        vp.VendorProfileID
+    FROM Services s
+    JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    JOIN VendorProfiles vp ON sc.VendorProfileID = vp.VendorProfileID
+    WHERE s.ServiceID = @ServiceID;
+    
+    -- Get standard business hours
+    SELECT 
+        DayOfWeek,
+        OpenTime,
+        CloseTime,
+        IsAvailable
+    FROM VendorBusinessHours
+    WHERE VendorProfileID = (
+        SELECT sc.VendorProfileID 
+        FROM Services s
+        JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+        WHERE s.ServiceID = @ServiceID
+    )
+    ORDER BY DayOfWeek;
+    
+    -- Get availability exceptions
+    SELECT 
+        StartDateTime,
+        EndDateTime,
+        IsAvailable,
+        Reason
+    FROM ServiceAvailability
+    WHERE ServiceID = @ServiceID
+    AND (
+        (StartDateTime >= @StartDate AND StartDateTime <= @EndDate) OR
+        (EndDateTime >= @StartDate AND EndDateTime <= @EndDate) OR
+        (StartDateTime <= @StartDate AND EndDateTime >= @EndDate)
+    )
+    ORDER BY StartDateTime;
+    
+    -- Get existing bookings
+    SELECT 
+        EventDate,
+        EndDate,
+        Status
+    FROM Bookings
+    WHERE ServiceID = @ServiceID
+    AND Status NOT IN ('cancelled', 'rejected')
+    AND (
+        (EventDate >= @StartDate AND EventDate <= @EndDate) OR
+        (EndDate >= @StartDate AND EndDate <= @EndDate) OR
+        (EventDate <= @StartDate AND EndDate >= @EndDate)
+    )
+    ORDER BY EventDate;
+    
+    -- Get available time slots
+    SELECT 
+        ts.SlotID,
+        ts.DayOfWeek,
+        ts.Date,
+        ts.StartTime,
+        ts.EndTime,
+        ts.MaxCapacity,
+        (SELECT COUNT(*) FROM Bookings b 
+         WHERE b.ServiceID = @ServiceID 
+         AND b.Status NOT IN ('cancelled', 'rejected')
+         AND CONVERT(DATE, b.EventDate) = ISNULL(ts.Date, DATEADD(DAY, ts.DayOfWeek, DATEADD(DAY, DATEDIFF(DAY, 0, @StartDate), 0))
+         AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime) AS BookedCount
+    FROM TimeSlots ts
+    WHERE ts.ServiceID = @ServiceID
+    AND ts.IsAvailable = 1
+    AND (
+        (ts.Date IS NULL AND ts.DayOfWeek IS NOT NULL) OR -- Recurring weekly slots
+        (ts.Date IS NOT NULL AND ts.Date BETWEEN @StartDate AND @EndDate) -- Specific date slots
+    )
+    ORDER BY ISNULL(ts.Date, DATEADD(DAY, ts.DayOfWeek, DATEADD(DAY, DATEDIFF(DAY, 0, @StartDate), 0)), ts.StartTime;
+END;
+GO
+
 -- Create booking with multiple services
 CREATE OR ALTER PROCEDURE sp_CreateBookingWithServices
     @UserID INT,
