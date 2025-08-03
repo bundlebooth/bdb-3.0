@@ -776,6 +776,11 @@ END;
 GO
 
 -- Enhanced vendor search procedure with location filtering
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
 CREATE OR ALTER PROCEDURE [dbo].[sp_SearchVendors]
     @SearchTerm NVARCHAR(100) = NULL,
     @Category NVARCHAR(50) = NULL,
@@ -820,7 +825,7 @@ BEGIN
         WHEN 'rating' THEN 'AverageRating DESC'
         WHEN 'popular' THEN 'FavoriteCount DESC'
         WHEN 'nearest' THEN 'DistanceMiles ASC'
-        ELSE 'name ASC'  -- Changed from v.BusinessName to name
+        ELSE 'BusinessName ASC'
     END;
     
     -- Build the full query
@@ -839,13 +844,18 @@ BEGIN
             v.IsEcoFriendly,
             v.IsAwardWinning,
             v.PriceLevel,
-            v.Capacity,
-            v.Rooms,
-            (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS ImageURL,
+            (SELECT MIN(s.Price) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID = v.VendorProfileID) AS MinPrice,
             (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
             (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
-            (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
-            (SELECT MIN(s.Price) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID = v.VendorProfileID) AS MinPrice'
+            (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS ImageURL,
+            (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS PrimaryCategory,
+            CASE 
+                WHEN v.Latitude BETWEEN 35.0 AND 45.0 AND v.Longitude BETWEEN -80.0 AND -70.0 THEN ''north''
+                WHEN v.Latitude BETWEEN 30.0 AND 35.0 AND v.Longitude BETWEEN -85.0 AND -75.0 THEN ''south''
+                WHEN v.Latitude BETWEEN 38.0 AND 42.0 AND v.Longitude BETWEEN -90.0 AND -80.0 THEN ''midwest''
+                WHEN v.Latitude BETWEEN 32.0 AND 40.0 AND v.Longitude BETWEEN -120.0 AND -100.0 THEN ''west''
+                ELSE ''other''
+            END AS Region'
             + @DistanceCalculation + '
         FROM VendorProfiles v
         JOIN Users u ON v.UserID = u.UserID
@@ -879,23 +889,17 @@ BEGIN
     SELECT 
         VendorProfileID AS id,
         BusinessName AS name,
+        PrimaryCategory AS type,
         CONCAT(City, '', '', State) AS location,
-        (SELECT TOP 1 Category FROM VendorCategories vc WHERE vc.VendorProfileID = FilteredVendors.VendorProfileID) AS category,
-        PriceLevel AS priceLevel,
-        ''$'' + CAST(MinPrice AS NVARCHAR(20)) AS price,
-        CAST(AverageRating AS NVARCHAR(10)) + '' ('' + CAST(ReviewCount AS NVARCHAR(10)) + '')'' AS rating,
         BusinessDescription AS description,
+        ''$'' + CAST(MinPrice AS NVARCHAR(20)) AS price,
+        PriceLevel AS priceLevel,
+        CAST(AverageRating AS NVARCHAR(10)) AS rating,
         ImageURL AS image,
-        CASE 
-            WHEN IsPremium = 1 THEN ''Premium''
-            WHEN FavoriteCount > 20 THEN ''Popular''
-            ELSE NULL
-        END AS badge,
-        Capacity,
-        Rooms,
         IsPremium,
         IsEcoFriendly,
         IsAwardWinning,
+        Region,
         (SELECT COUNT(*) FROM FilteredVendors) AS TotalCount
     FROM FilteredVendors
     ORDER BY ' + @SortExpression + '
