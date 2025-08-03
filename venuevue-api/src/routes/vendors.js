@@ -30,7 +30,6 @@ router.get('/', async (req, res) => {
 
     const request = new sql.Request(pool);
 
-    // Set input parameters
     request.input('SearchTerm', sql.NVarChar(100), searchTerm || null);
     request.input('Category', sql.NVarChar(50), category || null);
     request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
@@ -47,82 +46,8 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
-    // Get vendor IDs from the initial result
-    const vendorIds = result.recordset.map(v => v.id);
-    
-    if (vendorIds.length === 0) {
-      return res.json([]);
-    }
-
-    // Get services for these vendors
-    const servicesRequest = new sql.Request(pool);
-    const servicesResult = await servicesRequest.query(`
-      SELECT 
-        sc.VendorProfileID,
-        sc.Category,
-        s.ServiceID,
-        s.Name AS ServiceName,
-        s.Description AS ServiceDescription,
-        s.Price
-      FROM ServiceCategories sc
-      JOIN Services s ON sc.CategoryID = s.CategoryID
-      WHERE sc.VendorProfileID IN (${vendorIds.map(id => `'${id}'`).join(',')})
-      ORDER BY sc.VendorProfileID, sc.Category
-    `);
-
-    // Get reviews for these vendors
-    const reviewsRequest = new sql.Request(pool);
-    const reviewsResult = await reviewsRequest.query(`
-      SELECT 
-        r.ReviewID AS id,
-        r.VendorProfileID,
-        CONCAT(u.FirstName, ' ', u.LastName) AS user,
-        r.Rating,
-        r.Comment AS comment,
-        r.CreatedDate AS date
-      FROM Reviews r
-      JOIN Users u ON r.UserID = u.UserID
-      WHERE r.VendorProfileID IN (${vendorIds.map(id => `'${id}'`).join(',')})
-      AND r.IsApproved = 1
-      ORDER BY r.VendorProfileID, r.CreatedDate DESC
-    `);
-
-    // Group services by vendor and category
-    const servicesByVendor = {};
-    servicesResult.recordset.forEach(service => {
-      if (!servicesByVendor[service.VendorProfileID]) {
-        servicesByVendor[service.VendorProfileID] = {};
-      }
-      
-      if (!servicesByVendor[service.VendorProfileID][service.Category]) {
-        servicesByVendor[service.VendorProfileID][service.Category] = [];
-      }
-      
-      servicesByVendor[service.VendorProfileID][service.Category].push({
-        name: service.ServiceName,
-        description: service.ServiceDescription,
-        price: `$${service.Price.toFixed(2)}`
-      });
-    });
-
-    // Group reviews by vendor
-    const reviewsByVendor = {};
-    reviewsResult.recordset.forEach(review => {
-      if (!reviewsByVendor[review.VendorProfileID]) {
-        reviewsByVendor[review.VendorProfileID] = [];
-      }
-      
-      reviewsByVendor[review.VendorProfileID].push({
-        id: review.id,
-        user: review.user,
-        rating: review.Rating,
-        comment: review.comment,
-        date: review.date.toISOString()
-      });
-    });
-
-    // Combine all data into the final response
-    const response = result.recordset.map(vendor => ({
+    // Format the response to match the expected JSON structure
+    const formattedVendors = result.recordset.map(vendor => ({
       id: vendor.id,
       name: vendor.name,
       type: vendor.type,
@@ -130,21 +55,17 @@ router.get('/', async (req, res) => {
       description: vendor.description,
       price: vendor.price,
       priceLevel: vendor.priceLevel,
-      rating: vendor.rating?.toString(),
+      rating: vendor.rating,
       image: vendor.image,
-      services: servicesByVendor[vendor.id] 
-        ? Object.keys(servicesByVendor[vendor.id]).map(category => ({
-            category,
-            services: servicesByVendor[vendor.id][category]
-          }))
-        : [],
-      reviews: reviewsByVendor[vendor.id] || [],
+      services: [], // Will be populated in a separate query
+      reviews: [],  // Will be populated in a separate query
       IsPremium: vendor.IsPremium,
       IsEcoFriendly: vendor.IsEcoFriendly,
-      IsAwardWinning: vendor.IsAwardWinning
+      IsAwardWinning: vendor.IsAwardWinning,
+      region: vendor.region
     }));
 
-    res.json(response);
+    res.json(formattedVendors);
 
   } catch (err) {
     console.error('Database error:', err);
