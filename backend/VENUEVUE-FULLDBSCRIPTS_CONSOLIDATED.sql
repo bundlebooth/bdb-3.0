@@ -19,7 +19,8 @@ CREATE TABLE Users (
     LastLogin DATETIME,
     AuthProvider NVARCHAR(20) DEFAULT 'email',
     StripeCustomerID NVARCHAR(100),
-    NotificationPreferences NVARCHAR(MAX) DEFAULT '{"email":true,"push":true}'
+    NotificationPreferences NVARCHAR(MAX) DEFAULT '{"email":true,"push":true}',
+    IsActive BIT DEFAULT 1
 );
 GO
 
@@ -41,7 +42,6 @@ CREATE TABLE VendorProfiles (
     ResponseRate DECIMAL(5,2),
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE(),
-    -- Added in version 2
     Address NVARCHAR(255),
     City NVARCHAR(100),
     State NVARCHAR(50),
@@ -56,6 +56,17 @@ CREATE TABLE VendorProfiles (
     Capacity INT,
     Rooms INT,
     FeaturedImageURL NVARCHAR(255)
+);
+GO
+
+-- Vendor images table
+CREATE TABLE VendorImages (
+    ImageID INT PRIMARY KEY IDENTITY(1,1),
+    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+    ImageURL NVARCHAR(255) NOT NULL,
+    IsPrimary BIT DEFAULT 0,
+    DisplayOrder INT DEFAULT 0,
+    Caption NVARCHAR(255)
 );
 GO
 
@@ -87,6 +98,20 @@ CREATE TABLE VendorBusinessHours (
     CloseTime TIME,
     IsAvailable BIT DEFAULT 1,
     CONSTRAINT UC_VendorDay UNIQUE (VendorProfileID, DayOfWeek)
+);
+GO
+
+-- Vendor availability exceptions
+CREATE TABLE VendorAvailabilityExceptions (
+    ExceptionID INT PRIMARY KEY IDENTITY(1,1),
+    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+    StartDate DATE NOT NULL,
+    EndDate DATE NOT NULL,
+    StartTime TIME,
+    EndTime TIME,
+    IsAvailable BIT DEFAULT 1,
+    Reason NVARCHAR(255),
+    CreatedAt DATETIME DEFAULT GETDATE()
 );
 GO
 
@@ -167,6 +192,21 @@ CREATE TABLE Services (
     CancellationPolicy NVARCHAR(MAX),
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE()
+);
+GO
+
+-- Time slots table
+CREATE TABLE TimeSlots (
+    SlotID INT PRIMARY KEY IDENTITY(1,1),
+    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+    ServiceID INT FOREIGN KEY REFERENCES Services(ServiceID),
+    DayOfWeek TINYINT CHECK (DayOfWeek BETWEEN 0 AND 6), -- 0=Sunday, NULL for specific dates
+    Date DATE, -- Specific date if not recurring
+    StartTime TIME NOT NULL,
+    EndTime TIME NOT NULL,
+    MaxCapacity INT,
+    IsAvailable BIT DEFAULT 1,
+    CONSTRAINT CHK_DayOrDate CHECK ((DayOfWeek IS NOT NULL AND Date IS NULL) OR (DayOfWeek IS NULL AND Date IS NOT NULL))
 );
 GO
 
@@ -371,47 +411,7 @@ CREATE TABLE Transactions (
 );
 GO
 
--- Vendor images table (added in version 2)
-CREATE TABLE VendorImages (
-    ImageID INT PRIMARY KEY IDENTITY(1,1),
-    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    ImageURL NVARCHAR(255) NOT NULL,
-    IsPrimary BIT DEFAULT 0,
-    DisplayOrder INT DEFAULT 0,
-    Caption NVARCHAR(255)
-);
-GO
-
--- Vendor availability exceptions (added in version 2)
-CREATE TABLE VendorAvailabilityExceptions (
-    ExceptionID INT PRIMARY KEY IDENTITY(1,1),
-    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    StartDate DATE NOT NULL,
-    EndDate DATE NOT NULL,
-    StartTime TIME,
-    EndTime TIME,
-    IsAvailable BIT DEFAULT 1,
-    Reason NVARCHAR(255),
-    CreatedAt DATETIME DEFAULT GETDATE()
-);
-GO
-
--- Time slots table (added in version 2)
-CREATE TABLE TimeSlots (
-    SlotID INT PRIMARY KEY IDENTITY(1,1),
-    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    ServiceID INT FOREIGN KEY REFERENCES Services(ServiceID),
-    DayOfWeek TINYINT CHECK (DayOfWeek BETWEEN 0 AND 6), -- 0=Sunday, NULL for specific dates
-    Date DATE, -- Specific date if not recurring
-    StartTime TIME NOT NULL,
-    EndTime TIME NOT NULL,
-    MaxCapacity INT,
-    IsAvailable BIT DEFAULT 1,
-    CONSTRAINT CHK_DayOrDate CHECK ((DayOfWeek IS NOT NULL AND Date IS NULL) OR (DayOfWeek IS NULL AND Date IS NOT NULL))
-);
-GO
-
--- User location history (added in version 2)
+-- User location history
 CREATE TABLE UserLocations (
     LocationID INT PRIMARY KEY IDENTITY(1,1),
     UserID INT FOREIGN KEY REFERENCES Users(UserID),
@@ -424,7 +424,7 @@ CREATE TABLE UserLocations (
 );
 GO
 
--- Search history (added in version 2)
+-- Search history
 CREATE TABLE SearchHistory (
     SearchID INT PRIMARY KEY IDENTITY(1,1),
     UserID INT FOREIGN KEY REFERENCES Users(UserID),
@@ -436,7 +436,7 @@ CREATE TABLE SearchHistory (
 );
 GO
 
--- User sessions (added in version 2)
+-- User sessions
 CREATE TABLE UserSessions (
     SessionID INT PRIMARY KEY IDENTITY(1,1),
     UserID INT FOREIGN KEY REFERENCES Users(UserID),
@@ -453,7 +453,7 @@ GO
 -- VIEWS
 -- ======================
 
--- Vendor details view (updated in version 2)
+-- Vendor details view
 CREATE OR ALTER VIEW vw_VendorDetails AS
 SELECT 
     v.VendorProfileID,
@@ -679,7 +679,7 @@ SELECT
 FROM Notifications n;
 GO
 
--- Vendor search results view (added in version 2)
+-- Vendor search results view
 CREATE OR ALTER VIEW vw_VendorSearchResults AS
 SELECT 
     v.VendorProfileID AS id,
@@ -774,7 +774,7 @@ BEGIN
 END;
 GO
 
--- Enhanced vendor search procedure with location filtering (updated in version 2)
+-- Enhanced vendor search procedure with location filtering
 CREATE OR ALTER PROCEDURE sp_SearchVendors
     @SearchTerm NVARCHAR(100) = NULL,
     @Category NVARCHAR(50) = NULL,
@@ -906,7 +906,7 @@ BEGIN
 END;
 GO
 
--- Enhanced get vendor details procedure (updated in version 2)
+-- Enhanced get vendor details procedure
 CREATE OR ALTER PROCEDURE sp_GetVendorDetails
     @VendorProfileID INT,
     @UserID INT = NULL
@@ -997,7 +997,7 @@ BEGIN
         (SELECT COUNT(*) FROM Bookings b 
          WHERE b.ServiceID = ts.ServiceID 
          AND b.Status NOT IN ('cancelled', 'rejected')
-         AND CONVERT(DATE, b.EventDate) = ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, GETDATE()) + ts.DayOfWeek, 0))
+         AND CONVERT(DATE, b.EventDate) = ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, GETDATE()) + ts.DayOfWeek)
          AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime) AS BookedCount
     FROM TimeSlots ts
     JOIN Services s ON ts.ServiceID = s.ServiceID
@@ -1007,12 +1007,11 @@ BEGIN
     AND (
         (ts.Date IS NULL AND ts.DayOfWeek IS NOT NULL) OR -- Recurring weekly slots
         (ts.Date IS NOT NULL AND ts.Date BETWEEN GETDATE() AND DATEADD(DAY, 30, GETDATE())) -- Specific date slots
-    )
-    ORDER BY ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, GETDATE()) + ts.DayOfWeek, 0)), ts.StartTime;
+    ORDER BY ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, GETDATE()) + ts.DayOfWeek), ts.StartTime;
 END;
 GO
 
--- Get service availability with time slots (updated in version 2)
+-- Get service availability with time slots
 CREATE OR ALTER PROCEDURE sp_GetServiceAvailability
     @ServiceID INT,
     @StartDate DATE,
@@ -1090,7 +1089,7 @@ BEGIN
         (SELECT COUNT(*) FROM Bookings b 
          WHERE b.ServiceID = @ServiceID 
          AND b.Status NOT IN ('cancelled', 'rejected')
-         AND CONVERT(DATE, b.EventDate) = ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, @StartDate) + ts.DayOfWeek, 0))
+         AND CONVERT(DATE, b.EventDate) = ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, @StartDate) + ts.DayOfWeek))
          AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime) AS BookedCount
     FROM TimeSlots ts
     WHERE ts.ServiceID = @ServiceID
@@ -1099,11 +1098,271 @@ BEGIN
         (ts.Date IS NULL AND ts.DayOfWeek IS NOT NULL) OR -- Recurring weekly slots
         (ts.Date IS NOT NULL AND ts.Date BETWEEN @StartDate AND @EndDate) -- Specific date slots
     )
-    ORDER BY ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, @StartDate) + ts.DayOfWeek, 0)), ts.StartTime;
+    ORDER BY ISNULL(ts.Date, DATEADD(DAY, DATEDIFF(DAY, 0, @StartDate) + ts.DayOfWeek)), ts.StartTime;
 END;
 GO
 
--- Create booking procedure
+-- Toggle favorite status
+CREATE OR ALTER PROCEDURE sp_ToggleFavorite
+    @UserID INT,
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        DECLARE @IsFavorite BIT;
+        
+        -- Check if already favorite
+        IF EXISTS (SELECT 1 FROM Favorites WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID)
+        BEGIN
+            -- Remove favorite
+            DELETE FROM Favorites 
+            WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID;
+            
+            SET @IsFavorite = 0;
+        END
+        ELSE
+        BEGIN
+            -- Add favorite
+            INSERT INTO Favorites (UserID, VendorProfileID)
+            VALUES (@UserID, @VendorProfileID);
+            
+            SET @IsFavorite = 1;
+        END
+        
+        -- Update favorite count
+        DECLARE @FavoriteCount INT = (SELECT COUNT(*) FROM Favorites WHERE VendorProfileID = @VendorProfileID);
+        
+        COMMIT TRANSACTION;
+        
+        SELECT @IsFavorite AS IsFavorite, @FavoriteCount AS FavoriteCount;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO
+
+-- Get user favorites
+CREATE OR ALTER PROCEDURE sp_GetUserFavorites
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        v.VendorProfileID AS id,
+        v.BusinessName AS name,
+        CONCAT(v.City, ', ', v.State) AS location,
+        (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS category,
+        v.PriceLevel,
+        (SELECT TOP 1 '$' + CAST(s.Price AS NVARCHAR(20)) FROM Services s 
+         JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID 
+         WHERE sc.VendorProfileID = v.VendorProfileID ORDER BY s.Price DESC) AS price,
+        CAST(ISNULL((SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1), 0) AS NVARCHAR(10)) + 
+        ' (' + CAST(ISNULL((SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1), 0) AS NVARCHAR(10)) + ')' AS rating,
+        v.BusinessDescription AS description,
+        ISNULL((SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1), '') AS image,
+        CASE 
+            WHEN v.IsPremium = 1 THEN 'Premium'
+            WHEN (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) > 20 THEN 'Popular'
+            ELSE NULL
+        END AS badge,
+        v.Capacity,
+        v.Rooms,
+        v.IsPremium,
+        v.IsEcoFriendly,
+        v.IsAwardWinning
+    FROM Favorites f
+    JOIN VendorProfiles v ON f.VendorProfileID = v.VendorProfileID
+    WHERE f.UserID = @UserID
+    ORDER BY f.CreatedAt DESC;
+END;
+GO
+
+-- Create booking with multiple services
+CREATE OR ALTER PROCEDURE sp_CreateBookingWithServices
+    @UserID INT,
+    @VendorProfileID INT,
+    @EventDate DATETIME,
+    @EndDate DATETIME,
+    @AttendeeCount INT = 1,
+    @SpecialRequests NVARCHAR(MAX) = NULL,
+    @PaymentIntentID NVARCHAR(100) = NULL,
+    @ServicesJSON NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        DECLARE @TotalAmount DECIMAL(10, 2) = 0;
+        DECLARE @DepositAmount DECIMAL(10, 2) = 0;
+        DECLARE @MaxDepositPercentage DECIMAL(5, 2) = 0;
+        
+        -- Parse services JSON
+        DECLARE @Services TABLE (
+            ServiceID INT,
+            AddOnID INT NULL,
+            Quantity INT,
+            Price DECIMAL(10, 2),
+            DepositPercentage DECIMAL(5, 2)
+        );
+        
+        INSERT INTO @Services
+        SELECT 
+            ServiceID,
+            AddOnID,
+            Quantity,
+            Price,
+            DepositPercentage
+        FROM OPENJSON(@ServicesJSON)
+        WITH (
+            ServiceID INT '$.serviceId',
+            AddOnID INT '$.addOnId',
+            Quantity INT '$.quantity',
+            Price DECIMAL(10, 2) '$.price',
+            DepositPercentage DECIMAL(5, 2) '$.depositPercentage'
+        );
+        
+        -- Calculate totals
+        SELECT 
+            @TotalAmount = SUM(Price * Quantity),
+            @MaxDepositPercentage = MAX(DepositPercentage)
+        FROM @Services;
+        
+        SET @DepositAmount = @TotalAmount * (@MaxDepositPercentage / 100);
+        
+        -- Create booking
+        INSERT INTO Bookings (
+            UserID,
+            VendorProfileID,
+            EventDate,
+            EndDate,
+            Status,
+            TotalAmount,
+            DepositAmount,
+            AttendeeCount,
+            SpecialRequests,
+            StripePaymentIntentID
+        )
+        VALUES (
+            @UserID,
+            @VendorProfileID,
+            @EventDate,
+            @EndDate,
+            'pending',
+            @TotalAmount,
+            @DepositAmount,
+            @AttendeeCount,
+            @SpecialRequests,
+            @PaymentIntentID
+        );
+        
+        DECLARE @BookingID INT = SCOPE_IDENTITY();
+        
+        -- Add booking services
+        INSERT INTO BookingServices (
+            BookingID,
+            ServiceID,
+            AddOnID,
+            Quantity,
+            PriceAtBooking,
+            Notes
+        )
+        SELECT 
+            @BookingID,
+            ServiceID,
+            AddOnID,
+            Quantity,
+            Price,
+            'Booked via website'
+        FROM @Services;
+        
+        -- Create booking timeline entry
+        INSERT INTO BookingTimeline (
+            BookingID,
+            Status,
+            ChangedBy,
+            Notes
+        )
+        VALUES (
+            @BookingID,
+            'pending',
+            @UserID,
+            'Booking created by customer'
+        );
+        
+        -- Create conversation
+        DECLARE @ConversationID INT;
+        
+        INSERT INTO Conversations (
+            UserID,
+            VendorProfileID,
+            BookingID,
+            Subject,
+            LastMessageAt
+        )
+        VALUES (
+            @UserID,
+            @VendorProfileID,
+            @BookingID,
+            'Booking #' + CAST(@BookingID AS NVARCHAR(10)),
+            GETDATE()
+        );
+        
+        SET @ConversationID = SCOPE_IDENTITY();
+        
+        -- Create initial message
+        INSERT INTO Messages (
+            ConversationID,
+            SenderID,
+            Content
+        )
+        VALUES (
+            @ConversationID,
+            @UserID,
+            'I have booked services for ' + CONVERT(NVARCHAR(20), @EventDate, 107) + '. ' + 
+            ISNULL(@SpecialRequests, 'No special requests.')
+        );
+        
+        -- Create notification for vendor
+        INSERT INTO Notifications (
+            UserID,
+            Type,
+            Title,
+            Message,
+            RelatedID,
+            RelatedType,
+            ActionURL
+        )
+        VALUES (
+            (SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID),
+            'booking',
+            'New Booking Request',
+            'You have a new booking request for ' + CONVERT(NVARCHAR(20), @EventDate, 107),
+            @BookingID,
+            'booking',
+            '/vendor/bookings/' + CAST(@BookingID AS NVARCHAR(10))
+        );
+        
+        COMMIT TRANSACTION;
+        
+        SELECT @BookingID AS BookingID, @ConversationID AS ConversationID;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO
+
+-- Create booking procedure (single service)
 CREATE OR ALTER PROCEDURE sp_CreateBooking
     @UserID INT,
     @ServiceID INT,
@@ -1255,6 +1514,85 @@ BEGIN
         ROLLBACK TRANSACTION;
         THROW;
     END CATCH
+END;
+GO
+
+-- Get booking details
+CREATE OR ALTER PROCEDURE sp_GetBookingDetails
+    @BookingID INT,
+    @UserID INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Booking info
+    SELECT 
+        b.BookingID,
+        b.UserID,
+        u.Name AS UserName,
+        u.Email AS UserEmail,
+        u.Phone AS UserPhone,
+        b.VendorProfileID,
+        v.BusinessName AS VendorName,
+        v.BusinessEmail AS VendorEmail,
+        v.BusinessPhone AS VendorPhone,
+        b.EventDate,
+        b.EndDate,
+        b.Status,
+        b.TotalAmount,
+        b.DepositAmount,
+        b.DepositPaid,
+        b.FullAmountPaid,
+        b.AttendeeCount,
+        b.SpecialRequests,
+        b.StripePaymentIntentID,
+        b.CreatedAt,
+        b.UpdatedAt,
+        CASE 
+            WHEN b.UserID = @UserID THEN 1
+            WHEN v.UserID = @UserID THEN 1
+            ELSE 0
+        END AS CanViewDetails
+    FROM Bookings b
+    JOIN Users u ON b.UserID = u.UserID
+    JOIN VendorProfiles v ON b.VendorProfileID = v.VendorProfileID
+    WHERE b.BookingID = @BookingID
+    AND (@UserID IS NULL OR b.UserID = @UserID OR v.UserID = @UserID);
+    
+    -- Booking services
+    SELECT 
+        bs.BookingServiceID,
+        bs.ServiceID,
+        s.Name AS ServiceName,
+        bs.AddOnID,
+        sa.Name AS AddOnName,
+        bs.Quantity,
+        bs.PriceAtBooking,
+        bs.Notes,
+        (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS ServiceImage
+    FROM BookingServices bs
+    LEFT JOIN Services s ON bs.ServiceID = s.ServiceID
+    LEFT JOIN ServiceAddOns sa ON bs.AddOnID = sa.AddOnID
+    WHERE bs.BookingID = @BookingID;
+    
+    -- Booking timeline
+    SELECT 
+        bt.TimelineID,
+        bt.Status,
+        bt.ChangedBy,
+        u.Name AS ChangedByName,
+        bt.Notes,
+        bt.CreatedAt
+    FROM BookingTimeline bt
+    LEFT JOIN Users u ON bt.ChangedBy = u.UserID
+    WHERE bt.BookingID = @BookingID
+    ORDER BY bt.CreatedAt DESC;
+    
+    -- Conversation info if exists
+    SELECT TOP 1
+        c.ConversationID
+    FROM Conversations c
+    WHERE c.BookingID = @BookingID;
 END;
 GO
 
@@ -1504,6 +1842,66 @@ BEGIN
 END;
 GO
 
+-- Get conversation messages
+CREATE OR ALTER PROCEDURE sp_GetConversationMessages
+    @ConversationID INT,
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Verify user has access to conversation
+    IF EXISTS (
+        SELECT 1 FROM Conversations c
+        WHERE c.ConversationID = @ConversationID
+        AND (c.UserID = @UserID OR 
+             (SELECT v.UserID FROM VendorProfiles v WHERE v.VendorProfileID = c.VendorProfileID) = @UserID)
+    )
+    BEGIN
+        -- Get messages
+        SELECT 
+            m.MessageID,
+            m.SenderID,
+            u.Name AS SenderName,
+            u.Avatar AS SenderAvatar,
+            m.Content,
+            m.IsRead,
+            m.ReadAt,
+            m.CreatedAt,
+            (
+                SELECT 
+                    ma.AttachmentID,
+                    ma.FileURL,
+                    ma.FileType,
+                    ma.FileSize,
+                    ma.OriginalName
+                FROM MessageAttachments ma
+                WHERE ma.MessageID = m.MessageID
+                FOR JSON PATH
+            ) AS Attachments
+        FROM Messages m
+        JOIN Users u ON m.SenderID = u.UserID
+        WHERE m.ConversationID = @ConversationID
+        ORDER BY m.CreatedAt;
+        
+        -- Mark messages as read if recipient
+        UPDATE m
+        SET m.IsRead = 1,
+            m.ReadAt = GETDATE()
+        FROM Messages m
+        JOIN Conversations c ON m.ConversationID = c.ConversationID
+        WHERE m.ConversationID = @ConversationID
+        AND m.SenderID != @UserID
+        AND m.IsRead = 0;
+    END
+    ELSE
+    BEGIN
+        -- Return empty result if no access
+        SELECT TOP 0 NULL AS MessageID;
+    END
+END;
+GO
+
 -- Send message procedure
 CREATE OR ALTER PROCEDURE sp_SendMessage
     @ConversationID INT,
@@ -1607,507 +2005,7 @@ BEGIN
 END;
 GO
 
--- Get user dashboard data
-CREATE OR ALTER PROCEDURE sp_GetUserDashboard
-    @UserID INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- User info
-    SELECT 
-        UserID,
-        Name,
-        Email,
-        Avatar,
-        Phone,
-        IsVendor
-    FROM Users
-    WHERE UserID = @UserID;
-    
-    -- Upcoming bookings
-    SELECT TOP 5 *
-    FROM vw_UserBookings
-    WHERE UserID = @UserID
-    AND EventDate >= GETDATE()
-    AND Status NOT IN ('cancelled', 'rejected')
-    ORDER BY EventDate;
-    
-    -- Recent favorites
-    SELECT TOP 5 *
-    FROM vw_UserFavorites
-    WHERE UserID = @UserID
-    ORDER BY FavoriteID DESC;
-    
-    -- Unread messages
-    SELECT COUNT(*) AS UnreadMessages
-    FROM vw_UserConversations
-    WHERE UserID = @UserID
-    AND UnreadCount > 0;
-    
-    -- Unread notifications
-    SELECT COUNT(*) AS UnreadNotifications
-    FROM Notifications
-    WHERE UserID = @UserID
-    AND IsRead = 0;
-END;
-GO
-
--- Get vendor dashboard data
-CREATE OR ALTER PROCEDURE sp_GetVendorDashboard
-    @UserID INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Vendor profile info
-    SELECT 
-        v.VendorProfileID,
-        v.BusinessName,
-        v.BusinessDescription,
-        u.Avatar,
-        (SELECT STRING_AGG(vc.Category, ', ') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
-        v.AverageResponseTime,
-        v.ResponseRate
-    FROM VendorProfiles v
-    JOIN Users u ON v.UserID = u.UserID
-    WHERE v.UserID = @UserID;
-    
-    -- Recent bookings
-    SELECT TOP 5 *
-    FROM vw_VendorBookings
-    WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)
-    AND EventDate >= GETDATE()
-    AND Status NOT IN ('cancelled', 'rejected')
-    ORDER BY EventDate;
-    
-    -- Recent reviews
-    SELECT TOP 3 *
-    FROM vw_VendorReviews
-    WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)
-    ORDER BY CreatedAt DESC;
-    
-    -- Unread messages
-    SELECT COUNT(*) AS UnreadMessages
-    FROM vw_VendorConversations
-    WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)
-    AND UnreadCount > 0;
-    
-    -- Unread notifications
-    SELECT COUNT(*) AS UnreadNotifications
-    FROM Notifications
-    WHERE UserID = @UserID
-    AND IsRead = 0;
-    
-    -- Quick stats
-    SELECT 
-        (SELECT COUNT(*) FROM Bookings WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)) AS TotalBookings,
-        (SELECT COUNT(*) FROM Reviews WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID) AND IsApproved = 1) AS TotalReviews,
-        (SELECT AVG(CAST(Rating AS DECIMAL(3,1))) FROM Reviews WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID) AND IsApproved = 1) AS AvgRating,
-        (SELECT COUNT(*) FROM Favorites WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)) AS TotalFavorites;
-END;
-GO
-
--- Toggle favorite status (added in version 2)
-CREATE OR ALTER PROCEDURE sp_ToggleFavorite
-    @UserID INT,
-    @VendorProfileID INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    BEGIN TRY
-        BEGIN TRANSACTION;
-        
-        DECLARE @IsFavorite BIT;
-        
-        -- Check if already favorite
-        IF EXISTS (SELECT 1 FROM Favorites WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID)
-        BEGIN
-            -- Remove favorite
-            DELETE FROM Favorites 
-            WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID;
-            
-            SET @IsFavorite = 0;
-        END
-        ELSE
-        BEGIN
-            -- Add favorite
-            INSERT INTO Favorites (UserID, VendorProfileID)
-            VALUES (@UserID, @VendorProfileID);
-            
-            SET @IsFavorite = 1;
-        END
-        
-        -- Update favorite count
-        DECLARE @FavoriteCount INT = (SELECT COUNT(*) FROM Favorites WHERE VendorProfileID = @VendorProfileID);
-        
-        COMMIT TRANSACTION;
-        
-        SELECT @IsFavorite AS IsFavorite, @FavoriteCount AS FavoriteCount;
-    END TRY
-    BEGIN CATCH
-        ROLLBACK TRANSACTION;
-        THROW;
-    END CATCH
-END;
-GO
-
--- Get user favorites (added in version 2)
-CREATE OR ALTER PROCEDURE sp_GetUserFavorites
-    @UserID INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    SELECT 
-        v.VendorProfileID AS id,
-        v.BusinessName AS name,
-        CONCAT(v.City, ', ', v.State) AS location,
-        (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS category,
-        v.PriceLevel,
-        (SELECT TOP 1 '$' + CAST(s.Price AS NVARCHAR(20)) FROM Services s 
-         JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID 
-         WHERE sc.VendorProfileID = v.VendorProfileID ORDER BY s.Price DESC) AS price,
-        CAST(ISNULL((SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1), 0) AS NVARCHAR(10)) + 
-        ' (' + CAST(ISNULL((SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1), 0) AS NVARCHAR(10)) + ')' AS rating,
-        v.BusinessDescription AS description,
-        ISNULL((SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1), '') AS image,
-        CASE 
-            WHEN v.IsPremium = 1 THEN 'Premium'
-            WHEN (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) > 20 THEN 'Popular'
-            ELSE NULL
-        END AS badge,
-        v.Capacity,
-        v.Rooms,
-        v.IsPremium,
-        v.IsEcoFriendly,
-        v.IsAwardWinning
-    FROM Favorites f
-    JOIN VendorProfiles v ON f.VendorProfileID = v.VendorProfileID
-    WHERE f.UserID = @UserID
-    ORDER BY f.CreatedAt DESC;
-END;
-GO
-
--- Create booking with multiple services (added in version 2)
-CREATE OR ALTER PROCEDURE sp_CreateBookingWithServices
-    @UserID INT,
-    @VendorProfileID INT,
-    @EventDate DATETIME,
-    @EndDate DATETIME,
-    @AttendeeCount INT = 1,
-    @SpecialRequests NVARCHAR(MAX) = NULL,
-    @PaymentIntentID NVARCHAR(100) = NULL,
-    @ServicesJSON NVARCHAR(MAX)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    BEGIN TRY
-        BEGIN TRANSACTION;
-        
-        DECLARE @TotalAmount DECIMAL(10, 2) = 0;
-        DECLARE @DepositAmount DECIMAL(10, 2) = 0;
-        DECLARE @MaxDepositPercentage DECIMAL(5, 2) = 0;
-        
-        -- Parse services JSON
-        DECLARE @Services TABLE (
-            ServiceID INT,
-            AddOnID INT NULL,
-            Quantity INT,
-            Price DECIMAL(10, 2),
-            DepositPercentage DECIMAL(5, 2)
-        );
-        
-        INSERT INTO @Services
-        SELECT 
-            ServiceID,
-            AddOnID,
-            Quantity,
-            Price,
-            DepositPercentage
-        FROM OPENJSON(@ServicesJSON)
-        WITH (
-            ServiceID INT '$.serviceId',
-            AddOnID INT '$.addOnId',
-            Quantity INT '$.quantity',
-            Price DECIMAL(10, 2) '$.price',
-            DepositPercentage DECIMAL(5, 2) '$.depositPercentage'
-        );
-        
-        -- Calculate totals
-        SELECT 
-            @TotalAmount = SUM(Price * Quantity),
-            @MaxDepositPercentage = MAX(DepositPercentage)
-        FROM @Services;
-        
-        SET @DepositAmount = @TotalAmount * (@MaxDepositPercentage / 100);
-        
-        -- Create booking
-        INSERT INTO Bookings (
-            UserID,
-            VendorProfileID,
-            EventDate,
-            EndDate,
-            Status,
-            TotalAmount,
-            DepositAmount,
-            AttendeeCount,
-            SpecialRequests,
-            StripePaymentIntentID
-        )
-        VALUES (
-            @UserID,
-            @VendorProfileID,
-            @EventDate,
-            @EndDate,
-            'pending',
-            @TotalAmount,
-            @DepositAmount,
-            @AttendeeCount,
-            @SpecialRequests,
-            @PaymentIntentID
-        );
-        
-        DECLARE @BookingID INT = SCOPE_IDENTITY();
-        
-        -- Add booking services
-        INSERT INTO BookingServices (
-            BookingID,
-            ServiceID,
-            AddOnID,
-            Quantity,
-            PriceAtBooking,
-            Notes
-        )
-        SELECT 
-            @BookingID,
-            ServiceID,
-            AddOnID,
-            Quantity,
-            Price,
-            'Booked via website'
-        FROM @Services;
-        
-        -- Create booking timeline entry
-        INSERT INTO BookingTimeline (
-            BookingID,
-            Status,
-            ChangedBy,
-            Notes
-        )
-        VALUES (
-            @BookingID,
-            'pending',
-            @UserID,
-            'Booking created by customer'
-        );
-        
-        -- Create conversation
-        DECLARE @ConversationID INT;
-        
-        INSERT INTO Conversations (
-            UserID,
-            VendorProfileID,
-            BookingID,
-            Subject,
-            LastMessageAt
-        )
-        VALUES (
-            @UserID,
-            @VendorProfileID,
-            @BookingID,
-            'Booking #' + CAST(@BookingID AS NVARCHAR(10)),
-            GETDATE()
-        );
-        
-        SET @ConversationID = SCOPE_IDENTITY();
-        
-        -- Create initial message
-        INSERT INTO Messages (
-            ConversationID,
-            SenderID,
-            Content
-        )
-        VALUES (
-            @ConversationID,
-            @UserID,
-            'I have booked services for ' + CONVERT(NVARCHAR(20), @EventDate, 107) + '. ' + 
-            ISNULL(@SpecialRequests, 'No special requests.')
-        );
-        
-        -- Create notification for vendor
-        INSERT INTO Notifications (
-            UserID,
-            Type,
-            Title,
-            Message,
-            RelatedID,
-            RelatedType,
-            ActionURL
-        )
-        VALUES (
-            (SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID),
-            'booking',
-            'New Booking Request',
-            'You have a new booking request for ' + CONVERT(NVARCHAR(20), @EventDate, 107),
-            @BookingID,
-            'booking',
-            '/vendor/bookings/' + CAST(@BookingID AS NVARCHAR(10))
-        );
-        
-        COMMIT TRANSACTION;
-        
-        SELECT @BookingID AS BookingID, @ConversationID AS ConversationID;
-    END TRY
-    BEGIN CATCH
-        ROLLBACK TRANSACTION;
-        THROW;
-    END CATCH
-END;
-GO
-
--- Get booking details (added in version 2)
-CREATE OR ALTER PROCEDURE sp_GetBookingDetails
-    @BookingID INT,
-    @UserID INT = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Booking info
-    SELECT 
-        b.BookingID,
-        b.UserID,
-        u.Name AS UserName,
-        u.Email AS UserEmail,
-        u.Phone AS UserPhone,
-        b.VendorProfileID,
-        v.BusinessName AS VendorName,
-        v.BusinessEmail AS VendorEmail,
-        v.BusinessPhone AS VendorPhone,
-        b.EventDate,
-        b.EndDate,
-        b.Status,
-        b.TotalAmount,
-        b.DepositAmount,
-        b.DepositPaid,
-        b.FullAmountPaid,
-        b.AttendeeCount,
-        b.SpecialRequests,
-        b.StripePaymentIntentID,
-        b.CreatedAt,
-        b.UpdatedAt,
-        CASE 
-            WHEN b.UserID = @UserID THEN 1
-            WHEN v.UserID = @UserID THEN 1
-            ELSE 0
-        END AS CanViewDetails
-    FROM Bookings b
-    JOIN Users u ON b.UserID = u.UserID
-    JOIN VendorProfiles v ON b.VendorProfileID = v.VendorProfileID
-    WHERE b.BookingID = @BookingID
-    AND (@UserID IS NULL OR b.UserID = @UserID OR v.UserID = @UserID);
-    
-    -- Booking services
-    SELECT 
-        bs.BookingServiceID,
-        bs.ServiceID,
-        s.Name AS ServiceName,
-        bs.AddOnID,
-        sa.Name AS AddOnName,
-        bs.Quantity,
-        bs.PriceAtBooking,
-        bs.Notes,
-        (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS ServiceImage
-    FROM BookingServices bs
-    LEFT JOIN Services s ON bs.ServiceID = s.ServiceID
-    LEFT JOIN ServiceAddOns sa ON bs.AddOnID = sa.AddOnID
-    WHERE bs.BookingID = @BookingID;
-    
-    -- Booking timeline
-    SELECT 
-        bt.TimelineID,
-        bt.Status,
-        bt.ChangedBy,
-        u.Name AS ChangedByName,
-        bt.Notes,
-        bt.CreatedAt
-    FROM BookingTimeline bt
-    LEFT JOIN Users u ON bt.ChangedBy = u.UserID
-    WHERE bt.BookingID = @BookingID
-    ORDER BY bt.CreatedAt DESC;
-    
-    -- Conversation info if exists
-    SELECT TOP 1
-        c.ConversationID
-    FROM Conversations c
-    WHERE c.BookingID = @BookingID;
-END;
-GO
-
--- Get conversation messages (added in version 2)
-CREATE OR ALTER PROCEDURE sp_GetConversationMessages
-    @ConversationID INT,
-    @UserID INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    
-    -- Verify user has access to conversation
-    IF EXISTS (
-        SELECT 1 FROM Conversations c
-        WHERE c.ConversationID = @ConversationID
-        AND (c.UserID = @UserID OR 
-             (SELECT v.UserID FROM VendorProfiles v WHERE v.VendorProfileID = c.VendorProfileID) = @UserID)
-    )
-    BEGIN
-        -- Get messages
-        SELECT 
-            m.MessageID,
-            m.SenderID,
-            u.Name AS SenderName,
-            u.Avatar AS SenderAvatar,
-            m.Content,
-            m.IsRead,
-            m.ReadAt,
-            m.CreatedAt,
-            (
-                SELECT 
-                    ma.AttachmentID,
-                    ma.FileURL,
-                    ma.FileType,
-                    ma.FileSize,
-                    ma.OriginalName
-                FROM MessageAttachments ma
-                WHERE ma.MessageID = m.MessageID
-                FOR JSON PATH
-            ) AS Attachments
-        FROM Messages m
-        JOIN Users u ON m.SenderID = u.UserID
-        WHERE m.ConversationID = @ConversationID
-        ORDER BY m.CreatedAt;
-        
-        -- Mark messages as read if recipient
-        UPDATE m
-        SET m.IsRead = 1,
-            m.ReadAt = GETDATE()
-        FROM Messages m
-        JOIN Conversations c ON m.ConversationID = c.ConversationID
-        WHERE m.ConversationID = @ConversationID
-        AND m.SenderID != @UserID
-        AND m.IsRead = 0;
-    END
-    ELSE
-    BEGIN
-        -- Return empty result if no access
-        SELECT TOP 0 NULL AS MessageID;
-    END
-END;
-GO
-
--- Get user notifications (added in version 2)
+-- Get user notifications
 CREATE OR ALTER PROCEDURE sp_GetUserNotifications
     @UserID INT,
     @UnreadOnly BIT = 0,
@@ -2148,7 +2046,7 @@ BEGIN
 END;
 GO
 
--- Create or update user location (added in version 2)
+-- Create or update user location
 CREATE OR ALTER PROCEDURE sp_UpdateUserLocation
     @UserID INT,
     @Latitude DECIMAL(10, 8),
@@ -2181,7 +2079,7 @@ BEGIN
 END;
 GO
 
--- Get nearby vendors (added in version 2)
+-- Get nearby vendors
 CREATE OR ALTER PROCEDURE sp_GetNearbyVendors
     @Latitude DECIMAL(10, 8),
     @Longitude DECIMAL(11, 8),
@@ -2235,7 +2133,7 @@ BEGIN
 END;
 GO
 
--- Create payment intent for booking (added in version 2)
+-- Create payment intent for booking
 CREATE OR ALTER PROCEDURE sp_CreateBookingPaymentIntent
     @BookingID INT,
     @Amount DECIMAL(10, 2),
@@ -2263,7 +2161,7 @@ BEGIN
 END;
 GO
 
--- Confirm booking payment (added in version 2)
+-- Confirm booking payment
 CREATE OR ALTER PROCEDURE sp_ConfirmBookingPayment
     @BookingID INT,
     @PaymentIntentID NVARCHAR(100),
@@ -2379,7 +2277,7 @@ BEGIN
 END;
 GO
 
--- Get vendor dashboard analytics (added in version 2)
+-- Get vendor dashboard analytics
 CREATE OR ALTER PROCEDURE sp_GetVendorAnalytics
     @VendorProfileID INT,
     @StartDate DATE = NULL,
@@ -2442,5 +2340,106 @@ BEGIN
     FROM Reviews
     WHERE VendorProfileID = @VendorProfileID
     AND CreatedAt BETWEEN @StartDate AND @EndDate;
+END;
+GO
+
+-- Get user dashboard data
+CREATE OR ALTER PROCEDURE sp_GetUserDashboard
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- User info
+    SELECT 
+        UserID,
+        Name,
+        Email,
+        Avatar,
+        Phone,
+        IsVendor
+    FROM Users
+    WHERE UserID = @UserID;
+    
+    -- Upcoming bookings
+    SELECT TOP 5 *
+    FROM vw_UserBookings
+    WHERE UserID = @UserID
+    AND EventDate >= GETDATE()
+    AND Status NOT IN ('cancelled', 'rejected')
+    ORDER BY EventDate;
+    
+    -- Recent favorites
+    SELECT TOP 5 *
+    FROM vw_UserFavorites
+    WHERE UserID = @UserID
+    ORDER BY CreatedAt DESC;
+    
+    -- Unread messages
+    SELECT COUNT(*) AS UnreadMessages
+    FROM vw_UserConversations
+    WHERE UserID = @UserID
+    AND UnreadCount > 0;
+    
+    -- Unread notifications
+    SELECT COUNT(*) AS UnreadNotifications
+    FROM Notifications
+    WHERE UserID = @UserID
+    AND IsRead = 0;
+END;
+GO
+
+-- Get vendor dashboard data
+CREATE OR ALTER PROCEDURE sp_GetVendorDashboard
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Vendor profile info
+    SELECT 
+        v.VendorProfileID,
+        v.BusinessName,
+        v.BusinessDescription,
+        u.Avatar,
+        (SELECT STRING_AGG(vc.Category, ', ') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
+        v.AverageResponseTime,
+        v.ResponseRate
+    FROM VendorProfiles v
+    JOIN Users u ON v.UserID = u.UserID
+    WHERE v.UserID = @UserID;
+    
+    -- Recent bookings
+    SELECT TOP 5 *
+    FROM vw_VendorBookings
+    WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)
+    AND EventDate >= GETDATE()
+    AND Status NOT IN ('cancelled', 'rejected')
+    ORDER BY EventDate;
+    
+    -- Recent reviews
+    SELECT TOP 3 *
+    FROM vw_VendorReviews
+    WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)
+    ORDER BY CreatedAt DESC;
+    
+    -- Unread messages
+    SELECT COUNT(*) AS UnreadMessages
+    FROM vw_VendorConversations
+    WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)
+    AND UnreadCount > 0;
+    
+    -- Unread notifications
+    SELECT COUNT(*) AS UnreadNotifications
+    FROM Notifications
+    WHERE UserID = @UserID
+    AND IsRead = 0;
+    
+    -- Quick stats
+    SELECT 
+        (SELECT COUNT(*) FROM Bookings WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)) AS TotalBookings,
+        (SELECT COUNT(*) FROM Reviews WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID) AND IsApproved = 1) AS TotalReviews,
+        (SELECT AVG(CAST(Rating AS DECIMAL(3,1))) FROM Reviews WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID) AND IsApproved = 1) AS AvgRating,
+        (SELECT COUNT(*) FROM Favorites WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)) AS TotalFavorites;
 END;
 GO
