@@ -2000,15 +2000,74 @@
         </div>
     </div>
 
-    <!-- Booking Modal -->
-    <div id="booking-modal" class="modal" style="display: none;">
+    <!-- Vendor Modal (working version) -->
+    <div id="vendor-modal" class="modal" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Vendor Details & Booking</h3>
+                <h3 id="modal-vendor-name">Vendor Name</h3>
                 <span class="close-modal">&times;</span>
             </div>
             <div class="modal-body">
-                <!-- This will be populated by JavaScript -->
+                <!-- Header Info -->
+                <div class="vendor-detail-header">
+                    <div class="vendor-detail-image">
+                        <img id="modal-vendor-image" src="https://via.placeholder.com/350x200" alt="Vendor Image">
+                    </div>
+                    <div class="vendor-detail-info">
+                        <h1 id="modal-vendor-name-full" class="vendor-detail-name">Vendor Name</h1>
+                        <div class="vendor-detail-location">
+                            📍 <span id="modal-vendor-location">Location</span>
+                        </div>
+                        <div class="vendor-detail-ratings">
+                            <div class="review-rating" id="modal-vendor-rating">
+                                ⭐⭐⭐⭐⭐ <span>(0.0) | 0 Reviews</span>
+                            </div>
+                        </div>
+                        <div class="vendor-detail-features" id="modal-vendor-features">
+                            <div class="feature">
+                                <span class="feature-icon">👥</span>
+                                <span id="modal-vendor-capacity">0 guests</span>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-icon">🎉</span>
+                                <span id="modal-vendor-services-offered">Services</span>
+                            </div>
+                        </div>
+                        <p class="vendor-detail-price" id="modal-vendor-price">$0 <span>/ event</span></p>
+                    </div>
+                </div>
+
+                <!-- About Us -->
+                <h3 class="services-title">About Us</h3>
+                <p id="modal-vendor-description" class="vendor-detail-description">
+                    Vendor description will appear here...
+                </p>
+
+                <!-- Services -->
+                <div id="services-section" class="services-section">
+                    <h3 class="services-title">Our Services</h3>
+                    <div class="service-category">
+                        <h4 class="category-title">Event Packages</h4>
+                        <div class="service-grid" id="event-packages-list">
+                            <!-- Services will be inserted here by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Booking Form -->
+                <div class="booking-flow">
+                    <h3 class="services-title">Book This Vendor</h3>
+                    <div class="form-group">
+                        <label for="booking-date-picker" class="form-label">Select a Date and Time</label>
+                        <input type="text" id="booking-date-picker" class="form-control" placeholder="Choose a date and time">
+                    </div>
+                    <button class="btn btn-primary" id="open-booking-modal-btn">
+                        Book Now
+                    </button>
+                    <button class="btn btn-outline" id="open-chat-btn">
+                        Message Vendor
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -2145,8 +2204,8 @@
             const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
             
             // Initialize variables
-            const modal = document.getElementById('booking-modal');
-            const modalBody = document.querySelector('.modal-body');
+            const modal = document.getElementById('vendor-modal');
+            const modalBody = document.querySelector('#vendor-modal .modal-body');
             const confirmationModal = document.getElementById('confirmation-modal');
             const locationPermissionModal = document.getElementById('location-permission');
             const vendorGrid = document.getElementById('vendor-grid');
@@ -2336,56 +2395,54 @@
                 });
             }
             
-javascript
-
-// In the loadVendors() function, update the data processing:
-async function loadVendors() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/vendors`);
-        if (!response.ok) throw new Error('Network response was not ok');
-        
-        const data = await response.json();
-        if (data && data.vendors && data.vendors.length > 0) {
-            // Process vendor data from API
-            state.vendors = data.vendors.map(vendor => {
-                // Parse services if they come as JSON string (if needed)
-                let services = vendor.services || [];
-                
-                // Map type to category
-                const category = mapTypeToCategory(vendor.type);
-                
-                return {
-                    ...vendor,
-                    services: services,
-                    category: category,
-                    coordinates: {
-                        lat: vendor.latitude || getRandomLat(),
-                        lng: vendor.longitude || getRandomLng()
-                    },
-                    priceLevel: vendor.priceLevel || getRandomPriceLevel(),
-                    isPremium: vendor.isPremium || false,
-                    isEcoFriendly: vendor.isEcoFriendly || false,
-                    isAwardWinning: vendor.isAwardWinning || false,
-                    reviews: vendor.reviews || [],
-                    rating: parseFloat(vendor.rating) ? `${parseFloat(vendor.rating).toFixed(1)}` : '4.5',
-                    reviewCount: vendor.reviewCount || 0
-                };
-            });
-            
-            state.filteredVendors = [...state.vendors];
-            
-            // Update UI
-            updateMetadata({ total: data.totalCount || state.filteredVendors.length });
-            renderVendors();
-            
-        } else {
-            showError("No vendor data found");
-        }
-    } catch (error) {
-        console.error('Error loading vendors:', error);
-        throw error;
-    }
-}
+            // In the loadVendors() function, update the data processing:
+            async function loadVendors() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/vendors`);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    
+                    const data = await response.json();
+                    if (data && data.vendors && data.vendors.length > 0) {
+                        // Process vendor data from API
+                        state.vendors = data.vendors.map(vendor => {
+                            // Parse services if they come as JSON string (if needed)
+                            let services = vendor.services || [];
+                            
+                            // Map type to category
+                            const category = mapTypeToCategory(vendor.type);
+                            
+                            return {
+                                ...vendor,
+                                services: services,
+                                category: category,
+                                coordinates: {
+                                    lat: vendor.latitude || getRandomLat(),
+                                    lng: vendor.longitude || getRandomLng()
+                                },
+                                priceLevel: vendor.priceLevel || getRandomPriceLevel(),
+                                isPremium: vendor.isPremium || false,
+                                isEcoFriendly: vendor.isEcoFriendly || false,
+                                isAwardWinning: vendor.isAwardWinning || false,
+                                reviews: vendor.reviews || [],
+                                rating: parseFloat(vendor.rating) ? `${parseFloat(vendor.rating).toFixed(1)}` : '4.5',
+                                reviewCount: vendor.reviewCount || 0
+                            };
+                        });
+                        
+                        state.filteredVendors = [...state.vendors];
+                        
+                        // Update UI
+                        updateMetadata({ total: data.totalCount || state.filteredVendors.length });
+                        renderVendors();
+                        
+                    } else {
+                        showError("No vendor data found");
+                    }
+                } catch (error) {
+                    console.error('Error loading vendors:', error);
+                    throw error;
+                }
+            }
             
             // Helper function to generate sample reviews
             function generateSampleReviews() {
