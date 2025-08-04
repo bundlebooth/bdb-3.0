@@ -69,7 +69,7 @@ router.get('/', async (req, res) => {
       distanceMiles: vendor.DistanceMiles,
       categories: vendor.Categories,
       services: vendor.services ? JSON.parse(vendor.services) : [],
-      reviews: vendor.recentReviews ? JSON.parse(vendor.recentReviews) : []
+      reviews: vendor.reviews ? JSON.parse(vendor.reviews) : []
     }));
 
     res.json({
