@@ -2336,57 +2336,56 @@
                 });
             }
             
-            // Load vendors from API
-            async function loadVendors() {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/vendors`);
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    
-                    const data = await response.json();
-                    if (data && data.length > 0) {
-                        // Process vendor data
-                        state.vendors = data.map(vendor => {
-                            // Parse services JSON string if needed
-                            let services = [];
-                            try {
-                                services = vendor.services ? (typeof vendor.services === 'string' ? JSON.parse(vendor.services) : vendor.services) : [];
-                            } catch (e) {
-                                console.error('Error parsing services:', e);
-                            }
-                            
-                            // Map type to category
-                            const category = mapTypeToCategory(vendor.type);
-                            
-                            return {
-                                ...vendor,
-                                services: services,
-                                category: category,
-                                coordinates: {
-                                    lat: vendor.latitude || getRandomLat(),
-                                    lng: vendor.longitude || getRandomLng()
-                                },
-                                priceLevel: vendor.priceLevel || getRandomPriceLevel(),
-                                isPremium: vendor.IsPremium || false,
-                                isEcoFriendly: vendor.IsEcoFriendly || false,
-                                isAwardWinning: vendor.IsAwardWinning || false,
-                                reviews: vendor.reviews || generateSampleReviews()
-                            };
-                        });
-                        
-                        state.filteredVendors = [...state.vendors];
-                        
-                        // Update UI
-                        updateMetadata({ total: state.filteredVendors.length });
-                        renderVendors();
-                        
-                    } else {
-                        showError("No vendor data found");
-                    }
-                } catch (error) {
-                    console.error('Error loading vendors:', error);
-                    throw error;
-                }
-            }
+javascript
+
+// In the loadVendors() function, update the data processing:
+async function loadVendors() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/vendors`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        
+        const data = await response.json();
+        if (data && data.vendors && data.vendors.length > 0) {
+            // Process vendor data from API
+            state.vendors = data.vendors.map(vendor => {
+                // Parse services if they come as JSON string (if needed)
+                let services = vendor.services || [];
+                
+                // Map type to category
+                const category = mapTypeToCategory(vendor.type);
+                
+                return {
+                    ...vendor,
+                    services: services,
+                    category: category,
+                    coordinates: {
+                        lat: vendor.latitude || getRandomLat(),
+                        lng: vendor.longitude || getRandomLng()
+                    },
+                    priceLevel: vendor.priceLevel || getRandomPriceLevel(),
+                    isPremium: vendor.isPremium || false,
+                    isEcoFriendly: vendor.isEcoFriendly || false,
+                    isAwardWinning: vendor.isAwardWinning || false,
+                    reviews: vendor.reviews || [],
+                    rating: parseFloat(vendor.rating) ? `${parseFloat(vendor.rating).toFixed(1)}` : '4.5',
+                    reviewCount: vendor.reviewCount || 0
+                };
+            });
+            
+            state.filteredVendors = [...state.vendors];
+            
+            // Update UI
+            updateMetadata({ total: data.totalCount || state.filteredVendors.length });
+            renderVendors();
+            
+        } else {
+            showError("No vendor data found");
+        }
+    } catch (error) {
+        console.error('Error loading vendors:', error);
+        throw error;
+    }
+}
             
             // Helper function to generate sample reviews
             function generateSampleReviews() {
@@ -3463,47 +3462,48 @@
                 
                 vendorGrid.innerHTML = '';
                 
-                paginatedVendors.forEach(vendor => {
-                    const isFavorite = state.favorites.includes(vendor.id);
-                    
-                    const vendorCard = document.createElement('div');
-                    vendorCard.className = 'vendor-card';
-                    vendorCard.innerHTML = `
-                        <div class="vendor-image">
-                            ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
-                            ${vendor.isPremium ? '<div class="vendor-badge">Premium</div>' : ''}
-                            <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
+                
+    paginatedVendors.forEach(vendor => {
+        const isFavorite = state.favorites.includes(vendor.id);
+        
+        const vendorCard = document.createElement('div');
+        vendorCard.className = 'vendor-card';
+        vendorCard.innerHTML = `
+            <div class="vendor-image">
+                ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
+                ${vendor.isPremium ? '<div class="vendor-badge">Premium</div>' : ''}
+                <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
+            </div>
+            <div class="vendor-details">
+                <h3 class="vendor-name">${vendor.name}</h3>
+                <div class="vendor-location">
+                    📍 ${vendor.location}
+                </div>
+                <div class="vendor-features">
+                    <div class="feature">
+                        <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
+                        <span>${getCategoryName(vendor.category)}</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">⭐</span>
+                        <span>${vendor.rating} (${vendor.reviewCount})</span>
+                    </div>
+                    <div class="feature">
+                        <div class="price-indicator">
+                            ${renderPriceIndicator(vendor.priceLevel)}
                         </div>
-                        <div class="vendor-details">
-                            <h3 class="vendor-name">${vendor.name}</h3>
-                            <div class="vendor-location">
-                                📍 ${vendor.location}
-                            </div>
-                            <div class="vendor-features">
-                                <div class="feature">
-                                    <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
-                                    <span>${getCategoryName(vendor.category)}</span>
-                                </div>
-                                <div class="feature">
-                                    <span class="feature-icon">⭐</span>
-                                    <span>${vendor.rating || '4.5'} (${vendor.reviews?.length || 25})</span>
-                                </div>
-                                <div class="feature">
-                                    <div class="price-indicator">
-                                        ${renderPriceIndicator(vendor.priceLevel)}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="vendor-footer">
-                                <div class="vendor-price">${vendor.price || '$500'}<span>starting</span></div>
-                                <div class="vendor-actions">
-                                    <button class="btn btn-outline save-btn" data-id="${vendor.id}">Save</button>
-                                    <button class="btn btn-primary view-btn" data-id="${vendor.id}">View</button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                    vendorGrid.appendChild(vendorCard);
+                    </div>
+                </div>
+                <div class="vendor-footer">
+                    <div class="vendor-price">${vendor.price}<span>starting</span></div>
+                    <div class="vendor-actions">
+                        <button class="btn btn-outline save-btn" data-id="${vendor.id}">Save</button>
+                        <button class="btn btn-primary view-btn" data-id="${vendor.id}">View</button>
+                    </div>
+                </div>
+            </div>
+        `;
+            vendorGrid.appendChild(vendorCard);
                     
                     // Add event listeners to buttons
                     vendorCard.querySelector('.view-btn').addEventListener('click', () => {
@@ -4087,39 +4087,44 @@
             }
             
             // Render services for a vendor
-            function renderServices(services) {
-                return services.map(category => `
-                    <div class="service-category">
-                        <h4 class="category-title">${category.category}</h4>
-                        <div class="service-grid">
-                            ${category.services.map(service => `
-                                <div class="service-card">
-                                    <div class="service-name">${service.name}</div>
-                                    <div class="service-description">${service.description}</div>
-                                    <div class="service-price">${service.price}</div>
-                                    <div class="service-actions">
-                                        <button class="btn btn-outline btn-sm add-service-btn" data-service="${service.name}">Add</button>
-                                    </div>
-                                </div>
-                            `).join('')}
+function renderServices(services) {
+    return services.map(category => `
+        <div class="service-category">
+            <h4 class="category-title">${category.category || category.categoryDescription}</h4>
+            <div class="service-grid">
+                ${(category.services || []).map(service => `
+                    <div class="service-card">
+                        <div class="service-name">${service.name}</div>
+                        <div class="service-description">${service.description}</div>
+                        <div class="service-price">$${service.Price || service.price || 'N/A'}</div>
+                        <div class="service-actions">
+                            <button class="btn btn-outline btn-sm add-service-btn" 
+                                    data-service="${service.name}"
+                                    data-price="${service.Price || service.price}">
+                                Add
+                            </button>
                         </div>
                     </div>
-                `).join('');
-            }
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+}
             
             // Render reviews for a vendor
-            function renderReviews(reviews) {
-                return reviews.map(review => `
-                    <div class="review-card">
-                        <div class="review-header">
-                            <div class="reviewer">${review.user}</div>
-                            <div class="review-date">${new Date(review.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                        </div>
-                        <div class="review-rating">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</div>
-                        <div class="review-text">${review.comment}</div>
-                    </div>
-                `).join('');
-            }
+function renderReviews(reviews) {
+    return reviews.map(review => `
+        <div class="review-card">
+            <div class="review-header">
+                <div class="reviewer">${review.reviewerName || review.user}</div>
+                <div class="review-date">${new Date(review.CreatedAt || review.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+            </div>
+            <div class="review-rating">${'★'.repeat(review.Rating || review.rating)}${'☆'.repeat(5 - (review.Rating || review.rating))}</div>
+            ${review.Title ? `<div class="review-title">${review.Title}</div>` : ''}
+            <div class="review-text">${review.commentPreview || review.comment}</div>
+        </div>
+    `).join('');
+}
             
             // Close modal
             function closeBookingModal() {
