@@ -57,8 +57,8 @@ router.get('/', async (req, res) => {
       priceLevel: vendor.priceLevel,
       rating: vendor.rating,
       image: vendor.image,
-      services: [], // Will be populated in a separate query
-      reviews: [],  // Will be populated in a separate query
+      services: vendor.services,
+      reviews: vendor.reviews,
       IsPremium: vendor.IsPremium,
       IsEcoFriendly: vendor.IsEcoFriendly,
       IsAwardWinning: vendor.IsAwardWinning,
