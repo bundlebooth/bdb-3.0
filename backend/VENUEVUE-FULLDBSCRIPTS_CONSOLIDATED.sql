@@ -781,7 +781,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE OR ALTER PROCEDURE [dbo].[sp_SearchVendors]
+CREATE   PROCEDURE [dbo].[sp_SearchVendors]
     @SearchTerm NVARCHAR(100) = NULL,
     @Category NVARCHAR(50) = NULL,
     @MinPrice DECIMAL(10, 2) = NULL,
@@ -828,7 +828,7 @@ BEGIN
         ELSE 'BusinessName ASC'
     END;
     
-    -- Build the full query
+    -- Build the full query with enhanced service and review data
     DECLARE @SQL NVARCHAR(MAX) = '
     WITH FilteredVendors AS (
         SELECT 
@@ -844,11 +844,17 @@ BEGIN
             v.IsEcoFriendly,
             v.IsAwardWinning,
             v.PriceLevel,
+            v.Capacity,
+            v.Rooms,
+            v.FeaturedImageURL,
             (SELECT MIN(s.Price) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID = v.VendorProfileID) AS MinPrice,
             (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
             (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
+            (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
+            (SELECT COUNT(*) FROM Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
             (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS ImageURL,
             (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS PrimaryCategory,
+            (SELECT STRING_AGG(vc.Category, '', '') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
             CASE 
                 WHEN v.Latitude BETWEEN 35.0 AND 45.0 AND v.Longitude BETWEEN -80.0 AND -70.0 THEN ''north''
                 WHEN v.Latitude BETWEEN 30.0 AND 35.0 AND v.Longitude BETWEEN -85.0 AND -75.0 THEN ''south''
@@ -883,7 +889,7 @@ BEGIN
         ) <= @RadiusMiles'
     END
     
-    -- Complete the query with pagination
+    -- Complete the query with enhanced JSON output for services and reviews
     SET @SQL = @SQL + '
     )
     SELECT 
@@ -895,13 +901,60 @@ BEGIN
         ''$'' + CAST(MinPrice AS NVARCHAR(20)) AS price,
         PriceLevel AS priceLevel,
         CAST(AverageRating AS NVARCHAR(10)) AS rating,
+        ReviewCount,
+        FavoriteCount,
+        BookingCount,
         ImageURL AS image,
         IsPremium,
         IsEcoFriendly,
         IsAwardWinning,
+        Capacity,
+        Rooms,
         Region,
-        (SELECT COUNT(*) FROM FilteredVendors) AS TotalCount
-    FROM FilteredVendors
+        Categories,
+        (SELECT COUNT(*) FROM FilteredVendors) AS TotalCount,
+        JSON_QUERY((
+            SELECT 
+                sc.CategoryID,
+                sc.Name AS category,
+                sc.Description AS categoryDescription,
+                JSON_QUERY((
+                    SELECT 
+                        s.ServiceID,
+                        s.Name AS name,
+                        s.Description AS description,
+                        s.Price,
+                        s.DurationMinutes,
+                        s.MaxAttendees,
+                        s.RequiresDeposit,
+                        s.DepositPercentage,
+                        (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS image,
+                        (SELECT COUNT(*) FROM Bookings b WHERE b.ServiceID = s.ServiceID) AS bookingCount
+                    FROM Services s
+                    WHERE s.CategoryID = sc.CategoryID AND s.IsActive = 1
+                    FOR JSON PATH
+                )) AS services
+            FROM ServiceCategories sc
+            WHERE sc.VendorProfileID = v.VendorProfileID
+            FOR JSON PATH
+        )) AS services,
+        JSON_QUERY((
+            SELECT TOP 3
+                r.ReviewID,
+                r.Rating,
+                r.Title,
+                LEFT(r.Comment, 100) + CASE WHEN LEN(r.Comment) > 100 THEN ''...'' ELSE '''' END AS commentPreview,
+                r.CreatedAt,
+                u.Name AS reviewerName,
+                u.Avatar AS reviewerAvatar,
+                (SELECT COUNT(*) FROM ReviewMedia rm WHERE rm.ReviewID = r.ReviewID) AS mediaCount
+            FROM Reviews r
+            JOIN Users u ON r.UserID = u.UserID
+            WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1
+            ORDER BY r.CreatedAt DESC
+            FOR JSON PATH
+        )) AS reviews
+    FROM FilteredVendors v
     ORDER BY ' + @SortExpression + '
     OFFSET (' + CAST((@PageNumber - 1) * @PageSize AS NVARCHAR(10)) + ') ROWS
     FETCH NEXT ' + CAST(@PageSize AS NVARCHAR(10)) + ' ROWS ONLY'
@@ -921,6 +974,7 @@ BEGIN
     END CATCH
 END;
 GO
+
 
 -- Enhanced get vendor details procedure
 CREATE OR ALTER PROCEDURE sp_GetVendorDetails
