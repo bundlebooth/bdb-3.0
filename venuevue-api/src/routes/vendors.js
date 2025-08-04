@@ -56,16 +56,26 @@ router.get('/', async (req, res) => {
       price: vendor.price,
       priceLevel: vendor.priceLevel,
       rating: vendor.rating,
+      reviewCount: vendor.ReviewCount,
+      favoriteCount: vendor.FavoriteCount,
+      bookingCount: vendor.BookingCount,
       image: vendor.image,
-      services: vendor.services,
-      reviews: vendor.reviews,
-      IsPremium: vendor.IsPremium,
-      IsEcoFriendly: vendor.IsEcoFriendly,
-      IsAwardWinning: vendor.IsAwardWinning,
-      region: vendor.region
+      capacity: vendor.Capacity,
+      rooms: vendor.Rooms,
+      isPremium: vendor.IsPremium,
+      isEcoFriendly: vendor.IsEcoFriendly,
+      isAwardWinning: vendor.IsAwardWinning,
+      region: vendor.region,
+      distanceMiles: vendor.DistanceMiles,
+      categories: vendor.Categories,
+      services: vendor.services ? JSON.parse(vendor.services) : [],
+      reviews: vendor.recentReviews ? JSON.parse(vendor.recentReviews) : []
     }));
 
-    res.json(formattedVendors);
+    res.json({
+      vendors: formattedVendors,
+      totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0
+    });
 
   } catch (err) {
     console.error('Database error:', err);
