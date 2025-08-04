@@ -1399,11 +1399,11 @@
             <div class="user-nav">
                 <div class="nav-icon" id="wishlist-btn">
                     ❤
-                    <span class="badge">0</span>
+                    <span class="badge" id="favorites-badge">0</span>
                 </div>
                 <div class="nav-icon" id="notifications-btn">
                     🔔
-                    <span class="badge">0</span>
+                    <span class="badge" id="notifications-badge">0</span>
                 </div>
                 <div class="nav-icon" id="profile-btn">👤</div>
             </div>
@@ -1590,7 +1590,7 @@
                 <div class="user-nav">
                     <div class="nav-icon" id="dashboard-notifications-btn">
                         🔔
-                        <span class="badge">3</span>
+                        <span class="badge" id="dashboard-notifications-badge">0</span>
                     </div>
                 </div>
             </div>
@@ -1599,19 +1599,8 @@
             <div id="dashboard-section">
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">Upcoming Bookings</h2>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">Grand Ballroom</div>
-                            <div class="booking-date">June 20, 2023 - Wedding Ceremony</div>
-                        </div>
-                        <div class="booking-status status-confirmed">Confirmed</div>
-                    </div>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">DJ Sounds</div>
-                            <div class="booking-date">July 15, 2023 - Birthday Party</div>
-                        </div>
-                        <div class="booking-status status-confirmed">Confirmed</div>
+                    <div id="upcoming-bookings">
+                        <!-- Bookings will be loaded here -->
                     </div>
                 </div>
                 
@@ -1627,26 +1616,8 @@
             <div id="bookings-section" style="display: none;">
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">All Bookings</h2>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">Grand Ballroom</div>
-                            <div class="booking-date">June 20, 2023 - Wedding Ceremony</div>
-                        </div>
-                        <div class="booking-status status-confirmed">Confirmed</div>
-                    </div>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">DJ Sounds</div>
-                            <div class="booking-date">July 15, 2023 - Birthday Party</div>
-                        </div>
-                        <div class="booking-status status-confirmed">Confirmed</div>
-                    </div>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">Gourmet Delights</div>
-                            <div class="booking-date">August 10, 2023 - Corporate Lunch</div>
-                        </div>
-                        <div class="booking-status status-pending">Pending</div>
+                    <div id="all-bookings">
+                        <!-- All bookings will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -1667,14 +1638,7 @@
                     <h2 class="dashboard-card-title">Messages</h2>
                     <div class="chat-container">
                         <div class="chat-messages" id="dashboard-chat-messages">
-                            <div class="message received">
-                                <div class="message-content">Hi there! I'm interested in booking your venue for a wedding. Do you have availability on June 20th?</div>
-                                <div class="message-time">Today, 10:30 AM</div>
-                            </div>
-                            <div class="message sent">
-                                <div class="message-content">Hello! Yes, we do have availability on June 20th. Would you like to schedule a tour?</div>
-                                <div class="message-time">Today, 10:45 AM</div>
-                            </div>
+                            <!-- Messages will be loaded here -->
                         </div>
                         <div class="chat-input">
                             <input type="text" placeholder="Type your message..." id="dashboard-chat-input">
@@ -1688,21 +1652,8 @@
             <div id="reviews-section" style="display: none;">
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">My Reviews</h2>
-                    <div class="review-card">
-                        <div class="review-header">
-                            <div class="reviewer">John Doe</div>
-                            <div class="review-date">June 25, 2023</div>
-                        </div>
-                        <div class="review-rating">★★★★★</div>
-                        <div class="review-text">Perfect venue for our wedding! The staff was incredibly helpful and the space was beautiful.</div>
-                    </div>
-                    <div class="review-card">
-                        <div class="review-header">
-                            <div class="reviewer">Jane Smith</div>
-                            <div class="review-date">May 15, 2023</div>
-                        </div>
-                        <div class="review-rating">★★★★☆</div>
-                        <div class="review-text">Great music but started a bit late. Overall a good experience.</div>
+                    <div id="user-reviews">
+                        <!-- Reviews will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -1714,15 +1665,15 @@
                     <form id="profile-form">
                         <div class="form-group">
                             <label for="profile-name">Full Name</label>
-                            <input type="text" id="profile-name" value="John Doe">
+                            <input type="text" id="profile-name">
                         </div>
                         <div class="form-group">
                             <label for="profile-email">Email</label>
-                            <input type="email" id="profile-email" value="john@example.com" disabled>
+                            <input type="email" id="profile-email" disabled>
                         </div>
                         <div class="form-group">
                             <label for="profile-phone">Phone Number</label>
-                            <input type="tel" id="profile-phone" value="(123) 456-7890">
+                            <input type="tel" id="profile-phone">
                         </div>
                         <button type="submit" class="btn btn-primary">Save Changes</button>
                     </form>
@@ -1777,54 +1728,21 @@
                 <div class="user-nav">
                     <div class="nav-icon" id="vendor-notifications-btn">
                         🔔
-                        <span class="badge">5</span>
+                        <span class="badge" id="vendor-notifications-badge">0</span>
                     </div>
                 </div>
             </div>
             
             <!-- Vendor Dashboard Content -->
             <div id="vendor-dashboard-section">
-                <div class="vendor-stats">
-                    <div class="stat-card">
-                        <div class="stat-value">12</div>
-                        <div class="stat-label">Upcoming Bookings</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">$8,450</div>
-                        <div class="stat-label">Revenue This Month</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">4.8</div>
-                        <div class="stat-label">Average Rating</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value">156</div>
-                        <div class="stat-label">Profile Views</div>
-                    </div>
+                <div class="vendor-stats" id="vendor-stats">
+                    <!-- Stats will be loaded here -->
                 </div>
                 
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">Recent Bookings</h2>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">Wedding Package A</div>
-                            <div class="booking-date">June 20, 2023 - John Doe</div>
-                        </div>
-                        <div class="booking-status status-confirmed">Confirmed</div>
-                    </div>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">Corporate Half-Day</div>
-                            <div class="booking-date">July 5, 2023 - ABC Company</div>
-                        </div>
-                        <div class="booking-status status-confirmed">Confirmed</div>
-                    </div>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">Wedding Package B</div>
-                            <div class="booking-date">August 15, 2023 - Sarah Williams</div>
-                        </div>
-                        <div class="booking-status status-pending">Pending</div>
+                    <div id="vendor-recent-bookings">
+                        <!-- Recent bookings will be loaded here -->
                     </div>
                 </div>
                 
@@ -1832,14 +1750,7 @@
                     <h2 class="dashboard-card-title">Recent Messages</h2>
                     <div class="chat-container" style="height: 400px;">
                         <div class="chat-messages" id="vendor-chat-messages">
-                            <div class="message received">
-                                <div class="message-content">Hi there! I'm interested in booking your venue for a wedding. Do you have availability on June 20th?</div>
-                                <div class="message-time">Today, 10:30 AM</div>
-                            </div>
-                            <div class="message sent">
-                                <div class="message-content">Hello! Yes, we do have availability on June 20th. Would you like to schedule a tour?</div>
-                                <div class="message-time">Today, 10:45 AM</div>
-                            </div>
+                            <!-- Messages will be loaded here -->
                         </div>
                         <div class="chat-input">
                             <input type="text" placeholder="Type your message..." id="vendor-chat-input">
@@ -1853,26 +1764,8 @@
             <div id="vendor-bookings-section" style="display: none;">
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">All Bookings</h2>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">Wedding Package A</div>
-                            <div class="booking-date">June 20, 2023 - John Doe</div>
-                        </div>
-                        <div class="booking-status status-confirmed">Confirmed</div>
-                    </div>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">Corporate Half-Day</div>
-                            <div class="booking-date">July 5, 2023 - ABC Company</div>
-                        </div>
-                        <div class="booking-status status-confirmed">Confirmed</div>
-                    </div>
-                    <div class="booking-item">
-                        <div class="booking-info">
-                            <div class="booking-vendor">Wedding Package B</div>
-                            <div class="booking-date">August 15, 2023 - Sarah Williams</div>
-                        </div>
-                        <div class="booking-status status-pending">Pending</div>
+                    <div id="vendor-all-bookings">
+                        <!-- All bookings will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -1881,53 +1774,8 @@
             <div id="vendor-services-section" style="display: none;">
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">Manage Services</h2>
-                    <div class="services-section">
-                        <div class="service-category">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <h4 class="category-title">Wedding Packages</h4>
-                                <button class="btn btn-outline btn-sm">Edit Category</button>
-                            </div>
-                            <div class="service-grid">
-                                <div class="service-card">
-                                    <div class="service-name">Wedding Package A</div>
-                                    <div class="service-description">Basic wedding package</div>
-                                    <div class="service-price">$5,000</div>
-                                    <div class="service-actions">
-                                        <button class="btn btn-outline btn-sm">Edit</button>
-                                    </div>
-                                </div>
-                                <div class="service-card">
-                                    <div class="service-name">Wedding Package B</div>
-                                    <div class="service-description">Premium wedding package</div>
-                                    <div class="service-price">$8,000</div>
-                                    <div class="service-actions">
-                                        <button class="btn btn-outline btn-sm">Edit</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="service-category">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <h4 class="category-title">Corporate Events</h4>
-                                <button class="btn btn-outline btn-sm">Edit Category</button>
-                            </div>
-                            <div class="service-grid">
-                                <div class="service-card">
-                                    <div class="service-name">Corporate Half-Day</div>
-                                    <div class="service-description">Half-day corporate event</div>
-                                    <div class="service-price">$3,000</div>
-                                    <div class="service-actions">
-                                        <button class="btn btn-outline btn-sm">Edit</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="margin-top: 2rem;">
-                            <button class="btn btn-primary" id="add-category-btn">Add New Category</button>
-                            <button class="btn btn-outline" id="add-service-btn">Add New Service</button>
-                        </div>
+                    <div class="services-section" id="vendor-services">
+                        <!-- Services will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -1952,21 +1800,8 @@
             <div id="vendor-reviews-section" style="display: none;">
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">Customer Reviews</h2>
-                    <div class="review-card">
-                        <div class="review-header">
-                            <div class="reviewer">John Doe</div>
-                            <div class="review-date">June 25, 2023</div>
-                        </div>
-                        <div class="review-rating">★★★★★</div>
-                        <div class="review-text">Perfect venue for our wedding! The staff was incredibly helpful and the space was beautiful.</div>
-                    </div>
-                    <div class="review-card">
-                        <div class="review-header">
-                            <div class="reviewer">Jane Smith</div>
-                            <div class="review-date">May 15, 2023</div>
-                        </div>
-                        <div class="review-rating">★★★★☆</div>
-                        <div class="review-text">Great music but started a bit late. Overall a good experience.</div>
+                    <div id="vendor-reviews">
+                        <!-- Reviews will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -1991,7 +1826,7 @@
                     <form id="vendor-profile-form">
                         <div class="form-group">
                             <label for="vendor-name">Business Name</label>
-                            <input type="text" id="vendor-name" value="Grand Ballroom">
+                            <input type="text" id="vendor-name">
                         </div>
                         <div class="form-group">
                             <label for="vendor-category">Category</label>
@@ -2004,23 +1839,23 @@
                         </div>
                         <div class="form-group">
                             <label for="vendor-description">Description</label>
-                            <textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);">Elegant venue for weddings and corporate events</textarea>
+                            <textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);"></textarea>
                         </div>
                         <div class="form-group">
                             <label for="vendor-location">Location</label>
-                            <input type="text" id="vendor-location" value="123 Main St, Los Angeles, CA">
+                            <input type="text" id="vendor-location">
                         </div>
                         <div class="form-group">
                             <label for="vendor-phone">Phone Number</label>
-                            <input type="tel" id="vendor-phone" value="(123) 456-7890">
+                            <input type="tel" id="vendor-phone">
                         </div>
                         <div class="form-group">
                             <label for="vendor-email">Business Email</label>
-                            <input type="email" id="vendor-email" value="info@grandballroom.com">
+                            <input type="email" id="vendor-email">
                         </div>
                         <div class="form-group">
                             <label for="vendor-website">Website</label>
-                            <input type="url" id="vendor-website" value="https://grandballroom.com">
+                            <input type="url" id="vendor-website">
                         </div>
                         <button type="submit" class="btn btn-primary">Save Changes</button>
                     </form>
@@ -2432,6 +2267,9 @@
             // User state
             let currentUser = null;
             
+            // API base URL
+            const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
+            
             // Initialize the app
             init();
             
@@ -2444,37 +2282,19 @@
                 
                 try {
                     // Load vendors data from API
-                    const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/vendors');
+                    const response = await fetch(`${API_BASE_URL}/vendors`);
                     if (!response.ok) throw new Error('Network response was not ok');
                     
                     const data = await response.json();
                     if (data && data.length > 0) {
                         // Process vendor data
                         state.vendors = data.map(vendor => {
-                            // Parse services JSON string
-                            let services = [];
-                            try {
-                                services = vendor.services ? JSON.parse(vendor.services) : [];
-                            } catch (e) {
-                                console.error('Error parsing services:', e);
-                            }
-                            
-                            // Map type to category
-                            const category = mapTypeToCategory(vendor.type);
-                            
                             return {
                                 ...vendor,
-                                services: services,
-                                category: category,
                                 coordinates: {
-                                    lat: getRandomLat(),
-                                    lng: getRandomLng()
-                                },
-                                priceLevel: vendor.priceLevel || getRandomPriceLevel(),
-                                isPremium: vendor.IsPremium || false,
-                                isEcoFriendly: vendor.IsEcoFriendly || false,
-                                isAwardWinning: vendor.IsAwardWinning || false,
-                                reviews: vendor.reviews || generateSampleReviews()
+                                    lat: vendor.latitude || getRandomLat(),
+                                    lng: vendor.longitude || getRandomLng()
+                                }
                             };
                         });
                         
@@ -2502,60 +2322,13 @@
                 }
             }
             
-            // Helper function to generate sample reviews
-            function generateSampleReviews() {
-                const reviews = [];
-                const reviewTexts = [
-                    "Great service! Would definitely book again.",
-                    "Very professional and easy to work with.",
-                    "The venue was perfect for our event.",
-                    "Everything went smoothly, highly recommend!",
-                    "Good quality but communication could be better.",
-                    "Delivered exactly what was promised."
-                ];
-                
-                const names = ["John D.", "Sarah M.", "Michael T.", "Emily R.", "David K.", "Jessica L."];
-                
-                for (let i = 0; i < 5; i++) {
-                    reviews.push({
-                        id: `review-${i}`,
-                        user: names[i],
-                        rating: Math.floor(Math.random() * 2) + 4, // 4 or 5
-                        comment: reviewTexts[i],
-                        date: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString()
-                    });
-                }
-                
-                return reviews;
-            }
-            
-            // Helper function to map vendor types to categories
-            function mapTypeToCategory(type) {
-                const typeMap = {
-                    "Photography": "photo",
-                    "Photo": "photo",
-                    "Videography": "photo",
-                    "Entertainment": "entertainment",
-                    "Music": "music",
-                    "DJ": "music",
-                    "Decor": "decor",
-                    "Florist": "decor",
-                    "Catering": "catering",
-                    "Food": "catering",
-                    "Venue": "venue",
-                    "Hotel": "venue",
-                    "Transportation": "transport",
-                };
-                return typeMap[type] || type.toLowerCase();
-            }
-
             // Check for existing user session
             async function checkAuthStatus() {
                 const token = localStorage.getItem('token');
                 if (!token) return;
                 
                 try {
-                    const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/users/me', {
+                    const response = await fetch(`${API_BASE_URL}/users/me`, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }
@@ -2569,10 +2342,42 @@
                             avatar: userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase(),
                             isVendor: userData.isVendor || false
                         });
+                        
+                        // Load user favorites
+                        await loadUserFavorites();
                     }
                 } catch (error) {
                     console.error('Auth check failed:', error);
                     localStorage.removeItem('token');
+                }
+            }
+            
+            // Load user favorites
+            async function loadUserFavorites() {
+                if (!currentUser) return;
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const favorites = await response.json();
+                        state.favorites = favorites.map(f => f.vendorProfileId);
+                        updateFavoritesBadge();
+                    }
+                } catch (error) {
+                    console.error('Failed to load favorites:', error);
+                }
+            }
+            
+            // Update favorites badge
+            function updateFavoritesBadge() {
+                const badge = document.getElementById('favorites-badge');
+                if (badge) {
+                    badge.textContent = state.favorites.length;
                 }
             }
             
@@ -2584,6 +2389,8 @@
             
             // Connect to Socket.IO for chat
             function connectToChat() {
+                if (!currentUser) return;
+                
                 state.socket = io('https://bdb-3-0-venuevue-api.onrender.com', {
                     auth: {
                         token: localStorage.getItem('token')
@@ -2744,12 +2551,6 @@
             function getRandomLat() { return 34.0522 + (Math.random() * 0.2 - 0.1); }
             function getRandomLng() { return -118.2437 + (Math.random() * 0.2 - 0.1); }
             
-            // Helper function to generate random price level (for demo)
-            function getRandomPriceLevel() {
-                const levels = ['$', '$$', '$$$'];
-                return levels[Math.floor(Math.random() * levels.length)];
-            }
-            
             // Setup all event listeners
             function setupEventListeners() {
                 // Category selection
@@ -2866,7 +2667,11 @@
                 });
                 
                 notificationsBtn.addEventListener('click', () => {
-                    alert('You have 3 new notifications');
+                    if (currentUser) {
+                        showDashboard('messages');
+                    } else {
+                        profileModal.style.display = 'flex';
+                    }
                 });
                 
                 // Profile button click handler
@@ -2908,7 +2713,7 @@
                     }
                     
                     try {
-                        const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/users/login', {
+                        const response = await fetch(`${API_BASE_URL}/users/login`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -2927,6 +2732,7 @@
                         
                         // Update UI with user data
                         simulateLogin({
+                            id: userData.user.userId,
                             name: userData.user.name || userData.user.email.split('@')[0],
                             email: userData.user.email,
                             avatar: userData.user.name ? userData.user.name[0].toUpperCase() : userData.user.email[0].toUpperCase(),
@@ -2956,7 +2762,7 @@
                     }
                     
                     try {
-                        const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/users', {
+                        const response = await fetch(`${API_BASE_URL}/users/register`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -2980,6 +2786,7 @@
                         
                         // Update UI with user data
                         simulateLogin({
+                            id: userData.user.userId,
                             name: userData.user.name,
                             email: userData.user.email,
                             avatar: userData.user.name[0].toUpperCase(),
@@ -3318,9 +3125,9 @@
                     
                     // Popular filters
                     if (state.filters.popular.length > 0) {
-                        if (state.filters.popular.includes('premium') && !vendor.isPremium) return false;
-                        if (state.filters.popular.includes('eco-friendly') && !vendor.isEcoFriendly) return false;
-                        if (state.filters.popular.includes('award-winning') && !vendor.isAwardWinning) return false;
+                        if (state.filters.popular.includes('premium') && !vendor.IsPremium) return false;
+                        if (state.filters.popular.includes('eco-friendly') && !vendor.IsEcoFriendly) return false;
+                        if (state.filters.popular.includes('award-winning') && !vendor.IsAwardWinning) return false;
                     }
                     
                     // Date availability filter
@@ -3426,7 +3233,7 @@
                     }
                 }
             }
-            
+                     
             // Reset specific filter
             function resetFilter(filterType) {
                 switch(filterType) {
