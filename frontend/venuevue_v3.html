@@ -1411,21 +1411,9 @@
         
         <!-- Categories Navigation -->
         <nav class="categories-nav">
-            <div class="categories-list">
+            <div class="categories-list" id="categories-list">
                 <div class="category-item active" data-category="all">All Categories</div>
-                <div class="category-item" data-category="venue">Venues</div>
-                <div class="category-item" data-category="photo">Photo/Video</div>
-                <div class="category-item" data-category="music">Music/DJ</div>
-                <div class="category-item" data-category="catering">Catering</div>
-                <div class="category-item" data-category="entertainment">Entertainment</div>
-                <div class="category-item" data-category="experiences">Experiences</div>
-                <div class="category-item" data-category="decor">Decorations</div>
-                <div class="category-item" data-category="beauty">Beauty</div>
-                <div class="category-item" data-category="cake">Cake</div>
-                <div class="category-item" data-category="transport">Transportation</div>
-                <div class="category-item" data-category="planner">Planners</div>
-                <div class="category-item" data-category="fashion">Fashion</div>
-                <div class="category-item" data-category="stationery">Stationery</div>
+                <!-- Categories will be loaded dynamically -->
             </div>
         </nav>
         
@@ -1617,7 +1605,7 @@
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">All Bookings</h2>
                     <div id="all-bookings">
-                        <!-- All bookings will be loaded here -->
+                        <!-- Bookings will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -1742,7 +1730,7 @@
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">Recent Bookings</h2>
                     <div id="vendor-recent-bookings">
-                        <!-- Recent bookings will be loaded here -->
+                        <!-- Bookings will be loaded here -->
                     </div>
                 </div>
                 
@@ -1765,7 +1753,7 @@
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">All Bookings</h2>
                     <div id="vendor-all-bookings">
-                        <!-- All bookings will be loaded here -->
+                        <!-- Bookings will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -1786,7 +1774,7 @@
                     <h2 class="dashboard-card-title">Messages</h2>
                     <div class="chat-container" style="height: 500px;">
                         <div class="chat-messages" id="vendor-all-chat-messages">
-                            <!-- All messages will be loaded here -->
+                            <!-- Messages will be loaded here -->
                         </div>
                         <div class="chat-input">
                             <input type="text" placeholder="Type your message..." id="vendor-all-chat-input">
@@ -1810,11 +1798,8 @@
             <div id="vendor-analytics-section" style="display: none;">
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">Performance Analytics</h2>
-                    <div style="height: 300px; background-color: #f1f5f9; display: flex; align-items: center; justify-content: center; border-radius: var(--radius); margin-bottom: 1.5rem;">
-                        [Booking Trends Chart]
-                    </div>
-                    <div style="height: 300px; background-color: #f1f5f9; display: flex; align-items: center; justify-content: center; border-radius: var(--radius);">
-                        [Revenue Chart]
+                    <div id="analytics-charts">
+                        <!-- Analytics will be loaded here -->
                     </div>
                 </div>
             </div>
@@ -1831,10 +1816,7 @@
                         <div class="form-group">
                             <label for="vendor-category">Category</label>
                             <select id="vendor-category">
-                                <option value="venue">Venue</option>
-                                <option value="photo">Photo/Video</option>
-                                <option value="music">Music/DJ</option>
-                                <option value="catering">Catering</option>
+                                <!-- Categories will be loaded dynamically -->
                             </select>
                         </div>
                         <div class="form-group">
@@ -1863,21 +1845,16 @@
                 
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">Business Photos</h2>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                        <div style="height: 150px; background-color: #f1f5f9; border-radius: var(--radius); display: flex; align-items: center; justify-content: center;">
-                            <span style="font-size: 2rem;">+</span>
-                        </div>
-                        <div style="height: 150px; background-color: #f1f5f9; border-radius: var(--radius);"></div>
-                        <div style="height: 150px; background-color: #f1f5f9; border-radius: var(--radius);"></div>
-                        <div style="height: 150px; background-color: #f1f5f9; border-radius: var(--radius);"></div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="vendor-photos">
+                        <!-- Photos will be loaded here -->
                     </div>
-                    <button class="btn btn-outline">Upload Photos</button>
+                    <button class="btn btn-outline" id="upload-photos-btn">Upload Photos</button>
                 </div>
                 
                 <div class="dashboard-card">
                     <h2 class="dashboard-card-title">Availability Settings</h2>
                     <div id="vendor-availability-calendar" style="margin-bottom: 1.5rem;"></div>
-                    <button class="btn btn-outline">Set Business Hours</button>
+                    <button class="btn btn-outline" id="set-business-hours-btn">Set Business Hours</button>
                 </div>
             </div>
         </main>
@@ -1921,12 +1898,7 @@
                                     <label for="reg-category">Primary Category</label>
                                     <select id="reg-category" required>
                                         <option value="">Select category</option>
-                                        <option value="venue">Venue</option>
-                                        <option value="photo">Photo/Video</option>
-                                        <option value="music">Music/DJ</option>
-                                        <option value="catering">Catering</option>
-                                        <option value="decor">Decorations</option>
-                                        <option value="transport">Transportation</option>
+                                        <!-- Categories will be loaded dynamically -->
                                     </select>
                                 </div>
                             </div>
@@ -2169,6 +2141,9 @@
     <!-- Main Application Script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // API base URL
+            const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
+            
             // Initialize variables
             const modal = document.getElementById('booking-modal');
             const modalBody = document.querySelector('.modal-body');
@@ -2198,6 +2173,7 @@
             const categoryItems = document.querySelectorAll('.category-item');
             const advancedToggle = document.getElementById('advanced-toggle');
             const advancedContent = document.getElementById('advanced-content');
+            const categoriesList = document.getElementById('categories-list');
             
             // Profile modal elements
             const profileModal = document.getElementById('profile-modal');
@@ -2261,19 +2237,20 @@
                 paymentIntent: null,
                 socket: null,
                 chatMessages: [],
-                currentChat: null
+                currentChat: null,
+                categories: []
             };
             
             // User state
             let currentUser = null;
             
-            // API base URL
-            const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
-            
             // Initialize the app
             init();
             
             async function init() {
+                // Load categories first
+                await loadCategories();
+                
                 // Check for existing user session
                 await checkAuthStatus();
                 
@@ -2282,6 +2259,86 @@
                 
                 try {
                     // Load vendors data from API
+                    await loadVendors();
+                    
+                    // Initialize Stripe
+                    initializeStripe();
+                    
+                    // Connect to Socket.IO
+                    connectToChat();
+                    
+                    // Request location after everything is loaded
+                    requestLocationWithFeedback();
+                    
+                    // Setup event listeners
+                    setupEventListeners();
+                    
+                } catch (error) {
+                    console.error('Initialization error:', error);
+                    showError("Failed to load vendors. Please try again later.");
+                }
+            }
+            
+            // Load categories from API
+            async function loadCategories() {
+                try {
+                    // In a real app, you would fetch categories from your API
+                    // For now, we'll use a predefined list that matches the backend
+                    state.categories = [
+                        { id: 'all', name: 'All Categories' },
+                        { id: 'venue', name: 'Venues' },
+                        { id: 'photo', name: 'Photo/Video' },
+                        { id: 'music', name: 'Music/DJ' },
+                        { id: 'catering', name: 'Catering' },
+                        { id: 'entertainment', name: 'Entertainment' },
+                        { id: 'experiences', name: 'Experiences' },
+                        { id: 'decor', name: 'Decorations' },
+                        { id: 'beauty', name: 'Beauty' },
+                        { id: 'cake', name: 'Cake' },
+                        { id: 'transport', name: 'Transportation' },
+                        { id: 'planner', name: 'Planners' },
+                        { id: 'fashion', name: 'Fashion' },
+                        { id: 'stationery', name: 'Stationery' }
+                    ];
+                    
+                    // Render categories
+                    renderCategories();
+                    
+                } catch (error) {
+                    console.error('Error loading categories:', error);
+                }
+            }
+            
+            // Render categories in the navigation
+            function renderCategories() {
+                categoriesList.innerHTML = '';
+                
+                state.categories.forEach(category => {
+                    const categoryItem = document.createElement('div');
+                    categoryItem.className = 'category-item';
+                    if (category.id === 'all') categoryItem.classList.add('active');
+                    categoryItem.dataset.category = category.id;
+                    categoryItem.textContent = category.name;
+                    
+                    categoryItem.addEventListener('click', () => {
+                        // Update active category
+                        document.querySelectorAll('.category-item').forEach(item => item.classList.remove('active'));
+                        categoryItem.classList.add('active');
+                        
+                        // Set current category
+                        state.currentCategory = category.id;
+                        
+                        // Filter vendors
+                        filterVendors();
+                    });
+                    
+                    categoriesList.appendChild(categoryItem);
+                });
+            }
+            
+            // Load vendors from API
+            async function loadVendors() {
+                try {
                     const response = await fetch(`${API_BASE_URL}/vendors`);
                     if (!response.ok) throw new Error('Network response was not ok');
                     
@@ -2289,12 +2346,30 @@
                     if (data && data.length > 0) {
                         // Process vendor data
                         state.vendors = data.map(vendor => {
+                            // Parse services JSON string if needed
+                            let services = [];
+                            try {
+                                services = vendor.services ? (typeof vendor.services === 'string' ? JSON.parse(vendor.services) : vendor.services) : [];
+                            } catch (e) {
+                                console.error('Error parsing services:', e);
+                            }
+                            
+                            // Map type to category
+                            const category = mapTypeToCategory(vendor.type);
+                            
                             return {
                                 ...vendor,
+                                services: services,
+                                category: category,
                                 coordinates: {
                                     lat: vendor.latitude || getRandomLat(),
                                     lng: vendor.longitude || getRandomLng()
-                                }
+                                },
+                                priceLevel: vendor.priceLevel || getRandomPriceLevel(),
+                                isPremium: vendor.IsPremium || false,
+                                isEcoFriendly: vendor.IsEcoFriendly || false,
+                                isAwardWinning: vendor.IsAwardWinning || false,
+                                reviews: vendor.reviews || generateSampleReviews()
                             };
                         });
                         
@@ -2303,25 +2378,63 @@
                         // Update UI
                         updateMetadata({ total: state.filteredVendors.length });
                         renderVendors();
-                        setupEventListeners();
                         
-                        // Initialize Stripe
-                        initializeStripe();
-                        
-                        // Connect to Socket.IO
-                        connectToChat();
-                        
-                        // Request location after everything is loaded
-                        requestLocationWithFeedback();
                     } else {
                         showError("No vendor data found");
                     }
                 } catch (error) {
-                    console.error('Error:', error);
-                    showError("Failed to load vendors. Please try again later.");
+                    console.error('Error loading vendors:', error);
+                    throw error;
                 }
             }
             
+            // Helper function to generate sample reviews
+            function generateSampleReviews() {
+                const reviews = [];
+                const reviewTexts = [
+                    "Great service! Would definitely book again.",
+                    "Very professional and easy to work with.",
+                    "The venue was perfect for our event.",
+                    "Everything went smoothly, highly recommend!",
+                    "Good quality but communication could be better.",
+                    "Delivered exactly what was promised."
+                ];
+                
+                const names = ["John D.", "Sarah M.", "Michael T.", "Emily R.", "David K.", "Jessica L."];
+                
+                for (let i = 0; i < 5; i++) {
+                    reviews.push({
+                        id: `review-${i}`,
+                        user: names[i],
+                        rating: Math.floor(Math.random() * 2) + 4, // 4 or 5
+                        comment: reviewTexts[i],
+                        date: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString()
+                    });
+                }
+                
+                return reviews;
+            }
+            
+            // Helper function to map vendor types to categories
+            function mapTypeToCategory(type) {
+                const typeMap = {
+                    "Photography": "photo",
+                    "Photo": "photo",
+                    "Videography": "photo",
+                    "Entertainment": "entertainment",
+                    "Music": "music",
+                    "DJ": "music",
+                    "Decor": "decor",
+                    "Florist": "decor",
+                    "Catering": "catering",
+                    "Food": "catering",
+                    "Venue": "venue",
+                    "Hotel": "venue",
+                    "Transportation": "transport",
+                };
+                return typeMap[type] || type.toLowerCase();
+            }
+
             // Check for existing user session
             async function checkAuthStatus() {
                 const token = localStorage.getItem('token');
@@ -2345,6 +2458,9 @@
                         
                         // Load user favorites
                         await loadUserFavorites();
+                        
+                        // Load notifications
+                        await loadNotifications();
                     }
                 } catch (error) {
                     console.error('Auth check failed:', error);
@@ -2365,19 +2481,44 @@
                     
                     if (response.ok) {
                         const favorites = await response.json();
-                        state.favorites = favorites.map(f => f.vendorProfileId);
-                        updateFavoritesBadge();
+                        state.favorites = favorites.map(fav => fav.vendorProfileId);
+                        
+                        // Update favorites badge
+                        document.querySelectorAll('.badge').forEach(badge => {
+                            if (badge.id === 'favorites-badge' || !badge.id) {
+                                badge.textContent = state.favorites.length;
+                            }
+                        });
                     }
                 } catch (error) {
-                    console.error('Failed to load favorites:', error);
+                    console.error('Error loading favorites:', error);
                 }
             }
             
-            // Update favorites badge
-            function updateFavoritesBadge() {
-                const badge = document.getElementById('favorites-badge');
-                if (badge) {
-                    badge.textContent = state.favorites.length;
+            // Load notifications
+            async function loadNotifications() {
+                if (!currentUser) return;
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}?unreadOnly=true`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const notifications = await response.json();
+                        const unreadCount = notifications.length;
+                        
+                        // Update notifications badge
+                        document.querySelectorAll('.badge').forEach(badge => {
+                            if (badge.id === 'notifications-badge' || badge.id === 'dashboard-notifications-badge' || badge.id === 'vendor-notifications-badge' || !badge.id) {
+                                badge.textContent = unreadCount;
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading notifications:', error);
                 }
             }
             
@@ -2389,9 +2530,7 @@
             
             // Connect to Socket.IO for chat
             function connectToChat() {
-                if (!currentUser) return;
-                
-                state.socket = io('https://bdb-3-0-venuevue-api.onrender.com', {
+                state.socket = io(API_BASE_URL, {
                     auth: {
                         token: localStorage.getItem('token')
                     }
@@ -2551,23 +2690,14 @@
             function getRandomLat() { return 34.0522 + (Math.random() * 0.2 - 0.1); }
             function getRandomLng() { return -118.2437 + (Math.random() * 0.2 - 0.1); }
             
+            // Helper function to generate random price level (for demo)
+            function getRandomPriceLevel() {
+                const levels = ['$', '$$', '$$$'];
+                return levels[Math.floor(Math.random() * levels.length)];
+            }
+            
             // Setup all event listeners
             function setupEventListeners() {
-                // Category selection
-                categoryItems.forEach(item => {
-                    item.addEventListener('click', () => {
-                        // Update active category
-                        categoryItems.forEach(i => i.classList.remove('active'));
-                        item.classList.add('active');
-                        
-                        // Set current category
-                        state.currentCategory = item.dataset.category;
-                        
-                        // Filter vendors
-                        filterVendors();
-                    });
-                });
-                
                 // Search
                 searchInput.addEventListener('input', filterVendors);
                 
@@ -2668,7 +2798,7 @@
                 
                 notificationsBtn.addEventListener('click', () => {
                     if (currentUser) {
-                        showDashboard('messages');
+                        showDashboard('notifications');
                     } else {
                         profileModal.style.display = 'flex';
                     }
@@ -2732,11 +2862,11 @@
                         
                         // Update UI with user data
                         simulateLogin({
-                            id: userData.user.userId,
-                            name: userData.user.name || userData.user.email.split('@')[0],
-                            email: userData.user.email,
-                            avatar: userData.user.name ? userData.user.name[0].toUpperCase() : userData.user.email[0].toUpperCase(),
-                            isVendor: userData.user.isVendor || false
+                            id: userData.userId,
+                            name: userData.name || userData.email.split('@')[0],
+                            email: userData.email,
+                            avatar: userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase(),
+                            isVendor: userData.isVendor || false
                         });
                     } catch (error) {
                         console.error('Login error:', error);
@@ -2786,11 +2916,11 @@
                         
                         // Update UI with user data
                         simulateLogin({
-                            id: userData.user.userId,
-                            name: userData.user.name,
-                            email: userData.user.email,
-                            avatar: userData.user.name[0].toUpperCase(),
-                            isVendor: userData.user.isVendor || false
+                            id: userData.userId,
+                            name: userData.name,
+                            email: userData.email,
+                            avatar: userData.name[0].toUpperCase(),
+                            isVendor: userData.isVendor || false
                         });
                         
                         // If signing up as vendor, show registration form
@@ -2816,15 +2946,32 @@
                 // Handle Google Sign-In
                 function handleGoogleSignIn(response) {
                     const responsePayload = decodeJWT(response.credential);
-                    const user = {
-                        name: responsePayload.name,
-                        email: responsePayload.email,
-                        avatar: responsePayload.given_name[0].toUpperCase()
-                    };
                     
-                    // In a real app, you would send this to your backend for verification
-                    // For demo, we'll just simulate the login
-                    simulateLogin(user);
+                    // Send the Google token to your backend for verification
+                    fetch(`${API_BASE_URL}/users/google-auth`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ token: response.credential }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.token) {
+                            localStorage.setItem('token', data.token);
+                            simulateLogin({
+                                id: data.userId,
+                                name: data.name,
+                                email: data.email,
+                                avatar: data.name ? data.name[0].toUpperCase() : data.email[0].toUpperCase(),
+                                isVendor: data.isVendor || false
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Google login error:', error);
+                        alert('Google login failed. Please try again.');
+                    });
                 }
 
                 // Decode JWT token
@@ -2841,13 +2988,30 @@
                 facebookLoginBtn.addEventListener('click', () => {
                     FB.login(function(response) {
                         if (response.authResponse) {
-                            FB.api('/me', {fields: 'name,email'}, function(response) {
-                                const user = {
-                                    name: response.name,
-                                    email: response.email,
-                                    avatar: response.name[0].toUpperCase()
-                                };
-                                simulateLogin(user);
+                            // Send the Facebook token to your backend for verification
+                            fetch(`${API_BASE_URL}/users/facebook-auth`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ token: response.authResponse.accessToken }),
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.token) {
+                                    localStorage.setItem('token', data.token);
+                                    simulateLogin({
+                                        id: data.userId,
+                                        name: data.name,
+                                        email: data.email,
+                                        avatar: data.name ? data.name[0].toUpperCase() : data.email[0].toUpperCase(),
+                                        isVendor: data.isVendor || false
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Facebook login error:', error);
+                                alert('Facebook login failed. Please try again.');
                             });
                         }
                     }, {scope: 'public_profile,email'});
@@ -2963,38 +3127,57 @@
                 vendorRegistrationForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     
-                    // Validate form
-                    // In a real app, you would do more thorough validation
-                    
                     try {
                         // Collect form data
-                        const formData = {
-                            businessName: document.getElementById('reg-business-name').value,
-                            businessType: document.getElementById('reg-business-type').value,
-                            category: document.getElementById('reg-category').value,
-                            yearsInBusiness: document.getElementById('reg-years-in-business').value,
-                            description: document.getElementById('reg-business-description').value,
-                            email: document.getElementById('reg-business-email').value,
-                            phone: document.getElementById('reg-business-phone').value,
-                            address: document.getElementById('reg-business-address').value,
-                            website: document.getElementById('reg-business-website').value,
-                            services: []
-                        };
+                        const formData = new FormData();
+                        formData.append('businessName', document.getElementById('reg-business-name').value);
+                        formData.append('businessType', document.getElementById('reg-business-type').value);
+                        formData.append('category', document.getElementById('reg-category').value);
+                        formData.append('yearsInBusiness', document.getElementById('reg-years-in-business').value);
+                        formData.append('description', document.getElementById('reg-business-description').value);
+                        formData.append('email', document.getElementById('reg-business-email').value);
+                        formData.append('phone', document.getElementById('reg-business-phone').value);
+                        formData.append('address', document.getElementById('reg-business-address').value);
+                        formData.append('website', document.getElementById('reg-business-website').value);
                         
                         // Collect services
+                        const services = [];
                         document.querySelectorAll('.service-field-group').forEach(group => {
-                            formData.services.push({
+                            services.push({
                                 name: group.querySelector('input[name="service-name[]"]').value,
                                 price: group.querySelector('input[name="service-price[]"]').value,
                                 description: group.querySelector('textarea[name="service-description[]"]').value
                             });
                         });
+                        formData.append('services', JSON.stringify(services));
                         
-                        // In a real app, you would upload files and send to backend
-                        alert('Vendor registration submitted! In a real app, this would be sent to your backend.');
+                        // Add files
+                        const businessLicense = document.getElementById('business-license').files[0];
+                        const taxId = document.getElementById('tax-id').files[0];
+                        const portfolio = document.getElementById('portfolio').files[0];
+                        
+                        if (businessLicense) formData.append('businessLicense', businessLicense);
+                        if (taxId) formData.append('taxId', taxId);
+                        if (portfolio) formData.append('portfolio', portfolio);
+                        
+                        const response = await fetch(`${API_BASE_URL}/vendors/register`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: formData
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Registration failed');
+                        }
+                        
+                        const result = await response.json();
+                        
+                        alert('Vendor registration submitted successfully!');
                         vendorRegistrationModal.style.display = 'none';
                         
-                        // Simulate vendor account approval
+                        // Update user to vendor status
                         currentUser.isVendor = true;
                         showVendorDashboard();
                         
@@ -3113,6 +3296,7 @@
                         }
                     }
                     
+                 
                     // Vendor type
                     const vendorType = vendor.type?.toLowerCase() || 'independent';
                     if (selectedTypes.length > 0 && !selectedTypes.includes(vendorType)) {
