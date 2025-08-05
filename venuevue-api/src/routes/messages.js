@@ -72,6 +72,44 @@ const handleSocketIO = (io) => {
 
 // REST API Endpoints
 
+// Get all conversations for a user
+router.get('/conversations', async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'User ID is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query(`
+        SELECT c.* 
+        FROM Conversations c
+        JOIN ConversationParticipants cp ON c.ConversationID = cp.ConversationID
+        WHERE cp.UserID = @UserID
+        ORDER BY c.CreatedDate DESC
+      `);
+
+    res.json({
+      success: true,
+      conversations: result.recordset
+    });
+
+  } catch (err) {
+    console.error('Get conversations error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch conversations',
+      error: err.message 
+    });
+  }
+});
+
 // Get conversation messages
 router.get('/conversation/:id', async (req, res) => {
   try {
