@@ -950,6 +950,13 @@
             margin-left: auto;
             text-align: right;
         }
+
+        .message-sender {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text-light);
+        }
         
         .message.received {
             margin-right: auto;
@@ -1836,7 +1843,7 @@
                             <input type="email" id="vendor-email">
                         </div>
                         <div class="form-group">
-                            <label for="vendor-website">Website</label>
+                            <label for="vendor-website">Website (optional)</label>
                             <input type="url" id="vendor-website">
                         </div>
                         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -2045,13 +2052,10 @@
 
                 <!-- Services -->
                 <div id="services-section" class="services-section">
-                    <h3 class="services-title">Our Services</h3>
-                    <div class="service-category">
-                        <h4 class="category-title">Event Packages</h4>
-                        <div class="service-grid" id="event-packages-list">
-                            <!-- Services will be inserted here by JavaScript -->
-                        </div>
-                    </div>
+                    <h3 class="services-title">Available Services</h3>
+                    ${vendor.services && vendor.services.length > 0 ? 
+                        renderServices(vendor.services) : 
+                        '<p>No services available for this vendor.</p>'}
                 </div>
 
                 <!-- Booking Form -->
@@ -2265,82 +2269,86 @@
             const vendorRegistrationForm = document.getElementById('vendor-registration-form');
             const addServiceFieldBtn = document.getElementById('add-service-field');
             const serviceFieldsContainer = document.getElementById('service-fields-container');
+            
+            // Chat state manager
             const chatState = {
-    messages: [],
-    currentConversation: null,
-    
-    init: function() {
-        this.messages = [];
-        this.currentConversation = null;
-    },
-    
-    addMessage: function(message) {
-        if (!this.messages) this.messages = [];
-        if (!message.id) message.id = `msg-${Date.now()}`;
-        this.messages.push(message);
-    },
-    
-    setMessages: function(messages) {
-        this.messages = Array.isArray(messages) ? messages : [];
-    },
-    
-    getMessages: function() {
-        return this.messages || [];
-    }
-};
+                messages: [],
+                currentConversation: null,
+                
+                init: function() {
+                    this.messages = [];
+                    this.currentConversation = null;
+                    console.log('Chat state initialized.');
+                },
+                
+                addMessage: function(message) {
+                    if (!this.messages) this.messages = [];
+                    const formattedMsg = this.formatMessage(message);
+                    this.messages.push(formattedMsg);
+                    console.log('Message added to chat state:', formattedMsg);
+                    return formattedMsg;
+                },
+                
+                setMessages: function(messages) {
+                    this.messages = Array.isArray(messages) ? messages.map(msg => this.formatMessage(msg)) : [];
+                    console.log('Chat messages set:', this.messages);
+                },
+                
+                getMessages: function() {
+                    return this.messages || [];
+                },
+                
+                formatMessage: function(message) {
+                    console.log('Formatting message:', message); // Add this line for debugging
+                    const content = message.Content || message.content || message.text || message.messageContent; // Added more fallbacks
+                    if (content === undefined) {
+                        console.warn('Message content is undefined after formatting attempts for message:', message);
+                    }
+                    return {
+                        id: message.MessageID || message.id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        conversationId: message.ConversationID || message.conversationId || this.currentConversation,
+                        senderId: message.SenderID || message.senderId,
+                        senderName: message.SenderName || message.senderName || (message.SenderID === currentUser?.id ? currentUser.name : 'Vendor'), // Default sender name
+                        content: content, // Use the determined content
+                        timestamp: message.CreatedAt || message.timestamp || new Date().toISOString(),
+                        isCurrentUser: message.SenderID === currentUser?.id || message.isCurrentUser,
+                        isRead: message.IsRead || message.isRead || false
+                    };
+                }
+            };
             
 
             // App state
-let state = {
-    vendors: [],
-    filteredVendors: [],
-    favorites: [],
-    currentPage: 1,
-    itemsPerPage: 6,
-    map: null,
-    markers: [],
-    currentView: 'list',
-    userLocation: null,
-    currentCategory: 'all',
-    filters: {
-        location: '',
-        types: ['independent', 'company'],
-        price: 40,
-        popular: [],
-        startDate: null,
-        endDate: null,
-        region: ''
-    },
-    currentVendor: null,
-    selectedServices: [],
-    selectedDate: null,
-    selectedTime: null,
-    stripe: null,
-    elements: null,
-    paymentIntent: null,
-    socket: null,
-    currentChat: null,
-    categories: [],
-    chat: {
-        messages: [],
-        currentConversation: null,
-        init: function() {
-            this.messages = [];
-            this.currentConversation = null;
-        },
-        addMessage: function(message) {
-            if (!this.messages) this.messages = [];
-            if (!message.id) message.id = `msg-${Date.now()}`;
-            this.messages.push(message);
-        },
-        setMessages: function(messages) {
-            this.messages = Array.isArray(messages) ? messages : [];
-        },
-        getMessages: function() {
-            return this.messages || [];
-        }
-    }
-};
+            let state = {
+                vendors: [],
+                filteredVendors: [],
+                favorites: [],
+                currentPage: 1,
+                itemsPerPage: 6,
+                map: null,
+                markers: [],
+                currentView: 'list',
+                userLocation: null,
+                currentCategory: 'all',
+                filters: {
+                    location: '',
+                    types: ['independent', 'company'],
+                    price: 40,
+                    popular: [],
+                    startDate: null,
+                    endDate: null,
+                    region: ''
+                },
+                currentVendor: null,
+                selectedServices: [],
+                selectedDate: null,
+                selectedTime: null,
+                stripe: null,
+                elements: null,
+                paymentIntent: null,
+                socket: null,
+                chat: chatState // Use the chatState object
+            };
             
             // User state
             let currentUser = null;
@@ -2548,6 +2556,7 @@ let state = {
                     if (response.ok) {
                         const userData = await response.json();
                         simulateLogin({
+                            id: userData.userId, // Ensure userId is captured
                             name: userData.name || userData.email.split('@')[0],
                             email: userData.email,
                             avatar: userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase(),
@@ -2627,15 +2636,19 @@ let state = {
             }
             
             // Connect to Socket.IO for chat
-// In your connectToChat function:
-            // Connect to Socket.IO for chat
             function connectToChat() {
                 const token = localStorage.getItem('token');
                 if (!token) {
-                    console.error('No token available for chat');
+                    console.warn('No token available for chat connection. Chat features may be limited.');
                     return;
                 }
 
+                if (state.socket && state.socket.connected) {
+                    console.log('Socket already connected.');
+                    return;
+                }
+
+                console.log('Attempting to connect to chat server...');
                 state.socket = io(API_BASE_URL, {
                     auth: { token },
                     transports: ['websocket'],
@@ -2643,31 +2656,27 @@ let state = {
                 });
                 
                 state.socket.on('connect', () => {
-                    console.log('Connected to chat server');
+                    console.log('Connected to chat server.');
                     if (currentUser) {
                         state.socket.emit('authenticate', { userId: currentUser.id });
                     }
                 });
                 
                 state.socket.on('new-message', (message) => {
-                    if (!message || !message.conversationId) {
+                    console.log('Received new message via Socket.IO:', message);
+                    
+                    if (!message || !message.ConversationID) {
                         console.error('Invalid message format received:', message);
                         return;
                     }
                     
                     // Only process if it's for the current conversation
-                    if (message.conversationId === state.currentChat) {
-                        const formattedMessage = {
-                            id: message.id,
-                            conversationId: message.conversationId,
-                            senderId: message.senderId,
-                            content: message.content,
-                            timestamp: message.timestamp,
-                            isCurrentUser: message.senderId === currentUser?.id
-                        };
-                        
-                        state.chatMessages.push(formattedMessage);
+                    if (message.ConversationID === state.chat.currentConversation) {
+                        const formattedMessage = state.chat.formatMessage(message);
+                        state.chat.addMessage(formattedMessage);
                         renderChatMessages();
+                    } else {
+                        console.log(`Received message for conversation ${message.ConversationID}, but current is ${state.chat.currentConversation}. Not rendering.`);
                     }
                 });
                 
@@ -2677,331 +2686,349 @@ let state = {
                 });
                 
                 state.socket.on('disconnect', () => {
-                    console.log('Disconnected from chat server');
+                    console.log('Disconnected from chat server.');
                     showChatError('Disconnected. Trying to reconnect...');
                 });
             }
 
-// Add these functions to your script
-async function loadInitialMessages() {
-    if (!currentUser || !state.chat.currentConversation) {
-        console.error('Missing required data:', {
-            user: currentUser,
-            conversation: state.chat.currentConversation
-        });
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${currentUser.id}`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            async function loadInitialMessages() {
+                if (!currentUser || !state.chat.currentConversation) {
+                    console.warn('Cannot load messages: Missing user or conversation ID.', {
+                        user: currentUser,
+                        conversation: state.chat.currentConversation
+                    });
+                    return;
+                }
+                
+                try {
+                    console.log(`Loading messages for conversation: ${state.chat.currentConversation} and user: ${currentUser.id}`);
+                    const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${currentUser.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Failed to load messages: ${response.status} ${response.statusText} - ${errorText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (!data.success || !Array.isArray(data.messages)) {
+                        throw new Error('Invalid message data format from API');
+                    }
+                    
+                    state.chat.setMessages(data.messages);
+                    renderChatMessages();
+                } catch (error) {
+                    console.error('Error loading messages:', error);
+                    state.chat.setMessages([]); // Clear messages on error
+                    renderChatMessages();
+                    showChatError('Failed to load messages. Please try again.');
+                }
             }
-        });
-        
-        if (!response.ok) throw new Error('Failed to load messages');
-        
-        const messages = await response.json();
-        state.chat.setMessages(messages);
-        renderChatMessages();
-    } catch (error) {
-        console.error('Error loading messages:', error);
-        state.chat.setMessages([]);
-        renderChatMessages();
-    }
-}
 
-async function sendChatMessage() {
-    const input = document.getElementById('chat-input') || 
-                 document.getElementById('dashboard-chat-input') || 
-                 document.getElementById('vendor-chat-input');
-    const message = input.value.trim();
-    
-    if (!message) return;
-    
-    if (!currentUser) {
-        alert('Please login to send messages');
-        profileModal.style.display = 'flex';
-        showLoginView();
-        return;
-    }
+            // Function to attach chat event listeners to a specific chat UI
+            function setupChatEventListeners(chatInputId, sendButtonId) {
+                const chatInput = document.getElementById(chatInputId);
+                const sendButton = document.getElementById(sendButtonId);
 
-    if (!state.chat.currentConversation) {
-        alert('No conversation selected');
-        return;
-    }
+                if (chatInput && sendButton) {
+                    // Remove existing listeners to prevent duplicates
+                    sendButton.removeEventListener('click', sendChatMessage);
+                    chatInput.removeEventListener('keypress', handleChatInputKeypress);
 
-    try {
-        // Create message object with all required fields
-        const messageObj = {
-            id: 'temp-' + Date.now(),
-            conversationId: state.chat.currentConversation,
-            senderId: currentUser.id,
-            content: message,
-            timestamp: new Date().toISOString(),
-            isCurrentUser: true
-        };
-        
-        // Optimistically add to UI
-        state.chat.addMessage(messageObj);
-        input.value = '';
-        renderChatMessages();
-        
-        // Send via Socket.IO if available
-        if (state.socket && state.socket.connected) {
-            state.socket.emit('send-message', {
-                conversationId: state.chat.currentConversation,
-                senderId: currentUser.id,
-                content: message
-            });
-        } else {
-            // Fallback to HTTP POST
-            const response = await fetch(`${API_BASE_URL}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({
-                    conversationId: state.chat.currentConversation,
-                    senderId: currentUser.id,
-                    content: message
-                })
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to send message');
+                    // Add new listeners
+                    sendButton.addEventListener('click', sendChatMessage);
+                    chatInput.addEventListener('keypress', handleChatInputKeypress);
+                    console.log(`Chat event listeners attached for input: ${chatInputId}, button: ${sendButtonId}`);
+                } else {
+                    console.warn(`Could not find chat elements: Input ID ${chatInputId}, Button ID ${sendButtonId}`);
+                }
             }
-            
-            const savedMessage = await response.json();
-            
-            // Replace temp message with saved message
-            state.chat.setMessages(
-                state.chat.getMessages()
-                    .filter(m => m.id !== messageObj.id)
-                    .concat([savedMessage])
-            );
-            renderChatMessages();
-        }
-    } catch (err) {
-        console.error('Send message error:', err);
-        alert('Failed to send message: ' + err.message);
-        // Remove the failed message
-        state.chat.setMessages(
-            state.chat.getMessages().filter(m => m.id !== messageObj.id)
-        );
-        renderChatMessages();
-    }
-}
 
-// Fallback HTTP function
-async function sendMessageViaHTTP(messageData) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/messages`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify(messageData)
-        });
-        
-        if (!response.ok) throw new Error('Failed to send message');
-        
-        const message = await response.json();
-        addChatMessage(message);
-    } catch (error) {
-        console.error('HTTP message send failed:', error);
-        throw error;
-    }
-}
+            function handleChatInputKeypress(e) {
+                if (e.key === 'Enter') {
+                    sendChatMessage();
+                }
+            }
 
-function addChatMessage(message) {
-    // Ensure chatMessages exists and is an array
-    if (!state.chatMessages || !Array.isArray(state.chatMessages)) {
-        state.chatMessages = [];
-    }
-    
-    // Validate the message object
-    if (!message || typeof message !== 'object') {
-        console.error('Invalid message format:', message);
-        return;
-    }
-    
-    // Ensure required fields exist
-    const validMessage = {
-        id: message.id || `msg-${Date.now()}`,
-        senderId: message.senderId || (message.sender === currentUser?.email ? currentUser.id : 'unknown'),
-        content: message.content || '',
-        timestamp: message.timestamp || new Date().toISOString(),
-        isCurrentUser: message.isCurrentUser || (message.senderId === currentUser?.id)
-    };
-    
-    // Check if message already exists
-    if (state.chatMessages.some(m => m.id === validMessage.id)) return;
-    
-    state.chatMessages.push(validMessage);
-    renderChatMessage(validMessage);
-}
+            async function sendChatMessage() {
+                const input = document.getElementById('chat-input') || 
+                            document.getElementById('dashboard-chat-input') || 
+                            document.getElementById('vendor-chat-input') ||
+                            document.getElementById('vendor-all-chat-input'); // Added for vendor-all-chat-input
+                const message = input?.value.trim();
+                
+                console.log('Attempting to send message:', message, 'Current User:', currentUser, 'Current Conversation:', state.chat.currentConversation);
+
+                if (!message) {
+                    console.warn('Message is empty.');
+                    return;
+                }
+                
+                if (!currentUser) {
+                    alert('Please login to send messages.');
+                    profileModal.style.display = 'flex';
+                    showLoginView();
+                    return;
+                }
+
+                if (!state.chat.currentConversation) {
+                    alert('No conversation selected or initialized.');
+                    console.error('Cannot send message: No current conversation.');
+                    return;
+                }
+
+                try {
+                    // Create temporary message for optimistic UI
+                    const tempMessage = {
+                        id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        conversationId: state.chat.currentConversation,
+                        senderId: currentUser.id,
+                        senderName: currentUser.name,
+                        content: message,
+                        timestamp: new Date().toISOString(),
+                        isCurrentUser: true,
+                        isPending: true
+                    };
+
+                    // Add to UI immediately
+                    state.chat.addMessage(tempMessage);
+                    input.value = '';
+                    renderChatMessages();
+
+                    // Send to server via Socket.IO if available
+                    if (state.socket && state.socket.connected) {
+                        console.log('Sending message via Socket.IO...');
+                        state.socket.emit('send-message', {
+                            conversationId: state.chat.currentConversation,
+                            content: message
+                        });
+                    } else {
+                        console.log('Socket not connected, falling back to HTTP POST...');
+                        // Fallback to HTTP POST
+                        const response = await fetch(`${API_BASE_URL}/messages`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: JSON.stringify({
+                                conversationId: state.chat.currentConversation,
+                                senderId: currentUser.id,
+                                content: message
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.message || 'Failed to send message via HTTP.');
+                        }
+
+                        const result = await response.json();
+                        console.log('HTTP POST message response:', result.message); // Add this for debugging
+                        
+                        if (!result.success || !result.message) {
+                            throw new Error('Invalid response format from HTTP POST.');
+                        }
+
+                        const savedMessage = state.chat.formatMessage(result.message);
+                        
+                        // Replace temp message with saved message
+                        state.chat.setMessages(
+                            state.chat.getMessages()
+                                .filter(m => m.id !== tempMessage.id)
+                                .concat([savedMessage])
+                        );
+                    }
+                    
+                    renderChatMessages(); // Re-render to ensure order and remove pending status if applicable
+
+                } catch (err) {
+                    console.error('Message send failed:', err);
+                    // Remove temp message and show error
+                    state.chat.setMessages(
+                        state.chat.getMessages().filter(m => m.id !== tempMessage.id)
+                    );
+                    renderChatMessages();
+                    showChatError('Failed to send message: ' + err.message);
+                }
+            }
 
             function renderChatMessages() {
                 const chatContainer = document.getElementById('chat-messages') || 
-                                     document.getElementById('dashboard-chat-messages') || 
-                                     document.getElementById('vendor-chat-messages');
+                                    document.getElementById('dashboard-chat-messages') || 
+                                    document.getElementById('vendor-chat-messages') ||
+                                    document.getElementById('vendor-all-chat-messages'); // Added for vendor-all-chat-messages
                 
-                if (!chatContainer) return;
+                if (!chatContainer) {
+                    console.warn('Chat container not found for rendering messages.');
+                    return;
+                }
                 
                 // Clear existing messages
                 chatContainer.innerHTML = '';
                 
                 // Sort messages by timestamp (oldest first)
-                const sortedMessages = [...state.chatMessages].sort((a, b) => 
+                const sortedMessages = [...state.chat.getMessages()].sort((a, b) => 
                     new Date(a.timestamp) - new Date(b.timestamp));
                 
                 // Render each message
                 sortedMessages.forEach(message => {
-                    renderChatMessage(message, chatContainer);
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = `message ${message.isCurrentUser ? 'sent' : 'received'}`;
+                    
+                    const messageDate = new Date(message.timestamp);
+                    const timeString = messageDate.toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                    
+                    // Add sender name if not current user
+                    const senderInfo = !message.isCurrentUser && message.senderName ? 
+                        `<div class="message-sender">${message.senderName}</div>` : '';
+                    
+                    messageDiv.innerHTML = `
+                        ${senderInfo}
+                        <div class="message-content">${message.content}</div>
+                        <div class="message-time">${timeString}</div>
+                    `;
+                    
+                    chatContainer.appendChild(messageDiv);
                 });
                 
                 // Scroll to bottom
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             }
 
+            // Add this function to load conversations for the dashboard
+            async function loadConversations(containerId, chatInputId, sendButtonId) {
+                if (!currentUser) {
+                    console.warn('Cannot load conversations: User not logged in.');
+                    return;
+                }
+                
+                try {
+                    console.log(`Loading conversations for user: ${currentUser.id}`);
+                    const response = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Failed to load conversations: ${response.status} ${response.statusText} - ${errorText}`);
+                    }
+                    
+                    const conversations = await response.json();
+                    
+                    // Render conversations list in dashboard
+                    renderConversationsList(conversations, containerId, chatInputId, sendButtonId);
+                } catch (error) {
+                    console.error('Error loading conversations:', error);
+                    const container = document.getElementById(containerId);
+                    if (container) {
+                        container.innerHTML = `<p style="color:var(--accent);">Failed to load conversations. ${error.message}</p>`;
+                    }
+                }
+            }
 
-            function renderChatMessage(message, container) {
-                const chatContainer = container || 
-                                    document.getElementById('chat-messages') || 
-                                    document.getElementById('dashboard-chat-messages') || 
-                                    document.getElementById('vendor-chat-messages');
+            function renderConversationsList(conversations, containerId, chatInputId, sendButtonId) {
+                const container = document.getElementById(containerId);
+                if (!container) {
+                    console.warn('Conversations container not found:', containerId);
+                    return;
+                }
                 
-                if (!chatContainer) return;
-                
-                const isCurrentUser = message.senderId === currentUser?.id;
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
-                
-                const messageDate = new Date(message.timestamp);
-                const timeString = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                messageDiv.innerHTML = `
-                    <div class="message-content">${message.content}</div>
-                    <div class="message-time">${timeString}</div>
+                let conversationsHtml = '';
+                if (conversations.length === 0) {
+                    conversationsHtml = '<p>No active conversations.</p>';
+                } else {
+                    conversationsHtml = `
+                        <div class="conversations-list" style="max-height: 200px; overflow-y: auto; border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 1rem;">
+                            ${conversations.map(conv => {
+                                const partnerName = conv.VendorName || conv.UserName || 'Unknown Partner';
+                                const lastMessagePreview = conv.LastMessageContent ? conv.LastMessageContent.substring(0, 50) + (conv.LastMessageContent.length > 50 ? '...' : '') : 'No messages yet.';
+                                const lastMessageTime = conv.LastMessageCreatedAt ? new Date(conv.LastMessageCreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                                return `
+                                    <div class="conversation-item" data-id="${conv.ConversationID}" 
+                                         style="padding: 0.75rem; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <div style="font-weight: 600;">${partnerName}</div>
+                                            <div style="font-size: 0.9rem; color: var(--text-light);">${lastMessagePreview}</div>
+                                        </div>
+                                        <div style="font-size: 0.8rem; color: var(--text-light);">${lastMessageTime}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `;
+                }
+
+                container.innerHTML = `
+                    <div class="dashboard-card">
+                        <h2 class="dashboard-card-title">Messages</h2>
+                        ${conversationsHtml}
+                        <div class="chat-container" style="height: 300px;">
+                            <div class="chat-messages" id="${chatInputId.replace('-input', '-messages')}"></div>
+                            <div class="chat-input">
+                                <input type="text" placeholder="Type your message..." id="${chatInputId}">
+                                <button class="btn btn-primary" id="${sendButtonId}">Send</button>
+                            </div>
+                        </div>
+                    </div>
                 `;
                 
-                chatContainer.appendChild(messageDiv);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-
-// Add this function to load conversations for the dashboard
-async function loadConversations() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${currentUser.id}`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        });
-        
-        if (!response.ok) throw new Error('Failed to load conversations');
-        
-        const conversations = await response.json();
-        // Render conversations list in dashboard
-        renderConversations(conversations);
-    } catch (error) {
-        console.error('Error loading conversations:', error);
-    }
-}
-
-function renderConversations(conversations) {
-    const container = document.getElementById('messages-section');
-    if (!container) return;
-    
-    container.innerHTML = `
-        <div class="dashboard-card">
-            <h2 class="dashboard-card-title">Messages</h2>
-            <div class="conversations-list">
-                ${conversations.map(conv => `
-                    <div class="conversation" data-id="${conv.id}">
-                        <div class="conversation-partner">${conv.partnerName}</div>
-                        <div class="conversation-preview">${conv.lastMessage}</div>
-                        <div class="conversation-time">${new Date(conv.lastMessageTime).toLocaleTimeString()}</div>
-                    </div>
-                `).join('')}
-            </div>
-            <div class="chat-container">
-                <div class="chat-messages" id="dashboard-chat-messages"></div>
-                <div class="chat-input">
-                    <input type="text" placeholder="Type your message..." id="dashboard-chat-input">
-                    <button class="btn btn-primary" id="dashboard-send-btn">Send</button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add event listeners to conversations
-    document.querySelectorAll('.conversation').forEach(conv => {
-        conv.addEventListener('click', () => {
-            state.currentChat = conv.dataset.id;
-            loadInitialMessages();
-        });
-    });
-}
-
-            
-            // Add a chat message to the UI
-function addChatMessage(message) {
-    // Use the chat state manager
-    state.chat.addMessage(message);
-    
-    // Get the appropriate chat container
-    const chatContainer = document.getElementById('chat-messages') || 
-                         document.getElementById('dashboard-chat-messages') || 
-                         document.getElementById('vendor-chat-messages');
-    
-    // Render just this message
-    if (chatContainer) {
-        renderChatMessage(message, chatContainer);
-    }
-}
-            
-            // Render all chat messages
-            function renderChatMessages() {
-                const chatContainer = document.getElementById('chat-messages') || 
-                                      document.getElementById('dashboard-chat-messages') || 
-                                      document.getElementById('vendor-chat-messages');
-                
-                if (chatContainer) {
-                    chatContainer.innerHTML = '';
-                    state.chatMessages.forEach(message => {
-                        renderChatMessage(message, chatContainer);
+                // Add event listeners to conversations
+                document.querySelectorAll('.conversation-item').forEach(convItem => {
+                    convItem.addEventListener('click', () => {
+                        const conversationId = parseInt(convItem.dataset.id);
+                        state.chat.currentConversation = conversationId;
+                        console.log('Selected conversation:', conversationId);
+                        loadInitialMessages();
                     });
+                });
+
+                // Attach chat event listeners for the newly rendered chat input/button
+                setupChatEventListeners(chatInputId, sendButtonId);
+
+                // If there are conversations, select the first one by default
+                if (conversations.length > 0 && !state.chat.currentConversation) {
+                    state.chat.currentConversation = conversations[0].ConversationID;
+                    console.log('Defaulting to first conversation:', state.chat.currentConversation);
+                    loadInitialMessages();
+                } else if (state.chat.currentConversation) {
+                    // If a conversation is already selected (e.g., from modal), load its messages
+                    loadInitialMessages();
                 }
             }
             
-            // Render a single chat message
-function renderChatMessage(message, container) {
-    const chatContainer = container || 
-                          document.getElementById('chat-messages') || 
-                          document.getElementById('dashboard-chat-messages') || 
-                          document.getElementById('vendor-chat-messages');
-    
-    if (!chatContainer) return;
-    
-    const isCurrentUser = message.senderId === currentUser?.id || message.isCurrentUser;
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
-    
-    const messageDate = new Date(message.timestamp);
-    const timeString = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    
-    messageDiv.innerHTML = `
-        <div class="message-content">${message.content}</div>
-        <div class="message-time">${timeString}</div>
-    `;
-    
-    chatContainer.appendChild(messageDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
+            function disableChatInput() {
+                const chatInput = document.getElementById('chat-input');
+                const sendBtn = document.getElementById('send-btn');
+                if (chatInput) chatInput.disabled = true;
+                if (sendBtn) sendBtn.disabled = true;
+                console.log('Chat input and send button disabled.');
+            }
+
+            function showChatError(message) {
+                const chatMessagesContainer = document.getElementById('chat-messages') || 
+                                              document.getElementById('dashboard-chat-messages') || 
+                                              document.getElementById('vendor-chat-messages') ||
+                                              document.getElementById('vendor-all-chat-messages');
+                if (chatMessagesContainer) {
+                    const errorElement = document.createElement('p');
+                    errorElement.style.color = 'var(--accent)';
+                    errorElement.style.fontSize = '0.8rem';
+                    errorElement.textContent = message;
+                    chatMessagesContainer.appendChild(errorElement);
+                    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+                }
+                console.error('Chat error displayed:', message);
+            }
             
             // New improved location request function
             function requestLocationWithFeedback() {
@@ -3102,571 +3129,535 @@ function renderChatMessage(message, container) {
             }
             
             // Setup all event listeners
-function setupEventListeners() {
-    // Search
-    searchInput.addEventListener('input', filterVendors);
-    
-    // Sorting
-    sortSelect.addEventListener('change', sortVendors);
-    
-    // Filter resets
-    filterResetBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const filterType = btn.id.replace('-reset', '');
-            resetFilter(filterType);
-        });
-    });
-    
-    // Filter inputs
-    document.querySelectorAll('.filter-section input').forEach(input => {
-        input.addEventListener('change', filterVendors);
-    });
-    
-    // Current location checkbox
-    currentLocationCheckbox.addEventListener('change', function() {
-        if (this.checked) {
-            requestLocationWithFeedback();
-        } else {
-            state.userLocation = null;
-            locationInput.value = '';
-            locationInput.placeholder = 'City or ZIP code';
-            filterVendors();
-        }
-    });
-    
-    // Popular filters
-    trendingTags.forEach(tag => {
-        tag.addEventListener('click', () => {
-            tag.classList.toggle('active');
-            const filter = tag.dataset.filter;
-            
-            if (tag.classList.contains('active')) {
-                if (!state.filters.popular.includes(filter)) {
-                    state.filters.popular.push(filter);
-                }
-            } else {
-                state.filters.popular = state.filters.popular.filter(f => f !== filter);
-            }
-            
-            filterVendors();
-        });
-    });
-    
-    // Advanced filters toggle
-    advancedToggle.addEventListener('click', () => {
-        advancedContent.classList.toggle('show');
-        advancedToggle.querySelector('span').textContent = 
-            advancedContent.classList.contains('show') ? '−' : '+';
-    });
-    
-    // Date filters
-    document.getElementById('start-date').addEventListener('change', function() {
-        state.filters.startDate = this.value;
-        filterVendors();
-    });
-    
-    document.getElementById('end-date').addEventListener('change', function() {
-        state.filters.endDate = this.value;
-        filterVendors();
-    });
-    
-    // Region filter
-    document.getElementById('region-select').addEventListener('change', function() {
-        state.filters.region = this.value;
-        filterVendors();
-    });
-    
-    // Pagination
-    prevPageBtn.addEventListener('click', () => {
-        if (state.currentPage > 1) {
-            state.currentPage--;
-            renderVendors();
-        }
-    });
-    
-    nextPageBtn.addEventListener('click', () => {
-        const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
-        if (state.currentPage < totalPages) {
-            state.currentPage++;
-            renderVendors();
-        }
-    });
-    
-    // User nav buttons
-    wishlistBtn.addEventListener('click', () => {
-        if (currentUser) {
-            showDashboard('favorites');
-        } else {
-            profileModal.style.display = 'flex';
-        }
-    });
-    
-    notificationsBtn.addEventListener('click', () => {
-        if (currentUser) {
-            showDashboard('notifications');
-        } else {
-            profileModal.style.display = 'flex';
-        }
-    });
-    
-    // Profile button click handler
-    profileBtn.addEventListener('click', () => {
-        if (currentUser) {
-            showLoggedInView();
-        } else {
-            showLoginView();
-        }
-        profileModal.style.display = 'flex';
-    });
-    
-    // Close profile modal
-    closeProfileModal.addEventListener('click', () => {
-        profileModal.style.display = 'none';
-    });
-    profileModal.addEventListener('click', (e) => e.target === profileModal && (profileModal.style.display = 'none'));
-    
-    // Toggle between login and signup forms
-    showSignup.addEventListener('click', (e) => {
-        e.preventDefault();
-        showSignupView();
-    });
-    
-    showLogin.addEventListener('click', (e) => {
-        e.preventDefault();
-        showLoginView();
-    });
-    
-    // Login with email/password
-    loginBtn.addEventListener('click', async () => {
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-        
-        if (!email || !password) {
-            alert('Please enter both email and password');
-            return;
-        }
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/users/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ email, password }),
-            });
-            
-            if (!response.ok) {
-                throw new Error('Login failed');
-            }
-            
-            const userData = await response.json();
-            
-            // Store the token in localStorage
-            localStorage.setItem('token', userData.token);
-            
-            // Update UI with user data
-            simulateLogin({
-                id: userData.userId,
-                name: userData.name || userData.email.split('@')[0],
-                email: userData.email,
-                avatar: userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase(),
-                isVendor: userData.isVendor || false
-            });
-            
-            // Connect to chat after login
-            connectToChat();
-        } catch (error) {
-            console.error('Login error:', error);
-            alert('Login failed. Please check your credentials and try again.');
-        }
-    });
-    
-    // Sign up with email/password
-    signupBtn.addEventListener('click', async () => {
-        const name = document.getElementById('signup-name').value;
-        const email = document.getElementById('signup-email').value;
-        const password = document.getElementById('signup-password').value;
-        const accountType = document.getElementById('account-type').value;
-        
-        if (!name || !email || !password) {
-            alert('Please fill in all fields');
-            return;
-        }
-        
-        if (password.length < 6) {
-            alert('Password should be at least 6 characters');
-            return;
-        }
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/users/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    name, 
-                    email, 
-                    password,
-                    isVendor: accountType === 'vendor'
-                }),
-            });
-            
-            if (!response.ok) {
-                throw new Error('Signup failed');
-            }
-            
-            const userData = await response.json();
-            
-            // Store the token
-            localStorage.setItem('token', userData.token);
-            
-            // Update UI with user data
-            simulateLogin({
-                id: userData.userId,
-                name: userData.name,
-                email: userData.email,
-                avatar: userData.name[0].toUpperCase(),
-                isVendor: userData.isVendor || false
-            });
-            
-            // Connect to chat after signup
-            connectToChat();
-            
-            // If signing up as vendor, show registration form
-            if (accountType === 'vendor') {
-                profileModal.style.display = 'none';
-                vendorRegistrationModal.style.display = 'flex';
-            }
-        } catch (error) {
-            console.error('Signup error:', error);
-            alert('Signup failed. The email might already be in use.');
-        }
-    });
-    
-    // Google Login Handler
-    googleLoginBtn.addEventListener('click', () => {
-        google.accounts.id.initialize({
-            client_id: '900405597637-50g402qo0kbh2msi9bqii8e9od6oq0fk.apps.googleusercontent.com',
-            callback: handleGoogleSignIn
-        });
-        google.accounts.id.prompt();
-    });
-
-    // Facebook Login Handler
-    facebookLoginBtn.addEventListener('click', () => {
-        FB.login(function(response) {
-            if (response.authResponse) {
-                fetch(`${API_BASE_URL}/users/facebook-auth`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ token: response.authResponse.accessToken }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.token) {
-                        localStorage.setItem('token', data.token);
-                        simulateLogin({
-                            id: data.userId,
-                            name: data.name,
-                            email: data.email,
-                            avatar: data.name ? data.name[0].toUpperCase() : data.email[0].toUpperCase(),
-                            isVendor: data.isVendor || false
-                        });
-                        connectToChat();
+            function setupEventListeners() {
+                // Search
+                searchInput.addEventListener('input', filterVendors);
+                
+                // Sorting
+                sortSelect.addEventListener('change', sortVendors);
+                
+                // Filter resets
+                filterResetBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const filterType = btn.id.replace('-reset', '');
+                        resetFilter(filterType);
+                    });
+                });
+                
+                // Filter inputs
+                document.querySelectorAll('.filter-section input').forEach(input => {
+                    input.addEventListener('change', filterVendors);
+                });
+                
+                // Current location checkbox
+                currentLocationCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        requestLocationWithFeedback();
+                    } else {
+                        state.userLocation = null;
+                        locationInput.value = '';
+                        locationInput.placeholder = 'City or ZIP code';
+                        filterVendors();
                     }
-                })
-                .catch(error => {
-                    console.error('Facebook login error:', error);
-                    alert('Facebook login failed. Please try again.');
+                });
+                
+                // Popular filters
+                trendingTags.forEach(tag => {
+                    tag.addEventListener('click', () => {
+                        tag.classList.toggle('active');
+                        const filter = tag.dataset.filter;
+                        
+                        if (tag.classList.contains('active')) {
+                            if (!state.filters.popular.includes(filter)) {
+                                state.filters.popular.push(filter);
+                            }
+                        } else {
+                            state.filters.popular = state.filters.popular.filter(f => f !== filter);
+                        }
+                        
+                        filterVendors();
+                    });
+                });
+                
+                // Advanced filters toggle
+                advancedToggle.addEventListener('click', () => {
+                    advancedContent.classList.toggle('show');
+                    advancedToggle.querySelector('span').textContent = 
+                        advancedContent.classList.contains('show') ? '−' : '+';
+                });
+                
+                // Date filters
+                document.getElementById('start-date').addEventListener('change', function() {
+                    state.filters.startDate = this.value;
+                    filterVendors();
+                });
+                
+                document.getElementById('end-date').addEventListener('change', function() {
+                    state.filters.endDate = this.value;
+                    filterVendors();
+                });
+                
+                // Region filter
+                document.getElementById('region-select').addEventListener('change', function() {
+                    state.filters.region = this.value;
+                    filterVendors();
+                });
+                
+                // Pagination
+                prevPageBtn.addEventListener('click', () => {
+                    if (state.currentPage > 1) {
+                        state.currentPage--;
+                        renderVendors();
+                    }
+                });
+                
+                nextPageBtn.addEventListener('click', () => {
+                    const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
+                    if (state.currentPage < totalPages) {
+                        state.currentPage++;
+                        renderVendors();
+                    }
+                });
+                
+                // User nav buttons
+                wishlistBtn.addEventListener('click', () => {
+                    if (currentUser) {
+                        showDashboard('favorites');
+                    } else {
+                        profileModal.style.display = 'flex';
+                    }
+                });
+                
+                notificationsBtn.addEventListener('click', () => {
+                    if (currentUser) {
+                        showDashboard('notifications');
+                    } else {
+                        profileModal.style.display = 'flex';
+                    }
+                });
+                
+                // Profile button click handler
+                profileBtn.addEventListener('click', () => {
+                    if (currentUser) {
+                        showLoggedInView();
+                    } else {
+                        showLoginView();
+                    }
+                    profileModal.style.display = 'flex';
+                });
+                
+                // Close profile modal
+                closeProfileModal.addEventListener('click', () => {
+                    profileModal.style.display = 'none';
+                });
+                profileModal.addEventListener('click', (e) => e.target === profileModal && (profileModal.style.display = 'none'));
+                
+                // Toggle between login and signup forms
+                showSignup.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showSignupView();
+                });
+                
+                showLogin.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showLoginView();
+                });
+                
+                // Login with email/password
+                loginBtn.addEventListener('click', async () => {
+                    const email = document.getElementById('login-email').value;
+                    const password = document.getElementById('login-password').value;
+                    
+                    if (!email || !password) {
+                        alert('Please enter both email and password');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/users/login`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ email, password }),
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Login failed');
+                        }
+                        
+                        const userData = await response.json();
+                        
+                        // Store the token in localStorage
+                        localStorage.setItem('token', userData.token);
+                        
+                        // Update UI with user data
+                        simulateLogin({
+                            id: userData.userId,
+                            name: userData.name || userData.email.split('@')[0],
+                            email: userData.email,
+                            avatar: userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase(),
+                            isVendor: userData.isVendor || false
+                        });
+                        
+                        // Connect to chat after login
+                        connectToChat();
+                    } catch (error) {
+                        console.error('Login error:', error);
+                        alert('Login failed. Please check your credentials and try again.');
+                    }
+                });
+                
+                // Sign up with email/password
+                signupBtn.addEventListener('click', async () => {
+                    const name = document.getElementById('signup-name').value;
+                    const email = document.getElementById('signup-email').value;
+                    const password = document.getElementById('signup-password').value;
+                    const accountType = document.getElementById('account-type').value;
+                    
+                    if (!name || !email || !password) {
+                        alert('Please fill in all fields');
+                        return;
+                    }
+                    
+                    if (password.length < 6) {
+                        alert('Password should be at least 6 characters');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/users/register`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ 
+                                name, 
+                                email, 
+                                password,
+                                isVendor: accountType === 'vendor'
+                            }),
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Signup failed');
+                        }
+                        
+                        const userData = await response.json();
+                        
+                        // Store the token
+                        localStorage.setItem('token', userData.token);
+                        
+                        // Update UI with user data
+                        simulateLogin({
+                            id: userData.userId,
+                            name: userData.name,
+                            email: userData.email,
+                            avatar: userData.name[0].toUpperCase(),
+                            isVendor: userData.isVendor || false
+                        });
+                        
+                        // Connect to chat after signup
+                        connectToChat();
+                        
+                        // If signing up as vendor, show registration form
+                        if (accountType === 'vendor') {
+                            profileModal.style.display = 'none';
+                            vendorRegistrationModal.style.display = 'flex';
+                        }
+                    } catch (error) {
+                        console.error('Signup error:', error);
+                        alert('Signup failed. The email might already be in use.');
+                    }
+                });
+                
+                // Google Login Handler
+                googleLoginBtn.addEventListener('click', () => {
+                    google.accounts.id.initialize({
+                        client_id: '900405597637-50g402qo0kbh2msi9bqii8e9od6oq0fk.apps.googleusercontent.com',
+                        callback: handleGoogleSignIn
+                    });
+                    google.accounts.id.prompt();
+                });
+
+                // Facebook Login Handler
+                facebookLoginBtn.addEventListener('click', () => {
+                    FB.login(function(response) {
+                        if (response.authResponse) {
+                            fetch(`${API_BASE_URL}/users/facebook-auth`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ token: response.authResponse.accessToken }),
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.token) {
+                                    localStorage.setItem('token', data.token);
+                                    simulateLogin({
+                                        id: data.userId,
+                                        name: data.name,
+                                        email: data.email,
+                                        avatar: data.name ? data.name[0].toUpperCase() : data.email[0].toUpperCase(),
+                                        isVendor: data.isVendor || false
+                                    });
+                                    connectToChat();
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Facebook login error:', error);
+                                alert('Facebook login failed. Please try again.');
+                            });
+                        }
+                    }, {scope: 'public_profile,email'});
+                });
+                
+                // Logout handler
+                logoutBtn.addEventListener('click', () => {
+                    // Clear the token from storage
+                    localStorage.removeItem('token');
+                    
+                    // Disconnect from chat
+                    if (state.socket) {
+                        state.socket.disconnect();
+                    }
+                    
+                    currentUser = null;
+                    showLoginView();
+                    alert('You have been logged out');
+                    
+                    // Reset profile button
+                    profileBtn.textContent = '👤';
+                    profileBtn.style.backgroundColor = '';
+                    profileBtn.style.color = '';
+                    profileBtn.style.borderRadius = '';
+                    profileBtn.style.width = '';
+                    profileBtn.style.height = '';
+                    profileBtn.style.display = '';
+                    profileBtn.style.alignItems = '';
+                    profileBtn.style.justifyContent = '';
+                    
+                    // Hide dashboard if shown
+                    appContainer.style.display = 'grid';
+                    dashboardContainer.style.display = 'none';
+                    vendorDashboardContainer.style.display = 'none';
+                });
+                
+                // View dashboard button
+                viewDashboardBtn.addEventListener('click', () => {
+                    profileModal.style.display = 'none';
+                    showDashboard();
+                });
+                
+                // Dashboard menu items
+                dashboardMenuItems.forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const section = item.dataset.section;
+                        showDashboard(section);
+                        
+                        // Load messages when messages section is clicked
+                        if (section === 'messages' && currentUser) {
+                            loadConversations('messages-section', 'dashboard-chat-input', 'dashboard-send-btn');
+                        } else if (section === 'vendor-messages' && currentUser) {
+                            loadConversations('vendor-messages-section', 'vendor-all-chat-input', 'vendor-all-send-btn');
+                        }
+                    });
+                });
+                
+                // Switch to vendor mode
+                switchToVendorBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (currentUser.isVendor) {
+                        showVendorDashboard();
+                    } else {
+                        vendorRegistrationModal.style.display = 'flex';
+                    }
+                });
+                
+                // Switch to client mode
+                switchToClientBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showDashboard();
+                });
+                
+                // Logout from dashboard
+                logoutDashboardBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    logoutBtn.click();
+                });
+                
+                // Logout from vendor dashboard
+                vendorLogoutBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    logoutBtn.click();
+                });
+                
+                // Add service field in vendor registration
+                addServiceFieldBtn.addEventListener('click', () => {
+                    const serviceFieldGroup = document.createElement('div');
+                    serviceFieldGroup.className = 'service-field-group';
+                    serviceFieldGroup.style.marginBottom = '1rem';
+                    serviceFieldGroup.style.paddingBottom = '1rem';
+                    serviceFieldGroup.style.borderBottom = '1px dashed var(--border)';
+                    
+                    serviceFieldGroup.innerHTML = `
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label>Service Name</label>
+                                    <input type="text" name="service-name[]" required>
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label>Price</label>
+                                    <input type="number" name="service-price[]" min="0" step="0.01" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea name="service-description[]" rows="2" required></textarea>
+                        </div>
+                        <button type="button" class="btn btn-outline btn-sm remove-service-btn">Remove Service</button>
+                    `;
+                    
+                    serviceFieldsContainer.appendChild(serviceFieldGroup);
+                    
+                    // Add event listener to remove button
+                    serviceFieldGroup.querySelector('.remove-service-btn').addEventListener('click', () => {
+                        serviceFieldGroup.remove();
+                    });
+                });
+                
+                // Vendor registration form submission
+                vendorRegistrationForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    try {
+                        // Collect form data
+                        const formData = new FormData();
+                        formData.append('businessName', document.getElementById('reg-business-name').value);
+                        formData.append('businessType', document.getElementById('reg-business-type').value);
+                        formData.append('category', document.getElementById('reg-category').value);
+                        formData.append('yearsInBusiness', document.getElementById('reg-years-in-business').value);
+                        formData.append('description', document.getElementById('reg-business-description').value);
+                        formData.append('email', document.getElementById('reg-business-email').value);
+                        formData.append('phone', document.getElementById('reg-business-phone').value);
+                        formData.append('address', document.getElementById('reg-business-address').value);
+                        formData.append('website', document.getElementById('reg-business-website').value);
+                        
+                        // Collect services
+                        const services = [];
+                        document.querySelectorAll('.service-field-group').forEach(group => {
+                            services.push({
+                                name: group.querySelector('input[name="service-name[]"]').value,
+                                price: group.querySelector('input[name="service-price[]"]').value,
+                                description: group.querySelector('textarea[name="service-description[]"]').value
+                            });
+                        });
+                        formData.append('services', JSON.stringify(services));
+                        
+                        // Add files
+                        const businessLicense = document.getElementById('business-license').files[0];
+                        const taxId = document.getElementById('tax-id').files[0];
+                        const portfolio = document.getElementById('portfolio').files[0];
+                        
+                        if (businessLicense) formData.append('businessLicense', businessLicense);
+                        if (taxId) formData.append('taxId', taxId);
+                        if (portfolio) formData.append('portfolio', portfolio);
+                        
+                        const response = await fetch(`${API_BASE_URL}/vendors/register`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: formData
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Registration failed');
+                        }
+                        
+                        const result = await response.json();
+                        
+                        alert('Vendor registration submitted successfully!');
+                        vendorRegistrationModal.style.display = 'none';
+                        
+                        // Update user to vendor status
+                        currentUser.isVendor = true;
+                        showVendorDashboard();
+                        
+                    } catch (error) {
+                        console.error('Registration error:', error);
+                        alert('Registration failed. Please try again.');
+                    }
+                });
+                
+                // Map controls
+                document.getElementById('zoom-in')?.addEventListener('click', () => {
+                    if (state.map) {
+                        state.map.setZoom(state.map.getZoom() + 1);
+                    }
+                });
+                
+                document.getElementById('zoom-out')?.addEventListener('click', () => {
+                    if (state.map) {
+                        state.map.setZoom(state.map.getZoom() - 1);
+                    }
+                });
+                
+                locateMeBtn?.addEventListener('click', () => {
+                    if (state.userLocation) {
+                        centerMapOnUser();
+                    } else {
+                        requestLocationWithFeedback();
+                    }
+                });
+                
+                // Location permission
+                allowLocationBtn.addEventListener('click', () => {
+                    locationLoading.style.display = 'inline-block';
+                    allowLocationBtn.disabled = true;
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            locationPermissionModal.style.display = 'none';
+                            handleLocationSuccess(position);
+                            locationLoading.style.display = 'none';
+                            allowLocationBtn.disabled = false;
+                        },
+                        (error) => {
+                            console.log("Location error:", error);
+                            locationPermissionModal.style.display = 'none';
+                            locationLoading.style.display = 'none';
+                            allowLocationBtn.disabled = false;
+                            currentLocationCheckbox.checked = false;
+                            alert("Could not get your location. Please try again or enter a location manually.");
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000
+                        }
+                    );
+                });
+                
+                denyLocationBtn.addEventListener('click', () => {
+                    locationPermissionModal.style.display = 'none';
+                    currentLocationCheckbox.checked = false;
+                });
+                
+                // Modal close
+                document.querySelector('.close-modal').addEventListener('click', closeBookingModal);
+                modal.addEventListener('click', (e) => e.target === modal && closeBookingModal());
+                
+                // Confirmation modal
+                document.getElementById('conf-done-btn').addEventListener('click', () => {
+                    confirmationModal.style.display = 'none';
                 });
             }
-        }, {scope: 'public_profile,email'});
-    });
-    
-    // Logout handler
-    logoutBtn.addEventListener('click', () => {
-        // Clear the token from storage
-        localStorage.removeItem('token');
-        
-        // Disconnect from chat
-        if (state.socket) {
-            state.socket.disconnect();
-        }
-        
-        currentUser = null;
-        showLoginView();
-        alert('You have been logged out');
-        
-        // Reset profile button
-        profileBtn.textContent = '👤';
-        profileBtn.style.backgroundColor = '';
-        profileBtn.style.color = '';
-        profileBtn.style.borderRadius = '';
-        profileBtn.style.width = '';
-        profileBtn.style.height = '';
-        profileBtn.style.display = '';
-        profileBtn.style.alignItems = '';
-        profileBtn.style.justifyContent = '';
-        
-        // Hide dashboard if shown
-        appContainer.style.display = 'grid';
-        dashboardContainer.style.display = 'none';
-        vendorDashboardContainer.style.display = 'none';
-    });
-    
-    // View dashboard button
-    viewDashboardBtn.addEventListener('click', () => {
-        profileModal.style.display = 'none';
-        showDashboard();
-    });
-    
-    // Dashboard menu items
-    dashboardMenuItems.forEach(item => {
-        item.addEventListener('click', (e) => {
-            e.preventDefault();
-            const section = item.dataset.section;
-            showDashboard(section);
-            
-            // Load messages when messages section is clicked
-            if (section === 'messages' && currentUser) {
-                loadConversations();
-            }
-        });
-    });
-    
-    // Switch to vendor mode
-    switchToVendorBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (currentUser.isVendor) {
-            showVendorDashboard();
-        } else {
-            vendorRegistrationModal.style.display = 'flex';
-        }
-    });
-    
-    // Switch to client mode
-    switchToClientBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        showDashboard();
-    });
-    
-    // Logout from dashboard
-    logoutDashboardBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        logoutBtn.click();
-    });
-    
-    // Logout from vendor dashboard
-    vendorLogoutBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        logoutBtn.click();
-    });
-    
-    // Add service field in vendor registration
-    addServiceFieldBtn.addEventListener('click', () => {
-        const serviceFieldGroup = document.createElement('div');
-        serviceFieldGroup.className = 'service-field-group';
-        serviceFieldGroup.style.marginBottom = '1rem';
-        serviceFieldGroup.style.paddingBottom = '1rem';
-        serviceFieldGroup.style.borderBottom = '1px dashed var(--border)';
-        
-        serviceFieldGroup.innerHTML = `
-            <div class="form-row">
-                <div class="form-col">
-                    <div class="form-group">
-                        <label>Service Name</label>
-                        <input type="text" name="service-name[]" required>
-                    </div>
-                </div>
-                <div class="form-col">
-                    <div class="form-group">
-                        <label>Price</label>
-                        <input type="number" name="service-price[]" min="0" step="0.01" required>
-                    </div>
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea name="service-description[]" rows="2" required></textarea>
-            </div>
-            <button type="button" class="btn btn-outline btn-sm remove-service-btn">Remove Service</button>
-        `;
-        
-        serviceFieldsContainer.appendChild(serviceFieldGroup);
-        
-        // Add event listener to remove button
-        serviceFieldGroup.querySelector('.remove-service-btn').addEventListener('click', () => {
-            serviceFieldGroup.remove();
-        });
-    });
-    
-    // Vendor registration form submission
-    vendorRegistrationForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        try {
-            // Collect form data
-            const formData = new FormData();
-            formData.append('businessName', document.getElementById('reg-business-name').value);
-            formData.append('businessType', document.getElementById('reg-business-type').value);
-            formData.append('category', document.getElementById('reg-category').value);
-            formData.append('yearsInBusiness', document.getElementById('reg-years-in-business').value);
-            formData.append('description', document.getElementById('reg-business-description').value);
-            formData.append('email', document.getElementById('reg-business-email').value);
-            formData.append('phone', document.getElementById('reg-business-phone').value);
-            formData.append('address', document.getElementById('reg-business-address').value);
-            formData.append('website', document.getElementById('reg-business-website').value);
-            
-            // Collect services
-            const services = [];
-            document.querySelectorAll('.service-field-group').forEach(group => {
-                services.push({
-                    name: group.querySelector('input[name="service-name[]"]').value,
-                    price: group.querySelector('input[name="service-price[]"]').value,
-                    description: group.querySelector('textarea[name="service-description[]"]').value
-                });
-            });
-            formData.append('services', JSON.stringify(services));
-            
-            // Add files
-            const businessLicense = document.getElementById('business-license').files[0];
-            const taxId = document.getElementById('tax-id').files[0];
-            const portfolio = document.getElementById('portfolio').files[0];
-            
-            if (businessLicense) formData.append('businessLicense', businessLicense);
-            if (taxId) formData.append('taxId', taxId);
-            if (portfolio) formData.append('portfolio', portfolio);
-            
-            const response = await fetch(`${API_BASE_URL}/vendors/register`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: formData
-            });
-            
-            if (!response.ok) {
-                throw new Error('Registration failed');
-            }
-            
-            const result = await response.json();
-            
-            alert('Vendor registration submitted successfully!');
-            vendorRegistrationModal.style.display = 'none';
-            
-            // Update user to vendor status
-            currentUser.isVendor = true;
-            showVendorDashboard();
-            
-        } catch (error) {
-            console.error('Registration error:', error);
-            alert('Registration failed. Please try again.');
-        }
-    });
-    
-    // Map controls
-    document.getElementById('zoom-in')?.addEventListener('click', () => {
-        if (state.map) {
-            state.map.setZoom(state.map.getZoom() + 1);
-        }
-    });
-    
-    document.getElementById('zoom-out')?.addEventListener('click', () => {
-        if (state.map) {
-            state.map.setZoom(state.map.getZoom() - 1);
-        }
-    });
-    
-    locateMeBtn?.addEventListener('click', () => {
-        if (state.userLocation) {
-            centerMapOnUser();
-        } else {
-            requestLocationWithFeedback();
-        }
-    });
-    
-    // Location permission
-    allowLocationBtn.addEventListener('click', () => {
-        locationLoading.style.display = 'inline-block';
-        allowLocationBtn.disabled = true;
-        
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                locationPermissionModal.style.display = 'none';
-                handleLocationSuccess(position);
-                locationLoading.style.display = 'none';
-                allowLocationBtn.disabled = false;
-            },
-            (error) => {
-                console.log("Location error:", error);
-                locationPermissionModal.style.display = 'none';
-                locationLoading.style.display = 'none';
-                allowLocationBtn.disabled = false;
-                currentLocationCheckbox.checked = false;
-                alert("Could not get your location. Please try again or enter a location manually.");
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000
-            }
-        );
-    });
-    
-    denyLocationBtn.addEventListener('click', () => {
-        locationPermissionModal.style.display = 'none';
-        currentLocationCheckbox.checked = false;
-    });
-    
-    // Modal close
-    document.querySelector('.close-modal').addEventListener('click', closeBookingModal);
-    modal.addEventListener('click', (e) => e.target === modal && closeBookingModal());
-    
-    // Confirmation modal
-    document.getElementById('conf-done-btn').addEventListener('click', () => {
-        confirmationModal.style.display = 'none';
-    });
-
-    // Chat message sending - Main modal
-    document.getElementById('send-btn')?.addEventListener('click', sendChatMessage);
-    document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendChatMessage();
-        }
-    });
-
-    // Chat message sending - Dashboard
-    document.getElementById('dashboard-send-btn')?.addEventListener('click', sendChatMessage);
-    document.getElementById('dashboard-chat-input')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendChatMessage();
-        }
-    });
-
-    // Chat message sending - Vendor dashboard
-    document.getElementById('vendor-send-btn')?.addEventListener('click', sendChatMessage);
-    document.getElementById('vendor-chat-input')?.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendChatMessage();
-        }
-    });
-
-    // Initialize chat when opening vendor modal
-    document.addEventListener('click', (e) => {
-        if (e.target.classList.contains('view-btn')) {
-            const vendorId = e.target.dataset.id;
-            const vendor = state.vendors.find(v => v.id === vendorId);
-            if (vendor) {
-                state.currentChat = `user_${currentUser?.id}_vendor_${vendorId}`;
-                if (currentUser) {
-                    loadInitialMessages();
-                }
-            }
-        }
-    });
-}
             
             // Filter vendors based on current filters
             function filterVendors() {
@@ -3882,48 +3873,48 @@ function setupEventListeners() {
                 vendorGrid.innerHTML = '';
                 
                 
-    paginatedVendors.forEach(vendor => {
-        const isFavorite = state.favorites.includes(vendor.id);
-        
-        const vendorCard = document.createElement('div');
-        vendorCard.className = 'vendor-card';
-        vendorCard.innerHTML = `
-            <div class="vendor-image">
-                ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
-                ${vendor.isPremium ? '<div class="vendor-badge">Premium</div>' : ''}
-                <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
-            </div>
-            <div class="vendor-details">
-                <h3 class="vendor-name">${vendor.name}</h3>
-                <div class="vendor-location">
-                    📍 ${vendor.location}
-                </div>
-                <div class="vendor-features">
-                    <div class="feature">
-                        <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
-                        <span>${getCategoryName(vendor.category)}</span>
-                    </div>
-                    <div class="feature">
-                        <span class="feature-icon">⭐</span>
-                        <span>${vendor.rating} (${vendor.reviewCount})</span>
-                    </div>
-                    <div class="feature">
-                        <div class="price-indicator">
-                            ${renderPriceIndicator(vendor.priceLevel)}
-                        </div>
-                    </div>
-                </div>
-                <div class="vendor-footer">
-                    <div class="vendor-price">${vendor.price}<span>starting</span></div>
-                    <div class="vendor-actions">
-                        <button class="btn btn-outline save-btn" data-id="${vendor.id}">Save</button>
-                        <button class="btn btn-primary view-btn" data-id="${vendor.id}">View</button>
-                    </div>
-                </div>
-            </div>
-        `;
-            vendorGrid.appendChild(vendorCard);
+                paginatedVendors.forEach(vendor => {
+                    const isFavorite = state.favorites.includes(vendor.id);
                     
+                    const vendorCard = document.createElement('div');
+                    vendorCard.className = 'vendor-card';
+                    vendorCard.innerHTML = `
+                        <div class="vendor-image">
+                            ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
+                            ${vendor.isPremium ? '<div class="vendor-badge">Premium</div>' : ''}
+                            <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
+                        </div>
+                        <div class="vendor-details">
+                            <h3 class="vendor-name">${vendor.name}</h3>
+                            <div class="vendor-location">
+                                📍 ${vendor.location}
+                            </div>
+                            <div class="vendor-features">
+                                <div class="feature">
+                                    <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
+                                    <span>${getCategoryName(vendor.category)}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">⭐</span>
+                                    <span>${vendor.rating} (${vendor.reviewCount})</span>
+                                </div>
+                                <div class="feature">
+                                    <div class="price-indicator">
+                                        ${renderPriceIndicator(vendor.priceLevel)}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="vendor-footer">
+                                <div class="vendor-price">${vendor.price}<span>starting</span></div>
+                                <div class="vendor-actions">
+                                    <button class="btn btn-outline save-btn" data-id="${vendor.id}">Save</button>
+                                    <button class="btn btn-primary view-btn" data-id="${vendor.id}">View</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    vendorGrid.appendChild(vendorCard);
+                            
                     // Add event listeners to buttons
                     vendorCard.querySelector('.view-btn').addEventListener('click', () => {
                         openBookingModal(vendor);
@@ -4052,109 +4043,108 @@ function setupEventListeners() {
                 state.selectedServices = [];
                 state.selectedDate = null;
                 state.selectedTime = null;
-                state.chatMessages = []; // Initialize chat messages array
 
-                    // Initialize chat state
-    state.chat.init();
+                // Initialize chat state for this specific vendor
+                state.chat.init();
 
                 // Create modal content
                 modalBody.innerHTML = `
-        <div class="vendor-detail-header">
-            <div class="vendor-detail-image">
-                ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);">` : getCategoryIcon(vendor.category)}
-            </div>
-            <div class="vendor-detail-info">
-                <h2 class="vendor-detail-name">${vendor.name}</h2>
-                <div class="vendor-detail-location">📍 ${vendor.location}</div>
-                <div class="vendor-detail-features">
-                    <div class="feature">
-                        <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
-                        <span>${getCategoryName(vendor.category)}</span>
-                    </div>
-                    <div class="feature">
-                        <span class="feature-icon">⭐</span>
-                        <span>${vendor.rating || '4.5'} (${vendor.reviews?.length || 25})</span>
-                    </div>
-                    <div class="feature">
-                        <div class="price-indicator">
-                            ${renderPriceIndicator(vendor.priceLevel)}
+                    <div class="vendor-detail-header">
+                        <div class="vendor-detail-image">
+                            ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;border-radius:var(--radius);">` : getCategoryIcon(vendor.category)}
+                        </div>
+                        <div class="vendor-detail-info">
+                            <h2 class="vendor-detail-name">${vendor.name}</h2>
+                            <div class="vendor-detail-location">📍 ${vendor.location}</div>
+                            <div class="vendor-detail-features">
+                                <div class="feature">
+                                    <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
+                                    <span>${getCategoryName(vendor.category)}</span>
+                                </div>
+                                <div class="feature">
+                                    <span class="feature-icon">⭐</span>
+                                    <span>${vendor.rating || '4.5'} (${vendor.reviews?.length || 25})</span>
+                                </div>
+                                <div class="feature">
+                                    <div class="price-indicator">
+                                        ${renderPriceIndicator(vendor.priceLevel)}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="vendor-detail-price">${vendor.price || '$500'}</div>
                         </div>
                     </div>
-                </div>
-                <div class="vendor-detail-price">${vendor.price || '$500'}</div>
-            </div>
-        </div>
-        
-        <div class="vendor-detail-description">
-            <p>${vendor.description || "A professional vendor for your special event. Contact us for more details about our services."}</p>
-        </div>
-        
-        <div class="services-section">
-            <h3 class="services-title">Available Services</h3>
-            ${vendor.services && vendor.services.length > 0 ? 
-                renderServices(vendor.services) : 
-                '<p>No services available for this vendor.</p>'}
-        </div>
-        
-        <div class="booking-calendar-section">
-            <h3 class="calendar-title">Select Date & Time</h3>
-            <div id="booking-calendar"></div>
-            <div class="time-slots" id="time-slots"></div>
-        </div>
-        
-        <div class="reviews-section">
-            <h3 class="reviews-title">Customer Reviews</h3>
-            ${vendor.reviews && vendor.reviews.length > 0 ? 
-                renderReviews(vendor.reviews) : 
-                '<p>No reviews yet.</p>'}
-            
-            ${currentUser ? `
-                <button class="btn btn-outline add-review-btn" id="show-review-form">Add Review</button>
-                <div class="review-form" id="review-form" style="display: none;">
-                    <div class="rating-input">
-                        <span class="rating-star" data-rating="1">☆</span>
-                        <span class="rating-star" data-rating="2">☆</span>
-                        <span class="rating-star" data-rating="3">☆</span>
-                        <span class="rating-star" data-rating="4">☆</span>
-                        <span class="rating-star" data-rating="5">☆</span>
+                    
+                    <div class="vendor-detail-description">
+                        <p>${vendor.description || "A professional vendor for your special event. Contact us for more details about our services."}</p>
                     </div>
-                    <textarea class="review-textarea" id="review-text" placeholder="Share your experience..."></textarea>
-                    <button class="btn btn-primary" id="submit-review">Submit Review</button>
-                </div>
-            ` : '<p><a href="#" id="login-to-review" style="color: var(--primary);">Log in</a> to leave a review</p>'}
-        </div>
-        
-        <div class="chat-section">
-            <h3 class="chat-title">Message Vendor</h3>
-            <div class="chat-container">
-                <div class="chat-messages" id="chat-messages">
-                    <!-- Messages will load here -->
-                </div>
-                <div class="chat-input">
-                    <input type="text" placeholder="Type your message..." id="chat-input">
-                    <button class="btn btn-primary" id="send-btn">Send</button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="payment-section" id="payment-section" style="display: none;">
-            <h3 class="payment-title">Payment Information</h3>
-            <div class="payment-form">
-                <div class="form-group">
-                    <label>Cardholder Name</label>
-                    <input type="text" id="cardholder-name">
-                </div>
-                <div class="card-element" id="card-element"></div>
-                <button class="btn btn-primary" id="pay-now-btn">Pay Now</button>
-            </div>
-        </div>
-        
-        <div class="vendor-actions" style="margin-top: 2rem; justify-content: center;">
-            <button class="btn btn-primary" id="book-now-btn">Book Now</button>
-        </div>
-    `;
+                    
+                    <div class="services-section">
+                        <h3 class="services-title">Available Services</h3>
+                        ${vendor.services && vendor.services.length > 0 ? 
+                            renderServices(vendor.services) : 
+                            '<p>No services available for this vendor.</p>'}
+                    </div>
+                    
+                    <div class="booking-calendar-section">
+                        <h3 class="calendar-title">Select Date & Time</h3>
+                        <div id="booking-calendar"></div>
+                        <div class="time-slots" id="time-slots"></div>
+                    </div>
+                    
+                    <div class="reviews-section">
+                        <h3 class="reviews-title">Customer Reviews</h3>
+                        ${vendor.reviews && vendor.reviews.length > 0 ? 
+                            renderReviews(vendor.reviews) : 
+                            '<p>No reviews yet.</p>'}
+                        
+                        ${currentUser ? `
+                            <button class="btn btn-outline add-review-btn" id="show-review-form">Add Review</button>
+                            <div class="review-form" id="review-form" style="display: none;">
+                                <div class="rating-input">
+                                    <span class="rating-star" data-rating="1">☆</span>
+                                    <span class="rating-star" data-rating="2">☆</span>
+                                    <span class="rating-star" data-rating="3">☆</span>
+                                    <span class="rating-star" data-rating="4">☆</span>
+                                    <span class="rating-star" data-rating="5">☆</span>
+                                </div>
+                                <textarea class="review-textarea" id="review-text" placeholder="Share your experience..."></textarea>
+                                <button class="btn btn-primary" id="submit-review">Submit Review</button>
+                            </div>
+                        ` : '<p><a href="#" id="login-to-review" style="color: var(--primary);">Log in</a> to leave a review</p>'}
+                    </div>
+                    
+                    <div class="chat-section">
+                        <h3 class="chat-title">Message Vendor</h3>
+                        <div class="chat-container">
+                            <div class="chat-messages" id="chat-messages">
+                                <!-- Messages will load here -->
+                            </div>
+                            <div class="chat-input">
+                                <input type="text" placeholder="Type your message..." id="chat-input">
+                                <button class="btn btn-primary" id="send-btn">Send</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-section" id="payment-section" style="display: none;">
+                        <h3 class="payment-title">Payment Information</h3>
+                        <div class="payment-form">
+                            <div class="form-group">
+                                <label>Cardholder Name</label>
+                                <input type="text" id="cardholder-name">
+                            </div>
+                            <div class="card-element" id="card-element"></div>
+                            <button class="btn btn-primary" id="pay-now-btn">Pay Now</button>
+                        </div>
+                    </div>
+                    
+                    <div class="vendor-actions" style="margin-top: 2rem; justify-content: center;">
+                        <button class="btn btn-primary" id="book-now-btn">Book Now</button>
+                    </div>
+                `;
 
-    // Initialize booking calendar
+                // Initialize booking calendar
                 initBookingCalendar();
 
                 // Set up chat if user is logged in
@@ -4167,473 +4157,287 @@ function setupEventListeners() {
                         });
                 } else {
                     disableChatInput();
+                    showChatError('Please log in to chat with the vendor.');
                 }
 
-    // Add event listeners to service buttons
-    document.querySelectorAll('.add-service-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const serviceName = this.dataset.service;
-            const serviceIndex = state.selectedServices.indexOf(serviceName);
-            
-            if (serviceIndex === -1) {
-                state.selectedServices.push(serviceName);
-                this.classList.add('active');
-                this.textContent = 'Added';
-            } else {
-                state.selectedServices.splice(serviceIndex, 1);
-                this.classList.remove('active');
-                this.textContent = 'Add';
-            }
-        });
-    });
-    
-    // Show review form
-    document.getElementById('show-review-form')?.addEventListener('click', () => {
-        document.getElementById('review-form').style.display = 'block';
-    });
-    
-    // Rating stars
-    document.querySelectorAll('.rating-star').forEach(star => {
-        star.addEventListener('click', function() {
-            const rating = parseInt(this.dataset.rating);
-            const stars = document.querySelectorAll('.rating-star');
-            
-            stars.forEach((s, index) => {
-                if (index < rating) {
-                    s.textContent = '★';
-                    s.classList.add('selected');
-                } else {
-                    s.textContent = '☆';
-                    s.classList.remove('selected');
-                }
-            });
-        });
-    });
-    
-    // Submit review
-    document.getElementById('submit-review')?.addEventListener('click', async () => {
-        const rating = document.querySelectorAll('.rating-star.selected').length;
-        const reviewText = document.getElementById('review-text').value;
-        
-        if (!rating) {
-            alert('Please select a rating');
-            return;
-        }
-        
-        if (!reviewText) {
-            alert('Please write your review');
-            return;
-        }
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/reviews`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({
-                    vendorId: vendor.id,
-                    rating: rating,
-                    comment: reviewText
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to submit review');
-            }
-            
-            alert('Thank you for your review!');
-            document.getElementById('review-form').style.display = 'none';
-            
-            // Refresh reviews
-            const newReview = {
-                id: `review-${Date.now()}`,
-                user: currentUser.name,
-                rating: rating,
-                comment: reviewText,
-                date: new Date().toISOString()
-            };
-            
-            if (!vendor.reviews) vendor.reviews = [];
-            vendor.reviews.unshift(newReview);
-            
-            // Update UI
-            document.querySelector('.reviews-section').innerHTML = `
-                <h3 class="reviews-title">Customer Reviews</h3>
-                ${renderReviews(vendor.reviews)}
-                <button class="btn btn-outline add-review-btn" id="show-review-form">Add Review</button>
-            `;
-            
-            // Reattach event listener
-            document.getElementById('show-review-form').addEventListener('click', () => {
-                document.getElementById('review-form').style.display = 'block';
-            });
-            
-        } catch (error) {
-            console.error('Review submission error:', error);
-            alert('Failed to submit review. Please try again.');
-        }
-    });
-    
-    // Login to review
-    document.getElementById('login-to-review')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        closeBookingModal();
-        profileModal.style.display = 'flex';
-    });
-    
-    // Chat send button
-    document.getElementById('send-btn').addEventListener('click', sendChatMessage);
-    document.getElementById('chat-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendChatMessage();
-        }
-    });
-    
-    // Book now button
-    document.getElementById('book-now-btn').addEventListener('click', function() {
-        if (!currentUser) {
-            closeBookingModal();
-            profileModal.style.display = 'flex';
-            return;
-        }
-        
-        if (state.selectedServices.length === 0) {
-            alert('Please select at least one service');
-            return;
-        }
-        
-        if (!state.selectedDate || !state.selectedTime) {
-            alert('Please select a date and time');
-            return;
-        }
-        
-        // Show payment section
-        document.getElementById('payment-section').style.display = 'block';
-        this.style.display = 'none';
-        
-        // Initialize Stripe Elements
-        const card = state.elements.create('card');
-        card.mount('#card-element');
-        
-        // Handle payment
-        document.getElementById('pay-now-btn').addEventListener('click', async () => {
-            const cardholderName = document.getElementById('cardholder-name').value;
-            
-            if (!cardholderName) {
-                alert('Please enter cardholder name');
-                return;
-            }
-            
-            try {
-                // Create payment intent
-                const response = await fetch(`${API_BASE_URL}/payments/create-payment-intent`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: JSON.stringify({
-                        amount: calculateTotalAmount(),
-                        currency: 'usd',
-                        vendorId: vendor.id,
-                        services: state.selectedServices,
-                        date: state.selectedDate,
-                        time: state.selectedTime
-                    })
+                // Attach chat event listeners for the modal's chat section
+                setupChatEventListeners('chat-input', 'send-btn');
+
+                // Add event listeners to service buttons
+                document.querySelectorAll('.add-service-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const serviceName = this.dataset.service;
+                        const serviceIndex = state.selectedServices.indexOf(serviceName);
+                        
+                        if (serviceIndex === -1) {
+                            state.selectedServices.push(serviceName);
+                            this.classList.add('active');
+                            this.textContent = 'Added';
+                        } else {
+                            state.selectedServices.splice(serviceIndex, 1);
+                            this.classList.remove('active');
+                            this.textContent = 'Add';
+                        }
+                    });
                 });
                 
-                if (!response.ok) {
-                    throw new Error('Failed to create payment intent');
-                }
+                // Show review form
+                document.getElementById('show-review-form')?.addEventListener('click', () => {
+                    document.getElementById('review-form').style.display = 'block';
+                });
                 
-                const { clientSecret } = await response.json();
+                // Rating stars
+                document.querySelectorAll('.rating-star').forEach(star => {
+                    star.addEventListener('click', function() {
+                        const rating = parseInt(this.dataset.rating);
+                        const stars = document.querySelectorAll('.rating-star');
+                        
+                        stars.forEach((s, index) => {
+                            if (index < rating) {
+                                s.textContent = '★';
+                                s.classList.add('selected');
+                            } else {
+                                s.textContent = '☆';
+                                s.classList.remove('selected');
+                            }
+                        });
+                    });
+                });
                 
-                // Confirm payment
-                const { error, paymentIntent } = await state.stripe.confirmCardPayment(clientSecret, {
-                    payment_method: {
-                        card: card,
-                        billing_details: {
-                            name: cardholderName
+                // Submit review
+                document.getElementById('submit-review')?.addEventListener('click', async () => {
+                    const rating = document.querySelectorAll('.rating-star.selected').length;
+                    const reviewText = document.getElementById('review-text').value;
+                    
+                    if (!rating) {
+                        alert('Please select a rating');
+                        return;
+                    }
+                    
+                    if (!reviewText) {
+                        alert('Please write your review');
+                        return;
+                    }
+                    
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/reviews`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: JSON.stringify({
+                                vendorId: vendor.id,
+                                rating: rating,
+                                comment: reviewText
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error('Failed to submit review');
                         }
+                        
+                        alert('Thank you for your review!');
+                        document.getElementById('review-form').style.display = 'none';
+                        
+                        // Refresh reviews
+                        const newReview = {
+                            id: `review-${Date.now()}`,
+                            user: currentUser.name,
+                            rating: rating,
+                            comment: reviewText,
+                            date: new Date().toISOString()
+                        };
+                        
+                        if (!vendor.reviews) vendor.reviews = [];
+                        vendor.reviews.unshift(newReview);
+                        
+                        // Update UI
+                        document.querySelector('.reviews-section').innerHTML = `
+                            <h3 class="reviews-title">Customer Reviews</h3>
+                            ${renderReviews(vendor.reviews)}
+                            <button class="btn btn-outline add-review-btn" id="show-review-form">Add Review</button>
+                        `;
+                        
+                        // Reattach event listener
+                        document.getElementById('show-review-form').addEventListener('click', () => {
+                            document.getElementById('review-form').style.display = 'block';
+                        });
+                        
+                    } catch (error) {
+                        console.error('Review submission error:', error);
+                        alert('Failed to submit review. Please try again.');
                     }
                 });
                 
-                if (error) {
-                    throw error;
-                }
+                // Login to review
+                document.getElementById('login-to-review')?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    closeBookingModal();
+                    profileModal.style.display = 'flex';
+                });
                 
-                // Payment successful - create booking
-                await bookVendor(vendor);
+                // Book now button
+                document.getElementById('book-now-btn').addEventListener('click', function() {
+                    if (!currentUser) {
+                        closeBookingModal();
+                        profileModal.style.display = 'flex';
+                        return;
+                    }
+                    
+                    if (state.selectedServices.length === 0) {
+                        alert('Please select at least one service');
+                        return;
+                    }
+                    
+                    if (!state.selectedDate || !state.selectedTime) {
+                        alert('Please select a date and time');
+                        return;
+                    }
+                    
+                    // Show payment section
+                    document.getElementById('payment-section').style.display = 'block';
+                    this.style.display = 'none';
+                    
+                    // Initialize Stripe Elements
+                    const card = state.elements.create('card');
+                    card.mount('#card-element');
+                    
+                    // Handle payment
+                    document.getElementById('pay-now-btn').addEventListener('click', async () => {
+                        const cardholderName = document.getElementById('cardholder-name').value;
+                        
+                        if (!cardholderName) {
+                            alert('Please enter cardholder name');
+                            return;
+                        }
+                        
+                        try {
+                            // Create payment intent
+                            const response = await fetch(`${API_BASE_URL}/payments/create-payment-intent`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                },
+                                body: JSON.stringify({
+                                    amount: calculateTotalAmount(),
+                                    currency: 'usd',
+                                    vendorId: vendor.id,
+                                    services: state.selectedServices,
+                                    date: state.selectedDate,
+                                    time: state.selectedTime
+                                })
+                            });
+                            
+                            if (!response.ok) {
+                                throw new Error('Failed to create payment intent');
+                            }
+                            
+                            const { clientSecret } = await response.json();
+                            
+                            // Confirm payment
+                            const { error, paymentIntent } = await state.stripe.confirmCardPayment(clientSecret, {
+                                payment_method: {
+                                    card: card,
+                                    billing_details: {
+                                        name: cardholderName
+                                    }
+                                }
+                            });
+                            
+                            if (error) {
+                                throw error;
+                            }
+                            
+                            // Payment successful - create booking
+                            await bookVendor(vendor);
+                            
+                        } catch (error) {
+                            console.error('Payment error:', error);
+                            alert('Payment failed. Please try again.');
+                        }
+                    });
+                });
                 
-            } catch (error) {
-                console.error('Payment error:', error);
-                alert('Payment failed. Please try again.');
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
             }
-        });
-    });
-    
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
 
-    // Helper functions (included within scope)
-    async function findOrCreateConversation(vendorProfileId) {
-        try {
-            // Try to find existing conversation
-            const findResponse = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${currentUser.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+            async function initializeChat(vendorProfileId) {
+                if (!currentUser) {
+                    disableChatInput();
+                    console.warn('initializeChat: No current user. Disabling chat input.');
+                    return;
                 }
-            });
-            
-            if (findResponse.ok) {
-                const data = await findResponse.json();
-                if (data.conversationId) {
-                    return data.conversationId;
+
+                console.log(`Initializing chat for vendor: ${vendorProfileId} and user: ${currentUser.id}`);
+                state.chat.init(); // Reset chat state
+
+                try {
+                    // Check for existing conversation
+                    const checkResponse = await fetch(`${API_BASE_URL}/messages/conversation/check`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            userId: currentUser.id,
+                            vendorProfileId: vendorProfileId
+                        })
+                    });
+
+                    if (!checkResponse.ok) {
+                        const errorText = await checkResponse.text();
+                        throw new Error(`Failed to check conversation: ${checkResponse.status} ${checkResponse.statusText} - ${errorText}`);
+                    }
+
+                    const checkData = await checkResponse.json();
+                    
+                    if (checkData.conversationId) {
+                        state.chat.currentConversation = checkData.conversationId;
+                        console.log('Existing conversation found:', state.chat.currentConversation);
+                    } else {
+                        // Create new conversation if none exists
+                        console.log('No existing conversation found. Creating new one...');
+                        const createResponse = await fetch(`${API_BASE_URL}/messages/conversation`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: JSON.stringify({
+                                userId: currentUser.id,
+                                vendorProfileId: vendorProfileId
+                            })
+                        });
+
+                        if (!createResponse.ok) {
+                            const errorText = await createResponse.text();
+                            throw new Error(`Failed to create conversation: ${createResponse.status} ${createResponse.statusText} - ${errorText}`);
+                        }
+
+                        const createData = await createResponse.json();
+                        state.chat.currentConversation = createData.conversationId || createData.ConversationID;
+                        console.log('New conversation created:', state.chat.currentConversation);
+                    }
+
+                    if (state.chat.currentConversation) {
+                        await loadInitialMessages();
+                    } else {
+                        console.error('Conversation ID is null after check/create. Cannot load messages.');
+                        showChatError('Failed to establish chat. No conversation ID.');
+                        disableChatInput();
+                    }
+
+                } catch (error) {
+                    console.error('Chat initialization failed:', error);
+                    disableChatInput();
+                    showChatError('Failed to initialize chat. Please try again: ' + error.message);
                 }
             }
-            
-            // Create new conversation if not found
-            const createResponse = await fetch(`${API_BASE_URL}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({
-                    userId: currentUser.id,
-                    vendorProfileId: vendorProfileId
-                })
-            });
-            
-            if (!createResponse.ok) {
-                throw new Error('Failed to create conversation');
-            }
-            
-            const newConversation = await createResponse.json();
-            return newConversation.conversationId;
-            
-        } catch (error) {
-            console.error('Conversation error:', error);
-            throw error;
-        }
-    }
 
-
-async function initializeChat(vendorProfileId) {
-    if (!currentUser) {
-        disableChatInput();
-        return;
-    }
-
-    try {
-        // Initialize chat state
-        state.chat.init();
-        
-        // First create or get conversation
-        const conversationResponse = await fetch(`${API_BASE_URL}/messages/conversation`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-                userId: currentUser.id,
-                vendorProfileId: vendorProfileId
-            })
-        });
-
-        if (!conversationResponse.ok) {
-            throw new Error('Failed to initialize conversation');
-        }
-
-        const conversationData = await conversationResponse.json();
-        state.chat.currentConversation = conversationData.conversation?.ConversationID || conversationData.conversation?.conversationId;
-
-        if (!state.chat.currentConversation) {
-            throw new Error('No conversation ID returned');
-        }
-
-        // Now load messages with the valid conversation ID
-        await loadChatMessages(state.chat.currentConversation);
-        
-    } catch (error) {
-        console.error('Chat initialization failed:', error);
-        disableChatInput();
-        showChatError('Failed to initialize chat. Please try again.');
-    }
-}
-
-
-async function loadChatMessages(conversationId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${currentUser.id}`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to load messages');
-        }
-
-        const data = await response.json();
-        
-        if (!data.success) {
-            throw new Error(data.message || 'Failed to load messages');
-        }
-
-        state.chatMessages = data.messages.map(msg => ({
-            id: msg.MessageID || msg.messageId,
-            conversationId: msg.ConversationID || msg.conversationId,
-            senderId: msg.SenderID || msg.senderId,
-            content: msg.Content || msg.content,
-            timestamp: msg.CreatedAt || msg.timestamp,
-            isCurrentUser: msg.SenderID === currentUser.id || msg.senderId === currentUser.id
-        }));
-        
-        renderChatMessages();
-        
-    } catch (error) {
-        console.error('Error loading messages:', error);
-        throw error;
-    }
-}
-
-
-            function disableChatInput() {
-                const chatInput = document.getElementById('chat-input');
-                const sendBtn = document.getElementById('send-btn');
-                if (chatInput) chatInput.disabled = true;
-                if (sendBtn) sendBtn.disabled = true;
-            }
-
-    function showChatError(message) {
-        const chatTitle = document.querySelector('.chat-title');
-        if (chatTitle) {
-            const errorElement = document.createElement('p');
-            errorElement.style.color = 'var(--accent)';
-            errorElement.style.fontSize = '0.8rem';
-            errorElement.textContent = message;
-            chatTitle.appendChild(errorElement);
-        }
-    }
-
-
-async function sendChatMessage() {
-    const input = document.getElementById('chat-input') || 
-                 document.getElementById('dashboard-chat-input') || 
-                 document.getElementById('vendor-chat-input');
-    const message = input?.value.trim();
-    
-    if (!message || !state.currentChat || !currentUser) return;
-
-    try {
-        // Create temporary message for optimistic UI
-        const tempMessage = {
-            id: `temp-${Date.now()}`,
-            conversationId: state.currentChat,
-            senderId: currentUser.id,
-            content: message,
-            timestamp: new Date().toISOString(),
-            isCurrentUser: true,
-            isPending: true
-        };
-
-        // Add to UI immediately
-        state.chatMessages.push(tempMessage);
-        input.value = '';
-        renderChatMessages();
-
-        // Send to server
-        const response = await fetch(`${API_BASE_URL}/messages`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-                conversationId: state.currentChat,
-                senderId: currentUser.id,
-                content: message
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to send message');
-        }
-
-        const savedMessage = await response.json();
-        
-        // Replace temp message with server response
-        state.chatMessages = state.chatMessages.filter(m => m.id !== tempMessage.id);
-        state.chatMessages.push({
-            id: savedMessage.id,
-            conversationId: savedMessage.conversationId,
-            senderId: savedMessage.senderId,
-            content: savedMessage.content,
-            timestamp: savedMessage.timestamp,
-            isCurrentUser: savedMessage.senderId === currentUser.id
-        });
-        
-        renderChatMessages();
-
-    } catch (error) {
-        console.error('Message send failed:', error);
-        // Remove temp message and show error
-        state.chatMessages = state.chatMessages.filter(m => m.id !== tempMessage.id);
-        renderChatMessages();
-        showChatError('Failed to send message');
-    }
-}
-
-
-
-// Helper function to create or get conversation
-async function createOrGetConversation(vendorProfileId) {
-    try {
-        // First try to find existing conversation
-        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${currentUser.id}`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.conversationId) {
-                return data.conversationId;
-            }
-        }
-        
-        // If no existing conversation, create new one
-        const createResponse = await fetch(`${API_BASE_URL}/messages`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-                userId: currentUser.id,
-                vendorProfileId: vendorProfileId
-            })
-        });
-        
-        if (!createResponse.ok) {
-            throw new Error('Failed to create conversation');
-        }
-        
-        const newConversation = await createResponse.json();
-        return newConversation.conversationId;
-        
-    } catch (error) {
-        console.error('Conversation error:', error);
-        throw error;
-    }
-}
-            
             // Initialize booking calendar
             function initBookingCalendar() {
                 const calendarEl = document.getElementById('booking-calendar');
@@ -4687,89 +4491,6 @@ async function createOrGetConversation(vendorProfileId) {
                 // In a real app, you would calculate based on actual service prices
                 return state.selectedServices.length * 100 * 100; // $100 per service (in cents)
             }
-            
-            // Send chat message
-// Updated sendChatMessage function
-async function sendChatMessage() {
-    const input = document.getElementById('chat-input');
-    const message = input?.value.trim();
-    
-    if (!message || !state.chat.currentConversation || !currentUser) return;
-
-    try {
-        // Create temporary message for optimistic UI
-        const tempMessage = {
-            id: `temp-${Date.now()}`,
-            conversationId: state.chat.currentConversation,
-            senderId: currentUser.id,
-            content: message,
-            timestamp: new Date().toISOString(),
-            isCurrentUser: true,
-            isPending: true
-        };
-
-        // Add to UI immediately
-        state.chat.addMessage(tempMessage);
-        input.value = '';
-        renderChatMessages();
-
-        // Send to server
-        const response = await fetch(`${API_BASE_URL}/messages`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-                conversationId: state.chat.currentConversation,
-                senderId: currentUser.id,
-                content: message
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to send message');
-        }
-
-        // Replace temp message with server response
-        const savedMessage = await response.json();
-        state.chat.setMessages([
-            ...state.chat.getMessages().filter(m => m.id !== tempMessage.id),
-            {
-                ...savedMessage,
-                isCurrentUser: true
-            }
-        ]);
-        renderChatMessages();
-
-    } catch (error) {
-        console.error('Message send failed:', error);
-        // Remove temp message and show error
-        state.chat.setMessages(state.chat.getMessages().filter(m => m.id !== tempMessage.id));
-        renderChatMessages();
-        showChatError('Failed to send message');
-    }
-}
-
-// Function to show chat error
-            function showChatError(message) {
-                const chatTitle = document.querySelector('.chat-title');
-                if (chatTitle) {
-                    const errorElement = document.createElement('p');
-                    errorElement.style.color = 'var(--accent)';
-                    errorElement.style.fontSize = '0.8rem';
-                    errorElement.textContent = message;
-                    chatTitle.appendChild(errorElement);
-                }
-            }
-
-function debugChatState() {
-    console.log('Current Chat State:', {
-        conversation: state.chat.currentConversation,
-        messageCount: state.chat.getMessages().length,
-        messages: state.chat.getMessages()
-    });
-}
             
             // Book vendor function
             async function bookVendor(vendor) {
@@ -4827,44 +4548,44 @@ function debugChatState() {
             }
             
             // Render services for a vendor
-function renderServices(services) {
-    return services.map(category => `
-        <div class="service-category">
-            <h4 class="category-title">${category.category || category.categoryDescription}</h4>
-            <div class="service-grid">
-                ${(category.services || []).map(service => `
-                    <div class="service-card">
-                        <div class="service-name">${service.name}</div>
-                        <div class="service-description">${service.description}</div>
-                        <div class="service-price">$${service.Price || service.price || 'N/A'}</div>
-                        <div class="service-actions">
-                            <button class="btn btn-outline btn-sm add-service-btn" 
-                                    data-service="${service.name}"
-                                    data-price="${service.Price || service.price}">
-                                Add
-                            </button>
+            function renderServices(services) {
+                return services.map(category => `
+                    <div class="service-category">
+                        <h4 class="category-title">${category.category || category.categoryDescription}</h4>
+                        <div class="service-grid">
+                            ${(category.services || []).map(service => `
+                                <div class="service-card">
+                                    <div class="service-name">${service.name}</div>
+                                    <div class="service-description">${service.description}</div>
+                                    <div class="service-price">$${service.Price || service.price || 'N/A'}</div>
+                                    <div class="service-actions">
+                                        <button class="btn btn-outline btn-sm add-service-btn" 
+                                                data-service="${service.name}"
+                                                data-price="${service.Price || service.price}">
+                                            Add
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
-                `).join('')}
-            </div>
-        </div>
-    `).join('');
-}
+                `).join('');
+            }
             
             // Render reviews for a vendor
-function renderReviews(reviews) {
-    return reviews.map(review => `
-        <div class="review-card">
-            <div class="review-header">
-                <div class="reviewer">${review.reviewerName || review.user}</div>
-                <div class="review-date">${new Date(review.CreatedAt || review.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-            </div>
-            <div class="review-rating">${'★'.repeat(review.Rating || review.rating)}${'☆'.repeat(5 - (review.Rating || review.rating))}</div>
-            ${review.Title ? `<div class="review-title">${review.Title}</div>` : ''}
-            <div class="review-text">${review.commentPreview || review.comment}</div>
-        </div>
-    `).join('');
-}
+            function renderReviews(reviews) {
+                return reviews.map(review => `
+                    <div class="review-card">
+                        <div class="review-header">
+                            <div class="reviewer">${review.reviewerName || review.user}</div>
+                            <div class="review-date">${new Date(review.CreatedAt || review.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                        </div>
+                        <div class="review-rating">${'★'.repeat(review.Rating || review.rating)}${'☆'.repeat(5 - (review.Rating || review.rating))}</div>
+                        ${review.Title ? `<div class="review-title">${review.Title}</div>` : ''}
+                        <div class="review-text">${review.commentPreview || review.comment}</div>
+                    </div>
+                `).join('');
+            }
             
             // Close modal
             function closeBookingModal() {
@@ -4922,7 +4643,7 @@ function renderReviews(reviews) {
                     }
                 });
                 
-                // Show the selected section
+                // Hide all sections first
                 document.getElementById('dashboard-section').style.display = 'none';
                 document.getElementById('bookings-section').style.display = 'none';
                 document.getElementById('favorites-section').style.display = 'none';
@@ -4930,13 +4651,21 @@ function renderReviews(reviews) {
                 document.getElementById('reviews-section').style.display = 'none';
                 document.getElementById('settings-section').style.display = 'none';
                 
-                document.getElementById(`${section}-section`).style.display = 'block';
-                document.getElementById('dashboard-title').textContent = 
-                    section.charAt(0).toUpperCase() + section.slice(1).replace('-', ' ');
+                // Show the selected section
+                const targetSection = document.getElementById(`${section}-section`);
+                if (targetSection) {
+                    targetSection.style.display = 'block';
+                    document.getElementById('dashboard-title').textContent = 
+                        section.charAt(0).toUpperCase() + section.slice(1).replace('-', ' ');
+                } else {
+                    console.error(`Section with ID ${section}-section not found.`);
+                }
                 
                 // Load data for the section
                 if (section === 'favorites') {
                     loadFavorites();
+                } else if (section === 'messages') {
+                    loadConversations('messages-section', 'dashboard-chat-input', 'dashboard-send-btn');
                 }
             }
             
@@ -4948,6 +4677,26 @@ function renderReviews(reviews) {
                 
                 // Load vendor data
                 loadVendorData();
+                
+                // By default, show vendor dashboard section, then load messages
+                const vendorDashboardMenuItems = document.querySelectorAll('#vendor-dashboard-container .dashboard-menu a');
+                vendorDashboardMenuItems.forEach(item => {
+                    item.classList.remove('active');
+                    if (item.dataset.section === 'vendor-dashboard') {
+                        item.classList.add('active');
+                    }
+                });
+
+                document.getElementById('vendor-dashboard-section').style.display = 'block';
+                document.getElementById('vendor-bookings-section').style.display = 'none';
+                document.getElementById('vendor-services-section').style.display = 'none';
+                document.getElementById('vendor-messages-section').style.display = 'none';
+                document.getElementById('vendor-reviews-section').style.display = 'none';
+                document.getElementById('vendor-analytics-section').style.display = 'none';
+                document.getElementById('vendor-settings-section').style.display = 'none';
+
+                // Load recent messages for vendor dashboard overview
+                loadConversations('vendor-dashboard-section', 'vendor-chat-input', 'vendor-send-btn');
             }
             
             // Load favorites for dashboard
@@ -4956,7 +4705,7 @@ function renderReviews(reviews) {
                 favoritesContainer.innerHTML = '';
                 
                 // In a real app, you would fetch these from the backend
-                const favoriteVendors = state.vendors.slice(0, 3); // Demo - first 3 vendors as favorites
+                const favoriteVendors = state.vendors.filter(vendor => state.favorites.includes(vendor.id));
                 
                 if (favoriteVendors.length === 0) {
                     favoritesContainer.innerHTML = '<p>No favorites saved yet.</p>';
