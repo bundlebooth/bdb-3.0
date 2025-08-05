@@ -119,6 +119,43 @@ router.get('/conversation/:id', async (req, res) => {
   }
 });
 
+router.post('/conversation/check', async (req, res) => {
+  try {
+    const { userId, vendorProfileId } = req.body;
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query(`
+        SELECT TOP 1 ConversationID 
+        FROM Conversations 
+        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+        ORDER BY CreatedAt DESC
+      `);
+
+    if (result.recordset.length > 0) {
+      return res.json({
+        success: true,
+        conversationId: result.recordset[0].ConversationID
+      });
+    }
+
+    res.json({
+      success: true,
+      conversationId: null
+    });
+
+  } catch (err) {
+    console.error('Check conversation error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to check conversation',
+      error: err.message 
+    });
+  }
+});
+
 // Create new conversation
 router.post('/conversation', async (req, res) => {
   try {
