@@ -1961,6 +1961,18 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
+    -- Validate conversation exists and user has access
+    IF NOT EXISTS (
+        SELECT 1 FROM Conversations c
+        LEFT JOIN VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
+        WHERE c.ConversationID = @ConversationID
+        AND (c.UserID = @SenderID OR v.UserID = @SenderID)
+    )
+    BEGIN
+        RAISERROR('Conversation does not exist or user does not have access', 16, 1);
+        RETURN;
+    END
+    
     BEGIN TRY
         BEGIN TRANSACTION;
         
@@ -2004,49 +2016,68 @@ BEGIN
             UpdatedAt = GETDATE()
         WHERE ConversationID = @ConversationID;
         
-        -- Get recipient ID
+        -- Get recipient ID and vendor info
         DECLARE @RecipientID INT;
         DECLARE @IsVendor BIT;
         DECLARE @VendorProfileID INT;
+        DECLARE @VendorName NVARCHAR(100);
+        DECLARE @UserName NVARCHAR(100);
         
         SELECT 
             @RecipientID = CASE WHEN c.UserID = @SenderID THEN v.UserID ELSE c.UserID END,
             @IsVendor = CASE WHEN c.UserID = @SenderID THEN 1 ELSE 0 END,
-            @VendorProfileID = c.VendorProfileID
+            @VendorProfileID = c.VendorProfileID,
+            @VendorName = v.BusinessName,
+            @UserName = u.Name
         FROM Conversations c
         JOIN VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
+        JOIN Users u ON c.UserID = u.UserID
         WHERE c.ConversationID = @ConversationID;
         
         -- Create notification
-        INSERT INTO Notifications (
-            UserID,
-            Type,
-            Title,
-            Message,
-            RelatedID,
-            RelatedType,
-            ActionURL
-        )
-        VALUES (
-            @RecipientID,
-            'message',
-            'New Message',
-            'You have a new message from ' + (SELECT Name FROM Users WHERE UserID = @SenderID),
-            @MessageID,
-            'message',
-            CASE 
-                WHEN @IsVendor = 1 THEN '/vendor/messages/' + CAST(@ConversationID AS NVARCHAR(10))
-                ELSE '/messages/' + CAST(@ConversationID AS NVARCHAR(10))
-            END
-        );
+        IF @RecipientID IS NOT NULL
+        BEGIN
+            INSERT INTO Notifications (
+                UserID,
+                Type,
+                Title,
+                Message,
+                RelatedID,
+                RelatedType,
+                ActionURL
+            )
+            VALUES (
+                @RecipientID,
+                'message',
+                'New Message',
+                'You have a new message from ' + @UserName,
+                @MessageID,
+                'message',
+                CASE 
+                    WHEN @IsVendor = 1 THEN '/vendor/messages/' + CAST(@ConversationID AS NVARCHAR(10))
+                    ELSE '/messages/' + CAST(@ConversationID AS NVARCHAR(10))
+                END
+            );
+        END
         
         COMMIT TRANSACTION;
         
-        SELECT @MessageID AS MessageID;
+        -- Return success with message details
+        SELECT 
+            @MessageID AS MessageID,
+            @ConversationID AS ConversationID,
+            @SenderID AS SenderID,
+            GETDATE() AS SentAt;
     END TRY
     BEGIN CATCH
-        ROLLBACK TRANSACTION;
-        THROW;
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+            
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
+        DECLARE @ErrorState INT = ERROR_STATE();
+        
+        RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
     END CATCH
 END;
 GO
