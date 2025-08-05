@@ -2623,7 +2623,6 @@ function connectToChat() {
         reconnectionAttempts: 5
     });
     
-    // Add user ID to socket for server-side identification
     state.socket.on('connect', () => {
         console.log('Connected to chat server');
         if (currentUser) {
@@ -2632,32 +2631,35 @@ function connectToChat() {
     });
     
     state.socket.on('new-message', (message) => {
-        if (!message || !message.conversationId || !message.senderId || !message.content) {
+        if (!message || !message.ConversationID) {
             console.error('Invalid message format received:', message);
             return;
         }
         
-        // Format the message properly
-        const formattedMessage = {
-            id: message.messageId || `msg-${Date.now()}`,
-            conversationId: message.conversationId,
-            senderId: message.senderId,
-            content: message.content,
-            timestamp: message.createdAt || new Date().toISOString(),
-            isCurrentUser: message.senderId === currentUser?.id
-        };
-        
-        state.chat.addMessage(formattedMessage);
-        renderChatMessages();
+        // Only process if it's for the current conversation
+        if (message.ConversationID === state.chat.currentConversation) {
+            const formattedMessage = {
+                id: message.MessageID,
+                conversationId: message.ConversationID,
+                senderId: message.SenderID,
+                content: message.Content,
+                timestamp: message.CreatedAt,
+                isCurrentUser: message.SenderID === currentUser?.id
+            };
+            
+            state.chat.addMessage(formattedMessage);
+            renderChatMessages();
+        }
     });
     
-    state.socket.on('message-error', (error) => {
-        console.error('Message error:', error);
-        alert(`Message failed: ${error.message}`);
+    state.socket.on('error', (error) => {
+        console.error('Socket error:', error);
+        showChatError('Connection error. Please refresh the page.');
     });
     
     state.socket.on('disconnect', () => {
         console.log('Disconnected from chat server');
+        showChatError('Disconnected. Trying to reconnect...');
     });
 }
 
@@ -4135,20 +4137,13 @@ function openBookingModal(vendor) {
     // Initialize booking calendar
     initBookingCalendar();
 
-    // Set up conversation if user is logged in
+    // Set up chat if user is logged in
     if (currentUser) {
-        findOrCreateConversation(vendor.id)
-            .then(conversationId => {
-                if (conversationId) {
-                    state.chat.currentConversation = conversationId;
-                    return loadChatMessages(conversationId);
-                }
-                throw new Error('No conversation ID returned');
-            })
+        initializeChat(vendor.id)
             .catch(error => {
                 console.error('Chat initialization failed:', error);
                 disableChatInput();
-                showChatError('Failed to initialize chat');
+                showChatError('Failed to initialize chat. Please try again.');
             });
     } else {
         disableChatInput();
@@ -4361,6 +4356,7 @@ function openBookingModal(vendor) {
     
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+}
 
     // Helper functions (included within scope)
     async function findOrCreateConversation(vendorProfileId) {
@@ -4405,27 +4401,72 @@ function openBookingModal(vendor) {
         }
     }
 
-    async function loadChatMessages(conversationId) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${currentUser.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to load messages');
-            }
-            
-            const messages = await response.json();
-            state.chat.setMessages(messages);
-            renderChatMessages();
-            
-        } catch (error) {
-            console.error('Error loading messages:', error);
-            throw error;
-        }
+ async function initializeChat(vendorProfileId) {
+    if (!currentUser) {
+        disableChatInput();
+        return;
     }
+
+    try {
+        // Create or get conversation
+        const response = await fetch(`${API_BASE_URL}/messages/conversation`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                vendorProfileId: vendorProfileId
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to initialize conversation');
+        }
+
+        const data = await response.json();
+        state.chat.currentConversation = data.conversation.ConversationID;
+        
+        // Load existing messages
+        await loadChatMessages(data.conversation.ConversationID);
+        
+    } catch (error) {
+        console.error('Chat initialization failed:', error);
+        disableChatInput();
+        showChatError('Failed to initialize chat. Please try again.');
+    }
+}
+
+async function loadChatMessages(conversationId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${currentUser.id}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load messages');
+        }
+
+        const data = await response.json();
+        state.chat.setMessages(data.messages.map(msg => ({
+            id: msg.MessageID,
+            conversationId: msg.ConversationID,
+            senderId: msg.SenderID,
+            content: msg.Content,
+            timestamp: msg.CreatedAt,
+            isCurrentUser: msg.SenderID === currentUser.id
+        })));
+        
+        renderChatMessages();
+        
+    } catch (error) {
+        console.error('Error loading messages:', error);
+        throw error;
+    }
+}
 
     function disableChatInput() {
         const chatInput = document.getElementById('chat-input');
@@ -4445,65 +4486,73 @@ function openBookingModal(vendor) {
         }
     }
 
-    async function sendChatMessage() {
-        const input = document.getElementById('chat-input');
-        const message = input?.value.trim();
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input?.value.trim();
+    
+    if (!message || !state.chat.currentConversation || !currentUser) {
+        console.error('Missing required data for sending message');
+        return;
+    }
+
+    try {
+        // Create temporary message for optimistic UI
+        const tempMessage = {
+            id: `temp-${Date.now()}`,
+            conversationId: state.chat.currentConversation,
+            senderId: currentUser.id,
+            content: message,
+            timestamp: new Date().toISOString(),
+            isCurrentUser: true,
+            isPending: true
+        };
         
-        if (!message || !state.chat.currentConversation || !currentUser) return;
+        // Add to UI immediately
+        state.chat.addMessage(tempMessage);
+        input.value = '';
+        renderChatMessages();
         
-        try {
-            // Create temporary message for optimistic UI
-            const tempMessage = {
-                id: `temp-${Date.now()}`,
+        // Send to server
+        const response = await fetch(`${API_BASE_URL}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
                 conversationId: state.chat.currentConversation,
                 senderId: currentUser.id,
-                content: message,
-                timestamp: new Date().toISOString(),
-                isCurrentUser: true,
-                isPending: true
-            };
-            
-            // Add to UI immediately
-            state.chat.addMessage(tempMessage);
-            input.value = '';
-            renderChatMessages();
-            
-            // Send to server
-            const response = await fetch(`${API_BASE_URL}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({
-                    conversationId: state.chat.currentConversation,
-                    senderId: currentUser.id,
-                    content: message
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error('Failed to send message');
-            }
-            
-            // Replace temp message with server response
-            const savedMessage = await response.json();
-            state.chat.setMessages([
-                ...state.chat.getMessages().filter(m => m.id !== tempMessage.id),
-                {
-                    ...savedMessage,
-                    isCurrentUser: true
-                }
-            ]);
-            renderChatMessages();
-            
-        } catch (error) {
-            console.error('Message send failed:', error);
-            // Remove temp message and show error
-            state.chat.setMessages(state.chat.getMessages().filter(m => m.id !== tempMessage.id));
-            renderChatMessages();
-            showChatError('Failed to send message');
+                content: message
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to send message');
         }
+        
+        const savedMessage = await response.json();
+        
+        // Replace temp message with server response
+        state.chat.setMessages([
+            ...state.chat.getMessages().filter(m => m.id !== tempMessage.id),
+            {
+                id: savedMessage.message.MessageID,
+                conversationId: savedMessage.message.ConversationID,
+                senderId: savedMessage.message.SenderID,
+                content: savedMessage.message.Content,
+                timestamp: savedMessage.message.CreatedAt,
+                isCurrentUser: savedMessage.message.SenderID === currentUser.id
+            }
+        ]);
+        renderChatMessages();
+        
+    } catch (error) {
+        console.error('Message send failed:', error);
+        // Remove temp message and show error
+        state.chat.setMessages(state.chat.getMessages().filter(m => m.id !== tempMessage.id));
+        renderChatMessages();
+        showChatError(error.message || 'Failed to send message');
     }
 }
 
