@@ -2666,7 +2666,7 @@ async function loadInitialMessages() {
     if (!currentUser || !state.chat.currentConversation) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${userId}`, {
+        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${currentUser.id}`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
@@ -2876,7 +2876,7 @@ function renderChatMessage(message, container) {
 // Add this function to load conversations for the dashboard
 async function loadConversations() {
     try {
-        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${userId}`, {
+        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${currentUser.id}`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
@@ -4366,7 +4366,7 @@ function openBookingModal(vendor) {
     async function findOrCreateConversation(vendorProfileId) {
         try {
             // Try to find existing conversation
-            const findResponse = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${userId}`, {
+            const findResponse = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${currentUser.id}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
@@ -4513,7 +4513,7 @@ function openBookingModal(vendor) {
 async function createOrGetConversation(vendorProfileId) {
     try {
         // First try to find existing conversation
-        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${userId}`, {
+        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${currentUser.id}`, {
             headers: {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
