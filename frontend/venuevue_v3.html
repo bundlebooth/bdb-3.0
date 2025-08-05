@@ -4106,7 +4106,7 @@ function openBookingModal(vendor) {
             <h3 class="chat-title">Message Vendor</h3>
             <div class="chat-container">
                 <div class="chat-messages" id="chat-messages">
-                    <!-- Messages will be loaded here -->
+                    <!-- Messages will load here -->
                 </div>
                 <div class="chat-input">
                     <input type="text" placeholder="Type your message..." id="chat-input">
@@ -4135,17 +4135,9 @@ function openBookingModal(vendor) {
     // Initialize booking calendar
     initBookingCalendar();
 
-    // Set up conversation
+    // Initialize conversation if user is logged in
     if (currentUser) {
-        createOrGetConversation(vendor.id).then(conversationId => {
-            state.chat.currentConversation = conversationId;
-            loadInitialMessages();
-        }).catch(error => {
-            console.error('Failed to initialize conversation:', error);
-            document.getElementById('chat-input').disabled = true;
-            document.getElementById('send-btn').disabled = true;
-            document.querySelector('.chat-title').innerHTML += '<p style="color: var(--accent); font-size: 0.8rem;">Failed to initialize chat</p>';
-        });
+        initializeVendorChat(vendor.id);
     } else {
         document.getElementById('chat-input').disabled = true;
         document.getElementById('send-btn').disabled = true;
@@ -4208,7 +4200,7 @@ function openBookingModal(vendor) {
         }
         
         try {
-            const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/reviews', {
+            const response = await fetch(`${API_BASE_URL}/reviews`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -4265,7 +4257,7 @@ function openBookingModal(vendor) {
         profileModal.style.display = 'flex';
     });
     
-    // Chat input
+    // Chat send button
     document.getElementById('send-btn').addEventListener('click', sendChatMessage);
     document.getElementById('chat-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -4310,7 +4302,7 @@ function openBookingModal(vendor) {
             
             try {
                 // Create payment intent
-                const response = await fetch('https://bdb-3-0-venuevue-api.onrender.com/api/payments/create-payment-intent', {
+                const response = await fetch(`${API_BASE_URL}/payments/create-payment-intent`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -4318,7 +4310,11 @@ function openBookingModal(vendor) {
                     },
                     body: JSON.stringify({
                         amount: calculateTotalAmount(),
-                        currency: 'usd'
+                        currency: 'usd',
+                        vendorId: vendor.id,
+                        services: state.selectedServices,
+                        date: state.selectedDate,
+                        time: state.selectedTime
                     })
                 });
                 
@@ -4355,6 +4351,8 @@ function openBookingModal(vendor) {
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
+
+
 
 // Helper function to create or get conversation
 async function createOrGetConversation(vendorProfileId) {
@@ -4454,68 +4452,77 @@ async function createOrGetConversation(vendorProfileId) {
             }
             
             // Send chat message
+// Updated sendChatMessage function
 async function sendChatMessage() {
-    const input = document.getElementById('chat-input') || 
-                  document.getElementById('dashboard-chat-input') || 
-                  document.getElementById('vendor-chat-input');
-    const message = input.value.trim();
+    const input = document.getElementById('chat-input');
+    const message = input?.value.trim();
     
-    if (!message) return;
-    
-    if (!currentUser) {
-        alert('Please login to send messages');
-        profileModal.style.display = 'flex';
-        showLoginView();
-        return;
-    }
-
-    if (!state.chat.currentConversation) {
-        alert('No conversation selected');
-        return;
-    }
+    if (!message || !state.chat.currentConversation || !currentUser) return;
 
     try {
-        // Create message object
-        const messageObj = {
-            id: 'temp-' + Date.now(),
+        // Create temporary message for optimistic UI
+        const tempMessage = {
+            id: `temp-${Date.now()}`,
+            conversationId: state.chat.currentConversation,
             senderId: currentUser.id,
             content: message,
             timestamp: new Date().toISOString(),
-            isCurrentUser: true
+            isCurrentUser: true,
+            isPending: true
         };
-        
-        // Optimistically add to UI
-        state.chat.addMessage(messageObj);
+
+        // Add to UI immediately
+        state.chat.addMessage(tempMessage);
         input.value = '';
         renderChatMessages();
-        
-        // Send via Socket.IO
-        if (state.socket && state.socket.connected) {
-            state.socket.emit('send-message', {
+
+        // Send to server
+        const response = await fetch(`${API_BASE_URL}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
                 conversationId: state.chat.currentConversation,
-                content: message,
-                senderId: currentUser.id
-            });
-        } else {
-            // Fallback to HTTP
-            await fetch(`${API_BASE_URL}/messages`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({
-                    conversationId: state.chat.currentConversation,
-                    content: message
-                })
-            });
+                senderId: currentUser.id,
+                content: message
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to send message');
         }
-    } catch (err) {
-        console.error('Send message error:', err);
-        alert('Failed to send message');
-        // Remove the failed message
-        state.chat.setMessages(state.chat.getMessages().filter(m => m.id !== messageObj.id));
+
+        // Replace temp message with server response
+        const savedMessage = await response.json();
+        state.chat.setMessages([
+            ...state.chat.getMessages().filter(m => m.id !== tempMessage.id),
+            {
+                ...savedMessage,
+                isCurrentUser: true
+            }
+        ]);
         renderChatMessages();
+
+    } catch (error) {
+        console.error('Message send failed:', error);
+        // Remove temp message and show error
+        state.chat.setMessages(state.chat.getMessages().filter(m => m.id !== tempMessage.id));
+        renderChatMessages();
+        showChatError('Failed to send message');
+    }
+}
+
+// Function to show chat error
+function showChatError(message) {
+    const chatTitle = document.querySelector('.chat-title');
+    if (chatTitle) {
+        const errorElement = document.createElement('p');
+        errorElement.style.color = 'var(--accent)';
+        errorElement.style.fontSize = '0.8rem';
+        errorElement.textContent = message;
+        chatTitle.appendChild(errorElement);
     }
 }
 
