@@ -8,27 +8,6 @@ const handleSocketIO = (io) => {
   io.on('connection', (socket) => {
     console.log(`New connection: User ${socket.userId}`);
 
-    // Join conversation room
-    socket.on('join-conversation', async (conversationId) => {
-      try {
-        const pool = await poolPromise;
-        const result = await pool.request()
-          .input('ConversationID', sql.Int, conversationId)
-          .input('UserID', sql.Int, socket.userId)
-          .query('SELECT 1 FROM ConversationParticipants WHERE ConversationID = @ConversationID AND UserID = @UserID');
-        
-        if (result.recordset.length > 0) {
-          socket.join(`conversation_${conversationId}`);
-          console.log(`User ${socket.userId} joined conversation ${conversationId}`);
-        } else {
-          socket.emit('error', { message: 'Not authorized to join this conversation' });
-        }
-      } catch (err) {
-        console.error('Join conversation error:', err);
-        socket.emit('error', { message: 'Failed to join conversation' });
-      }
-    });
-
     // Handle new messages
     socket.on('send-message', async (messageData) => {
       try {
@@ -52,8 +31,28 @@ const handleSocketIO = (io) => {
 
         const savedMessage = result.recordset[0];
         
-        // Broadcast to conversation room
-        io.to(`conversation_${messageData.conversationId}`).emit('new-message', savedMessage);
+        // Get conversation details to find recipient
+        const conversationResult = await pool.request()
+          .input('ConversationID', sql.Int, messageData.conversationId)
+          .query('SELECT UserID, VendorProfileID FROM Conversations WHERE ConversationID = @ConversationID');
+        
+        if (conversationResult.recordset.length === 0) {
+          throw new Error('Conversation not found');
+        }
+        
+        const conversation = conversationResult.recordset[0];
+        const recipientId = socket.userId === conversation.UserID 
+          ? (await pool.request()
+              .input('VendorProfileID', sql.Int, conversation.VendorProfileID)
+              .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID'))
+              .recordset[0].UserID
+          : conversation.UserID;
+        
+        // Emit to the specific recipient
+        io.to(`user_${recipientId}`).emit('new-message', savedMessage);
+        
+        // Also emit to sender for real-time update on their own client
+        socket.emit('new-message', savedMessage);
         
       } catch (err) {
         console.error('Message sending error:', err);
@@ -64,6 +63,10 @@ const handleSocketIO = (io) => {
       }
     });
 
+    // Join user's personal room when they connect
+    socket.join(`user_${socket.userId}`);
+    console.log(`User ${socket.userId} joined their personal room`);
+
     socket.on('disconnect', () => {
       console.log(`User ${socket.userId} disconnected`);
     });
@@ -71,44 +74,6 @@ const handleSocketIO = (io) => {
 };
 
 // REST API Endpoints
-
-// Get all conversations for a user
-router.get('/conversations', async (req, res) => {
-  try {
-    const { userId } = req.query;
-
-    if (!userId) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'User ID is required' 
-      });
-    }
-
-    const pool = await poolPromise;
-    const result = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .query(`
-        SELECT c.* 
-        FROM Conversations c
-        JOIN ConversationParticipants cp ON c.ConversationID = cp.ConversationID
-        WHERE cp.UserID = @UserID
-        ORDER BY c.CreatedDate DESC
-      `);
-
-    res.json({
-      success: true,
-      conversations: result.recordset
-    });
-
-  } catch (err) {
-    console.error('Get conversations error:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to fetch conversations',
-      error: err.message 
-    });
-  }
-});
 
 // Get conversation messages
 router.get('/conversation/:id', async (req, res) => {
@@ -187,8 +152,17 @@ router.post('/conversation', async (req, res) => {
       const messageResult = await messageRequest.execute('sp_SendMessage');
       
       if (messageResult.recordset[0]) {
-        io.to(`conversation_${result.recordset[0].ConversationID}`)
-          .emit('new-message', messageResult.recordset[0]);
+        // Get vendor user ID
+        const vendorUser = await pool.request()
+          .input('VendorProfileID', sql.Int, vendorProfileId)
+          .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+        
+        if (vendorUser.recordset.length > 0) {
+          // Emit to vendor
+          io.to(`user_${vendorUser.recordset[0].UserID}`).emit('new-message', messageResult.recordset[0]);
+          // Emit to sender
+          io.to(`user_${userId}`).emit('new-message', messageResult.recordset[0]);
+        }
       }
     }
 
@@ -231,8 +205,26 @@ router.post('/', async (req, res) => {
     // Emit via Socket.IO
     if (result.recordset[0]) {
       const io = req.app.get('io');
-      io.to(`conversation_${conversationId}`)
-        .emit('new-message', result.recordset[0]);
+      
+      // Get conversation details to find recipient
+      const conversationResult = await pool.request()
+        .input('ConversationID', sql.Int, conversationId)
+        .query('SELECT UserID, VendorProfileID FROM Conversations WHERE ConversationID = @ConversationID');
+      
+      if (conversationResult.recordset.length > 0) {
+        const conversation = conversationResult.recordset[0];
+        const recipientId = senderId === conversation.UserID 
+          ? (await pool.request()
+              .input('VendorProfileID', sql.Int, conversation.VendorProfileID)
+              .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID'))
+              .recordset[0].UserID
+          : conversation.UserID;
+        
+        // Emit to recipient
+        io.to(`user_${recipientId}`).emit('new-message', result.recordset[0]);
+        // Emit to sender
+        io.to(`user_${senderId}`).emit('new-message', result.recordset[0]);
+      }
     }
 
     res.json({ 
