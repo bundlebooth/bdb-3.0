@@ -15,38 +15,30 @@ const validatePassword = (password) => {
   return password && password.length >= 8;
 };
 
-// User Registration - Updated with better error handling
+// User Registration
 router.post('/register', async (req, res) => {
   try {
-    // Enable CORS
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'POST');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-
     const { name, email, password, isVendor = false } = req.body;
 
-    // Validate request body
+    // Manual validation
     if (!name || !name.trim()) {
       return res.status(400).json({ 
         success: false,
-        message: 'Name is required',
-        error: 'MISSING_NAME'
+        message: 'Name is required' 
       });
     }
 
     if (!email || !validateEmail(email)) {
       return res.status(400).json({ 
         success: false,
-        message: 'Valid email is required',
-        error: 'INVALID_EMAIL'
+        message: 'Valid email is required' 
       });
     }
 
     if (!validatePassword(password)) {
       return res.status(400).json({ 
         success: false,
-        message: 'Password must be at least 8 characters',
-        error: 'INVALID_PASSWORD'
+        message: 'Password must be at least 8 characters' 
       });
     }
 
@@ -61,8 +53,7 @@ router.post('/register', async (req, res) => {
     if (emailCheck.recordset.length > 0) {
       return res.status(409).json({
         success: false,
-        message: 'Email already exists',
-        error: 'EMAIL_EXISTS'
+        message: 'Email already exists'
       });
     }
 
@@ -72,19 +63,13 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const request = pool.request();
-    request.input('Name', sql.NVarChar(100), name.trim());
-    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
-    request.input('PasswordHash', sql.NVarChar(255), passwordHash);
+    request.input('Name', sql.NVarChar(100), name.trim();
+    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim();
+    request.input('PasswordHash', sql.NVarChar(255), passwordHash;
     request.input('IsVendor', sql.Bit, isVendor);
-    request.input('AuthProvider', sql.NVarChar(20), 'email');
+    request.input('AuthProvider', sql.NVarChar(20), 'email';
 
     const result = await request.execute('sp_RegisterUser');
-    
-    // Check if user was created successfully
-    if (!result.recordset || result.recordset.length === 0) {
-      throw new Error('User registration failed - no recordset returned');
-    }
-
     const userId = result.recordset[0].UserID;
 
     // Generate JWT token
@@ -94,7 +79,6 @@ router.post('/register', async (req, res) => {
       { expiresIn: '30d' }
     );
 
-    // Consistent success response
     res.status(201).json({
       success: true,
       userId,
@@ -106,54 +90,37 @@ router.post('/register', async (req, res) => {
 
   } catch (err) {
     console.error('Registration error:', err);
-    
-    // More specific error responses
-    if (err instanceof sql.ConnectionError || err instanceof sql.RequestError) {
-      res.status(500).json({
-        success: false,
-        message: 'Database error occurred',
-        error: 'DATABASE_ERROR'
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: 'Registration failed',
-        error: 'SERVER_ERROR'
-      });
-    }
+    res.status(500).json({
+      success: false,
+      message: 'Registration failed',
+      error: err.message
+    });
   }
 });
 
-// User Login - Also updated for consistency
+// User Login
 router.post('/login', async (req, res) => {
   try {
-    // Enable CORS
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'POST');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-
     const { email, password } = req.body;
 
     // Basic validation
     if (!email || !validateEmail(email)) {
       return res.status(400).json({
         success: false,
-        message: 'Valid email is required',
-        error: 'INVALID_EMAIL'
+        message: 'Valid email is required'
       });
     }
 
     if (!password) {
       return res.status(400).json({
         success: false,
-        message: 'Password is required',
-        error: 'MISSING_PASSWORD'
+        message: 'Password is required'
       });
     }
 
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
+    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim();
 
     const result = await request.query(`
       SELECT 
@@ -170,8 +137,7 @@ router.post('/login', async (req, res) => {
     if (result.recordset.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials',
-        error: 'INVALID_CREDENTIALS'
+        message: 'Invalid credentials'
       });
     }
 
@@ -181,8 +147,7 @@ router.post('/login', async (req, res) => {
     if (!user.IsActive) {
       return res.status(403).json({
         success: false,
-        message: 'Account is inactive. Please contact support.',
-        error: 'ACCOUNT_INACTIVE'
+        message: 'Account is inactive. Please contact support.'
       });
     }
 
@@ -191,8 +156,7 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials',
-        error: 'INVALID_CREDENTIALS'
+        message: 'Invalid credentials'
       });
     }
 
@@ -203,7 +167,6 @@ router.post('/login', async (req, res) => {
       { expiresIn: '30d' }
     );
 
-    // Consistent success response
     res.json({
       success: true,
       userId: user.UserID,
@@ -218,17 +181,178 @@ router.post('/login', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Login failed',
-      error: 'SERVER_ERROR'
+      error: err.message
     });
   }
 });
 
-// Add CORS preflight for all routes
-router.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.status(200).send();
+// Get current user info
+router.get('/me', async (req, res) => {
+  try {
+    // Get token from header
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'No token provided'
+      });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, decoded.id);
+
+    const result = await request.query(`
+      SELECT 
+        UserID as userId,
+        Name as name,
+        Email as email,
+        Avatar as avatar,
+        IsVendor as isVendor
+      FROM Users 
+      WHERE UserID = @UserID
+    `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const user = result.recordset[0];
+    
+    // If avatar is null, create initials from name or email
+    if (!user.avatar) {
+      user.avatar = (user.name || user.email.split('@')[0])[0].toUpperCase();
+    }
+
+    res.json({
+      success: true,
+      ...user
+    });
+
+  } catch (err) {
+    console.error('Get user error:', err);
+    
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token'
+      });
+    }
+    
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Token expired'
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get user',
+      error: err.message
+    });
+  }
+});
+
+// Get user dashboard
+router.get('/:id/dashboard', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+
+    const result = await request.execute('sp_GetUserDashboard');
+    
+    if (!result.recordsets[0] || result.recordsets[0].length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const dashboard = {
+      success: true,
+      user: result.recordsets[0][0],
+      upcomingBookings: result.recordsets[1] || [],
+      recentFavorites: result.recordsets[2] || [],
+      unreadMessages: result.recordsets[3]?.[0]?.UnreadMessages || 0,
+      unreadNotifications: result.recordsets[4]?.[0]?.UnreadNotifications || 0
+    };
+
+    res.json(dashboard);
+
+  } catch (err) {
+    console.error('Dashboard error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to load dashboard',
+      error: err.message
+    });
+  }
+});
+
+// Update user location
+router.post('/:id/location', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { latitude, longitude, city, state, country } = req.body;
+
+    // Basic validation
+    if (isNaN(latitude) || isNaN(longitude)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid latitude and longitude are required'
+      });
+    }
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    
+    request.input('UserID', sql.Int, parseInt(id));
+    request.input('Latitude', sql.Decimal(10, 8), parseFloat(latitude));
+    request.input('Longitude', sql.Decimal(11, 8), parseFloat(longitude));
+    request.input('City', sql.NVarChar(100), city || null);
+    request.input('State', sql.NVarChar(50), state || null);
+    request.input('Country', sql.NVarChar(50), country || null);
+
+    const result = await request.execute('sp_UpdateUserLocation');
+    
+    res.json({
+      success: true,
+      locationId: result.recordset[0].LocationID
+    });
+
+  } catch (err) {
+    console.error('Location update error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update location',
+      error: err.message
+    });
+  }
 });
 
 module.exports = router;
