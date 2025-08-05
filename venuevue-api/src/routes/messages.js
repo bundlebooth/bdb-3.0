@@ -3,6 +3,75 @@ const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 
+// Handle Socket.IO events
+exports.handleSocketIO = (io) => {
+  io.on('connection', (socket) => {
+    console.log(`New connection: User ${socket.userId}`);
+
+    // Join conversation room
+    socket.on('join-conversation', async (conversationId) => {
+      try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+          .input('ConversationID', sql.Int, conversationId)
+          .input('UserID', sql.Int, socket.userId)
+          .query('SELECT 1 FROM ConversationParticipants WHERE ConversationID = @ConversationID AND UserID = @UserID');
+        
+        if (result.recordset.length > 0) {
+          socket.join(`conversation_${conversationId}`);
+          console.log(`User ${socket.userId} joined conversation ${conversationId}`);
+        } else {
+          socket.emit('error', { message: 'Not authorized to join this conversation' });
+        }
+      } catch (err) {
+        console.error('Join conversation error:', err);
+        socket.emit('error', { message: 'Failed to join conversation' });
+      }
+    });
+
+    // Handle new messages
+    socket.on('send-message', async (messageData) => {
+      try {
+        // Validate message
+        if (!messageData.conversationId || !messageData.content) {
+          throw new Error('Missing required fields');
+        }
+
+        const pool = await poolPromise;
+        const request = pool.request();
+        
+        request.input('ConversationID', sql.Int, messageData.conversationId);
+        request.input('SenderID', sql.Int, socket.userId);
+        request.input('Content', sql.NVarChar(sql.MAX), messageData.content);
+        
+        const result = await request.execute('sp_SendMessage');
+        
+        if (result.recordset.length === 0) {
+          throw new Error('Failed to save message');
+        }
+
+        const savedMessage = result.recordset[0];
+        
+        // Broadcast to conversation room
+        io.to(`conversation_${messageData.conversationId}`).emit('new-message', savedMessage);
+        
+      } catch (err) {
+        console.error('Message sending error:', err);
+        socket.emit('message-error', { 
+          error: err.message,
+          conversationId: messageData?.conversationId 
+        });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log(`User ${socket.userId} disconnected`);
+    });
+  });
+};
+
+// REST API Endpoints
+
 // Get conversation messages
 router.get('/conversation/:id', async (req, res) => {
   try {
@@ -32,7 +101,7 @@ router.get('/conversation/:id', async (req, res) => {
   } catch (err) {
     console.error('Database error:', err);
     
-    if (err.number === 50000) { // Custom RAISERROR from SQL
+    if (err.number === 50000) {
       return res.status(400).json({ 
         success: false,
         message: err.message 
@@ -43,86 +112,6 @@ router.get('/conversation/:id', async (req, res) => {
       success: false,
       message: 'Failed to fetch messages',
       error: err.message 
-    });
-  }
-});
-
-// Send message
-router.post('/', async (req, res) => {
-  try {
-    const { 
-      conversationId, 
-      senderId, 
-      content, 
-      attachment,
-      vendorProfileId,
-      bookingId
-    } = req.body;
-
-    // Validate required fields
-    if (!conversationId || !senderId || !content) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'conversationId, senderId, and content are required fields' 
-      });
-    }
-
-    const pool = await poolPromise;
-    const request = pool.request();
-    
-    request.input('ConversationID', sql.Int, conversationId);
-    request.input('SenderID', sql.Int, senderId);
-    request.input('Content', sql.NVarChar(sql.MAX), content);
-    
-    // Handle optional attachment
-    if (attachment) {
-      request.input('AttachmentURL', sql.NVarChar(255), attachment.url || null);
-      request.input('AttachmentType', sql.NVarChar(50), attachment.type || null);
-      request.input('AttachmentSize', sql.Int, attachment.size || null);
-      request.input('AttachmentName', sql.NVarChar(255), attachment.name || null);
-    } else {
-      request.input('AttachmentURL', sql.NVarChar(255), null);
-      request.input('AttachmentType', sql.NVarChar(50), null);
-      request.input('AttachmentSize', sql.Int, null);
-      request.input('AttachmentName', sql.NVarChar(255), null);
-    }
-
-    const result = await request.execute('sp_SendMessage');
-    
-    if (result.recordset && result.recordset.length > 0) {
-      return res.json({ 
-        success: true,
-        message: 'Message sent successfully',
-        data: result.recordset[0]
-      });
-    } else {
-      throw new Error('No data returned from stored procedure');
-    }
-
-  } catch (err) {
-    console.error('Message sending error:', err);
-    
-    // Handle specific SQL errors
-    if (err.number === 547) { // Foreign key violation
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid conversation or user reference',
-        suggestion: 'Verify the conversation exists and user has access'
-      });
-    }
-    
-    if (err.number === 50000) { // Custom RAISERROR from SQL
-      return res.status(400).json({ 
-        success: false,
-        message: err.message 
-      });
-    }
-    
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to send message',
-      error: err.message,
-      details: process.env.NODE_ENV === 'development' ? err : undefined
     });
   }
 });
@@ -149,17 +138,25 @@ router.post('/conversation', async (req, res) => {
     
     const result = await request.execute('sp_CreateConversation');
     
-    if (initialMessage && result.recordset[0].ConversationID) {
+    // Emit via Socket.IO if initial message exists
+    if (initialMessage && result.recordset[0]?.ConversationID) {
+      const io = req.app.get('io');
       const messageRequest = pool.request();
       messageRequest.input('ConversationID', sql.Int, result.recordset[0].ConversationID);
       messageRequest.input('SenderID', sql.Int, userId);
       messageRequest.input('Content', sql.NVarChar(sql.MAX), initialMessage);
-      await messageRequest.execute('sp_SendMessage');
+      
+      const messageResult = await messageRequest.execute('sp_SendMessage');
+      
+      if (messageResult.recordset[0]) {
+        io.to(`conversation_${result.recordset[0].ConversationID}`)
+          .emit('new-message', messageResult.recordset[0]);
+      }
     }
 
     res.json({ 
       success: true,
-      conversation: result.recordset[0]
+      conversation: result.recordset[0] || null
     });
 
   } catch (err) {
@@ -167,6 +164,49 @@ router.post('/conversation', async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Failed to create conversation',
+      error: err.message 
+    });
+  }
+});
+
+// Send message (HTTP endpoint)
+router.post('/', async (req, res) => {
+  try {
+    const { conversationId, senderId, content } = req.body;
+
+    if (!conversationId || !senderId || !content) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'conversationId, senderId, and content are required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    
+    request.input('ConversationID', sql.Int, conversationId);
+    request.input('SenderID', sql.Int, senderId);
+    request.input('Content', sql.NVarChar(sql.MAX), content);
+    
+    const result = await request.execute('sp_SendMessage');
+    
+    // Emit via Socket.IO
+    if (result.recordset[0]) {
+      const io = req.app.get('io');
+      io.to(`conversation_${conversationId}`)
+        .emit('new-message', result.recordset[0]);
+    }
+
+    res.json({ 
+      success: true,
+      message: result.recordset[0] || null
+    });
+
+  } catch (err) {
+    console.error('Message sending error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to send message',
       error: err.message 
     });
   }
