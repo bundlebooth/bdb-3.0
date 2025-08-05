@@ -2586,13 +2586,19 @@
             
             // Connect to Socket.IO for chat
     function connectToChat() {
-        const token = localStorage.getItem('token');
-        state.socket = io(API_BASE_URL, {
-            auth: {
-                token: token
-            },
-            transports: ['websocket']
-        });
+       const token = localStorage.getItem('token');
+  if (!token) {
+    console.error('No token available for chat');
+    return;
+  }
+
+  state.socket = io(API_BASE_URL, {
+    auth: {
+      token: token
+    },
+    transports: ['websocket'],
+    reconnectionAttempts: 5
+  });
         
         state.socket.on('connect', () => {
             console.log('Connected to chat server');
@@ -2640,54 +2646,44 @@ async function loadInitialMessages() {
 }
 
 async function sendChatMessage() {
-    const input = document.getElementById('chat-input') || 
-                  document.getElementById('dashboard-chat-input') || 
-                  document.getElementById('vendor-chat-input');
-    const message = input.value.trim();
-    
-    if (!message) return;
-    
-    if (!currentUser) {
-        alert('Please login to send messages');
-        profileModal.style.display = 'flex';
-        showLoginView();
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/messages`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-                conversationId: state.currentChat || 0,
-                senderId: currentUser.id,
-                content: message
-            })
-        });
-        
-        if (!response.ok) throw new Error('Failed to send message');
-        
-        const result = await response.json();
-        
-        // Add to UI immediately for better UX
-        addChatMessage({
-            id: result.messageId,
-            senderId: currentUser.id,
-            content: message,
-            timestamp: new Date().toISOString(),
-            isCurrentUser: true
-        });
-        
-        // Clear input
-        input.value = '';
-        
-    } catch (error) {
-        console.error('Error sending message:', error);
-        alert('Failed to send message. Please try again.');
-    }
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  
+  if (!message) return;
+  
+  if (!currentUser) {
+    alert('Please login to send messages');
+    profileModal.style.display = 'flex';
+    showLoginView();
+    return;
+  }
+
+  if (!state.currentChat) {
+    alert('No conversation selected');
+    return;
+  }
+
+  try {
+    // Send the message
+    state.socket.emit('send-message', {
+      conversationId: state.currentChat,
+      content: message
+    });
+
+    // Optimistically add to UI
+    addChatMessage({
+      id: 'temp-' + Date.now(),
+      senderId: currentUser.id,
+      content: message,
+      timestamp: new Date().toISOString(),
+      isCurrentUser: true
+    });
+
+    input.value = '';
+  } catch (err) {
+    console.error('Send message error:', err);
+    alert('Failed to send message');
+  }
 }
 
 function addChatMessage(message) {
@@ -4282,7 +4278,10 @@ function setupEventListeners() {
                 };
                 
                 // In a real app, you would send this to your backend via Socket.IO
-                state.socket.emit('chat-message', chatMessage);
+                state.socket.emit('send-message', {
+                conversationId: state.currentChat,
+                content: message
+                });
                 
                 // Add to UI
                 addChatMessage({
