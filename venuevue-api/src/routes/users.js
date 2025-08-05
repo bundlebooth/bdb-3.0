@@ -63,11 +63,11 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const request = pool.request();
-    request.input('Name', sql.NVarChar(100), name.trim();
-    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim();
-    request.input('PasswordHash', sql.NVarChar(255), passwordHash;
+    request.input('Name', sql.NVarChar(100), name.trim());
+    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
+    request.input('PasswordHash', sql.NVarChar(255), passwordHash);
     request.input('IsVendor', sql.Bit, isVendor);
-    request.input('AuthProvider', sql.NVarChar(20), 'email';
+    request.input('AuthProvider', sql.NVarChar(20), 'email');
 
     const result = await request.execute('sp_RegisterUser');
     const userId = result.recordset[0].UserID;
@@ -120,7 +120,7 @@ router.post('/login', async (req, res) => {
 
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim();
+    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
 
     const result = await request.query(`
       SELECT 
