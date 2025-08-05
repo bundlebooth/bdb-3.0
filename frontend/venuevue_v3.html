@@ -2297,7 +2297,8 @@
                 socket: null,
                 chatMessages: [],
                 currentChat: null,
-                categories: []
+                categories: [],
+                currentChat: null
             };
             
             // User state
@@ -2585,79 +2586,95 @@
             }
             
             // Connect to Socket.IO for chat
-    function connectToChat() {
-       const token = localStorage.getItem('token');
-  if (!token) {
-    console.error('No token available for chat');
-    return;
-  }
-
-  state.socket = io(API_BASE_URL, {
-    auth: {
-      token: token
-    },
-    transports: ['websocket'],
-    reconnectionAttempts: 5
-  });
-        
-        state.socket.on('connect', () => {
-            console.log('Connected to chat server');
-            if (currentUser) {
-                // Load initial messages when connected
-                loadInitialMessages();
-            }
-        });
-        
-        state.socket.on('disconnect', () => {
-            console.log('Disconnected from chat server');
-        });
-        
-        state.socket.on('error', (error) => {
-            console.error('Socket error:', error);
-        });
-        
-state.socket.on('new-message', (message) => {
-    // Ensure the message is in the correct format
-    const formattedMessage = {
-        id: message.id || `msg-${Date.now()}`,
-        senderId: message.senderId,
-        content: message.content,
-        timestamp: message.timestamp || new Date().toISOString(),
-        isCurrentUser: message.senderId === currentUser?.id
-    };
-    addChatMessage(formattedMessage);
-});
-        
-state.socket.on('message-history', (messages) => {
-    // Ensure messages is an array and each message has required fields
-    state.chatMessages = Array.isArray(messages) ? 
-        messages.map(msg => ({
-            id: msg.id || `msg-${Date.now()}`,
-            senderId: msg.senderId,
-            content: msg.content,
-            timestamp: msg.timestamp || new Date().toISOString(),
-            isCurrentUser: msg.senderId === currentUser?.id
-        })) : [];
-    renderChatMessages();
-});
+// In your connectToChat function:
+function connectToChat() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        console.error('No token available for chat');
+        return;
     }
+
+    // Initialize socket connection
+    state.socket = io(API_BASE_URL, {
+        auth: { token },
+        transports: ['websocket'],
+        reconnectionAttempts: 5
+    });
+    
+    // Event handlers
+    state.socket.on('connect', () => {
+        console.log('Connected to chat server');
+        if (currentUser && state.currentChat) {
+            loadInitialMessages();
+        }
+    });
+    
+    state.socket.on('disconnect', () => {
+        console.log('Disconnected from chat server');
+    });
+    
+    state.socket.on('error', (error) => {
+        console.error('Socket error:', error);
+    });
+    
+    state.socket.on('new-message', (message) => {
+        console.log('New message received:', message);
+        // Ensure the message format is correct
+        const formattedMessage = {
+            id: message.id || `msg-${Date.now()}`,
+            senderId: message.senderId,
+            content: message.content,
+            timestamp: message.timestamp || new Date().toISOString(),
+            isCurrentUser: message.senderId === currentUser?.id
+        };
+        addChatMessage(formattedMessage);
+    });
+    
+    state.socket.on('message-history', (messages) => {
+        console.log('Message history received:', messages);
+        // Ensure messages is an array and properly formatted
+        state.chatMessages = Array.isArray(messages) ? 
+            messages.map(msg => ({
+                id: msg.id || `msg-${Date.now()}`,
+                senderId: msg.senderId,
+                content: msg.content,
+                timestamp: msg.timestamp || new Date().toISOString(),
+                isCurrentUser: msg.senderId === currentUser?.id
+            })) : [];
+        renderChatMessages();
+    });
+}
 
 // Add these functions to your script
 async function loadInitialMessages() {
+    if (!currentUser || !state.currentChat) return;
+    
     try {
-        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.currentChat || 0}?userId=${currentUser.id}`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        });
-        
-        if (!response.ok) throw new Error('Failed to load messages');
-        
-        const messages = await response.json();
-        state.chatMessages = messages;
-        renderChatMessages();
+        // First try to load from socket
+        if (state.socket && state.socket.connected) {
+            state.socket.emit('request-messages', {
+                conversationId: state.currentChat,
+                limit: 50
+            });
+        } else {
+            // Fallback to HTTP request
+            const response = await fetch(`${API_BASE_URL}/messages?conversationId=${state.currentChat}&limit=50`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            
+            if (!response.ok) throw new Error('Failed to load messages');
+            
+            const messages = await response.json();
+            state.chatMessages = messages;
+            renderChatMessages();
+        }
     } catch (error) {
         console.error('Error loading messages:', error);
+        // Initialize empty chat if loading fails
+        state.chatMessages = [];
+        renderChatMessages();
     }
 }
 
@@ -2695,14 +2712,22 @@ async function sendChatMessage() {
         addChatMessage(tempMessage);
         input.value = '';
 
-        // Send the message
-        state.socket.emit('send-message', {
-            conversationId: state.currentChat,
-            content: message
-        });
-
-        // In a real app, you would replace the temp message with the actual one from the server
-        // For now, we'll just keep the temp message
+        // Send the message via Socket.IO
+        if (state.socket && state.socket.connected) {
+            state.socket.emit('send-message', {
+                conversationId: state.currentChat,
+                content: message,
+                senderId: currentUser.id,
+                timestamp: tempMessage.timestamp
+            });
+        } else {
+            console.error('Socket not connected');
+            // Fallback to HTTP request if socket isn't available
+            await sendMessageViaHTTP({
+                conversationId: state.currentChat,
+                content: message
+            });
+        }
         
     } catch (err) {
         console.error('Send message error:', err);
@@ -2713,17 +2738,54 @@ async function sendChatMessage() {
     }
 }
 
+// Fallback HTTP function
+async function sendMessageViaHTTP(messageData) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(messageData)
+        });
+        
+        if (!response.ok) throw new Error('Failed to send message');
+        
+        const message = await response.json();
+        addChatMessage(message);
+    } catch (error) {
+        console.error('HTTP message send failed:', error);
+        throw error;
+    }
+}
+
 function addChatMessage(message) {
-    // Ensure chatMessages is an array
-    if (!Array.isArray(state.chatMessages)) {
+    // Ensure chatMessages exists and is an array
+    if (!state.chatMessages || !Array.isArray(state.chatMessages)) {
         state.chatMessages = [];
     }
     
-    // Check if message already exists
-    if (state.chatMessages.some(m => m.id === message.id)) return;
+    // Validate the message object
+    if (!message || typeof message !== 'object') {
+        console.error('Invalid message format:', message);
+        return;
+    }
     
-    state.chatMessages.push(message);
-    renderChatMessage(message);
+    // Ensure required fields exist
+    const validMessage = {
+        id: message.id || `msg-${Date.now()}`,
+        senderId: message.senderId || (message.sender === currentUser?.email ? currentUser.id : 'unknown'),
+        content: message.content || '',
+        timestamp: message.timestamp || new Date().toISOString(),
+        isCurrentUser: message.isCurrentUser || (message.senderId === currentUser?.id)
+    };
+    
+    // Check if message already exists
+    if (state.chatMessages.some(m => m.id === validMessage.id)) return;
+    
+    state.chatMessages.push(validMessage);
+    renderChatMessage(validMessage);
 }
 
 function renderChatMessages() {
@@ -3917,7 +3979,8 @@ function setupEventListeners() {
                 state.selectedServices = [];
                 state.selectedDate = null;
                 state.selectedTime = null;
-                state.currentChat = vendor.id;
+                state.currentChat = `user_${currentUser?.id}_vendor_${vendor.id}`;
+                state.chatMessages = []; // Reset messages
                 
                 // Create modal content
                 modalBody.innerHTML = `
