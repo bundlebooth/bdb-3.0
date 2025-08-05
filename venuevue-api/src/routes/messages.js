@@ -4,7 +4,7 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 
 // Handle Socket.IO events
-exports.handleSocketIO = (io) => {
+const handleSocketIO = (io) => {
   io.on('connection', (socket) => {
     console.log(`New connection: User ${socket.userId}`);
 
@@ -212,4 +212,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = {
+  router,
+  handleSocketIO
+};
