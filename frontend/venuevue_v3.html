@@ -2291,38 +2291,56 @@
             
 
             // App state
-            let state = {
-                vendors: [],
-                filteredVendors: [],
-                favorites: [],
-                currentPage: 1,
-                itemsPerPage: 6,
-                map: null,
-                markers: [],
-                currentView: 'list',
-                userLocation: null,
-                currentCategory: 'all',
-                filters: {
-                    location: '',
-                    types: ['independent', 'company'],
-                    price: 40,
-                    popular: [],
-                    startDate: null,
-                    endDate: null,
-                    region: ''
-                },
-                currentVendor: null,
-                selectedServices: [],
-                selectedDate: null,
-                selectedTime: null,
-                stripe: null,
-                elements: null,
-                paymentIntent: null,
-                socket: null,
-                currentChat: null,
-                categories: [],
-                chatMessages: [] 
-            };
+let state = {
+    vendors: [],
+    filteredVendors: [],
+    favorites: [],
+    currentPage: 1,
+    itemsPerPage: 6,
+    map: null,
+    markers: [],
+    currentView: 'list',
+    userLocation: null,
+    currentCategory: 'all',
+    filters: {
+        location: '',
+        types: ['independent', 'company'],
+        price: 40,
+        popular: [],
+        startDate: null,
+        endDate: null,
+        region: ''
+    },
+    currentVendor: null,
+    selectedServices: [],
+    selectedDate: null,
+    selectedTime: null,
+    stripe: null,
+    elements: null,
+    paymentIntent: null,
+    socket: null,
+    currentChat: null,
+    categories: [],
+    chat: {
+        messages: [],
+        currentConversation: null,
+        init: function() {
+            this.messages = [];
+            this.currentConversation = null;
+        },
+        addMessage: function(message) {
+            if (!this.messages) this.messages = [];
+            if (!message.id) message.id = `msg-${Date.now()}`;
+            this.messages.push(message);
+        },
+        setMessages: function(messages) {
+            this.messages = Array.isArray(messages) ? messages : [];
+        },
+        getMessages: function() {
+            return this.messages || [];
+        }
+    }
+};
             
             // User state
             let currentUser = null;
@@ -2666,7 +2684,13 @@
 
 // Add these functions to your script
 async function loadInitialMessages() {
-    if (!currentUser || !state.chat.currentConversation) return;
+    if (!currentUser || !state.chat.currentConversation) {
+        console.error('Missing required data:', {
+            user: currentUser,
+            conversation: state.chat.currentConversation
+        });
+        return;
+    }
     
     try {
         const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}?userId=${currentUser.id}`, {
@@ -2678,16 +2702,10 @@ async function loadInitialMessages() {
         if (!response.ok) throw new Error('Failed to load messages');
         
         const messages = await response.json();
-        
-        // Use the chat state manager to set messages
         state.chat.setMessages(messages);
-        
-        // Render all messages
         renderChatMessages();
-        
     } catch (error) {
         console.error('Error loading messages:', error);
-        // Initialize empty chat
         state.chat.setMessages([]);
         renderChatMessages();
     }
@@ -4036,6 +4054,9 @@ function setupEventListeners() {
                 state.selectedTime = null;
                 state.chatMessages = []; // Initialize chat messages array
 
+                    // Initialize chat state
+    state.chat.init();
+
                 // Create modal content
                 modalBody.innerHTML = `
         <div class="vendor-detail-header">
@@ -4401,73 +4422,85 @@ function setupEventListeners() {
     }
 
 
-            async function initializeChat(vendorProfileId) {
-                if (!currentUser) {
-                    disableChatInput();
-                    return;
-                }
+async function initializeChat(vendorProfileId) {
+    if (!currentUser) {
+        disableChatInput();
+        return;
+    }
 
-                try {
-                    // Create or get conversation
-                    const response = await fetch(`${API_BASE_URL}/messages/conversation`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        },
-                        body: JSON.stringify({
-                            userId: currentUser.id,
-                            vendorProfileId: vendorProfileId
-                        })
-                    });
+    try {
+        // Initialize chat state
+        state.chat.init();
+        
+        // First create or get conversation
+        const conversationResponse = await fetch(`${API_BASE_URL}/messages/conversation`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                userId: currentUser.id,
+                vendorProfileId: vendorProfileId
+            })
+        });
 
-                    if (!response.ok) {
-                        throw new Error('Failed to initialize conversation');
-                    }
+        if (!conversationResponse.ok) {
+            throw new Error('Failed to initialize conversation');
+        }
 
-                    const data = await response.json();
-                    state.currentChat = data.conversation.id;
-                    
-                    // Load existing messages
-                    await loadChatMessages(data.conversation.id);
-                    
-                } catch (error) {
-                    console.error('Chat initialization failed:', error);
-                    disableChatInput();
-                    showChatError('Failed to initialize chat. Please try again.');
-                }
+        const conversationData = await conversationResponse.json();
+        state.chat.currentConversation = conversationData.conversation?.ConversationID || conversationData.conversation?.conversationId;
+
+        if (!state.chat.currentConversation) {
+            throw new Error('No conversation ID returned');
+        }
+
+        // Now load messages with the valid conversation ID
+        await loadChatMessages(state.chat.currentConversation);
+        
+    } catch (error) {
+        console.error('Chat initialization failed:', error);
+        disableChatInput();
+        showChatError('Failed to initialize chat. Please try again.');
+    }
+}
+
+
+async function loadChatMessages(conversationId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${currentUser.id}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
+        });
 
+        if (!response.ok) {
+            throw new Error('Failed to load messages');
+        }
 
-            async function loadChatMessages(conversationId) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}`, {
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        }
-                    });
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to load messages');
+        }
 
-                    if (!response.ok) {
-                        throw new Error('Failed to load messages');
-                    }
-
-                    const messages = await response.json();
-                    state.chatMessages = messages.map(msg => ({
-                        id: msg.id,
-                        conversationId: msg.conversationId,
-                        senderId: msg.senderId,
-                        content: msg.content,
-                        timestamp: msg.timestamp,
-                        isCurrentUser: msg.senderId === currentUser.id
-                    }));
-                    
-                    renderChatMessages();
-                    
-                } catch (error) {
-                    console.error('Error loading messages:', error);
-                    throw error;
-                }
-            }
+        state.chatMessages = data.messages.map(msg => ({
+            id: msg.MessageID || msg.messageId,
+            conversationId: msg.ConversationID || msg.conversationId,
+            senderId: msg.SenderID || msg.senderId,
+            content: msg.Content || msg.content,
+            timestamp: msg.CreatedAt || msg.timestamp,
+            isCurrentUser: msg.SenderID === currentUser.id || msg.senderId === currentUser.id
+        }));
+        
+        renderChatMessages();
+        
+    } catch (error) {
+        console.error('Error loading messages:', error);
+        throw error;
+    }
+}
 
 
             function disableChatInput() {
@@ -4489,72 +4522,72 @@ function setupEventListeners() {
     }
 
 
-            async function sendChatMessage() {
-                const input = document.getElementById('chat-input') || 
-                             document.getElementById('dashboard-chat-input') || 
-                             document.getElementById('vendor-chat-input');
-                const message = input?.value.trim();
-                
-                if (!message || !state.currentChat || !currentUser) return;
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input') || 
+                 document.getElementById('dashboard-chat-input') || 
+                 document.getElementById('vendor-chat-input');
+    const message = input?.value.trim();
+    
+    if (!message || !state.currentChat || !currentUser) return;
 
-                try {
-                    // Create temporary message for optimistic UI
-                    const tempMessage = {
-                        id: `temp-${Date.now()}`,
-                        conversationId: state.currentChat,
-                        senderId: currentUser.id,
-                        content: message,
-                        timestamp: new Date().toISOString(),
-                        isCurrentUser: true,
-                        isPending: true
-                    };
+    try {
+        // Create temporary message for optimistic UI
+        const tempMessage = {
+            id: `temp-${Date.now()}`,
+            conversationId: state.currentChat,
+            senderId: currentUser.id,
+            content: message,
+            timestamp: new Date().toISOString(),
+            isCurrentUser: true,
+            isPending: true
+        };
 
-                    // Add to UI immediately
-                    state.chatMessages.push(tempMessage);
-                    input.value = '';
-                    renderChatMessages();
+        // Add to UI immediately
+        state.chatMessages.push(tempMessage);
+        input.value = '';
+        renderChatMessages();
 
-                    // Send to server
-                    const response = await fetch(`${API_BASE_URL}/messages`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        },
-                        body: JSON.stringify({
-                            conversationId: state.currentChat,
-                            senderId: currentUser.id,
-                            content: message
-                        })
-                    });
+        // Send to server
+        const response = await fetch(`${API_BASE_URL}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                conversationId: state.currentChat,
+                senderId: currentUser.id,
+                content: message
+            })
+        });
 
-                    if (!response.ok) {
-                        throw new Error('Failed to send message');
-                    }
+        if (!response.ok) {
+            throw new Error('Failed to send message');
+        }
 
-                    const savedMessage = await response.json();
-                    
-                    // Replace temp message with server response
-                    state.chatMessages = state.chatMessages.filter(m => m.id !== tempMessage.id);
-                    state.chatMessages.push({
-                        id: savedMessage.id,
-                        conversationId: savedMessage.conversationId,
-                        senderId: savedMessage.senderId,
-                        content: savedMessage.content,
-                        timestamp: savedMessage.timestamp,
-                        isCurrentUser: savedMessage.senderId === currentUser.id
-                    });
-                    
-                    renderChatMessages();
+        const savedMessage = await response.json();
+        
+        // Replace temp message with server response
+        state.chatMessages = state.chatMessages.filter(m => m.id !== tempMessage.id);
+        state.chatMessages.push({
+            id: savedMessage.id,
+            conversationId: savedMessage.conversationId,
+            senderId: savedMessage.senderId,
+            content: savedMessage.content,
+            timestamp: savedMessage.timestamp,
+            isCurrentUser: savedMessage.senderId === currentUser.id
+        });
+        
+        renderChatMessages();
 
-                } catch (error) {
-                    console.error('Message send failed:', error);
-                    // Remove temp message and show error
-                    state.chatMessages = state.chatMessages.filter(m => m.id !== tempMessage.id);
-                    renderChatMessages();
-                    showChatError('Failed to send message');
-                }
-            }
+    } catch (error) {
+        console.error('Message send failed:', error);
+        // Remove temp message and show error
+        state.chatMessages = state.chatMessages.filter(m => m.id !== tempMessage.id);
+        renderChatMessages();
+        showChatError('Failed to send message');
+    }
+}
 
 
 
