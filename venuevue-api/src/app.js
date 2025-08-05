@@ -48,7 +48,7 @@ io.use((socket, next) => {
 const vendorsRouter = require('./routes/vendors');
 const bookingsRouter = require('./routes/bookings');
 const favoritesRouter = require('./routes/favorites');
-const messagesRouter = require('./routes/messages');
+const { router: messagesRouter, handleSocketIO } = require('./routes/messages');
 const reviewsRouter = require('./routes/reviews');
 const usersRouter = require('./routes/users');
 const notificationsRouter = require('./routes/notifications');
@@ -80,8 +80,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Something broke!', error: err.message });
 });
 
-// Handle Socket.IO connections
-require('./routes/messages').handleSocketIO(io);
+// Initialize Socket.IO handlers
+handleSocketIO(io);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
