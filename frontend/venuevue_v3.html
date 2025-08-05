@@ -2265,6 +2265,29 @@
             const vendorRegistrationForm = document.getElementById('vendor-registration-form');
             const addServiceFieldBtn = document.getElementById('add-service-field');
             const serviceFieldsContainer = document.getElementById('service-fields-container');
+            const chatState = {
+    messages: [],
+    currentConversation: null,
+    
+    init: function() {
+        this.messages = [];
+        this.currentConversation = null;
+    },
+    
+    addMessage: function(message) {
+        if (!this.messages) this.messages = [];
+        if (!message.id) message.id = `msg-${Date.now()}`;
+        this.messages.push(message);
+    },
+    
+    setMessages: function(messages) {
+        this.messages = Array.isArray(messages) ? messages : [];
+    },
+    
+    getMessages: function() {
+        return this.messages || [];
+    }
+};
             
             // App state
             let state = {
@@ -2295,7 +2318,7 @@
                 elements: null,
                 paymentIntent: null,
                 socket: null,
-                chatMessages: [],
+                chat: chatState, 
                 currentChat: null,
                 categories: [],
                 currentChat: null
@@ -2647,33 +2670,29 @@ function connectToChat() {
 
 // Add these functions to your script
 async function loadInitialMessages() {
-    if (!currentUser || !state.currentChat) return;
+    if (!currentUser || !state.chat.currentConversation) return;
     
     try {
-        // First try to load from socket
-        if (state.socket && state.socket.connected) {
-            state.socket.emit('request-messages', {
-                conversationId: state.currentChat,
-                limit: 50
-            });
-        } else {
-            // Fallback to HTTP request
-            const response = await fetch(`${API_BASE_URL}/messages?conversationId=${state.currentChat}&limit=50`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-            
-            if (!response.ok) throw new Error('Failed to load messages');
-            
-            const messages = await response.json();
-            state.chatMessages = messages;
-            renderChatMessages();
-        }
+        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.chat.currentConversation}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to load messages');
+        
+        const messages = await response.json();
+        
+        // Use the chat state manager to set messages
+        state.chat.setMessages(messages);
+        
+        // Render all messages
+        renderChatMessages();
+        
     } catch (error) {
         console.error('Error loading messages:', error);
-        // Initialize empty chat if loading fails
-        state.chatMessages = [];
+        // Initialize empty chat
+        state.chat.setMessages([]);
         renderChatMessages();
     }
 }
@@ -2790,20 +2809,27 @@ function addChatMessage(message) {
 
 function renderChatMessages() {
     const chatContainer = document.getElementById('chat-messages') || 
-                          document.getElementById('dashboard-chat-messages') || 
-                          document.getElementById('vendor-chat-messages');
+                         document.getElementById('dashboard-chat-messages') || 
+                         document.getElementById('vendor-chat-messages');
     
-    if (chatContainer) {
-        chatContainer.innerHTML = '';
-        // Sort messages by timestamp
-        const sortedMessages = [...state.chatMessages].sort((a, b) => 
-            new Date(a.timestamp) - new Date(b.timestamp)
-        );
-        
-        sortedMessages.forEach(message => {
-            renderChatMessage(message, chatContainer);
-        });
-    }
+    if (!chatContainer) return;
+    
+    // Clear existing messages
+    chatContainer.innerHTML = '';
+    
+    // Get messages from the chat state manager
+    const messages = state.chat.getMessages();
+    
+    // Sort messages by timestamp (oldest first)
+    messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    // Render each message
+    messages.forEach(message => {
+        renderChatMessage(message, chatContainer);
+    });
+    
+    // Scroll to bottom
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 function renderChatMessage(message, container) {
@@ -2886,10 +2912,20 @@ function renderConversations(conversations) {
 
             
             // Add a chat message to the UI
-            function addChatMessage(message) {
-                state.chatMessages.push(message);
-                renderChatMessage(message);
-            }
+function addChatMessage(message) {
+    // Use the chat state manager
+    state.chat.addMessage(message);
+    
+    // Get the appropriate chat container
+    const chatContainer = document.getElementById('chat-messages') || 
+                         document.getElementById('dashboard-chat-messages') || 
+                         document.getElementById('vendor-chat-messages');
+    
+    // Render just this message
+    if (chatContainer) {
+        renderChatMessage(message, chatContainer);
+    }
+}
             
             // Render all chat messages
             function renderChatMessages() {
@@ -3981,6 +4017,8 @@ function setupEventListeners() {
                 state.selectedTime = null;
                 state.currentChat = `user_${currentUser?.id}_vendor_${vendor.id}`;
                 state.chatMessages = []; // Reset messages
+                 state.chat.init();
+                state.chat.currentConversation = `user_${currentUser?.id}_vendor_${vendor.id}`;
                 
                 // Create modal content
                 modalBody.innerHTML = `
@@ -4353,42 +4391,78 @@ function setupEventListeners() {
             }
             
             // Send chat message
-            function sendChatMessage() {
-                const input = document.getElementById('chat-input') || 
-                              document.getElementById('dashboard-chat-input') || 
-                              document.getElementById('vendor-chat-input');
-                const message = input.value.trim();
-                
-                if (!message) return;
-                
-                if (!currentUser) {
-                    alert('Please login to send messages');
-                    return;
-                }
-                
-                const chatMessage = {
-                    sender: currentUser.email,
-                    recipient: state.currentVendor?.email || 'vendor@example.com',
-                    content: message,
-                    timestamp: new Date().toISOString()
-                };
-                
-                // In a real app, you would send this to your backend via Socket.IO
-                state.socket.emit('send-message', {
-                conversationId: state.currentChat,
-                content: message
-                });
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input') || 
+                  document.getElementById('dashboard-chat-input') || 
+                  document.getElementById('vendor-chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    if (!currentUser) {
+        alert('Please login to send messages');
+        profileModal.style.display = 'flex';
+        showLoginView();
+        return;
+    }
 
-                // Add to UI
-                addChatMessage({
-                    ...chatMessage,
-                    sender: currentUser.email,
-                    isCurrentUser: true
-                });
-                
-                // Clear input
-                input.value = '';
-            }
+    if (!state.chat.currentConversation) {
+        alert('No conversation selected');
+        return;
+    }
+
+    try {
+        // Create message object
+        const messageObj = {
+            id: 'temp-' + Date.now(),
+            senderId: currentUser.id,
+            content: message,
+            timestamp: new Date().toISOString(),
+            isCurrentUser: true
+        };
+        
+        // Optimistically add to UI
+        state.chat.addMessage(messageObj);
+        input.value = '';
+        renderChatMessages();
+        
+        // Send via Socket.IO
+        if (state.socket && state.socket.connected) {
+            state.socket.emit('send-message', {
+                conversationId: state.chat.currentConversation,
+                content: message,
+                senderId: currentUser.id
+            });
+        } else {
+            // Fallback to HTTP
+            await fetch(`${API_BASE_URL}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    conversationId: state.chat.currentConversation,
+                    content: message
+                })
+            });
+        }
+    } catch (err) {
+        console.error('Send message error:', err);
+        alert('Failed to send message');
+        // Remove the failed message
+        state.chat.setMessages(state.chat.getMessages().filter(m => m.id !== messageObj.id));
+        renderChatMessages();
+    }
+}
+
+function debugChatState() {
+    console.log('Current Chat State:', {
+        conversation: state.chat.currentConversation,
+        messageCount: state.chat.getMessages().length,
+        messages: state.chat.getMessages()
+    });
+}
             
             // Book vendor function
             async function bookVendor(vendor) {
