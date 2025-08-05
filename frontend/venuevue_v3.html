@@ -2616,14 +2616,30 @@
             console.error('Socket error:', error);
         });
         
-        state.socket.on('new-message', (message) => {
-            addChatMessage(message);
-        });
+state.socket.on('new-message', (message) => {
+    // Ensure the message is in the correct format
+    const formattedMessage = {
+        id: message.id || `msg-${Date.now()}`,
+        senderId: message.senderId,
+        content: message.content,
+        timestamp: message.timestamp || new Date().toISOString(),
+        isCurrentUser: message.senderId === currentUser?.id
+    };
+    addChatMessage(formattedMessage);
+});
         
-        state.socket.on('message-history', (messages) => {
-            state.chatMessages = messages;
-            renderChatMessages();
-        });
+state.socket.on('message-history', (messages) => {
+    // Ensure messages is an array and each message has required fields
+    state.chatMessages = Array.isArray(messages) ? 
+        messages.map(msg => ({
+            id: msg.id || `msg-${Date.now()}`,
+            senderId: msg.senderId,
+            content: msg.content,
+            timestamp: msg.timestamp || new Date().toISOString(),
+            isCurrentUser: msg.senderId === currentUser?.id
+        })) : [];
+    renderChatMessages();
+});
     }
 
 // Add these functions to your script
@@ -2646,47 +2662,63 @@ async function loadInitialMessages() {
 }
 
 async function sendChatMessage() {
-  const input = document.getElementById('chat-input');
-  const message = input.value.trim();
-  
-  if (!message) return;
-  
-  if (!currentUser) {
-    alert('Please login to send messages');
-    profileModal.style.display = 'flex';
-    showLoginView();
-    return;
-  }
+    const input = document.getElementById('chat-input') || 
+                  document.getElementById('dashboard-chat-input') || 
+                  document.getElementById('vendor-chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    if (!currentUser) {
+        alert('Please login to send messages');
+        profileModal.style.display = 'flex';
+        showLoginView();
+        return;
+    }
 
-  if (!state.currentChat) {
-    alert('No conversation selected');
-    return;
-  }
+    if (!state.currentChat) {
+        alert('No conversation selected');
+        return;
+    }
 
-  try {
-    // Send the message
-    state.socket.emit('send-message', {
-      conversationId: state.currentChat,
-      content: message
-    });
+    try {
+        // Create a temporary message for optimistic UI update
+        const tempMessage = {
+            id: 'temp-' + Date.now(),
+            senderId: currentUser.id,
+            content: message,
+            timestamp: new Date().toISOString(),
+            isCurrentUser: true
+        };
+        
+        // Optimistically add to UI
+        addChatMessage(tempMessage);
+        input.value = '';
 
-    // Optimistically add to UI
-    addChatMessage({
-      id: 'temp-' + Date.now(),
-      senderId: currentUser.id,
-      content: message,
-      timestamp: new Date().toISOString(),
-      isCurrentUser: true
-    });
+        // Send the message
+        state.socket.emit('send-message', {
+            conversationId: state.currentChat,
+            content: message
+        });
 
-    input.value = '';
-  } catch (err) {
-    console.error('Send message error:', err);
-    alert('Failed to send message');
-  }
+        // In a real app, you would replace the temp message with the actual one from the server
+        // For now, we'll just keep the temp message
+        
+    } catch (err) {
+        console.error('Send message error:', err);
+        alert('Failed to send message');
+        // Remove the temp message if sending failed
+        state.chatMessages = state.chatMessages.filter(m => m.id !== tempMessage.id);
+        renderChatMessages();
+    }
 }
 
 function addChatMessage(message) {
+    // Ensure chatMessages is an array
+    if (!Array.isArray(state.chatMessages)) {
+        state.chatMessages = [];
+    }
+    
     // Check if message already exists
     if (state.chatMessages.some(m => m.id === message.id)) return;
     
@@ -2812,28 +2844,29 @@ function renderConversations(conversations) {
             }
             
             // Render a single chat message
-            function renderChatMessage(message, container) {
-                const chatContainer = container || 
-                                      document.getElementById('chat-messages') || 
-                                      document.getElementById('dashboard-chat-messages') || 
-                                      document.getElementById('vendor-chat-messages');
-                
-                if (!chatContainer) return;
-                
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${message.sender === currentUser.email ? 'sent' : 'received'}`;
-                
-                const messageDate = new Date(message.timestamp);
-                const timeString = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                messageDiv.innerHTML = `
-                    <div class="message-content">${message.content}</div>
-                    <div class="message-time">${timeString}</div>
-                `;
-                
-                chatContainer.appendChild(messageDiv);
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
+function renderChatMessage(message, container) {
+    const chatContainer = container || 
+                          document.getElementById('chat-messages') || 
+                          document.getElementById('dashboard-chat-messages') || 
+                          document.getElementById('vendor-chat-messages');
+    
+    if (!chatContainer) return;
+    
+    const isCurrentUser = message.senderId === currentUser?.id || message.isCurrentUser;
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
+    
+    const messageDate = new Date(message.timestamp);
+    const timeString = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">${message.content}</div>
+        <div class="message-time">${timeString}</div>
+    `;
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
             
             // New improved location request function
             function requestLocationWithFeedback() {
@@ -4282,7 +4315,7 @@ function setupEventListeners() {
                 conversationId: state.currentChat,
                 content: message
                 });
-                
+
                 // Add to UI
                 addChatMessage({
                     ...chatMessage,
