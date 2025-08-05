@@ -2585,30 +2585,215 @@
             }
             
             // Connect to Socket.IO for chat
-            function connectToChat() {
-                state.socket = io(API_BASE_URL, {
-                    auth: {
-                        token: localStorage.getItem('token')
-                    }
-                });
-                
-                state.socket.on('connect', () => {
-                    console.log('Connected to chat server');
-                });
-                
-                state.socket.on('disconnect', () => {
-                    console.log('Disconnected from chat server');
-                });
-                
-                state.socket.on('chat-message', (message) => {
-                    addChatMessage(message);
-                });
-                
-                state.socket.on('chat-history', (messages) => {
-                    state.chatMessages = messages;
-                    renderChatMessages();
-                });
+    function connectToChat() {
+        const token = localStorage.getItem('token');
+        state.socket = io(API_BASE_URL, {
+            auth: {
+                token: token
+            },
+            transports: ['websocket']
+        });
+        
+        state.socket.on('connect', () => {
+            console.log('Connected to chat server');
+            if (currentUser) {
+                // Load initial messages when connected
+                loadInitialMessages();
             }
+        });
+        
+        state.socket.on('disconnect', () => {
+            console.log('Disconnected from chat server');
+        });
+        
+        state.socket.on('error', (error) => {
+            console.error('Socket error:', error);
+        });
+        
+        state.socket.on('new-message', (message) => {
+            addChatMessage(message);
+        });
+        
+        state.socket.on('message-history', (messages) => {
+            state.chatMessages = messages;
+            renderChatMessages();
+        });
+    }
+
+// Add these functions to your script
+async function loadInitialMessages() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/messages/conversation/${state.currentChat || 0}?userId=${currentUser.id}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to load messages');
+        
+        const messages = await response.json();
+        state.chatMessages = messages;
+        renderChatMessages();
+    } catch (error) {
+        console.error('Error loading messages:', error);
+    }
+}
+
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input') || 
+                  document.getElementById('dashboard-chat-input') || 
+                  document.getElementById('vendor-chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    if (!currentUser) {
+        alert('Please login to send messages');
+        profileModal.style.display = 'flex';
+        showLoginView();
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/messages`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+                conversationId: state.currentChat || 0,
+                senderId: currentUser.id,
+                content: message
+            })
+        });
+        
+        if (!response.ok) throw new Error('Failed to send message');
+        
+        const result = await response.json();
+        
+        // Add to UI immediately for better UX
+        addChatMessage({
+            id: result.messageId,
+            senderId: currentUser.id,
+            content: message,
+            timestamp: new Date().toISOString(),
+            isCurrentUser: true
+        });
+        
+        // Clear input
+        input.value = '';
+        
+    } catch (error) {
+        console.error('Error sending message:', error);
+        alert('Failed to send message. Please try again.');
+    }
+}
+
+function addChatMessage(message) {
+    // Check if message already exists
+    if (state.chatMessages.some(m => m.id === message.id)) return;
+    
+    state.chatMessages.push(message);
+    renderChatMessage(message);
+}
+
+function renderChatMessages() {
+    const chatContainer = document.getElementById('chat-messages') || 
+                          document.getElementById('dashboard-chat-messages') || 
+                          document.getElementById('vendor-chat-messages');
+    
+    if (chatContainer) {
+        chatContainer.innerHTML = '';
+        // Sort messages by timestamp
+        const sortedMessages = [...state.chatMessages].sort((a, b) => 
+            new Date(a.timestamp) - new Date(b.timestamp)
+        );
+        
+        sortedMessages.forEach(message => {
+            renderChatMessage(message, chatContainer);
+        });
+    }
+}
+
+function renderChatMessage(message, container) {
+    const chatContainer = container || 
+                          document.getElementById('chat-messages') || 
+                          document.getElementById('dashboard-chat-messages') || 
+                          document.getElementById('vendor-chat-messages');
+    
+    if (!chatContainer) return;
+    
+    const isCurrentUser = message.senderId === currentUser?.id;
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isCurrentUser ? 'sent' : 'received'}`;
+    
+    const messageDate = new Date(message.timestamp);
+    const timeString = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    messageDiv.innerHTML = `
+        <div class="message-content">${message.content}</div>
+        <div class="message-time">${timeString}</div>
+    `;
+    
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Add this function to load conversations for the dashboard
+async function loadConversations() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/messages/conversations?userId=${currentUser.id}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (!response.ok) throw new Error('Failed to load conversations');
+        
+        const conversations = await response.json();
+        // Render conversations list in dashboard
+        renderConversations(conversations);
+    } catch (error) {
+        console.error('Error loading conversations:', error);
+    }
+}
+
+function renderConversations(conversations) {
+    const container = document.getElementById('messages-section');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="dashboard-card">
+            <h2 class="dashboard-card-title">Messages</h2>
+            <div class="conversations-list">
+                ${conversations.map(conv => `
+                    <div class="conversation" data-id="${conv.id}">
+                        <div class="conversation-partner">${conv.partnerName}</div>
+                        <div class="conversation-preview">${conv.lastMessage}</div>
+                        <div class="conversation-time">${new Date(conv.lastMessageTime).toLocaleTimeString()}</div>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="chat-container">
+                <div class="chat-messages" id="dashboard-chat-messages"></div>
+                <div class="chat-input">
+                    <input type="text" placeholder="Type your message..." id="dashboard-chat-input">
+                    <button class="btn btn-primary" id="dashboard-send-btn">Send</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add event listeners to conversations
+    document.querySelectorAll('.conversation').forEach(conv => {
+        conv.addEventListener('click', () => {
+            state.currentChat = conv.dataset.id;
+            loadInitialMessages();
+        });
+    });
+}
+
             
             // Add a chat message to the UI
             function addChatMessage(message) {
@@ -2753,558 +2938,571 @@
             }
             
             // Setup all event listeners
-            function setupEventListeners() {
-                // Search
-                searchInput.addEventListener('input', filterVendors);
-                
-                // Sorting
-                sortSelect.addEventListener('change', sortVendors);
-                
-                // Filter resets
-                filterResetBtns.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        const filterType = btn.id.replace('-reset', '');
-                        resetFilter(filterType);
-                    });
-                });
-                
-                // Filter inputs
-                document.querySelectorAll('.filter-section input').forEach(input => {
-                    input.addEventListener('change', filterVendors);
-                });
-                
-                // Current location checkbox
-                currentLocationCheckbox.addEventListener('change', function() {
-                    if (this.checked) {
-                        requestLocationWithFeedback();
-                    } else {
-                        state.userLocation = null;
-                        locationInput.value = '';
-                        locationInput.placeholder = 'City or ZIP code';
-                        filterVendors();
-                    }
-                });
-                
-                // Popular filters
-                trendingTags.forEach(tag => {
-                    tag.addEventListener('click', () => {
-                        tag.classList.toggle('active');
-                        const filter = tag.dataset.filter;
-                        
-                        if (tag.classList.contains('active')) {
-                            if (!state.filters.popular.includes(filter)) {
-                                state.filters.popular.push(filter);
-                            }
-                        } else {
-                            state.filters.popular = state.filters.popular.filter(f => f !== filter);
-                        }
-                        
-                        filterVendors();
-                    });
-                });
-                
-                // Advanced filters toggle
-                advancedToggle.addEventListener('click', () => {
-                    advancedContent.classList.toggle('show');
-                    advancedToggle.querySelector('span').textContent = 
-                        advancedContent.classList.contains('show') ? '−' : '+';
-                });
-                
-                // Date filters
-                document.getElementById('start-date').addEventListener('change', function() {
-                    state.filters.startDate = this.value;
-                    filterVendors();
-                });
-                
-                document.getElementById('end-date').addEventListener('change', function() {
-                    state.filters.endDate = this.value;
-                    filterVendors();
-                });
-                
-                // Region filter
-                document.getElementById('region-select').addEventListener('change', function() {
-                    state.filters.region = this.value;
-                    filterVendors();
-                });
-                
-                // Pagination
-                prevPageBtn.addEventListener('click', () => {
-                    if (state.currentPage > 1) {
-                        state.currentPage--;
-                        renderVendors();
-                    }
-                });
-                
-                nextPageBtn.addEventListener('click', () => {
-                    const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
-                    if (state.currentPage < totalPages) {
-                        state.currentPage++;
-                        renderVendors();
-                    }
-                });
-                
-                // User nav buttons
-                wishlistBtn.addEventListener('click', () => {
-                    if (currentUser) {
-                        showDashboard('favorites');
-                    } else {
-                        profileModal.style.display = 'flex';
-                    }
-                });
-                
-                notificationsBtn.addEventListener('click', () => {
-                    if (currentUser) {
-                        showDashboard('notifications');
-                    } else {
-                        profileModal.style.display = 'flex';
-                    }
-                });
-                
-                // Profile button click handler
-                profileBtn.addEventListener('click', () => {
-                    // Check if user is logged in
-                    if (currentUser) {
-                        showLoggedInView();
-                    } else {
-                        showLoginView();
-                    }
-                    profileModal.style.display = 'flex';
-                });
-                
-                // Close profile modal
-                closeProfileModal.addEventListener('click', () => {
-                    profileModal.style.display = 'none';
-                });
-                profileModal.addEventListener('click', (e) => e.target === profileModal && (profileModal.style.display = 'none'));
-                
-                // Toggle between login and signup forms
-                showSignup.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    showSignupView();
-                });
-                
-                showLogin.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    showLoginView();
-                });
-                
-                // Login with email/password
-                loginBtn.addEventListener('click', async () => {
-                    const email = document.getElementById('login-email').value;
-                    const password = document.getElementById('login-password').value;
-                    
-                    if (!email || !password) {
-                        alert('Please enter both email and password');
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch(`${API_BASE_URL}/users/login`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ email, password }),
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error('Login failed');
-                        }
-                        
-                        const userData = await response.json();
-                        
-                        // Store the token in localStorage
-                        localStorage.setItem('token', userData.token);
-                        
-                        // Update UI with user data
-                        simulateLogin({
-                            id: userData.userId,
-                            name: userData.name || userData.email.split('@')[0],
-                            email: userData.email,
-                            avatar: userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase(),
-                            isVendor: userData.isVendor || false
-                        });
-                    } catch (error) {
-                        console.error('Login error:', error);
-                        alert('Login failed. Please check your credentials and try again.');
-                    }
-                });
-                
-                // Sign up with email/password
-                signupBtn.addEventListener('click', async () => {
-                    const name = document.getElementById('signup-name').value;
-                    const email = document.getElementById('signup-email').value;
-                    const password = document.getElementById('signup-password').value;
-                    const accountType = document.getElementById('account-type').value;
-                    
-                    if (!name || !email || !password) {
-                        alert('Please fill in all fields');
-                        return;
-                    }
-                    
-                    if (password.length < 6) {
-                        alert('Password should be at least 6 characters');
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch(`${API_BASE_URL}/users/register`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ 
-                                name, 
-                                email, 
-                                password,
-                                isVendor: accountType === 'vendor'
-                            }),
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error('Signup failed');
-                        }
-                        
-                        const userData = await response.json();
-                        
-                        // Store the token
-                        localStorage.setItem('token', userData.token);
-                        
-                        // Update UI with user data
-                        simulateLogin({
-                            id: userData.userId,
-                            name: userData.name,
-                            email: userData.email,
-                            avatar: userData.name[0].toUpperCase(),
-                            isVendor: userData.isVendor || false
-                        });
-                        
-                        // If signing up as vendor, show registration form
-                        if (accountType === 'vendor') {
-                            profileModal.style.display = 'none';
-                            vendorRegistrationModal.style.display = 'flex';
-                        }
-                    } catch (error) {
-                        console.error('Signup error:', error);
-                        alert('Signup failed. The email might already be in use.');
-                    }
-                });
-                
-                // Google Login Handler
-                googleLoginBtn.addEventListener('click', () => {
-                    google.accounts.id.initialize({
-                        client_id: '900405597637-50g402qo0kbh2msi9bqii8e9od6oq0fk.apps.googleusercontent.com', // Replace with your actual Google Client ID
-                        callback: handleGoogleSignIn
-                    });
-                    google.accounts.id.prompt();
-                });
-
-                // Handle Google Sign-In
-                function handleGoogleSignIn(response) {
-                    const responsePayload = decodeJWT(response.credential);
-                    
-                    // Send the Google token to your backend for verification
-                    fetch(`${API_BASE_URL}/users/google-auth`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ token: response.credential }),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.token) {
-                            localStorage.setItem('token', data.token);
-                            simulateLogin({
-                                id: data.userId,
-                                name: data.name,
-                                email: data.email,
-                                avatar: data.name ? data.name[0].toUpperCase() : data.email[0].toUpperCase(),
-                                isVendor: data.isVendor || false
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Google login error:', error);
-                        alert('Google login failed. Please try again.');
-                    });
+function setupEventListeners() {
+    // Search
+    searchInput.addEventListener('input', filterVendors);
+    
+    // Sorting
+    sortSelect.addEventListener('change', sortVendors);
+    
+    // Filter resets
+    filterResetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const filterType = btn.id.replace('-reset', '');
+            resetFilter(filterType);
+        });
+    });
+    
+    // Filter inputs
+    document.querySelectorAll('.filter-section input').forEach(input => {
+        input.addEventListener('change', filterVendors);
+    });
+    
+    // Current location checkbox
+    currentLocationCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            requestLocationWithFeedback();
+        } else {
+            state.userLocation = null;
+            locationInput.value = '';
+            locationInput.placeholder = 'City or ZIP code';
+            filterVendors();
+        }
+    });
+    
+    // Popular filters
+    trendingTags.forEach(tag => {
+        tag.addEventListener('click', () => {
+            tag.classList.toggle('active');
+            const filter = tag.dataset.filter;
+            
+            if (tag.classList.contains('active')) {
+                if (!state.filters.popular.includes(filter)) {
+                    state.filters.popular.push(filter);
                 }
+            } else {
+                state.filters.popular = state.filters.popular.filter(f => f !== filter);
+            }
+            
+            filterVendors();
+        });
+    });
+    
+    // Advanced filters toggle
+    advancedToggle.addEventListener('click', () => {
+        advancedContent.classList.toggle('show');
+        advancedToggle.querySelector('span').textContent = 
+            advancedContent.classList.contains('show') ? '−' : '+';
+    });
+    
+    // Date filters
+    document.getElementById('start-date').addEventListener('change', function() {
+        state.filters.startDate = this.value;
+        filterVendors();
+    });
+    
+    document.getElementById('end-date').addEventListener('change', function() {
+        state.filters.endDate = this.value;
+        filterVendors();
+    });
+    
+    // Region filter
+    document.getElementById('region-select').addEventListener('change', function() {
+        state.filters.region = this.value;
+        filterVendors();
+    });
+    
+    // Pagination
+    prevPageBtn.addEventListener('click', () => {
+        if (state.currentPage > 1) {
+            state.currentPage--;
+            renderVendors();
+        }
+    });
+    
+    nextPageBtn.addEventListener('click', () => {
+        const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
+        if (state.currentPage < totalPages) {
+            state.currentPage++;
+            renderVendors();
+        }
+    });
+    
+    // User nav buttons
+    wishlistBtn.addEventListener('click', () => {
+        if (currentUser) {
+            showDashboard('favorites');
+        } else {
+            profileModal.style.display = 'flex';
+        }
+    });
+    
+    notificationsBtn.addEventListener('click', () => {
+        if (currentUser) {
+            showDashboard('notifications');
+        } else {
+            profileModal.style.display = 'flex';
+        }
+    });
+    
+    // Profile button click handler
+    profileBtn.addEventListener('click', () => {
+        if (currentUser) {
+            showLoggedInView();
+        } else {
+            showLoginView();
+        }
+        profileModal.style.display = 'flex';
+    });
+    
+    // Close profile modal
+    closeProfileModal.addEventListener('click', () => {
+        profileModal.style.display = 'none';
+    });
+    profileModal.addEventListener('click', (e) => e.target === profileModal && (profileModal.style.display = 'none'));
+    
+    // Toggle between login and signup forms
+    showSignup.addEventListener('click', (e) => {
+        e.preventDefault();
+        showSignupView();
+    });
+    
+    showLogin.addEventListener('click', (e) => {
+        e.preventDefault();
+        showLoginView();
+    });
+    
+    // Login with email/password
+    loginBtn.addEventListener('click', async () => {
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        
+        if (!email || !password) {
+            alert('Please enter both email and password');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password }),
+            });
+            
+            if (!response.ok) {
+                throw new Error('Login failed');
+            }
+            
+            const userData = await response.json();
+            
+            // Store the token in localStorage
+            localStorage.setItem('token', userData.token);
+            
+            // Update UI with user data
+            simulateLogin({
+                id: userData.userId,
+                name: userData.name || userData.email.split('@')[0],
+                email: userData.email,
+                avatar: userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase(),
+                isVendor: userData.isVendor || false
+            });
+            
+            // Connect to chat after login
+            connectToChat();
+        } catch (error) {
+            console.error('Login error:', error);
+            alert('Login failed. Please check your credentials and try again.');
+        }
+    });
+    
+    // Sign up with email/password
+    signupBtn.addEventListener('click', async () => {
+        const name = document.getElementById('signup-name').value;
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        const accountType = document.getElementById('account-type').value;
+        
+        if (!name || !email || !password) {
+            alert('Please fill in all fields');
+            return;
+        }
+        
+        if (password.length < 6) {
+            alert('Password should be at least 6 characters');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/users/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    name, 
+                    email, 
+                    password,
+                    isVendor: accountType === 'vendor'
+                }),
+            });
+            
+            if (!response.ok) {
+                throw new Error('Signup failed');
+            }
+            
+            const userData = await response.json();
+            
+            // Store the token
+            localStorage.setItem('token', userData.token);
+            
+            // Update UI with user data
+            simulateLogin({
+                id: userData.userId,
+                name: userData.name,
+                email: userData.email,
+                avatar: userData.name[0].toUpperCase(),
+                isVendor: userData.isVendor || false
+            });
+            
+            // Connect to chat after signup
+            connectToChat();
+            
+            // If signing up as vendor, show registration form
+            if (accountType === 'vendor') {
+                profileModal.style.display = 'none';
+                vendorRegistrationModal.style.display = 'flex';
+            }
+        } catch (error) {
+            console.error('Signup error:', error);
+            alert('Signup failed. The email might already be in use.');
+        }
+    });
+    
+    // Google Login Handler
+    googleLoginBtn.addEventListener('click', () => {
+        google.accounts.id.initialize({
+            client_id: '900405597637-50g402qo0kbh2msi9bqii8e9od6oq0fk.apps.googleusercontent.com',
+            callback: handleGoogleSignIn
+        });
+        google.accounts.id.prompt();
+    });
 
-                // Decode JWT token
-                function decodeJWT(token) {
-                    const base64Url = token.split('.')[1];
-                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                    }).join(''));
-                    return JSON.parse(jsonPayload);
-                }
-
-                // Facebook Login Handler
-                facebookLoginBtn.addEventListener('click', () => {
-                    FB.login(function(response) {
-                        if (response.authResponse) {
-                            // Send the Facebook token to your backend for verification
-                            fetch(`${API_BASE_URL}/users/facebook-auth`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({ token: response.authResponse.accessToken }),
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.token) {
-                                    localStorage.setItem('token', data.token);
-                                    simulateLogin({
-                                        id: data.userId,
-                                        name: data.name,
-                                        email: data.email,
-                                        avatar: data.name ? data.name[0].toUpperCase() : data.email[0].toUpperCase(),
-                                        isVendor: data.isVendor || false
-                                    });
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Facebook login error:', error);
-                                alert('Facebook login failed. Please try again.');
-                            });
-                        }
-                    }, {scope: 'public_profile,email'});
-                });
-                
-                // Logout handler
-                logoutBtn.addEventListener('click', () => {
-                    // Clear the token from storage
-                    localStorage.removeItem('token');
-                    
-                    currentUser = null;
-                    showLoginView();
-                    alert('You have been logged out');
-                    // Reset profile button
-                    profileBtn.textContent = '👤';
-                    profileBtn.style.backgroundColor = '';
-                    profileBtn.style.color = '';
-                    profileBtn.style.borderRadius = '';
-                    profileBtn.style.width = '';
-                    profileBtn.style.height = '';
-                    profileBtn.style.display = '';
-                    profileBtn.style.alignItems = '';
-                    profileBtn.style.justifyContent = '';
-                    
-                    // Hide dashboard if shown
-                    appContainer.style.display = 'grid';
-                    dashboardContainer.style.display = 'none';
-                    vendorDashboardContainer.style.display = 'none';
-                });
-                
-                // View dashboard button
-                viewDashboardBtn.addEventListener('click', () => {
-                    profileModal.style.display = 'none';
-                    showDashboard();
-                });
-                
-                // Dashboard menu items
-                dashboardMenuItems.forEach(item => {
-                    item.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        const section = item.dataset.section;
-                        showDashboard(section);
-                    });
-                });
-                
-                // Switch to vendor mode
-                switchToVendorBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    if (currentUser.isVendor) {
-                        showVendorDashboard();
-                    } else {
-                        vendorRegistrationModal.style.display = 'flex';
-                    }
-                });
-                
-                // Switch to client mode
-                switchToClientBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    showDashboard();
-                });
-                
-                // Logout from dashboard
-                logoutDashboardBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    logoutBtn.click();
-                });
-                
-                // Logout from vendor dashboard
-                vendorLogoutBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    logoutBtn.click();
-                });
-                
-                // Add service field in vendor registration
-                addServiceFieldBtn.addEventListener('click', () => {
-                    const serviceFieldGroup = document.createElement('div');
-                    serviceFieldGroup.className = 'service-field-group';
-                    serviceFieldGroup.style.marginBottom = '1rem';
-                    serviceFieldGroup.style.paddingBottom = '1rem';
-                    serviceFieldGroup.style.borderBottom = '1px dashed var(--border)';
-                    
-                    serviceFieldGroup.innerHTML = `
-                        <div class="form-row">
-                            <div class="form-col">
-                                <div class="form-group">
-                                    <label>Service Name</label>
-                                    <input type="text" name="service-name[]" required>
-                                </div>
-                            </div>
-                            <div class="form-col">
-                                <div class="form-group">
-                                    <label>Price</label>
-                                    <input type="number" name="service-price[]" min="0" step="0.01" required>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Description</label>
-                            <textarea name="service-description[]" rows="2" required></textarea>
-                        </div>
-                        <button type="button" class="btn btn-outline btn-sm remove-service-btn">Remove Service</button>
-                    `;
-                    
-                    serviceFieldsContainer.appendChild(serviceFieldGroup);
-                    
-                    // Add event listener to remove button
-                    serviceFieldGroup.querySelector('.remove-service-btn').addEventListener('click', () => {
-                        serviceFieldGroup.remove();
-                    });
-                });
-                
-                // Vendor registration form submission
-                vendorRegistrationForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    
-                    try {
-                        // Collect form data
-                        const formData = new FormData();
-                        formData.append('businessName', document.getElementById('reg-business-name').value);
-                        formData.append('businessType', document.getElementById('reg-business-type').value);
-                        formData.append('category', document.getElementById('reg-category').value);
-                        formData.append('yearsInBusiness', document.getElementById('reg-years-in-business').value);
-                        formData.append('description', document.getElementById('reg-business-description').value);
-                        formData.append('email', document.getElementById('reg-business-email').value);
-                        formData.append('phone', document.getElementById('reg-business-phone').value);
-                        formData.append('address', document.getElementById('reg-business-address').value);
-                        formData.append('website', document.getElementById('reg-business-website').value);
-                        
-                        // Collect services
-                        const services = [];
-                        document.querySelectorAll('.service-field-group').forEach(group => {
-                            services.push({
-                                name: group.querySelector('input[name="service-name[]"]').value,
-                                price: group.querySelector('input[name="service-price[]"]').value,
-                                description: group.querySelector('textarea[name="service-description[]"]').value
-                            });
+    // Facebook Login Handler
+    facebookLoginBtn.addEventListener('click', () => {
+        FB.login(function(response) {
+            if (response.authResponse) {
+                fetch(`${API_BASE_URL}/users/facebook-auth`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token: response.authResponse.accessToken }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.token) {
+                        localStorage.setItem('token', data.token);
+                        simulateLogin({
+                            id: data.userId,
+                            name: data.name,
+                            email: data.email,
+                            avatar: data.name ? data.name[0].toUpperCase() : data.email[0].toUpperCase(),
+                            isVendor: data.isVendor || false
                         });
-                        formData.append('services', JSON.stringify(services));
-                        
-                        // Add files
-                        const businessLicense = document.getElementById('business-license').files[0];
-                        const taxId = document.getElementById('tax-id').files[0];
-                        const portfolio = document.getElementById('portfolio').files[0];
-                        
-                        if (businessLicense) formData.append('businessLicense', businessLicense);
-                        if (taxId) formData.append('taxId', taxId);
-                        if (portfolio) formData.append('portfolio', portfolio);
-                        
-                        const response = await fetch(`${API_BASE_URL}/vendors/register`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${localStorage.getItem('token')}`
-                            },
-                            body: formData
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error('Registration failed');
-                        }
-                        
-                        const result = await response.json();
-                        
-                        alert('Vendor registration submitted successfully!');
-                        vendorRegistrationModal.style.display = 'none';
-                        
-                        // Update user to vendor status
-                        currentUser.isVendor = true;
-                        showVendorDashboard();
-                        
-                    } catch (error) {
-                        console.error('Registration error:', error);
-                        alert('Registration failed. Please try again.');
+                        connectToChat();
                     }
-                });
-                
-                // Map controls
-                document.getElementById('zoom-in')?.addEventListener('click', () => {
-                    if (state.map) {
-                        state.map.setZoom(state.map.getZoom() + 1);
-                    }
-                });
-                
-                document.getElementById('zoom-out')?.addEventListener('click', () => {
-                    if (state.map) {
-                        state.map.setZoom(state.map.getZoom() - 1);
-                    }
-                });
-                
-                locateMeBtn?.addEventListener('click', () => {
-                    if (state.userLocation) {
-                        centerMapOnUser();
-                    } else {
-                        requestLocationWithFeedback();
-                    }
-                });
-                
-                // Location permission
-                allowLocationBtn.addEventListener('click', () => {
-                    locationLoading.style.display = 'inline-block';
-                    allowLocationBtn.disabled = true;
-                    
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            locationPermissionModal.style.display = 'none';
-                            handleLocationSuccess(position);
-                            locationLoading.style.display = 'none';
-                            allowLocationBtn.disabled = false;
-                        },
-                        (error) => {
-                            console.log("Location error:", error);
-                            locationPermissionModal.style.display = 'none';
-                            locationLoading.style.display = 'none';
-                            allowLocationBtn.disabled = false;
-                            currentLocationCheckbox.checked = false;
-                            alert("Could not get your location. Please try again or enter a location manually.");
-                        },
-                        {
-                            enableHighAccuracy: true,
-                            timeout: 10000
-                        }
-                    );
-                });
-                
-                denyLocationBtn.addEventListener('click', () => {
-                    locationPermissionModal.style.display = 'none';
-                    currentLocationCheckbox.checked = false;
-                });
-                
-                // Modal close
-                document.querySelector('.close-modal').addEventListener('click', closeBookingModal);
-                modal.addEventListener('click', (e) => e.target === modal && closeBookingModal());
-                
-                // Confirmation modal
-                document.getElementById('conf-done-btn').addEventListener('click', () => {
-                    confirmationModal.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('Facebook login error:', error);
+                    alert('Facebook login failed. Please try again.');
                 });
             }
+        }, {scope: 'public_profile,email'});
+    });
+    
+    // Logout handler
+    logoutBtn.addEventListener('click', () => {
+        // Clear the token from storage
+        localStorage.removeItem('token');
+        
+        // Disconnect from chat
+        if (state.socket) {
+            state.socket.disconnect();
+        }
+        
+        currentUser = null;
+        showLoginView();
+        alert('You have been logged out');
+        
+        // Reset profile button
+        profileBtn.textContent = '👤';
+        profileBtn.style.backgroundColor = '';
+        profileBtn.style.color = '';
+        profileBtn.style.borderRadius = '';
+        profileBtn.style.width = '';
+        profileBtn.style.height = '';
+        profileBtn.style.display = '';
+        profileBtn.style.alignItems = '';
+        profileBtn.style.justifyContent = '';
+        
+        // Hide dashboard if shown
+        appContainer.style.display = 'grid';
+        dashboardContainer.style.display = 'none';
+        vendorDashboardContainer.style.display = 'none';
+    });
+    
+    // View dashboard button
+    viewDashboardBtn.addEventListener('click', () => {
+        profileModal.style.display = 'none';
+        showDashboard();
+    });
+    
+    // Dashboard menu items
+    dashboardMenuItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const section = item.dataset.section;
+            showDashboard(section);
+            
+            // Load messages when messages section is clicked
+            if (section === 'messages' && currentUser) {
+                loadConversations();
+            }
+        });
+    });
+    
+    // Switch to vendor mode
+    switchToVendorBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentUser.isVendor) {
+            showVendorDashboard();
+        } else {
+            vendorRegistrationModal.style.display = 'flex';
+        }
+    });
+    
+    // Switch to client mode
+    switchToClientBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        showDashboard();
+    });
+    
+    // Logout from dashboard
+    logoutDashboardBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        logoutBtn.click();
+    });
+    
+    // Logout from vendor dashboard
+    vendorLogoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        logoutBtn.click();
+    });
+    
+    // Add service field in vendor registration
+    addServiceFieldBtn.addEventListener('click', () => {
+        const serviceFieldGroup = document.createElement('div');
+        serviceFieldGroup.className = 'service-field-group';
+        serviceFieldGroup.style.marginBottom = '1rem';
+        serviceFieldGroup.style.paddingBottom = '1rem';
+        serviceFieldGroup.style.borderBottom = '1px dashed var(--border)';
+        
+        serviceFieldGroup.innerHTML = `
+            <div class="form-row">
+                <div class="form-col">
+                    <div class="form-group">
+                        <label>Service Name</label>
+                        <input type="text" name="service-name[]" required>
+                    </div>
+                </div>
+                <div class="form-col">
+                    <div class="form-group">
+                        <label>Price</label>
+                        <input type="number" name="service-price[]" min="0" step="0.01" required>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="service-description[]" rows="2" required></textarea>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm remove-service-btn">Remove Service</button>
+        `;
+        
+        serviceFieldsContainer.appendChild(serviceFieldGroup);
+        
+        // Add event listener to remove button
+        serviceFieldGroup.querySelector('.remove-service-btn').addEventListener('click', () => {
+            serviceFieldGroup.remove();
+        });
+    });
+    
+    // Vendor registration form submission
+    vendorRegistrationForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        try {
+            // Collect form data
+            const formData = new FormData();
+            formData.append('businessName', document.getElementById('reg-business-name').value);
+            formData.append('businessType', document.getElementById('reg-business-type').value);
+            formData.append('category', document.getElementById('reg-category').value);
+            formData.append('yearsInBusiness', document.getElementById('reg-years-in-business').value);
+            formData.append('description', document.getElementById('reg-business-description').value);
+            formData.append('email', document.getElementById('reg-business-email').value);
+            formData.append('phone', document.getElementById('reg-business-phone').value);
+            formData.append('address', document.getElementById('reg-business-address').value);
+            formData.append('website', document.getElementById('reg-business-website').value);
+            
+            // Collect services
+            const services = [];
+            document.querySelectorAll('.service-field-group').forEach(group => {
+                services.push({
+                    name: group.querySelector('input[name="service-name[]"]').value,
+                    price: group.querySelector('input[name="service-price[]"]').value,
+                    description: group.querySelector('textarea[name="service-description[]"]').value
+                });
+            });
+            formData.append('services', JSON.stringify(services));
+            
+            // Add files
+            const businessLicense = document.getElementById('business-license').files[0];
+            const taxId = document.getElementById('tax-id').files[0];
+            const portfolio = document.getElementById('portfolio').files[0];
+            
+            if (businessLicense) formData.append('businessLicense', businessLicense);
+            if (taxId) formData.append('taxId', taxId);
+            if (portfolio) formData.append('portfolio', portfolio);
+            
+            const response = await fetch(`${API_BASE_URL}/vendors/register`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error('Registration failed');
+            }
+            
+            const result = await response.json();
+            
+            alert('Vendor registration submitted successfully!');
+            vendorRegistrationModal.style.display = 'none';
+            
+            // Update user to vendor status
+            currentUser.isVendor = true;
+            showVendorDashboard();
+            
+        } catch (error) {
+            console.error('Registration error:', error);
+            alert('Registration failed. Please try again.');
+        }
+    });
+    
+    // Map controls
+    document.getElementById('zoom-in')?.addEventListener('click', () => {
+        if (state.map) {
+            state.map.setZoom(state.map.getZoom() + 1);
+        }
+    });
+    
+    document.getElementById('zoom-out')?.addEventListener('click', () => {
+        if (state.map) {
+            state.map.setZoom(state.map.getZoom() - 1);
+        }
+    });
+    
+    locateMeBtn?.addEventListener('click', () => {
+        if (state.userLocation) {
+            centerMapOnUser();
+        } else {
+            requestLocationWithFeedback();
+        }
+    });
+    
+    // Location permission
+    allowLocationBtn.addEventListener('click', () => {
+        locationLoading.style.display = 'inline-block';
+        allowLocationBtn.disabled = true;
+        
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                locationPermissionModal.style.display = 'none';
+                handleLocationSuccess(position);
+                locationLoading.style.display = 'none';
+                allowLocationBtn.disabled = false;
+            },
+            (error) => {
+                console.log("Location error:", error);
+                locationPermissionModal.style.display = 'none';
+                locationLoading.style.display = 'none';
+                allowLocationBtn.disabled = false;
+                currentLocationCheckbox.checked = false;
+                alert("Could not get your location. Please try again or enter a location manually.");
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000
+            }
+        );
+    });
+    
+    denyLocationBtn.addEventListener('click', () => {
+        locationPermissionModal.style.display = 'none';
+        currentLocationCheckbox.checked = false;
+    });
+    
+    // Modal close
+    document.querySelector('.close-modal').addEventListener('click', closeBookingModal);
+    modal.addEventListener('click', (e) => e.target === modal && closeBookingModal());
+    
+    // Confirmation modal
+    document.getElementById('conf-done-btn').addEventListener('click', () => {
+        confirmationModal.style.display = 'none';
+    });
+
+    // Chat message sending - Main modal
+    document.getElementById('send-btn')?.addEventListener('click', sendChatMessage);
+    document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
+    });
+
+    // Chat message sending - Dashboard
+    document.getElementById('dashboard-send-btn')?.addEventListener('click', sendChatMessage);
+    document.getElementById('dashboard-chat-input')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
+    });
+
+    // Chat message sending - Vendor dashboard
+    document.getElementById('vendor-send-btn')?.addEventListener('click', sendChatMessage);
+    document.getElementById('vendor-chat-input')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
+    });
+
+    // Initialize chat when opening vendor modal
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('view-btn')) {
+            const vendorId = e.target.dataset.id;
+            const vendor = state.vendors.find(v => v.id === vendorId);
+            if (vendor) {
+                state.currentChat = `user_${currentUser?.id}_vendor_${vendorId}`;
+                if (currentUser) {
+                    loadInitialMessages();
+                }
+            }
+        }
+    });
+}
             
             // Filter vendors based on current filters
             function filterVendors() {
@@ -3690,6 +3888,7 @@
                 state.selectedServices = [];
                 state.selectedDate = null;
                 state.selectedTime = null;
+                state.currentChat = vendor.id;
                 
                 // Create modal content
                 modalBody.innerHTML = `
@@ -3794,6 +3993,14 @@
                 // Initialize booking calendar
                 initBookingCalendar();
                 
+                    // Load messages for this conversation
+    if (currentUser) {
+        loadInitialMessages();
+    }
+
+
+
+
                 // Add event listeners to service buttons
                 document.querySelectorAll('.add-service-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
