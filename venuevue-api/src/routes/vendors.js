@@ -2,10 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
 
-// Search vendors
+// Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
   try {
     const { 
@@ -48,16 +46,40 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
+    // Format the response to match the expected JSON structure
+    const formattedVendors = result.recordset.map(vendor => ({
+      id: vendor.id,
+      name: vendor.name,
+      type: vendor.type,
+      location: vendor.location,
+      description: vendor.description,
+      price: vendor.price,
+      priceLevel: vendor.priceLevel,
+      rating: vendor.rating,
+      reviewCount: vendor.ReviewCount,
+      favoriteCount: vendor.FavoriteCount,
+      bookingCount: vendor.BookingCount,
+      image: vendor.image,
+      capacity: vendor.Capacity,
+      rooms: vendor.Rooms,
+      isPremium: vendor.IsPremium,
+      isEcoFriendly: vendor.IsEcoFriendly,
+      isAwardWinning: vendor.IsAwardWinning,
+      region: vendor.region,
+      distanceMiles: vendor.DistanceMiles,
+      categories: vendor.Categories,
+      services: vendor.services ? JSON.parse(vendor.services) : [],
+      reviews: vendor.reviews ? JSON.parse(vendor.reviews) : []
+    }));
+
     res.json({
-      success: true,
-      data: result.recordset,
+      vendors: formattedVendors,
       totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0
     });
 
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ 
-      success: false,
       message: 'Database operation failed',
       error: err.message 
     });
