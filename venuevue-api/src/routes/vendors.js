@@ -66,7 +66,7 @@ router.get('/', async (req, res) => {
       isPremium: vendor.IsPremium,
       isEcoFriendly: vendor.IsEcoFriendly,
       isAwardWinning: vendor.IsAwardWinning,
-      region: vendor.region,
+      region: vendor.Region,
       distanceMiles: vendor.DistanceMiles,
       categories: vendor.Categories,
       services: vendor.services ? JSON.parse(vendor.services) : [],
