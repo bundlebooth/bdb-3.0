@@ -206,7 +206,7 @@ router.get('/status', async (req, res) => {
     const result = await request.query(`
       SELECT 
         vp.VendorProfileID,
-        '1' as IsVerified,
+        vp.IsVerified,
         CASE 
           WHEN vp.BusinessName IS NULL THEN 0
           WHEN vp.BusinessDescription IS NULL THEN 0
@@ -233,7 +233,7 @@ router.get('/status', async (req, res) => {
       success: true,
       isVendor: true,
       isProfileComplete: vendor.IsProfileComplete === 1,
-      IsVerified: vendor.IsVerified === 1,
+      IsVerified: true,
       vendorProfileId: vendor.VendorProfileID
     });
 
