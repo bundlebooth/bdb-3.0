@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
+const { upload } = require('../middlewares/uploadMiddleware'); 
 
 // Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
