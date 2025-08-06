@@ -2030,9 +2030,9 @@
                                 ⭐⭐⭐⭐⭐ <span>(0.0) | 0 Reviews</span>
                             </div>
                         </div>
-                        <div class="vendor-detail-features" id="modal-vendor-features">
+                        <div class="vendor-detail-features">
                             <div class="feature">
-                                <span class="feature-icon">👥</span>
+                                <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
                                 <span id="modal-vendor-capacity">0 guests</span>
                             </div>
                             <div class="feature">
@@ -2256,9 +2256,10 @@
             
             // Dashboard elements
             const appContainer = document.getElementById('app-container');
-            const dashboardContainer = document.getElementById('dashboard-container');
+            const clientDashboardContainer = document.getElementById('dashboard-container'); // Renamed for clarity
             const vendorDashboardContainer = document.getElementById('vendor-dashboard-container');
-            const dashboardMenuItems = document.querySelectorAll('.dashboard-menu a');
+            const clientDashboardMenuItems = clientDashboardContainer.querySelectorAll('.dashboard-menu a'); // Specific to client dashboard
+            const vendorDashboardMenuItems = vendorDashboardContainer.querySelectorAll('.dashboard-menu a'); // Specific to vendor dashboard
             const switchToVendorBtn = document.getElementById('switch-to-vendor');
             const switchToClientBtn = document.getElementById('switch-to-client');
             const logoutDashboardBtn = document.getElementById('logout-dashboard');
@@ -2352,6 +2353,10 @@
             
             // User state
             let currentUser = null;
+
+            // State variables for dashboard mode and active section, persisted in localStorage
+            let isVendorMode = localStorage.getItem('isVendorMode') === 'true';
+            let activeDashboardSection = localStorage.getItem('activeDashboardSection') || 'dashboard'; // Default client dashboard
             
             // Initialize the app
             init();
@@ -2381,6 +2386,11 @@
                     
                     // Setup event listeners
                     setupEventListeners();
+
+                    // Always show the main app container on initial load
+                    appContainer.style.display = 'grid';
+                    clientDashboardContainer.style.display = 'none';
+                    vendorDashboardContainer.style.display = 'none';
                     
                 } catch (error) {
                     console.error('Initialization error:', error);
@@ -2984,7 +2994,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     `;
                 }
 
-                container.innerHTML = `
+                // The containerId passed here is like 'messages-section' or 'vendor-messages-section'
+                // We need to target the chat-messages div *within* that section.
+                // This logic might need adjustment based on the exact HTML structure of these sections.
+                // For now, I'll assume the chat container is a direct child within the section.
+
+                // Find the existing chat container within the given section, or create a new one
+                let chatSectionContent = document.getElementById(containerId);
+                if (!chatSectionContent) {
+                    console.warn(`Chat section content container not found for ID: ${containerId}`);
+                    return;
+                }
+
+                // Clear existing content and rebuild the chat area within the section
+                chatSectionContent.innerHTML = `
                     <div class="dashboard-card">
                         <h2 class="dashboard-card-title">Messages</h2>
                         ${conversationsHtml}
@@ -3238,7 +3261,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // User nav buttons
                 wishlistBtn.addEventListener('click', () => {
                     if (currentUser) {
-                        showDashboard('favorites');
+                        displayUserDashboard('client', 'favorites'); // Use new function
                     } else {
                         profileModal.style.display = 'flex';
                     }
@@ -3246,7 +3269,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 notificationsBtn.addEventListener('click', () => {
                     if (currentUser) {
-                        showDashboard('notifications');
+                        displayUserDashboard('client', 'notifications'); // Use new function
                     } else {
                         profileModal.style.display = 'flex';
                     }
@@ -3433,6 +3456,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 logoutBtn.addEventListener('click', () => {
                     // Clear the token from storage
                     localStorage.removeItem('token');
+                    localStorage.removeItem('isVendorMode'); // Clear vendor mode on logout
+                    localStorage.removeItem('activeDashboardSection'); // Clear active section on logout
                     
                     // Disconnect from chat
                     if (state.socket) {
@@ -3454,31 +3479,33 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     profileBtn.style.alignItems = '';
                     profileBtn.style.justifyContent = '';
                     
-                    // Hide dashboard if shown
+                    // Hide dashboard if shown, show main app
                     appContainer.style.display = 'grid';
-                    dashboardContainer.style.display = 'none';
+                    clientDashboardContainer.style.display = 'none';
                     vendorDashboardContainer.style.display = 'none';
                 });
                 
                 // View dashboard button
                 viewDashboardBtn.addEventListener('click', () => {
                     profileModal.style.display = 'none';
-                    showDashboard();
+                    // Use the new unified function
+                    displayUserDashboard(currentUser.isVendor ? 'vendor' : 'client', activeDashboardSection);
                 });
                 
-                // Dashboard menu items
-                dashboardMenuItems.forEach(item => {
+                // Dashboard menu items (both client and vendor)
+                clientDashboardMenuItems.forEach(item => {
                     item.addEventListener('click', (e) => {
                         e.preventDefault();
                         const section = item.dataset.section;
-                        showDashboard(section);
-                        
-                        // Load messages when messages section is clicked
-                        if (section === 'messages' && currentUser) {
-                            loadConversations('messages-section', 'dashboard-chat-input', 'dashboard-send-btn');
-                        } else if (section === 'vendor-messages' && currentUser) {
-                            loadConversations('vendor-messages-section', 'vendor-all-chat-input', 'vendor-all-send-btn');
-                        }
+                        displayUserDashboard('client', section); // Always 'client' for this menu
+                    });
+                });
+
+                vendorDashboardMenuItems.forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const section = item.dataset.section;
+                        displayUserDashboard('vendor', section); // Always 'vendor' for this menu
                     });
                 });
                 
@@ -3486,7 +3513,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 switchToVendorBtn.addEventListener('click', (e) => {
                     e.preventDefault();
                     if (currentUser.isVendor) {
-                        showVendorDashboard();
+                        displayUserDashboard('vendor', 'vendor-dashboard'); // Use new function
                     } else {
                         vendorRegistrationModal.style.display = 'flex';
                     }
@@ -3495,7 +3522,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Switch to client mode
                 switchToClientBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    showDashboard();
+                    displayUserDashboard('client', 'dashboard'); // Use new function
                 });
                 
                 // Logout from dashboard
@@ -3604,7 +3631,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         
                         // Update user to vendor status
                         currentUser.isVendor = true;
-                        showVendorDashboard();
+                        displayUserDashboard('vendor', 'vendor-dashboard'); // Use new function
                         
                     } catch (error) {
                         console.error('Registration error:', error);
@@ -4645,74 +4672,73 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('profile-avatar').textContent = currentUser.avatar;
             }
             
-            // Show dashboard
-            function showDashboard(section = 'dashboard') {
+            // Unified function to display either client or vendor dashboard
+            function displayUserDashboard(mode, section) {
+                // Update global state and localStorage
+                isVendorMode = (mode === 'vendor');
+                activeDashboardSection = section;
+                localStorage.setItem('isVendorMode', isVendorMode);
+                localStorage.setItem('activeDashboardSection', activeDashboardSection);
+
+                // Hide main app view
                 appContainer.style.display = 'none';
-                vendorDashboardContainer.style.display = 'none';
-                dashboardContainer.style.display = 'grid';
-                
-                // Update active menu item
-                dashboardMenuItems.forEach(item => {
-                    item.classList.remove('active');
-                    if (item.dataset.section === section) {
-                        item.classList.add('active');
+
+                // Determine which dashboard to show
+                if (isVendorMode) {
+                    clientDashboardContainer.style.display = 'none';
+                    vendorDashboardContainer.style.display = 'grid';
+                } else {
+                    vendorDashboardContainer.style.display = 'none';
+                    clientDashboardContainer.style.display = 'grid';
+                }
+
+                // Get the correct menu and content sections based on the mode
+                const currentDashboardMenu = isVendorMode ? vendorDashboardContainer.querySelector('.dashboard-menu') : clientDashboardContainer.querySelector('.dashboard-menu');
+                // Select all direct children divs of main within the active dashboard container that start with 'dashboard-' or 'vendor-'
+                const currentDashboardContentSections = document.querySelectorAll(
+                    isVendorMode ? '#vendor-dashboard-container > main > div[id^="vendor-"]' : '#dashboard-container > main > div[id]'
+                ); 
+
+                // Hide all sections in the active dashboard first
+                currentDashboardContentSections.forEach(sec => {
+                    sec.style.display = 'none';
+                });
+
+                // Show the selected section
+                const targetSectionElement = document.getElementById(section + '-section');
+                if (targetSectionElement) {
+                    targetSectionElement.style.display = 'block';
+                    // Update dashboard title
+                    const dashboardTitleElement = document.getElementById(isVendorMode ? 'vendor-dashboard-title' : 'dashboard-title');
+                    if (dashboardTitleElement) {
+                        dashboardTitleElement.textContent = section.charAt(0).toUpperCase() + section.slice(1).replace('-', ' ');
+                    }
+                } else {
+                    console.warn(`Attempted to show non-existent section: ${section}-section`);
+                }
+
+                // Update active class on menu items
+                currentDashboardMenu.querySelectorAll('a').forEach(link => {
+                    if (link.dataset.section === section) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
                     }
                 });
-                
-                // Hide all sections first
-                document.getElementById('dashboard-section').style.display = 'none';
-                document.getElementById('bookings-section').style.display = 'none';
-                document.getElementById('favorites-section').style.display = 'none';
-                document.getElementById('messages-section').style.display = 'none';
-                document.getElementById('reviews-section').style.display = 'none';
-                document.getElementById('settings-section').style.display = 'none';
-                
-                // Show the selected section
-                const targetSection = document.getElementById(`${section}-section`);
-                if (targetSection) {
-                    targetSection.style.display = 'block';
-                    document.getElementById('dashboard-title').textContent = 
-                        section.charAt(0).toUpperCase() + section.slice(1).replace('-', ' ');
-                } else {
-                    console.error(`Section with ID ${section}-section not found.`);
-                }
-                
-                // Load data for the section
+
+                // Load specific data for sections if needed
                 if (section === 'favorites') {
                     loadFavorites();
-                } else if (section === 'messages') {
-                    loadConversations('messages-section', 'dashboard-chat-input', 'dashboard-send-btn');
+                } else if (section === 'messages' || section === 'vendor-messages') {
+                    // Determine correct chat input/send button IDs based on current mode
+                    const chatInputId = isVendorMode ? 'vendor-all-chat-input' : 'dashboard-chat-input';
+                    const sendButtonId = isVendorMode ? 'vendor-all-send-btn' : 'dashboard-send-btn';
+                    loadConversations(section + '-section', chatInputId, sendButtonId);
+                } else if (section === 'vendor-dashboard') {
+                    loadVendorData(); // This might load recent messages too
+                    // Also load recent messages for the vendor dashboard overview
+                    loadConversations('vendor-dashboard-section', 'vendor-chat-input', 'vendor-send-btn');
                 }
-            }
-            
-            // Show vendor dashboard
-            function showVendorDashboard() {
-                appContainer.style.display = 'none';
-                dashboardContainer.style.display = 'none';
-                vendorDashboardContainer.style.display = 'grid';
-                
-                // Load vendor data
-                loadVendorData();
-                
-                // By default, show vendor dashboard section, then load messages
-                const vendorDashboardMenuItems = document.querySelectorAll('#vendor-dashboard-container .dashboard-menu a');
-                vendorDashboardMenuItems.forEach(item => {
-                    item.classList.remove('active');
-                    if (item.dataset.section === 'vendor-dashboard') {
-                        item.classList.add('active');
-                    }
-                });
-
-                document.getElementById('vendor-dashboard-section').style.display = 'block';
-                document.getElementById('vendor-bookings-section').style.display = 'none';
-                document.getElementById('vendor-services-section').style.display = 'none';
-                document.getElementById('vendor-messages-section').style.display = 'none';
-                document.getElementById('vendor-reviews-section').style.display = 'none';
-                document.getElementById('vendor-analytics-section').style.display = 'none';
-                document.getElementById('vendor-settings-section').style.display = 'none';
-
-                // Load recent messages for vendor dashboard overview
-                loadConversations('vendor-dashboard-section', 'vendor-chat-input', 'vendor-send-btn');
             }
             
             // Load favorites for dashboard
