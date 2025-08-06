@@ -3337,11 +3337,39 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     profileModal.style.display = 'flex';
                 });
                 
-                // Close profile modal
-                closeProfileModal.addEventListener('click', () => {
-                    profileModal.style.display = 'none';
+                // Generic close modal buttons (for all modals)
+                document.querySelectorAll('.close-modal').forEach(closeBtn => {
+                    closeBtn.addEventListener('click', function() {
+                        this.closest('.modal').style.display = 'none';
+                        document.body.style.overflow = 'auto'; // Re-enable scrolling
+                        // If it's the vendor-modal, also reset its state
+                        if (this.closest('.modal').id === 'vendor-modal') {
+                            resetBookingModalState();
+                        }
+                    });
                 });
-                profileModal.addEventListener('click', (e) => e.target === profileModal && (profileModal.style.display = 'none'));
+
+                // Generic close modals when clicking outside the content (for all modals)
+                document.querySelectorAll('.modal').forEach(m => {
+                    // Remove existing listener to prevent duplicates if setupEventListeners is called multiple times
+                    const oldListener = m.__overlayClickListener;
+                    if (oldListener) {
+                        m.removeEventListener('click', oldListener);
+                    }
+
+                    const newListener = (e) => {
+                        if (e.target === m) {
+                            m.style.display = 'none';
+                            document.body.style.overflow = 'auto';
+                            // If it's the vendor-modal, also reset its state
+                            if (m.id === 'vendor-modal') {
+                                resetBookingModalState();
+                            }
+                        }
+                    };
+                    m.addEventListener('click', newListener);
+                    m.__overlayClickListener = newListener; // Store listener for removal
+                });
                 
                 // Toggle between login and signup forms
                 showSignup.addEventListener('click', (e) => {
@@ -3744,10 +3772,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     currentLocationCheckbox.checked = false;
                                 });
                                 
-                                // Modal close
-                                document.querySelector('.close-modal').addEventListener('click', closeBookingModal);
-                                modal.addEventListener('click', (e) => e.target === modal && closeBookingModal());
-                                
                                 // Confirmation modal
                                 document.getElementById('conf-done-btn').addEventListener('click', () => {
                                     confirmationModal.style.display = 'none';
@@ -4017,11 +4041,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                                 </div>
                                             </div>
                                             <div class="vendor-footer">
-                                                <div class="vendor-price">${vendor.price}<span>starting</span></div>
-                                                <div class="vendor-actions">
-                                                    <button class="btn btn-outline save-btn" data-id="${vendor.id}">Save</button>
-                                                    <button class="btn btn-primary view-btn" data-id="${vendor.id}">View</button>
-                                                </div>
+                                                <button class="btn btn-outline save-btn" data-id="${vendor.id}">Save</button>
+                                                <button class="btn btn-primary view-btn" data-id="${vendor.id}">View</button>
                                             </div>
                                         </div>
                                     `;
@@ -4382,15 +4403,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 // Login to review
                                 document.getElementById('login-to-review')?.addEventListener('click', (e) => {
                                     e.preventDefault();
-                                    closeBookingModal();
+                                    // Hide the vendor modal directly, then show profile modal
+                                    document.getElementById('vendor-modal').style.display = 'none';
+                                    document.body.style.overflow = 'auto'; // Ensure scrolling is re-enabled
                                     profileModal.style.display = 'flex';
+                                    showLoginView();
                                 });
                                 
                                 // Book now button
                                 document.getElementById('book-now-btn').addEventListener('click', function() {
                                     if (!currentUser) {
-                                        closeBookingModal();
+                                        // Hide the vendor modal directly, then show profile modal
+                                        document.getElementById('vendor-modal').style.display = 'none';
+                                        document.body.style.overflow = 'auto'; // Ensure scrolling is re-enabled
                                         profileModal.style.display = 'flex';
+                                        showLoginView();
                                         return;
                                     }
                                     
@@ -4562,6 +4589,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     }
                                 });
                                 calendar.render();
+                                calendarEl._fullCalendar = calendar; // Store calendar instance
                             }
                             
                             // Generate time slots for selected date
@@ -4645,7 +4673,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     document.getElementById('conf-id').textContent = bookingData._id;
                                     
                                     // Show confirmation
-                                    closeBookingModal();
+                                    closeBookingModal(); // This will hide the vendor modal and reset its state
                                     confirmationModal.style.display = 'flex';
                                     
                                     // In a real app, you would send a confirmation email
@@ -4696,10 +4724,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 `).join('');
                             }
                             
-                            // Close modal
+                            // Close modal (specifically for vendor-modal and its state)
                             function closeBookingModal() {
-                                modal.style.display = 'none';
+                                document.getElementById('vendor-modal').style.display = 'none';
                                 document.body.style.overflow = 'auto';
+                                resetBookingModalState(); // Call the state reset function
+                            }
+
+                            // New function to reset the state related to the booking modal
+                            function resetBookingModalState() {
+                                state.currentVendor = null;
+                                state.selectedServices = [];
+                                state.selectedDate = null;
+                                state.selectedTime = null;
+                                // Potentially clear calendar selection or time slots if FullCalendar allows
+                                const calendarEl = document.getElementById('booking-calendar');
+                                if (calendarEl && calendarEl._fullCalendar) {
+                                    calendarEl._fullCalendar.unselect(); // Deselect any selected dates
+                                    document.getElementById('time-slots').innerHTML = ''; // Clear time slots
+                                }
                             }
                             
                             // Show login view in profile modal
