@@ -223,7 +223,7 @@ router.get('/status', async (req, res) => {
         success: true,
         isVendor: false,
         isProfileComplete: false,
-        isApproved: false
+        IsVerified: false
       });
     }
 
@@ -233,7 +233,7 @@ router.get('/status', async (req, res) => {
       success: true,
       isVendor: true,
       isProfileComplete: vendor.IsProfileComplete === 1,
-      isApproved: vendor.IsApproved === 1,
+      IsVerified: vendor.IsVerified === 1,
       vendorProfileId: vendor.VendorProfileID
     });
 
