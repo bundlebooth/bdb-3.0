@@ -119,6 +119,49 @@ router.get('/conversation/:id', async (req, res) => {
   }
 });
 
+// Get user conversations
+router.get('/conversations/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query(`
+        SELECT 
+          c.ConversationID,
+          c.CreatedAt,
+          u.Name AS UserName,
+          v.BusinessName AS VendorName,
+          m.Content AS LastMessageContent,
+          m.CreatedAt AS LastMessageCreatedAt
+        FROM Conversations c
+        LEFT JOIN Users u ON c.UserID = u.UserID
+        LEFT JOIN VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
+        LEFT JOIN (
+          SELECT ConversationID, Content, CreatedAt,
+                 ROW_NUMBER() OVER (PARTITION BY ConversationID ORDER BY CreatedAt DESC) as rn
+          FROM Messages
+        ) m ON c.ConversationID = m.ConversationID AND m.rn = 1
+        WHERE c.UserID = @UserID OR v.UserID = @UserID
+        ORDER BY m.CreatedAt DESC
+      `);
+
+    res.json({
+      success: true,
+      conversations: result.recordset
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch conversations',
+      error: err.message 
+    });
+  }
+});
+
 //Check if conversations already exist
 router.post('/conversation/check', async (req, res) => {
     try {
