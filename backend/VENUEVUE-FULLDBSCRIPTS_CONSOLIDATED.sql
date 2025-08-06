@@ -781,20 +781,16 @@ CREATE OR ALTER PROCEDURE sp_RegisterVendor
     @Email NVARCHAR(100),
     @PasswordHash NVARCHAR(255),
     @BusinessName NVARCHAR(100),
-    @BusinessDescription NVARCHAR(MAX) = NULL,
-    @BusinessPhone NVARCHAR(20) = NULL,
-    @BusinessEmail NVARCHAR(100) = NULL,
-    @Website NVARCHAR(255) = NULL,
+    @BusinessDescription NVARCHAR(MAX),
+    @BusinessPhone NVARCHAR(20),
+    @Website NVARCHAR(255),
     @YearsInBusiness INT = NULL,
-    @Address NVARCHAR(255) = NULL,
-    @City NVARCHAR(100) = NULL,
-    @State NVARCHAR(50) = NULL,
+    @Address NVARCHAR(255),
+    @City NVARCHAR(100),
+    @State NVARCHAR(50),
     @Country NVARCHAR(50) = 'USA',
-    @PostalCode NVARCHAR(20) = NULL,
-    @Categories NVARCHAR(MAX) = NULL, -- JSON array of categories
-    @Services NVARCHAR(MAX) = NULL, -- JSON array of services
-    @Latitude DECIMAL(10, 8) = NULL,
-    @Longitude DECIMAL(11, 8) = NULL
+    @Categories NVARCHAR(MAX) = NULL,
+    @Services NVARCHAR(MAX) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -802,31 +798,13 @@ BEGIN
     BEGIN TRY
         BEGIN TRANSACTION;
         
-        -- 1. Create User
-        INSERT INTO Users (
-            Name, 
-            Email, 
-            PasswordHash, 
-            IsVendor,
-            IsAdmin,
-            EmailVerified,
-            CreatedAt,
-            UpdatedAt
-        )
-        VALUES (
-            @Name,
-            @Email,
-            @PasswordHash,
-            1, -- IsVendor
-            0, -- IsAdmin
-            0, -- EmailVerified
-            GETDATE(),
-            GETDATE()
-        );
+        -- Insert user
+        INSERT INTO Users (Name, Email, PasswordHash, IsVendor)
+        VALUES (@Name, @Email, @PasswordHash, 1);
         
         DECLARE @UserID INT = SCOPE_IDENTITY();
         
-        -- 2. Create Vendor Profile
+        -- Create vendor profile
         INSERT INTO VendorProfiles (
             UserID,
             BusinessName,
@@ -838,148 +816,63 @@ BEGIN
             Address,
             City,
             State,
-            Country,
-            PostalCode,
-            Latitude,
-            Longitude,
-            CreatedAt,
-            UpdatedAt
+            Country
         )
         VALUES (
             @UserID,
             @BusinessName,
             @BusinessDescription,
             @BusinessPhone,
-            ISNULL(@BusinessEmail, @Email),
+            @Email,
             @Website,
             @YearsInBusiness,
             @Address,
             @City,
             @State,
-            @Country,
-            @PostalCode,
-            @Latitude,
-            @Longitude,
-            GETDATE(),
-            GETDATE()
+            @Country
         );
         
         DECLARE @VendorProfileID INT = SCOPE_IDENTITY();
         
-        -- 3. Add Categories if provided
-        IF @Categories IS NOT NULL AND ISJSON(@Categories) = 1
+        -- Add categories if provided
+        IF @Categories IS NOT NULL
         BEGIN
             INSERT INTO VendorCategories (VendorProfileID, Category)
-            SELECT @VendorProfileID, [value]
+            SELECT @VendorProfileID, value
             FROM OPENJSON(@Categories);
         END
         
-        -- 4. Add Services if provided
-        IF @Services IS NOT NULL AND ISJSON(@Services) = 1
+        -- Add services if provided
+        IF @Services IS NOT NULL
         BEGIN
-            -- First create default service category if none exists
-            IF NOT EXISTS (SELECT 1 FROM VendorCategories WHERE VendorProfileID = @VendorProfileID)
-            BEGIN
-                INSERT INTO ServiceCategories (VendorProfileID, Name, DisplayOrder)
-                VALUES (@VendorProfileID, 'General Services', 1);
-                
-                DECLARE @DefaultCategoryID INT = SCOPE_IDENTITY();
-                
-                -- Add services to default category
-                INSERT INTO Services (
-                    CategoryID,
-                    Name,
-                    Description,
-                    Price,
-                    DurationMinutes,
-                    IsActive,
-                    RequiresDeposit,
-                    DepositPercentage,
-                    CreatedAt,
-                    UpdatedAt
-                )
-                SELECT 
-                    @DefaultCategoryID,
-                    JSON_VALUE(s.value, '$.name'),
-                    JSON_VALUE(s.value, '$.description'),
-                    CAST(JSON_VALUE(s.value, '$.price') AS DECIMAL(10,2)),
-                    NULL, -- DurationMinutes
-                    1, -- IsActive
-                    1, -- RequiresDeposit
-                    20.00, -- DepositPercentage
-                    GETDATE(),
-                    GETDATE()
-                FROM OPENJSON(@Services) AS s;
-            END
-            ELSE
-            BEGIN
-                -- Add services to first available category
-                DECLARE @FirstCategoryID INT;
-                
-                SELECT TOP 1 @FirstCategoryID = CategoryID 
-                FROM ServiceCategories 
-                WHERE VendorProfileID = @VendorProfileID
-                ORDER BY DisplayOrder;
-                
-                INSERT INTO Services (
-                    CategoryID,
-                    Name,
-                    Description,
-                    Price,
-                    DurationMinutes,
-                    IsActive,
-                    RequiresDeposit,
-                    DepositPercentage,
-                    CreatedAt,
-                    UpdatedAt
-                )
-                SELECT 
-                    @FirstCategoryID,
-                    JSON_VALUE(s.value, '$.name'),
-                    JSON_VALUE(s.value, '$.description'),
-                    CAST(JSON_VALUE(s.value, '$.price') AS DECIMAL(10,2)),
-                    NULL, -- DurationMinutes
-                    1, -- IsActive
-                    1, -- RequiresDeposit
-                    20.00, -- DepositPercentage
-                    GETDATE(),
-                    GETDATE()
-                FROM OPENJSON(@Services) AS s;
-            END
+            -- First create a default service category
+            DECLARE @CategoryID INT;
+            
+            INSERT INTO ServiceCategories (VendorProfileID, Name, Description)
+            VALUES (@VendorProfileID, 'General Services', 'Default service category');
+            
+            SET @CategoryID = SCOPE_IDENTITY();
+            
+            -- Add services using the correct JSON parsing syntax
+            INSERT INTO Services (CategoryID, Name, Description, Price)
+            SELECT 
+                @CategoryID,
+                JSON_VALUE([value], '$.name'),
+                JSON_VALUE([value], '$.description'),
+                CAST(JSON_VALUE([value], '$.price') AS DECIMAL(10,2))
+            FROM OPENJSON(@Services);
         END
-        
-        -- 5. Set default business hours (Monday-Friday 9am-5pm)
-        INSERT INTO VendorBusinessHours (
-            VendorProfileID,
-            DayOfWeek,
-            OpenTime,
-            CloseTime,
-            IsAvailable
-        )
-        VALUES 
-            (@VendorProfileID, 1, '09:00', '17:00', 1), -- Monday
-            (@VendorProfileID, 2, '09:00', '17:00', 1), -- Tuesday
-            (@VendorProfileID, 3, '09:00', '17:00', 1), -- Wednesday
-            (@VendorProfileID, 4, '09:00', '17:00', 1), -- Thursday
-            (@VendorProfileID, 5, '09:00', '17:00', 1); -- Friday
         
         COMMIT TRANSACTION;
         
-        -- Return success with IDs
         SELECT 
+            1 AS Success,
             @UserID AS UserID,
-            @VendorProfileID AS VendorProfileID,
-            1 AS Success;
+            @VendorProfileID AS VendorProfileID;
     END TRY
     BEGIN CATCH
-        IF @@TRANCOUNT > 0
-            ROLLBACK TRANSACTION;
-            
-        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-        DECLARE @ErrorSeverity INT = ERROR_SEVERITY();
-        DECLARE @ErrorState INT = ERROR_STATE();
-        
-        RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+        ROLLBACK TRANSACTION;
+        THROW;
     END CATCH
 END;
 GO
