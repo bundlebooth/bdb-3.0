@@ -2904,37 +2904,42 @@
             }
 
             // Add this function to load conversations for the dashboard
-            async function loadConversations(containerId, chatInputId, sendButtonId) {
-                if (!currentUser) {
-                    console.warn('Cannot load conversations: User not logged in.');
-                    return;
-                }
-                
-                try {
-                    console.log(`Loading conversations for user: ${currentUser.id}`);
-                    const response = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        }
-                    });
-                    
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`Failed to load conversations: ${response.status} ${response.statusText} - ${errorText}`);
-                    }
-                    
-                    const conversations = await response.json();
-                    
-                    // Render conversations list in dashboard
-                    renderConversationsList(conversations, containerId, chatInputId, sendButtonId);
-                } catch (error) {
-                    console.error('Error loading conversations:', error);
-                    const container = document.getElementById(containerId);
-                    if (container) {
-                        container.innerHTML = `<p style="color:var(--accent);">Failed to load conversations. ${error.message}</p>`;
-                    }
-                }
+async function loadConversations(containerId, chatInputId, sendButtonId) {
+    if (!currentUser) {
+        console.warn('Cannot load conversations: User not logged in.');
+        return;
+    }
+    
+    try {
+        console.log(`Loading conversations for user: ${currentUser.id}`);
+        const response = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to load conversations: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        // Check if data is in expected format
+        if (!data.success || !Array.isArray(data.conversations)) {
+            throw new Error('Invalid conversations data format from API');
+        }
+        
+        // Now render with the conversations array
+        renderConversationsList(data.conversations, containerId, chatInputId, sendButtonId);
+    } catch (error) {
+        console.error('Error loading conversations:', error);
+        const container = document.getElementById(containerId);
+        if (container) {
+            container.innerHTML = `<p style="color:var(--accent);">Failed to load conversations. ${error.message}</p>`;
+        }
+    }
+}
 
             function renderConversationsList(conversations, containerId, chatInputId, sendButtonId) {
                 const container = document.getElementById(containerId);
@@ -2942,6 +2947,17 @@
                     console.warn('Conversations container not found:', containerId);
                     return;
                 }
+                
+    if (!container) {
+        console.warn('Conversations container not found:', containerId);
+        return;
+    }
+    
+    // Validate conversations is an array
+    if (!Array.isArray(conversations)) {
+        container.innerHTML = '<p>No conversations data available</p>';
+        return;
+    }
                 
                 let conversationsHtml = '';
                 if (conversations.length === 0) {
