@@ -61,15 +61,11 @@ const vendorsRouter = require('./routes/vendors');
 
 app.use('/api/users', usersRouter);
 app.use('/api/bookings', bookingsRouter);
-app.use('/api/vendors', vendorsRouter); // This line is for general vendor routes (search, etc.)
+app.use('/api/vendors', vendorsRouter); 
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/notifications', notificationsRouter);
-// ===================================================================================
-// FIX: The base path for the vendor dashboard routes is now set to '/api/vendor'
-// to match the client's request.
-// ===================================================================================
 app.use('/api/vendor', vendorDashboardRouter);
 
 // Test database connection
