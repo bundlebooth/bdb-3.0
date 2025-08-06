@@ -31,7 +31,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Make io and upload accessible to routes
 app.set('io', io);
-app.set('upload', upload); // Add this line
+app.set('upload', upload);
 
 // Socket.IO authentication middleware
 io.use((socket, next) => {
@@ -44,12 +44,14 @@ io.use((socket, next) => {
     if (err) {
       return next(new Error('Authentication error: Invalid token'));
     }
-    socket.decoded = decoded;
+    socket.userId = decoded.userId;
+    socket.isVendor = decoded.isVendor || false;
     next();
   });
 });
 
-// Require and mount your routes
+// API Routes
+const vendorsRouter = require('./routes/vendors');
 const bookingsRouter = require('./routes/bookings');
 const favoritesRouter = require('./routes/favorites');
 const { router: messagesRouter, handleSocketIO } = require('./routes/messages');
@@ -57,16 +59,34 @@ const reviewsRouter = require('./routes/reviews');
 const usersRouter = require('./routes/users');
 const notificationsRouter = require('./routes/notifications');
 const vendorDashboardRouter = require('./routes/vendorDashboard');
-const vendorsRouter = require('./routes/vendors');
 
 app.use('/api/users', usersRouter);
 app.use('/api/bookings', bookingsRouter);
-app.use('/api/vendors', vendorsRouter); 
+app.use('/api/vendors', vendorsRouter);
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/notifications', notificationsRouter);
-app.use('/api/vendor', vendorDashboardRouter);
+app.use('/api/vendorDashboard', vendorDashboardRouter);
+
+// New route to handle fetching vendor conversations
+app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
+    try {
+        const { vendorId } = req.params;
+        const pool = await poolPromise;
+        const request = new sql.Request(pool);
+        request.input('VendorProfileID', sql.Int, vendorId);
+        const result = await request.execute('sp_GetVendorConversations');
+
+        res.json(result.recordsets[0]);
+    } catch (err) {
+        console.error('Database error:', err);
+        res.status(500).json({
+            message: 'Failed to retrieve conversations',
+            error: err.message
+        });
+    }
+});
 
 // Test database connection
 app.get('/ping', async (req, res) => {
@@ -90,7 +110,7 @@ handleSocketIO(io);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server is listening on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
 
 module.exports = app;
