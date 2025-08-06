@@ -307,6 +307,100 @@ router.get('/:id/dashboard', async (req, res) => {
   }
 });
 
+// Get all bookings for a user
+router.get('/:id/bookings/all', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+    const result = await request.execute('sp_GetUserBookingsAll');
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('Get all user bookings error:', err);
+    res.status(500).json({ message: 'Failed to get user bookings', error: err.message });
+  }
+});
+
+// Get all reviews by a user
+router.get('/:id/reviews', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+    const result = await request.execute('sp_GetUserReviews');
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('Get user reviews error:', err);
+    res.status(500).json({ message: 'Failed to get user reviews', error: err.message });
+  }
+});
+
+// Get user profile details for editing
+router.get('/:id/profile-details', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+    const result = await request.execute('sp_GetUserProfileDetails');
+    if (result.recordset.length > 0) {
+      res.json(result.recordset[0]);
+    } else {
+      res.status(404).json({ message: 'User profile not found' });
+    }
+  } catch (err) {
+    console.error('Get user profile details error:', err);
+    res.status(500).json({ message: 'Failed to get user profile details', error: err.message });
+  }
+});
+
+// Update user profile
+router.put('/:id/profile-update', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, bio, avatar } = req.body;
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+    request.input('Name', sql.NVarChar(100), name || null);
+    request.input('Phone', sql.NVarChar(20), phone || null);
+    request.input('Bio', sql.NVarChar(sql.MAX), bio || null);
+    request.input('Avatar', sql.NVarChar(255), avatar || null);
+    await request.execute('sp_UpdateUserProfile');
+    res.json({ success: true, message: 'User profile updated successfully' });
+  } catch (err) {
+    console.error('Update user profile error:', err);
+    res.status(500).json({ message: 'Failed to update user profile', error: err.message });
+  }
+});
+
+// Update user password
+router.put('/:id/password-update', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'New password must be at least 8 characters' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+    request.input('PasswordHash', sql.NVarChar(255), passwordHash);
+    await request.execute('sp_UpdateUserPassword');
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (err) {
+    console.error('Update user password error:', err);
+    res.status(500).json({ message: 'Failed to update password', error: err.message });
+  }
+});
+
 // Update user location
 router.post('/:id/location', async (req, res) => {
   try {
