@@ -239,6 +239,71 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Check vendor registration status for current user
+router.get('/status', async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('UserID', sql.Int, userId);
+
+    const result = await request.query(`
+      SELECT 
+        vp.VendorProfileID,
+        vp.IsVerified,
+        CASE 
+          WHEN vp.BusinessName IS NULL THEN 0
+          WHEN vp.BusinessDescription IS NULL THEN 0
+          WHEN vp.BusinessPhone IS NULL THEN 0
+          WHEN vp.Address IS NULL THEN 0
+          ELSE 1
+        END AS IsProfileComplete
+      FROM VendorProfiles vp
+      WHERE vp.UserID = @UserID
+    `);
+
+    if (result.recordset.length === 0) {
+      return res.json({
+        success: true,
+        isVendor: false,
+        isProfileComplete: false,
+        isApproved: false
+      });
+    }
+
+    const vendor = result.recordset[0];
+    
+    res.json({
+      success: true,
+      isVendor: true,
+      isProfileComplete: vendor.IsProfileComplete === 1,
+      isApproved: vendor.IsApproved === 1,
+      vendorProfileId: vendor.VendorProfileID
+    });
+
+  } catch (err) {
+    console.error('Status check error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to check vendor status',
+      error: err.message 
+    });
+  }
+});
+
 // Update vendor profile
 router.put('/:id', upload.array('images', 5), async (req, res) => {
   try {
