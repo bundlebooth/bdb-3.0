@@ -182,64 +182,7 @@ router.post('/register', upload.single('businessLicense'), async (req, res) => {
   }
 });
 
-// Get vendor details
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { userId } = req.query; // Optional: for checking favorites
-
-    const pool = await poolPromise;
-    
-    if (!pool.connected) {
-      throw new Error('Database connection not established');
-    }
-
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, id);
-    request.input('UserID', sql.Int, userId || null);
-
-    const result = await request.execute('sp_GetVendorDetails');
-    
-    if (result.recordsets.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
-      });
-    }
-
-    // Format the response
-    const vendorDetails = {
-      profile: result.recordsets[0][0],
-      categories: result.recordsets[1],
-      services: result.recordsets[2],
-      addOns: result.recordsets[3],
-      portfolio: result.recordsets[4],
-      reviews: result.recordsets[5],
-      faqs: result.recordsets[6],
-      team: result.recordsets[7],
-      socialMedia: result.recordsets[8],
-      businessHours: result.recordsets[9],
-      images: result.recordsets[10],
-      isFavorite: result.recordsets[11] ? result.recordsets[11][0].IsFavorite : false,
-      availableSlots: result.recordsets[12]
-    };
-
-    res.json({
-      success: true,
-      data: vendorDetails
-    });
-
-  } catch (err) {
-    console.error('Database error:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to get vendor details',
-      error: err.message 
-    });
-  }
-});
-
-// Check vendor registration status for current user
+// Check vendor registration status for current user - MOVED ABOVE /:id ROUTE
 router.get('/status', async (req, res) => {
   try {
     const { userId } = req.query;
@@ -299,6 +242,63 @@ router.get('/status', async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Failed to check vendor status',
+      error: err.message 
+    });
+  }
+});
+
+// Get vendor details - MOVED BELOW /status ROUTE
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.query; // Optional: for checking favorites
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('UserID', sql.Int, userId || null);
+
+    const result = await request.execute('sp_GetVendorDetails');
+    
+    if (result.recordsets.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found'
+      });
+    }
+
+    // Format the response
+    const vendorDetails = {
+      profile: result.recordsets[0][0],
+      categories: result.recordsets[1],
+      services: result.recordsets[2],
+      addOns: result.recordsets[3],
+      portfolio: result.recordsets[4],
+      reviews: result.recordsets[5],
+      faqs: result.recordsets[6],
+      team: result.recordsets[7],
+      socialMedia: result.recordsets[8],
+      businessHours: result.recordsets[9],
+      images: result.recordsets[10],
+      isFavorite: result.recordsets[11] ? result.recordsets[11][0].IsFavorite : false,
+      availableSlots: result.recordsets[12]
+    };
+
+    res.json({
+      success: true,
+      data: vendorDetails
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get vendor details',
       error: err.message 
     });
   }
