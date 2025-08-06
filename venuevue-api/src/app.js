@@ -44,14 +44,12 @@ io.use((socket, next) => {
     if (err) {
       return next(new Error('Authentication error: Invalid token'));
     }
-    socket.userId = decoded.userId;
-    socket.isVendor = decoded.isVendor || false;
+    socket.decoded = decoded;
     next();
   });
 });
 
-// API Routes
-const vendorsRouter = require('./routes/vendors');
+// Require and mount your routes
 const bookingsRouter = require('./routes/bookings');
 const favoritesRouter = require('./routes/favorites');
 const { router: messagesRouter, handleSocketIO } = require('./routes/messages');
@@ -59,15 +57,20 @@ const reviewsRouter = require('./routes/reviews');
 const usersRouter = require('./routes/users');
 const notificationsRouter = require('./routes/notifications');
 const vendorDashboardRouter = require('./routes/vendorDashboard');
+const vendorsRouter = require('./routes/vendors');
 
 app.use('/api/users', usersRouter);
 app.use('/api/bookings', bookingsRouter);
-app.use('/api/vendors', vendorsRouter);
+app.use('/api/vendors', vendorsRouter); // This line is for general vendor routes (search, etc.)
 app.use('/api/favorites', favoritesRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/notifications', notificationsRouter);
-app.use('/api/vendorDashboard', vendorDashboardRouter);
+// ===================================================================================
+// FIX: The base path for the vendor dashboard routes is now set to '/api/vendor'
+// to match the client's request.
+// ===================================================================================
+app.use('/api/vendor', vendorDashboardRouter);
 
 // Test database connection
 app.get('/ping', async (req, res) => {
@@ -91,7 +94,5 @@ handleSocketIO(io);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is listening on port ${PORT}`);
 });
-
-module.exports = app;
