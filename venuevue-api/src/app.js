@@ -6,7 +6,9 @@ const bodyParser = require('body-parser');
 const http = require('http');
 const socketio = require('socket.io');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 const { poolPromise } = require('./config/db');
+const { upload } = require('./middlewares/uploadMiddleware'); 
 
 const app = express();
 const server = http.createServer(app);
@@ -24,8 +26,12 @@ app.use(morgan('combined'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Make io accessible to routes
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Make io and upload accessible to routes
 app.set('io', io);
+app.set('upload', upload); // Add this line
 
 // Socket.IO authentication middleware
 io.use((socket, next) => {
