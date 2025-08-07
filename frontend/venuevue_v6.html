@@ -4386,6 +4386,80 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const fullVendorDetails = data.data;
 
                     renderVendorProfile(fullVendorDetails);
+                    setupChatEventListeners('chat-input', 'send-btn');
+
+                    // --- START: NEW BOOKING LOGIC FOR PROFILE PAGE ---
+                    const servicesSection = vendorProfilePage.querySelector('#profile-services-section');
+                    const selectedServicesList = vendorProfilePage.querySelector('#selected-services-list');
+                    const totalPriceEl = vendorProfilePage.querySelector('#booking-total-price');
+                    const proceedToBookBtn = vendorProfilePage.querySelector('#proceed-to-book-btn');
+
+                    state.selectedServices = [];
+
+                    function updateBookingSummary() {
+                        if (state.selectedServices.length === 0) {
+                            selectedServicesList.innerHTML = '<p style="font-size: 0.9rem; color: var(--text-light);">Select services from the list to get started.</p>';
+                            totalPriceEl.textContent = '$0.00';
+                            proceedToBookBtn.disabled = true;
+                            proceedToBookBtn.textContent = 'Choose Services';
+                        } else {
+                            selectedServicesList.innerHTML = state.selectedServices.map(s => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                                    <span>${s.name}</span>
+                                    <span>$${parseFloat(s.price).toFixed(2)}</span>
+                                </div>
+                            `).join('');
+                            const total = state.selectedServices.reduce((sum, s) => sum + parseFloat(s.price), 0);
+                            totalPriceEl.textContent = `$${total.toFixed(2)}`;
+                            proceedToBookBtn.disabled = false;
+                            proceedToBookBtn.textContent = 'Proceed to Book';
+                        }
+                    }
+
+                    servicesSection.querySelectorAll('.add-service-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const serviceId = btn.dataset.serviceId;
+                            const serviceName = btn.dataset.serviceName;
+                            const servicePrice = btn.dataset.price;
+
+                            const existingServiceIndex = state.selectedServices.findIndex(s => s.id === serviceId);
+
+                            if (existingServiceIndex > -1) {
+                                // Remove service
+                                state.selectedServices.splice(existingServiceIndex, 1);
+                                btn.textContent = 'Add';
+                                btn.classList.remove('btn-primary');
+                                btn.classList.add('btn-outline');
+                            } else {
+                                // Add service
+                                state.selectedServices.push({ id: serviceId, name: serviceName, price: servicePrice });
+                                btn.textContent = 'Remove';
+                                btn.classList.remove('btn-outline');
+                                btn.classList.add('btn-primary');
+                            }
+                            updateBookingSummary();
+                        });
+                    });
+
+                    proceedToBookBtn.addEventListener('click', () => {
+                        if (state.selectedServices.length > 0) {
+                            // For now, show the confirmation modal as a placeholder for the next step.
+                            const confVendorName = document.getElementById('conf-venue-name');
+                            const confServices = document.getElementById('conf-services');
+                            const confDate = document.getElementById('conf-date');
+                            const confTime = document.getElementById('conf-time');
+                            const confId = document.getElementById('conf-id');
+
+                            confVendorName.textContent = fullVendorDetails.profile.BusinessName;
+                            confServices.textContent = state.selectedServices.map(s => s.name).join(', ');
+                            confDate.textContent = new Date().toLocaleDateString(); // Placeholder
+                            confTime.textContent = 'TBD'; // Placeholder
+                            confId.textContent = `VV-${Date.now()}`;
+
+                            confirmationModal.style.display = 'flex';
+                        }
+                    });
+                    // --- END: NEW BOOKING LOGIC FOR PROFILE PAGE ---
                     
                     // Initialize chat for the profile page
                     if (currentUser) {
@@ -4446,14 +4520,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         </div>
 
                         <!-- Vendor Content Sections -->
-                        <div style="display: grid; grid-template-columns: 1fr 300px; gap: 2rem; margin-top: 2rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 320px; gap: 2rem; margin-top: 2rem;">
                             <!-- Main Content Area -->
                             <div>
                                 <h2 class="services-title">About ${profile.BusinessName}</h2>
                                 <p style="line-height: 1.6;">${profile.BusinessDescription}</p>
 
                                 <!-- Services -->
-                                <div class="services-section">
+                                <div id="profile-services-section" class="services-section">
                                     <h2 class="services-title">Our Services</h2>
                                     ${renderServices(details.services)}
                                 </div>
@@ -4466,22 +4540,42 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     </div>
                                     <button class="btn btn-outline add-review-btn" id="show-review-form" style="margin-top: 1rem;">Add Review</button>
                                 </div>
+
+                                <!-- Chat Section -->
+                                <div id="profile-chat-section" class="chat-section">
+                                    <h2 class="services-title">Message Vendor</h2>
+                                    <div class="chat-container">
+                                        <div class="chat-messages" id="chat-messages">
+                                            <!-- Messages will load here -->
+                                        </div>
+                                        <div class="chat-input">
+                                            <input type="text" placeholder="Type your message..." id="chat-input">
+                                            <button class="btn btn-primary" id="send-btn">Send</button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Sidebar -->
-                            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                                <!-- Contact & Booking -->
-                                <div style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
-                                    <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Contact & Book</h3>
-                                    <p style="margin-bottom: 1rem;">Have questions? Ready to book? Get in touch!</p>
-                                    <button class="btn btn-primary" id="open-chat-btn" style="width: 100%; margin-bottom: 0.5rem;">Message Vendor</button>
-                                    <button class="btn btn-outline" id="book-now-btn" style="width: 100%;">Book Now</button>
+                            <div style="display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 2rem;">
+                                <!-- Booking Summary -->
+                                <div id="booking-summary" style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
+                                    <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Your Booking</h3>
+                                    <div id="selected-services-list">
+                                        <p style="font-size: 0.9rem; color: var(--text-light);">Select services from the list to get started.</p>
+                                    </div>
+                                    <div style="border-top: 1px solid var(--border); margin: 1rem 0; padding-top: 1rem; display: flex; justify-content: space-between; font-weight: 600;">
+                                        <span>Total</span>
+                                        <span id="booking-total-price">$0.00</span>
+                                    </div>
+                                    <button class="btn btn-primary" id="proceed-to-book-btn" style="width: 100%;" disabled>Choose Services</button>
                                 </div>
 
-                                <!-- Availability -->
+                                <!-- Contact -->
                                 <div style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
-                                    <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Availability</h3>
-                                    <div id="booking-calendar"></div>
+                                    <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Contact Vendor</h3>
+                                    <p style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-light);">Have questions? Get in touch!</p>
+                                    <button class="btn btn-outline" id="open-chat-btn" style="width: 100%;">Message Vendor</button>
                                 </div>
                             </div>
                         </div>
@@ -4495,12 +4589,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     toggleFavorite(profile.VendorProfileID);
                 });
                 vendorProfilePage.querySelector('#open-chat-btn').addEventListener('click', () => {
-                    // Logic to show a chat modal or navigate to messages
-                    alert('Chat modal would open here!');
-                });
-                vendorProfilePage.querySelector('#book-now-btn').addEventListener('click', () => {
-                    // Logic to show booking form or modal
-                    alert('Booking form would open here!');
+                    const chatSection = vendorProfilePage.querySelector('#profile-chat-section');
+                    chatSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => {
+                        vendorProfilePage.querySelector('#chat-input').focus();
+                    }, 500);
                 });
             }
 
