@@ -401,15 +401,6 @@
             overflow: hidden;
         }
 
-        .view-btn {
-            padding: 0.5rem 1rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 0.9rem;
-            color: var(--text-light);
-        }
-
         .view-btn.active {
             background-color: white;
             color: var(--primary);
@@ -4176,7 +4167,6 @@
                                     case 'advanced':
                                         document.getElementById('start-date').value = '';
                                         document.getElementById('end-date').value = '';
-                                        document.getElementById('region-select').value = '';
                                         state.filters.startDate = null;
                                         state.filters.endDate = null;
                                         state.filters.region = '';
