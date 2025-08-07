@@ -91,37 +91,23 @@ router.get('/', async (req, res) => {
 router.post('/register', upload.single('businessLicense'), async (req, res) => {
   try {
     const {
-      name,
-      email,
-      passwordHash,
+      userId,
       businessName,
-      businessType,
-      category,
+      displayName,
+      email,
+      phone,
+      website,
       yearsInBusiness,
       description,
-      phone,
+      tagline,
       address,
-      website,
+      city,
+      state,
+      country,
+      postalCode,
+      categories,
       services
     } = req.body;
-
-    // Parse services JSON if provided
-    let servicesData = [];
-    try {
-      servicesData = services ? JSON.parse(services) : [];
-    } catch (e) {
-      console.error('Error parsing services JSON:', e);
-      return res.status(400).json({ 
-        success: false,
-        message: 'Invalid services format'
-      });
-    }
-
-    // Parse categories (single category or array)
-    let categoriesData = [];
-    if (category) {
-      categoriesData = Array.isArray(category) ? category : [category];
-    }
 
     const pool = await poolPromise;
     
@@ -132,25 +118,22 @@ router.post('/register', upload.single('businessLicense'), async (req, res) => {
     const request = new sql.Request(pool);
     
     // Set all input parameters
-    request.input('Name', sql.NVarChar(100), name);
-    request.input('Email', sql.NVarChar(100), email);
-    request.input('PasswordHash', sql.NVarChar(255), passwordHash);
+    request.input('UserID', sql.Int, userId);
     request.input('BusinessName', sql.NVarChar(100), businessName);
+    request.input('DisplayName', sql.NVarChar(100), displayName);
     request.input('BusinessDescription', sql.NVarChar(sql.MAX), description);
     request.input('BusinessPhone', sql.NVarChar(20), phone);
     request.input('Website', sql.NVarChar(255), website);
     request.input('YearsInBusiness', sql.Int, yearsInBusiness ? parseInt(yearsInBusiness) : null);
     request.input('Address', sql.NVarChar(255), address);
-    
-    // Parse address components
-    const [city, state] = address ? address.split(',').map(s => s.trim()) : [null, null];
     request.input('City', sql.NVarChar(100), city);
     request.input('State', sql.NVarChar(50), state);
-    request.input('Country', sql.NVarChar(50), 'USA'); // Default country
+    request.input('Country', sql.NVarChar(50), country);
+    request.input('PostalCode', sql.NVarChar(20), postalCode);
     
     // Categories and services as JSON
-    request.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categoriesData));
-    request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(servicesData));
+    request.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categories));
+    request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
     
     // Execute the stored procedure
     const result = await request.execute('sp_RegisterVendor');
@@ -207,14 +190,10 @@ router.get('/status', async (req, res) => {
       SELECT 
         vp.VendorProfileID,
         vp.IsVerified,
-        CASE 
-          WHEN vp.BusinessName IS NULL THEN 0
-          WHEN vp.BusinessDescription IS NULL THEN 0
-          WHEN vp.BusinessPhone IS NULL THEN 0
-          WHEN vp.Address IS NULL THEN 0
-          ELSE 1
-        END AS IsProfileComplete
+        vp.IsCompleted,
+        u.IsVendor
       FROM VendorProfiles vp
+      JOIN Users u ON vp.UserID = u.UserID
       WHERE vp.UserID = @UserID
     `);
 
@@ -223,7 +202,7 @@ router.get('/status', async (req, res) => {
         success: true,
         isVendor: false,
         isProfileComplete: false,
-        IsVerified: false
+        isVerified: false
       });
     }
 
@@ -231,9 +210,9 @@ router.get('/status', async (req, res) => {
     
     res.json({
       success: true,
-      isVendor: true,
-      isProfileComplete: vendor.IsProfileComplete === 1,
-      IsVerified: true,
+      isVendor: vendor.IsVendor,
+      isProfileComplete: vendor.IsCompleted === 1,
+      isVerified: vendor.IsVerified,
       vendorProfileId: vendor.VendorProfileID
     });
 
@@ -247,7 +226,7 @@ router.get('/status', async (req, res) => {
   }
 });
 
-// Get vendor details - MOVED BELOW /status ROUTE
+// Get vendor details for a public profile page
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -304,97 +283,82 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Update vendor profile
-router.put('/:id', upload.array('images', 5), async (req, res) => {
+// NEW: Update Vendor Profile - Step 1 (Business Basics)
+router.put('/:id/basics', async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
-    const files = req.files || [];
+    const { businessName, displayName, businessEmail, businessPhone, website, categories } = req.body;
 
     const pool = await poolPromise;
-    
-    if (!pool.connected) {
-      throw new Error('Database connection not established');
-    }
+    const request = new sql.Request(pool);
 
-    // Start transaction
-    const transaction = new sql.Transaction(pool);
-    await transaction.begin();
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('BusinessName', sql.NVarChar(100), businessName);
+    request.input('DisplayName', sql.NVarChar(100), displayName);
+    request.input('BusinessEmail', sql.NVarChar(100), businessEmail);
+    request.input('BusinessPhone', sql.NVarChar(20), businessPhone);
+    request.input('Website', sql.NVarChar(255), website);
+    request.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categories));
 
-    try {
-      const request = new sql.Request(transaction);
-      
-      // Update basic vendor info
-      request.input('VendorProfileID', sql.Int, id);
-      request.input('BusinessName', sql.NVarChar(100), updateData.businessName);
-      request.input('BusinessDescription', sql.NVarChar(sql.MAX), updateData.description);
-      request.input('BusinessPhone', sql.NVarChar(20), updateData.phone);
-      request.input('Website', sql.NVarChar(255), updateData.website);
-      request.input('YearsInBusiness', sql.Int, updateData.yearsInBusiness);
-      request.input('Address', sql.NVarChar(255), updateData.address);
-      request.input('City', sql.NVarChar(100), updateData.city);
-      request.input('State', sql.NVarChar(50), updateData.state);
-      request.input('Country', sql.NVarChar(50), updateData.country || 'USA');
-      request.input('PostalCode', sql.NVarChar(20), updateData.postalCode);
-      request.input('IsPremium', sql.Bit, updateData.isPremium || 0);
-      request.input('IsEcoFriendly', sql.Bit, updateData.isEcoFriendly || 0);
-      request.input('IsAwardWinning', sql.Bit, updateData.isAwardWinning || 0);
-
-      await request.query(`
-        UPDATE VendorProfiles 
-        SET 
-          BusinessName = @BusinessName,
-          BusinessDescription = @BusinessDescription,
-          BusinessPhone = @BusinessPhone,
-          Website = @Website,
-          YearsInBusiness = @YearsInBusiness,
-          Address = @Address,
-          City = @City,
-          State = @State,
-          Country = @Country,
-          PostalCode = @PostalCode,
-          IsPremium = @IsPremium,
-          IsEcoFriendly = @IsEcoFriendly,
-          IsAwardWinning = @IsAwardWinning,
-          UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @VendorProfileID
-      `);
-
-      // Handle image uploads (in production, upload to cloud storage)
-      if (files.length > 0) {
-        for (const file of files) {
-          const imgRequest = new sql.Request(transaction);
-          imgRequest.input('VendorProfileID', sql.Int, id);
-          imgRequest.input('ImageURL', sql.NVarChar(255), `/uploads/${file.filename}`);
-          imgRequest.input('IsPrimary', sql.Bit, 0);
-          
-          await imgRequest.query(`
-            INSERT INTO VendorImages (VendorProfileID, ImageURL, IsPrimary)
-            VALUES (@VendorProfileID, @ImageURL, @IsPrimary)
-          `);
-        }
-      }
-
-      // Commit transaction
-      await transaction.commit();
-
-      res.json({
-        success: true,
-        message: 'Vendor profile updated successfully'
-      });
-
-    } catch (err) {
-      await transaction.rollback();
-      throw err;
-    }
+    await request.execute('sp_UpdateVendorProfileBasics');
+    res.json({ success: true, message: 'Business basics updated successfully' });
   } catch (err) {
-    console.error('Update error:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to update vendor profile',
-      error: err.message 
-    });
+    console.error('Update vendor basics error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update business basics', error: err.message });
   }
+});
+
+// NEW: Update Vendor Profile - Step 2 (Location Info)
+router.put('/:id/location', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { address, city, state, country, postalCode, latitude, longitude } = req.body;
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('Address', sql.NVarChar(255), address);
+    request.input('City', sql.NVarChar(100), city);
+    request.input('State', sql.NVarChar(50), state);
+    request.input('Country', sql.NVarChar(50), country);
+    request.input('PostalCode', sql.NVarChar(20), postalCode);
+    request.input('Latitude', sql.Decimal(10, 8), latitude);
+    request.input('Longitude', sql.Decimal(11, 8), longitude);
+
+    await request.execute('sp_UpdateVendorProfileLocation');
+    res.json({ success: true, message: 'Location info updated successfully' });
+  } catch (err) {
+    console.error('Update vendor location error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update location info', error: err.message });
+  }
+});
+
+// NEW: Update Vendor Profile - Step 3 (About the Vendor)
+router.put('/:id/about', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tagline, businessDescription, yearsInBusiness } = req.body;
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('Tagline', sql.NVarChar(255), tagline);
+    request.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription);
+    request.input('YearsInBusiness', sql.Int, yearsInBusiness);
+
+    await request.execute('sp_UpdateVendorProfileAbout');
+    res.json({ success: true, message: 'About section updated successfully' });
+  } catch (err) {
+    console.error('Update vendor about error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update about section', error: err.message });
+  }
+});
+
+// Update vendor profile (old, deprecated route for multi-step flow)
+router.put('/:id', upload.array('images', 5), async (req, res) => {
+  res.status(400).json({ success: false, message: "This endpoint is now deprecated. Please use the specific /basics, /location, and /about endpoints for a multi-step update." });
 });
 
 module.exports = router;
