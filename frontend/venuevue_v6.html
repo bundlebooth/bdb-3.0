@@ -401,6 +401,14 @@
             overflow: hidden;
         }
 
+        .view-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            background-color: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
         .view-btn.active {
             background-color: white;
             color: var(--primary);
@@ -1596,6 +1604,10 @@
                         <option value="nearest">Nearest to Me</option>
                         <option value="rating">Highest Rated</option>
                     </select>
+                    <div class="view-toggle">
+                        <button class="view-btn active" id="list-view-btn">📋 List</button>
+                        <button class="view-btn" id="map-view-btn">🗺️ Map</button>
+                    </div>
                 </div>
             </div>
 
@@ -1631,383 +1643,223 @@
         <!-- The content for the vendor profile page will be rendered here dynamically -->
     </div>
 
-    <!-- Dashboard View (Hidden by default) -->
-    <div class="dashboard-container" id="dashboard-container" style="display: none;">
-        <aside class="dashboard-sidebar">
-            <div class="logo" style="padding: 1rem 0; border-bottom: 1px solid var(--border);">
-                <span>🎉</span>
-                VenueVue
+    <!-- Dashboard Modal -->
+    <div id="dashboard-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 95%; width: 1200px; height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3 id="dashboard-modal-title">Dashboard</h3>
+                <span class="close-modal">&times;</span>
             </div>
-
-            <ul class="dashboard-menu">
-                <li><a href="#" class="active" data-section="dashboard">Dashboard</a></li>
-                <li><a href="#" data-section="bookings">My Bookings</a></li>
-                <li><a href="#" data-section="favorites">Favorites</a></li>
-                <li><a href="#" data-section="messages">Messages</a></li>
-                <li><a href="#" data-section="reviews">My Reviews</a></li>
-                <li><a href="#" data-section="settings">Settings</a></li>
-                <li><a href="#" id="switch-to-vendor">Switch to Vendor Mode</a></li>
-                <li><a href="#" id="logout-dashboard">Log Out</a></li>
-            </ul>
-        </aside>
-
-        <main class="dashboard-content">
-            <div class="dashboard-header">
-                <h1 class="dashboard-title" id="dashboard-title">Dashboard</h1>
-                <div class="user-nav">
-                    <div class="nav-icon" id="dashboard-notifications-btn">
-                        🔔
-                        <span class="badge" id="dashboard-notifications-badge">0</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Dashboard Content -->
-            <div id="dashboard-section">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Upcoming Bookings</h2>
-                    <div id="upcoming-bookings">
-                        <!-- Bookings will be loaded here -->
-                        <p>Loading upcoming bookings...</p>
-                    </div>
-                </div>
-
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Recent Favorites</h2>
-                    <div class="vendor-grid" id="dashboard-favorites">
-                        <!-- Favorites will be loaded here -->
-                        <p>Loading recent favorites...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bookings Section (Hidden by default) -->
-            <div id="bookings-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">All Bookings</h2>
-                    <div id="all-bookings">
-                        <!-- Bookings will be loaded here -->
-                        <p>Loading all bookings...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Favorites Section (Hidden by default) -->
-            <div id="favorites-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Saved Favorites</h2>
-                    <div class="vendor-grid" id="saved-favorites">
-                        <!-- Favorites will be loaded here -->
-                        <p>Loading saved favorites...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Messages Section (Hidden by default) -->
-            <div id="messages-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Messages</h2>
-                    <div class="chat-container">
-                        <div class="chat-messages" id="dashboard-chat-messages">
-                            <!-- Messages will be loaded here -->
-                            <p>Loading messages...</p>
+            <div class="modal-body" style="padding: 0; overflow: hidden; flex-grow: 1;">
+                <!-- Client Dashboard -->
+                <div class="dashboard-container" id="dashboard-container" style="display: none; height: 100%;">
+                    <aside class="dashboard-sidebar">
+                        <div class="logo" style="padding: 1rem 0; border-bottom: 1px solid var(--border);">
+                            <span>🎉</span>
+                            VenueVue
                         </div>
-                        <div class="chat-input">
-                            <input type="text" placeholder="Type your message..." id="dashboard-chat-input">
-                            <button class="btn btn-primary" id="dashboard-send-btn">Send</button>
+                        <ul class="dashboard-menu">
+                            <li><a href="#" class="active" data-section="dashboard">Dashboard</a></li>
+                            <li><a href="#" data-section="bookings">My Bookings</a></li>
+                            <li><a href="#" data-section="favorites">Favorites</a></li>
+                            <li><a href="#" data-section="messages">Messages</a></li>
+                            <li><a href="#" data-section="reviews">My Reviews</a></li>
+                            <li><a href="#" data-section="settings">Settings</a></li>
+                            <li><a href="#" id="switch-to-vendor">Switch to Vendor Mode</a></li>
+                            <li><a href="#" id="logout-dashboard">Log Out</a></li>
+                        </ul>
+                    </aside>
+                    <main class="dashboard-content" style="overflow-y: auto;">
+                        <div class="dashboard-header">
+                            <h1 class="dashboard-title" id="dashboard-title">Dashboard</h1>
+                            <div class="user-nav">
+                                <div class="nav-icon" id="dashboard-notifications-btn">
+                                    🔔
+                                    <span class="badge" id="dashboard-notifications-badge">0</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Reviews Section (Hidden by default) -->
-            <div id="reviews-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">My Reviews</h2>
-                    <div id="user-reviews">
-                        <!-- Reviews will be loaded here -->
-                        <p>Loading your reviews...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Settings Section (Hidden by default) -->
-            <div id="settings-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Account Settings</h2>
-                    <form id="profile-form">
-                        <div class="form-group">
-                            <label for="profile-name">Full Name</label>
-                            <input type="text" id="profile-name">
+                        <div id="dashboard-section">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Upcoming Bookings</h2>
+                                <div id="upcoming-bookings"><p>Loading upcoming bookings...</p></div>
+                            </div>
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Recent Favorites</h2>
+                                <div class="vendor-grid" id="dashboard-favorites"><p>Loading recent favorites...</p></div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="profile-email">Email</label>
-                            <input type="email" id="profile-email" disabled>
+                        <div id="bookings-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">All Bookings</h2>
+                                <div id="all-bookings"><p>Loading all bookings...</p></div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="profile-phone">Phone Number</label>
-                            <input type="tel" id="profile-phone">
+                        <div id="favorites-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Saved Favorites</h2>
+                                <div class="vendor-grid" id="saved-favorites"><p>Loading saved favorites...</p></div>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                    </form>
-                </div>
-
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Change Password</h2>
-                    <form id="password-form">
-                        <div class="form-group">
-                            <label for="current-password">Current Password</label>
-                            <input type="password" id="current-password">
+                        <div id="messages-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Messages</h2>
+                                <div class="chat-container">
+                                    <div class="chat-messages" id="dashboard-chat-messages"><p>Loading messages...</p></div>
+                                    <div class="chat-input">
+                                        <input type="text" placeholder="Type your message..." id="dashboard-chat-input">
+                                        <button class="btn btn-primary" id="dashboard-send-btn">Send</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="new-password">New Password</label>
-                            <input type="password" id="new-password">
+                        <div id="reviews-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">My Reviews</h2>
+                                <div id="user-reviews"><p>Loading your reviews...</p></div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="confirm-password">Confirm New Password</label>
-                            <input type="password" id="confirm-password">
+                        <div id="settings-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Account Settings</h2>
+                                <form id="profile-form">
+                                    <div class="form-group"><label for="profile-name">Full Name</label><input type="text" id="profile-name"></div>
+                                    <div class="form-group"><label for="profile-email">Email</label><input type="email" id="profile-email" disabled></div>
+                                    <div class="form-group"><label for="profile-phone">Phone Number</label><input type="tel" id="profile-phone"></div>
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                </form>
+                            </div>
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Change Password</h2>
+                                <form id="password-form">
+                                    <div class="form-group"><label for="current-password">Current Password</label><input type="password" id="current-password"></div>
+                                    <div class="form-group"><label for="new-password">New Password</label><input type="password" id="new-password"></div>
+                                    <div class="form-group"><label for="confirm-password">Confirm New Password</label><input type="password" id="confirm-password"></div>
+                                    <button type="submit" class="btn btn-primary">Update Password</button>
+                                </form>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary">Update Password</button>
-                    </form>
+                    </main>
                 </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Vendor Dashboard View (Hidden by default) -->
-    <div class="dashboard-container" id="vendor-dashboard-container" style="display: none;">
-        <aside class="dashboard-sidebar">
-            <div class="logo" style="padding: 1rem 0; border-bottom: 1px solid var(--border);">
-                <span>🎉</span>
-                VenueVue
-            </div>
-
-            <ul class="dashboard-menu">
-                <li><a href="#" class="active" data-section="vendor-dashboard">Dashboard</a></li>
-                <li><a href="#" data-section="vendor-bookings">Bookings</a></li>
-                <li><a href="#" data-section="vendor-services">Services</a></li>
-                <li><a href="#" data-section="vendor-messages">Messages</a></li>
-                <li><a href="#" data-section="vendor-reviews">Reviews</a></li>
-                <li><a href="#" data-section="vendor-analytics">Analytics</a></li>
-                <li><a href="#" data-section="vendor-settings">Settings</a></li>
-                <li><a href="#" id="switch-to-client">Switch to Client Mode</a></li>
-                <li><a href="#" id="vendor-logout">Log Out</a></li>
-            </ul>
-        </aside>
-
-        <main class="dashboard-content">
-            <div class="dashboard-header">
-                <h1 class="dashboard-title" id="vendor-dashboard-title">Vendor Dashboard</h1>
-                <div class="user-nav">
-                    <div class="nav-icon" id="vendor-notifications-btn">
-                        🔔
-                        <span class="badge" id="vendor-notifications-badge">0</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vendor Dashboard Content -->
-            <div id="vendor-dashboard-section">
-                <div class="vendor-stats" id="vendor-stats">
-                    <!-- Stats will be loaded here -->
-                    <p>Loading vendor stats...</p>
-                </div>
-
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Recent Bookings</h2>
-                    <div id="vendor-recent-bookings">
-                        <!-- Bookings will be loaded here -->
-                        <p>Loading recent bookings...</p>
-                    </div>
-                </div>
-
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Recent Messages</h2>
-                    <div class="chat-container" style="height: 400px;">
-                        <div class="chat-messages" id="vendor-chat-messages">
-                            <!-- Messages will be loaded here -->
-                            <p>Loading recent messages...</p>
+                <!-- Vendor Dashboard -->
+                <div class="dashboard-container" id="vendor-dashboard-container" style="display: none; height: 100%;">
+                    <aside class="dashboard-sidebar">
+                        <div class="logo" style="padding: 1rem 0; border-bottom: 1px solid var(--border);">
+                            <span>🎉</span>
+                            VenueVue
                         </div>
-                        <div class="chat-input">
-                            <input type="text" placeholder="Type your message..." id="vendor-chat-input">
-                            <button class="btn btn-primary" id="vendor-send-btn">Send</button>
+                        <ul class="dashboard-menu">
+                            <li><a href="#" class="active" data-section="vendor-dashboard">Dashboard</a></li>
+                            <li><a href="#" data-section="vendor-bookings">Bookings</a></li>
+                            <li><a href="#" data-section="vendor-services">Services</a></li>
+                            <li><a href="#" data-section="vendor-messages">Messages</a></li>
+                            <li><a href="#" data-section="vendor-reviews">Reviews</a></li>
+                            <li><a href="#" data-section="vendor-analytics">Analytics</a></li>
+                            <li><a href="#" data-section="vendor-settings">Settings</a></li>
+                            <li><a href="#" id="switch-to-client">Switch to Client Mode</a></li>
+                            <li><a href="#" id="vendor-logout">Log Out</a></li>
+                        </ul>
+                    </aside>
+                    <main class="dashboard-content" style="overflow-y: auto;">
+                        <div class="dashboard-header">
+                            <h1 class="dashboard-title" id="vendor-dashboard-title">Vendor Dashboard</h1>
+                            <div class="user-nav">
+                                <div class="nav-icon" id="vendor-notifications-btn">
+                                    🔔
+                                    <span class="badge" id="vendor-notifications-badge">0</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vendor Bookings Section (Hidden by default) -->
-            <div id="vendor-bookings-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">All Bookings</h2>
-                    <div id="vendor-all-bookings">
-                        <!-- Bookings will be loaded here -->
-                        <p>Loading all bookings...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vendor Services Section (Hidden by default) -->
-            <div id="vendor-services-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Manage Services</h2>
-                    <div class="services-section" id="vendor-services">
-                        <!-- Services will be loaded here -->
-                        <p>Loading services...</p>
-                    </div>
+                        <div id="vendor-dashboard-section">
+                            <div class="vendor-stats" id="vendor-stats"><p>Loading vendor stats...</p></div>
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Recent Bookings</h2>
+                                <div id="vendor-recent-bookings"><p>Loading recent bookings...</p></div>
+                            </div>
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Recent Messages</h2>
+                                <div class="chat-container" style="height: 400px;">
+                                    <div class="chat-messages" id="vendor-chat-messages"><p>Loading recent messages...</p></div>
+                                    <div class="chat-input">
+                                        <input type="text" placeholder="Type your message..." id="vendor-chat-input">
+                                        <button class="btn btn-primary" id="vendor-send-btn">Send</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="vendor-bookings-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">All Bookings</h2>
+                                <div id="vendor-all-bookings"><p>Loading all bookings...</p></div>
+                            </div>
+                        </div>
+                        <div id="vendor-services-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Manage Services</h2>
+                                <div class="services-section" id="vendor-services"><p>Loading services...</p></div>
+                            </div>
+                        </div>
+                        <div id="vendor-messages-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Messages</h2>
+                                <div class="chat-container" style="height: 500px;">
+                                    <div class="chat-messages" id="vendor-all-chat-messages"><p>Loading all messages...</p></div>
+                                    <div class="chat-input">
+                                        <input type="text" placeholder="Type your message..." id="vendor-all-chat-input">
+                                        <button class="btn btn-primary" id="vendor-all-send-btn">Send</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="vendor-reviews-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Customer Reviews</h2>
+                                <div id="vendor-reviews"><p>Loading customer reviews...</p></div>
+                            </div>
+                        </div>
+                        <div id="vendor-analytics-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Performance Analytics</h2>
+                                <div id="analytics-charts" class="analytics-charts"><p>Loading analytics data...</p></div>
+                            </div>
+                        </div>
+                        <div id="vendor-settings-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Business Profile</h2>
+                                <form id="vendor-profile-form">
+                                    <div class="form-group"><label for="vendor-name">Business Name</label><input type="text" id="vendor-name"></div>
+                                    <div class="form-group"><label for="vendor-category">Category</label><select id="vendor-category"></select></div>
+                                    <div class="form-group"><label for="vendor-description">Description</label><textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);"></textarea></div>
+                                    <div class="form-group"><label for="vendor-address">Address</label><input type="text" id="vendor-address"></div>
+                                    <div class="form-group"><label for="vendor-city">City</label><input type="text" id="vendor-city"></div>
+                                    <div class="form-group"><label for="vendor-state">State</label><input type="text" id="vendor-state"></div>
+                                    <div class="form-group"><label for="vendor-country">Country</label><input type="text" id="vendor-country"></div>
+                                    <div class="form-group"><label for="vendor-postalCode">Postal Code</label><input type="text" id="vendor-postalCode"></div>
+                                    <div class="form-group"><label for="vendor-phone">Phone Number</label><input type="tel" id="vendor-phone"></div>
+                                    <div class="form-group"><label for="vendor-email">Business Email</label><input type="email" id="vendor-email"></div>
+                                    <div class="form-group"><label for="vendor-website">Website (optional)</label><input type="url" id="vendor-website"></div>
+                                    <div class="form-group"><label for="vendor-years-in-business">Years in Business</label><input type="number" id="vendor-years-in-business" min="0"></div>
+                                    <div class="form-group"><label for="vendor-is-premium">Premium Vendor</label><input type="checkbox" id="vendor-is-premium"></div>
+                                    <div class="form-group"><label for="vendor-is-eco-friendly">Eco-Friendly</labeL><input type="checkbox" id="vendor-is-eco-friendly"></div>
+                                    <div class="form-group"><label for="vendor-is-award-winning">Award Winning</label><input type="checkbox" id="vendor-is-award-winning"></div>
+                                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                                </form>
+                            </div>
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Business Photos</h2>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="vendor-photos"><p>No photos uploaded.</p></div>
+                                <button class="btn btn-outline" id="upload-photos-btn">Upload Photos</button>
+                            </div>
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Availability Settings</h2>
+                                <div id="vendor-availability-calendar" style="margin-bottom: 1.5rem;"></div>
+                                <button class="btn btn-outline" id="set-business-hours-btn">Set Business Hours</button>
+                            </div>
+                        </div>
+                    </main>
                 </div>
             </div>
-
-            <!-- Vendor Messages Section (Hidden by default) -->
-            <div id="vendor-messages-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Messages</h2>
-                    <div class="chat-container" style="height: 500px;">
-                        <div class="chat-messages" id="vendor-all-chat-messages">
-                            <!-- Messages will be loaded here -->
-                            <p>Loading all messages...</p>
-                        </div>
-                        <div class="chat-input">
-                            <input type="text" placeholder="Type your message..." id="vendor-all-chat-input">
-                            <button class="btn btn-primary" id="vendor-all-send-btn">Send</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vendor Reviews Section (Hidden by default) -->
-            <div id="vendor-reviews-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Customer Reviews</h2>
-                    <div id="vendor-reviews">
-                        <!-- Reviews will be loaded here -->
-                        <p>Loading customer reviews...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vendor Analytics Section (Hidden by default) -->
-            <div id="vendor-analytics-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Performance Analytics</h2>
-                    <div id="analytics-charts" class="analytics-charts">
-                        <!-- Analytics will be loaded here -->
-                        <p>Loading analytics data...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Vendor Settings Section (Hidden by default) -->
-            <div id="vendor-settings-section" style="display: none;">
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Business Profile</h2>
-                    <form id="vendor-profile-form">
-                        <div class="form-group">
-                            <label for="vendor-name">Business Name</label>
-                            <input type="text" id="vendor-name">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-category">Category</label>
-                            <select id="vendor-category">
-                                <!-- Categories will be loaded dynamically -->
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-description">Description</label>
-                            <textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-address">Address</label>
-                            <input type="text" id="vendor-address">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-city">City</label>
-                            <input type="text" id="vendor-city">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-state">State</label>
-                            <input type="text" id="vendor-state">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-country">Country</label>
-                            <input type="text" id="vendor-country">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-postalCode">Postal Code</label>
-                            <input type="text" id="vendor-postalCode">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-phone">Phone Number</label>
-                            <input type="tel" id="vendor-phone">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-email">Business Email</label>
-                            <input type="email" id="vendor-email">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-website">Website (optional)</label>
-                            <input type="url" id="vendor-website">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-instagram-url">Instagram URL (optional)</label>
-                            <input type="url" id="vendor-instagram-url">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-facebook-url">Facebook URL (optional)</label>
-                            <input type="url" id="vendor-facebook-url">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-website-url">Website URL (optional)</label>
-                            <input type="url" id="vendor-website-url">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-instagram-url">Instagram URL (optional)</label>
-                            <input type="url" id="vendor-instagram-url">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-facebook-url">Facebook URL (optional)</label>
-                            <input type="url" id="vendor-facebook-url">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-website-url">Website URL (optional)</label>
-                            <input type="url" id="vendor-website-url">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-years-in-business">Years in Business</label>
-                            <input type="number" id="vendor-years-in-business" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-is-premium">Premium Vendor</label>
-                            <input type="checkbox" id="vendor-is-premium">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-is-eco-friendly">Eco-Friendly</labeL>
-                            <input type="checkbox" id="vendor-is-eco-friendly">
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor-is-award-winning">Award Winning</label>
-                            <input type="checkbox" id="vendor-is-award-winning">
-                        </div>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                    </form>
-                </div>
-
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Business Photos</h2>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="vendor-photos">
-                        <!-- Photos will be loaded here -->
-                        <p>No photos uploaded.</p>
-                    </div>
-                    <button class="btn btn-outline" id="upload-photos-btn">Upload Photos</button>
-                </div>
-
-                <div class="dashboard-card">
-                    <h2 class="dashboard-card-title">Availability Settings</h2>
-                    <div id="vendor-availability-calendar" style="margin-bottom: 1.5rem;"></div>
-                    <button class="btn btn-outline" id="set-business-hours-btn">Set Business Hours</button>
-                </div>
-            </div>
-        </main>
+        </div>
     </div>
 
     <!-- Vendor Registration Modal -->
@@ -2595,11 +2447,8 @@
             // New router-like functionality for SPA
             function handleUrlChange() {
                 const path = window.location.hash.substring(1);
-                if (path.startsWith('/dashboard')) {
-                    displayUserDashboard('client', 'dashboard');
-                } else if (path.startsWith('/vendor-dashboard')) {
-                    displayUserDashboard('vendor', 'vendor-dashboard');
-                } else if (path.startsWith('/listings/')) {
+                // Dashboard is now a modal, not a separate page route
+                if (path.startsWith('/listings/')) {
                     const vendorId = path.split('/')[2];
                     showVendorProfilePage(vendorId);
                 } else {
@@ -2610,8 +2459,8 @@
             function showMainApp() {
                 mainAppView.style.display = 'grid';
                 vendorProfilePage.style.display = 'none';
-                clientDashboardContainer.style.display = 'none';
-                vendorDashboardContainer.style.display = 'none';
+                // Dashboards are now in a modal, so we don't hide them here
+                // The modal's own close button will handle hiding it.
                 window.location.hash = '';
                 document.body.style.overflow = 'auto';
             }
@@ -3388,6 +3237,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Google Maps initialization
             function initMap() {
+                if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                    console.error('Google Maps API not loaded.');
+                    document.getElementById('map').innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--accent);">Map could not be loaded. Please check your connection and API key.</p>';
+                    return;
+                }
+
                 if (state.filteredVendors.length === 0) return;
 
                 // Default to first vendor's location or user location if available
@@ -3430,6 +3285,28 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Setup all event listeners
             function setupEventListeners() {
+                // View toggle buttons
+                document.getElementById('list-view-btn').addEventListener('click', () => {
+                    state.currentView = 'list';
+                    mapViewContainer.style.display = 'none';
+                    vendorGrid.style.display = 'grid';
+                    document.getElementById('list-view-btn').classList.add('active');
+                    document.getElementById('map-view-btn').classList.remove('active');
+                });
+
+                document.getElementById('map-view-btn').addEventListener('click', () => {
+                    state.currentView = 'map';
+                    mapViewContainer.style.display = 'flex';
+                    vendorGrid.style.display = 'none';
+                    document.getElementById('map-view-btn').classList.add('active');
+                    document.getElementById('list-view-btn').classList.remove('active');
+                    
+                    // Initialize map if it hasn't been already
+                    if (!state.map) {
+                        initMap();
+                    }
+                });
+
                 // Search
                 searchInput.addEventListener('input', filterVendors);
 
@@ -3780,8 +3657,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // View dashboard button
                 viewDashboardBtn.addEventListener('click', () => {
                     profileModal.style.display = 'none';
-
-                    displayUserDashboard(currentUser.isVendor ? 'vendor' : 'client', activeDashboardSection);
+                    const initialSection = currentUser.isVendor ? 'vendor-dashboard' : 'dashboard';
+                    displayUserDashboard(currentUser.isVendor ? 'vendor' : 'client', activeDashboardSection || initialSection);
                 });
 
                 // Dashboard menu items (both client and vendor)
@@ -4560,6 +4437,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                         `).join('')}
                                     ` : ''}
                                 </div>
+                                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                                    <a href="${profile.Instagram || '#'}" target="_blank" style="text-decoration: none; color: var(--text);"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" width="24" height="24"></a>
+                                    <a href="${profile.Facebook || '#'}" target="_blank" style="text-decoration: none; color: var(--text);"><img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" width="24" height="24"></a>
+                                    <a href="${profile.Website || '#'}" target="_blank" style="text-decoration: none; color: var(--text);"><img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" width="24" height="24"></a>
+                                </div>
                             </div>
                         </div>
 
@@ -4733,25 +4615,24 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 localStorage.setItem('isVendorMode', isVendorMode);
                 localStorage.setItem('activeDashboardSection', activeDashboardSection);
 
-                // Hide main app view
-                mainAppView.style.display = 'none';
-                vendorProfilePage.style.display = 'none';
-                window.location.hash = '';
+                // Show the dashboard modal
+                const dashboardModal = document.getElementById('dashboard-modal');
+                dashboardModal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
 
                 // Determine which dashboard to show
                 if (isVendorMode) {
                     clientDashboardContainer.style.display = 'none';
                     vendorDashboardContainer.style.display = 'grid';
                 } else {
-                    vendorDashboardContainer.style.display = 'none';
                     clientDashboardContainer.style.display = 'grid';
+                    vendorDashboardContainer.style.display = 'none';
                 }
 
                 // Get the correct menu and content sections based on the mode
                 const currentDashboardMenu = isVendorMode ? vendorDashboardContainer.querySelector('.dashboard-menu') : clientDashboardContainer.querySelector('.dashboard-menu');
-                // Select all direct children divs of main within the active dashboard container that start with 'dashboard-' or 'vendor-'
                 const currentDashboardContentSections = document.querySelectorAll(
-                    isVendorMode ? '#vendor-dashboard-container > main > div[id^="vendor-"]' : '#dashboard-container > main > div[id]'
+                    isVendorMode ? '#vendor-dashboard-container main > div[id]' : '#dashboard-container main > div[id]'
                 );
 
                 // Hide all sections in the active dashboard first
@@ -4764,20 +4645,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (targetSectionElement) {
                     targetSectionElement.style.display = 'block';
                     // Update dashboard title
-                    const dashboardTitleElement = document.getElementById(isVendorMode ? 'vendor-dashboard-title' : 'dashboard-title');
+                    const dashboardTitleElement = document.getElementById('dashboard-modal-title');
                     if (dashboardTitleElement) {
-                        dashboardTitleElement.textContent = section.charAt(0).toUpperCase() + section.slice(1).replace('vendor-', '').replace('-', ' ');
+                        const titleText = section.charAt(0).toUpperCase() + section.slice(1).replace('vendor-', '').replace('-', ' ');
+                        dashboardTitleElement.textContent = isVendorMode ? `Vendor Dashboard - ${titleText}` : `Dashboard - ${titleText}`;
                     }
                 } else {
-                    console.warn(`Attempted to show non-existent section: ${section}-section`);
+                    // Fallback for the main dashboard view
+                    const mainDashboardSection = document.getElementById(isVendorMode ? 'vendor-dashboard-section' : 'dashboard-section');
+                    if(mainDashboardSection) mainDashboardSection.style.display = 'block';
+                    document.getElementById('dashboard-modal-title').textContent = isVendorMode ? 'Vendor Dashboard' : 'Dashboard';
                 }
 
                 // Update active class on menu items
                 currentDashboardMenu.querySelectorAll('a').forEach(link => {
+                    link.classList.remove('active');
                     if (link.dataset.section === section) {
                         link.classList.add('active');
-                    } else {
-                        link.classList.remove('active');
                     }
                 });
 
@@ -4791,11 +4675,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 } else {
                     // Handle not logged in scenario for dashboard views
                     alert('Please log in to view the dashboard.');
+                    dashboardModal.style.display = 'none';
+                    document.body.style.overflow = 'auto';
                     showLoginView();
                     profileModal.style.display = 'flex';
-                    mainAppView.style.display = 'grid';
-                    clientDashboardContainer.style.display = 'none';
-                    vendorDashboardContainer.style.display = 'none';
                 }
             }
 
