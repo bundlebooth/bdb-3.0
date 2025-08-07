@@ -186,6 +186,58 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// NEW: Endpoint for social login
+router.post('/social-login', async (req, res) => {
+  try {
+    const { email, name, authProvider, avatar } = req.body;
+
+    if (!email || !name || !authProvider) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, name, and authProvider are required.'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('Email', sql.NVarChar(100), email);
+    request.input('Name', sql.NVarChar(100), name);
+    request.input('AuthProvider', sql.NVarChar(20), authProvider);
+    request.input('Avatar', sql.NVarChar(255), avatar || null);
+
+    const result = await request.execute('sp_RegisterSocialUser');
+    const user = result.recordset[0];
+
+    if (!user) {
+      throw new Error('Failed to create or retrieve user from social login.');
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.UserID, email: user.Email, isVendor: user.IsVendor },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      success: true,
+      userId: user.UserID,
+      name: user.Name,
+      email: user.Email,
+      isVendor: user.IsVendor,
+      token
+    });
+
+  } catch (err) {
+    console.error('Social login error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Social login failed',
+      error: err.message
+    });
+  }
+});
+
 // Get current user info
 router.get('/me', async (req, res) => {
   try {
