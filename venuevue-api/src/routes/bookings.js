@@ -14,7 +14,8 @@ router.post('/', async (req, res) => {
       endDate, 
       attendeeCount, 
       specialRequests, 
-      services 
+      services,
+      paymentIntentId
     } = req.body;
 
     const pool = await poolPromise;
@@ -27,24 +28,16 @@ router.post('/', async (req, res) => {
     request.input('AttendeeCount', sql.Int, attendeeCount || 1);
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequests || null);
     request.input('ServicesJSON', sql.NVarChar(sql.MAX), JSON.stringify(services));
+    request.input('PaymentIntentID', sql.NVarChar(100), paymentIntentId || null);
 
     const result = await request.execute('sp_CreateBookingWithServices');
     
     const bookingId = result.recordset[0].BookingID;
     const conversationId = result.recordset[0].ConversationID;
 
-    // Create Stripe payment intent
-    const totalAmount = services.reduce((sum, service) => sum + (service.price * service.quantity), 0);
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(totalAmount * 100), // in cents
-      currency: 'usd',
-      metadata: { bookingId: bookingId.toString() }
-    });
-
     res.json({
       bookingId,
-      conversationId,
-      paymentIntent: paymentIntent.client_secret
+      conversationId
     });
 
   } catch (err) {
@@ -115,6 +108,34 @@ router.post('/:id/payment', async (req, res) => {
     res.status(500).json({ 
       message: 'Database operation failed',
       error: err.message 
+    });
+  }
+});
+
+// NEW: Endpoint to create a Stripe Payment Intent (client-side)
+router.post('/create-payment-intent', async (req, res) => {
+  try {
+    const { amount, currency = 'usd' } = req.body;
+
+    if (!amount) {
+      return res.status(400).json({ success: false, message: 'Amount is required' });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100),
+      currency: currency,
+      metadata: { integration_check: 'accept_a_payment' },
+    });
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+    });
+  } catch (err) {
+    console.error('Stripe payment intent creation error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create payment intent',
+      error: err.message
     });
   }
 });
