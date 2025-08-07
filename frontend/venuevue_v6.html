@@ -360,6 +360,16 @@
         .main-content {
             padding: 2rem;
         }
+        
+        .profile-content {
+            padding: 2rem;
+            background-color: white;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
 
         .content-header {
             display: flex;
@@ -715,71 +725,29 @@
         .close-modal:hover {
             color: var(--primary);
         }
-
-        /* Vendor Details in Modal */
-        .vendor-detail-header {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .vendor-detail-image {
-            width: 200px;
-            height: 150px;
-            background-color: #f1f5f9;
-            border-radius: var(--radius);
+        
+        .vendor-profile-header {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 2rem;
+            gap: 2rem;
+            padding-bottom: 2rem;
         }
 
-        .vendor-detail-info {
-            flex: 1;
+        .vendor-profile-info {
+            flex-grow: 1;
         }
-
-        .vendor-detail-name {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .vendor-detail-location {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-light);
-            margin-bottom: 1rem;
-        }
-
-        .vendor-detail-features {
-            display: flex;
-            gap: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .vendor-detail-price {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-        }
-
-        .vendor-detail-description {
-            margin-bottom: 2rem;
-            line-height: 1.6;
-            color: var(--text);
-        }
-
-        /* Image Gallery Styles */
+        
+        /* New 2x2 Image Gallery Layout */
         .image-gallery {
             display: grid;
-            grid-template-columns: 2fr 1fr; /* Two columns: left is 2x wider */
-            grid-template-rows: repeat(3, 1fr); /* Three equal rows for thumbnails */
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: repeat(2, 1fr); /* Now a 2-row grid */
             gap: 8px;
             height: 400px;
             border-radius: var(--radius);
             overflow: hidden;
             margin-bottom: 2rem;
+            background-color: #f1f5f9;
         }
 
         .gallery-item {
@@ -803,25 +771,23 @@
         .gallery-item:hover img {
             transform: scale(1.05);
         }
-
+        
+        /* Main image (left side) spans both rows */
         .gallery-item:nth-child(1) {
             grid-column: 1 / 2;
-            grid-row: 1 / 4; /* Main image spans all 3 rows */
+            grid-row: 1 / 3;
         }
-
+        
+        /* Top right thumbnail */
         .gallery-item:nth-child(2) {
             grid-column: 2 / 3;
             grid-row: 1 / 2;
         }
-
+        
+        /* Bottom right thumbnail (with overlay) */
         .gallery-item:nth-child(3) {
             grid-column: 2 / 3;
             grid-row: 2 / 3;
-        }
-
-        .gallery-item:nth-child(4) {
-            grid-column: 2 / 3;
-            grid-row: 3 / 4;
         }
 
         .see-all-overlay {
@@ -843,7 +809,7 @@
         .gallery-item:hover .see-all-overlay {
             background-color: rgba(0, 0, 0, 0.7);
         }
-
+        
         /* Lightbox Modal Styles */
         .lightbox-modal {
             position: fixed;
@@ -1115,29 +1081,22 @@
             margin-bottom: 1rem;
             min-height: 100px;
         }
-
-        /* New Chat Section */
-        .chat-section {
-            margin: 2rem 0;
+        
+        .chat-modal .modal-content {
+            max-width: 600px;
         }
-
-        .chat-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border);
+        
+        .chat-modal .modal-body {
+            padding: 0;
         }
-
+        
         .chat-container {
-            background-color: white;
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            height: 300px;
             display: flex;
             flex-direction: column;
+            height: 500px;
+            background-color: white;
         }
-
+        
         .chat-messages {
             flex: 1;
             padding: 1rem;
@@ -1595,6 +1554,15 @@
             .dashboard-sidebar {
                 display: none;
             }
+            
+            .profile-content {
+                padding: 1rem;
+            }
+            
+            .vendor-profile-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
         }
     </style>
 </head>
@@ -1778,7 +1746,7 @@
     </div>
 
     <!-- Vendor Public Profile Page -->
-    <div id="vendor-profile-page" class="main-content" style="display: none;">
+    <div id="vendor-profile-page" class="profile-content" style="display: none;">
         <!-- The content for the vendor profile page will be rendered here dynamically -->
     </div>
 
@@ -2259,6 +2227,28 @@
             </div>
         </div>
     </div>
+    
+    <!-- New Chat Modal -->
+    <div id="chat-modal" class="modal chat-modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Chat with <span id="chat-vendor-name">Vendor</span></h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="chat-container">
+                    <div class="chat-messages" id="profile-chat-messages">
+                        <!-- Messages will load here -->
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" placeholder="Type your message..." id="profile-chat-input">
+                        <button class="btn btn-primary" id="profile-send-btn">Send</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Booking Confirmation -->
     <div id="confirmation-modal" class="booking-confirmation" style="display: none;">
@@ -2461,6 +2451,13 @@
             const switchToClientBtn = document.getElementById('switch-to-client');
             const logoutDashboardBtn = document.getElementById('logout-dashboard');
             const vendorLogoutBtn = document.getElementById('vendor-logout');
+            
+            // Chat modal elements
+            const chatModal = document.getElementById('chat-modal');
+            const chatVendorName = document.getElementById('chat-vendor-name');
+            const profileChatInput = document.getElementById('profile-chat-input');
+            const profileSendBtn = document.getElementById('profile-send-btn');
+            const profileChatMessages = document.getElementById('profile-chat-messages');
 
             // Vendor registration elements
             const vendorRegistrationModal = document.getElementById('vendor-registration-modal');
@@ -2472,10 +2469,12 @@
             const chatState = {
                 messages: [],
                 currentConversation: null,
+                currentChatVendorId: null,
 
                 init: function() {
                     this.messages = [];
                     this.currentConversation = null;
+                    this.currentChatVendorId = null;
                     console.log('Chat state initialized.');
                 },
 
@@ -2876,7 +2875,6 @@
 
 
             // Connect to Socket.IO for chat
-// Connect to Socket.IO for chat
             function connectToChat() {
                 const token = localStorage.getItem('token');
                 if (!token) {
@@ -3000,7 +2998,8 @@ async function sendChatMessage() {
                 const input = document.getElementById('chat-input') ||
                             document.getElementById('dashboard-chat-input') ||
                             document.getElementById('vendor-chat-input') ||
-                            document.getElementById('vendor-all-chat-input');
+                            document.getElementById('vendor-all-chat-input') ||
+                            document.getElementById('profile-chat-input');
                 const message = input?.value.trim();
 
                 console.log('Attempting to send message:', message, 'Current User:', currentUser, 'Current Conversation:', state.chat.currentConversation);
@@ -3016,11 +3015,40 @@ async function sendChatMessage() {
                     showLoginView();
                     return;
                 }
-
-                if (!state.chat.currentConversation) {
-                    alert('No conversation selected or initialized.');
-                    console.error('Cannot send message: No current conversation.');
+                
+                if (!state.chat.currentChatVendorId) {
+                    alert('Could not determine vendor to message. Please try again from a vendor profile.');
                     return;
+                }
+                
+                if (!state.chat.currentConversation) {
+                    console.log('No existing conversation found, creating a new one...');
+                    try {
+                        const createResponse = await fetch(`${API_BASE_URL}/messages/conversation`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: JSON.stringify({
+                                userId: currentUser.id,
+                                vendorProfileId: state.chat.currentChatVendorId
+                            })
+                        });
+                        
+                        if (!createResponse.ok) {
+                             const errorText = await createResponse.text();
+                            throw new Error(`Failed to create conversation: ${createResponse.status} ${createResponse.statusText} - ${errorText}`);
+                        }
+                        
+                        const createData = await createResponse.json();
+                        state.chat.currentConversation = createData.conversation.ConversationID || createData.conversationId;
+                        console.log('New conversation created:', state.chat.currentConversation);
+                    } catch (err) {
+                        console.error('Failed to create new conversation:', err);
+                        showChatError('Failed to start chat. Please try again.');
+                        return;
+                    }
                 }
 
                 try {
@@ -3100,8 +3128,9 @@ async function sendChatMessage() {
                 const chatContainer = document.getElementById('chat-messages') ||
                                     document.getElementById('dashboard-chat-messages') ||
                                     document.getElementById('vendor-chat-messages') ||
-                                    document.getElementById('vendor-all-chat-messages');
-
+                                    document.getElementById('vendor-all-chat-messages') ||
+                                    document.getElementById('profile-chat-messages');
+                
                 if (!chatContainer) {
                     console.warn('Chat container not found for rendering messages.');
                     return;
@@ -3254,7 +3283,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const chatMessagesContainer = document.getElementById('chat-messages') ||
                                               document.getElementById('dashboard-chat-messages') ||
                                               document.getElementById('vendor-chat-messages') ||
-                                              document.getElementById('vendor-all-chat-messages');
+                                              document.getElementById('vendor-all-chat-messages') ||
+                                              document.getElementById('profile-chat-messages');
                 if (chatMessagesContainer) {
                     const errorElement = document.createElement('p');
                     errorElement.style.color = 'var(--accent)';
@@ -3266,18 +3296,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 console.error('Chat error displayed:', message);
             }
 
-            async function initializeChat(vendorProfileId) {
+            async function initializeChat(vendorProfileId, vendorName) {
                 if (!currentUser) {
-                    disableChatInput();
-                    console.warn('initializeChat: No current user. Disabling chat input.');
+                    showChatError('Please log in to start a chat.');
                     return;
                 }
+                
+                // Set the current chat vendor ID and name
+                state.chat.currentChatVendorId = vendorProfileId;
+                chatVendorName.textContent = vendorName;
+                chatModal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
 
                 console.log(`Initializing chat for vendor: ${vendorProfileId} and user: ${currentUser.id}`);
                 state.chat.init();
 
                 try {
-
+                    // Check for an existing conversation
                     const checkResponse = await fetch(`${API_BASE_URL}/messages/conversation/check`, {
                         method: 'POST',
                         headers: {
@@ -3300,43 +3335,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (checkData.conversationId) {
                         state.chat.currentConversation = checkData.conversationId;
                         console.log('Existing conversation found:', state.chat.currentConversation);
-                    } else {
-
-                        console.log('No existing conversation found. Creating new one...');
-                        const createResponse = await fetch(`${API_BASE_URL}/messages/conversation`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${localStorage.getItem('token')}`
-                            },
-                            body: JSON.stringify({
-                                userId: currentUser.id,
-                                vendorProfileId: vendorProfileId
-                            })
-                        });
-
-                        if (!createResponse.ok) {
-                            const errorText = await createResponse.text();
-                            throw new Error(`Failed to create conversation: ${createResponse.status} ${createResponse.statusText} - ${errorText}`);
-                        }
-
-                        const createData = await createResponse.json();
-                        state.chat.currentConversation = createData.conversation.ConversationID || createData.conversationId;
-                        console.log('New conversation created:', state.chat.currentConversation);
-                    }
-
-                    if (state.chat.currentConversation) {
                         await loadInitialMessages();
                     } else {
-                        console.error('Conversation ID is null after check/create. Cannot load messages.');
-                        showChatError('Failed to establish chat. No conversation ID.');
-                        disableChatInput();
+                        console.log('No existing conversation found. A new one will be created on the first message.');
+                        profileChatMessages.innerHTML = '<p style="text-align:center; color: var(--text-light); margin-top: 1rem;">Start a new conversation...</p>';
                     }
-
+                    
+                    setupChatEventListeners('profile-chat-input', 'profile-send-btn');
+                    
                 } catch (error) {
                     console.error('Chat initialization failed:', error);
-                    disableChatInput();
-                    showChatError('Failed to initialize chat. Please try again: ' + error.message);
+                    showChatError('Failed to initialize chat: ' + error.message);
                 }
             }
             
@@ -4372,7 +4381,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     vendorCard.innerHTML = `
                         <div class="vendor-image">
                             ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
-                            ${vendor.isPremium ? '<div class="vendor-badge">Premium</div>' : ''}
                             <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
                         </div>
                         <div class="vendor-details">
@@ -4536,7 +4544,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.body.style.overflow = 'auto';
 
                 vendorProfilePage.innerHTML = '<p style="text-align: center; margin-top: 5rem;">Loading vendor profile...</p>';
-                state.chat.init();
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}?userId=${currentUser ? currentUser.id : ''}`);
@@ -4547,88 +4554,86 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const fullVendorDetails = data.data;
 
                     renderVendorProfile(fullVendorDetails);
-                    setupChatEventListeners('chat-input', 'send-btn');
-
-                    // --- START: NEW BOOKING LOGIC FOR PROFILE PAGE ---
-                    const servicesSection = vendorProfilePage.querySelector('#profile-services-section');
-                    const selectedServicesList = vendorProfilePage.querySelector('#selected-services-list');
-                    const totalPriceEl = vendorProfilePage.querySelector('#booking-total-price');
-                    const proceedToBookBtn = vendorProfilePage.querySelector('#proceed-to-book-btn');
-
-                    state.selectedServices = [];
-
-                    function updateBookingSummary() {
-                        if (state.selectedServices.length === 0) {
-                            selectedServicesList.innerHTML = '<p style="font-size: 0.9rem; color: var(--text-light);">Select services from the list to get started.</p>';
-                            totalPriceEl.textContent = '$0.00';
-                            proceedToBookBtn.disabled = true;
-                            proceedToBookBtn.textContent = 'Choose Services';
-                        } else {
-                            selectedServicesList.innerHTML = state.selectedServices.map(s => `
-                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 0.5rem;">
-                                    <span>${s.name}</span>
-                                    <span>$${parseFloat(s.price).toFixed(2)}</span>
-                                </div>
-                            `).join('');
-                            const total = state.selectedServices.reduce((sum, s) => sum + parseFloat(s.price), 0);
-                            totalPriceEl.textContent = `$${total.toFixed(2)}`;
-                            proceedToBookBtn.disabled = false;
-                            proceedToBookBtn.textContent = 'Proceed to Book';
-                        }
+                    
+                    // Add logic for the new review form
+                    const reviewForm = document.getElementById('review-form');
+                    const showReviewFormBtn = document.getElementById('show-review-form');
+                    const ratingStars = document.querySelectorAll('#review-form .rating-star');
+                    let currentRating = 0;
+                    
+                    if(showReviewFormBtn) {
+                        showReviewFormBtn.addEventListener('click', () => {
+                            reviewForm.style.display = 'block';
+                            showReviewFormBtn.style.display = 'none';
+                        });
                     }
 
-                    servicesSection.querySelectorAll('.add-service-btn').forEach(btn => {
-                        btn.addEventListener('click', () => {
-                            const serviceId = btn.dataset.serviceId;
-                            const serviceName = btn.dataset.serviceName;
-                            const servicePrice = btn.dataset.price;
-
-                            const existingServiceIndex = state.selectedServices.findIndex(s => s.id === serviceId);
-
-                            if (existingServiceIndex > -1) {
-                                // Remove service
-                                state.selectedServices.splice(existingServiceIndex, 1);
-                                btn.textContent = 'Add';
-                                btn.classList.remove('btn-primary');
-                                btn.classList.add('btn-outline');
-                            } else {
-                                // Add service
-                                state.selectedServices.push({ id: serviceId, name: serviceName, price: servicePrice });
-                                btn.textContent = 'Remove';
-                                btn.classList.remove('btn-outline');
-                                btn.classList.add('btn-primary');
-                            }
-                            updateBookingSummary();
+                    ratingStars.forEach(star => {
+                        star.addEventListener('click', () => {
+                            currentRating = parseInt(star.dataset.rating);
+                            ratingStars.forEach(s => {
+                                s.classList.toggle('selected', parseInt(s.dataset.rating) <= currentRating);
+                            });
                         });
                     });
-
-                    proceedToBookBtn.addEventListener('click', () => {
-                        if (state.selectedServices.length > 0) {
-                            // For now, show the confirmation modal as a placeholder for the next step.
-                            const confVendorName = document.getElementById('conf-venue-name');
-                            const confServices = document.getElementById('conf-services');
-                            const confDate = document.getElementById('conf-date');
-                            const confTime = document.getElementById('conf-time');
-                            const confId = document.getElementById('conf-id');
-
-                            confVendorName.textContent = fullVendorDetails.profile.BusinessName;
-                            confServices.textContent = state.selectedServices.map(s => s.name).join(', ');
-                            confDate.textContent = new Date().toLocaleDateString(); // Placeholder
-                            confTime.textContent = 'TBD'; // Placeholder
-                            confId.textContent = `VV-${Date.now()}`;
-
-                            confirmationModal.style.display = 'flex';
-                        }
-                    });
-                    // --- END: NEW BOOKING LOGIC FOR PROFILE PAGE ---
                     
-                    // Initialize chat for the profile page
-                    if (currentUser) {
-                        initializeChat(fullVendorDetails.profile.VendorProfileID)
-                            .catch(error => {
-                                console.error('Chat initialization failed:', error);
-                                showChatError('Failed to initialize chat. Please try again.');
-                            });
+                    const submitReviewBtn = document.getElementById('submit-review');
+                    if (submitReviewBtn) {
+                        submitReviewBtn.addEventListener('click', async () => {
+                            if (!currentUser) {
+                                alert('You must be logged in to leave a review.');
+                                return;
+                            }
+                            const reviewText = document.getElementById('review-text').value;
+                            if (reviewText.trim() === '' || currentRating === 0) {
+                                alert('Please provide a rating and a comment.');
+                                return;
+                            }
+                            
+                            try {
+                                const reviewResponse = await fetch(`${API_BASE_URL}/reviews/submit`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                    },
+                                    body: JSON.stringify({
+                                        userId: currentUser.id,
+                                        vendorProfileId: vendorId,
+                                        rating: currentRating,
+                                        comment: reviewText
+                                    })
+                                });
+                                
+                                if (!reviewResponse.ok) {
+                                    const errorData = await reviewResponse.json();
+                                    throw new Error(errorData.message || 'Failed to submit review');
+                                }
+                                
+                                alert('Review submitted successfully!');
+                                // Simulate adding the new review to the list
+                                const newReview = {
+                                    ReviewerName: currentUser.name,
+                                    Rating: currentRating,
+                                    Comment: reviewText,
+                                    CreatedAt: new Date().toISOString()
+                                };
+                                const reviewsList = document.getElementById('vendor-profile-reviews-list');
+                                const existingReviews = reviewsList.innerHTML;
+                                reviewsList.innerHTML = renderReviews([newReview]) + existingReviews;
+                                
+                                // Reset the form
+                                reviewForm.style.display = 'none';
+                                showReviewFormBtn.style.display = 'block';
+                                document.getElementById('review-text').value = '';
+                                ratingStars.forEach(s => s.classList.remove('selected'));
+                                currentRating = 0;
+                                
+                            } catch (error) {
+                                console.error('Review submission failed:', error);
+                                alert('Failed to submit review: ' + error.message);
+                            }
+                        });
                     }
                     
                 } catch (error) {
@@ -4643,106 +4648,107 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 // Build HTML for the entire page
                 let html = `
-                    <div style="background-color: white; border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow);">
-                        <!-- Back Button -->
-                        <div style="margin-bottom: 2rem;">
-                            <button onclick="window.location.hash = ''" class="btn btn-outline" style="display: flex; align-items: center; gap: 0.5rem;">
-                                <span>← Back to search results</span>
-                            </button>
-                        </div>
-                        
-                        <!-- Image Gallery -->
-                        <div id="modal-image-gallery" class="image-gallery">
-                            <!-- Images will be loaded dynamically here -->
-                        </div>
+                    <!-- Back Button -->
+                    <div style="margin-bottom: 2rem;">
+                        <button onclick="window.location.hash = ''" class="btn btn-outline" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span>← Back to search results</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Image Gallery -->
+                    <div id="modal-image-gallery" class="image-gallery">
+                        <!-- Images will be loaded dynamically here -->
+                    </div>
 
-                        <!-- Vendor Header -->
-                        <div style="display: flex; gap: 2rem; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 2rem;">
-                            <div style="flex-shrink: 0; width: 200px; height: 200px; background-color: #f1f5f9; border-radius: var(--radius); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 4rem; position: relative;">
-                                ${profile.PrimaryImage ? `<img src="${profile.PrimaryImage}" alt="${profile.BusinessName}" style="width: 100%; height: 100%; object-fit: cover;">` : getCategoryIcon(profile.Categories?.split(',')[0] || 'all')}
-                                <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${profile.VendorProfileID}" style="position: absolute; top: 1rem; right: 1rem;">❤</div>
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <h1 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem;">${profile.BusinessName}</h1>
-                                <p style="font-size: 1.1rem; color: var(--primary); margin-bottom: 1rem;">${profile.Tagline || profile.BusinessDescription}</p>
-                                <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-light); margin-bottom: 1rem;">
-                                    <span>📍 ${profile.City}, ${profile.State}</span>
-                                    <span class="review-rating" style="color: #fbbf24;">${'★'.repeat(Math.round(profile.AverageRating))}${'☆'.repeat(5 - Math.round(profile.AverageRating))}</span>
-                                    <span>(${profile.AverageRating ? profile.AverageRating.toFixed(1) : '0.0'}) | ${profile.ReviewCount} Reviews</span>
-                                </div>
-                                <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem;">
-                                    ${details.images?.length > 0 ? `
-                                        ${details.images.map(img => `
-                                            <img src="${img.ImageURL}" alt="Portfolio Image" style="width: 100px; height: 100px; object-fit: cover; border-radius: var(--radius);">
-                                        `).join('')}
-                                    ` : ''}
-                                </div>
-                                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                                    <a href="${profile.Instagram || '#'}" target="_blank" style="text-decoration: none; color: var(--text);"><img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" width="24" height="24"></a>
-                                    <a href="${profile.Facebook || '#'}" target="_blank" style="text-decoration: none; color: var(--text);"><img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" width="24" height="24"></a>
-                                    <a href="${profile.Website || '#'}" target="_blank" style="text-decoration: none; color: var(--text);"><img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" width="24" height="24"></a>
-                                </div>
+                    <!-- Vendor Header -->
+                    <div class="vendor-profile-header">
+                        <div style="flex-shrink: 0; width: 200px; height: 200px; background-color: #f1f5f9; border-radius: var(--radius); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 4rem; position: relative;">
+                            ${profile.PrimaryImage ? `<img src="${profile.PrimaryImage}" alt="${profile.BusinessName}" style="width: 100%; height: 100%; object-fit: cover;">` : getCategoryIcon(profile.Categories?.split(',')[0] || 'all')}
+                            <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${profile.VendorProfileID}" style="position: absolute; top: 1rem; right: 1rem;">❤</div>
+                        </div>
+                        <div class="vendor-profile-info">
+                            <h1 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem;">${profile.BusinessName}</h1>
+                            <p style="font-size: 1.1rem; color: var(--primary); margin-bottom: 1rem;">${profile.Tagline || profile.BusinessDescription}</p>
+                            <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-light); margin-bottom: 1rem;">
+                                <span>📍 ${profile.City}, ${profile.State}</span>
+                                <span class="review-rating" style="color: #fbbf24;">${'★'.repeat(Math.round(profile.AverageRating))}${'☆'.repeat(5 - Math.round(profile.AverageRating))}</span>
+                                <span>(${profile.AverageRating ? profile.AverageRating.toFixed(1) : '0.0'}) | ${profile.ReviewCount} Reviews</span>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Vendor Content Sections -->
-                        <div style="display: grid; grid-template-columns: 1fr 320px; gap: 2rem; margin-top: 2rem;">
-                            <!-- Main Content Area -->
-                            <div>
-                                <h2 class="services-title">About ${profile.BusinessName}</h2>
-                                <p style="line-height: 1.6;">${profile.BusinessDescription}</p>
-
-                                <!-- Services -->
-                                <div id="profile-services-section" class="services-section">
-                                    <h2 class="services-title">Our Services</h2>
-                                    ${renderServices(details.services)}
+                    <!-- Vendor Content Sections -->
+                    <div style="display: grid; grid-template-columns: 1fr 320px; gap: 2rem; margin-top: 2rem;">
+                        <!-- Main Content Area -->
+                        <div>
+                            <h2 class="services-title">About Us</h2>
+                            <p style="line-height: 1.6;">${profile.BusinessDescription}</p>
+                            
+                            <!-- Social Media Section -->
+                            <div class="services-section">
+                                <h2 class="services-title">Social Media</h2>
+                                <div style="display: flex; gap: 1rem;">
+                                    <a href="${profile.Instagram || '#'}" target="_blank" style="text-decoration: none; color: var(--text); opacity: ${profile.Instagram ? '1' : '0.5'}; pointer-events: ${profile.Instagram ? 'auto' : 'none'};">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" width="36" height="36" alt="Instagram">
+                                    </a>
+                                    <a href="${profile.Facebook || '#'}" target="_blank" style="text-decoration: none; color: var(--text); opacity: ${profile.Facebook ? '1' : '0.5'}; pointer-events: ${profile.Facebook ? 'auto' : 'none'};">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" width="36" height="36" alt="Facebook">
+                                    </a>
+                                    <a href="${profile.Website || '#'}" target="_blank" style="text-decoration: none; color: var(--text); opacity: ${profile.Website ? '1' : '0.5'}; pointer-events: ${profile.Website ? 'auto' : 'none'};">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" width="36" height="36" alt="Website">
+                                    </a>
                                 </div>
+                            </div>
+                            
+                            <!-- Services -->
+                            <div id="profile-services-section" class="services-section">
+                                <h2 class="services-title">Our Services</h2>
+                                ${renderServices(details.services)}
+                            </div>
 
-                                <!-- Reviews Section -->
-                                <div class="reviews-section">
-                                    <h2 class="reviews-title">Reviews (${profile.ReviewCount})</h2>
-                                    <div id="vendor-profile-reviews-list">
-                                        ${renderReviews(details.reviews)}
-                                    </div>
+                            <!-- Reviews Section -->
+                            <div class="reviews-section">
+                                <h2 class="reviews-title">Reviews (${profile.ReviewCount})</h2>
+                                <div id="vendor-profile-reviews-list">
+                                    ${renderReviews(details.reviews)}
+                                </div>
+                                ${currentUser ? `
                                     <button class="btn btn-outline add-review-btn" id="show-review-form" style="margin-top: 1rem;">Add Review</button>
-                                </div>
-
-                                <!-- Chat Section -->
-                                <div id="profile-chat-section" class="chat-section">
-                                    <h2 class="services-title">Message Vendor</h2>
-                                    <div class="chat-container">
-                                        <div class="chat-messages" id="chat-messages">
-                                            <!-- Messages will load here -->
+                                    <div class="review-form" id="review-form" style="display: none;">
+                                        <div class="rating-input">
+                                            <span class="rating-star" data-rating="1">☆</span>
+                                            <span class="rating-star" data-rating="2">☆</span>
+                                            <span class="rating-star" data-rating="3">☆</span>
+                                            <span class="rating-star" data-rating="4">☆</span>
+                                            <span class="rating-star" data-rating="5">☆</span>
                                         </div>
-                                        <div class="chat-input">
-                                            <input type="text" placeholder="Type your message..." id="chat-input">
-                                            <button class="btn btn-primary" id="send-btn">Send</button>
-                                        </div>
+                                        <textarea class="review-textarea" id="review-text" placeholder="Share your experience..."></textarea>
+                                        <button class="btn btn-primary" id="submit-review">Submit Review</button>
                                     </div>
+                                ` : '<p><a href="#" id="login-to-review" style="color: var(--primary);">Log in</a> to leave a review</p>'}
+                            </div>
+                        </div>
+
+                        <!-- Sidebar -->
+                        <div style="display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 2rem;">
+                            <!-- Booking Summary -->
+                            <div id="booking-summary" style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
+                                <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Your Booking</h3>
+                                <div id="selected-services-list">
+                                    <p style="font-size: 0.9rem; color: var(--text-light);">Select services from the list to get started.</p>
                                 </div>
+                                <div style="border-top: 1px solid var(--border); margin: 1rem 0; padding-top: 1rem; display: flex; justify-content: space-between; font-weight: 600;">
+                                    <span>Total</span>
+                                    <span id="booking-total-price">$0.00</span>
+                                </div>
+                                <button class="btn btn-primary" id="proceed-to-book-btn" style="width: 100%;" disabled>Choose Services</button>
                             </div>
 
-                            <!-- Sidebar -->
-                            <div style="display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 2rem;">
-                                <!-- Booking Summary -->
-                                <div id="booking-summary" style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
-                                    <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Your Booking</h3>
-                                    <div id="selected-services-list">
-                                        <p style="font-size: 0.9rem; color: var(--text-light);">Select services from the list to get started.</p>
-                                    </div>
-                                    <div style="border-top: 1px solid var(--border); margin: 1rem 0; padding-top: 1rem; display: flex; justify-content: space-between; font-weight: 600;">
-                                        <span>Total</span>
-                                        <span id="booking-total-price">$0.00</span>
-                                    </div>
-                                    <button class="btn btn-primary" id="proceed-to-book-btn" style="width: 100%;" disabled>Choose Services</button>
-                                </div>
-
-                                <!-- Contact -->
-                                <div style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
-                                    <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Contact Vendor</h3>
-                                    <p style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-light);">Have questions? Get in touch!</p>
-                                    <button class="btn btn-outline" id="open-chat-btn" style="width: 100%;">Message Vendor</button>
-                                </div>
+                            <!-- Contact -->
+                            <div style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
+                                <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Contact Vendor</h3>
+                                <p style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-light);">Have questions? Get in touch!</p>
+                                <button class="btn btn-outline" id="open-chat-btn" style="width: 100%;">Message Vendor</button>
                             </div>
                         </div>
                     </div>
@@ -4754,16 +4760,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 vendorProfilePage.querySelector('.vendor-favorite').addEventListener('click', () => {
                     toggleFavorite(profile.VendorProfileID);
                 });
-
+                
                 // Populate and set up the image gallery
                 populateImageGallery(details.images);
 
                 vendorProfilePage.querySelector('#open-chat-btn').addEventListener('click', () => {
-                    const chatSection = vendorProfilePage.querySelector('#profile-chat-section');
-                    chatSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    setTimeout(() => {
-                        vendorProfilePage.querySelector('#chat-input').focus();
-                    }, 500);
+                    initializeChat(profile.VendorProfileID, profile.BusinessName);
                 });
             }
 
@@ -5490,7 +5492,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     analyticsData.bookingStats.PendingBookings,
                                     analyticsData.bookingStats.CancelledBookings
                                 ],
-                                backgroundColor: ['#4CAF50', '#2196F3', '#FFC107', '#F44336']
+                                backgroundColor: ['#4CAF50', '#2196F3', '#FFC107', '#F4436']
                             }]
                         },
                         options: {
@@ -5603,7 +5605,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     analyticsData.reviewStats.TwoStarReviews,
                                     analyticsData.reviewStats.OneStarReviews
                                 ],
-                                backgroundColor: ['#4CAF50', '#8BC34A', '#FFEB3B', '#FF9800', '#F44336']
+                                backgroundColor: ['#4CAF50', '#8BC34A', '#FFEB3B', '#FF9800', '#F4436']
                             }]
                         },
                         options: {
@@ -5872,7 +5874,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             start: ex.StartDate + (ex.StartTime ? 'T' + ex.StartTime : ''),
                             end: ex.EndDate + (ex.EndTime ? 'T' + ex.EndTime : ''),
                             title: ex.Reason || (ex.IsAvailable ? 'Available' : 'Unavailable'),
-                            color: ex.IsAvailable ? '#2196F3' : '#F44336',
+                            color: ex.IsAvailable ? '#2196F3' : '#F4436',
                             allDay: !ex.StartTime && !ex.EndTime,
                             extendedProps: {
                                 exceptionId: ex.ExceptionID,
@@ -6065,28 +6067,31 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (!galleryContainer) return;
 
                 galleryContainer.innerHTML = '';
-                const totalImages = images ? images.length : 0;
-                lightboxImages = images ? images.map(img => img.ImageURL) : [];
-                const placeholderText = 'No Image Available';
+                
+                // Ensure images is an array, defaulting to an empty one if not
+                const imageList = images ? images.map(img => img.ImageURL) : [];
+                const totalImages = imageList.length;
+                lightboxImages = imageList;
+                const placeholderImage = "https://placehold.co/400x400/e2e8f0/718096?text=No+Image";
 
-                const displayCount = 4; // We will always generate 4 items for the grid
-
-                for (let i = 0; i < displayCount; i++) {
+                // Create the four grid items
+                for (let i = 0; i < 4; i++) {
                     const galleryItem = document.createElement('div');
                     galleryItem.className = 'gallery-item';
-                    const image = images && images[i] ? images[i] : null;
-
-                    if (image) {
-                        galleryItem.innerHTML = `<img src="${image.ImageURL}" alt="Venue image ${i + 1}">`;
+                    
+                    const src = i < totalImages ? imageList[i] : placeholderImage;
+                    const isPlaceholder = i >= totalImages;
+                    
+                    const altText = isPlaceholder ? 'No Image Available' : `Venue image ${i + 1}`;
+                    galleryItem.innerHTML = `<img src="${src}" alt="${altText}">`;
+                    
+                    if (!isPlaceholder) {
                         galleryItem.addEventListener('click', () => openLightbox(i));
-                    } else {
-                        galleryItem.innerHTML = `<span>${placeholderText}</span>`;
-                        galleryItem.style.cursor = 'default';
                     }
 
-                    // Handle the "+X See All" overlay for the last thumbnail (fourth position)
-                    if (i === displayCount - 1 && totalImages > displayCount) {
-                        const remainingImages = totalImages - displayCount;
+                    // Add the "+X See All" overlay to the bottom-right thumbnail
+                    if (i === 3 && totalImages > 4) {
+                        const remainingImages = totalImages - 4;
                         const overlay = document.createElement('div');
                         overlay.className = 'see-all-overlay';
                         overlay.textContent = `+${remainingImages} See All`;
@@ -6094,8 +6099,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         
                         // Make the whole item clickable to trigger the lightbox from the start
                         galleryItem.style.cursor = 'pointer';
-                        // Overwrite previous listener if it exists
                         galleryItem.onclick = () => openLightbox(0);
+                    } else if (i === 3 && totalImages <= 4) {
+                         // Still make it clickable for images 1-4
+                        if (!isPlaceholder) {
+                            galleryItem.onclick = () => openLightbox(i);
+                        }
                     }
                     
                     galleryContainer.appendChild(galleryItem);
@@ -6106,17 +6115,30 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const lightbox = document.getElementById('lightbox-modal');
                 const closeBtn = lightbox.querySelector('.lightbox-close');
                 const prevBtn = lightbox.querySelector('.lightbox-prev');
-                const nextBtn = lightbox.querySelector('.lightbox-next');
+                const nextBtn = lightbox.querySelector('.lightbox-nav.lightbox-next');
+                
+                // Ensure only one listener is active
+                if (closeBtn) closeBtn.removeEventListener('click', closeLightbox);
+                if (prevBtn) prevBtn.removeEventListener('click', showPrevImage);
+                if (nextBtn) nextBtn.removeEventListener('click', showNextImage);
+                
+                if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
+                if (prevBtn) prevBtn.addEventListener('click', showPrevImage);
+                if (nextBtn) nextBtn.addEventListener('click', showNextImage);
 
-                closeBtn.addEventListener('click', closeLightbox);
-                prevBtn.addEventListener('click', showPrevImage);
-                nextBtn.addEventListener('click', showNextImage);
-
-                lightbox.addEventListener('click', (e) => {
-                    if (e.target === lightbox) {
-                        closeLightbox();
+                if (lightbox) {
+                    if (lightbox.__overlayClickListener) {
+                        lightbox.removeEventListener('click', lightbox.__overlayClickListener);
                     }
-                });
+                    
+                    const newListener = (e) => {
+                        if (e.target === lightbox) {
+                            closeLightbox();
+                        }
+                    };
+                    lightbox.addEventListener('click', newListener);
+                    lightbox.__overlayClickListener = newListener;
+                }
 
                 document.addEventListener('keydown', (e) => {
                     if (lightbox.style.display === 'flex') {
@@ -6141,17 +6163,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             function updateLightboxImage() {
                 const lightboxImage = document.getElementById('lightbox-image');
-                lightboxImage.src = lightboxImages[currentLightboxIndex];
+                if (lightboxImages.length > 0) {
+                    lightboxImage.src = lightboxImages[currentLightboxIndex];
+                } else {
+                     lightboxImage.src = 'https://placehold.co/800x600/e2e8f0/718096?text=No+Image';
+                }
             }
 
             function showPrevImage() {
-                currentLightboxIndex = (currentLightboxIndex - 1 + lightboxImages.length) % lightboxImages.length;
-                updateLightboxImage();
+                if (lightboxImages.length > 0) {
+                    currentLightboxIndex = (currentLightboxIndex - 1 + lightboxImages.length) % lightboxImages.length;
+                    updateLightboxImage();
+                }
             }
 
             function showNextImage() {
-                currentLightboxIndex = (currentLightboxIndex + 1) % lightboxImages.length;
-                updateLightboxImage();
+                if (lightboxImages.length > 0) {
+                    currentLightboxIndex = (currentLightboxIndex + 1) % lightboxImages.length;
+                    updateLightboxImage();
+                }
             }
         });
     </script>
