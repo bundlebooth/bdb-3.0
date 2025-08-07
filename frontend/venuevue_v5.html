@@ -3547,6 +3547,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     m.__overlayClickListener = newListener;
                 });
 
+                // Add an event listener for hash changes
+                window.addEventListener('hashchange', handleUrlChange);
+
                 // Toggle between login and signup forms
                 showSignup.addEventListener('click', (e) => {
                     e.preventDefault();
