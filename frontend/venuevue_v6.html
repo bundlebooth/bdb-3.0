@@ -770,6 +770,125 @@
             color: var(--text);
         }
 
+        /* Image Gallery Styles */
+        .image-gallery {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: repeat(2, 1fr);
+            gap: 8px;
+            height: 400px;
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .gallery-item {
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.05);
+        }
+
+        .gallery-item:first-child {
+            grid-row: 1 / -1;
+        }
+
+        .see-all-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .gallery-item:last-child:hover .see-all-overlay {
+            opacity: 1;
+        }
+
+        /* Lightbox Modal Styles */
+        .lightbox-modal {
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: none; /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox-content img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: var(--radius);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: white;
+            font-size: 3rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            font-size: 2rem;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: var(--radius);
+            transition: background-color 0.2s;
+        }
+
+        .lightbox-nav:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .lightbox-prev {
+            left: -60px;
+        }
+
+        .lightbox-next {
+            right: -60px;
+        }
+
         /* Services Section */
         .services-section {
             margin-top: 2rem;
@@ -2025,6 +2144,11 @@
                     </div>
                 </div>
 
+                <!-- Image Gallery -->
+                <div id="modal-image-gallery" class="image-gallery">
+                    <!-- Images will be loaded dynamically here -->
+                </div>
+
                 <!-- About Us -->
                 <h3 class="services-title">About Us</h3>
                 <p id="modal-vendor-description" class="vendor-detail-description">
@@ -2225,6 +2349,16 @@
         </div>
     </div>
 
+    <!-- Lightbox Modal -->
+    <div id="lightbox-modal" class="lightbox-modal">
+        <span class="lightbox-close">&times;</span>
+        <button class="lightbox-nav lightbox-prev">❮</button>
+        <div class="lightbox-content">
+            <img src="" alt="Lightbox image" id="lightbox-image">
+        </div>
+        <button class="lightbox-nav lightbox-next">❯</button>
+    </div>
+
     <!-- Google Maps API -->
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places&v=weekly" defer></script>
 
@@ -2401,6 +2535,10 @@
             let isVendorMode = localStorage.getItem('isVendorMode') === 'true';
             let activeDashboardSection = localStorage.getItem('activeDashboardSection') || 'dashboard';
 
+            // Lightbox state
+            let lightboxImages = [];
+            let currentLightboxIndex = 0;
+
             // Initialize the app
             init();
 
@@ -2437,6 +2575,9 @@
                     mainAppView.style.display = 'grid';
                     clientDashboardContainer.style.display = 'none';
                     vendorDashboardContainer.style.display = 'none';
+
+                    // Setup lightbox event listeners
+                    setupLightboxEventListeners();
 
                 } catch (error) {
                     console.error('Initialization error:', error);
@@ -4588,6 +4729,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 vendorProfilePage.querySelector('.vendor-favorite').addEventListener('click', () => {
                     toggleFavorite(profile.VendorProfileID);
                 });
+
+                // Populate and set up the image gallery
+                populateImageGallery(details.images);
+
                 vendorProfilePage.querySelector('#open-chat-btn').addEventListener('click', () => {
                     const chatSection = vendorProfilePage.querySelector('#profile-chat-section');
                     chatSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -4625,7 +4770,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Render reviews for a vendor
             function renderReviews(reviews) {
-                if (reviews.length === 0) {
+                if (!reviews || reviews.length === 0) {
                     return '<p>No reviews yet.</p>';
                 }
                 return reviews.map(review => `
@@ -5886,6 +6031,94 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         window.location.hash = `/listings/${vendor.id}`;
                     });
                 });
+            }
+
+            // --- IMAGE GALLERY AND LIGHTBOX FUNCTIONS ---
+
+            function populateImageGallery(images) {
+                const galleryContainer = document.getElementById('modal-image-gallery');
+                if (!galleryContainer) return;
+
+                galleryContainer.innerHTML = '';
+                lightboxImages = images.map(img => img.ImageURL);
+
+                if (!images || images.length === 0) {
+                    galleryContainer.innerHTML = '<p>No images available.</p>';
+                    return;
+                }
+
+                const imagesToDisplay = images.slice(0, 5);
+
+                imagesToDisplay.forEach((image, index) => {
+                    const galleryItem = document.createElement('div');
+                    galleryItem.className = 'gallery-item';
+                    galleryItem.innerHTML = `<img src="${image.ImageURL}" alt="Venue image ${index + 1}">`;
+
+                    if (index === 4 && images.length > 5) {
+                        const overlay = document.createElement('div');
+                        overlay.className = 'see-all-overlay';
+                        overlay.textContent = `See All (${images.length})`;
+                        galleryItem.appendChild(overlay);
+                    }
+
+                    galleryItem.addEventListener('click', () => {
+                        openLightbox(index);
+                    });
+
+                    galleryContainer.appendChild(galleryItem);
+                });
+            }
+
+            function setupLightboxEventListeners() {
+                const lightbox = document.getElementById('lightbox-modal');
+                const closeBtn = lightbox.querySelector('.lightbox-close');
+                const prevBtn = lightbox.querySelector('.lightbox-prev');
+                const nextBtn = lightbox.querySelector('.lightbox-next');
+
+                closeBtn.addEventListener('click', closeLightbox);
+                prevBtn.addEventListener('click', showPrevImage);
+                nextBtn.addEventListener('click', showNextImage);
+
+                lightbox.addEventListener('click', (e) => {
+                    if (e.target === lightbox) {
+                        closeLightbox();
+                    }
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    if (lightbox.style.display === 'flex') {
+                        if (e.key === 'Escape') closeLightbox();
+                        if (e.key === 'ArrowLeft') showPrevImage();
+                        if (e.key === 'ArrowRight') showNextImage();
+                    }
+                });
+            }
+
+            function openLightbox(index) {
+                currentLightboxIndex = index;
+                updateLightboxImage();
+                document.getElementById('lightbox-modal').style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeLightbox() {
+                document.getElementById('lightbox-modal').style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+
+            function updateLightboxImage() {
+                const lightboxImage = document.getElementById('lightbox-image');
+                lightboxImage.src = lightboxImages[currentLightboxIndex];
+            }
+
+            function showPrevImage() {
+                currentLightboxIndex = (currentLightboxIndex - 1 + lightboxImages.length) % lightboxImages.length;
+                updateLightboxImage();
+            }
+
+            function showNextImage() {
+                currentLightboxIndex = (currentLightboxIndex + 1) % lightboxImages.length;
+                updateLightboxImage();
             }
         });
     </script>
