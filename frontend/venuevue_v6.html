@@ -773,8 +773,8 @@
         /* Image Gallery Styles */
         .image-gallery {
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            grid-template-rows: repeat(2, 1fr);
+            grid-template-columns: 2fr 1fr; /* Two columns: left is 2x wider */
+            grid-template-rows: repeat(3, 1fr); /* Three equal rows for thumbnails */
             gap: 8px;
             height: 400px;
             border-radius: var(--radius);
@@ -786,6 +786,11 @@
             position: relative;
             overflow: hidden;
             cursor: pointer;
+            background-color: #f1f5f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
         }
 
         .gallery-item img {
@@ -799,8 +804,24 @@
             transform: scale(1.05);
         }
 
-        .gallery-item:first-child {
-            grid-row: 1 / -1;
+        .gallery-item:nth-child(1) {
+            grid-column: 1 / 2;
+            grid-row: 1 / 4; /* Main image spans all 3 rows */
+        }
+
+        .gallery-item:nth-child(2) {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+        }
+
+        .gallery-item:nth-child(3) {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+        }
+
+        .gallery-item:nth-child(4) {
+            grid-column: 2 / 3;
+            grid-row: 3 / 4;
         }
 
         .see-all-overlay {
@@ -816,12 +837,11 @@
             color: white;
             font-size: 1.1rem;
             font-weight: 600;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: background-color 0.3s ease;
         }
 
-        .gallery-item:last-child:hover .see-all-overlay {
-            opacity: 1;
+        .gallery-item:hover .see-all-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
         }
 
         /* Lightbox Modal Styles */
@@ -2117,6 +2137,11 @@
                 <span class="close-modal">&times;</span>
             </div>
             <div class="modal-body">
+                <!-- Image Gallery -->
+                <div id="modal-image-gallery" class="image-gallery">
+                    <!-- Images will be loaded dynamically here -->
+                </div>
+
                 <!-- Header Info -->
                 <div class="vendor-detail-header">
                     <div class="vendor-detail-image">
@@ -2142,11 +2167,6 @@
                         </div>
                         <p class="vendor-detail-price" id="modal-vendor-price"></p>
                     </div>
-                </div>
-
-                <!-- Image Gallery -->
-                <div id="modal-image-gallery" class="image-gallery">
-                    <!-- Images will be loaded dynamically here -->
                 </div>
 
                 <!-- About Us -->
@@ -4631,6 +4651,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </button>
                         </div>
                         
+                        <!-- Image Gallery -->
+                        <div id="modal-image-gallery" class="image-gallery">
+                            <!-- Images will be loaded dynamically here -->
+                        </div>
+
                         <!-- Vendor Header -->
                         <div style="display: flex; gap: 2rem; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 2rem;">
                             <div style="flex-shrink: 0; width: 200px; height: 200px; background-color: #f1f5f9; border-radius: var(--radius); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 4rem; position: relative;">
@@ -6040,33 +6065,41 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (!galleryContainer) return;
 
                 galleryContainer.innerHTML = '';
-                lightboxImages = images.map(img => img.ImageURL);
+                const totalImages = images ? images.length : 0;
+                lightboxImages = images ? images.map(img => img.ImageURL) : [];
+                const placeholderText = 'No Image Available';
 
-                if (!images || images.length === 0) {
-                    galleryContainer.innerHTML = '<p>No images available.</p>';
-                    return;
-                }
+                const displayCount = 4; // We will always generate 4 items for the grid
 
-                const imagesToDisplay = images.slice(0, 5);
-
-                imagesToDisplay.forEach((image, index) => {
+                for (let i = 0; i < displayCount; i++) {
                     const galleryItem = document.createElement('div');
                     galleryItem.className = 'gallery-item';
-                    galleryItem.innerHTML = `<img src="${image.ImageURL}" alt="Venue image ${index + 1}">`;
+                    const image = images && images[i] ? images[i] : null;
 
-                    if (index === 4 && images.length > 5) {
-                        const overlay = document.createElement('div');
-                        overlay.className = 'see-all-overlay';
-                        overlay.textContent = `See All (${images.length})`;
-                        galleryItem.appendChild(overlay);
+                    if (image) {
+                        galleryItem.innerHTML = `<img src="${image.ImageURL}" alt="Venue image ${i + 1}">`;
+                        galleryItem.addEventListener('click', () => openLightbox(i));
+                    } else {
+                        galleryItem.innerHTML = `<span>${placeholderText}</span>`;
+                        galleryItem.style.cursor = 'default';
                     }
 
-                    galleryItem.addEventListener('click', () => {
-                        openLightbox(index);
-                    });
-
+                    // Handle the "+X See All" overlay for the last thumbnail (fourth position)
+                    if (i === displayCount - 1 && totalImages > displayCount) {
+                        const remainingImages = totalImages - displayCount;
+                        const overlay = document.createElement('div');
+                        overlay.className = 'see-all-overlay';
+                        overlay.textContent = `+${remainingImages} See All`;
+                        galleryItem.appendChild(overlay);
+                        
+                        // Make the whole item clickable to trigger the lightbox from the start
+                        galleryItem.style.cursor = 'pointer';
+                        // Overwrite previous listener if it exists
+                        galleryItem.onclick = () => openLightbox(0);
+                    }
+                    
                     galleryContainer.appendChild(galleryItem);
-                });
+                }
             }
 
             function setupLightboxEventListeners() {
