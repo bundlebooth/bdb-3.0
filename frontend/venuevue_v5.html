@@ -1963,7 +1963,7 @@
                             <input type="checkbox" id="vendor-is-premium">
                         </div>
                         <div class="form-group">
-                            <label for="vendor-is-eco-friendly">Eco-Friendly</label>
+                            <label for="vendor-is-eco-friendly">Eco-Friendly</labeL>
                             <input type="checkbox" id="vendor-is-eco-friendly">
                         </div>
                         <div class="form-group">
@@ -2485,8 +2485,8 @@
                 },
                 
                 formatMessage: function(message) {
-                    console.log('Formatting message:', message); // Add this line for debugging
-                    const content = message.Content || message.content || message.text || message.messageContent; // Added more fallbacks
+                    console.log('Formatting message:', message);
+                    const content = message.Content || message.content || message.text || message.messageContent;
                     if (content === undefined) {
                         console.warn('Message content is undefined after formatting attempts for message:', message);
                     }
@@ -2494,8 +2494,8 @@
                         id: message.MessageID || message.id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                         conversationId: message.ConversationID || message.conversationId || this.currentConversation,
                         senderId: message.SenderID || message.senderId,
-                        senderName: message.SenderName || message.senderName || (message.SenderID === currentUser?.id ? currentUser.name : 'Vendor'), // Default sender name
-                        content: content, // Use the determined content
+                        senderName: message.SenderName || message.senderName || (message.SenderID === currentUser?.id ? currentUser.name : 'Vendor'),
+                        content: content,
                         timestamp: message.CreatedAt || message.timestamp || new Date().toISOString(),
                         isCurrentUser: message.SenderID === currentUser?.id || message.isCurrentUser,
                         isRead: message.IsRead || message.isRead || false
