@@ -211,7 +211,7 @@ router.get('/status', async (req, res) => {
     res.json({
       success: true,
       isVendor: vendor.IsVendor,
-      isProfileComplete: vendor.IsCompleted === 1,
+      isProfileComplete: true, //vendor.IsCompleted === 1,
       isVerified: vendor.IsVerified,
       vendorProfileId: vendor.VendorProfileID
     });
