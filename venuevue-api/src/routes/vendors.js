@@ -91,6 +91,7 @@ router.get('/', async (req, res) => {
 router.post('/register', upload.array('images', 5), async (req, res) => {
   try {
     const {
+      userId,
       name,
       email,
       passwordHash,
