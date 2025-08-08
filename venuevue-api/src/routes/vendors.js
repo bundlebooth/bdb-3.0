@@ -671,4 +671,35 @@ router.get('/:id/setup-data', async (req, res) => {
 
     const result = await request.execute('sp_GetVendorSetupData');
     
-    if (result.recordsets
+    if (result.recordsets.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found'
+      });
+    }
+
+    const setupData = {
+      vendor: result.recordsets[0][0],
+      gallery: result.recordsets[1],
+      packages: result.recordsets[2],
+      services: result.recordsets[3],
+      socialMedia: result.recordsets[4],
+      availability: result.recordsets[5]
+    };
+
+    res.json({
+      success: true,
+      data: setupData
+    });
+
+  } catch (err) {
+    console.error('Setup data error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get setup data',
+      error: err.message 
+    });
+  }
+});
+
+module.exports = router;
