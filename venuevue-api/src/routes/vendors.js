@@ -92,11 +92,11 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
   try {
     const {
       userId,
-      name,
-      email,
-      passwordHash,
+      displayName,
+      businessPhone,
+      postalCode,
+      country,
       businessName,
-      businessType,
       category,
       yearsInBusiness,
       description,
