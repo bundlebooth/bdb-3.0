@@ -1586,33 +1586,33 @@
 </head>
 <body>
     <!-- Main App View -->
+    <header class="header">
+        <div class="logo">
+            <span>🎉</span>
+            VenueVue
+        </div>
+
+        <div class="search-container">
+            <div class="search-bar">
+                <span class="search-icon">🔍</span>
+                <input type="text" placeholder="Search for event vendors..." id="search-input">
+            </div>
+        </div>
+
+        <div class="user-nav">
+            <div class="nav-icon" id="wishlist-btn">
+                ❤
+                <span class="badge" id="favorites-badge">0</span>
+            </div>
+            <div class="nav-icon" id="notifications-btn">
+                🔔
+                <span class="badge" id="notifications-badge">0</span>
+            </div>
+            <div class="nav-icon" id="profile-btn">👤</div>
+        </div>
+    </header>
+
     <div class="app-container" id="app-container">
-        <header class="header">
-            <div class="logo">
-                <span>🎉</span>
-                VenueVue
-            </div>
-
-            <div class="search-container">
-                <div class="search-bar">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" placeholder="Search for event vendors..." id="search-input">
-                </div>
-            </div>
-
-            <div class="user-nav">
-                <div class="nav-icon" id="wishlist-btn">
-                    ❤
-                    <span class="badge" id="favorites-badge">0</span>
-                </div>
-                <div class="nav-icon" id="notifications-btn">
-                    🔔
-                    <span class="badge" id="notifications-badge">0</span>
-                </div>
-                <div class="nav-icon" id="profile-btn">👤</div>
-            </div>
-        </header>
-
         <!-- Categories Navigation -->
         <nav class="categories-nav">
             <button class="nav-scroll-btn left" id="scroll-left">◀</button>
