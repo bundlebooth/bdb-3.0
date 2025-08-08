@@ -132,14 +132,12 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
 
     const request = new sql.Request(pool);
     
-    // Set all input parameters
+    // Set only expected input parameters for sp_RegisterVendor
     request.input('UserID', sql.Int, userId ? parseInt(userId) : null);
-    request.input('Name', sql.NVarChar(100), name);
-    request.input('Email', sql.NVarChar(100), email);
-    request.input('PasswordHash', sql.NVarChar(255), passwordHash);
     request.input('BusinessName', sql.NVarChar(100), businessName);
+    request.input('DisplayName', sql.NVarChar(100), displayName || businessName);
     request.input('BusinessDescription', sql.NVarChar(sql.MAX), description);
-    request.input('BusinessPhone', sql.NVarChar(20), phone);
+    request.input('BusinessPhone', sql.NVarChar(20), businessPhone || phone);
     request.input('Website', sql.NVarChar(255), website);
     request.input('YearsInBusiness', sql.Int, yearsInBusiness ? parseInt(yearsInBusiness) : null);
     request.input('Address', sql.NVarChar(255), address);
@@ -148,7 +146,9 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
     const [city, state] = address ? address.split(',').map(s => s.trim()) : [null, null];
     request.input('City', sql.NVarChar(100), city);
     request.input('State', sql.NVarChar(50), state);
-    request.input('Country', sql.NVarChar(50), 'USA'); // Default country
+    request.input('Country', sql.NVarChar(50), country || 'USA'); // Default country
+    
+    request.input('PostalCode', sql.NVarChar(20), postalCode);
     
     // Categories and services as JSON
     request.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categoriesData));
