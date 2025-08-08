@@ -70,7 +70,7 @@ app.use('/api/reviews', reviewsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/vendorDashboard', vendorDashboardRouter);
 
-// Fixed route to handle fetching vendor conversations (replaces missing stored procedure)
+// Fixed route to handle fetching vendor conversations with consistent data format
 app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
     try {
         const { vendorId } = req.params;
@@ -85,9 +85,9 @@ app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
                     u.UserID,
                     u.Name AS UserName,
                     u.Email AS UserEmail,
-                    m.Content AS LastMessageContent,
-                    m.CreatedAt AS LastMessageCreatedAt,
-                    COUNT(CASE WHEN m2.IsRead = 0 AND m2.SenderID != vp.UserID THEN 1 END) AS UnreadCount
+                    ISNULL(m.Content, '') AS LastMessageContent,
+                    ISNULL(m.CreatedAt, c.CreatedAt) AS LastMessageCreatedAt,
+                    ISNULL(COUNT(CASE WHEN m2.IsRead = 0 AND m2.SenderID != vp.UserID THEN 1 END), 0) AS UnreadCount
                 FROM Conversations c
                 INNER JOIN VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID
                 INNER JOIN Users u ON c.UserID = u.UserID
@@ -101,13 +101,17 @@ app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
                 LEFT JOIN Messages m2 ON c.ConversationID = m2.ConversationID
                 WHERE c.VendorProfileID = @VendorProfileID
                 GROUP BY c.ConversationID, c.CreatedAt, u.UserID, u.Name, u.Email, m.Content, m.CreatedAt
-                ORDER BY m.CreatedAt DESC
+                ORDER BY ISNULL(m.CreatedAt, c.CreatedAt) DESC
             `);
 
-        res.json(result.recordset);
+        res.json({
+            success: true,
+            conversations: result.recordset
+        });
     } catch (err) {
         console.error('Database error:', err);
         res.status(500).json({
+            success: false,
             message: 'Failed to retrieve conversations',
             error: err.message
         });
