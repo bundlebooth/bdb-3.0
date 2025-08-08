@@ -2153,6 +2153,22 @@
                             <label for="reg-years-in-business">Years in Business</label>
                             <input type="number" id="reg-years-in-business" min="0" required>
                         </div>
+                        <div class="form-group">
+                            <label for="reg-is-premium">Premium Vendor</label>
+                            <input type="checkbox" id="reg-is-premium">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-is-eco-friendly">Eco-Friendly</label>
+                            <input type="checkbox" id="reg-is-eco-friendly">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-is-award-winning">Award Winning</label>
+                            <input type="checkbox" id="reg-is-award-winning">
+                        </div>
+                        <div class="form-group">
+                            <label for="reg-business-images">Upload Business Images</label>
+                            <input type="file" id="reg-business-images" accept="image/*" multiple>
+                        </div>
                         <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                             <button type="button" class="btn btn-outline prev-step" data-step="2">Back</button>
                             <button type="submit" class="btn btn-primary">Submit Application</button>
@@ -4031,58 +4047,70 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                 });
 
-                // Vendor registration form submission
-                vendorRegistrationForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
+                    // Vendor registration form submission
+                    vendorRegistrationForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
 
-                    const form = e.target;
-                    const formData = {
-                        userId: currentUser.id,
-                        businessName: form.querySelector('#reg-business-name').value,
-                        displayName: form.querySelector('#reg-display-name').value,
-                        businessEmail: form.querySelector('#reg-business-email').value,
-                        businessPhone: form.querySelector('#reg-business-phone').value,
-                        website: form.querySelector('#reg-website').value,
-                        categories: [form.querySelector('#reg-category').value],
-                        address: form.querySelector('#reg-address').value,
-                        city: form.querySelector('#reg-city').value,
-                        state: form.querySelector('#reg-state').value,
-                        country: form.querySelector('#reg-country').value,
-                        postalCode: form.querySelector('#reg-postalCode').value,
-                        tagline: form.querySelector('#reg-tagline').value,
-                        businessDescription: form.querySelector('#reg-business-description').value,
-                        yearsInBusiness: form.querySelector('#reg-years-in-business').value,
-                    };
+                        const form = e.target;
+                        const filesInput = form.querySelector('#reg-business-images');
+                        const files = filesInput ? filesInput.files : [];
 
-                    try {
-                        // All form steps are now combined into a single submission
-                        const response = await fetch(`${API_BASE_URL}/vendors/register`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${localStorage.getItem('token')}`
-                            },
-                            body: JSON.stringify(formData)
-                        });
+                        // Prepare form data for multipart/form-data
+                        const formData = new FormData();
+                        formData.append('userId', currentUser.id);
+                        formData.append('businessName', form.querySelector('#reg-business-name').value);
+                        formData.append('displayName', form.querySelector('#reg-display-name').value);
+                        formData.append('businessEmail', form.querySelector('#reg-business-email').value);
+                        formData.append('businessPhone', form.querySelector('#reg-business-phone').value);
+                        formData.append('website', form.querySelector('#reg-website').value);
+                        formData.append('category', form.querySelector('#reg-category').value);
+                        formData.append('name', '');
+                        formData.append('email', '');
+                        formData.append('passwordHash', '');
+                        formData.append('address', form.querySelector('#reg-address').value);
+                        formData.append('city', form.querySelector('#reg-city').value);
+                        formData.append('state', form.querySelector('#reg-state').value);
+                        formData.append('country', form.querySelector('#reg-country').value);
+                        formData.append('postalCode', form.querySelector('#reg-postalCode').value);
+                        formData.append('tagline', form.querySelector('#reg-tagline').value);
+                        formData.append('businessDescription', form.querySelector('#reg-business-description').value);
+                        formData.append('yearsInBusiness', form.querySelector('#reg-years-in-business').value);
+                        formData.append('isPremium', form.querySelector('#reg-is-premium').checked ? '1' : '0');
+                        formData.append('isEcoFriendly', form.querySelector('#reg-is-eco-friendly').checked ? '1' : '0');
+                        formData.append('isAwardWinning', form.querySelector('#reg-is-award-winning').checked ? '1' : '0');
 
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.message || 'Registration failed');
+                        // Append images
+                        for (let i = 0; i < files.length; i++) {
+                            formData.append('images', files[i]);
                         }
 
-                        const result = await response.json();
+                        try {
+                            const response = await fetch(`${API_BASE_URL}/vendors/register`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                },
+                                body: formData
+                            });
 
-                        alert('Vendor registration submitted successfully!');
-                        vendorRegistrationModal.style.display = 'none';
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.message || 'Registration failed');
+                            }
 
-                        // Update user to vendor status
-                        currentUser.isVendor = true;
-                        displayUserDashboard('vendor', 'vendor-dashboard');
-                    } catch (error) {
-                        console.error('Registration error:', error);
-                        alert('Registration failed. ' + error.message);
-                    }
-                });
+                            const result = await response.json();
+
+                            alert('Vendor registration submitted successfully!');
+                            vendorRegistrationModal.style.display = 'none';
+
+                            // Update user to vendor status
+                            currentUser.isVendor = true;
+                            displayUserDashboard('vendor', 'vendor-dashboard');
+                        } catch (error) {
+                            console.error('Registration error:', error);
+                            alert('Registration failed. ' + error.message);
+                        }
+                    });
 
                 // Map controls
                 document.getElementById('zoom-in')?.addEventListener('click', () => {
@@ -4512,6 +4540,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     <div class="vendor-image">
                         ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
                         <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
+                        <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
+                            ${vendor.isPremium ? '<span class="badge" style="background-color: #5e72e4; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Premium</span>' : ''}
+                            ${vendor.isEcoFriendly ? '<span class="badge" style="background-color: #38a169; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Eco-Friendly</span>' : ''}
+                            ${vendor.isAwardWinning ? '<span class="badge" style="background-color: #d69e2e; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Award Winning</span>' : ''}
+                        </div>
                     </div>
                     <div class="vendor-details">
                         <h3 class="vendor-name">${vendor.name}</h3>
