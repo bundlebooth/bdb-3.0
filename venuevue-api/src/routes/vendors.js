@@ -400,4 +400,838 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
   }
 });
 
+// Complete vendor setup with all features
+router.post('/:id/setup', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { gallery, packages, services, socialMedia, availability } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    // Start transaction
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      // Save gallery images
+      if (gallery && gallery.length > 0) {
+        for (const image of gallery) {
+          const request = new sql.Request(transaction);
+          request.input('VendorProfileID', sql.Int, id);
+          request.input('ImageURL', sql.NVarChar(500), image.url);
+          request.input('ImageType', sql.NVarChar(10), image.type);
+          request.input('Caption', sql.NVarChar(255), image.caption);
+          
+          await request.query(`
+            INSERT INTO VendorGallery (VendorProfileID, ImageURL, ImageType, Caption)
+            VALUES (@VendorProfileID, @ImageURL, @ImageType, @Caption)
+          `);
+        }
+      }
+
+      // Save packages
+      if (packages && packages.length > 0) {
+        for (const pkg of packages) {
+          const request = new sql.Request(transaction);
+          request.input('VendorProfileID', sql.Int, id);
+          request.input('PackageName', sql.NVarChar(255), pkg.name);
+          request.input('Description', sql.NVarChar(sql.MAX), pkg.description);
+          request.input('Price', sql.Decimal(10, 2), pkg.price);
+          request.input('Duration', sql.NVarChar(50), pkg.duration);
+          request.input('MaxGuests', sql.Int, pkg.maxGuests);
+          
+          await request.query(`
+            INSERT INTO VendorPackages (VendorProfileID, PackageName, Description, Price, Duration, MaxGuests)
+            VALUES (@VendorProfileID, @PackageName, @Description, @Price, @Duration, @MaxGuests)
+          `);
+        }
+      }
+
+      // Save services
+      if (services && services.length > 0) {
+        for (const service of services) {
+          const request = new sql.Request(transaction);
+          request.input('VendorProfileID', sql.Int, id);
+          request.input('ServiceName', sql.NVarChar(255), service.name);
+          request.input('Description', sql.NVarChar(sql.MAX), service.description);
+          request.input('Price', sql.Decimal(10, 2), service.price);
+          request.input('Duration', sql.NVarChar(50), service.duration);
+          
+          await request.query(`
+            INSERT INTO VendorServices (VendorProfileID, ServiceName, Description, Price, Duration)
+            VALUES (@VendorProfileID, @ServiceName, @Description, @Price, @Duration)
+          `);
+        }
+      }
+
+      // Save social media
+      if (socialMedia && Object.keys(socialMedia).length > 0) {
+        for (const [platform, url] of Object.entries(socialMedia)) {
+          const request = new sql.Request(transaction);
+          request.input('VendorProfileID', sql.Int, id);
+          request.input('Platform', sql.NVarChar(50), platform);
+          request.input('URL', sql.NVarChar(500), url);
+          
+          await request.query(`
+            INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL)
+            VALUES (@VendorProfileID, @Platform, @URL)
+            ON DUPLICATE KEY UPDATE URL = @URL
+          `);
+        }
+      }
+
+      // Save availability
+      if (availability && availability.length > 0) {
+        for (const slot of availability) {
+          const request = new sql.Request(transaction);
+          request.input('VendorProfileID', sql.Int, id);
+          request.input('DayOfWeek', sql.TinyInt, slot.day);
+          request.input('StartTime', sql.Time, slot.start);
+          request.input('EndTime', sql.Time, slot.end);
+          
+          await request.query(`
+            INSERT INTO VendorAvailability (VendorProfileID, DayOfWeek, StartTime, EndTime)
+            VALUES (@VendorProfileID, @DayOfWeek, @StartTime, @EndTime)
+          `);
+        }
+      }
+
+      // Update vendor setup completion status
+      const statusRequest = new sql.Request(transaction);
+      statusRequest.input('VendorProfileID', sql.Int, id);
+      
+      await statusRequest.query(`
+        UPDATE VendorProfiles 
+        SET 
+          SetupCompleted = 1,
+          SetupStep = 4,
+          UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+
+      // Commit transaction
+      await transaction.commit();
+
+      res.json({
+        success: true,
+        message: 'Vendor setup completed successfully'
+      });
+
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (err) {
+    console.error('Setup error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to complete vendor setup',
+      error: err.message 
+    });
+  }
+});
+
+// Get vendor setup progress
+router.get('/:id/setup-progress', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+
+    const result = await request.query(`
+      SELECT 
+        SetupStep,
+        SetupCompleted,
+        (SELECT COUNT(*) FROM VendorGallery WHERE VendorProfileID = @VendorProfileID) as GalleryCount,
+        (SELECT COUNT(*) FROM VendorPackages WHERE VendorProfileID = @VendorProfileID) as PackagesCount,
+        (SELECT COUNT(*) FROM VendorServices WHERE VendorProfileID = @VendorProfileID) as ServicesCount,
+        (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID) as SocialMediaCount,
+        (SELECT COUNT(*) FROM VendorAvailability WHERE VendorProfileID = @VendorProfileID) as AvailabilityCount
+      FROM VendorProfiles 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found'
+      });
+    }
+
+    const progress = result.recordset[0];
+    
+    res.json({
+      success: true,
+      data: {
+        currentStep: progress.SetupStep || 1,
+        completed: progress.SetupCompleted || false,
+        progress: {
+          gallery: progress.GalleryCount > 0,
+          packages: progress.PackagesCount > 0,
+          services: progress.ServicesCount > 0,
+          socialMedia: progress.SocialMediaCount > 0,
+          availability: progress.AvailabilityCount > 0
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error('Progress check error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get setup progress',
+      error: err.message 
+    });
+  }
+});
+
+// Vendor Setup Endpoints
+
+// Get vendor setup progress
+router.get('/:id/setup-progress', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+
+    const result = await request.execute('sp_GetVendorSetupProgress');
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.recordset[0]
+    });
+
+  } catch (err) {
+    console.error('Setup progress error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get setup progress',
+      error: err.message 
+    });
+  }
+});
+
+// Complete vendor setup
+router.post('/:id/setup', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      gallery,
+      packages,
+      services,
+      socialMedia,
+      availability
+    } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('GalleryData', sql.NVarChar(sql.MAX), gallery ? JSON.stringify(gallery) : null);
+    request.input('PackagesData', sql.NVarChar(sql.MAX), packages ? JSON.stringify(packages) : null);
+    request.input('ServicesData', sql.NVarChar(sql.MAX), services ? JSON.stringify(services) : null);
+    request.input('SocialMediaData', sql.NVarChar(sql.MAX), socialMedia ? JSON.stringify(socialMedia) : null);
+    request.input('AvailabilityData', sql.NVarChar(sql.MAX), availability ? JSON.stringify(availability) : null);
+
+    const result = await request.execute('sp_CompleteVendorSetup');
+    
+    const response = result.recordset[0];
+    
+    if (response.Success) {
+      res.json({
+        success: true,
+        message: response.Message
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: response.Message
+      });
+    }
+
+  } catch (err) {
+    console.error('Setup completion error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to complete setup',
+      error: err.message 
+    });
+  }
+});
+
+// Add gallery image
+router.post('/:id/gallery', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageUrl, imageType, caption } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('ImageURL', sql.NVarChar(500), imageUrl);
+    request.input('ImageType', sql.NVarChar(10), imageType || 'upload');
+    request.input('Caption', sql.NVarChar(255), caption);
+
+    const result = await request.execute('sp_AddVendorGalleryImage');
+    
+    res.json({
+      success: true,
+      imageId: result.recordset[0].ImageID
+    });
+
+  } catch (err) {
+    console.error('Gallery image error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to add gallery image',
+      error: err.message 
+    });
+  }
+});
+
+// Add package
+router.post('/:id/packages', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { packageName, description, price, duration, maxGuests } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('PackageName', sql.NVarChar(255), packageName);
+    request.input('Description', sql.NVarChar(sql.MAX), description);
+    request.input('Price', sql.Decimal(10, 2), price);
+    request.input('Duration', sql.NVarChar(50), duration);
+    request.input('MaxGuests', sql.Int, maxGuests);
+
+    const result = await request.execute('sp_AddVendorPackage');
+    
+    res.json({
+      success: true,
+      serviceId: result.recordset[0].ServiceID
+    });
+
+  } catch (err) {
+    console.error('Package error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to add package',
+      error: err.message 
+    });
+  }
+});
+
+// Add social media
+router.post('/:id/social-media', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { platform, url } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('Platform', sql.NVarChar(50), platform);
+    request.input('URL', sql.NVarChar(500), url);
+
+    const result = await request.execute('sp_AddVendorSocialMedia');
+    
+    res.json({
+      success: true,
+      message: 'Social media link added successfully'
+    });
+
+  } catch (err) {
+    console.error('Social media error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to add social media link',
+      error: err.message 
+    });
+  }
+});
+
+// Add availability
+router.post('/:id/availability', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { dayOfWeek, startTime, endTime } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('DayOfWeek', sql.TinyInt, dayOfWeek);
+    request.input('StartTime', sql.Time, startTime);
+    request.input('EndTime', sql.Time, endTime);
+
+    const result = await request.execute('sp_AddVendorAvailability');
+    
+    res.json({
+      success: true,
+      message: 'Availability added successfully'
+    });
+
+  } catch (err) {
+    console.error('Availability error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to add availability',
+      error: err.message 
+    });
+  }
+});
+
+// Update setup step
+router.put('/:id/setup-step', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { step } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('Step', sql.Int, step);
+
+    const result = await request.execute('sp_UpdateVendorSetupStep');
+    
+    res.json({
+      success: true,
+      message: 'Setup step updated successfully'
+    });
+
+  } catch (err) {
+    console.error('Setup step error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to update setup step',
+      error: err.message 
+    });
+  }
+});
+
+// Get vendor setup data
+router.get('/:id/setup-data', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+
+    const result = await request.execute('sp_GetVendorSetupData');
+    
+    if (result.recordsets.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found'
+      });
+    }
+
+    // Format the response
+    const setupData = {
+      vendor: result.recordsets[0][0],
+      gallery: result.recordsets[1],
+      packages: result.recordsets[2],
+      services: result.recordsets[3],
+      socialMedia: result.recordsets[4],
+      availability: result.recordsets[5]
+    };
+
+    res.json({
+      success: true,
+      data: setupData
+    });
+
+  } catch (err) {
+    console.error('Setup data error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get setup data',
+      error: err.message 
+    });
+  }
+});
+
+// Enhanced Vendor Setup Endpoints
+
+// Complete vendor setup with all data
+router.post('/:id/setup', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { gallery, packages, services, socialMedia, availability } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    // Start transaction
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      // Save gallery images
+      if (gallery && gallery.length > 0) {
+        for (const image of gallery) {
+          const request = new sql.Request(transaction);
+          request.input('VendorProfileID', sql.Int, id);
+          request.input('ImageURL', sql.NVarChar(500), image.url);
+          request.input('ImageType', sql.NVarChar(10), image.type);
+          request.input('Caption', sql.NVarChar(255), image.caption);
+          
+          await request.query(`
+            INSERT INTO VendorImages (VendorProfileID, ImageURL, Caption, IsPrimary)
+            VALUES (@VendorProfileID, @ImageURL, @Caption, 0)
+          `);
+        }
+      }
+
+      // Save packages
+      if (packages && packages.length > 0) {
+        for (const pkg of packages) {
+          const request = new sql.Request(transaction);
+          request.input('VendorProfileID', sql.Int, id);
+          request.input('PackageName', sql.NVarChar(255), pkg.name);
+          request.input('Description', sql.NVarChar(sql.MAX), pkg.description);
+          request.input('Price', sql.Decimal(10, 2), pkg.price);
+          request.input('Duration', sql.NVarChar(50), pkg.duration);
+          request.input('MaxGuests', sql.Int, pkg.maxGuests);
+          request.input('Includes', sql.NVarChar(sql.MAX), pkg.includes);
+          
+          await request.query(`
+            INSERT INTO Services (VendorProfileID, ServiceName, ServiceDescription, Price, Duration, ServiceType)
+            VALUES (@VendorProfileID, @PackageName, @Description, @Price, @Duration, 'Package')
+          `);
+        }
+      }
+
+      // Save individual services
+      if (services && services.length > 0) {
+        for (const service of services) {
+          const request = new sql.Request(transaction);
+          request.input('VendorProfileID', sql.Int, id);
+          request.input('ServiceName', sql.NVarChar(255), service.name);
+          request.input('Description', sql.NVarChar(sql.MAX), service.description);
+          request.input('Price', sql.Decimal(10, 2), service.price);
+          request.input('Duration', sql.NVarChar(50), service.duration);
+          
+          await request.query(`
+            INSERT INTO Services (VendorProfileID, ServiceName, ServiceDescription, Price, Duration, ServiceType)
+            VALUES (@VendorProfileID, @ServiceName, @Description, @Price, @Duration, 'Service')
+          `);
+        }
+      }
+
+      // Save social media links
+      if (socialMedia && Object.keys(socialMedia).length > 0) {
+        for (const [platform, url] of Object.entries(socialMedia)) {
+          const request = new sql.Request(transaction);
+          request.input('VendorProfileID', sql.Int, id);
+          request.input('Platform', sql.NVarChar(50), platform);
+          request.input('URL', sql.NVarChar(500), url);
+          
+          await request.query(`
+            INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL)
+            VALUES (@VendorProfileID, @Platform, @URL)
+            ON DUPLICATE KEY UPDATE URL = @URL
+          `);
+        }
+      }
+
+      // Save availability
+      if (availability && availability.length > 0) {
+        for (const slot of availability) {
+          const request = new sql.Request(transaction);
+          request.input('VendorProfileID', sql.Int, id);
+          request.input('DayOfWeek', sql.TinyInt, slot.day);
+          request.input('OpenTime', sql.Time, slot.start);
+          request.input('CloseTime', sql.Time, slot.end);
+          request.input('IsAvailable', sql.Bit, 1);
+          
+          await request.query(`
+            INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
+            VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable)
+            ON DUPLICATE KEY UPDATE OpenTime = @OpenTime, CloseTime = @CloseTime, IsAvailable = @IsAvailable
+          `);
+        }
+      }
+
+      // Mark vendor setup as complete
+      const updateRequest = new sql.Request(transaction);
+      updateRequest.input('VendorProfileID', sql.Int, id);
+      await updateRequest.query(`
+        UPDATE VendorProfiles 
+        SET IsVerified = 1, UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+
+      // Commit transaction
+      await transaction.commit();
+
+      res.json({
+        success: true,
+        message: 'Vendor setup completed successfully'
+      });
+
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (err) {
+    console.error('Vendor setup error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to complete vendor setup',
+      error: err.message 
+    });
+  }
+});
+
+// Add gallery image endpoint
+router.post('/gallery', async (req, res) => {
+  try {
+    const { vendor_id, image_url, image_type, caption } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendor_id);
+    request.input('ImageURL', sql.NVarChar(500), image_url);
+    request.input('Caption', sql.NVarChar(255), caption);
+    
+    await request.query(`
+      INSERT INTO VendorImages (VendorProfileID, ImageURL, Caption, IsPrimary)
+      VALUES (@VendorProfileID, @ImageURL, @Caption, 0)
+    `);
+
+    res.json({
+      success: true,
+      message: 'Gallery image added successfully'
+    });
+
+  } catch (err) {
+    console.error('Gallery image error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to add gallery image',
+      error: err.message 
+    });
+  }
+});
+
+// Add package endpoint
+router.post('/packages', async (req, res) => {
+  try {
+    const { vendor_id, package_name, description, price, duration, includes, max_guests } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendor_id);
+    request.input('ServiceName', sql.NVarChar(255), package_name);
+    request.input('ServiceDescription', sql.NVarChar(sql.MAX), description);
+    request.input('Price', sql.Decimal(10, 2), price);
+    request.input('Duration', sql.NVarChar(50), duration);
+    
+    await request.query(`
+      INSERT INTO Services (VendorProfileID, ServiceName, ServiceDescription, Price, Duration, ServiceType)
+      VALUES (@VendorProfileID, @ServiceName, @ServiceDescription, @Price, @Duration, 'Package')
+    `);
+
+    res.json({
+      success: true,
+      message: 'Package added successfully'
+    });
+
+  } catch (err) {
+    console.error('Package creation error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to add package',
+      error: err.message 
+    });
+  }
+});
+
+// Add service endpoint
+router.post('/services', async (req, res) => {
+  try {
+    const { vendor_id, service_name, description, price, duration, category } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendor_id);
+    request.input('ServiceName', sql.NVarChar(255), service_name);
+    request.input('ServiceDescription', sql.NVarChar(sql.MAX), description);
+    request.input('Price', sql.Decimal(10, 2), price);
+    request.input('Duration', sql.NVarChar(50), duration);
+    
+    await request.query(`
+      INSERT INTO Services (VendorProfileID, ServiceName, ServiceDescription, Price, Duration, ServiceType)
+      VALUES (@VendorProfileID, @ServiceName, @ServiceDescription, @Price, @Duration, 'Service')
+    `);
+
+    res.json({
+      success: true,
+      message: 'Service added successfully'
+    });
+
+  } catch (err) {
+    console.error('Service creation error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to add service',
+      error: err.message 
+    });
+  }
+});
+
+// Add social media endpoint
+router.post('/social-media', async (req, res) => {
+  try {
+    const { vendor_id, platform, url } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendor_id);
+    request.input('Platform', sql.NVarChar(50), platform);
+    request.input('URL', sql.NVarChar(500), url);
+    
+    await request.query(`
+      INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL)
+      VALUES (@VendorProfileID, @Platform, @URL)
+      ON DUPLICATE KEY UPDATE URL = @URL
+    `);
+
+    res.json({
+      success: true,
+      message: 'Social media link added successfully'
+    });
+
+  } catch (err) {
+    console.error('Social media error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to add social media link',
+      error: err.message 
+    });
+  }
+});
+
+// Add availability endpoint
+router.post('/availability', async (req, res) => {
+  try {
+    const { vendor_id, day_of_week, start_time, end_time } = req.body;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendor_id);
+    request.input('DayOfWeek', sql.TinyInt, day_of_week);
+    request.input('OpenTime', sql.Time, start_time);
+    request.input('CloseTime', sql.Time, end_time);
+    request.input('IsAvailable', sql.Bit, 1);
+    
+    await request.query(`
+      INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
+      VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable)
+      ON DUPLICATE KEY UPDATE OpenTime = @OpenTime, CloseTime = @CloseTime, IsAvailable = @IsAvailable
+    `);
+
+    res.json({
+      success: true,
+      message: 'Availability added successfully'
+    });
+
+  } catch (err) {
+    console.error('Availability error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to add availability',
+      error: err.message 
+    });
+  }
+});
+
 module.exports = router;
