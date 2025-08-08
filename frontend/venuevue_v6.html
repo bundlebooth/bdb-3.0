@@ -99,7 +99,8 @@
             left: 1rem;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--text-light);
+            color: var(--primary);
+            cursor: pointer;
         }
 
         .user-nav {
@@ -138,6 +139,9 @@
             padding: 0.5rem 1rem;
             display: flex;
             align-items: center;
+            position: sticky;
+            top: 60px; /* Adjust based on header height */
+            z-index: 15;
         }
 
         .categories-list-wrapper {
@@ -173,9 +177,9 @@
             border-radius: 12px;
             font-size: 0.85rem;
             cursor: pointer;
-            transition: color 0.3s ease;
+            transition: color 0.3s ease, transform 0.3s ease;
             position: relative;
-            color: var(--text);
+            color: var(--text-light);
             min-width: 60px;
         }
 
@@ -183,26 +187,33 @@
             font-size: 1.5rem;
             margin-bottom: 0.25rem;
             display: block;
-            color: inherit;
+            color: var(--text-light);
             transition: color 0.3s ease;
         }
 
         .category-item:hover,
         .category-item.active {
-            color: var(--accent);
+            color: var(--primary);
         }
 
-        .category-item:hover::after,
-        .category-item.active::after {
+        .category-item.active {
+            transform: scale(1.1);
+        }
+
+        .category-item.active i {
+            color: var(--primary);
+        }
+
+        .category-item::after {
             content: '';
             position: absolute;
             bottom: 0;
             left: 10%;
             width: 80%;
             height: 2px;
-            background-color: var(--accent);
+            background-color: var(--primary);
             border-radius: 1px;
-            transition: width 0.3s ease;
+            transition: width 0.3s ease, left 0.3s ease;
         }
 
         .category-item::after {
@@ -1623,16 +1634,18 @@
 <body>
     <!-- Main App View -->
     <header class="header">
-        <div class="logo">
+        <div class="logo" style="cursor: pointer;">
             <span>🎉</span>
             VenueVue
         </div>
 
         <div class="search-container">
-            <div class="search-bar">
-                <span class="search-icon">🔍</span>
-                <input type="text" placeholder="Search for event vendors..." id="search-input">
-            </div>
+        <div class="search-bar" style="position: relative; display: flex; align-items: center;">
+            <input type="text" placeholder="Search for event vendors..." id="search-input" style="flex-grow: 1; padding-left: 1rem; padding-right: 2.5rem;">
+            <button id="search-button" style="position: absolute; right: 0.5rem; background: none; border: none; cursor: pointer; color: var(--primary); font-size: 1.25rem;">
+                <i class="fas fa-magnifying-glass"></i>
+            </button>
+        </div>
         </div>
 
         <div class="user-nav">
@@ -3552,11 +3565,19 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     }
                 });
 
-                // Search
-                searchInput.addEventListener('input', filterVendors);
+            // Search
+            searchInput.addEventListener('input', filterVendors);
 
-                // Sorting
-                sortSelect.addEventListener('change', sortVendors);
+            // Make search icon clickable to focus input
+            const searchButton = document.getElementById('search-button');
+            if (searchButton) {
+                searchButton.addEventListener('click', () => {
+                    searchInput.focus();
+                });
+            }
+
+            // Sorting
+            sortSelect.addEventListener('change', sortVendors);
 
                 // Filter resets
                 filterResetBtns.forEach(btn => {
@@ -3658,15 +3679,24 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     }
                 });
 
-                // Profile button click handler
-                profileBtn.addEventListener('click', () => {
-                    if (currentUser) {
-                        showLoggedInView();
-                    } else {
-                        showLoginView();
-                    }
-                    profileModal.style.display = 'flex';
+            // Profile button click handler
+            profileBtn.addEventListener('click', () => {
+                if (currentUser) {
+                    showLoggedInView();
+                } else {
+                    showLoginView();
+                }
+                profileModal.style.display = 'flex';
+            });
+
+            // Logo click navigates to main page
+            const logo = document.querySelector('.logo');
+            if (logo) {
+                logo.addEventListener('click', () => {
+                    window.location.hash = '';
+                    showMainApp();
                 });
+            }
 
                 // Generic close modal buttons (for all modals)
                 document.querySelectorAll('.close-modal').forEach(closeBtn => {
@@ -4445,64 +4475,89 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const endIndex = startIndex + state.itemsPerPage;
                 const paginatedVendors = state.filteredVendors.slice(startIndex, endIndex);
 
-                vendorGrid.innerHTML = '';
+            vendorGrid.innerHTML = '';
 
-
-                paginatedVendors.forEach(vendor => {
-                    const isFavorite = state.favorites.includes(vendor.id);
-
-                    const vendorCard = document.createElement('div');
-                    vendorCard.className = 'vendor-card';
-                    vendorCard.innerHTML = `
-                        <div class="vendor-image">
-                            ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
-                            <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
-                        </div>
+            // Show skeleton cards while loading
+            if (state.filteredVendors.length === 0) {
+                for (let i = 0; i < state.itemsPerPage; i++) {
+                    const skeletonCard = document.createElement('div');
+                    skeletonCard.className = 'vendor-card skeleton-card';
+                    skeletonCard.innerHTML = `
+                        <div class="vendor-image skeleton-box"></div>
                         <div class="vendor-details">
-                            <h3 class="vendor-name">${vendor.name}</h3>
-                            <div class="vendor-location">
-                                📍 ${vendor.location}
+                            <h3 class="vendor-name skeleton-box" style="width: 60%; height: 1.2rem;"></h3>
+                            <div class="vendor-location skeleton-box" style="width: 40%; height: 1rem; margin: 0.5rem 0;"></div>
+                            <div class="vendor-features" style="display: flex; gap: 0.5rem;">
+                                <div class="feature skeleton-box" style="width: 30%; height: 1rem;"></div>
+                                <div class="feature skeleton-box" style="width: 20%; height: 1rem;"></div>
+                                <div class="feature skeleton-box" style="width: 25%; height: 1rem;"></div>
                             </div>
-                            <div class="vendor-features">
-                                <div class="feature">
-                                    <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
-                                    <span>${getCategoryName(vendor.category)}</span>
-                                </div>
-                                <div class="feature">
-                                    <span class="feature-icon">⭐</span>
-                                    <span>${vendor.rating} (${vendor.reviewCount})</span>
-                                </div>
-                                <div class="feature">
-                                    <div class="price-indicator">
-                                        ${renderPriceIndicator(vendor.priceLevel)}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="vendor-footer">
-                                <button class="btn btn-outline save-btn" data-id="${vendor.id}">Save</button>
-                                <button class="btn btn-primary view-btn" data-id="${vendor.id}">View</button>
+                            <div class="vendor-footer" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                <button class="btn btn-outline skeleton-box" style="width: 50%; height: 2rem;"></button>
+                                <button class="btn btn-primary skeleton-box" style="width: 50%; height: 2rem;"></button>
                             </div>
                         </div>
                     `;
-                    vendorGrid.appendChild(vendorCard);
+                    vendorGrid.appendChild(skeletonCard);
+                }
+                return;
+            }
 
-                    // Add event listeners to buttons
-                    vendorCard.querySelector('.view-btn').addEventListener('click', () => {
-                        window.location.hash = `/listings/${vendor.id}`;
-                    });
+            paginatedVendors.forEach(vendor => {
+                const isFavorite = state.favorites.includes(vendor.id);
 
-                    vendorCard.querySelector('.save-btn').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        toggleFavorite(vendor.id);
-                    });
+                const vendorCard = document.createElement('div');
+                vendorCard.className = 'vendor-card';
+                vendorCard.innerHTML = `
+                    <div class="vendor-image">
+                        ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
+                        <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
+                    </div>
+                    <div class="vendor-details">
+                        <h3 class="vendor-name">${vendor.name}</h3>
+                        <div class="vendor-location">
+                            📍 ${vendor.location}
+                        </div>
+                        <div class="vendor-features">
+                            <div class="feature">
+                                <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
+                                <span>${getCategoryName(vendor.category)}</span>
+                            </div>
+                            <div class="feature">
+                                <span class="feature-icon">⭐</span>
+                                <span>${vendor.rating} (${vendor.reviewCount})</span>
+                            </div>
+                            <div class="feature">
+                                <div class="price-indicator">
+                                    ${renderPriceIndicator(vendor.priceLevel)}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="vendor-footer">
+                            <button class="btn btn-outline save-btn" data-id="${vendor.id}">Save</button>
+                            <button class="btn btn-primary view-btn" data-id="${vendor.id}">View</button>
+                        </div>
+                    </div>
+                `;
+                vendorGrid.appendChild(vendorCard);
 
-                    vendorCard.querySelector('.vendor-favorite').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        toggleFavorite(vendor.id);
-                    });
+                // Add event listeners to buttons
+                vendorCard.querySelector('.view-btn').addEventListener('click', () => {
+                    window.location.hash = `/listings/${vendor.id}`;
                 });
 
-                updatePagination();
+                vendorCard.querySelector('.save-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleFavorite(vendor.id);
+                });
+
+                vendorCard.querySelector('.vendor-favorite').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleFavorite(vendor.id);
+                });
+            });
+
+            updatePagination();
             }
 
             // Helper function to get category icon
