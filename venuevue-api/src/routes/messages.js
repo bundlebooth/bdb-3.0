@@ -158,9 +158,20 @@ router.get('/conversations/user/:userId', async (req, res) => {
         ORDER BY m.CreatedAt DESC
       `);
 
+    // Format conversations to match frontend expected format
+    const formattedConversations = result.recordset.map(conv => ({
+      id: conv.ConversationID,
+      createdAt: conv.CreatedAt,
+      userName: conv.UserName,
+      vendorName: conv.VendorName,
+      lastMessageContent: conv.LastMessageContent || '',
+      lastMessageCreatedAt: conv.LastMessageCreatedAt || conv.CreatedAt,
+      unreadCount: 0
+    }));
+
     res.json({
       success: true,
-      conversations: result.recordset
+      conversations: formattedConversations
     });
 
   } catch (err) {
