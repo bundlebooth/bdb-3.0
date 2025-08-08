@@ -147,7 +147,6 @@ router.delete('/:id/services/:serviceId', async (req, res) => {
   }
 });
 
-
 // Get all reviews for a specific vendor
 router.get('/:id/reviews/all', async (req, res) => {
   try {
