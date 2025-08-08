@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <title>VenueVue | Event Vendor Marketplace</title>
+    <!-- Add Font Awesome for modern icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <!-- Add Stripe.js for payment processing -->
     <script src="https://js.stripe.com/v3/"></script>
     <!-- Add FullCalendar for booking dates -->
@@ -158,27 +160,61 @@
 
         .categories-list {
             display: inline-flex;
-            gap: 1rem;
+            gap: 2rem;
+            align-items: center;
         }
 
         .category-item {
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.2s;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 0.5rem;
+            justify-content: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            position: relative;
+            color: var(--text);
+            min-width: 60px;
         }
 
-        .category-item:hover {
-            background-color: var(--secondary);
+        .category-item i {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+            display: block;
+            color: inherit;
+            transition: color 0.3s ease;
         }
 
+        .category-item:hover,
         .category-item.active {
-            background-color: var(--primary);
-            color: white;
+            color: var(--accent);
+        }
+
+        .category-item:hover::after,
+        .category-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 10%;
+            width: 80%;
+            height: 2px;
+            background-color: var(--accent);
+            border-radius: 1px;
+            transition: width 0.3s ease;
+        }
+
+        .category-item::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background-color: var(--accent);
+            border-radius: 1px;
+            transition: width 0.3s ease, left 0.3s ease;
         }
 
         /* New styles for scroll buttons */
@@ -2665,43 +2701,64 @@
                         { id: 'stationery', name: 'Stationery' }
                     ];
 
-                    // Render categories
-                    renderCategories();
+            // Render categories
+            renderCategories();
 
-                } catch (error) {
-                    console.error('Error loading categories:', error);
-                }
-            }
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+    }
 
-            // Render categories in the navigation
-            function renderCategories() {
-                categoriesListInner.innerHTML = '';
+    // Render categories in the navigation with icons vertically stacked
+    function renderCategories() {
+        categoriesListInner.innerHTML = '';
 
-                state.categories.forEach(category => {
-                    const categoryItem = document.createElement('div');
-                    categoryItem.className = 'category-item';
-                    if (category.id === 'all') categoryItem.classList.add('active');
-                    categoryItem.dataset.category = category.id;
-                    // Add icon to the category item
-                    categoryItem.innerHTML = `${getCategoryIcon(category.id)} ${category.name}`;
+        state.categories.forEach(category => {
+            const categoryItem = document.createElement('div');
+            categoryItem.className = 'category-item';
+            if (category.id === 'all') categoryItem.classList.add('active');
+            categoryItem.dataset.category = category.id;
 
-                    categoryItem.addEventListener('click', () => {
-                        // Update active category
-                        document.querySelectorAll('.category-item').forEach(item => item.classList.remove('active'));
-                        categoryItem.classList.add('active');
+            // Add icon element above label
+            const iconHtml = getCategoryIconHtml(category.id);
+            categoryItem.innerHTML = `${iconHtml}<span>${category.name}</span>`;
 
-                        // Set current category
-                        state.currentCategory = category.id;
+            categoryItem.addEventListener('click', () => {
+                // Update active category
+                document.querySelectorAll('.category-item').forEach(item => item.classList.remove('active'));
+                categoryItem.classList.add('active');
 
-                        // Filter vendors
-                        filterVendors();
-                    });
+                // Set current category
+                state.currentCategory = category.id;
 
-                    categoriesListInner.appendChild(categoryItem);
-                });
-            }
+                // Filter vendors
+                filterVendors();
+            });
 
-            // In the loadVendors() function, update the data processing:
+            categoriesListInner.appendChild(categoryItem);
+        });
+    }
+
+    // Helper function to get category icon HTML using Font Awesome icons
+    function getCategoryIconHtml(category) {
+        const icons = {
+            "all": "<i class='fas fa-th-large'></i>",
+            "venue": "<i class='fas fa-building'></i>",
+            "photo": "<i class='fas fa-camera'></i>",
+            "music": "<i class='fas fa-music'></i>",
+            "catering": "<i class='fas fa-utensils'></i>",
+            "entertainment": "<i class='fas fa-theater-masks'></i>",
+            "experiences": "<i class='fas fa-star'></i>",
+            "decor": "<i class='fas fa-ribbon'></i>",
+            "beauty": "<i class='fas fa-spa'></i>",
+            "cake": "<i class='fas fa-birthday-cake'></i>",
+            "transport": "<i class='fas fa-shuttle-van'></i>",
+            "planner": "<i class='fas fa-clipboard-list'></i>",
+            "fashion": "<i class='fas fa-tshirt'></i>",
+            "stationery": "<i class='fas fa-envelope'></i>"
+        };
+        return icons[category] || "<i class='fas fa-gem'></i>";
+    }
             async function loadVendors() {
                 try {
                     const response = await fetch(`${API_BASE_URL}/vendors`);
