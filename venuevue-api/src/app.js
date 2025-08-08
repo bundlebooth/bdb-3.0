@@ -68,7 +68,7 @@ app.use('/api/favorites', favoritesRouter);
 app.use('/api/messages', messagesRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/notifications', notificationsRouter);
-app.use('/api/vendorDashboard', vendorDashboardRouter);
+app.use('/api/vendor', vendorDashboardRouter);
 
 // Fixed route to handle fetching vendor conversations with consistent data format
 app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
@@ -104,9 +104,21 @@ app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
                 ORDER BY ISNULL(m.CreatedAt, c.CreatedAt) DESC
             `);
 
+        // Format conversations to match frontend expected format
+        const formattedConversations = result.recordset.map(conv => ({
+            id: conv.ConversationID,
+            createdAt: conv.CreatedAt,
+            userId: conv.UserID,
+            userName: conv.UserName,
+            userEmail: conv.UserEmail,
+            lastMessageContent: conv.LastMessageContent,
+            lastMessageCreatedAt: conv.LastMessageCreatedAt,
+            unreadCount: conv.UnreadCount
+        }));
+
         res.json({
             success: true,
-            conversations: result.recordset
+            conversations: formattedConversations
         });
     } catch (err) {
         console.error('Database error:', err);
