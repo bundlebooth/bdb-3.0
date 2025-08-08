@@ -3483,3 +3483,174 @@ BEGIN
     ORDER BY CreatedAt DESC;
 END
 GO
+
+-- Corrected stored procedure for vendor dashboard using views from SQL_V3.SQL
+
+CREATE OR ALTER PROCEDURE sp_GetVendorDashboard
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Vendor profile info from view
+    SELECT TOP 1 *
+    FROM vw_VendorDetails
+    WHERE UserID = @UserID;
+
+    -- Recent bookings from view
+    SELECT TOP 5 *
+    FROM vw_VendorBookings
+    WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)
+    ORDER BY EventDate DESC;
+
+    -- Recent reviews from view
+    SELECT TOP 5 *
+    FROM vw_VendorReviews
+    WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)
+    ORDER BY CreatedAt DESC;
+
+    -- Unread messages count from view
+    SELECT COUNT(*) AS UnreadMessages
+    FROM vw_VendorConversations
+    WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)
+    AND UnreadCount > 0;
+
+    -- Unread notifications count
+    SELECT COUNT(*) AS UnreadNotifications
+    FROM Notifications
+    WHERE UserID = @UserID
+    AND IsRead = 0;
+
+    -- Quick stats
+    SELECT 
+        (SELECT COUNT(*) FROM Bookings WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)) AS TotalBookings,
+        (SELECT COUNT(*) FROM Reviews WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID) AND IsApproved = 1) AS TotalReviews,
+        (SELECT AVG(CAST(Rating AS DECIMAL(3,1))) FROM Reviews WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID) AND IsApproved = 1) AS AvgRating,
+        (SELECT COUNT(*) FROM Favorites WHERE VendorProfileID = (SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID)) AS TotalFavorites;
+END;
+GO
+
+-- Corrected stored procedure for vendor analytics using actual tables
+
+CREATE OR ALTER PROCEDURE sp_GetVendorAnalytics
+    @VendorProfileID INT,
+    @StartDate DATE = NULL,
+    @EndDate DATE = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF @StartDate IS NULL SET @StartDate = DATEADD(DAY, -30, GETDATE());
+    IF @EndDate IS NULL SET @EndDate = GETDATE();
+
+    -- Booking stats
+    SELECT 
+        COUNT(*) AS TotalBookings,
+        SUM(CASE WHEN Status = 'completed' THEN 1 ELSE 0 END) AS CompletedBookings,
+        SUM(CASE WHEN Status = 'confirmed' THEN 1 ELSE 0 END) AS ConfirmedBookings,
+        SUM(CASE WHEN Status = 'pending' THEN 1 ELSE 0 END) AS PendingBookings,
+        SUM(CASE WHEN Status = 'cancelled' THEN 1 ELSE 0 END) AS CancelledBookings,
+        SUM(TotalAmount) AS TotalRevenue,
+        AVG(TotalAmount) AS AverageBookingValue
+    FROM Bookings
+    WHERE VendorProfileID = @VendorProfileID
+    AND EventDate BETWEEN @StartDate AND @EndDate;
+
+    -- Revenue by service
+    SELECT 
+        s.Name AS ServiceName,
+        COUNT(*) AS BookingCount,
+        SUM(bs.PriceAtBooking * bs.Quantity) AS TotalRevenue
+    FROM Bookings b
+    JOIN BookingServices bs ON b.BookingID = bs.BookingID
+    JOIN Services s ON bs.ServiceID = s.ServiceID
+    WHERE b.VendorProfileID = @VendorProfileID
+    AND b.EventDate BETWEEN @StartDate AND @EndDate
+    GROUP BY s.Name
+    ORDER BY TotalRevenue DESC;
+
+    -- Revenue by month
+    SELECT 
+        YEAR(EventDate) AS Year,
+        MONTH(EventDate) AS Month,
+        COUNT(*) AS BookingCount,
+        SUM(TotalAmount) AS TotalRevenue
+    FROM Bookings
+    WHERE VendorProfileID = @VendorProfileID
+    AND EventDate BETWEEN @StartDate AND @EndDate
+    GROUP BY YEAR(EventDate), MONTH(EventDate)
+    ORDER BY Year, Month;
+
+    -- Review stats
+    SELECT 
+        AVG(CAST(Rating AS DECIMAL(3,1))) AS AverageRating,
+        COUNT(*) AS ReviewCount,
+        SUM(CASE WHEN Rating = 5 THEN 1 ELSE 0 END) AS FiveStarReviews,
+        SUM(CASE WHEN Rating = 4 THEN 1 ELSE 0 END) AS FourStarReviews,
+        SUM(CASE WHEN Rating = 3 THEN 1 ELSE 0 END) AS ThreeStarReviews,
+        SUM(CASE WHEN Rating = 2 THEN 1 ELSE 0 END) AS TwoStarReviews,
+        SUM(CASE WHEN Rating = 1 THEN 1 ELSE 0 END) AS OneStarReviews
+    FROM Reviews
+    WHERE VendorProfileID = @VendorProfileID
+    AND CreatedAt BETWEEN @StartDate AND @EndDate;
+END;
+GO
+
+-- Corrected stored procedure for vendor bookings
+
+CREATE OR ALTER PROCEDURE sp_GetVendorBookingsAll
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT *
+    FROM vw_VendorBookings
+    WHERE VendorProfileID = @VendorProfileID
+    ORDER BY EventDate DESC;
+END;
+GO
+
+-- Corrected stored procedure for vendor profile details
+
+CREATE OR ALTER PROCEDURE sp_GetVendorProfileDetails
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT *
+    FROM vw_VendorDetails
+    WHERE VendorProfileID = @VendorProfileID;
+END;
+GO
+
+-- Corrected stored procedure for vendor images
+
+CREATE OR ALTER PROCEDURE sp_GetVendorImages
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT *
+    FROM VendorImages
+    WHERE VendorProfileID = @VendorProfileID
+    ORDER BY IsPrimary DESC, DisplayOrder;
+END;
+GO
+
+-- Corrected stored procedure for user favorites
+
+CREATE OR ALTER PROCEDURE sp_GetUserFavorites
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT *
+    FROM vw_UserFavorites
+    WHERE UserID = @UserID
+    ORDER BY CreatedAt DESC;
+END;
+GO
