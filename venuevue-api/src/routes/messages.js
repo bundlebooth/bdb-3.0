@@ -131,19 +131,30 @@ router.get('/conversations/user/:userId', async (req, res) => {
         SELECT 
           c.ConversationID,
           c.CreatedAt,
-          u.Name AS UserName,
-          v.BusinessName AS VendorName,
+          CASE 
+            WHEN c.UserID = @UserID THEN u.Name 
+            ELSE v.BusinessName 
+          END AS OtherPartyName,
+          CASE 
+            WHEN c.UserID = @UserID THEN 'vendor'
+            ELSE 'user'
+          END AS OtherPartyType,
           m.Content AS LastMessageContent,
-          m.CreatedAt AS LastMessageCreatedAt
+          m.CreatedAt AS LastMessageCreatedAt,
+          COUNT(CASE WHEN m2.IsRead = 0 AND m2.SenderID != @UserID THEN 1 END) AS UnreadCount
         FROM Conversations c
         LEFT JOIN Users u ON c.UserID = u.UserID
         LEFT JOIN VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
-        LEFT JOIN (
-          SELECT ConversationID, Content, CreatedAt,
-                 ROW_NUMBER() OVER (PARTITION BY ConversationID ORDER BY CreatedAt DESC) as rn
-          FROM Messages
-        ) m ON c.ConversationID = m.ConversationID AND m.rn = 1
+        LEFT JOIN Messages m ON c.ConversationID = m.ConversationID
+          AND m.MessageID = (
+            SELECT TOP 1 MessageID 
+            FROM Messages 
+            WHERE ConversationID = c.ConversationID 
+            ORDER BY CreatedAt DESC
+          )
+        LEFT JOIN Messages m2 ON c.ConversationID = m2.ConversationID
         WHERE c.UserID = @UserID OR v.UserID = @UserID
+        GROUP BY c.ConversationID, c.CreatedAt, u.Name, v.BusinessName, c.UserID, m.Content, m.CreatedAt
         ORDER BY m.CreatedAt DESC
       `);
 
