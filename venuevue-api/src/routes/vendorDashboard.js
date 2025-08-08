@@ -15,13 +15,27 @@ router.get('/:id/dashboard', async (req, res) => {
 
     const result = await request.execute('sp_GetVendorDashboard');
     
+    // Handle case when no data is returned
+    const profile = result.recordsets[0] && result.recordsets[0][0] ? result.recordsets[0][0] : null;
+    const recentBookings = result.recordsets[1] || [];
+    const recentReviews = result.recordsets[2] || [];
+    const unreadMessages = (result.recordsets[3] && result.recordsets[3][0]) ? result.recordsets[3][0].UnreadMessages : 0;
+    const unreadNotifications = (result.recordsets[4] && result.recordsets[4][0]) ? result.recordsets[4][0].UnreadNotifications : 0;
+    const stats = result.recordsets[5] && result.recordsets[5][0] ? result.recordsets[5][0] : {
+      totalBookings: 0,
+      totalRevenue: 0,
+      averageRating: 0,
+      totalReviews: 0
+    };
+
     const dashboard = {
-      profile: result.recordsets[0][0],
-      recentBookings: result.recordsets[1],
-      recentReviews: result.recordsets[2],
-      unreadMessages: result.recordsets[3][0].UnreadMessages,
-      unreadNotifications: result.recordsets[4][0].UnreadNotifications,
-      stats: result.recordsets[5][0]
+      success: true,
+      profile: profile,
+      recentBookings: recentBookings,
+      recentReviews: recentReviews,
+      unreadMessages: unreadMessages,
+      unreadNotifications: unreadNotifications,
+      stats: stats
     };
 
     res.json(dashboard);
@@ -29,6 +43,7 @@ router.get('/:id/dashboard', async (req, res) => {
   } catch (err) {
     console.error('Database error:', err);
     res.status(500).json({ 
+      success: false,
       message: 'Database operation failed',
       error: err.message 
     });
