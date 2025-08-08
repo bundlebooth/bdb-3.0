@@ -70,16 +70,41 @@ app.use('/api/reviews', reviewsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/vendorDashboard', vendorDashboardRouter);
 
-// New route to handle fetching vendor conversations
+// Fixed route to handle fetching vendor conversations (replaces missing stored procedure)
 app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
     try {
         const { vendorId } = req.params;
         const pool = await poolPromise;
-        const request = new sql.Request(pool);
-        request.input('VendorProfileID', sql.Int, vendorId);
-        const result = await request.execute('sp_GetVendorConversations');
+        
+        const result = await pool.request()
+            .input('VendorProfileID', sql.Int, vendorId)
+            .query(`
+                SELECT 
+                    c.ConversationID,
+                    c.CreatedAt,
+                    u.UserID,
+                    u.Name AS UserName,
+                    u.Email AS UserEmail,
+                    m.Content AS LastMessageContent,
+                    m.CreatedAt AS LastMessageCreatedAt,
+                    COUNT(CASE WHEN m2.IsRead = 0 AND m2.SenderID != vp.UserID THEN 1 END) AS UnreadCount
+                FROM Conversations c
+                INNER JOIN VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID
+                INNER JOIN Users u ON c.UserID = u.UserID
+                LEFT JOIN Messages m ON c.ConversationID = m.ConversationID
+                    AND m.MessageID = (
+                        SELECT TOP 1 MessageID 
+                        FROM Messages 
+                        WHERE ConversationID = c.ConversationID 
+                        ORDER BY CreatedAt DESC
+                    )
+                LEFT JOIN Messages m2 ON c.ConversationID = m2.ConversationID
+                WHERE c.VendorProfileID = @VendorProfileID
+                GROUP BY c.ConversationID, c.CreatedAt, u.UserID, u.Name, u.Email, m.Content, m.CreatedAt
+                ORDER BY m.CreatedAt DESC
+            `);
 
-        res.json(result.recordsets[0]);
+        res.json(result.recordset);
     } catch (err) {
         console.error('Database error:', err);
         res.status(500).json({
