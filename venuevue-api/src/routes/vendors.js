@@ -133,6 +133,7 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
     const request = new sql.Request(pool);
     
     // Set all input parameters
+    request.input('UserID', sql.Int, userId ? parseInt(userId) : null);
     request.input('Name', sql.NVarChar(100), name);
     request.input('Email', sql.NVarChar(100), email);
     request.input('PasswordHash', sql.NVarChar(255), passwordHash);
