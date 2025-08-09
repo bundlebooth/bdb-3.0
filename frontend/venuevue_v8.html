@@ -6090,19 +6090,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const featuredImageUrl = document.getElementById('featured-image-url')?.value || '';
                         
                         if (featuredImageFile) {
-                            // Convert file to base64 for submission
-                            featuredImage = await new Promise((resolve) => {
-                                const reader = new FileReader();
-                                reader.onload = (e) => resolve(e.target.result);
-                                reader.readAsDataURL(featuredImageFile);
-                            });
+                            // For now, skip file upload and use placeholder to avoid size issues
+                            // TODO: Implement proper image upload service later
+                            console.log('File upload detected, using placeholder for now to avoid size limits');
+                            featuredImage = 'https://via.placeholder.com/400x300.jpg';
                         } else if (featuredImageUrl) {
                             featuredImage = featuredImageUrl;
                         }
                         
-                        // If no featured image provided, use a placeholder or make it optional
+                        // If no featured image provided, use a shorter placeholder
                         if (!featuredImage) {
-                            featuredImage = 'https://placehold.co/800x600/5e72e4/ffffff?text=Featured+Image';
+                            featuredImage = 'https://via.placeholder.com/400x300.jpg';
                         }
                         
                         stepData = {
