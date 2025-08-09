@@ -6153,12 +6153,28 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             const openTime = document.getElementById(`${day}-open`)?.value || '';
                             const closeTime = document.getElementById(`${day}-close`)?.value || '';
                             if (available && openTime && closeTime) {
-                                businessHours.push({
-                                    dayOfWeek: index,
-                                    openTime,
-                                    closeTime,
-                                    isAvailable: true
-                                });
+                                // Ensure proper time format for SQL Server
+                                const formatTime = (time) => {
+                                    if (!time) return null;
+                                    // If already has seconds, don't add more
+                                    if (time.split(':').length === 3) return time;
+                                    // Add seconds if only HH:MM format
+                                    if (time.split(':').length === 2) return time + ':00';
+                                    return time;
+                                };
+                                
+                                const formattedOpenTime = formatTime(openTime);
+                                const formattedCloseTime = formatTime(closeTime);
+                                
+                                // Only add if both times are valid
+                                if (formattedOpenTime && formattedCloseTime) {
+                                    businessHours.push({
+                                        dayOfWeek: index,
+                                        openTime: formattedOpenTime,
+                                        closeTime: formattedCloseTime,
+                                        isAvailable: true
+                                    });
+                                }
                             }
                         });
 
@@ -6166,8 +6182,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             vendorProfileId: vendorSetupState.vendorProfileId,
                             businessHours,
                             acceptingBookings: document.getElementById('accepting-bookings')?.checked || false,
-                            responseTimeHours: parseInt(document.getElementById('response-time')?.value) || 24,
-                            bufferTimeMinutes: parseInt(document.getElementById('buffer-time')?.value) || 30
+                            responseTimeExpectation: parseInt(document.getElementById('response-time')?.value) || 24,
+                            bufferTime: parseInt(document.getElementById('buffer-time')?.value) || 30
                         };
                         endpoint = '/vendors/setup/step7-availability';
                         break;
