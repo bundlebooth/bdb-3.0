@@ -715,4 +715,123 @@ router.get('/:id/setup-data', async (req, res) => {
   }
 });
 
+// Get current vendor's profile information
+router.get('/profile', async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    // First, check if user is a vendor and get their vendor profile ID
+    const userRequest = new sql.Request(pool);
+    userRequest.input('UserID', sql.Int, userId);
+
+    const userResult = await userRequest.query(`
+      SELECT 
+        u.UserID,
+        u.Name,
+        u.Email,
+        u.IsVendor,
+        vp.VendorProfileID
+      FROM Users u
+      LEFT JOIN VendorProfiles vp ON u.UserID = vp.UserID
+      WHERE u.UserID = @UserID AND u.IsActive = 1
+    `);
+
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const user = userResult.recordset[0];
+
+    if (!user.IsVendor || !user.VendorProfileID) {
+      return res.status(403).json({
+        success: false,
+        message: 'User is not a vendor or vendor profile not found'
+      });
+    }
+
+    // Get comprehensive vendor profile data
+    const profileRequest = new sql.Request(pool);
+    profileRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+
+    const profileResult = await profileRequest.execute('sp_GetVendorDetails');
+    
+    if (profileResult.recordsets.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found'
+      });
+    }
+
+    // Structure the comprehensive profile data
+    const profileData = {
+      profile: profileResult.recordsets[0][0],
+      categories: profileResult.recordsets[1],
+      services: profileResult.recordsets[2],
+      addOns: profileResult.recordsets[3],
+      portfolio: profileResult.recordsets[4],
+      reviews: profileResult.recordsets[5],
+      faqs: profileResult.recordsets[6],
+      team: profileResult.recordsets[7],
+      socialMedia: profileResult.recordsets[8],
+      businessHours: profileResult.recordsets[9],
+      images: profileResult.recordsets[10],
+      availableSlots: profileResult.recordsets[12] || []
+    };
+
+    // Get setup progress information
+    const progressRequest = new sql.Request(pool);
+    progressRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+
+    const progressResult = await progressRequest.execute('sp_GetVendorSetupProgress');
+    
+    const setupProgress = progressResult.recordset.length > 0 ? progressResult.recordset[0] : {
+      SetupStep: 1,
+      SetupCompleted: false,
+      GalleryCompleted: false,
+      PackagesCompleted: false,
+      ServicesCompleted: false,
+      SocialMediaCompleted: false,
+      AvailabilityCompleted: false
+    };
+
+    res.json({
+      success: true,
+      data: {
+        ...profileData,
+        setupProgress: setupProgress,
+        user: {
+          userId: user.UserID,
+          name: user.Name,
+          email: user.Email,
+          isVendor: user.IsVendor
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error('Profile error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get vendor profile',
+      error: err.message 
+    });
+  }
+});
+
 module.exports = router;
