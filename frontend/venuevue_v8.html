@@ -5381,7 +5381,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Navigation Functions
-            function goToSetupStep(step) {
+            async function goToSetupStep(step) {
                 // Validate current step before proceeding
                 if (!validateCurrentStep()) {
                     return;
@@ -5389,6 +5389,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 // Save current step data
                 saveCurrentStepData();
+                
+                // Submit current step data to backend
+                try {
+                    await submitCurrentStepToBackend();
+                } catch (error) {
+                    console.error('Failed to save step data:', error);
+                    alert('Failed to save step data. Please try again.');
+                    return;
+                }
                 
                 // Update step
                 vendorSetupState.currentStep = step;
@@ -5793,60 +5802,78 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Complete Vendor Setup
             async function completeVendorSetup() {
-                // Save final step data
-                saveCurrentStepData();
-                
                 try {
-                    // Submit all steps to backend
-                    for (let i = 1; i <= 10; i++) {
-                        await submitStepData(i);
+                    // Save current step data (Step 10)
+                    saveCurrentStepData();
+
+                    // Show loading
+                    const completeBtn = document.getElementById('complete-setup-btn');
+                    completeBtn.textContent = 'Completing Setup...';
+                    completeBtn.disabled = true;
+
+                    // Get vendor profile ID
+                    if (!vendorSetupState.vendorProfileId) {
+                        const vendorProfileResponse = await fetch(`${API_BASE_URL}/vendors/profile?userId=${vendorSetupState.vendorId}`, {
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            }
+                        });
+
+                        if (!vendorProfileResponse.ok) {
+                            throw new Error('Failed to fetch vendor profile ID');
+                        }
+
+                        const vendorProfileData = await vendorProfileResponse.json();
+                        vendorSetupState.vendorProfileId = vendorProfileData.vendorProfileId;
                     }
+
+                    // Submit completion data to backend
+                    const response = await fetch(`${API_BASE_URL}/vendors/setup/step10-completion`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            faqs: vendorSetupState.faqs || [],
+                            testimonials: vendorSetupState.testimonials || []
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Setup completion failed');
+                    }
+
+                    const result = await response.json();
                     
                     alert('🎉 Congratulations! Your vendor profile setup is complete and now live!');
                     vendorRegistrationModal.style.display = 'none';
                     document.body.style.overflow = 'auto';
                     
-                    // Refresh the page or redirect to vendor dashboard
-                    window.location.reload();
+                    // Update current user to vendor mode
+                    currentUser.isVendor = true;
+                    
+                    // Redirect to vendor dashboard
+                    displayUserDashboard('vendor', 'vendor-dashboard');
                     
                 } catch (error) {
                     console.error('Setup completion error:', error);
-                    alert('There was an error completing your setup. Please try again.');
+                    alert('Setup failed: ' + error.message);
+                } finally {
+                    const completeBtn = document.getElementById('complete-setup-btn');
+                    if (completeBtn) {
+                        completeBtn.textContent = '🚀 Complete Setup & Go Live!';
+                        completeBtn.disabled = false;
+                    }
                 }
             }
 
-            // Submit Step Data to Backend
-            async function submitStepData(stepNumber) {
-                const token = localStorage.getItem('token');
-                const stepData = vendorSetupState.stepData[`step${stepNumber}`];
-                
-                // Add additional data for specific steps
-                if (stepNumber === 3) {
-                    stepData.gallery = vendorSetupState.gallery;
-                    stepData.portfolio = vendorSetupState.portfolio;
-                } else if (stepNumber === 4) {
-                    stepData.services = vendorSetupState.services;
-                    stepData.packages = vendorSetupState.packages;
-                } else if (stepNumber === 5) {
-                    stepData.teamMembers = vendorSetupState.teamMembers;
-                } else if (stepNumber === 10) {
-                    stepData.faqs = vendorSetupState.faqs;
-                }
-                
-                const response = await fetch(`${API_BASE_URL}/vendors/setup/step-${stepNumber}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(stepData)
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Step ${stepNumber} submission failed`);
-                }
-                
-                return response.json();
+            // Remove FAQ function
+            function removeFaq(index) {
+                vendorSetupState.faqs.splice(index, 1);
+                updateFaqDisplay();
             }
 
             function renderGalleryPreview() {
@@ -5967,108 +5994,244 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             }
                         }
                         break;
+                    case 10: // Setup Completion - Collect FAQ data
+                        // Collect FAQ data from the UI
+                        if (!vendorSetupState.faqs) {
+                            vendorSetupState.faqs = [];
+                        }
+                        // FAQs are already collected via addFAQ function, so just ensure they exist
+                        console.log('Step 10 - FAQ data collected:', vendorSetupState.faqs);
+                        break;
                 }
             }
 
-async function completeVendorSetup() {
-    try {
-        // Save current step data
-        saveCurrentStepData();
-
-        // Show loading
-        const completeBtn = document.getElementById('complete-setup-btn');
-        completeBtn.textContent = 'Completing Setup...';
-        completeBtn.disabled = true;
-
-        // Log vendor IDs for debugging
-        console.log('VendorSetupState.vendorId:', vendorSetupState.vendorId);
-        console.log('VendorSetupState.vendorProfileId (before fetch):', vendorSetupState.vendorProfileId);
-
-        // Validate vendorProfileId in state before fetching
-        if (!vendorSetupState.vendorId || isNaN(vendorSetupState.vendorId) || vendorSetupState.vendorId <= 0) {
-            alert('Invalid or missing vendor user ID. Please log in again or contact support.');
-            completeBtn.textContent = 'Complete Setup';
-            completeBtn.disabled = false;
-            return;
-        }
-
-        // Fetch vendor profile ID once and cache it in state
-        if (!vendorSetupState.vendorProfileId) {
-            console.log('Fetching vendor profile ID...');
-            const vendorProfileResponse = await fetch(`${API_BASE_URL}/vendors/profile?userId=${vendorSetupState.vendorId}`, {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-
-            if (!vendorProfileResponse.ok) {
-                const errorText = await vendorProfileResponse.text();
-                throw new Error(`Failed to fetch vendor profile ID: ${vendorProfileResponse.status} ${vendorProfileResponse.statusText} - ${errorText}`);
+            // Remove functions for various items
+            function removePortfolioItem(index) {
+                vendorSetupState.portfolio.splice(index, 1);
+                updatePortfolioDisplay();
             }
 
-            const vendorProfileData = await vendorProfileResponse.json();
-            console.log('Vendor profile response:', vendorProfileData);
-
-            // Handle the case where a new profile was created
-            if (vendorProfileData.isNewProfile) {
-                vendorSetupState.vendorProfileId = vendorProfileData.vendorProfileId;
-                console.log('New vendor profile created with ID:', vendorSetupState.vendorProfileId);
-            } else {
-                const vendorProfileId = vendorProfileData.vendorProfileId;
-                if (!vendorProfileId || isNaN(vendorProfileId) || vendorProfileId <= 0) {
-                    throw new Error('No valid vendor profile found for this user');
-                }
-                vendorSetupState.vendorProfileId = vendorProfileId;
-                console.log('Existing vendor profile ID:', vendorSetupState.vendorProfileId);
+            function removeTeamMember(index) {
+                vendorSetupState.teamMembers.splice(index, 1);
+                updateTeamDisplay();
             }
-        }
 
-        // Log vendorProfileId before submitting setup
-        console.log('Submitting setup with vendorProfileId:', vendorSetupState.vendorProfileId);
+            // Submit current step data to backend
+            async function submitCurrentStepToBackend() {
+                const currentStep = vendorSetupState.currentStep;
+                const token = localStorage.getItem('token');
+                
+                if (!token) {
+                    throw new Error('No authentication token found');
+                }
 
-        // Now submit the setup data with the cached vendor profile ID
-        const response = await fetch(`${API_BASE_URL}/vendors/setup`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-                vendorProfileId: vendorSetupState.vendorProfileId,
-                gallery: vendorSetupState.gallery,
-                packages: vendorSetupState.packages,
-                services: vendorSetupState.services,
-                socialMedia: vendorSetupState.socialMedia,
-                availability: vendorSetupState.availability
-            })
-        });
+                // Get vendor profile ID if not already set
+                if (!vendorSetupState.vendorProfileId) {
+                    const vendorProfileResponse = await fetch(`${API_BASE_URL}/vendors/profile?userId=${vendorSetupState.vendorId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Setup failed');
-        }
+                    if (!vendorProfileResponse.ok) {
+                        throw new Error('Failed to fetch vendor profile ID');
+                    }
 
-        const result = await response.json();
+                    const vendorProfileData = await vendorProfileResponse.json();
+                    vendorSetupState.vendorProfileId = vendorProfileData.vendorProfileId;
+                }
 
-        alert('Vendor setup completed successfully!');
-        vendorRegistrationModal.style.display = 'none';
-        document.body.style.overflow = 'auto';
+                // Prepare step data based on current step
+                let stepData = {};
+                let endpoint = '';
 
-        // Update current user to vendor mode
-        currentUser.isVendor = true;
+                switch (currentStep) {
+                    case 1: // Business Basics
+                        const primaryCategory = document.getElementById('primary-category')?.value || '';
+                        const additionalCategories = Array.from(document.getElementById('additional-categories')?.selectedOptions || []).map(option => option.value);
+                        const allCategories = primaryCategory ? [primaryCategory, ...additionalCategories.filter(cat => cat !== primaryCategory)] : additionalCategories;
+                        
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            businessName: document.getElementById('business-name')?.value || '',
+                            businessEmail: document.getElementById('business-email')?.value || '',
+                            businessPhone: document.getElementById('business-phone')?.value || '',
+                            businessDescription: document.getElementById('business-description')?.value || '',
+                            primaryCategory: primaryCategory,
+                            displayName: document.getElementById('display-name')?.value || '',
+                            website: document.getElementById('website-url')?.value || '',
+                            tagline: document.getElementById('tagline')?.value || '',
+                            yearsInBusiness: parseInt(document.getElementById('years-in-business')?.value) || 0,
+                            categories: allCategories
+                        };
+                        endpoint = '/vendors/setup/step1-business-basics';
+                        break;
 
-        // Redirect to vendor dashboard
-        displayUserDashboard('vendor', 'vendor-dashboard');
+                    case 2: // Location Information
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            address: document.getElementById('business-address')?.value || '',
+                            city: document.getElementById('business-city')?.value || '',
+                            state: document.getElementById('business-state')?.value || '',
+                            postalCode: document.getElementById('business-postal')?.value || '',
+                            country: document.getElementById('business-country')?.value || 'USA',
+                            latitude: parseFloat(document.getElementById('business-latitude')?.value) || null,
+                            longitude: parseFloat(document.getElementById('business-longitude')?.value) || null,
+                            serviceRadius: parseInt(document.getElementById('service-radius')?.value) || 25,
+                            serviceAreas: document.getElementById('service-areas')?.value.split('\n').filter(area => area.trim())
+                        };
+                        endpoint = '/vendors/setup/step2-location';
+                        break;
 
-    } catch (error) {
-        console.error('Setup completion error:', error);
-        alert('Setup failed: ' + error.message);
-    } finally {
-        const completeBtn = document.getElementById('complete-setup-btn');
-        completeBtn.textContent = 'Complete Setup';
-        completeBtn.disabled = false;
-    }
-}
+                    case 3: // Gallery & Media
+                        // Get featured image from file upload or URL
+                        let featuredImage = '';
+                        const featuredImageFile = document.getElementById('featured-image')?.files[0];
+                        const featuredImageUrl = document.getElementById('featured-image-url')?.value || '';
+                        
+                        if (featuredImageFile) {
+                            // Convert file to base64 for submission
+                            featuredImage = await new Promise((resolve) => {
+                                const reader = new FileReader();
+                                reader.onload = (e) => resolve(e.target.result);
+                                reader.readAsDataURL(featuredImageFile);
+                            });
+                        } else if (featuredImageUrl) {
+                            featuredImage = featuredImageUrl;
+                        }
+                        
+                        // If no featured image provided, use a placeholder or make it optional
+                        if (!featuredImage) {
+                            featuredImage = 'https://placehold.co/800x600/5e72e4/ffffff?text=Featured+Image';
+                        }
+                        
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            featuredImage: featuredImage,
+                            gallery: vendorSetupState.gallery || [],
+                            portfolio: vendorSetupState.portfolio || []
+                        };
+                        endpoint = '/vendors/setup/step3-gallery';
+                        break;
+
+                    case 4: // Services & Packages
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            serviceCategories: Array.from(document.querySelectorAll('input[name="service-categories"]:checked')).map(cb => cb.value),
+                            services: vendorSetupState.services || [],
+                            packages: vendorSetupState.packages || []
+                        };
+                        endpoint = '/vendors/setup/step4-services';
+                        break;
+
+                    case 5: // Team Information
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            teamMembers: vendorSetupState.teamMembers || []
+                        };
+                        endpoint = '/vendors/setup/step5-team';
+                        break;
+
+                    case 6: // Social Media & Links
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            website: document.getElementById('business-website')?.value || '',
+                            facebook: document.getElementById('social-facebook')?.value || '',
+                            instagram: document.getElementById('social-instagram')?.value || '',
+                            twitter: document.getElementById('social-twitter')?.value || '',
+                            linkedin: document.getElementById('social-linkedin')?.value || '',
+                            youtube: document.getElementById('social-youtube')?.value || '',
+                            tiktok: document.getElementById('social-tiktok')?.value || '',
+                            bookingLink: document.getElementById('booking-link')?.value || ''
+                        };
+                        endpoint = '/vendors/setup/step6-social';
+                        break;
+
+                    case 7: // Availability & Scheduling
+                        const businessHours = [];
+                        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                        days.forEach((day, index) => {
+                            const available = document.getElementById(`available-${index}`)?.checked || false;
+                            const openTime = document.getElementById(`${day}-open`)?.value || '';
+                            const closeTime = document.getElementById(`${day}-close`)?.value || '';
+                            if (available && openTime && closeTime) {
+                                businessHours.push({
+                                    dayOfWeek: index,
+                                    openTime,
+                                    closeTime,
+                                    isAvailable: true
+                                });
+                            }
+                        });
+
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            businessHours,
+                            acceptingBookings: document.getElementById('accepting-bookings')?.checked || false,
+                            responseTimeHours: parseInt(document.getElementById('response-time')?.value) || 24,
+                            bufferTimeMinutes: parseInt(document.getElementById('buffer-time')?.value) || 30
+                        };
+                        endpoint = '/vendors/setup/step7-availability';
+                        break;
+
+                    case 8: // Policies & Preferences
+                        const paymentMethods = [];
+                        ['cash', 'check', 'credit', 'debit', 'paypal', 'venmo', 'zelle', 'bank'].forEach(method => {
+                            if (document.getElementById(`payment-${method}`)?.checked) {
+                                paymentMethods.push(method);
+                            }
+                        });
+
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            depositRequirements: document.getElementById('deposit-requirements')?.value || '',
+                            cancellationPolicy: document.getElementById('cancellation-policy')?.value || '',
+                            reschedulingPolicy: document.getElementById('rescheduling-policy')?.value || '',
+                            paymentMethods,
+                            paymentTerms: document.getElementById('payment-terms')?.value || ''
+                        };
+                        endpoint = '/vendors/setup/step8-policies';
+                        break;
+
+                    case 9: // Verification & Legal
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            licenseNumber: document.getElementById('license-number')?.value || '',
+                            insuranceVerified: document.getElementById('insurance-verified')?.checked || false,
+                            awardsCertifications: document.getElementById('awards-certifications')?.value || '',
+                            businessType: document.getElementById('business-type')?.value || '',
+                            taxId: document.getElementById('tax-id')?.value || '',
+                            isEcoFriendly: document.getElementById('eco-friendly')?.checked || false,
+                            isPremium: document.getElementById('premium-status')?.checked || false
+                        };
+                        endpoint = '/vendors/setup/step9-verification';
+                        break;
+
+                    default:
+                        // No submission needed for steps that don't have backend endpoints
+                        return;
+                }
+
+                // Submit to backend
+                console.log(`Submitting step ${currentStep} data:`, stepData);
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(stepData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Step ${currentStep} submission failed`);
+                }
+
+                const result = await response.json();
+                console.log(`Step ${currentStep} submitted successfully:`, result);
+                return result;
+            }
 
             // Make functions global for onclick handlers
             window.addPackage = addPackage;
