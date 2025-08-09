@@ -443,6 +443,19 @@ router.post('/:id/setup', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
+    // Check if VendorProfileID exists
+    const checkRequest = new sql.Request(pool);
+    checkRequest.input('VendorProfileID', sql.Int, id);
+    const checkResult = await checkRequest.query(`
+      SELECT VendorProfileID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
+    `);
+    if (checkResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found'
+      });
+    }
+
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, id);
     request.input('GalleryData', sql.NVarChar(sql.MAX), gallery ? JSON.stringify(gallery) : null);
