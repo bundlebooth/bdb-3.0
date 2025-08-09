@@ -487,10 +487,10 @@ router.get('/:id/setup-progress', async (req, res) => {
 });
 
 // Complete vendor setup with all data
-router.post('/:id/setup', async (req, res) => {
+router.post('/setup', async (req, res) => {
   try {
-    const { id } = req.params;
     const {
+      vendorProfileId,
       gallery,
       packages,
       services,
@@ -498,26 +498,47 @@ router.post('/:id/setup', async (req, res) => {
       availability
     } = req.body;
 
+    // Validate vendorProfileId
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor Profile ID is required'
+      });
+    }
+
+    const vendorProfileIdNum = parseInt(vendorProfileId);
+    if (isNaN(vendorProfileIdNum) || vendorProfileIdNum <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid Vendor Profile ID format. Must be a positive number.'
+      });
+    }
+
     const pool = await poolPromise;
     
     if (!pool.connected) {
       throw new Error('Database connection not established');
     }
 
-    // Resolve the ID to VendorProfileID
-    const vendorProfileId = await resolveVendorProfileId(id, pool);
+    // Verify the vendor profile exists
+    const verifyRequest = new sql.Request(pool);
+    verifyRequest.input('VendorProfileID', sql.Int, vendorProfileIdNum);
     
-    if (!vendorProfileId) {
+    const verifyResult = await verifyRequest.query(`
+      SELECT VendorProfileID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    if (verifyResult.recordset.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor profile not found. Please ensure the user is registered as a vendor.'
+        message: 'Vendor profile not found. Please ensure the vendor profile exists.'
       });
     }
 
-    console.log(`Completing setup for VendorProfileID: ${vendorProfileId}`);
+    console.log(`Completing setup for VendorProfileID: ${vendorProfileIdNum}`);
 
     const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('VendorProfileID', sql.Int, vendorProfileIdNum);
     request.input('GalleryData', sql.NVarChar(sql.MAX), gallery ? JSON.stringify(gallery) : null);
     request.input('PackagesData', sql.NVarChar(sql.MAX), packages ? JSON.stringify(packages) : null);
     request.input('ServicesData', sql.NVarChar(sql.MAX), services ? JSON.stringify(services) : null);
@@ -532,7 +553,7 @@ router.post('/:id/setup', async (req, res) => {
       res.json({
         success: true,
         message: response.Message,
-        vendorProfileId: vendorProfileId
+        vendorProfileId: vendorProfileIdNum
       });
     } else {
       res.status(400).json({
