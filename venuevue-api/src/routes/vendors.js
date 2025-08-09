@@ -800,10 +800,15 @@ router.get('/:id/setup-data', async (req, res) => {
 // Get current vendor's profile information
 router.get('/profile', async (req, res) => {
   try {
+    console.log('Received request at /profile endpoint');
+    console.log('Request query parameters:', req.query);
+    
     const { userId } = req.query;
+    console.log('Raw userId from query:', userId);
 
     // Validate userId parameter
     if (!userId) {
+      console.log('Validation failed: User ID is missing');
       return res.status(400).json({
         success: false,
         message: 'User ID is required'
@@ -812,7 +817,10 @@ router.get('/profile', async (req, res) => {
 
     // Validate that userId is a valid number
     const userIdNum = parseInt(userId);
+    console.log('Parsed userId (integer):', userIdNum);
+    
     if (isNaN(userIdNum) || userIdNum <= 0) {
+      console.log('Validation failed: User ID is not a valid positive number');
       return res.status(400).json({
         success: false,
         message: 'Invalid User ID format. Must be a positive number.'
@@ -822,12 +830,14 @@ router.get('/profile', async (req, res) => {
     const pool = await poolPromise;
     
     if (!pool.connected) {
+      console.error('Database connection not established');
       throw new Error('Database connection not established');
     }
 
     // First, check if user exists and is a vendor, then get their vendor profile ID
     const userRequest = new sql.Request(pool);
     userRequest.input('UserID', sql.Int, userIdNum);
+    console.log('Preparing to query user with UserID:', userIdNum);
 
     const userResult = await userRequest.query(`
       SELECT 
@@ -841,9 +851,13 @@ router.get('/profile', async (req, res) => {
       WHERE u.UserID = @UserID AND u.IsActive = 1
     `);
 
-    console.log('User query result:', userResult.recordset);
+    console.log('User query executed. Recordset:', {
+      recordCount: userResult.recordset.length,
+      firstRecord: userResult.recordset[0] || null
+    });
 
     if (userResult.recordset.length === 0) {
+      console.log(`No active user found with ID: ${userIdNum}`);
       return res.status(404).json({
         success: false,
         message: 'User not found or inactive'
@@ -851,9 +865,16 @@ router.get('/profile', async (req, res) => {
     }
 
     const user = userResult.recordset[0];
+    console.log('User details:', {
+      UserID: user.UserID,
+      Name: user.Name,
+      Email: user.Email,
+      IsVendor: user.IsVendor,
+      VendorProfileID: user.VendorProfileID
+    });
 
     if (!user.IsVendor) {
-      console.log(`User ${userIdNum} is not a vendor.`);
+      console.log(`User ${userIdNum} is not a vendor. IsVendor flag: ${user.IsVendor}`);
       return res.status(403).json({
         success: false,
         message: 'User is not registered as a vendor'
@@ -861,23 +882,29 @@ router.get('/profile', async (req, res) => {
     }
 
     if (!user.VendorProfileID) {
-      console.log(`User ${userIdNum} does not have a vendor profile.`);
+      console.log(`User ${userIdNum} is a vendor but has no VendorProfileID`);
       return res.status(404).json({
         success: false,
         message: 'Vendor profile not found. Please complete vendor registration.'
       });
     }
 
-    console.log(`User ${userIdNum} has vendor profile ID: ${user.VendorProfileID}`);
+    console.log(`Proceeding with vendor profile for UserID: ${userIdNum}, VendorProfileID: ${user.VendorProfileID}`);
 
     // Get comprehensive vendor profile data using the stored procedure
     const profileRequest = new sql.Request(pool);
     profileRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-    profileRequest.input('UserID', sql.Int, userIdNum); // Pass UserID for favorite check
+    profileRequest.input('UserID', sql.Int, userIdNum);
+    console.log('Executing stored procedure sp_GetVendorDetails with:', {
+      VendorProfileID: user.VendorProfileID,
+      UserID: userIdNum
+    });
 
     const profileResult = await profileRequest.execute('sp_GetVendorDetails');
+    console.log('Stored procedure executed. Recordsets returned:', profileResult.recordsets.length);
     
     if (profileResult.recordsets.length === 0) {
+      console.log('No vendor profile details found for VendorProfileID:', user.VendorProfileID);
       return res.status(404).json({
         success: false,
         message: 'Vendor profile details not found'
@@ -901,9 +928,19 @@ router.get('/profile', async (req, res) => {
       availableSlots: profileResult.recordsets[12] || []
     };
 
+    console.log('Profile data structure created with:', {
+      profile: !!profileData.profile,
+      categoriesCount: profileData.categories.length,
+      servicesCount: profileData.services.length,
+      addOnsCount: profileData.addOns.length,
+      portfolioCount: profileData.portfolio.length,
+      reviewsCount: profileData.reviews.length
+    });
+
     // Get setup progress information
     const progressRequest = new sql.Request(pool);
     progressRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+    console.log('Checking setup progress for VendorProfileID:', user.VendorProfileID);
 
     let setupProgress = {
       SetupStep: 1,
@@ -918,13 +955,17 @@ router.get('/profile', async (req, res) => {
     try {
       const progressResult = await progressRequest.execute('sp_GetVendorSetupProgress');
       if (progressResult.recordset.length > 0) {
+        console.log('Setup progress found:', progressResult.recordset[0]);
         setupProgress = progressResult.recordset[0];
+      } else {
+        console.log('No setup progress record found, using defaults');
       }
     } catch (progressError) {
-      console.warn('Setup progress query failed, using defaults:', progressError.message);
+      console.warn('Setup progress query failed, using defaults. Error:', progressError.message);
     }
 
     // Return successful response with vendor profile data
+    console.log('Successfully retrieved vendor profile for UserID:', userIdNum);
     res.json({
       success: true,
       vendorProfileId: user.VendorProfileID,
@@ -941,7 +982,12 @@ router.get('/profile', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Vendor profile error:', err);
+    console.error('Vendor profile error:', {
+      error: err.message,
+      stack: err.stack,
+      userIdAttempted: req.query.userId,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({ 
       success: false,
       message: 'Failed to get vendor profile',
@@ -949,5 +995,4 @@ router.get('/profile', async (req, res) => {
     });
   }
 });
-
 module.exports = router;
