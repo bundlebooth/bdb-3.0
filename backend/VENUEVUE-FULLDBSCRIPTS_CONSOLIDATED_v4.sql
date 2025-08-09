@@ -61,6 +61,32 @@ CREATE TABLE VendorProfiles (
     FeaturedImageURL NVARCHAR(255),
     BookingLink NVARCHAR(255), -- New field
     AcceptingBookings BIT DEFAULT 0, -- New field
+    -- Additional fields for comprehensive setup
+    DepositRequirements NVARCHAR(MAX), -- JSON string for deposit policies
+    CancellationPolicy NVARCHAR(MAX),
+    ReschedulingPolicy NVARCHAR(MAX),
+    PaymentMethods NVARCHAR(MAX), -- JSON string for accepted payment methods
+    PaymentTerms NVARCHAR(MAX),
+    Awards NVARCHAR(MAX), -- JSON string for awards/certifications
+    Certifications NVARCHAR(MAX), -- JSON string for certifications
+    -- Step 7: Availability & Scheduling fields
+    ResponseTimeHours INT DEFAULT 24,
+    BufferTimeMinutes INT DEFAULT 30,
+    -- Step 9: Verification & Legal fields
+    BusinessType NVARCHAR(50), -- LLC, Corporation, Sole Proprietorship, etc.
+    TaxID NVARCHAR(50),
+    -- Setup completion tracking
+    SetupStep1Completed BIT DEFAULT 0,
+    SetupStep2Completed BIT DEFAULT 0,
+    SetupStep3Completed BIT DEFAULT 0,
+    SetupStep4Completed BIT DEFAULT 0,
+    SetupStep5Completed BIT DEFAULT 0,
+    SetupStep6Completed BIT DEFAULT 0,
+    SetupStep7Completed BIT DEFAULT 0,
+    SetupStep8Completed BIT DEFAULT 0,
+    SetupStep9Completed BIT DEFAULT 0,
+    SetupStep10Completed BIT DEFAULT 0,
+    SetupCompletedAt DATETIME,
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE()
 );
@@ -100,10 +126,12 @@ GO
 CREATE TABLE VendorBusinessHours (
     HoursID INT PRIMARY KEY IDENTITY(1,1),
     VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    DayOfWeek TINYINT NOT NULL CHECK (DayOfWeek BETWEEN 0 AND 6), -- 0=Sunday
+    DayOfWeek TINYINT CHECK (DayOfWeek BETWEEN 0 AND 6), -- 0=Sunday
     OpenTime TIME,
     CloseTime TIME,
     IsAvailable BIT DEFAULT 1,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME DEFAULT GETDATE(),
     CONSTRAINT UC_VendorDay UNIQUE (VendorProfileID, DayOfWeek)
 );
 GO
@@ -112,13 +140,13 @@ GO
 CREATE TABLE VendorAvailabilityExceptions (
     ExceptionID INT PRIMARY KEY IDENTITY(1,1),
     VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    StartDate DATE NOT NULL,
-    EndDate DATE NOT NULL,
+    Date DATE NOT NULL,
+    IsAvailable BIT DEFAULT 0,
+    Reason NVARCHAR(255),
     StartTime TIME,
     EndTime TIME,
-    IsAvailable BIT DEFAULT 1,
-    Reason NVARCHAR(255),
-    CreatedAt DATETIME DEFAULT GETDATE()
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME DEFAULT GETDATE()
 );
 GO
 
@@ -155,19 +183,53 @@ CREATE TABLE VendorFAQs (
     Question NVARCHAR(255) NOT NULL,
     Answer NVARCHAR(MAX) NOT NULL,
     DisplayOrder INT DEFAULT 0,
-    CreatedAt DATETIME DEFAULT GETDATE()
+    IsActive BIT DEFAULT 1,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME DEFAULT GETDATE()
 );
 GO
 
 -- Vendor team members
 CREATE TABLE VendorTeam (
-    TeamMemberID INT PRIMARY KEY IDENTITY(1,1),
+    TeamID INT PRIMARY KEY IDENTITY(1,1),
     VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
     Name NVARCHAR(100) NOT NULL,
     Role NVARCHAR(100),
     Bio NVARCHAR(MAX),
     ImageURL NVARCHAR(255),
-    DisplayOrder INT DEFAULT 0
+    DisplayOrder INT DEFAULT 0,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME DEFAULT GETDATE()
+);
+GO
+
+-- Missing Packages table for vendor setup step 4
+CREATE TABLE Packages (
+    PackageID INT PRIMARY KEY IDENTITY(1,1),
+    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+    Name NVARCHAR(100) NOT NULL,
+    Description NVARCHAR(MAX),
+    Price DECIMAL(10, 2) NOT NULL,
+    DurationMinutes INT,
+    MaxGuests INT,
+    WhatsIncluded NVARCHAR(MAX),
+    IsActive BIT DEFAULT 1,
+    DisplayOrder INT DEFAULT 0,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME DEFAULT GETDATE()
+);
+GO
+
+-- Service areas table for location-based services
+CREATE TABLE VendorServiceAreas (
+    ServiceAreaID INT PRIMARY KEY IDENTITY(1,1),
+    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+    AreaName NVARCHAR(100) NOT NULL,
+    State NVARCHAR(50),
+    ZipCode NVARCHAR(20),
+    ServiceRadius INT, -- in miles
+    AdditionalFee DECIMAL(10, 2) DEFAULT 0,
+    CreatedAt DATETIME DEFAULT GETDATE()
 );
 GO
 
@@ -1140,6 +1202,232 @@ BEGIN
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
         RAISERROR('Error searching vendors: %s', 16, 1, @ErrorMessage);
     END CATCH
+END;
+GO
+
+-- ============================================
+-- VENDOR SETUP STORED PROCEDURES
+-- ============================================
+
+-- Step 7: Availability & Scheduling
+CREATE OR ALTER PROCEDURE sp_UpdateVendorAvailability
+    @VendorProfileID INT,
+    @BusinessHours NVARCHAR(MAX), -- JSON array of business hours
+    @AcceptingBookings BIT = 1,
+    @ResponseTimeHours INT = 24,
+    @BufferTimeMinutes INT = 30
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Update vendor profile with availability settings
+        UPDATE VendorProfiles 
+        SET AcceptingBookings = @AcceptingBookings,
+            ResponseTimeHours = @ResponseTimeHours,
+            BufferTimeMinutes = @BufferTimeMinutes,
+            SetupStep7Completed = 1,
+            UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @VendorProfileID;
+        
+        -- Clear existing business hours
+        DELETE FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID;
+        
+        -- Insert new business hours from JSON
+        IF @BusinessHours IS NOT NULL
+        BEGIN
+            INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
+            SELECT 
+                @VendorProfileID,
+                JSON_VALUE(value, '$.dayOfWeek'),
+                JSON_VALUE(value, '$.openTime'),
+                JSON_VALUE(value, '$.closeTime'),
+                JSON_VALUE(value, '$.isAvailable')
+            FROM OPENJSON(@BusinessHours);
+        END;
+        
+        COMMIT TRANSACTION;
+        SELECT 1 AS Success, 'Availability updated successfully' AS Message;
+        
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        SELECT 0 AS Success, ERROR_MESSAGE() AS Message;
+    END CATCH
+END;
+GO
+
+-- Step 8: Policies & Preferences
+CREATE OR ALTER PROCEDURE sp_UpdateVendorPolicies
+    @VendorProfileID INT,
+    @DepositRequirements NVARCHAR(MAX),
+    @CancellationPolicy NVARCHAR(MAX),
+    @ReschedulingPolicy NVARCHAR(MAX),
+    @PaymentMethods NVARCHAR(MAX), -- JSON array
+    @PaymentTerms NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        UPDATE VendorProfiles 
+        SET DepositRequirements = @DepositRequirements,
+            CancellationPolicy = @CancellationPolicy,
+            ReschedulingPolicy = @ReschedulingPolicy,
+            PaymentMethods = @PaymentMethods,
+            PaymentTerms = @PaymentTerms,
+            SetupStep8Completed = 1,
+            UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @VendorProfileID;
+        
+        SELECT 1 AS Success, 'Policies updated successfully' AS Message;
+        
+    END TRY
+    BEGIN CATCH
+        SELECT 0 AS Success, ERROR_MESSAGE() AS Message;
+    END CATCH
+END;
+GO
+
+-- Step 9: Verification & Legal
+CREATE OR ALTER PROCEDURE sp_UpdateVendorVerification
+    @VendorProfileID INT,
+    @LicenseNumber NVARCHAR(50),
+    @InsuranceVerified BIT = 0,
+    @BusinessType NVARCHAR(50),
+    @TaxID NVARCHAR(50),
+    @Awards NVARCHAR(MAX),
+    @Certifications NVARCHAR(MAX),
+    @IsEcoFriendly BIT = 0,
+    @IsPremium BIT = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        UPDATE VendorProfiles 
+        SET LicenseNumber = @LicenseNumber,
+            InsuranceVerified = @InsuranceVerified,
+            BusinessType = @BusinessType,
+            TaxID = @TaxID,
+            Awards = @Awards,
+            Certifications = @Certifications,
+            IsEcoFriendly = @IsEcoFriendly,
+            IsPremium = @IsPremium,
+            SetupStep9Completed = 1,
+            UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @VendorProfileID;
+        
+        SELECT 1 AS Success, 'Verification information updated successfully' AS Message;
+        
+    END TRY
+    BEGIN CATCH
+        SELECT 0 AS Success, ERROR_MESSAGE() AS Message;
+    END CATCH
+END;
+GO
+
+-- Step 10: Setup Completion
+CREATE OR ALTER PROCEDURE sp_CompleteVendorSetup
+    @VendorProfileID INT,
+    @FAQs NVARCHAR(MAX) -- JSON array of FAQs
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Handle FAQs if provided
+        IF @FAQs IS NOT NULL
+        BEGIN
+            -- Clear existing FAQs
+            DELETE FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID;
+            
+            -- Insert new FAQs from JSON
+            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder)
+            SELECT 
+                @VendorProfileID,
+                JSON_VALUE(value, '$.question'),
+                JSON_VALUE(value, '$.answer'),
+                JSON_VALUE(value, '$.displayOrder')
+            FROM OPENJSON(@FAQs);
+        END;
+        
+        -- Mark setup as completed
+        UPDATE VendorProfiles 
+        SET SetupStep10Completed = 1,
+            IsCompleted = 1,
+            SetupCompletedAt = GETDATE(),
+            UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @VendorProfileID;
+        
+        COMMIT TRANSACTION;
+        SELECT 1 AS Success, 'Vendor setup completed successfully' AS Message;
+        
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        SELECT 0 AS Success, ERROR_MESSAGE() AS Message;
+    END CATCH
+END;
+GO
+
+-- Get vendor setup progress
+CREATE OR ALTER PROCEDURE sp_GetVendorSetupProgress
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        VendorProfileID,
+        SetupStep1Completed,
+        SetupStep2Completed,
+        SetupStep3Completed,
+        SetupStep4Completed,
+        SetupStep5Completed,
+        SetupStep6Completed,
+        SetupStep7Completed,
+        SetupStep8Completed,
+        SetupStep9Completed,
+        SetupStep10Completed,
+        IsCompleted,
+        SetupCompletedAt,
+        -- Calculate completion percentage
+        CAST((
+            CAST(SetupStep1Completed AS INT) +
+            CAST(SetupStep2Completed AS INT) +
+            CAST(SetupStep3Completed AS INT) +
+            CAST(SetupStep4Completed AS INT) +
+            CAST(SetupStep5Completed AS INT) +
+            CAST(SetupStep6Completed AS INT) +
+            CAST(SetupStep7Completed AS INT) +
+            CAST(SetupStep8Completed AS INT) +
+            CAST(SetupStep9Completed AS INT) +
+            CAST(SetupStep10Completed AS INT)
+        ) * 10.0 AS DECIMAL(5,2)) AS CompletionPercentage
+    FROM VendorProfiles
+    WHERE VendorProfileID = @VendorProfileID;
+END;
+GO
+
+-- Update step completion status
+CREATE OR ALTER PROCEDURE sp_UpdateVendorSetupStep
+    @VendorProfileID INT,
+    @StepNumber INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @SQL NVARCHAR(MAX);
+    SET @SQL = 'UPDATE VendorProfiles SET SetupStep' + CAST(@StepNumber AS NVARCHAR(2)) + 'Completed = 1, UpdatedAt = GETDATE() WHERE VendorProfileID = @VendorProfileID';
+    
+    EXEC sp_executesql @SQL, N'@VendorProfileID INT', @VendorProfileID;
+    
+    SELECT 1 AS Success, 'Step ' + CAST(@StepNumber AS NVARCHAR(2)) + ' marked as completed' AS Message;
 END;
 GO
 
@@ -3656,10 +3944,10 @@ END;
 GO
 
 -- ======================
--- COMPREHENSIVE BUSINESS ONBOARDING SYSTEM
+-- ENHANCED VENDOR SETUP SYSTEM
 -- ======================
 
--- Extend VendorProfiles with comprehensive business information
+-- Add enhanced setup progress columns to VendorProfiles
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'SetupStep')
 BEGIN
     ALTER TABLE VendorProfiles ADD SetupStep INT DEFAULT 1;
@@ -3672,194 +3960,34 @@ BEGIN
 END;
 GO
 
--- Step completion tracking for all 10 sections
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'BusinessBasicsCompleted')
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'GalleryCompleted')
 BEGIN
-    ALTER TABLE VendorProfiles ADD BusinessBasicsCompleted BIT DEFAULT 0;
+    ALTER TABLE VendorProfiles ADD GalleryCompleted BIT DEFAULT 0;
 END;
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'LocationInfoCompleted')
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'PackagesCompleted')
 BEGIN
-    ALTER TABLE VendorProfiles ADD LocationInfoCompleted BIT DEFAULT 0;
+    ALTER TABLE VendorProfiles ADD PackagesCompleted BIT DEFAULT 0;
 END;
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'GalleryMediaCompleted')
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'ServicesCompleted')
 BEGIN
-    ALTER TABLE VendorProfiles ADD GalleryMediaCompleted BIT DEFAULT 0;
+    ALTER TABLE VendorProfiles ADD ServicesCompleted BIT DEFAULT 0;
 END;
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'ServicesPackagesCompleted')
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'SocialMediaCompleted')
 BEGIN
-    ALTER TABLE VendorProfiles ADD ServicesPackagesCompleted BIT DEFAULT 0;
+    ALTER TABLE VendorProfiles ADD SocialMediaCompleted BIT DEFAULT 0;
 END;
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'TeamInfoCompleted')
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'AvailabilityCompleted')
 BEGIN
-    ALTER TABLE VendorProfiles ADD TeamInfoCompleted BIT DEFAULT 0;
+    ALTER TABLE VendorProfiles ADD AvailabilityCompleted BIT DEFAULT 0;
 END;
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'SocialLinksCompleted')
-BEGIN
-    ALTER TABLE VendorProfiles ADD SocialLinksCompleted BIT DEFAULT 0;
-END;
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'AvailabilitySchedulingCompleted')
-BEGIN
-    ALTER TABLE VendorProfiles ADD AvailabilitySchedulingCompleted BIT DEFAULT 0;
-END;
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'PoliciesPreferencesCompleted')
-BEGIN
-    ALTER TABLE VendorProfiles ADD PoliciesPreferencesCompleted BIT DEFAULT 0;
-END;
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'VerificationLegalCompleted')
-BEGIN
-    ALTER TABLE VendorProfiles ADD VerificationLegalCompleted BIT DEFAULT 0;
-END;
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'SetupCompletionCompleted')
-BEGIN
-    ALTER TABLE VendorProfiles ADD SetupCompletionCompleted BIT DEFAULT 0;
-END;
-GO
-
--- Add comprehensive business fields to VendorProfiles
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'ServiceRadius')
-BEGIN
-    ALTER TABLE VendorProfiles ADD ServiceRadius INT DEFAULT 25;
-END;
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'ExtendedAreaFees')
-BEGIN
-    ALTER TABLE VendorProfiles ADD ExtendedAreaFees DECIMAL(10,2) DEFAULT 0.00;
-END;
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'ResponseTimeExpectation')
-BEGIN
-    ALTER TABLE VendorProfiles ADD ResponseTimeExpectation NVARCHAR(50) DEFAULT '24 hours';
-END;
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('VendorProfiles') AND name = 'BufferTimeBetweenBookings')
-BEGIN
-    ALTER TABLE VendorProfiles ADD BufferTimeBetweenBookings INT DEFAULT 30; -- minutes
-END;
-GO
-
--- Business Policies Table
-CREATE TABLE VendorPolicies (
-    PolicyID INT PRIMARY KEY IDENTITY(1,1),
-    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    DepositRequirement DECIMAL(5,2) DEFAULT 20.00, -- percentage
-    CancellationPolicy NVARCHAR(MAX),
-    ReschedulingPolicy NVARCHAR(MAX),
-    PaymentTerms NVARCHAR(MAX),
-    AcceptedPaymentMethods NVARCHAR(MAX), -- JSON array
-    CreatedAt DATETIME DEFAULT GETDATE(),
-    UpdatedAt DATETIME DEFAULT GETDATE()
-);
-GO
-
--- Service Areas Table (Enhanced)
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'VendorServiceAreas')
-BEGIN
-    CREATE TABLE VendorServiceAreas (
-        AreaID INT PRIMARY KEY IDENTITY(1,1),
-        VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-        City NVARCHAR(100) NOT NULL,
-        State NVARCHAR(50) NOT NULL,
-        Country NVARCHAR(50) NOT NULL,
-        RadiusMiles INT DEFAULT 25,
-        AdditionalFee DECIMAL(10,2) DEFAULT 0.00,
-        CONSTRAINT UC_VendorServiceArea UNIQUE (VendorProfileID, City, State, Country)
-    );
-END;
-GO
-
--- Portfolio Projects Table (Enhanced)
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'VendorPortfolio')
-BEGIN
-    CREATE TABLE VendorPortfolio (
-        PortfolioID INT PRIMARY KEY IDENTITY(1,1),
-        VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-        Title NVARCHAR(100) NOT NULL,
-        Description NVARCHAR(MAX),
-        ImageURL NVARCHAR(255) NOT NULL,
-        ProjectDate DATE,
-        DisplayOrder INT DEFAULT 0,
-        CreatedAt DATETIME DEFAULT GETDATE()
-    );
-END;
-GO
-
--- Vendor Certifications and Awards
-CREATE TABLE VendorCertifications (
-    CertificationID INT PRIMARY KEY IDENTITY(1,1),
-    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    CertificationType NVARCHAR(100) NOT NULL, -- 'License', 'Insurance', 'Award', 'Certification'
-    Name NVARCHAR(255) NOT NULL,
-    IssuingOrganization NVARCHAR(255),
-    IssueDate DATE,
-    ExpiryDate DATE,
-    CertificateNumber NVARCHAR(100),
-    DocumentURL NVARCHAR(500),
-    IsVerified BIT DEFAULT 0,
-    CreatedAt DATETIME DEFAULT GETDATE()
-);
-GO
-
--- External Links Table
-CREATE TABLE VendorExternalLinks (
-    LinkID INT PRIMARY KEY IDENTITY(1,1),
-    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    LinkType NVARCHAR(50) NOT NULL, -- 'booking', 'portfolio', 'other'
-    Title NVARCHAR(100) NOT NULL,
-    URL NVARCHAR(500) NOT NULL,
-    DisplayOrder INT DEFAULT 0,
-    CreatedAt DATETIME DEFAULT GETDATE()
-);
-GO
-
--- Vendor FAQ Table (if not exists)
-IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'VendorFAQs')
-BEGIN
-    CREATE TABLE VendorFAQs (
-        FAQID INT PRIMARY KEY IDENTITY(1,1),
-        VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-        Question NVARCHAR(255) NOT NULL,
-        Answer NVARCHAR(MAX) NOT NULL,
-        DisplayOrder INT DEFAULT 0,
-        CreatedAt DATETIME DEFAULT GETDATE()
-    );
-END;
-GO
-
--- Vendor Testimonials (separate from reviews)
-CREATE TABLE VendorTestimonials (
-    TestimonialID INT PRIMARY KEY IDENTITY(1,1),
-    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    ClientName NVARCHAR(100) NOT NULL,
-    ClientTitle NVARCHAR(100),
-    TestimonialText NVARCHAR(MAX) NOT NULL,
-    Rating INT CHECK (Rating BETWEEN 1 AND 5),
-    EventDate DATE,
-    IsApproved BIT DEFAULT 0,
-    IsFeatured BIT DEFAULT 0,
-    DisplayOrder INT DEFAULT 0,
-    CreatedAt DATETIME DEFAULT GETDATE()
-);
 GO
 
 -- Add ImageType column to VendorImages for URL/Upload support
