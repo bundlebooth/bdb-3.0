@@ -759,6 +759,8 @@ router.get('/profile', async (req, res) => {
       WHERE u.UserID = @UserID AND u.IsActive = 1
     `);
 
+    console.log('User query result:', userResult.recordset);
+
     if (userResult.recordset.length === 0) {
       return res.status(404).json({
         success: false,
@@ -769,6 +771,7 @@ router.get('/profile', async (req, res) => {
     const user = userResult.recordset[0];
 
     if (!user.IsVendor) {
+      console.log(`User ${userIdNum} is not a vendor.`);
       return res.status(403).json({
         success: false,
         message: 'User is not registered as a vendor'
@@ -776,11 +779,14 @@ router.get('/profile', async (req, res) => {
     }
 
     if (!user.VendorProfileID) {
+      console.log(`User ${userIdNum} does not have a vendor profile.`);
       return res.status(404).json({
         success: false,
         message: 'Vendor profile not found. Please complete vendor registration.'
       });
     }
+
+    console.log(`User ${userIdNum} has vendor profile ID: ${user.VendorProfileID}`);
 
     // Get comprehensive vendor profile data using the stored procedure
     const profileRequest = new sql.Request(pool);
