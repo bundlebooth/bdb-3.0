@@ -4841,30 +4841,59 @@ async function completeVendorSetup() {
     try {
         // Save current step data
         saveCurrentStepData();
-        
+
         // Show loading
-        document.getElementById('complete-setup-btn').textContent = 'Completing Setup...';
-        document.getElementById('complete-setup-btn').disabled = true;
-        
-        // First, get the vendor profile ID for the current user
-        const vendorProfileResponse = await fetch(`${API_BASE_URL}/vendors/profile?userId=${vendorSetupState.vendorId}`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+        const completeBtn = document.getElementById('complete-setup-btn');
+        completeBtn.textContent = 'Completing Setup...';
+        completeBtn.disabled = true;
+
+        // Log vendor IDs for debugging
+        console.log('VendorSetupState.vendorId:', vendorSetupState.vendorId);
+        console.log('VendorSetupState.vendorProfileId (before fetch):', vendorSetupState.vendorProfileId);
+
+        // Validate vendorProfileId in state before fetching
+        if (!vendorSetupState.vendorId || isNaN(vendorSetupState.vendorId) || vendorSetupState.vendorId <= 0) {
+            alert('Invalid or missing vendor user ID. Please log in again or contact support.');
+            completeBtn.textContent = 'Complete Setup';
+            completeBtn.disabled = false;
+            return;
+        }
+
+        // Fetch vendor profile ID once and cache it in state
+        if (!vendorSetupState.vendorProfileId) {
+            console.log('Fetching vendor profile ID...');
+            const vendorProfileResponse = await fetch(`${API_BASE_URL}/vendors/profile?userId=${vendorSetupState.vendorId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (!vendorProfileResponse.ok) {
+                const errorText = await vendorProfileResponse.text();
+                throw new Error(`Failed to fetch vendor profile ID: ${vendorProfileResponse.status} ${vendorProfileResponse.statusText} - ${errorText}`);
             }
-        });
-        
-        if (!vendorProfileResponse.ok) {
-            throw new Error('Failed to fetch vendor profile ID');
+
+            const vendorProfileData = await vendorProfileResponse.json();
+            console.log('Vendor profile response:', vendorProfileData);
+
+            // Handle the case where a new profile was created
+            if (vendorProfileData.isNewProfile) {
+                vendorSetupState.vendorProfileId = vendorProfileData.vendorProfileId;
+                console.log('New vendor profile created with ID:', vendorSetupState.vendorProfileId);
+            } else {
+                const vendorProfileId = vendorProfileData.vendorProfileId;
+                if (!vendorProfileId || isNaN(vendorProfileId) || vendorProfileId <= 0) {
+                    throw new Error('No valid vendor profile found for this user');
+                }
+                vendorSetupState.vendorProfileId = vendorProfileId;
+                console.log('Existing vendor profile ID:', vendorSetupState.vendorProfileId);
+            }
         }
-        
-        const vendorProfileData = await vendorProfileResponse.json();
-        const vendorProfileId = vendorProfileData.vendorProfileId;
-        
-        if (!vendorProfileId) {
-            throw new Error('No vendor profile found for this user');
-        }
-        
-        // Now submit the setup data with the vendor profile ID
+
+        // Log vendorProfileId before submitting setup
+        console.log('Submitting setup with vendorProfileId:', vendorSetupState.vendorProfileId);
+
+        // Now submit the setup data with the cached vendor profile ID
         const response = await fetch(`${API_BASE_URL}/vendors/setup`, {
             method: 'POST',
             headers: {
@@ -4872,7 +4901,7 @@ async function completeVendorSetup() {
                 'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
             body: JSON.stringify({
-                vendorProfileId: vendorProfileId,
+                vendorProfileId: vendorSetupState.vendorProfileId,
                 gallery: vendorSetupState.gallery,
                 packages: vendorSetupState.packages,
                 services: vendorSetupState.services,
@@ -4880,30 +4909,31 @@ async function completeVendorSetup() {
                 availability: vendorSetupState.availability
             })
         });
-        
+
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.message || 'Setup failed');
         }
-        
+
         const result = await response.json();
-        
+
         alert('Vendor setup completed successfully!');
         vendorRegistrationModal.style.display = 'none';
         document.body.style.overflow = 'auto';
-        
+
         // Update current user to vendor mode
         currentUser.isVendor = true;
-        
+
         // Redirect to vendor dashboard
         displayUserDashboard('vendor', 'vendor-dashboard');
-        
+
     } catch (error) {
         console.error('Setup completion error:', error);
         alert('Setup failed: ' + error.message);
     } finally {
-        document.getElementById('complete-setup-btn').textContent = 'Complete Setup';
-        document.getElementById('complete-setup-btn').disabled = false;
+        const completeBtn = document.getElementById('complete-setup-btn');
+        completeBtn.textContent = 'Complete Setup';
+        completeBtn.disabled = false;
     }
 }
 
