@@ -4,6 +4,47 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
 
+// Helper function to resolve UserID to VendorProfileID
+async function resolveVendorProfileId(id, pool) {
+  const idNum = parseInt(id);
+  if (isNaN(idNum) || idNum <= 0) {
+    throw new Error('Invalid ID format. Must be a positive number.');
+  }
+
+  // First, try to get VendorProfileID from UserID
+  const userCheckRequest = new sql.Request(pool);
+  userCheckRequest.input('UserID', sql.Int, idNum);
+  const userCheckResult = await userCheckRequest.query(`
+    SELECT 
+      u.UserID,
+      u.IsVendor,
+      vp.VendorProfileID
+    FROM Users u
+    LEFT JOIN VendorProfiles vp ON u.UserID = vp.UserID
+    WHERE u.UserID = @UserID AND u.IsActive = 1
+  `);
+
+  if (userCheckResult.recordset.length > 0) {
+    const user = userCheckResult.recordset[0];
+    if (user.IsVendor && user.VendorProfileID) {
+      return user.VendorProfileID;
+    }
+  }
+
+  // If not found by UserID, try as direct VendorProfileID
+  const vendorCheckRequest = new sql.Request(pool);
+  vendorCheckRequest.input('VendorProfileID', sql.Int, idNum);
+  const vendorCheckResult = await vendorCheckRequest.query(`
+    SELECT VendorProfileID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
+  `);
+  
+  if (vendorCheckResult.recordset.length > 0) {
+    return idNum;
+  }
+
+  return null;
+}
+
 // Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
   try {
@@ -252,8 +293,18 @@ router.get('/:id', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
+    // Resolve the ID to VendorProfileID
+    const vendorProfileId = await resolveVendorProfileId(id, pool);
+    
+    if (!vendorProfileId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not found. Please ensure the vendor exists and is active.'
+      });
+    }
+
     const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, id);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('UserID', sql.Int, userId || null);
 
     const result = await request.execute('sp_GetVendorDetails');
@@ -261,7 +312,7 @@ router.get('/:id', async (req, res) => {
     if (result.recordsets.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Vendor details not found'
       });
     }
 
@@ -398,15 +449,25 @@ router.get('/:id/setup-progress', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
+    // Resolve the ID to VendorProfileID
+    const vendorProfileId = await resolveVendorProfileId(id, pool);
+    
+    if (!vendorProfileId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found. Please ensure the user is registered as a vendor.'
+      });
+    }
+
     const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, id);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
 
     const result = await request.execute('sp_GetVendorSetupProgress');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor not found'
+        message: 'Vendor setup progress not found'
       });
     }
 
@@ -443,21 +504,20 @@ router.post('/:id/setup', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
-    // Check if VendorProfileID exists
-    const checkRequest = new sql.Request(pool);
-    checkRequest.input('VendorProfileID', sql.Int, id);
-    const checkResult = await checkRequest.query(`
-      SELECT VendorProfileID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
-    `);
-    if (checkResult.recordset.length === 0) {
+    // Resolve the ID to VendorProfileID
+    const vendorProfileId = await resolveVendorProfileId(id, pool);
+    
+    if (!vendorProfileId) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor profile not found'
+        message: 'Vendor profile not found. Please ensure the user is registered as a vendor.'
       });
     }
 
+    console.log(`Completing setup for VendorProfileID: ${vendorProfileId}`);
+
     const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, id);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('GalleryData', sql.NVarChar(sql.MAX), gallery ? JSON.stringify(gallery) : null);
     request.input('PackagesData', sql.NVarChar(sql.MAX), packages ? JSON.stringify(packages) : null);
     request.input('ServicesData', sql.NVarChar(sql.MAX), services ? JSON.stringify(services) : null);
@@ -471,7 +531,8 @@ router.post('/:id/setup', async (req, res) => {
     if (response.Success) {
       res.json({
         success: true,
-        message: response.Message
+        message: response.Message,
+        vendorProfileId: vendorProfileId
       });
     } else {
       res.status(400).json({
