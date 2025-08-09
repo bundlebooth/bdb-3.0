@@ -628,6 +628,889 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
   }
 });
 
+// ============================================
+// COMPREHENSIVE VENDOR SETUP ENDPOINTS
+// ============================================
+
+// Step 1: Business Basics
+router.post('/setup/step1-business-basics', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      businessName,
+      displayName,
+      businessEmail,
+      businessPhone,
+      website,
+      businessDescription,
+      tagline,
+      yearsInBusiness,
+      primaryCategory,
+      additionalCategories
+    } = req.body;
+
+    // Validation
+    if (!vendorProfileId || !businessName || !businessEmail || !businessPhone || !businessDescription || !primaryCategory) {
+      return res.status(400).json({
+        success: false,
+        message: 'Required fields: businessName, businessEmail, businessPhone, businessDescription, primaryCategory'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update vendor profile with business basics
+    const updateRequest = new sql.Request(pool);
+    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    updateRequest.input('BusinessName', sql.NVarChar, businessName);
+    updateRequest.input('DisplayName', sql.NVarChar, displayName || businessName);
+    updateRequest.input('BusinessEmail', sql.NVarChar, businessEmail);
+    updateRequest.input('BusinessPhone', sql.NVarChar, businessPhone);
+    updateRequest.input('Website', sql.NVarChar, website || null);
+    updateRequest.input('BusinessDescription', sql.NVarChar, businessDescription);
+    updateRequest.input('Tagline', sql.NVarChar, tagline || null);
+    updateRequest.input('YearsInBusiness', sql.Int, yearsInBusiness || null);
+    
+    await updateRequest.query(`
+      UPDATE VendorProfiles 
+      SET BusinessName = @BusinessName, DisplayName = @DisplayName, 
+          BusinessEmail = @BusinessEmail, BusinessPhone = @BusinessPhone,
+          Website = @Website, BusinessDescription = @BusinessDescription,
+          Tagline = @Tagline, YearsInBusiness = @YearsInBusiness,
+          UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    // Handle categories
+    // Delete existing categories
+    await updateRequest.query(`
+      DELETE FROM VendorCategories WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    // Insert primary category
+    const primaryCatRequest = new sql.Request(pool);
+    primaryCatRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    primaryCatRequest.input('Category', sql.NVarChar, primaryCategory);
+    await primaryCatRequest.query(`
+      INSERT INTO VendorCategories (VendorProfileID, Category)
+      VALUES (@VendorProfileID, @Category)
+    `);
+    
+    // Insert additional categories
+    if (additionalCategories && additionalCategories.length > 0) {
+      for (const category of additionalCategories) {
+        const catRequest = new sql.Request(pool);
+        catRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        catRequest.input('Category', sql.NVarChar, category);
+        await catRequest.query(`
+          INSERT INTO VendorCategories (VendorProfileID, Category)
+          VALUES (@VendorProfileID, @Category)
+        `);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Business basics saved successfully',
+      step: 1,
+      nextStep: 2
+    });
+    
+  } catch (err) {
+    console.error('Step 1 setup error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save business basics',
+      error: err.message
+    });
+  }
+});
+
+// Step 2: Location Information
+router.post('/setup/step2-location', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      address,
+      city,
+      state,
+      country,
+      postalCode,
+      latitude,
+      longitude,
+      serviceAreas,
+      serviceRadius,
+      additionalFees
+    } = req.body;
+
+    // Validation
+    if (!vendorProfileId || !address || !city || !state || !postalCode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Required fields: address, city, state, postalCode'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update vendor profile with location
+    const updateRequest = new sql.Request(pool);
+    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    updateRequest.input('Address', sql.NVarChar, address);
+    updateRequest.input('City', sql.NVarChar, city);
+    updateRequest.input('State', sql.NVarChar, state);
+    updateRequest.input('Country', sql.NVarChar, country || 'USA');
+    updateRequest.input('PostalCode', sql.NVarChar, postalCode);
+    updateRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
+    updateRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
+    
+    await updateRequest.query(`
+      UPDATE VendorProfiles 
+      SET Address = @Address, City = @City, State = @State, 
+          Country = @Country, PostalCode = @PostalCode,
+          Latitude = @Latitude, Longitude = @Longitude,
+          UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    // Handle service areas
+    if (serviceAreas && serviceAreas.length > 0) {
+      // Delete existing service areas
+      await updateRequest.query(`
+        DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID
+      `);
+      
+      // Insert new service areas
+      for (const area of serviceAreas) {
+        const areaRequest = new sql.Request(pool);
+        areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        areaRequest.input('City', sql.NVarChar, area.city);
+        areaRequest.input('State', sql.NVarChar, area.state || state);
+        areaRequest.input('Country', sql.NVarChar, area.country || country || 'USA');
+        areaRequest.input('RadiusMiles', sql.Int, serviceRadius || 25);
+        areaRequest.input('AdditionalFee', sql.Decimal(10, 2), area.additionalFee || 0);
+        
+        await areaRequest.query(`
+          INSERT INTO VendorServiceAreas (VendorProfileID, City, State, Country, RadiusMiles, AdditionalFee)
+          VALUES (@VendorProfileID, @City, @State, @Country, @RadiusMiles, @AdditionalFee)
+        `);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Location information saved successfully',
+      step: 2,
+      nextStep: 3
+    });
+    
+  } catch (err) {
+    console.error('Step 2 setup error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save location information',
+      error: err.message
+    });
+  }
+});
+
+// Step 3: Gallery & Media
+router.post('/setup/step3-gallery', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      featuredImage,
+      galleryImages,
+      portfolioItems
+    } = req.body;
+
+    // Validation
+    if (!vendorProfileId || !featuredImage) {
+      return res.status(400).json({
+        success: false,
+        message: 'Required fields: featuredImage'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update featured image
+    const updateRequest = new sql.Request(pool);
+    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    updateRequest.input('FeaturedImageURL', sql.NVarChar, featuredImage);
+    
+    await updateRequest.query(`
+      UPDATE VendorProfiles 
+      SET FeaturedImageURL = @FeaturedImageURL, UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    // Handle gallery images
+    if (galleryImages && galleryImages.length > 0) {
+      // Delete existing images
+      await updateRequest.query(`
+        DELETE FROM VendorImages WHERE VendorProfileID = @VendorProfileID
+      `);
+      
+      // Insert new images
+      for (let i = 0; i < galleryImages.length; i++) {
+        const imageRequest = new sql.Request(pool);
+        imageRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        imageRequest.input('ImageURL', sql.NVarChar, galleryImages[i].url);
+        imageRequest.input('IsPrimary', sql.Bit, i === 0);
+        imageRequest.input('DisplayOrder', sql.Int, i);
+        imageRequest.input('Caption', sql.NVarChar, galleryImages[i].caption || null);
+        
+        await imageRequest.query(`
+          INSERT INTO VendorImages (VendorProfileID, ImageURL, IsPrimary, DisplayOrder, Caption)
+          VALUES (@VendorProfileID, @ImageURL, @IsPrimary, @DisplayOrder, @Caption)
+        `);
+      }
+    }
+    
+    // Handle portfolio items
+    if (portfolioItems && portfolioItems.length > 0) {
+      // Delete existing portfolio
+      await updateRequest.query(`
+        DELETE FROM VendorPortfolio WHERE VendorProfileID = @VendorProfileID
+      `);
+      
+      // Insert new portfolio items
+      for (let i = 0; i < portfolioItems.length; i++) {
+        const portfolioRequest = new sql.Request(pool);
+        portfolioRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        portfolioRequest.input('Title', sql.NVarChar, portfolioItems[i].title);
+        portfolioRequest.input('Description', sql.NVarChar, portfolioItems[i].description || null);
+        portfolioRequest.input('ImageURL', sql.NVarChar, portfolioItems[i].imageUrl);
+        portfolioRequest.input('ProjectDate', sql.Date, portfolioItems[i].projectDate || null);
+        portfolioRequest.input('DisplayOrder', sql.Int, i);
+        
+        await portfolioRequest.query(`
+          INSERT INTO VendorPortfolio (VendorProfileID, Title, Description, ImageURL, ProjectDate, DisplayOrder)
+          VALUES (@VendorProfileID, @Title, @Description, @ImageURL, @ProjectDate, @DisplayOrder)
+        `);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Gallery and media saved successfully',
+      step: 3,
+      nextStep: 4
+    });
+    
+  } catch (err) {
+    console.error('Step 3 setup error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save gallery and media',
+      error: err.message
+    });
+  }
+});
+
+// Step 4: Services & Packages
+router.post('/setup/step4-services', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      serviceCategories,
+      services,
+      packages
+    } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Handle service categories
+    if (serviceCategories && serviceCategories.length > 0) {
+      // Delete existing categories
+      const deleteRequest = new sql.Request(pool);
+      deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteRequest.query(`
+        DELETE FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID
+      `);
+      
+      // Insert new categories
+      for (let i = 0; i < serviceCategories.length; i++) {
+        const catRequest = new sql.Request(pool);
+        catRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        catRequest.input('Name', sql.NVarChar, serviceCategories[i].name);
+        catRequest.input('Description', sql.NVarChar, serviceCategories[i].description || null);
+        catRequest.input('DisplayOrder', sql.Int, i);
+        
+        await catRequest.query(`
+          INSERT INTO ServiceCategories (VendorProfileID, Name, Description, DisplayOrder)
+          VALUES (@VendorProfileID, @Name, @Description, @DisplayOrder)
+        `);
+      }
+    }
+    
+    // Handle services
+    if (services && services.length > 0) {
+      for (const service of services) {
+        // Get category ID if specified
+        let categoryId = null;
+        if (service.categoryName) {
+          const catRequest = new sql.Request(pool);
+          catRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          catRequest.input('CategoryName', sql.NVarChar, service.categoryName);
+          const catResult = await catRequest.query(`
+            SELECT CategoryID FROM ServiceCategories 
+            WHERE VendorProfileID = @VendorProfileID AND Name = @CategoryName
+          `);
+          if (catResult.recordset.length > 0) {
+            categoryId = catResult.recordset[0].CategoryID;
+          }
+        }
+        
+        const serviceRequest = new sql.Request(pool);
+        serviceRequest.input('CategoryID', sql.Int, categoryId);
+        serviceRequest.input('Name', sql.NVarChar, service.name);
+        serviceRequest.input('Description', sql.NVarChar, service.description);
+        serviceRequest.input('Price', sql.Decimal(10, 2), service.price);
+        serviceRequest.input('DurationMinutes', sql.Int, service.durationMinutes || null);
+        serviceRequest.input('MaxAttendees', sql.Int, service.maxAttendees || null);
+        serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), service.depositPercentage || 20);
+        serviceRequest.input('CancellationPolicy', sql.NVarChar, service.cancellationPolicy || null);
+        
+        await serviceRequest.query(`
+          INSERT INTO Services (CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy)
+          VALUES (@CategoryID, @Name, @Description, @Price, @DurationMinutes, @MaxAttendees, @DepositPercentage, @CancellationPolicy)
+        `);
+      }
+    }
+    
+    // Handle packages
+    if (packages && packages.length > 0) {
+      for (const pkg of packages) {
+        const packageRequest = new sql.Request(pool);
+        packageRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        packageRequest.input('Name', sql.NVarChar, pkg.name);
+        packageRequest.input('Description', sql.NVarChar, pkg.description);
+        packageRequest.input('Price', sql.Decimal(10, 2), pkg.price);
+        packageRequest.input('DurationMinutes', sql.Int, pkg.durationMinutes || null);
+        packageRequest.input('MaxGuests', sql.Int, pkg.maxGuests || null);
+        packageRequest.input('WhatsIncluded', sql.NVarChar, pkg.whatsIncluded || null);
+        
+        await packageRequest.query(`
+          INSERT INTO Packages (VendorProfileID, Name, Description, Price, DurationMinutes, MaxGuests, WhatsIncluded)
+          VALUES (@VendorProfileID, @Name, @Description, @Price, @DurationMinutes, @MaxGuests, @WhatsIncluded)
+        `);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Services and packages saved successfully',
+      step: 4,
+      nextStep: 5
+    });
+    
+  } catch (err) {
+    console.error('Step 4 setup error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save services and packages',
+      error: err.message
+    });
+  }
+});
+
+// Step 5: Team Information (Optional)
+router.post('/setup/step5-team', async (req, res) => {
+  try {
+    const { vendorProfileId, teamMembers } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Handle team members
+    if (teamMembers && teamMembers.length > 0) {
+      // Delete existing team members
+      const deleteRequest = new sql.Request(pool);
+      deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteRequest.query(`
+        DELETE FROM VendorTeam WHERE VendorProfileID = @VendorProfileID
+      `);
+      
+      // Insert new team members
+      for (let i = 0; i < teamMembers.length; i++) {
+        const teamRequest = new sql.Request(pool);
+        teamRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        teamRequest.input('Name', sql.NVarChar, teamMembers[i].name);
+        teamRequest.input('Role', sql.NVarChar, teamMembers[i].role || null);
+        teamRequest.input('Bio', sql.NVarChar, teamMembers[i].bio || null);
+        teamRequest.input('ImageURL', sql.NVarChar, teamMembers[i].imageUrl || null);
+        teamRequest.input('DisplayOrder', sql.Int, i);
+        
+        await teamRequest.query(`
+          INSERT INTO VendorTeam (VendorProfileID, Name, Role, Bio, ImageURL, DisplayOrder)
+          VALUES (@VendorProfileID, @Name, @Role, @Bio, @ImageURL, @DisplayOrder)
+        `);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Team information saved successfully',
+      step: 5,
+      nextStep: 6
+    });
+    
+  } catch (err) {
+    console.error('Step 5 setup error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save team information',
+      error: err.message
+    });
+  }
+});
+
+// Step 6: Social Media & Links
+router.post('/setup/step6-social', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      socialMediaProfiles,
+      bookingLink,
+      externalLinks
+    } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update booking link
+    if (bookingLink) {
+      const updateRequest = new sql.Request(pool);
+      updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      updateRequest.input('BookingLink', sql.NVarChar, bookingLink);
+      
+      await updateRequest.query(`
+        UPDATE VendorProfiles 
+        SET BookingLink = @BookingLink, UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+    }
+    
+    // Handle social media profiles
+    if (socialMediaProfiles && socialMediaProfiles.length > 0) {
+      // Delete existing social media
+      const deleteRequest = new sql.Request(pool);
+      deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteRequest.query(`
+        DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID
+      `);
+      
+      // Insert new social media links
+      for (let i = 0; i < socialMediaProfiles.length; i++) {
+        const socialRequest = new sql.Request(pool);
+        socialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        socialRequest.input('Platform', sql.NVarChar, socialMediaProfiles[i].platform);
+        socialRequest.input('URL', sql.NVarChar, socialMediaProfiles[i].url);
+        socialRequest.input('DisplayOrder', sql.Int, i);
+        
+        await socialRequest.query(`
+          INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
+          VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
+        `);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Social media and links saved successfully',
+      step: 6,
+      nextStep: 7
+    });
+    
+  } catch (err) {
+    console.error('Step 6 setup error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save social media and links',
+      error: err.message
+    });
+  }
+});
+
+// Step 7: Availability & Scheduling
+router.post('/setup/step7-availability', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      businessHours,
+      availabilityExceptions,
+      acceptingBookings,
+      responseTimeExpectation,
+      bufferTime
+    } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update booking settings
+    const updateRequest = new sql.Request(pool);
+    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    updateRequest.input('AcceptingBookings', sql.Bit, acceptingBookings || false);
+    updateRequest.input('AverageResponseTime', sql.Int, responseTimeExpectation || 24);
+    
+    await updateRequest.query(`
+      UPDATE VendorProfiles 
+      SET AcceptingBookings = @AcceptingBookings, 
+          AverageResponseTime = @AverageResponseTime,
+          UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    // Handle business hours
+    if (businessHours && businessHours.length > 0) {
+      // Delete existing business hours
+      await updateRequest.query(`
+        DELETE FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID
+      `);
+      
+      // Insert new business hours
+      for (const hours of businessHours) {
+        const hoursRequest = new sql.Request(pool);
+        hoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        hoursRequest.input('DayOfWeek', sql.TinyInt, hours.dayOfWeek);
+        hoursRequest.input('OpenTime', sql.Time, hours.openTime || null);
+        hoursRequest.input('CloseTime', sql.Time, hours.closeTime || null);
+        hoursRequest.input('IsAvailable', sql.Bit, hours.isAvailable || false);
+        
+        await hoursRequest.query(`
+          INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
+          VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable)
+        `);
+      }
+    }
+    
+    // Handle availability exceptions
+    if (availabilityExceptions && availabilityExceptions.length > 0) {
+      for (const exception of availabilityExceptions) {
+        const exceptionRequest = new sql.Request(pool);
+        exceptionRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        exceptionRequest.input('StartDate', sql.Date, exception.startDate);
+        exceptionRequest.input('EndDate', sql.Date, exception.endDate);
+        exceptionRequest.input('StartTime', sql.Time, exception.startTime || null);
+        exceptionRequest.input('EndTime', sql.Time, exception.endTime || null);
+        exceptionRequest.input('IsAvailable', sql.Bit, exception.isAvailable);
+        exceptionRequest.input('Reason', sql.NVarChar, exception.reason || null);
+        
+        await exceptionRequest.query(`
+          INSERT INTO VendorAvailabilityExceptions (VendorProfileID, StartDate, EndDate, StartTime, EndTime, IsAvailable, Reason)
+          VALUES (@VendorProfileID, @StartDate, @EndDate, @StartTime, @EndTime, @IsAvailable, @Reason)
+        `);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Availability and scheduling saved successfully',
+      step: 7,
+      nextStep: 8
+    });
+    
+  } catch (err) {
+    console.error('Step 7 setup error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save availability and scheduling',
+      error: err.message
+    });
+  }
+});
+
+// Step 8: Policies & Preferences
+router.post('/setup/step8-policies', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      depositRequirements,
+      cancellationPolicy,
+      reschedulingPolicy,
+      paymentMethods,
+      paymentTerms
+    } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update policies in vendor profile
+    const updateRequest = new sql.Request(pool);
+    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    updateRequest.input('DepositRequirements', sql.NVarChar, JSON.stringify(depositRequirements) || null);
+    updateRequest.input('CancellationPolicy', sql.NVarChar, cancellationPolicy || null);
+    updateRequest.input('ReschedulingPolicy', sql.NVarChar, reschedulingPolicy || null);
+    updateRequest.input('PaymentMethods', sql.NVarChar, JSON.stringify(paymentMethods) || null);
+    updateRequest.input('PaymentTerms', sql.NVarChar, paymentTerms || null);
+    
+    await updateRequest.query(`
+      UPDATE VendorProfiles 
+      SET DepositRequirements = @DepositRequirements,
+          CancellationPolicy = @CancellationPolicy,
+          ReschedulingPolicy = @ReschedulingPolicy,
+          PaymentMethods = @PaymentMethods,
+          PaymentTerms = @PaymentTerms,
+          UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    res.json({
+      success: true,
+      message: 'Policies and preferences saved successfully',
+      step: 8,
+      nextStep: 9
+    });
+    
+  } catch (err) {
+    console.error('Step 8 setup error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save policies and preferences',
+      error: err.message
+    });
+  }
+});
+
+// Step 9: Verification & Legal
+router.post('/setup/step9-verification', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      licenseNumber,
+      insuranceVerified,
+      awards,
+      certifications,
+      isEcoFriendly,
+      isPremium
+    } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update verification info
+    const updateRequest = new sql.Request(pool);
+    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    updateRequest.input('LicenseNumber', sql.NVarChar, licenseNumber || null);
+    updateRequest.input('InsuranceVerified', sql.Bit, insuranceVerified || false);
+    updateRequest.input('Awards', sql.NVarChar, JSON.stringify(awards) || null);
+    updateRequest.input('Certifications', sql.NVarChar, JSON.stringify(certifications) || null);
+    updateRequest.input('IsEcoFriendly', sql.Bit, isEcoFriendly || false);
+    updateRequest.input('IsPremium', sql.Bit, isPremium || false);
+    
+    await updateRequest.query(`
+      UPDATE VendorProfiles 
+      SET LicenseNumber = @LicenseNumber,
+          InsuranceVerified = @InsuranceVerified,
+          Awards = @Awards,
+          Certifications = @Certifications,
+          IsEcoFriendly = @IsEcoFriendly,
+          IsPremium = @IsPremium,
+          UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    res.json({
+      success: true,
+      message: 'Verification and legal information saved successfully',
+      step: 9,
+      nextStep: 10
+    });
+    
+  } catch (err) {
+    console.error('Step 9 setup error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save verification and legal information',
+      error: err.message
+    });
+  }
+});
+
+// Step 10: Setup Completion & Optional Info
+router.post('/setup/step10-completion', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      faqs,
+      testimonials
+    } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Handle FAQs
+    if (faqs && faqs.length > 0) {
+      // Delete existing FAQs
+      const deleteRequest = new sql.Request(pool);
+      deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteRequest.query(`
+        DELETE FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID
+      `);
+      
+      // Insert new FAQs
+      for (let i = 0; i < faqs.length; i++) {
+        const faqRequest = new sql.Request(pool);
+        faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        faqRequest.input('Question', sql.NVarChar, faqs[i].question);
+        faqRequest.input('Answer', sql.NVarChar, faqs[i].answer);
+        faqRequest.input('DisplayOrder', sql.Int, i);
+        
+        await faqRequest.query(`
+          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder)
+          VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder)
+        `);
+      }
+    }
+    
+    // Mark setup as completed
+    const updateRequest = new sql.Request(pool);
+    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    await updateRequest.query(`
+      UPDATE VendorProfiles 
+      SET IsCompleted = 1, UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    res.json({
+      success: true,
+      message: 'Vendor setup completed successfully! Your profile is now live.',
+      step: 10,
+      completed: true
+    });
+    
+  } catch (err) {
+    console.error('Step 10 setup error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to complete vendor setup',
+      error: err.message
+    });
+  }
+});
+
+// Get vendor setup progress
+router.get('/setup/progress/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.query(`
+      SELECT 
+        v.IsCompleted,
+        v.BusinessName,
+        v.BusinessEmail,
+        v.BusinessPhone,
+        v.Address,
+        v.FeaturedImageURL,
+        v.AcceptingBookings,
+        (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID = @VendorProfileID) as CategoriesCount,
+        (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = @VendorProfileID) as ImagesCount,
+        (SELECT COUNT(*) FROM Services WHERE CategoryID IN (SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID)) as ServicesCount,
+        (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID) as SocialMediaCount,
+        (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID) as BusinessHoursCount
+      FROM VendorProfiles v
+      WHERE v.VendorProfileID = @VendorProfileID
+    `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found'
+      });
+    }
+    
+    const profile = result.recordset[0];
+    
+    // Calculate completion progress
+    const steps = {
+      step1: !!(profile.BusinessName && profile.BusinessEmail && profile.BusinessPhone && profile.CategoriesCount > 0),
+      step2: !!(profile.Address),
+      step3: !!(profile.FeaturedImageURL),
+      step4: !!(profile.ServicesCount > 0),
+      step5: true, // Optional step
+      step6: !!(profile.SocialMediaCount > 0),
+      step7: !!(profile.BusinessHoursCount > 0),
+      step8: true, // Policies are optional initially
+      step9: true, // Verification is optional initially
+      step10: profile.IsCompleted
+    };
+    
+    const completedSteps = Object.values(steps).filter(Boolean).length;
+    const totalSteps = Object.keys(steps).length;
+    const progressPercentage = Math.round((completedSteps / totalSteps) * 100);
+    
+    res.json({
+      success: true,
+      progress: {
+        currentStep: profile.IsCompleted ? 10 : completedSteps + 1,
+        completedSteps,
+        totalSteps,
+        progressPercentage,
+        isCompleted: profile.IsCompleted,
+        steps
+      }
+    });
+    
+  } catch (err) {
+    console.error('Setup progress error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get setup progress',
+      error: err.message
+    });
+  }
+});
+
 // ===== ENHANCED VENDOR SETUP ENDPOINTS =====
 
 // Get vendor setup progress
