@@ -720,10 +720,20 @@ router.get('/profile', async (req, res) => {
   try {
     const { userId } = req.query;
 
+    // Validate userId parameter
     if (!userId) {
       return res.status(400).json({
         success: false,
         message: 'User ID is required'
+      });
+    }
+
+    // Validate that userId is a valid number
+    const userIdNum = parseInt(userId);
+    if (isNaN(userIdNum) || userIdNum <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid User ID format. Must be a positive number.'
       });
     }
 
@@ -733,9 +743,9 @@ router.get('/profile', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
-    // First, check if user is a vendor and get their vendor profile ID
+    // First, check if user exists and is a vendor, then get their vendor profile ID
     const userRequest = new sql.Request(pool);
-    userRequest.input('UserID', sql.Int, userId);
+    userRequest.input('UserID', sql.Int, userIdNum);
 
     const userResult = await userRequest.query(`
       SELECT 
@@ -752,45 +762,54 @@ router.get('/profile', async (req, res) => {
     if (userResult.recordset.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: 'User not found or inactive'
       });
     }
 
     const user = userResult.recordset[0];
 
-    if (!user.IsVendor || !user.VendorProfileID) {
+    if (!user.IsVendor) {
       return res.status(403).json({
         success: false,
-        message: 'User is not a vendor or vendor profile not found'
+        message: 'User is not registered as a vendor'
       });
     }
 
-    // Get comprehensive vendor profile data
+    if (!user.VendorProfileID) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found. Please complete vendor registration.'
+      });
+    }
+
+    // Get comprehensive vendor profile data using the stored procedure
     const profileRequest = new sql.Request(pool);
     profileRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+    profileRequest.input('UserID', sql.Int, userIdNum); // Pass UserID for favorite check
 
     const profileResult = await profileRequest.execute('sp_GetVendorDetails');
     
     if (profileResult.recordsets.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor profile not found'
+        message: 'Vendor profile details not found'
       });
     }
 
     // Structure the comprehensive profile data
     const profileData = {
-      profile: profileResult.recordsets[0][0],
-      categories: profileResult.recordsets[1],
-      services: profileResult.recordsets[2],
-      addOns: profileResult.recordsets[3],
-      portfolio: profileResult.recordsets[4],
-      reviews: profileResult.recordsets[5],
-      faqs: profileResult.recordsets[6],
-      team: profileResult.recordsets[7],
-      socialMedia: profileResult.recordsets[8],
-      businessHours: profileResult.recordsets[9],
-      images: profileResult.recordsets[10],
+      profile: profileResult.recordsets[0][0] || {},
+      categories: profileResult.recordsets[1] || [],
+      services: profileResult.recordsets[2] || [],
+      addOns: profileResult.recordsets[3] || [],
+      portfolio: profileResult.recordsets[4] || [],
+      reviews: profileResult.recordsets[5] || [],
+      faqs: profileResult.recordsets[6] || [],
+      team: profileResult.recordsets[7] || [],
+      socialMedia: profileResult.recordsets[8] || [],
+      businessHours: profileResult.recordsets[9] || [],
+      images: profileResult.recordsets[10] || [],
+      isFavorite: profileResult.recordsets[11] ? profileResult.recordsets[11][0]?.IsFavorite || false : false,
       availableSlots: profileResult.recordsets[12] || []
     };
 
@@ -798,9 +817,7 @@ router.get('/profile', async (req, res) => {
     const progressRequest = new sql.Request(pool);
     progressRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
 
-    const progressResult = await progressRequest.execute('sp_GetVendorSetupProgress');
-    
-    const setupProgress = progressResult.recordset.length > 0 ? progressResult.recordset[0] : {
+    let setupProgress = {
       SetupStep: 1,
       SetupCompleted: false,
       GalleryCompleted: false,
@@ -810,8 +827,19 @@ router.get('/profile', async (req, res) => {
       AvailabilityCompleted: false
     };
 
+    try {
+      const progressResult = await progressRequest.execute('sp_GetVendorSetupProgress');
+      if (progressResult.recordset.length > 0) {
+        setupProgress = progressResult.recordset[0];
+      }
+    } catch (progressError) {
+      console.warn('Setup progress query failed, using defaults:', progressError.message);
+    }
+
+    // Return successful response with vendor profile data
     res.json({
       success: true,
+      vendorProfileId: user.VendorProfileID,
       data: {
         ...profileData,
         setupProgress: setupProgress,
@@ -825,7 +853,7 @@ router.get('/profile', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Profile error:', err);
+    console.error('Vendor profile error:', err);
     res.status(500).json({ 
       success: false,
       message: 'Failed to get vendor profile',
