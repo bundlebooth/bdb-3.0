@@ -5363,6 +5363,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('add-portfolio-item-btn')?.addEventListener('click', addPortfolioItem);
                 
                 // Step 4: Services & Packages functionality
+                document.getElementById('add-service-category-btn')?.addEventListener('click', showServiceCategoryForm);
+                document.getElementById('add-category-item-btn')?.addEventListener('click', addServiceCategory);
                 document.getElementById('add-service-btn')?.addEventListener('click', showServiceForm);
                 document.getElementById('add-service-item-btn')?.addEventListener('click', addServiceItem);
                 document.getElementById('add-package-btn')?.addEventListener('click', showPackageForm);
@@ -5606,6 +5608,28 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Services & Packages Functions
+            function showServiceCategoryForm() {
+                document.getElementById('service-category-form').style.display = 'block';
+            }
+
+            function addServiceCategory() {
+                const name = document.getElementById('category-name')?.value;
+                const description = document.getElementById('category-description')?.value;
+                
+                if (name) {
+                    if (!vendorSetupState.serviceCategories) {
+                        vendorSetupState.serviceCategories = [];
+                    }
+                    vendorSetupState.serviceCategories.push({
+                        name, 
+                        description: description || ''
+                    });
+                    updateServiceCategoriesDisplay();
+                    clearServiceCategoryForm();
+                    document.getElementById('service-category-form').style.display = 'none';
+                }
+            }
+
             function showServiceForm() {
                 document.getElementById('service-form').style.display = 'block';
             }
@@ -5710,6 +5734,19 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
+            function updateServiceCategoriesDisplay() {
+                const container = document.getElementById('service-categories-list');
+                if (container && vendorSetupState.serviceCategories) {
+                    container.innerHTML = vendorSetupState.serviceCategories.map((category, index) => `
+                        <div class="service-category-item">
+                            <strong>${category.name}</strong>
+                            <p>${category.description}</p>
+                            <button onclick="removeServiceCategory(${index})">Remove</button>
+                        </div>
+                    `).join('');
+                }
+            }
+
             function updateServicesDisplay() {
                 const container = document.getElementById('services-list');
                 if (container) {
@@ -5770,6 +5807,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('portfolio-form').style.display = 'none';
             }
 
+            function clearServiceCategoryForm() {
+                document.getElementById('category-name').value = '';
+                document.getElementById('category-description').value = '';
+            }
+
             function clearServiceForm() {
                 document.getElementById('service-name').value = '';
                 document.getElementById('service-description').value = '';
@@ -5798,6 +5840,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('faq-question').value = '';
                 document.getElementById('faq-answer').value = '';
                 document.getElementById('faq-form').style.display = 'none';
+            }
+
+            // Remove Functions
+            function removeServiceCategory(index) {
+                if (vendorSetupState.serviceCategories) {
+                    vendorSetupState.serviceCategories.splice(index, 1);
+                    updateServiceCategoriesDisplay();
+                }
             }
 
             // Complete Vendor Setup
@@ -6115,7 +6165,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     case 4: // Services & Packages
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
-                            serviceCategories: Array.from(document.querySelectorAll('input[name="service-categories"]:checked')).map(cb => cb.value),
+                            serviceCategories: vendorSetupState.serviceCategories || [],
                             services: vendorSetupState.services || [],
                             packages: vendorSetupState.packages || []
                         };
@@ -6131,15 +6181,32 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         break;
 
                     case 6: // Social Media & Links
+                        const socialMediaProfiles = [];
+                        
+                        // Collect social media profiles
+                        const socialPlatforms = [
+                            { platform: 'website', id: 'business-website' },
+                            { platform: 'facebook', id: 'social-facebook' },
+                            { platform: 'instagram', id: 'social-instagram' },
+                            { platform: 'twitter', id: 'social-twitter' },
+                            { platform: 'linkedin', id: 'social-linkedin' },
+                            { platform: 'youtube', id: 'social-youtube' },
+                            { platform: 'tiktok', id: 'social-tiktok' }
+                        ];
+                        
+                        socialPlatforms.forEach(item => {
+                            const url = document.getElementById(item.id)?.value || '';
+                            if (url.trim()) {
+                                socialMediaProfiles.push({
+                                    platform: item.platform,
+                                    url: url.trim()
+                                });
+                            }
+                        });
+                        
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
-                            website: document.getElementById('business-website')?.value || '',
-                            facebook: document.getElementById('social-facebook')?.value || '',
-                            instagram: document.getElementById('social-instagram')?.value || '',
-                            twitter: document.getElementById('social-twitter')?.value || '',
-                            linkedin: document.getElementById('social-linkedin')?.value || '',
-                            youtube: document.getElementById('social-youtube')?.value || '',
-                            tiktok: document.getElementById('social-tiktok')?.value || '',
+                            socialMediaProfiles,
                             bookingLink: document.getElementById('booking-link')?.value || ''
                         };
                         endpoint = '/vendors/setup/step6-social';
