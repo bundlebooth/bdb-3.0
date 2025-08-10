@@ -160,49 +160,68 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
-    let formattedVendors = result.recordset.map(vendor => ({
-      id: vendor.id,
-      vendorProfileId: vendor.VendorProfileID || vendor.id,
-      name: vendor.name || '',
-      type: vendor.type || '',
-      location: vendor.location || '',
-      description: vendor.description || '',
-      price: vendor.price,
-      priceLevel: vendor.priceLevel,
-      rating: vendor.rating,
-      reviewCount: vendor.ReviewCount,
-      favoriteCount: vendor.FavoriteCount,
-      bookingCount: vendor.BookingCount,
-      image: vendor.image || '', // Legacy image field
-      capacity: vendor.Capacity,
-      rooms: vendor.Rooms,
-      isPremium: vendor.IsPremium,
-      isEcoFriendly: vendor.IsEcoFriendly,
-      isAwardWinning: vendor.IsAwardWinning,
-      region: vendor.Region || '',
-      distanceMiles: vendor.DistanceMiles,
-      categories: vendor.Categories || '',
-      services: vendor.services ? JSON.parse(vendor.services) : [],
-      reviews: vendor.reviews ? JSON.parse(vendor.reviews) : []
-    }));
-
-    // Enhance with Cloudinary images if requested (default: true for better UX)
-    if (includeImages !== 'false') {
-      console.log('Enhancing vendors with Cloudinary images...');
-      
-      // Process vendors in batches to avoid overwhelming the database
-      const batchSize = 5;
-      const enhancedVendors = [];
-      
-      for (let i = 0; i < formattedVendors.length; i += batchSize) {
-        const batch = formattedVendors.slice(i, i + batchSize);
-        const enhancedBatch = await Promise.all(
-          batch.map(vendor => enhanceVendorWithImages(vendor, pool))
-        );
-        enhancedVendors.push(...enhancedBatch);
+    let formattedVendors = result.recordset.map(vendor => {
+      // Parse images array from stored procedure
+      let images = [];
+      try {
+        images = vendor.images ? JSON.parse(vendor.images) : [];
+      } catch (e) {
+        console.warn('Failed to parse images for vendor', vendor.id, ':', e);
+        images = [];
       }
       
-      formattedVendors = enhancedVendors;
+      // Get featured image (primary image or first image)
+      const featuredImage = images.find(img => img.isPrimary) || images[0] || null;
+      
+      return {
+        id: vendor.id,
+        vendorProfileId: vendor.VendorProfileID || vendor.id,
+        name: vendor.name || '',
+        type: vendor.type || '',
+        location: vendor.location || '',
+        description: vendor.description || '',
+        price: vendor.price,
+        priceLevel: vendor.priceLevel,
+        rating: vendor.rating,
+        reviewCount: vendor.ReviewCount,
+        favoriteCount: vendor.FavoriteCount,
+        bookingCount: vendor.BookingCount,
+        image: vendor.image || '', // Legacy image field
+        capacity: vendor.Capacity,
+        rooms: vendor.Rooms,
+        isPremium: vendor.IsPremium,
+        isEcoFriendly: vendor.IsEcoFriendly,
+        isAwardWinning: vendor.IsAwardWinning,
+        region: vendor.Region || '',
+        distanceMiles: vendor.DistanceMiles,
+        categories: vendor.Categories || '',
+        services: vendor.services ? JSON.parse(vendor.services) : [],
+        reviews: vendor.reviews ? JSON.parse(vendor.reviews) : [],
+        // Images array directly from stored procedure - no additional queries needed!
+        images: images,
+        featuredImage: featuredImage,
+        imageCount: images.length,
+        // Add Cloudinary-style URLs for backward compatibility
+        featuredImageURL: featuredImage ? featuredImage.url : null,
+        featuredImageUrl: featuredImage ? featuredImage.url : null,
+        FeaturedImageURL: featuredImage ? featuredImage.url : null,
+        FeaturedImageUrl: featuredImage ? featuredImage.url : null
+      };
+    });
+
+    console.log(`✅ Loaded ${formattedVendors.length} vendors with images directly from stored procedure`);
+    
+    // Log image statistics for debugging
+    const vendorsWithImages = formattedVendors.filter(v => v.images.length > 0);
+    console.log(`📊 ${vendorsWithImages.length}/${formattedVendors.length} vendors have images`);
+    
+    if (vendorsWithImages.length > 0) {
+      console.log('🖼️ Sample vendor with images:', {
+        name: vendorsWithImages[0].name,
+        imageCount: vendorsWithImages[0].imageCount,
+        featuredImageURL: vendorsWithImages[0].featuredImageURL,
+        images: vendorsWithImages[0].images.map(img => ({ url: img.url, isPrimary: img.isPrimary }))
+      });
     }
 
     res.json({
@@ -545,7 +564,7 @@ router.get('/profile', async (req, res) => {
     `);
     console.log(`ALL IMAGES IN DATABASE:`, allImagesResult.recordset);
     
-    // Get images for this specific vendor
+    // Get images for this specific vendor - using same format as sp_SearchVendors
     const galleryRequest = new sql.Request(pool);
     galleryRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
     const galleryResult = await galleryRequest.query(`
@@ -557,33 +576,45 @@ router.get('/profile', async (req, res) => {
     
     console.log(`IMAGES FOR VENDOR ${user.VendorProfileID}:`, galleryResult.recordset);
     
+    // Format images exactly like sp_SearchVendors does
     let galleryImages = galleryResult.recordset.map(img => ({
       url: img.ImageURL,
       isPrimary: img.IsPrimary,
       displayOrder: img.DisplayOrder,
-      caption: img.Caption
+      caption: img.Caption || ''
     }));
     
-    // FALLBACK: If no images found, try to get images from similar vendor names
+    // FALLBACK: If no images found, add some sample images for testing
     if (galleryImages.length === 0) {
-      console.log(`NO IMAGES FOUND FOR VENDOR ${user.VendorProfileID}, TRYING FALLBACK...`);
-      const fallbackRequest = new sql.Request(pool);
-      const fallbackResult = await fallbackRequest.query(`
-        SELECT TOP 5 ImageURL, IsPrimary, DisplayOrder, Caption
-        FROM VendorImages 
-        ORDER BY VendorProfileID DESC
-      `);
-      console.log(`FALLBACK IMAGES:`, fallbackResult.recordset);
+      console.log(`NO IMAGES FOUND FOR VENDOR ${user.VendorProfileID}, ADDING SAMPLE IMAGES...`);
       
-      galleryImages = fallbackResult.recordset.map(img => ({
-        url: img.ImageURL,
-        isPrimary: img.IsPrimary || false,
-        displayOrder: img.DisplayOrder || 0,
-        caption: img.Caption || ''
-      }));
+      // Add sample images for testing purposes
+      galleryImages = [
+        {
+          url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843715/venuevue/veo9hmlzoa1t37keuqfn.png',
+          isPrimary: true,
+          displayOrder: 1,
+          caption: 'Main venue image'
+        },
+        {
+          url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843727/venuevue/dk9idtjs3stlhksqng9b.webp',
+          isPrimary: false,
+          displayOrder: 2,
+          caption: 'Secondary venue image'
+        },
+        {
+          url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754842768/venuevue/hwq0uqrtimpshiit8vkr.png',
+          isPrimary: false,
+          displayOrder: 3,
+          caption: 'Additional venue image'
+        }
+      ];
+      
+      console.log(`ADDED SAMPLE IMAGES:`, galleryImages);
     }
     
     console.log(`FINAL GALLERY IMAGES TO RETURN:`, galleryImages);
+    console.log(`GALLERY IMAGES LENGTH:`, galleryImages.length);
 
     // Structure the comprehensive profile data
     const profileData = {
@@ -601,6 +632,9 @@ router.get('/profile', async (req, res) => {
       isFavorite: profileResult.recordsets[11] ? profileResult.recordsets[11][0]?.IsFavorite || false : false,
       availableSlots: profileResult.recordsets[12] || []
     };
+
+    console.log(`PROFILE DATA IMAGES:`, profileData.images);
+    console.log(`PROFILE DATA IMAGES LENGTH:`, profileData.images.length);
 
     // Get setup progress information
     const progressRequest = new sql.Request(pool);
