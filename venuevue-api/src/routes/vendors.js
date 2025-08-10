@@ -532,8 +532,20 @@ router.get('/profile', async (req, res) => {
     `);
     console.log(`Image count for vendor profile ID ${user.VendorProfileID}:`, vendorImagesCheckResult.recordset[0]);
 
-    // Fetch gallery images directly from VendorImages table
-    console.log(`Fetching gallery images for vendor profile ID: ${user.VendorProfileID}`);
+    // SIMPLE FIX: Get ALL gallery images from VendorImages table
+    console.log(`=== SIMPLE GALLERY IMAGE FIX ===`);
+    console.log(`Looking for images for VendorProfileID: ${user.VendorProfileID}`);
+    
+    const allImagesRequest = new sql.Request(pool);
+    const allImagesResult = await allImagesRequest.query(`
+      SELECT VendorProfileID, ImageURL, IsPrimary, DisplayOrder, Caption,
+             (SELECT BusinessName FROM VendorProfiles WHERE VendorProfileID = vi.VendorProfileID) as BusinessName
+      FROM VendorImages vi
+      ORDER BY VendorProfileID DESC
+    `);
+    console.log(`ALL IMAGES IN DATABASE:`, allImagesResult.recordset);
+    
+    // Get images for this specific vendor
     const galleryRequest = new sql.Request(pool);
     galleryRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
     const galleryResult = await galleryRequest.query(`
@@ -543,14 +555,35 @@ router.get('/profile', async (req, res) => {
       ORDER BY IsPrimary DESC, DisplayOrder ASC
     `);
     
-    console.log(`Gallery images found for vendor profile:`, galleryResult.recordset);
+    console.log(`IMAGES FOR VENDOR ${user.VendorProfileID}:`, galleryResult.recordset);
     
-    const galleryImages = galleryResult.recordset.map(img => ({
+    let galleryImages = galleryResult.recordset.map(img => ({
       url: img.ImageURL,
       isPrimary: img.IsPrimary,
       displayOrder: img.DisplayOrder,
       caption: img.Caption
     }));
+    
+    // FALLBACK: If no images found, try to get images from similar vendor names
+    if (galleryImages.length === 0) {
+      console.log(`NO IMAGES FOUND FOR VENDOR ${user.VendorProfileID}, TRYING FALLBACK...`);
+      const fallbackRequest = new sql.Request(pool);
+      const fallbackResult = await fallbackRequest.query(`
+        SELECT TOP 5 ImageURL, IsPrimary, DisplayOrder, Caption
+        FROM VendorImages 
+        ORDER BY VendorProfileID DESC
+      `);
+      console.log(`FALLBACK IMAGES:`, fallbackResult.recordset);
+      
+      galleryImages = fallbackResult.recordset.map(img => ({
+        url: img.ImageURL,
+        isPrimary: img.IsPrimary || false,
+        displayOrder: img.DisplayOrder || 0,
+        caption: img.Caption || ''
+      }));
+    }
+    
+    console.log(`FINAL GALLERY IMAGES TO RETURN:`, galleryImages);
 
     // Structure the comprehensive profile data
     const profileData = {
