@@ -60,6 +60,7 @@ const reviewsRouter = require('./routes/reviews');
 const usersRouter = require('./routes/users');
 const notificationsRouter = require('./routes/notifications');
 const vendorDashboardRouter = require('./routes/vendorDashboard');
+const uploadRouter = require('./routes/upload');
 
 app.use('/api/users', usersRouter);
 app.use('/api/bookings', bookingsRouter);
@@ -69,6 +70,7 @@ app.use('/api/messages', messagesRouter);
 app.use('/api/reviews', reviewsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/vendor', vendorDashboardRouter);
+app.use('/api/upload', uploadRouter);
 
 // Fixed route to handle fetching vendor conversations with consistent data format
 app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
