@@ -1,136 +1,271 @@
 SET NOCOUNT ON;
 GO
 
--- Create a temporary table to hold all DDL scripts
-CREATE TABLE #DDLScripts (
-    ObjectType VARCHAR(50),
-    ObjectName NVARCHAR(255),
-    ScriptText NVARCHAR(MAX)
-);
+-- Header information
+PRINT '-- COMPLETE DATABASE DDL SCRIPT';
+PRINT '-- Database: ' + DB_NAME();
+PRINT '-- Generated: ' + CONVERT(VARCHAR(20), GETDATE(), 120);
+PRINT '-- Creation order: Tables → Views → Functions → Procedures → Triggers';
+PRINT '--';
+PRINT '-- To save: Right-click in Messages tab → "Save Results As..." → .sql file';
+PRINT '-- =============================================';
+PRINT '';
 
--- Variables for dynamic SQL
-DECLARE @DatabaseName NVARCHAR(255) = DB_NAME();
-DECLARE @CRLF NVARCHAR(2) = CHAR(13) + CHAR(10);
-DECLARE @SQL NVARCHAR(MAX);
+-- 1. TABLES with full CREATE syntax
+PRINT '-- =============================================';
+PRINT '-- TABLES (with constraints)';
+PRINT '-- =============================================';
+PRINT '';
 
--- 1. TABLES (with constraints) - must be created first
-SET @SQL = N'
-USE [' + @DatabaseName + N'];
-INSERT INTO #DDLScripts
+DECLARE @TableName NVARCHAR(255);
+DECLARE @SchemaName NVARCHAR(255);
+DECLARE @TableScript NVARCHAR(MAX);
+DECLARE @ColumnScript NVARCHAR(MAX);
+DECLARE @ConstraintScript NVARCHAR(MAX);
+
+DECLARE TableCursor CURSOR FOR
 SELECT 
-    ''TABLE'' AS ObjectType,
-    SCHEMA_NAME(schema_id) + ''.'' + name AS ObjectName,
-    ''-- Table: '' + SCHEMA_NAME(schema_id) + ''.'' + name + @CRLF +
-    OBJECT_DEFINITION(object_id) + @CRLF + ''GO'' + @CRLF
+    SCHEMA_NAME(schema_id) AS schema_name,
+    name AS table_name
 FROM sys.tables
 WHERE is_ms_shipped = 0
-ORDER BY SCHEMA_NAME(schema_id), name;';
+ORDER BY SCHEMA_NAME(schema_id), name;
 
-EXEC sp_executesql @SQL, N'@CRLF NVARCHAR(2)', @CRLF;
-
--- 2. VIEWS - depend on tables
-SET @SQL = N'
-USE [' + @DatabaseName + N'];
-INSERT INTO #DDLScripts
-SELECT 
-    ''VIEW'' AS ObjectType,
-    SCHEMA_NAME(schema_id) + ''.'' + name AS ObjectName,
-    ''-- View: '' + SCHEMA_NAME(schema_id) + ''.'' + name + @CRLF +
-    OBJECT_DEFINITION(object_id) + @CRLF + ''GO'' + @CRLF
-FROM sys.views
-WHERE is_ms_shipped = 0
-ORDER BY SCHEMA_NAME(schema_id), name;';
-
-EXEC sp_executesql @SQL, N'@CRLF NVARCHAR(2)', @CRLF;
-
--- 3. FUNCTIONS - depend on tables/views
-SET @SQL = N'
-USE [' + @DatabaseName + N'];
-INSERT INTO #DDLScripts
-SELECT 
-    ''FUNCTION'' AS ObjectType,
-    SCHEMA_NAME(schema_id) + ''.'' + name AS ObjectName,
-    ''-- Function: '' + SCHEMA_NAME(schema_id) + ''.'' + name + @CRLF +
-    OBJECT_DEFINITION(object_id) + @CRLF + ''GO'' + @CRLF
-FROM sys.objects
-WHERE type_desc IN (''SQL_SCALAR_FUNCTION'', ''SQL_INLINE_TABLE_VALUED_FUNCTION'', ''SQL_TABLE_VALUED_FUNCTION'')
-AND is_ms_shipped = 0
-ORDER BY SCHEMA_NAME(schema_id), name;';
-
-EXEC sp_executesql @SQL, N'@CRLF NVARCHAR(2)', @CRLF;
-
--- 4. STORED PROCEDURES - depend on all other objects
-SET @SQL = N'
-USE [' + @DatabaseName + N'];
-INSERT INTO #DDLScripts
-SELECT 
-    ''PROCEDURE'' AS ObjectType,
-    SCHEMA_NAME(schema_id) + ''.'' + name AS ObjectName,
-    ''-- Procedure: '' + SCHEMA_NAME(schema_id) + ''.'' + name + @CRLF +
-    OBJECT_DEFINITION(object_id) + @CRLF + ''GO'' + @CRLF
-FROM sys.procedures
-WHERE is_ms_shipped = 0
-ORDER BY SCHEMA_NAME(schema_id), name;';
-
-EXEC sp_executesql @SQL, N'@CRLF NVARCHAR(2)', @CRLF;
-
--- 5. TRIGGERS - depend on tables
-SET @SQL = N'
-USE [' + @DatabaseName + N'];
-INSERT INTO #DDLScripts
-SELECT 
-    ''TRIGGER'' AS ObjectType,
-    OBJECT_SCHEMA_NAME(parent_id) + ''.'' + OBJECT_NAME(parent_id) + ''.'' + name AS ObjectName,
-    ''-- Trigger: '' + OBJECT_SCHEMA_NAME(parent_id) + ''.'' + OBJECT_NAME(parent_id) + ''.'' + name + @CRLF +
-    OBJECT_DEFINITION(object_id) + @CRLF + ''GO'' + @CRLF
-FROM sys.triggers
-WHERE is_ms_shipped = 0
-ORDER BY OBJECT_SCHEMA_NAME(parent_id), OBJECT_NAME(parent_id), name;';
-
-EXEC sp_executesql @SQL, N'@CRLF NVARCHAR(2)', @CRLF;
-
--- Print all scripts in proper order
-DECLARE @CurrentScript NVARCHAR(MAX);
-DECLARE @TotalScript NVARCHAR(MAX) = '';
-
--- Get scripts ordered by object type (creation order)
-DECLARE script_cursor CURSOR FOR
-SELECT ScriptText FROM #DDLScripts
-ORDER BY 
-    CASE ObjectType
-        WHEN 'TABLE' THEN 1
-        WHEN 'VIEW' THEN 2
-        WHEN 'FUNCTION' THEN 3
-        WHEN 'PROCEDURE' THEN 4
-        WHEN 'TRIGGER' THEN 5
-        ELSE 6
-    END,
-    ObjectName;
-
-OPEN script_cursor;
-FETCH NEXT FROM script_cursor INTO @CurrentScript;
+OPEN TableCursor;
+FETCH NEXT FROM TableCursor INTO @SchemaName, @TableName;
 
 WHILE @@FETCH_STATUS = 0
 BEGIN
-    -- For SSMS, we need to print in chunks <= 8000 characters
-    DECLARE @Chunk NVARCHAR(MAX);
-    DECLARE @Pos INT = 1;
-    DECLARE @Len INT = LEN(@CurrentScript);
-    DECLARE @ChunkSize INT = 4000; -- Conservative size to avoid truncation
+    -- Build CREATE TABLE statement
+    SET @TableScript = 'CREATE TABLE [' + @SchemaName + '].[' + @TableName + '] (' + CHAR(13) + CHAR(10);
     
-    WHILE @Pos <= @Len
+    -- Get all columns
+    SET @ColumnScript = '';
+    SELECT @ColumnScript = @ColumnScript + '    [' + c.name + '] ' + 
+        tp.name + 
+        CASE 
+            WHEN tp.name IN ('varchar','nvarchar','char','nchar','varbinary') 
+            THEN '(' + CASE WHEN c.max_length = -1 THEN 'MAX' ELSE CAST(c.max_length AS VARCHAR) END + ')'
+            WHEN tp.name IN ('decimal','numeric') 
+            THEN '(' + CAST(c.precision AS VARCHAR) + ',' + CAST(c.scale AS VARCHAR) + ')'
+            ELSE ''
+        END + ' ' +
+        CASE WHEN c.is_nullable = 0 THEN 'NOT NULL' ELSE 'NULL' END + ',' + CHAR(13) + CHAR(10)
+    FROM sys.columns c
+    JOIN sys.types tp ON c.user_type_id = tp.user_type_id
+    WHERE c.object_id = OBJECT_ID('[' + @SchemaName + '].[' + @TableName + ']')
+    ORDER BY c.column_id;
+    
+    -- Remove trailing comma and add to table script
+    IF LEN(@ColumnScript) > 0
+        SET @ColumnScript = LEFT(@ColumnScript, LEN(@ColumnScript) - 3) + CHAR(13) + CHAR(10);
+    
+    SET @TableScript = @TableScript + @ColumnScript + ');';
+    
+    -- Print the CREATE TABLE statement
+    PRINT '-- Table: [' + @SchemaName + '].[' + @TableName + ']';
+    PRINT @TableScript;
+    PRINT 'GO';
+    PRINT '';
+    
+    -- Get and print constraints
+    SET @ConstraintScript = '';
+    
+    -- Primary keys
+    SELECT @ConstraintScript = @ConstraintScript + 
+        'ALTER TABLE [' + @SchemaName + '].[' + @TableName + '] ' +
+        'ADD CONSTRAINT [' + k.name + '] PRIMARY KEY ' + 
+        CASE WHEN k.type_desc = 'CLUSTERED' THEN 'CLUSTERED' ELSE 'NONCLUSTERED' END + CHAR(13) + CHAR(10) +
+        '(' + STUFF((
+            SELECT ', [' + c.name + ']' + 
+                   CASE WHEN ic.is_descending_key = 1 THEN ' DESC' ELSE ' ASC' END
+            FROM sys.index_columns ic
+            JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+            WHERE ic.object_id = k.parent_object_id AND ic.index_id = k.unique_index_id
+            ORDER BY ic.key_ordinal
+            FOR XML PATH('')), 1, 2, '') + ');' + CHAR(13) + CHAR(10) + 'GO' + CHAR(13) + CHAR(10)
+    FROM sys.key_constraints k
+    WHERE k.parent_object_id = OBJECT_ID('[' + @SchemaName + '].[' + @TableName + ']') AND k.type = 'PK';
+    
+    -- Foreign keys
+    SELECT @ConstraintScript = @ConstraintScript + 
+        'ALTER TABLE [' + @SchemaName + '].[' + @TableName + '] ' +
+        'ADD CONSTRAINT [' + fk.name + '] FOREIGN KEY (' + 
+        STUFF((
+            SELECT ', [' + c.name + ']'
+            FROM sys.foreign_key_columns fkc
+            JOIN sys.columns c ON fkc.parent_object_id = c.object_id AND fkc.parent_column_id = c.column_id
+            WHERE fkc.constraint_object_id = fk.object_id
+            ORDER BY fkc.constraint_column_id
+            FOR XML PATH('')), 1, 2, '') + ')' + CHAR(13) + CHAR(10) +
+        'REFERENCES [' + SCHEMA_NAME(fk.referenced_object_id) + '].[' + 
+        OBJECT_NAME(fk.referenced_object_id) + '] (' + 
+        STUFF((
+            SELECT ', [' + c.name + ']'
+            FROM sys.foreign_key_columns fkc
+            JOIN sys.columns c ON fkc.referenced_object_id = c.object_id AND fkc.referenced_column_id = c.column_id
+            WHERE fkc.constraint_object_id = fk.object_id
+            ORDER BY fkc.constraint_column_id
+            FOR XML PATH('')), 1, 2, '') + ')' + 
+        CASE 
+            WHEN fk.delete_referential_action = 1 THEN CHAR(13) + CHAR(10) + 'ON DELETE CASCADE'
+            WHEN fk.delete_referential_action = 2 THEN CHAR(13) + CHAR(10) + 'ON DELETE SET NULL'
+            WHEN fk.delete_referential_action = 3 THEN CHAR(13) + CHAR(10) + 'ON DELETE SET DEFAULT'
+            ELSE ''
+        END +
+        CASE 
+            WHEN fk.update_referential_action = 1 THEN CHAR(13) + CHAR(10) + 'ON UPDATE CASCADE'
+            WHEN fk.update_referential_action = 2 THEN CHAR(13) + CHAR(10) + 'ON UPDATE SET NULL'
+            WHEN fk.update_referential_action = 3 THEN CHAR(13) + CHAR(10) + 'ON UPDATE SET DEFAULT'
+            ELSE ''
+        END + ';' + CHAR(13) + CHAR(10) + 'GO' + CHAR(13) + CHAR(10)
+    FROM sys.foreign_keys fk
+    WHERE fk.parent_object_id = OBJECT_ID('[' + @SchemaName + '].[' + @TableName + ']');
+    
+    -- Check constraints
+    SELECT @ConstraintScript = @ConstraintScript + 
+        'ALTER TABLE [' + @SchemaName + '].[' + @TableName + '] ' +
+        'ADD CONSTRAINT [' + cc.name + '] CHECK ' + 
+        OBJECT_DEFINITION(cc.object_id) + ';' + CHAR(13) + CHAR(10) + 'GO' + CHAR(13) + CHAR(10)
+    FROM sys.check_constraints cc
+    WHERE cc.parent_object_id = OBJECT_ID('[' + @SchemaName + '].[' + @TableName + ']');
+    
+    -- Print constraints if they exist
+    IF LEN(@ConstraintScript) > 0
     BEGIN
-        SET @Chunk = SUBSTRING(@CurrentScript, @Pos, @ChunkSize);
-        PRINT @Chunk;
-        SET @Pos = @Pos + @ChunkSize;
+        PRINT '-- Constraints for: [' + @SchemaName + '].[' + @TableName + ']';
+        PRINT @ConstraintScript;
     END
     
-    FETCH NEXT FROM script_cursor INTO @CurrentScript;
+    FETCH NEXT FROM TableCursor INTO @SchemaName, @TableName;
 END
 
-CLOSE script_cursor;
-DEALLOCATE script_cursor;
+CLOSE TableCursor;
+DEALLOCATE TableCursor;
 
--- Clean up
-DROP TABLE #DDLScripts;
+-- 2. VIEWS with CREATE statements
+PRINT '-- =============================================';
+PRINT '-- VIEWS';
+PRINT '-- =============================================';
+PRINT '';
+
+DECLARE ViewCursor CURSOR FOR
+SELECT 
+    SCHEMA_NAME(schema_id) AS schema_name,
+    name AS view_name,
+    OBJECT_DEFINITION(object_id) AS definition
+FROM sys.views
+WHERE is_ms_shipped = 0
+ORDER BY SCHEMA_NAME(schema_id), name;
+
+OPEN ViewCursor;
+FETCH NEXT FROM ViewCursor INTO @SchemaName, @TableName, @TableScript;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    PRINT '-- View: [' + @SchemaName + '].[' + @TableName + ']';
+    PRINT @TableScript;
+    PRINT 'GO';
+    PRINT '';
+    FETCH NEXT FROM ViewCursor INTO @SchemaName, @TableName, @TableScript;
+END
+
+CLOSE ViewCursor;
+DEALLOCATE ViewCursor;
+
+-- 3. FUNCTIONS with CREATE statements
+PRINT '-- =============================================';
+PRINT '-- FUNCTIONS';
+PRINT '-- =============================================';
+PRINT '';
+
+DECLARE FunctionCursor CURSOR FOR
+SELECT 
+    SCHEMA_NAME(schema_id) AS schema_name,
+    name AS function_name,
+    OBJECT_DEFINITION(object_id) AS definition
+FROM sys.objects
+WHERE type_desc IN ('SQL_SCALAR_FUNCTION', 'SQL_INLINE_TABLE_VALUED_FUNCTION', 'SQL_TABLE_VALUED_FUNCTION')
+AND is_ms_shipped = 0
+ORDER BY SCHEMA_NAME(schema_id), name;
+
+OPEN FunctionCursor;
+FETCH NEXT FROM FunctionCursor INTO @SchemaName, @TableName, @TableScript;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    PRINT '-- Function: [' + @SchemaName + '].[' + @TableName + ']';
+    PRINT @TableScript;
+    PRINT 'GO';
+    PRINT '';
+    FETCH NEXT FROM FunctionCursor INTO @SchemaName, @TableName, @TableScript;
+END
+
+CLOSE FunctionCursor;
+DEALLOCATE FunctionCursor;
+
+-- 4. STORED PROCEDURES with CREATE statements
+PRINT '-- =============================================';
+PRINT '-- STORED PROCEDURES';
+PRINT '-- =============================================';
+PRINT '';
+
+DECLARE ProcedureCursor CURSOR FOR
+SELECT 
+    SCHEMA_NAME(schema_id) AS schema_name,
+    name AS procedure_name,
+    OBJECT_DEFINITION(object_id) AS definition
+FROM sys.procedures
+WHERE is_ms_shipped = 0
+ORDER BY SCHEMA_NAME(schema_id), name;
+
+OPEN ProcedureCursor;
+FETCH NEXT FROM ProcedureCursor INTO @SchemaName, @TableName, @TableScript;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    PRINT '-- Procedure: [' + @SchemaName + '].[' + @TableName + ']';
+    PRINT @TableScript;
+    PRINT 'GO';
+    PRINT '';
+    FETCH NEXT FROM ProcedureCursor INTO @SchemaName, @TableName, @TableScript;
+END
+
+CLOSE ProcedureCursor;
+DEALLOCATE ProcedureCursor;
+
+-- 5. TRIGGERS with CREATE statements
+PRINT '-- =============================================';
+PRINT '-- TRIGGERS';
+PRINT '-- =============================================';
+PRINT '';
+
+DECLARE TriggerCursor CURSOR FOR
+SELECT 
+    OBJECT_SCHEMA_NAME(parent_id) AS schema_name,
+    OBJECT_NAME(parent_id) AS parent_name,
+    name AS trigger_name,
+    OBJECT_DEFINITION(object_id) AS definition
+FROM sys.triggers
+WHERE is_ms_shipped = 0
+ORDER BY OBJECT_SCHEMA_NAME(parent_id), OBJECT_NAME(parent_id), name;
+
+OPEN TriggerCursor;
+FETCH NEXT FROM TriggerCursor INTO @SchemaName, @TableName, @ConstraintScript, @TableScript;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    PRINT '-- Trigger: [' + @SchemaName + '].[' + @TableName + '].[' + @ConstraintScript + ']';
+    PRINT @TableScript;
+    PRINT 'GO';
+    PRINT '';
+    FETCH NEXT FROM TriggerCursor INTO @SchemaName, @TableName, @ConstraintScript, @TableScript;
+END
+
+CLOSE TriggerCursor;
+DEALLOCATE TriggerCursor;
+
+PRINT '-- =============================================';
+PRINT '-- DATABASE DDL GENERATION COMPLETE';
+PRINT '-- =============================================';
 GO
