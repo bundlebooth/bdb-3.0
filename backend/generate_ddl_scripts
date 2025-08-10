@@ -1,0 +1,136 @@
+SET NOCOUNT ON;
+GO
+
+-- Create a temporary table to hold all DDL scripts
+CREATE TABLE #DDLScripts (
+    ObjectType VARCHAR(50),
+    ObjectName NVARCHAR(255),
+    ScriptText NVARCHAR(MAX)
+);
+
+-- Variables for dynamic SQL
+DECLARE @DatabaseName NVARCHAR(255) = DB_NAME();
+DECLARE @CRLF NVARCHAR(2) = CHAR(13) + CHAR(10);
+DECLARE @SQL NVARCHAR(MAX);
+
+-- 1. TABLES (with constraints) - must be created first
+SET @SQL = N'
+USE [' + @DatabaseName + N'];
+INSERT INTO #DDLScripts
+SELECT 
+    ''TABLE'' AS ObjectType,
+    SCHEMA_NAME(schema_id) + ''.'' + name AS ObjectName,
+    ''-- Table: '' + SCHEMA_NAME(schema_id) + ''.'' + name + @CRLF +
+    OBJECT_DEFINITION(object_id) + @CRLF + ''GO'' + @CRLF
+FROM sys.tables
+WHERE is_ms_shipped = 0
+ORDER BY SCHEMA_NAME(schema_id), name;';
+
+EXEC sp_executesql @SQL, N'@CRLF NVARCHAR(2)', @CRLF;
+
+-- 2. VIEWS - depend on tables
+SET @SQL = N'
+USE [' + @DatabaseName + N'];
+INSERT INTO #DDLScripts
+SELECT 
+    ''VIEW'' AS ObjectType,
+    SCHEMA_NAME(schema_id) + ''.'' + name AS ObjectName,
+    ''-- View: '' + SCHEMA_NAME(schema_id) + ''.'' + name + @CRLF +
+    OBJECT_DEFINITION(object_id) + @CRLF + ''GO'' + @CRLF
+FROM sys.views
+WHERE is_ms_shipped = 0
+ORDER BY SCHEMA_NAME(schema_id), name;';
+
+EXEC sp_executesql @SQL, N'@CRLF NVARCHAR(2)', @CRLF;
+
+-- 3. FUNCTIONS - depend on tables/views
+SET @SQL = N'
+USE [' + @DatabaseName + N'];
+INSERT INTO #DDLScripts
+SELECT 
+    ''FUNCTION'' AS ObjectType,
+    SCHEMA_NAME(schema_id) + ''.'' + name AS ObjectName,
+    ''-- Function: '' + SCHEMA_NAME(schema_id) + ''.'' + name + @CRLF +
+    OBJECT_DEFINITION(object_id) + @CRLF + ''GO'' + @CRLF
+FROM sys.objects
+WHERE type_desc IN (''SQL_SCALAR_FUNCTION'', ''SQL_INLINE_TABLE_VALUED_FUNCTION'', ''SQL_TABLE_VALUED_FUNCTION'')
+AND is_ms_shipped = 0
+ORDER BY SCHEMA_NAME(schema_id), name;';
+
+EXEC sp_executesql @SQL, N'@CRLF NVARCHAR(2)', @CRLF;
+
+-- 4. STORED PROCEDURES - depend on all other objects
+SET @SQL = N'
+USE [' + @DatabaseName + N'];
+INSERT INTO #DDLScripts
+SELECT 
+    ''PROCEDURE'' AS ObjectType,
+    SCHEMA_NAME(schema_id) + ''.'' + name AS ObjectName,
+    ''-- Procedure: '' + SCHEMA_NAME(schema_id) + ''.'' + name + @CRLF +
+    OBJECT_DEFINITION(object_id) + @CRLF + ''GO'' + @CRLF
+FROM sys.procedures
+WHERE is_ms_shipped = 0
+ORDER BY SCHEMA_NAME(schema_id), name;';
+
+EXEC sp_executesql @SQL, N'@CRLF NVARCHAR(2)', @CRLF;
+
+-- 5. TRIGGERS - depend on tables
+SET @SQL = N'
+USE [' + @DatabaseName + N'];
+INSERT INTO #DDLScripts
+SELECT 
+    ''TRIGGER'' AS ObjectType,
+    OBJECT_SCHEMA_NAME(parent_id) + ''.'' + OBJECT_NAME(parent_id) + ''.'' + name AS ObjectName,
+    ''-- Trigger: '' + OBJECT_SCHEMA_NAME(parent_id) + ''.'' + OBJECT_NAME(parent_id) + ''.'' + name + @CRLF +
+    OBJECT_DEFINITION(object_id) + @CRLF + ''GO'' + @CRLF
+FROM sys.triggers
+WHERE is_ms_shipped = 0
+ORDER BY OBJECT_SCHEMA_NAME(parent_id), OBJECT_NAME(parent_id), name;';
+
+EXEC sp_executesql @SQL, N'@CRLF NVARCHAR(2)', @CRLF;
+
+-- Print all scripts in proper order
+DECLARE @CurrentScript NVARCHAR(MAX);
+DECLARE @TotalScript NVARCHAR(MAX) = '';
+
+-- Get scripts ordered by object type (creation order)
+DECLARE script_cursor CURSOR FOR
+SELECT ScriptText FROM #DDLScripts
+ORDER BY 
+    CASE ObjectType
+        WHEN 'TABLE' THEN 1
+        WHEN 'VIEW' THEN 2
+        WHEN 'FUNCTION' THEN 3
+        WHEN 'PROCEDURE' THEN 4
+        WHEN 'TRIGGER' THEN 5
+        ELSE 6
+    END,
+    ObjectName;
+
+OPEN script_cursor;
+FETCH NEXT FROM script_cursor INTO @CurrentScript;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    -- For SSMS, we need to print in chunks <= 8000 characters
+    DECLARE @Chunk NVARCHAR(MAX);
+    DECLARE @Pos INT = 1;
+    DECLARE @Len INT = LEN(@CurrentScript);
+    DECLARE @ChunkSize INT = 4000; -- Conservative size to avoid truncation
+    
+    WHILE @Pos <= @Len
+    BEGIN
+        SET @Chunk = SUBSTRING(@CurrentScript, @Pos, @ChunkSize);
+        PRINT @Chunk;
+        SET @Pos = @Pos + @ChunkSize;
+    END
+    
+    FETCH NEXT FROM script_cursor INTO @CurrentScript;
+END
+
+CLOSE script_cursor;
+DEALLOCATE script_cursor;
+
+-- Clean up
+DROP TABLE #DDLScripts;
+GO
