@@ -5365,8 +5365,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('back-to-step-9')?.addEventListener('click', () => goToSetupStep(9));
                 
                 // Step 3: Gallery & Media functionality
-                document.getElementById('featured-image-upload')?.addEventListener('change', handleFeaturedImageUpload);
-                document.getElementById('gallery-upload')?.addEventListener('change', handleGalleryUpload);
+                document.getElementById('featured-image')?.addEventListener('change', handleFeaturedImageUpload);
+                document.getElementById('gallery-images')?.addEventListener('change', handleGalleryUpload);
                 document.getElementById('add-portfolio-btn')?.addEventListener('click', showPortfolioForm);
                 document.getElementById('add-portfolio-item-btn')?.addEventListener('click', addPortfolioItem);
                 
@@ -5555,48 +5555,99 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
-            // Gallery & Media Functions
-            function handleFeaturedImageUpload(event) {
-                const file = event.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        vendorSetupState.stepData.step3 = {
-                            ...vendorSetupState.stepData.step3,
-                            featuredImage: e.target.result
-                        };
-                    };
-                    reader.readAsDataURL(file);
+            // Cloudinary Upload Function
+            async function uploadImageToCloudinary(file, imageType) {
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('imageType', imageType);
+                
+                try {
+                    console.log(`Uploading ${imageType} image to Cloudinary:`, file.name);
+                    
+                    const response = await fetch(`${API_BASE_URL}/upload/image`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Upload failed');
+                    }
+                    
+                    const result = await response.json();
+                    console.log('Cloudinary upload successful:', result);
+                    
+                    // Return the secure URL from Cloudinary
+                    return result.secure_url || result.url;
+                    
+                } catch (error) {
+                    console.error('Cloudinary upload error:', error);
+                    throw new Error(`Failed to upload ${imageType} image: ${error.message}`);
                 }
             }
 
-            function handleGalleryUpload(event) {
+            // Gallery & Media Functions
+            async function handleFeaturedImageUpload(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    try {
+                        console.log('Uploading featured image to Cloudinary...');
+                        const uploadedUrl = await uploadImageToCloudinary(file, 'featured');
+                        vendorSetupState.stepData.step3 = {
+                            ...vendorSetupState.stepData.step3,
+                            featuredImage: uploadedUrl
+                        };
+                        console.log('Featured image uploaded:', uploadedUrl);
+                    } catch (error) {
+                        console.error('Failed to upload featured image:', error);
+                        alert('Failed to upload featured image. Please try again.');
+                    }
+                }
+            }
+
+            async function handleGalleryUpload(event) {
                 const files = event.target.files;
-                Array.from(files).forEach(file => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
+                for (const file of files) {
+                    try {
+                        console.log('Uploading gallery image to Cloudinary:', file.name);
+                        const uploadedUrl = await uploadImageToCloudinary(file, 'gallery');
                         vendorSetupState.gallery.push({
-                            url: e.target.result,
+                            url: uploadedUrl,
                             type: 'upload',
                             caption: file.name
                         });
                         updateGalleryDisplay();
-                    };
-                    reader.readAsDataURL(file);
-                });
+                        console.log('Gallery image uploaded:', uploadedUrl);
+                    } catch (error) {
+                        console.error('Failed to upload gallery image:', error);
+                        alert(`Failed to upload ${file.name}. Please try again.`);
+                    }
+                }
             }
 
             function showPortfolioForm() {
                 document.getElementById('portfolio-form').style.display = 'block';
             }
 
-            function addPortfolioItem() {
+            async function addPortfolioItem() {
                 const title = document.getElementById('portfolio-title')?.value;
                 const description = document.getElementById('portfolio-description')?.value;
                 const imageFile = document.getElementById('portfolio-image')?.files[0];
                 
                 if (title && description) {
                     const portfolioItem = { title, description };
+                    
+                    if (imageFile) {
+                        try {
+                            console.log('Uploading portfolio image to Cloudinary:', imageFile.name);
+                            portfolioItem.imageUrl = await uploadImageToCloudinary(imageFile, 'portfolio');
+                            console.log('Portfolio image uploaded:', portfolioItem.imageUrl);
+                        } catch (error) {
+                            console.error('Failed to upload portfolio image:', error);
+                            alert('Failed to upload portfolio image. Please try again.');
+                            return;
+                        }
+                    }
                     
                     if (imageFile) {
                         const reader = new FileReader();
@@ -6142,24 +6193,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         break;
 
                     case 3: // Gallery & Media
-                        // Get featured image from file upload or URL
-                        let featuredImage = '';
-                        const featuredImageFile = document.getElementById('featured-image')?.files[0];
-                        const featuredImageUrl = document.getElementById('featured-image-url')?.value || '';
-                        
-                        if (featuredImageFile) {
-                            // For now, skip file upload and use placeholder to avoid size issues
-                            // TODO: Implement proper image upload service later
-                            console.log('File upload detected, using placeholder for now to avoid size limits');
-                            featuredImage = 'https://via.placeholder.com/400x300.jpg';
-                        } else if (featuredImageUrl) {
-                            featuredImage = featuredImageUrl;
-                        }
-                        
-                        // If no featured image provided, use a shorter placeholder
-                        if (!featuredImage) {
-                            featuredImage = 'https://via.placeholder.com/400x300.jpg';
-                        }
+                        // Use the Cloudinary URLs that were uploaded via handleFeaturedImageUpload
+                        const featuredImage = vendorSetupState.stepData.step3?.featuredImage || 
+                                            document.getElementById('featured-image-url')?.value || 
+                                            'https://via.placeholder.com/400x300.jpg';
                         
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
@@ -6167,7 +6204,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             gallery: vendorSetupState.gallery || [],
                             portfolio: vendorSetupState.portfolio || []
                         };
-                        endpoint = '/vendors/setup/step3-gallery';
+                        endpoint = '/vendor-cloudinary/setup/step3-gallery';
                         break;
 
                     case 4: // Services & Packages
