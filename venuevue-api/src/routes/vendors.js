@@ -60,8 +60,7 @@ async function enhanceVendorWithImages(vendor, pool) {
         IsPrimary,
         DisplayOrder,
         ImageType,
-        Caption,
-        CreatedAt
+        Caption
       FROM VendorImages 
       WHERE VendorProfileID = @VendorProfileID 
       ORDER BY IsPrimary DESC, DisplayOrder ASC
@@ -75,8 +74,7 @@ async function enhanceVendorWithImages(vendor, pool) {
         isPrimary: img.IsPrimary,
         displayOrder: img.DisplayOrder,
         imageType: img.ImageType,
-        caption: img.Caption,
-        createdAt: img.CreatedAt
+        caption: img.Caption
       };
 
       // Add Cloudinary transformations if public ID exists
