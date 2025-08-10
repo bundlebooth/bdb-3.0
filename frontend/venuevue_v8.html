@@ -3930,7 +3930,7 @@
                     console.log('API Response:', data);
                     
                     if (data && data.vendors && Array.isArray(data.vendors) && data.vendors.length > 0) {
-                        // Process vendor data from API
+                        // Process vendor data from API with Cloudinary images
                         state.vendors = data.vendors.map(vendor => {
                             // Parse services if they come as JSON string
                             let services = [];
@@ -3961,11 +3961,19 @@
                             // Map type to category
                             const category = mapTypeToCategory(vendor.type);
 
+                            // Process Cloudinary images
+                            const featuredImage = vendor.featuredImage || null;
+                            const images = vendor.images || [];
+                            const imageCount = vendor.imageCount || 0;
+
                             return {
                                 ...vendor,
                                 services: services,
                                 reviews: reviews,
                                 category: category,
+                                featuredImage: featuredImage,
+                                images: images,
+                                imageCount: imageCount,
                                 coordinates: {
                                     lat: vendor.latitude || getRandomLat(),
                                     lng: vendor.longitude || getRandomLng()
@@ -8337,8 +8345,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
         galleryContainer.innerHTML = '';
 
-        // Ensure images is an array, defaulting to an empty one if not
-        const imageList = images ? images.map(img => img.ImageURL) : [];
+        // Handle both old format (img.ImageURL) and new Cloudinary format (img.url)
+        const imageList = images ? images.map(img => {
+            // New Cloudinary format
+            if (img.url) {
+                return img.url;
+            }
+            // Old format fallback
+            if (img.ImageURL) {
+                return img.ImageURL;
+            }
+            // String format (direct URL)
+            if (typeof img === 'string') {
+                return img;
+            }
+            return null;
+        }).filter(url => url !== null) : [];
+        
         const totalImages = imageList.length;
         lightboxImages = imageList;
         const placeholderImage = "https://placehold.co/400x400/e2e8f0/718096?text=No+Image";
@@ -8471,6 +8494,188 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     updateLightboxImage();
                 }
             }
+
+            // Render vendors with Cloudinary images
+            function renderVendors() {
+                if (!vendorGrid) return;
+                
+                const vendorsToShow = state.filteredVendors.slice(
+                    (state.currentPage - 1) * state.itemsPerPage,
+                    state.currentPage * state.itemsPerPage
+                );
+
+                if (vendorsToShow.length === 0) {
+                    vendorGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-light);">No vendors found matching your criteria.</div>';
+                    return;
+                }
+
+                vendorGrid.innerHTML = vendorsToShow.map(vendor => {
+                    // Use Cloudinary featured image or fallback to placeholder
+                    const imageUrl = vendor.featuredImage?.url || 
+                                   vendor.featuredImage?.thumbnailUrl || 
+                                   (vendor.images && vendor.images.length > 0 ? vendor.images[0].url : null) ||
+                                   'https://placehold.co/800x600/e2e8f0/718096?text=No+Image';
+                    
+                    const isFavorite = state.favorites.includes(vendor.VendorProfileID || vendor.id);
+                    const badges = [];
+                    
+                    if (vendor.isPremium) badges.push('<span class="vendor-badge premium">Premium</span>');
+                    if (vendor.isEcoFriendly) badges.push('<span class="vendor-badge eco">Eco-Friendly</span>');
+                    if (vendor.isAwardWinning) badges.push('<span class="vendor-badge award">Award Winner</span>');
+
+                    const priceLevel = vendor.priceLevel || 2;
+                    const priceDots = Array.from({length: 3}, (_, i) => 
+                        `<span class="price-dot ${i < priceLevel ? 'filled' : ''}"></span>`
+                    ).join('');
+
+                    return `
+                        <div class="vendor-card">
+                            <div class="vendor-image">
+                                <img src="${imageUrl}" alt="${vendor.BusinessName || vendor.name}" 
+                                     style="width:100%;height:100%;object-fit:cover;"
+                                     onerror="this.src='https://placehold.co/800x600/e2e8f0/718096?text=No+Image'">
+                                <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.VendorProfileID || vendor.id}">❤</div>
+                                <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
+                                    ${badges.join('')}
+                                </div>
+                                ${vendor.imageCount > 1 ? `<div class="image-count">+${vendor.imageCount - 1}</div>` : ''}
+                            </div>
+                            <div class="vendor-details">
+                                <h3 class="vendor-name">${vendor.BusinessName || vendor.name}</h3>
+                                <div class="vendor-location">
+                                    📍 ${vendor.City || vendor.city || ''}, ${vendor.State || vendor.state || ''}
+                                </div>
+                                <div class="vendor-features">
+                                    <div class="feature">
+                                        <span class="feature-icon">${getCategoryIcon(vendor.category || vendor.type)}</span>
+                                        <span>${vendor.type || vendor.category || 'Service'}</span>
+                                    </div>
+                                    <div class="feature">
+                                        <span class="feature-icon">⭐</span>
+                                        <span>${vendor.rating || '4.5'} (${vendor.reviewCount || 0})</span>
+                                    </div>
+                                    <div class="feature">
+                                        <div class="price-indicator">
+                                            ${priceDots}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="vendor-footer">
+                                    <button class="btn btn-outline save-btn" data-id="${vendor.VendorProfileID || vendor.id}">Save</button>
+                                    <button class="btn btn-primary view-btn" data-id="${vendor.VendorProfileID || vendor.id}">View</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Add event listeners for the new vendor cards
+                setupVendorCardEventListeners();
+                updatePagination();
+            }
+
+            // Setup event listeners for vendor cards
+            function setupVendorCardEventListeners() {
+                // Favorite buttons
+                document.querySelectorAll('.vendor-favorite').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const vendorId = btn.dataset.id;
+                        toggleFavorite(vendorId);
+                    });
+                });
+
+                // View buttons
+                document.querySelectorAll('.view-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const vendorId = btn.dataset.id;
+                        window.location.hash = `/listings/${vendorId}`;
+                    });
+                });
+
+                // Save buttons
+                document.querySelectorAll('.save-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const vendorId = btn.dataset.id;
+                        toggleFavorite(vendorId);
+                    });
+                });
+            }
+
+            // Update metadata display
+            function updateMetadata(data) {
+                if (resultsTitle) {
+                    resultsTitle.textContent = `Vendors in ${state.filters.location || 'Los Angeles'}`;
+                }
+                if (resultsCount) {
+                    resultsCount.textContent = `${data.total || state.filteredVendors.length} vendors available`;
+                }
+            }
+
+            // Update pagination
+            function updatePagination() {
+                const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
+                
+                if (prevPageBtn) {
+                    prevPageBtn.disabled = state.currentPage <= 1;
+                }
+                if (nextPageBtn) {
+                    nextPageBtn.disabled = state.currentPage >= totalPages;
+                }
+                
+                // Update page info if exists
+                const pageInfo = document.querySelector('.page-info');
+                if (pageInfo) {
+                    pageInfo.textContent = `Page ${state.currentPage} of ${totalPages}`;
+                }
+            }
+
+            // Filter vendors based on current filters
+            function filterVendors() {
+                state.filteredVendors = state.vendors.filter(vendor => {
+                    // Category filter
+                    if (state.currentCategory !== 'all' && vendor.category !== state.currentCategory) {
+                        return false;
+                    }
+                    
+                    // Location filter
+                    if (state.filters.location) {
+                        const location = state.filters.location.toLowerCase();
+                        const vendorLocation = `${vendor.City || ''} ${vendor.State || ''}`.toLowerCase();
+                        if (!vendorLocation.includes(location)) {
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                });
+                
+                state.currentPage = 1; // Reset to first page
+                renderVendors();
+                updateMetadata({ total: state.filteredVendors.length });
+            }
+
+            // Get category icon
+            function getCategoryIcon(category) {
+                const icons = {
+                    "venue": "🏢",
+                    "photo": "📷",
+                    "music": "🎵",
+                    "catering": "🍽️",
+                    "entertainment": "🎭",
+                    "experiences": "⭐",
+                    "decor": "🎀",
+                    "beauty": "💄",
+                    "cake": "🎂",
+                    "transport": "🚐",
+                    "planner": "📋",
+                    "fashion": "👗",
+                    "stationery": "✉️"
+                };
+                return icons[category?.toLowerCase()] || "💎";
+            }
+
         });
     </script>
 </html>
