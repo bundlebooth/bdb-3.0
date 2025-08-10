@@ -22,7 +22,8 @@
     "socket.io": "^4.7.2",
     "socket.io-client": "^4.7.2",
     "http": "^0.0.1-security",
-    "multer": "^1.4.4"
+    "multer": "^1.4.4",
+    "cloudinary": "^1.41.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
