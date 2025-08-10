@@ -1968,11 +1968,14 @@
                     </div>
                 </div></div>
 
-            <div class="pagination" id="pagination" style="display: none;">
+            <div class="pagination" id="pagination" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin: 2rem 0;">
                 <div class="page-btn" id="prev-page">«</div>
                 <div class="page-btn active">1</div>
                 <div class="page-btn">2</div>
                 <div class="page-btn">3</div>
+                <div class="page-btn">4</div>
+                <div class="page-btn">5</div>
+                <div class="page-btn">6</div>
                 <div class="page-btn" id="next-page">»</div>
             </div>
         </main>
@@ -5577,8 +5580,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const result = await response.json();
                     console.log('Cloudinary upload successful:', result);
                     
-                    // Return the secure URL from Cloudinary
-                    return result.secure_url || result.url;
+                    // Return the secure URL from Cloudinary - handle backend response format
+                    return result.data?.url || result.secure_url || result.url;
                     
                 } catch (error) {
                     console.error('Cloudinary upload error:', error);
@@ -5598,6 +5601,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             featuredImage: uploadedUrl
                         };
                         console.log('Featured image uploaded:', uploadedUrl);
+                        
+                        // Auto-submit Step 3 to save the featured image to database
+                        console.log('Auto-submitting Step 3 to save featured image...');
+                        await submitVendorStep(3);
                     } catch (error) {
                         console.error('Failed to upload featured image:', error);
                         alert('Failed to upload featured image. Please try again.');
@@ -6204,7 +6211,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             gallery: vendorSetupState.gallery || [],
                             portfolio: vendorSetupState.portfolio || []
                         };
-                        endpoint = '/vendor-cloudinary/setup/step3-gallery';
+                        endpoint = '/vendors/setup/step3-gallery';
                         break;
 
                     case 4: // Services & Packages
@@ -8547,11 +8554,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
 
                 vendorGrid.innerHTML = vendorsToShow.map(vendor => {
-                    // Use Cloudinary featured image or fallback to placeholder
-                    const imageUrl = vendor.featuredImage?.url || 
+                    // Try all possible field name variations for featured image
+                    const imageUrl = vendor.FeaturedImageURL || 
+                                   vendor.featuredImageURL ||
+                                   vendor.featuredImageUrl ||  // lowercase 'u'
+                                   vendor.FeaturedImageUrl ||   // mixed case
+                                   vendor.image || 
+                                   vendor.ImageURL ||
+                                   vendor.imageURL ||
+                                   vendor.imageUrl ||
+                                   vendor.featuredImage?.url || 
                                    vendor.featuredImage?.thumbnailUrl || 
                                    (vendor.images && vendor.images.length > 0 ? vendor.images[0].url : null) ||
                                    'https://placehold.co/800x600/e2e8f0/718096?text=No+Image';
+                    
+                    console.log('Rendering vendor:', vendor.name || vendor.BusinessName, 'with image:', imageUrl, 'Available fields:', Object.keys(vendor));
+                    console.log('Full vendor object:', vendor);
+                    console.log('Image field value:', vendor.image);
+                    console.log('FeaturedImage object:', vendor.featuredImage);
+                    console.log('Images array:', vendor.images);
                     
                     const isFavorite = state.favorites.includes(vendor.VendorProfileID || vendor.id);
                     const badges = [];
@@ -8654,6 +8675,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function updatePagination() {
                 const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
                 
+                // Debug logging
+                console.log('Pagination Debug:', {
+                    filteredVendorsCount: state.filteredVendors.length,
+                    itemsPerPage: state.itemsPerPage,
+                    totalPages: totalPages,
+                    currentPage: state.currentPage
+                });
+                
                 if (prevPageBtn) {
                     prevPageBtn.disabled = state.currentPage <= 1;
                 }
@@ -8666,6 +8695,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (pageInfo) {
                     pageInfo.textContent = `Page ${state.currentPage} of ${totalPages}`;
                 }
+                
+                // Update numbered page buttons visibility and state
+                document.querySelectorAll('.page-btn:not(#prev-page):not(#next-page)').forEach((btn, index) => {
+                    const pageNum = index + 1;
+                    if (pageNum <= totalPages) {
+                        btn.style.display = 'block';
+                        btn.classList.toggle('active', pageNum === state.currentPage);
+                    } else {
+                        btn.style.display = 'none';
+                    }
+                });
             }
 
             // Filter vendors based on current filters
@@ -8693,6 +8733,57 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 updateMetadata({ total: state.filteredVendors.length });
             }
 
+            // Load vendors from API
+            async function loadVendors() {
+                try {
+                    console.log('Loading vendors from API...');
+                    const response = await fetch(`${API_BASE_URL}/vendors`);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('API Response Error:', response.status, errorText);
+                        throw new Error(`Failed to fetch vendors: ${response.status} - ${errorText}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log('Raw API response:', data);
+                    
+                    // Handle backend response format: { vendors: [...], totalCount: number }
+                    const vendors = data.vendors || [];
+                    const totalCount = data.totalCount || vendors.length;
+                    
+                    console.log(`API returned ${vendors.length} vendors, totalCount: ${totalCount}`);
+                    
+                    // Store vendors in state
+                    state.vendors = vendors;
+                    state.filteredVendors = vendors;
+                    
+                    // Clear the static HTML and render dynamic vendors
+                    if (vendorGrid) {
+                        vendorGrid.innerHTML = ''; // Clear static content
+                        renderVendors();
+                    }
+                    
+                    updatePagination();
+                    updateMetadata({ total: totalCount });
+                    
+                    console.log(`Successfully loaded and rendered ${vendors.length} vendors`);
+                    
+                } catch (error) {
+                    console.error('Error loading vendors:', error);
+                    
+                    // Show error message in vendor grid
+                    if (vendorGrid) {
+                        vendorGrid.innerHTML = `
+                            <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--accent);">
+                                <p>Failed to load vendors: ${error.message}</p>
+                                <button class="btn btn-primary" onclick="loadVendors()" style="margin-top:1rem;">Retry</button>
+                            </div>
+                        `;
+                    }
+                }
+            }
+
             // Get category icon
             function getCategoryIcon(category) {
                 const icons = {
@@ -8712,6 +8803,48 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 };
                 return icons[category?.toLowerCase()] || "💎";
             }
+
+            // Add pagination event listeners
+            if (prevPageBtn) {
+                prevPageBtn.addEventListener('click', () => {
+                    if (state.currentPage > 1) {
+                        state.currentPage--;
+                        renderVendors();
+                        updatePagination();
+                    }
+                });
+            }
+
+            if (nextPageBtn) {
+                nextPageBtn.addEventListener('click', () => {
+                    const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
+                    if (state.currentPage < totalPages) {
+                        state.currentPage++;
+                        renderVendors();
+                        updatePagination();
+                    }
+                });
+            }
+
+            // Add event listeners for numbered page buttons
+            document.querySelectorAll('.page-btn:not(#prev-page):not(#next-page)').forEach((btn, index) => {
+                btn.addEventListener('click', () => {
+                    const pageNum = index + 1;
+                    const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
+                    if (pageNum <= totalPages) {
+                        state.currentPage = pageNum;
+                        renderVendors();
+                        updatePagination();
+                        
+                        // Update active page button
+                        document.querySelectorAll('.page-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                    }
+                });
+            });
+
+            // Initialize pagination on page load
+            updatePagination();
 
         });
     </script>
