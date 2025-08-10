@@ -3,6 +3,7 @@ const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
+const cloudinaryService = require('../services/cloudinaryService');
 
 // Helper function to resolve UserID to VendorProfileID
 async function resolveVendorProfileId(id, pool) {
@@ -45,6 +46,78 @@ async function resolveVendorProfileId(id, pool) {
   return null;
 }
 
+// Helper function to enhance vendor data with Cloudinary images
+async function enhanceVendorWithImages(vendor, pool) {
+  try {
+    const imageRequest = new sql.Request(pool);
+    imageRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID || vendor.id);
+    
+    const imageResult = await imageRequest.query(`
+      SELECT 
+        ImageID,
+        ImageURL,
+        CloudinaryPublicId,
+        IsPrimary,
+        DisplayOrder,
+        ImageType,
+        Caption,
+        CreatedAt
+      FROM VendorImages 
+      WHERE VendorProfileID = @VendorProfileID 
+      ORDER BY IsPrimary DESC, DisplayOrder ASC
+    `);
+
+    // Process images with Cloudinary enhancements
+    const images = imageResult.recordset.map(img => {
+      const imageData = {
+        imageId: img.ImageID,
+        url: img.ImageURL,
+        isPrimary: img.IsPrimary,
+        displayOrder: img.DisplayOrder,
+        imageType: img.ImageType,
+        caption: img.Caption,
+        createdAt: img.CreatedAt
+      };
+
+      // Add Cloudinary transformations if public ID exists
+      if (img.CloudinaryPublicId) {
+        imageData.cloudinaryPublicId = img.CloudinaryPublicId;
+        imageData.thumbnailUrl = cloudinaryService.getThumbnailUrl(img.CloudinaryPublicId, 300, 200);
+        imageData.optimizedUrl = cloudinaryService.getOptimizedUrl(img.CloudinaryPublicId);
+        imageData.squareUrl = cloudinaryService.getSquareUrl(img.CloudinaryPublicId, 400);
+        
+        // Different sizes for responsive display
+        imageData.sizes = {
+          small: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 300, height: 200, crop: 'fill' }),
+          medium: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 600, height: 400, crop: 'fill' }),
+          large: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 1200, height: 800, crop: 'fill' })
+        };
+      }
+
+      return imageData;
+    });
+
+    // Get featured image (primary image or first image)
+    const featuredImage = images.find(img => img.isPrimary) || images[0] || null;
+    
+    return {
+      ...vendor,
+      featuredImage: featuredImage,
+      images: images,
+      imageCount: images.length
+    };
+
+  } catch (error) {
+    console.error('Error enhancing vendor with images:', error);
+    return {
+      ...vendor,
+      featuredImage: null,
+      images: [],
+      imageCount: 0
+    };
+  }
+}
+
 // Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
   try {
@@ -61,7 +134,8 @@ router.get('/', async (req, res) => {
       radiusMiles,
       pageNumber,
       pageSize,
-      sortBy
+      sortBy,
+      includeImages
     } = req.query;
 
     const pool = await poolPromise;
@@ -88,8 +162,9 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
-    const formattedVendors = result.recordset.map(vendor => ({
+    let formattedVendors = result.recordset.map(vendor => ({
       id: vendor.id,
+      vendorProfileId: vendor.VendorProfileID || vendor.id,
       name: vendor.name || '',
       type: vendor.type || '',
       location: vendor.location || '',
@@ -100,7 +175,7 @@ router.get('/', async (req, res) => {
       reviewCount: vendor.ReviewCount,
       favoriteCount: vendor.FavoriteCount,
       bookingCount: vendor.BookingCount,
-      image: vendor.image || '',
+      image: vendor.image || '', // Legacy image field
       capacity: vendor.Capacity,
       rooms: vendor.Rooms,
       isPremium: vendor.IsPremium,
@@ -113,9 +188,32 @@ router.get('/', async (req, res) => {
       reviews: vendor.reviews ? JSON.parse(vendor.reviews) : []
     }));
 
+    // Enhance with Cloudinary images if requested (default: true for better UX)
+    if (includeImages !== 'false') {
+      console.log('Enhancing vendors with Cloudinary images...');
+      
+      // Process vendors in batches to avoid overwhelming the database
+      const batchSize = 5;
+      const enhancedVendors = [];
+      
+      for (let i = 0; i < formattedVendors.length; i += batchSize) {
+        const batch = formattedVendors.slice(i, i + batchSize);
+        const enhancedBatch = await Promise.all(
+          batch.map(vendor => enhanceVendorWithImages(vendor, pool))
+        );
+        enhancedVendors.push(...enhancedBatch);
+      }
+      
+      formattedVendors = enhancedVendors;
+    }
+
     res.json({
+      success: true,
       vendors: formattedVendors,
-      totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0
+      totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0,
+      pageNumber: parseInt(pageNumber) || 1,
+      pageSize: parseInt(pageSize) || 10,
+      hasImages: includeImages !== 'false'
     });
 
   } catch (err) {
@@ -508,18 +606,78 @@ router.get('/:id', async (req, res) => {
       });
     }
 
+    // Get enhanced images and portfolio with Cloudinary
+    const vendorProfile = result.recordsets[0][0];
+    const enhancedVendor = await enhanceVendorWithImages({ 
+      VendorProfileID: vendorProfileId,
+      ...vendorProfile 
+    }, pool);
+
+    // Get enhanced portfolio with Cloudinary
+    const portfolioRequest = new sql.Request(pool);
+    portfolioRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const portfolioResult = await portfolioRequest.query(`
+      SELECT 
+        PortfolioID,
+        Title,
+        Description,
+        ImageURL,
+        CloudinaryPublicId,
+        ProjectDate,
+        DisplayOrder,
+        CreatedAt
+      FROM VendorPortfolio 
+      WHERE VendorProfileID = @VendorProfileID 
+      ORDER BY DisplayOrder ASC
+    `);
+
+    // Process portfolio with Cloudinary enhancements
+    const enhancedPortfolio = portfolioResult.recordset.map(item => {
+      const portfolioData = {
+        portfolioId: item.PortfolioID,
+        title: item.Title,
+        description: item.Description,
+        url: item.ImageURL,
+        projectDate: item.ProjectDate,
+        displayOrder: item.DisplayOrder,
+        createdAt: item.CreatedAt
+      };
+
+      // Add Cloudinary transformations if public ID exists
+      if (item.CloudinaryPublicId) {
+        portfolioData.cloudinaryPublicId = item.CloudinaryPublicId;
+        portfolioData.thumbnailUrl = cloudinaryService.getThumbnailUrl(item.CloudinaryPublicId, 300, 200);
+        portfolioData.optimizedUrl = cloudinaryService.getOptimizedUrl(item.CloudinaryPublicId);
+        
+        // Different sizes for portfolio display
+        portfolioData.sizes = {
+          thumbnail: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 200, height: 150, crop: 'fill' }),
+          medium: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 500, height: 375, crop: 'fill' }),
+          large: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 1000, height: 750, crop: 'fill' })
+        };
+      }
+
+      return portfolioData;
+    });
+
     const vendorDetails = {
-      profile: result.recordsets[0][0],
+      profile: {
+        ...vendorProfile,
+        featuredImage: enhancedVendor.featuredImage,
+        imageCount: enhancedVendor.imageCount,
+        portfolioCount: enhancedPortfolio.length
+      },
       categories: result.recordsets[1],
       services: result.recordsets[2],
       addOns: result.recordsets[3],
-      portfolio: result.recordsets[4],
+      portfolio: enhancedPortfolio, // Enhanced portfolio with Cloudinary
       reviews: result.recordsets[5],
       faqs: result.recordsets[6],
       team: result.recordsets[7],
       socialMedia: result.recordsets[8],
       businessHours: result.recordsets[9],
-      images: result.recordsets[10],
+      images: enhancedVendor.images, // Enhanced images with Cloudinary
       isFavorite: result.recordsets[11] ? result.recordsets[11][0].IsFavorite : false,
       availableSlots: result.recordsets[12]
     };
