@@ -503,15 +503,52 @@ router.get('/profile', async (req, res) => {
       });
     }
 
+    // DEBUG: Log all recordsets to identify where images are located
+    console.log(`🔍 DEBUGGING RECORDSETS FROM sp_GetVendorDetails:`);
+    console.log(`📊 Total recordsets: ${profileResult.recordsets.length}`);
+    
+    profileResult.recordsets.forEach((recordset, index) => {
+      console.log(`📋 Recordset[${index}]: ${recordset.length} records`);
+      if (recordset.length > 0) {
+        const firstRecord = recordset[0];
+        const keys = Object.keys(firstRecord);
+        console.log(`   🔑 Keys: ${keys.join(', ')}`);
+        
+        // Check if this recordset contains images
+        if (keys.includes('images')) {
+          console.log(`   🖼️  FOUND IMAGES in recordset[${index}]:`, firstRecord.images);
+        }
+      }
+    });
+
     // Parse images JSON array from updated sp_GetVendorDetails stored procedure
     let imagesFromStoredProcedure = [];
+    let imagesRecordsetIndex = -1;
+    
+    // Search for the recordset containing images
+    for (let i = 0; i < profileResult.recordsets.length; i++) {
+      const recordset = profileResult.recordsets[i];
+      if (recordset.length > 0 && recordset[0].hasOwnProperty('images')) {
+        imagesRecordsetIndex = i;
+        break;
+      }
+    }
+    
+    console.log(`🎯 Images found in recordset index: ${imagesRecordsetIndex}`);
+    
     try {
-      const imagesJson = profileResult.recordsets[10] && profileResult.recordsets[10][0] && profileResult.recordsets[10][0].images;
-      if (imagesJson) {
-        imagesFromStoredProcedure = JSON.parse(imagesJson);
-        console.log(`✅ PARSED IMAGES FROM STORED PROCEDURE:`, imagesFromStoredProcedure);
+      if (imagesRecordsetIndex >= 0) {
+        const imagesJson = profileResult.recordsets[imagesRecordsetIndex][0].images;
+        console.log(`📝 Raw images JSON from recordset[${imagesRecordsetIndex}]:`, imagesJson);
+        
+        if (imagesJson) {
+          imagesFromStoredProcedure = JSON.parse(imagesJson);
+          console.log(`✅ PARSED IMAGES FROM STORED PROCEDURE:`, imagesFromStoredProcedure);
+        } else {
+          console.log(`❌ Images JSON is null/empty`);
+        }
       } else {
-        console.log(`❌ NO IMAGES JSON FROM STORED PROCEDURE - RETURNING EMPTY ARRAY`);
+        console.log(`❌ NO RECORDSET WITH IMAGES FOUND`);
       }
     } catch (e) {
       console.error(`❌ ERROR PARSING IMAGES FROM STORED PROCEDURE:`, e);
