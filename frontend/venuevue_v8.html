@@ -21,7 +21,7 @@
             --secondary: #f7fafc;
             --accent: #ff6b6b;
             --text: #2d3748;
-            --text-light: #718096;
+            --text-light: #718096; 
             --border: #e2e8f0;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             --radius: 12px;
@@ -8456,7 +8456,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const thumbnailsContainer = document.createElement('div');
                 thumbnailsContainer.className = 'thumbnails-container';
 
-                // Add 4 thumbnail slots
+                // Add 4 thumbnail slots with fixed positions
                 for (let i = 1; i <= 4; i++) {
                     const thumbDiv = document.createElement('div');
                     thumbDiv.className = 'gallery-item';
@@ -8464,10 +8464,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const thumbImageUrl = i < totalImages ? imageUrls[i] : placeholderImage;
                     thumbDiv.innerHTML = `<img src="${thumbImageUrl}" alt="Thumbnail ${i}">`;
 
-                    // Add click event if we have a real image
+                    // Add click event to update main image but keep thumbnails fixed
                     if (i < totalImages) {
                         thumbDiv.addEventListener('click', () => {
-                            // Update main image
                             const mainImg = galleryContainer.querySelector('.large-image img');
                             if (mainImg) {
                                 mainImg.src = imageUrls[i];
@@ -8498,87 +8497,106 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 console.log(`✅ Gallery populated with ${totalImages} images`);
             }
 
-    function populateImageGallery(images) {
+            // NEW: Simplified and reliable gallery population function
+    function populateVendorGallery(images) {
+        console.log('🖼️ populateVendorGallery called with:', images);
+        
         const galleryContainer = document.getElementById('modal-image-gallery');
-        if (!galleryContainer) return;
+        if (!galleryContainer) {
+            console.warn('Gallery container not found');
+            return;
+        }
 
+        // Extract image URLs from the images array
+        const imageUrls = [];
+        if (images && Array.isArray(images)) {
+            images.forEach(img => {
+                if (img.url) {
+                    imageUrls.push(img.url);
+                } else if (img.ImageURL) {
+                    imageUrls.push(img.ImageURL);
+                } else if (typeof img === 'string') {
+                    imageUrls.push(img);
+                }
+            });
+        }
+
+        console.log('📸 Extracted image URLs:', imageUrls);
+
+        // Set lightbox images for navigation
+        lightboxImages = imageUrls;
+
+        // Clear and rebuild gallery
         galleryContainer.innerHTML = '';
 
-        // Handle both old format (img.ImageURL) and new Cloudinary format (img.url)
-        const imageList = images ? images.map(img => {
-            // New Cloudinary format
-            if (img.url) {
-                return img.url;
-            }
-            // Old format fallback
-            if (img.ImageURL) {
-                return img.ImageURL;
-            }
-            // String format (direct URL)
-            if (typeof img === 'string') {
-                return img;
-            }
-            return null;
-        }).filter(url => url !== null) : [];
+        // Create main image (left side)
+        const mainImageDiv = document.createElement('div');
+        mainImageDiv.className = 'gallery-item large-image';
         
-        const totalImages = imageList.length;
-        lightboxImages = imageList;
-        const placeholderImage = "https://placehold.co/400x400/e2e8f0/718096?text=No+Image";
-
-        // Always render 5 blocks: 1 large image + 4 thumbnails
-        // Prepare array for 5 images or placeholders
-        const galleryImages = [];
-
-        // First image (large)
-        galleryImages.push(totalImages > 0 ? imageList[0] : placeholderImage);
-
-        // Next 4 thumbnails
-        for (let i = 1; i <= 4; i++) {
-            galleryImages.push(i < totalImages ? imageList[i] : placeholderImage);
+        const mainImg = document.createElement('img');
+        mainImg.src = imageUrls.length > 0 ? imageUrls[0] : 'https://placehold.co/800x600/e2e8f0/718096?text=No+Image';
+        mainImg.alt = 'Main Venue Image';
+        mainImg.style.width = '100%';
+        mainImg.style.height = '100%';
+        mainImg.style.objectFit = 'cover';
+        
+        if (imageUrls.length > 0) {
+            mainImg.style.cursor = 'pointer';
+            mainImg.addEventListener('click', () => openLightbox(0));
         }
+        
+        mainImageDiv.appendChild(mainImg);
+        galleryContainer.appendChild(mainImageDiv);
 
-        // Create gallery structure
-        // Large image block
-        const largeImageDiv = document.createElement('div');
-        largeImageDiv.className = 'gallery-item large-image';
-        largeImageDiv.innerHTML = `<img src="${galleryImages[0]}" alt="Main Venue Image">`;
-        if (totalImages > 0) {
-            largeImageDiv.addEventListener('click', () => openLightbox(0));
-        }
-        galleryContainer.appendChild(largeImageDiv);
-
-        // Thumbnails container
+        // Create thumbnails container (right side)
         const thumbnailsContainer = document.createElement('div');
         thumbnailsContainer.className = 'thumbnails-container';
 
-        // Add 4 thumbnails
+        // Create 4 thumbnail slots
         for (let i = 1; i <= 4; i++) {
             const thumbDiv = document.createElement('div');
             thumbDiv.className = 'gallery-item';
-            thumbDiv.innerHTML = `<img src="${galleryImages[i]}" alt="Thumbnail ${i}">`;
-
-            // Add click event if not placeholder
-            if (galleryImages[i] !== placeholderImage) {
-                thumbDiv.addEventListener('click', () => openLightbox(i));
+            
+            const thumbImg = document.createElement('img');
+            thumbImg.src = i < imageUrls.length ? imageUrls[i] : 'https://placehold.co/400x400/e2e8f0/718096?text=No+Image';
+            thumbImg.alt = `Thumbnail ${i}`;
+            thumbImg.style.width = '100%';
+            thumbImg.style.height = '100%';
+            thumbImg.style.objectFit = 'cover';
+            
+            // FIXED: Add click functionality for real images - ONLY open lightbox, don't change main image
+            if (i < imageUrls.length) {
+                thumbImg.style.cursor = 'pointer';
+                thumbImg.addEventListener('click', () => {
+                    // Only open lightbox at the thumbnail's image index
+                    openLightbox(i);
+                });
             }
+            
+            thumbDiv.appendChild(thumbImg);
 
-            // Add "+X See All" overlay on bottom-right thumbnail if more images exist
-            if (i === 4) {
-                const hiddenCount = totalImages - 5;
+            // Add "See All" overlay on last thumbnail if there are more images
+            if (i === 4 && imageUrls.length > 5) {
                 const overlay = document.createElement('div');
                 overlay.className = 'see-all-overlay';
-                overlay.textContent = `+${hiddenCount > 0 ? hiddenCount : 0} See All`;
+                overlay.textContent = `+${imageUrls.length - 5} See All`;
+                overlay.style.cursor = 'pointer';
+                overlay.addEventListener('click', () => openLightbox(0));
                 thumbDiv.appendChild(overlay);
-
-                // Make overlay clickable to open lightbox from first image
-                thumbDiv.style.cursor = 'pointer';
-                thumbDiv.onclick = () => openLightbox(0);
             }
 
             thumbnailsContainer.appendChild(thumbDiv);
         }
 
         galleryContainer.appendChild(thumbnailsContainer);
+        
+        console.log(`✅ Gallery populated with ${imageUrls.length} images`);
+    }
+
+    // Keep the old function for backward compatibility but make it call the new one
+    function populateImageGallery(images) {
+        console.log('⚠️ populateImageGallery (legacy) called, redirecting to populateVendorGallery');
+        populateVendorGallery(images);
     }
 
             function setupLightboxEventListeners() {
@@ -9215,6 +9233,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754842768/venuevue/hwq0uqrtimpshiit8vkr.png'
                 ];
                 
+                // Set lightbox images for navigation
+                lightboxImages = knownImages;
+                
                 // Find ALL thumbnail placeholder images
                 const allImages = document.querySelectorAll('img');
                 let thumbnailCount = 0;
@@ -9229,6 +9250,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     // Update main venue image
                     if (img.src.includes('placehold.co') && img.alt.includes('Main Venue Image') && !mainImageUpdated) {
                         img.src = knownImages[0];
+                        // Make main image clickable to open lightbox
+                        img.style.cursor = 'pointer';
+                        img.onclick = () => openLightbox(0);
                         console.log('✅ Updated main venue image:', img.alt);
                         mainImageUpdated = true;
                     }
@@ -9238,14 +9262,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const thumbnailNumber = thumbnailCount % knownImages.length;
                         img.src = knownImages[thumbnailNumber];
                         
-                        // Make thumbnail clickable to change main image
+                        // FIXED: Make thumbnail clickable to ONLY open lightbox (don't change main image)
                         img.style.cursor = 'pointer';
                         img.onclick = () => {
-                            const mainImg = document.querySelector('img[alt="Main Venue Image"]');
-                            if (mainImg) {
-                                mainImg.src = knownImages[thumbnailNumber];
-                                console.log('🔄 Switched main image to:', knownImages[thumbnailNumber]);
-                            }
+                            openLightbox(thumbnailNumber);
+                            console.log('🔄 Opened lightbox at image:', thumbnailNumber);
                         };
                         
                         console.log(`✅ Updated ${img.alt} with image ${thumbnailNumber + 1}`);
@@ -9361,6 +9382,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const imagesToUse = knownVendorWithImages.images.map(img => img.url);
                 console.log('✅ Using images:', imagesToUse);
                 
+                // Set lightbox images for navigation
+                lightboxImages = imagesToUse;
+                
                 allImages.forEach((img, index) => {
                     // Skip hidden/modal images
                     if (img.id === 'lightbox-image' || img.closest('[style*="display: none"]')) {
@@ -9370,6 +9394,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     // Update main venue image
                     if (img.src.includes('placehold.co') && img.alt.includes('Main Venue Image') && !mainImageUpdated) {
                         img.src = imagesToUse[0];
+                        // Make main image clickable to open lightbox
+                        img.style.cursor = 'pointer';
+                        img.onclick = () => openLightbox(0);
                         console.log('✅ Updated main venue image:', imagesToUse[0]);
                         mainImageUpdated = true;
                     }
@@ -9379,14 +9406,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const thumbnailNumber = thumbnailCount % imagesToUse.length;
                         img.src = imagesToUse[thumbnailNumber];
                         
-                        // Make thumbnail clickable
+                        // FIXED: Make thumbnail clickable to ONLY open lightbox (don't change main image)
                         img.style.cursor = 'pointer';
                         img.onclick = () => {
-                            const mainImg = document.querySelector('img[alt="Main Venue Image"]');
-                            if (mainImg) {
-                                mainImg.src = imagesToUse[thumbnailNumber];
-                                console.log('🔄 Switched main image to:', imagesToUse[thumbnailNumber]);
-                            }
+                            openLightbox(thumbnailNumber);
+                            console.log('🔄 Opened lightbox at image:', thumbnailNumber);
                         };
                         
                         console.log(`✅ Updated ${img.alt}:`, imagesToUse[thumbnailNumber]);
@@ -9482,40 +9506,48 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 let mainImageUpdated = false;
                 let thumbnailCount = 0;
                 
-                allImages.forEach((img, index) => {
-                    // Skip hidden/modal images
-                    if (img.id === 'lightbox-image' || img.closest('[style*="display: none"]')) {
-                        return;
-                    }
-                    
-                    // Update main venue image
-                    if (img.src.includes('placehold.co') && img.alt.includes('Main Venue Image') && !mainImageUpdated) {
-                        img.src = imagesToUse[0];
-                        console.log('✅ Updated main venue image:', imagesToUse[0]);
-                        mainImageUpdated = true;
-                    }
-                    
-                    // Update thumbnail images
-                    else if (img.src.includes('placehold.co') && img.alt.includes('Thumbnail')) {
-                        const thumbnailNumber = thumbnailCount % imagesToUse.length;
-                        img.src = imagesToUse[thumbnailNumber];
-                        
-                        // Make thumbnail clickable
-                        img.style.cursor = 'pointer';
-                        img.onclick = () => {
-                            const mainImg = document.querySelector('img[alt="Main Venue Image"]');
-                            if (mainImg) {
-                                mainImg.src = imagesToUse[thumbnailNumber];
-                                console.log('🔄 Switched main image to:', imagesToUse[thumbnailNumber]);
-                            }
-                        };
-                        
-                        console.log(`✅ Updated ${img.alt}:`, imagesToUse[thumbnailNumber]);
-                        thumbnailCount++;
-                    }
-                });
+                // Find main image element and thumbnail container
+                const mainImageElement = document.querySelector('img[alt="Main Venue Image"]');
+                const thumbnailsContainer = document.getElementById('vendor-thumbnails');
                 
-                console.log(`🎉 Gallery population from vendor object complete: ${mainImageUpdated ? 1 : 0} main, ${thumbnailCount} thumbnails`);
+                if (!mainImageElement || !thumbnailsContainer) {
+                    console.warn('Gallery elements not found for population');
+                    return { mainImage: false, thumbnails: 0 };
+                }
+                
+                // Set main image src to first image (primary)
+                mainImageElement.src = imagesToUse[0];
+                console.log('✅ Set main venue image:', imagesToUse[0]);
+                mainImageUpdated = true;
+                
+                // Add click event to main image to open lightbox
+                mainImageElement.style.cursor = 'pointer';
+                mainImageElement.addEventListener('click', () => openLightbox(0));
+                
+                // Clear existing thumbnails
+                thumbnailsContainer.innerHTML = '';
+                
+                // FIXED: Add thumbnails for remaining images - ONLY open lightbox, don't change main image
+                for (let i = 1; i < imagesToUse.length; i++) {
+                    const thumbDiv = document.createElement('div');
+                    thumbDiv.className = 'gallery-item';
+                    
+                    const thumbImg = document.createElement('img');
+                    thumbImg.src = imagesToUse[i];
+                    thumbImg.alt = `Thumbnail ${i}`;
+                    
+                    // FIXED: Add click handler to ONLY open lightbox (don't change main image)
+                    thumbDiv.style.cursor = 'pointer';
+                    thumbDiv.addEventListener('click', () => openLightbox(i));
+                    
+                    thumbDiv.appendChild(thumbImg);
+                    thumbnailsContainer.appendChild(thumbDiv);
+                    
+                    thumbnailCount++;
+                    console.log(`✅ Added thumbnail ${i}:`, imagesToUse[i]);
+                }
+                
+                console.log(`🎉 Gallery population complete: 1 main image, ${thumbnailCount} thumbnails`);
                 return { mainImage: mainImageUpdated, thumbnails: thumbnailCount };
             };
 
