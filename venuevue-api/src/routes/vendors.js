@@ -503,87 +503,26 @@ router.get('/profile', async (req, res) => {
       });
     }
 
-    // First, check what images exist in the database for debugging
-    const debugImagesRequest = new sql.Request(pool);
-    const debugImagesResult = await debugImagesRequest.query(`
-      SELECT VendorProfileID, ImageURL, IsPrimary, DisplayOrder, 
-             (SELECT BusinessName FROM VendorProfiles WHERE VendorProfileID = vi.VendorProfileID) as BusinessName
-      FROM VendorImages vi
-      ORDER BY VendorProfileID DESC
-    `);
-    console.log(`ALL VendorImages in database with business names:`, debugImagesResult.recordset);
-    
-    // Check which vendors have images
-    const vendorImageSummaryRequest = new sql.Request(pool);
-    const vendorImageSummaryResult = await vendorImageSummaryRequest.query(`
-      SELECT vi.VendorProfileID, vp.BusinessName, COUNT(*) as ImageCount
-      FROM VendorImages vi
-      JOIN VendorProfiles vp ON vi.VendorProfileID = vp.VendorProfileID
-      GROUP BY vi.VendorProfileID, vp.BusinessName
-      ORDER BY vi.VendorProfileID DESC
-    `);
-    console.log(`VENDOR IMAGE SUMMARY:`, vendorImageSummaryResult.recordset);
-    
-    // Check if this specific vendor has any images
-    const vendorImagesCheckRequest = new sql.Request(pool);
-    vendorImagesCheckRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-    const vendorImagesCheckResult = await vendorImagesCheckRequest.query(`
-      SELECT COUNT(*) as ImageCount FROM VendorImages WHERE VendorProfileID = @VendorProfileID
-    `);
-    console.log(`Image count for vendor profile ID ${user.VendorProfileID}:`, vendorImagesCheckResult.recordset[0]);
-
-    // SIMPLE FIX: Get ALL gallery images from VendorImages table
-    console.log(`=== SIMPLE GALLERY IMAGE FIX ===`);
-    console.log(`Looking for images for VendorProfileID: ${user.VendorProfileID}`);
-    
-    const allImagesRequest = new sql.Request(pool);
-    const allImagesResult = await allImagesRequest.query(`
-      SELECT VendorProfileID, ImageURL, IsPrimary, DisplayOrder, Caption,
-             (SELECT BusinessName FROM VendorProfiles WHERE VendorProfileID = vi.VendorProfileID) as BusinessName
-      FROM VendorImages vi
-      ORDER BY VendorProfileID DESC
-    `);
-    console.log(`ALL IMAGES IN DATABASE:`, allImagesResult.recordset);
-    
-    // Get images for this specific vendor
-    const galleryRequest = new sql.Request(pool);
-    galleryRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-    const galleryResult = await galleryRequest.query(`
-      SELECT ImageURL, IsPrimary, DisplayOrder, Caption
-      FROM VendorImages 
-      WHERE VendorProfileID = @VendorProfileID 
-      ORDER BY IsPrimary DESC, DisplayOrder ASC
-    `);
-    
-    console.log(`IMAGES FOR VENDOR ${user.VendorProfileID}:`, galleryResult.recordset);
-    
-    let galleryImages = galleryResult.recordset.map(img => ({
-      url: img.ImageURL,
-      isPrimary: img.IsPrimary,
-      displayOrder: img.DisplayOrder,
-      caption: img.Caption
-    }));
-    
-    // FALLBACK: If no images found, try to get images from similar vendor names
-    if (galleryImages.length === 0) {
-      console.log(`NO IMAGES FOUND FOR VENDOR ${user.VendorProfileID}, TRYING FALLBACK...`);
-      const fallbackRequest = new sql.Request(pool);
-      const fallbackResult = await fallbackRequest.query(`
-        SELECT TOP 5 ImageURL, IsPrimary, DisplayOrder, Caption
-        FROM VendorImages 
-        ORDER BY VendorProfileID DESC
-      `);
-      console.log(`FALLBACK IMAGES:`, fallbackResult.recordset);
-      
-      galleryImages = fallbackResult.recordset.map(img => ({
-        url: img.ImageURL,
-        isPrimary: img.IsPrimary || false,
-        displayOrder: img.DisplayOrder || 0,
-        caption: img.Caption || ''
-      }));
+    // Parse images JSON array from updated sp_GetVendorDetails stored procedure
+    let imagesFromStoredProcedure = [];
+    try {
+      const imagesJson = profileResult.recordsets[10] && profileResult.recordsets[10][0] && profileResult.recordsets[10][0].images;
+      if (imagesJson) {
+        imagesFromStoredProcedure = JSON.parse(imagesJson);
+        console.log(`✅ PARSED IMAGES FROM STORED PROCEDURE:`, imagesFromStoredProcedure);
+      } else {
+        console.log(`❌ NO IMAGES JSON FROM STORED PROCEDURE - RETURNING EMPTY ARRAY`);
+      }
+    } catch (e) {
+      console.error(`❌ ERROR PARSING IMAGES FROM STORED PROCEDURE:`, e);
+      imagesFromStoredProcedure = [];
     }
+
+    // Use images from stored procedure (dynamic, no fallback)
+    const galleryImages = imagesFromStoredProcedure;
     
     console.log(`FINAL GALLERY IMAGES TO RETURN:`, galleryImages);
+    console.log(`FINAL GALLERY IMAGES LENGTH:`, galleryImages.length);
 
     // Structure the comprehensive profile data
     const profileData = {
