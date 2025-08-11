@@ -1990,8 +1990,15 @@
                         </button>
                     </div>
                     
-                    <!-- Image Gallery -->
-                    <div id="modal-image-gallery" class="image-gallery"><div class="gallery-item large-image"><img src="https://placehold.co/800x600/5e72e4/ffffff?text=Primary" alt="Main Venue Image"></div><div class="thumbnails-container"><div class="gallery-item"><img src="https://placehold.co/800x600/f7fafc/2d3748?text=Gallery+Image+1" alt="Thumbnail 1"></div><div class="gallery-item"><img src="https://placehold.co/400x400/e2e8f0/718096?text=No+Image" alt="Thumbnail 2"></div><div class="gallery-item"><img src="https://placehold.co/400x400/e2e8f0/718096?text=No+Image" alt="Thumbnail 3"></div><div class="gallery-item" style="cursor: pointer;"><img src="https://placehold.co/400x400/e2e8f0/718096?text=No+Image" alt="Thumbnail 4"><div class="see-all-overlay">+0 See All</div></div></div></div>
+                    <!-- Image Gallery - Dynamic -->
+                    <div id="modal-image-gallery" class="image-gallery">
+                        <div class="gallery-item large-image">
+                            <img id="main-vendor-image" src="https://placehold.co/800x600/e2e8f0/718096?text=Loading..." alt="Main Venue Image">
+                        </div>
+                        <div class="thumbnails-container" id="vendor-thumbnails">
+                            <!-- Thumbnails will be populated dynamically -->
+                        </div>
+                    </div>
 
                     <!-- Vendor Header -->
                     <div class="vendor-profile-header">
@@ -5604,7 +5611,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         
                         // Auto-submit Step 3 to save the featured image to database
                         console.log('Auto-submitting Step 3 to save featured image...');
-                        await submitVendorStep(3);
+                        await submitCurrentStepToBackend();
                     } catch (error) {
                         console.error('Failed to upload featured image:', error);
                         alert('Failed to upload featured image. Please try again.');
@@ -5625,6 +5632,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         });
                         updateGalleryDisplay();
                         console.log('Gallery image uploaded:', uploadedUrl);
+                        
+                        // Auto-submit Step 3 to save gallery images to database
+                        console.log('Auto-submitting Step 3 to save gallery images...');
+                        await submitCurrentStepToBackend();
                     } catch (error) {
                         console.error('Failed to upload gallery image:', error);
                         alert(`Failed to upload ${file.name}. Please try again.`);
@@ -6208,8 +6219,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
                             featuredImage: featuredImage,
-                            gallery: vendorSetupState.gallery || [],
-                            portfolio: vendorSetupState.portfolio || []
+                            galleryImages: vendorSetupState.gallery || [],
+                            portfolioItems: vendorSetupState.portfolio || []
                         };
                         endpoint = '/vendors/setup/step3-gallery';
                         break;
@@ -7069,13 +7080,24 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 vendorProfilePage.innerHTML = html;
 
+                // Set current vendor object for gallery population
+                window.currentVendor = {
+                    ...profile,
+                    images: details.images || [],
+                    featuredImageURL: profile.FeaturedImageURL,
+                    featuredImage: details.images && details.images.length > 0 ? details.images.find(img => img.isPrimary) || details.images[0] : null
+                };
+                
+                console.log('✅ Set window.currentVendor with images:', window.currentVendor.images);
+
                 // Add event listeners for the new elements on the profile page
                 vendorProfilePage.querySelector('.vendor-favorite').addEventListener('click', () => {
                     toggleFavorite(profile.VendorProfileID);
                 });
                 
-                // Populate and set up the image gallery
-                populateImageGallery(details.images);
+                // FIXED: Populate gallery immediately with images from API response
+                console.log('🖼️ Populating gallery with images from API response:', details.images);
+                populateVendorGallery(details.images || []);
 
                 vendorProfilePage.querySelector('#open-chat-btn').addEventListener('click', () => {
                     initializeChat(profile.VendorProfileID, profile.BusinessName);
@@ -8383,6 +8405,99 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // --- IMAGE GALLERY AND LIGHTBOX FUNCTIONS ---
 
+            // FIXED: New function to properly populate vendor gallery using images[] array
+            function populateVendorGallery(images) {
+                console.log('🎯 populateVendorGallery called with:', images);
+                
+                const galleryContainer = document.getElementById('modal-image-gallery');
+                if (!galleryContainer) {
+                    console.warn('Gallery container not found');
+                    return;
+                }
+
+                // Clear existing content
+                galleryContainer.innerHTML = '';
+
+                // Extract image URLs from the images array (handles Cloudinary format)
+                const imageUrls = [];
+                if (images && Array.isArray(images)) {
+                    images.forEach(img => {
+                        if (img.url) {
+                            imageUrls.push(img.url);
+                        } else if (img.ImageURL) {
+                            imageUrls.push(img.ImageURL);
+                        }
+                    });
+                }
+
+                console.log('📸 Extracted image URLs:', imageUrls);
+
+                // Set lightbox images for navigation
+                lightboxImages = imageUrls;
+
+                const totalImages = imageUrls.length;
+                const placeholderImage = "https://placehold.co/400x400/e2e8f0/718096?text=No+Image";
+
+                // Create main image (large)
+                const largeImageDiv = document.createElement('div');
+                largeImageDiv.className = 'gallery-item large-image';
+                const mainImageUrl = totalImages > 0 ? imageUrls[0] : placeholderImage;
+                largeImageDiv.innerHTML = `<img src="${mainImageUrl}" alt="Main Venue Image">`;
+                
+                // Add click event for lightbox if we have real images
+                if (totalImages > 0) {
+                    largeImageDiv.addEventListener('click', () => openLightbox(0));
+                    largeImageDiv.style.cursor = 'pointer';
+                }
+                
+                galleryContainer.appendChild(largeImageDiv);
+
+                // Create thumbnails container
+                const thumbnailsContainer = document.createElement('div');
+                thumbnailsContainer.className = 'thumbnails-container';
+
+                // Add 4 thumbnail slots
+                for (let i = 1; i <= 4; i++) {
+                    const thumbDiv = document.createElement('div');
+                    thumbDiv.className = 'gallery-item';
+                    
+                    const thumbImageUrl = i < totalImages ? imageUrls[i] : placeholderImage;
+                    thumbDiv.innerHTML = `<img src="${thumbImageUrl}" alt="Thumbnail ${i}">`;
+
+                    // Add click event if we have a real image
+                    if (i < totalImages) {
+                        thumbDiv.addEventListener('click', () => {
+                            // Update main image
+                            const mainImg = galleryContainer.querySelector('.large-image img');
+                            if (mainImg) {
+                                mainImg.src = imageUrls[i];
+                            }
+                            // Open lightbox
+                            openLightbox(i);
+                        });
+                        thumbDiv.style.cursor = 'pointer';
+                    }
+
+                    // Add "+X See All" overlay on the last thumbnail if there are more images
+                    if (i === 4 && totalImages > 5) {
+                        const hiddenCount = totalImages - 5;
+                        const overlay = document.createElement('div');
+                        overlay.className = 'see-all-overlay';
+                        overlay.textContent = `+${hiddenCount} See All`;
+                        thumbDiv.appendChild(overlay);
+                        
+                        // Make the overlay clickable to open lightbox
+                        thumbDiv.onclick = () => openLightbox(0);
+                    }
+
+                    thumbnailsContainer.appendChild(thumbDiv);
+                }
+
+                galleryContainer.appendChild(thumbnailsContainer);
+                
+                console.log(`✅ Gallery populated with ${totalImages} images`);
+            }
+
     function populateImageGallery(images) {
         const galleryContainer = document.getElementById('modal-image-gallery');
         if (!galleryContainer) return;
@@ -8845,6 +8960,691 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Initialize pagination on page load
             updatePagination();
+
+            // DEPRECATED: Old gallery population function - replaced by populateVendorGallery()
+            // Keeping for backward compatibility but not used in main flow
+            function populateVendorProfileGallery(vendorData) {
+                console.log('⚠️ DEPRECATED: populateVendorProfileGallery called - use populateVendorGallery instead');
+                if (vendorData && vendorData.images) {
+                    populateVendorGallery(vendorData.images);
+                }
+            }
+
+            // Keep for backward compatibility
+            window.populateVendorProfileGallery = populateVendorProfileGallery;
+
+            // MANUAL TEST FUNCTION - Call this directly in browser console to test gallery population
+            window.testGalleryWithKnownImages = function() {
+                console.log('=== MANUAL GALLERY TEST ===');
+                
+                // Use the images we KNOW exist from Bundle Booths vendor (VendorProfileID 62)
+                const testVendorData = {
+                    images: [
+                        {
+                            url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843715/venuevue/veo9hmlzoa1t37keuqfn.png',
+                            isPrimary: false,
+                            displayOrder: 0,
+                            caption: 'Gallery Image 1'
+                        },
+                        {
+                            url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843727/venuevue/dk9idtjs3stlhksqng9b.webp',
+                            isPrimary: true,
+                            displayOrder: 1,
+                            caption: 'Gallery Image 2'
+                        },
+                        {
+                            url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754842768/venuevue/hwq0uqrtimpshiit8vkr.png',
+                            isPrimary: false,
+                            displayOrder: 2,
+                            caption: 'Gallery Image 3'
+                        }
+                    ],
+                    profile: {
+                        FeaturedImageURL: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843715/venuevue/veo9hmlzoa1t37keuqfn.png'
+                    }
+                };
+                
+                console.log('Testing with known images:', testVendorData);
+                populateVendorProfileGallery(testVendorData);
+                console.log('=== MANUAL TEST COMPLETE ===');
+            };
+
+            // SIMPLE DIRECT GALLERY POPULATION - No API calls, just use known images
+            window.populateGalleryNow = function() {
+                console.log('=== DIRECT GALLERY POPULATION ===');
+                
+                const mainImage = document.getElementById('main-vendor-image');
+                const thumbnailsContainer = document.getElementById('vendor-thumbnails');
+                
+                if (!mainImage || !thumbnailsContainer) {
+                    console.log('Gallery elements not found - make sure you are on vendor profile page');
+                    return;
+                }
+                
+                // Known working Cloudinary URLs from Bundle Booths vendor
+                const knownImages = [
+                    'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843715/venuevue/veo9hmlzoa1t37keuqfn.png',
+                    'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843727/venuevue/dk9idtjs3stlhksqng9b.webp',
+                    'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754842768/venuevue/hwq0uqrtimpshiit8vkr.png'
+                ];
+                
+                // Set main image
+                mainImage.src = knownImages[0];
+                console.log('Set main image to:', knownImages[0]);
+                
+                // Clear and populate thumbnails
+                thumbnailsContainer.innerHTML = '';
+                
+                knownImages.forEach((imageUrl, index) => {
+                    const thumbnailDiv = document.createElement('div');
+                    thumbnailDiv.className = 'gallery-item';
+                    thumbnailDiv.style.cursor = 'pointer';
+                    
+                    const thumbnailImg = document.createElement('img');
+                    thumbnailImg.src = imageUrl;
+                    thumbnailImg.alt = `Gallery Image ${index + 1}`;
+                    thumbnailImg.onclick = () => {
+                        mainImage.src = imageUrl;
+                        console.log('Switched main image to:', imageUrl);
+                    };
+                    
+                    thumbnailDiv.appendChild(thumbnailImg);
+                    thumbnailsContainer.appendChild(thumbnailDiv);
+                });
+                
+                console.log('Added 3 thumbnail images to gallery');
+                console.log('=== DIRECT POPULATION COMPLETE ===');
+            };
+
+            // DIAGNOSTIC FUNCTION - Check if gallery elements exist and what page we're on
+            window.checkGalleryElements = function() {
+                console.log('=== GALLERY DIAGNOSTIC ===');
+                
+                // Check if vendor profile page is visible
+                const vendorProfilePage = document.getElementById('vendor-profile-page');
+                console.log('Vendor profile page element:', vendorProfilePage);
+                console.log('Vendor profile page display style:', vendorProfilePage ? vendorProfilePage.style.display : 'NOT FOUND');
+                
+                // Check for gallery elements
+                const mainImage = document.getElementById('main-vendor-image');
+                const thumbnailsContainer = document.getElementById('vendor-thumbnails');
+                const imageGallery = document.getElementById('modal-image-gallery');
+                
+                console.log('Main image element:', mainImage);
+                console.log('Thumbnails container:', thumbnailsContainer);
+                console.log('Image gallery container:', imageGallery);
+                
+                if (mainImage) {
+                    console.log('Current main image src:', mainImage.src);
+                } else {
+                    console.log('❌ Main image element NOT FOUND - you may not be on vendor profile page');
+                }
+                
+                if (thumbnailsContainer) {
+                    console.log('Thumbnails container found, current content:', thumbnailsContainer.innerHTML);
+                } else {
+                    console.log('❌ Thumbnails container NOT FOUND - you may not be on vendor profile page');
+                }
+                
+                // Check what page we're actually on
+                const currentUrl = window.location.href;
+                const currentHash = window.location.hash;
+                console.log('Current URL:', currentUrl);
+                console.log('Current hash:', currentHash);
+                
+                // Check all possible gallery-related elements
+                const allGalleryElements = document.querySelectorAll('[id*="gallery"], [id*="image"], [class*="gallery"], [class*="image"]');
+                console.log('All gallery-related elements found:', allGalleryElements);
+                
+                console.log('=== DIAGNOSTIC COMPLETE ===');
+                
+                // Return status
+                return {
+                    vendorProfilePageExists: !!vendorProfilePage,
+                    vendorProfilePageVisible: vendorProfilePage && vendorProfilePage.style.display !== 'none',
+                    mainImageExists: !!mainImage,
+                    thumbnailsContainerExists: !!thumbnailsContainer,
+                    currentUrl: currentUrl,
+                    currentHash: currentHash
+                };
+            };
+
+            // DIRECT ELEMENT FINDER - Find and populate ANY gallery elements on the page
+            window.findAndPopulateGallery = function() {
+                console.log('=== DIRECT ELEMENT FINDER ===');
+                
+                // Find all possible image elements
+                const allImages = document.querySelectorAll('img');
+                const allDivs = document.querySelectorAll('div');
+                
+                console.log('Found', allImages.length, 'image elements');
+                console.log('Found', allDivs.length, 'div elements');
+                
+                // Look for any image that might be a main vendor image (placeholder or otherwise)
+                let mainImageElement = null;
+                let thumbnailContainer = null;
+                
+                // Find main image by looking for placeholder or vendor-related images (VISIBLE ONES ONLY)
+                allImages.forEach((img, index) => {
+                    console.log(`Image ${index}:`, img.src, 'ID:', img.id, 'Class:', img.className);
+                    
+                    // Skip hidden/modal images
+                    if (img.id === 'lightbox-image' || img.closest('[style*="display: none"]')) {
+                        console.log('⏭️ Skipping hidden/modal image:', img.id);
+                        return;
+                    }
+                    
+                    if (img.src.includes('placehold.co') && 
+                        (img.alt.includes('Main Venue Image') || 
+                         img.alt.includes('samyy') ||
+                         img.alt.includes('vendor'))) {
+                        console.log('🎯 VISIBLE main image found:', img);
+                        mainImageElement = img;
+                    }
+                });
+                
+                // Find container by looking for gallery-related divs
+                allDivs.forEach((div, index) => {
+                    if (div.id.includes('gallery') || 
+                        div.id.includes('thumbnail') ||
+                        div.className.includes('gallery') ||
+                        div.className.includes('thumbnail')) {
+                        console.log('🎯 Potential thumbnail container found:', div);
+                        thumbnailContainer = div;
+                    }
+                });
+                
+                // If we found elements, populate them
+                if (mainImageElement) {
+                    console.log('✅ Using main image element:', mainImageElement);
+                    
+                    // Known working Cloudinary URLs
+                    const knownImages = [
+                        'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843715/venuevue/veo9hmlzoa1t37keuqfn.png',
+                        'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843727/venuevue/dk9idtjs3stlhksqng9b.webp',
+                        'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754842768/venuevue/hwq0uqrtimpshiit8vkr.png'
+                    ];
+                    
+                    // Set main image
+                    mainImageElement.src = knownImages[0];
+                    console.log('✅ Set main image to:', knownImages[0]);
+                    
+                    // If we found a thumbnail container, add thumbnails
+                    if (thumbnailContainer) {
+                        console.log('✅ Using thumbnail container:', thumbnailContainer);
+                        thumbnailContainer.innerHTML = '';
+                        
+                        knownImages.forEach((imageUrl, index) => {
+                            const thumbnailImg = document.createElement('img');
+                            thumbnailImg.src = imageUrl;
+                            thumbnailImg.alt = `Gallery ${index + 1}`;
+                            thumbnailImg.style.width = '100px';
+                            thumbnailImg.style.height = '100px';
+                            thumbnailImg.style.objectFit = 'cover';
+                            thumbnailImg.style.margin = '5px';
+                            thumbnailImg.style.cursor = 'pointer';
+                            thumbnailImg.onclick = () => {
+                                mainImageElement.src = imageUrl;
+                                console.log('🔄 Switched to:', imageUrl);
+                            };
+                            
+                            thumbnailContainer.appendChild(thumbnailImg);
+                        });
+                        
+                        console.log('✅ Added 3 thumbnails to container');
+                    } else {
+                        console.log('⚠️ No thumbnail container found, only main image updated');
+                    }
+                    
+                    console.log('🎉 GALLERY POPULATION COMPLETE!');
+                    return true;
+                } else {
+                    console.log('❌ No suitable main image element found');
+                    return false;
+                }
+            };
+
+            // POPULATE ALL THUMBNAILS - Replace all thumbnail placeholder images
+            window.populateAllThumbnails = function() {
+                console.log('=== POPULATE ALL THUMBNAILS ===');
+                
+                // Known working Cloudinary URLs
+                const knownImages = [
+                    'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843715/venuevue/veo9hmlzoa1t37keuqfn.png',
+                    'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843727/venuevue/dk9idtjs3stlhksqng9b.webp',
+                    'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754842768/venuevue/hwq0uqrtimpshiit8vkr.png'
+                ];
+                
+                // Find ALL thumbnail placeholder images
+                const allImages = document.querySelectorAll('img');
+                let thumbnailCount = 0;
+                let mainImageUpdated = false;
+                
+                allImages.forEach((img, index) => {
+                    // Skip hidden/modal images
+                    if (img.id === 'lightbox-image' || img.closest('[style*="display: none"]')) {
+                        return;
+                    }
+                    
+                    // Update main venue image
+                    if (img.src.includes('placehold.co') && img.alt.includes('Main Venue Image') && !mainImageUpdated) {
+                        img.src = knownImages[0];
+                        console.log('✅ Updated main venue image:', img.alt);
+                        mainImageUpdated = true;
+                    }
+                    
+                    // Update thumbnail images
+                    else if (img.src.includes('placehold.co') && img.alt.includes('Thumbnail')) {
+                        const thumbnailNumber = thumbnailCount % knownImages.length;
+                        img.src = knownImages[thumbnailNumber];
+                        
+                        // Make thumbnail clickable to change main image
+                        img.style.cursor = 'pointer';
+                        img.onclick = () => {
+                            const mainImg = document.querySelector('img[alt="Main Venue Image"]');
+                            if (mainImg) {
+                                mainImg.src = knownImages[thumbnailNumber];
+                                console.log('🔄 Switched main image to:', knownImages[thumbnailNumber]);
+                            }
+                        };
+                        
+                        console.log(`✅ Updated ${img.alt} with image ${thumbnailNumber + 1}`);
+                        thumbnailCount++;
+                    }
+                });
+                
+                console.log(`🎉 Updated ${mainImageUpdated ? 1 : 0} main image and ${thumbnailCount} thumbnails`);
+                return { mainImage: mainImageUpdated, thumbnails: thumbnailCount };
+            };
+
+            // COMPLETE GALLERY SETUP - Do everything at once
+            window.setupCompleteGallery = function() {
+                console.log('=== COMPLETE GALLERY SETUP ===');
+                
+                const result = populateAllThumbnails();
+                
+                if (result.mainImage && result.thumbnails > 0) {
+                    console.log('🎉 COMPLETE GALLERY SETUP SUCCESSFUL!');
+                    console.log(`✅ Main image updated: ${result.mainImage}`);
+                    console.log(`✅ Thumbnails updated: ${result.thumbnails}`);
+                    console.log('🖱️ Click any thumbnail to change the main image');
+                    return true;
+                } else {
+                    console.log('⚠️ Gallery setup incomplete');
+                    console.log(`Main image: ${result.mainImage}, Thumbnails: ${result.thumbnails}`);
+                    return false;
+                }
+            };
+
+            // DIAGNOSTIC: Check what API is actually returning
+            window.checkAPIResponse = function() {
+                console.log('=== API DIAGNOSTIC ===');
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const vendorId = urlParams.get('vendorId') || urlParams.get('id');
+                const userId = urlParams.get('userId');
+                
+                if (!vendorId && !userId) {
+                    console.log('❌ No vendor ID or user ID found in URL');
+                    console.log('Current URL:', window.location.href);
+                    return;
+                }
+                
+                const apiUrl = userId ? 
+                    `${API_BASE_URL}/vendors/profile?userId=${userId}` :
+                    `${API_BASE_URL}/vendors/${vendorId}`;
+                
+                console.log('🔍 Checking API endpoint:', apiUrl);
+                
+                fetch(apiUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log('📡 API Response Status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📋 FULL API Response:', data);
+                    
+                    if (data.success) {
+                        console.log('✅ API Success: true');
+                        console.log('📦 Data object:', data.data);
+                        
+                        if (data.data && data.data.images) {
+                            console.log('🖼️ Images array:', data.data.images);
+                            console.log('📊 Images count:', data.data.images.length);
+                            
+                            if (data.data.images.length > 0) {
+                                console.log('🎯 First image URL:', data.data.images[0].url);
+                                console.log('🎯 All image URLs:', data.data.images.map(img => img.url));
+                            } else {
+                                console.log('❌ Images array is empty');
+                            }
+                        } else {
+                            console.log('❌ No images property found in data');
+                        }
+                    } else {
+                        console.log('❌ API Success: false');
+                        console.log('Error:', data.error || data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ API Call Failed:', error);
+                });
+            };
+
+            // UNIVERSAL GALLERY POPULATION - Use vendor listing data that we KNOW works
+            window.populateGalleryFromListingData = function() {
+                console.log('=== UNIVERSAL GALLERY POPULATION ===');
+                
+                // Use the vendor data we KNOW exists from the vendor listing
+                // From your console output, we know "Bundle Booths" has 3 images
+                const knownVendorWithImages = {
+                    name: 'Bundle Booths',
+                    images: [
+                        { url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843715/venuevue/veo9hmlzoa1t37keuqfn.png' },
+                        { url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843727/venuevue/dk9idtjs3stlhksqng9b.webp' },
+                        { url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754842768/venuevue/hwq0uqrtimpshiit8vkr.png' }
+                    ]
+                };
+                
+                console.log('Using known vendor data:', knownVendorWithImages);
+                
+                // Use the working population logic
+                const allImages = document.querySelectorAll('img');
+                let mainImageUpdated = false;
+                let thumbnailCount = 0;
+                
+                const imagesToUse = knownVendorWithImages.images.map(img => img.url);
+                console.log('✅ Using images:', imagesToUse);
+                
+                allImages.forEach((img, index) => {
+                    // Skip hidden/modal images
+                    if (img.id === 'lightbox-image' || img.closest('[style*="display: none"]')) {
+                        return;
+                    }
+                    
+                    // Update main venue image
+                    if (img.src.includes('placehold.co') && img.alt.includes('Main Venue Image') && !mainImageUpdated) {
+                        img.src = imagesToUse[0];
+                        console.log('✅ Updated main venue image:', imagesToUse[0]);
+                        mainImageUpdated = true;
+                    }
+                    
+                    // Update thumbnail images
+                    else if (img.src.includes('placehold.co') && img.alt.includes('Thumbnail')) {
+                        const thumbnailNumber = thumbnailCount % imagesToUse.length;
+                        img.src = imagesToUse[thumbnailNumber];
+                        
+                        // Make thumbnail clickable
+                        img.style.cursor = 'pointer';
+                        img.onclick = () => {
+                            const mainImg = document.querySelector('img[alt="Main Venue Image"]');
+                            if (mainImg) {
+                                mainImg.src = imagesToUse[thumbnailNumber];
+                                console.log('🔄 Switched main image to:', imagesToUse[thumbnailNumber]);
+                            }
+                        };
+                        
+                        console.log(`✅ Updated ${img.alt}:`, imagesToUse[thumbnailNumber]);
+                        thumbnailCount++;
+                    }
+                });
+                
+                console.log(`🎉 Universal population complete: ${mainImageUpdated ? 1 : 0} main, ${thumbnailCount} thumbnails`);
+                return { mainImage: mainImageUpdated, thumbnails: thumbnailCount };
+            };
+
+            // VENDOR PROFILE GALLERY POPULATION - Use vendor images array directly
+            window.populateVendorProfileGallery = function(vendorData) {
+                console.log('=== VENDOR PROFILE GALLERY POPULATION ===');
+                console.log('Vendor data received:', vendorData);
+                
+                // Extract images from vendor data - now comes directly from sp_SearchVendors
+                let imagesToUse = [];
+                if (vendorData.images && vendorData.images.length > 0) {
+                    imagesToUse = vendorData.images.map(img => img.url);
+                } else if (vendorData.profile && vendorData.profile.images && vendorData.profile.images.length > 0) {
+                    imagesToUse = vendorData.profile.images.map(img => img.url);
+                } else {
+                    console.log('❌ No images found in vendor data');
+                    return { mainImage: false, thumbnails: 0 };
+                }
+                
+                console.log('✅ Using vendor images from stored procedure:', imagesToUse);
+                
+                // Use the same population logic as the universal function
+                const allImages = document.querySelectorAll('img');
+                let mainImageUpdated = false;
+                let thumbnailCount = 0;
+                
+                allImages.forEach((img, index) => {
+                    // Skip hidden/modal images
+                    if (img.id === 'lightbox-image' || img.closest('[style*="display: none"]')) {
+                        return;
+                    }
+                    
+                    // Update main venue image
+                    if (img.src.includes('placehold.co') && img.alt.includes('Main Venue Image') && !mainImageUpdated) {
+                        img.src = imagesToUse[0];
+                        console.log('✅ Updated main venue image:', imagesToUse[0]);
+                        mainImageUpdated = true;
+                    }
+                    
+                    // Update thumbnail images
+                    else if (img.src.includes('placehold.co') && img.alt.includes('Thumbnail')) {
+                        const thumbnailNumber = thumbnailCount % imagesToUse.length;
+                        img.src = imagesToUse[thumbnailNumber];
+                        
+                        // Make thumbnail clickable
+                        img.style.cursor = 'pointer';
+                        img.onclick = () => {
+                            const mainImg = document.querySelector('img[alt="Main Venue Image"]');
+                            if (mainImg) {
+                                mainImg.src = imagesToUse[thumbnailNumber];
+                                console.log('🔄 Switched main image to:', imagesToUse[thumbnailNumber]);
+                            }
+                        };
+                        
+                        console.log(`✅ Updated ${img.alt}:`, imagesToUse[thumbnailNumber]);
+                        thumbnailCount++;
+                    }
+                });
+                
+                console.log(`🎉 Vendor profile gallery population complete: ${mainImageUpdated ? 1 : 0} main, ${thumbnailCount} thumbnails`);
+                return { mainImage: mainImageUpdated, thumbnails: thumbnails };
+            };
+
+            // POPULATE GALLERY FROM VENDOR OBJECT - Use images array directly from vendor listing
+            window.populateGalleryFromVendorObject = function(vendor) {
+                console.log('=== POPULATING GALLERY FROM VENDOR OBJECT ===');
+                console.log('Vendor object:', vendor);
+                
+                // Extract images from vendor object (comes from sp_SearchVendors)
+                let imagesToUse = [];
+                if (vendor.images && vendor.images.length > 0) {
+                    imagesToUse = vendor.images.map(img => img.url);
+                } else if (vendor.featuredImageURL) {
+                    // Fallback to featured image if available
+                    imagesToUse = [vendor.featuredImageURL];
+                } else {
+                    console.log('❌ No images found in vendor object');
+                    return { mainImage: false, thumbnails: 0 };
+                }
+                
+                console.log('✅ Using images from vendor object:', imagesToUse);
+                
+                // Populate gallery images
+                const allImages = document.querySelectorAll('img');
+                let mainImageUpdated = false;
+                let thumbnailCount = 0;
+                
+                allImages.forEach((img, index) => {
+                    // Skip hidden/modal images
+                    if (img.id === 'lightbox-image' || img.closest('[style*="display: none"]')) {
+                        return;
+                    }
+                    
+                    // Update main venue image
+                    if (img.src.includes('placehold.co') && img.alt.includes('Main Venue Image') && !mainImageUpdated) {
+                        img.src = imagesToUse[0];
+                        console.log('✅ Updated main venue image:', imagesToUse[0]);
+                        mainImageUpdated = true;
+                    }
+                    
+                    // Update thumbnail images
+                    else if (img.src.includes('placehold.co') && img.alt.includes('Thumbnail')) {
+                        const thumbnailNumber = thumbnailCount % imagesToUse.length;
+                        img.src = imagesToUse[thumbnailNumber];
+                        
+                        // Make thumbnail clickable
+                        img.style.cursor = 'pointer';
+                        img.onclick = () => {
+                            const mainImg = document.querySelector('img[alt="Main Venue Image"]');
+                            if (mainImg) {
+                                mainImg.src = imagesToUse[thumbnailNumber];
+                                console.log('🔄 Switched main image to:', imagesToUse[thumbnailNumber]);
+                            }
+                        };
+                        
+                        console.log(`✅ Updated ${img.alt}:`, imagesToUse[thumbnailNumber]);
+                        thumbnailCount++;
+                    }
+                });
+                
+                console.log(`🎉 Gallery population from vendor object complete: ${mainImageUpdated ? 1 : 0} main, ${thumbnailCount} thumbnails`);
+                return { mainImage: mainImageUpdated, thumbnails: thumbnailCount };
+            };
+
+            // GALLERY TEST FUNCTIONS - Updated for new sp_SearchVendors approach
+            window.testGalleryFunctionality = function() {
+                console.log('=== TESTING GALLERY FUNCTIONALITY (NEW APPROACH) ===');
+                
+                // Test 1: Check if functions exist
+                console.log('Test 1a: populateVendorProfileGallery exists?', typeof window.populateVendorProfileGallery === 'function' ? '✅ YES' : '❌ NO');
+                console.log('Test 1b: populateGalleryFromVendorObject exists?', typeof window.populateGalleryFromVendorObject === 'function' ? '✅ YES' : '❌ NO');
+                
+                // Test 2: Create mock vendor object (as it would come from sp_SearchVendors)
+                const mockVendorObject = {
+                    id: 1,
+                    name: 'Test Vendor',
+                    images: [
+                        { url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843715/venuevue/veo9hmlzoa1t37keuqfn.png', isPrimary: true, displayOrder: 1 },
+                        { url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843727/venuevue/dk9idtjs3stlhksqng9b.webp', isPrimary: false, displayOrder: 2 },
+                        { url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754842768/venuevue/hwq0uqrtimpshiit8vkr.png', isPrimary: false, displayOrder: 3 }
+                    ],
+                    featuredImageURL: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1754843715/venuevue/veo9hmlzoa1t37keuqfn.png'
+                };
+                
+                console.log('Test 2: Testing with mock vendor object from sp_SearchVendors...');
+                const result = window.populateGalleryFromVendorObject(mockVendorObject);
+                console.log('Test 2 Result:', result);
+                
+                // Test 3: Check if images were actually updated
+                const mainImages = document.querySelectorAll('img[alt*="Main Venue Image"]');
+                const thumbnails = document.querySelectorAll('img[alt*="Thumbnail"]');
+                
+                console.log('Test 3: Found main images:', mainImages.length);
+                console.log('Test 3: Found thumbnails:', thumbnails.length);
+                
+                let realImagesCount = 0;
+                mainImages.forEach(img => {
+                    if (!img.src.includes('placehold.co')) {
+                        realImagesCount++;
+                        console.log('✅ Main image updated:', img.src);
+                    }
+                });
+                
+                thumbnails.forEach(img => {
+                    if (!img.src.includes('placehold.co')) {
+                        realImagesCount++;
+                        console.log('✅ Thumbnail updated:', img.src);
+                    }
+                });
+                
+                console.log(`Test 3: ${realImagesCount} images successfully updated with real URLs`);
+                
+                // Test 4: Test current vendor object
+                console.log('Test 4: Current vendor object exists?', window.currentVendor ? '✅ YES' : '❌ NO');
+                if (window.currentVendor) {
+                    console.log('Test 4: Current vendor has images?', window.currentVendor.images && window.currentVendor.images.length > 0 ? '✅ YES' : '❌ NO');
+                    console.log('Test 4: Current vendor image count:', window.currentVendor.images ? window.currentVendor.images.length : 0);
+                }
+                
+                console.log('=== GALLERY TEST COMPLETE (NEW APPROACH) ===');
+                return {
+                    functionsExist: {
+                        populateVendorProfileGallery: typeof window.populateVendorProfileGallery === 'function',
+                        populateGalleryFromVendorObject: typeof window.populateGalleryFromVendorObject === 'function'
+                    },
+                    mockTestResult: result,
+                    imagesFound: { main: mainImages.length, thumbnails: thumbnails.length },
+                    realImagesCount: realImagesCount,
+                    currentVendorExists: !!window.currentVendor,
+                    currentVendorHasImages: window.currentVendor && window.currentVendor.images && window.currentVendor.images.length > 0
+                };
+            };
+
+            // MANUAL GALLERY POPULATION TEST
+            window.testGalleryWithRealData = function() {
+                console.log('=== TESTING GALLERY WITH REAL API DATA ===');
+                
+                const API_BASE_URL = 'http://localhost:3000/api';
+                const urlParams = new URLSearchParams(window.location.search);
+                const vendorId = urlParams.get('vendorId') || urlParams.get('id');
+                const userId = urlParams.get('userId');
+                
+                if (!vendorId && !userId) {
+                    console.log('❌ No vendor ID or user ID in URL. Add ?userId=1 or ?vendorId=1 to test');
+                    return;
+                }
+                
+                const apiUrl = userId ? 
+                    `${API_BASE_URL}/vendors/profile?userId=${userId}` :
+                    `${API_BASE_URL}/vendors/${vendorId}`;
+                
+                console.log('🔍 Testing API call to:', apiUrl);
+                
+                fetch(apiUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log('📡 API Response Status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📋 API Response Data:', data);
+                    
+                    if (data.success && data.data) {
+                        console.log('✅ API call successful');
+                        console.log('🖼️ Images in response:', data.data.images);
+                        
+                        if (data.data.images && data.data.images.length > 0) {
+                            console.log('🎯 Calling populateVendorProfileGallery...');
+                            const result = populateVendorProfileGallery(data.data);
+                            console.log('🎉 Gallery population result:', result);
+                        } else {
+                            console.log('❌ No images found in API response');
+                        }
+                    } else {
+                        console.log('❌ API call failed or returned error');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ API call error:', error);
+                    console.log('💡 Make sure your backend server is running on localhost:3000');
+                });
+            };
+
+            // REMOVED: Old auto-population interval code that was causing issues
+            // Gallery is now populated directly in renderVendorProfile() function
+            console.log('✅ Gallery population is now handled directly in renderVendorProfile() function');
 
         });
     </script>
