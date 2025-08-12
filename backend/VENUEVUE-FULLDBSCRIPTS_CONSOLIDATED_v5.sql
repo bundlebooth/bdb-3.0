@@ -1119,7 +1119,7 @@ GO
 -- Procedure: [dbo].[sp_CompleteVendorSetup]
 
 -- Complete vendor setup with all features
-CREATE   PROCEDURE sp_CompleteVendorSetup
+CREATE PROCEDURE sp_CompleteVendorSetup
     @VendorProfileID INT,
     @GalleryData NVARCHAR(MAX) = NULL,
     @PackagesData NVARCHAR(MAX) = NULL,
@@ -1210,7 +1210,21 @@ BEGIN
             END
             
             -- Insert services
-            INSERT INTO Servi
+            -- Note: This section appears to be incomplete in the original file
+            -- INSERT INTO Services would go here if needed
+        END
+        
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+            
+        -- Re-throw the error
+        THROW;
+    END CATCH
+END;
+
 GO
 
 -- Procedure: [dbo].[sp_ConfirmBookingPayment]
@@ -1479,7 +1493,13 @@ BEGIN
         
         COMMIT TRANSACTION;
         
-        SELECT @BookingID AS BookingID, @ConversationID AS Conver
+         SELECT @BookingID AS BookingID, @ConversationID AS ConversationID;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
 GO
 
 -- Procedure: [dbo].[sp_CreateBookingPaymentIntent]
@@ -1662,11 +1682,35 @@ BEGIN
         );
         
         -- Create notification for vendor
+        -- Create notification for vendor
         INSERT INTO Notifications (
             UserID,
             Type,
             Title,
             Message,
+            RelatedID,
+            RelatedType,
+            ActionURL
+        )
+        VALUES (
+            (SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID),
+            'booking',
+            'New Booking Request',
+            'You have a new booking request for ' + CONVERT(NVARCHAR(20), @EventDate, 107),
+            @BookingID,
+            'booking',
+            '/vendor/bookings/' + CAST(@BookingID AS NVARCHAR(10))
+        );
+        
+        COMMIT TRANSACTION;
+        
+        SELECT @BookingID AS BookingID, @ConversationID AS ConversationID;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
 GO
 
 -- Procedure: [dbo].[sp_CreateConversation]
@@ -2645,7 +2689,22 @@ BEGIN
              (ts.Date IS NULL AND DATEPART(WEEKDAY, b.EventDate) = ts.DayOfWeek + 1)
          )
          AND CONVERT(TIME, b.EventDate) BETWEEN ts.StartTime AND ts.EndTime
-        ) AS BookedCount
+        ) AS BookedCount 
+		FROM TimeSlots ts
+    JOIN Services s ON ts.ServiceID = s.ServiceID
+    JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    WHERE sc.VendorProfileID = @VendorProfileID
+    AND ts.IsAvailable = 1
+    AND (
+        (ts.Date IS NULL) OR -- Recurring weekly slots
+        (ts.Date BETWEEN @Today AND @EndDate) -- Specific date slots
+    )
+    ORDER BY 
+        CASE WHEN ts.Date IS NULL THEN DATEADD(DAY, ts.DayOfWeek - DATEPART(WEEKDAY, @Today) + 7, @Today)
+             ELSE ts.Date
+        END,
+        ts.StartTime;
+END;
 GO
 
 -- Procedure: [dbo].[sp_GetVendorImages]
@@ -3490,7 +3549,7 @@ GO
 -- Procedure: [dbo].[sp_UpdateBookingStatus]
 
 -- Update booking status procedure
-CREATE   PROCEDURE sp_UpdateBookingStatus
+CREATE PROCEDURE sp_UpdateBookingStatus
     @BookingID INT,
     @Status NVARCHAR(20),
     @UserID INT,
@@ -3625,6 +3684,24 @@ BEGIN
                 ActionURL
             )
             VALUES (
+                @ClientID,
+                'review',
+                'Leave a Review',
+                'How was your experience with ' + (SELECT BusinessName FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID) + '?',
+                @BookingID,
+                'booking',
+                '/bookings/' + CAST(@BookingID AS NVARCHAR(10)) + '/review'
+            );
+        END
+        
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+
 GO
 
 -- Procedure: [dbo].[sp_UpdateUserLocation]
