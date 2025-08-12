@@ -4145,3 +4145,124 @@ GO
 ALTER TABLE [dbo].[Users] 
     ADD CONSTRAINT [PK__Users__1788CCAC0EA41595] PRIMARY KEY ([UserID]);
 GO
+-- First, drop the primary key constraint if it exists
+IF EXISTS (SELECT * FROM sys.key_constraints WHERE name = 'PK__VendorPr__1E8B7B3B')
+    ALTER TABLE [dbo].[VendorProfiles] DROP CONSTRAINT [PK__VendorPr__1E8B7B3B];
+GO
+
+-- Create a new table with IDENTITY specification
+SELECT * INTO #TempVendorProfiles FROM [dbo].[VendorProfiles];
+GO
+
+-- Drop the original table
+DROP TABLE [dbo].[VendorProfiles];
+GO
+
+-- Recreate the table with IDENTITY
+CREATE TABLE [dbo].[VendorProfiles] (
+    [VendorProfileID] INT IDENTITY(1,1) NOT NULL,
+    [UserID] INT NULL,
+    [BusinessName] NVARCHAR(200) NULL,
+    [DisplayName] NVARCHAR(200) NULL,
+    [BusinessDescription] NVARCHAR(MAX) NULL,
+    [Tagline] NVARCHAR(510) NULL,
+    [BusinessEmail] NVARCHAR(200) NULL,
+    [BusinessPhone] NVARCHAR(40) NULL,
+    [BusinessAddress] NVARCHAR(MAX) NULL,
+    [City] NVARCHAR(100) NULL,
+    [State] NVARCHAR(50) NULL,
+    [PostalCode] NVARCHAR(20) NULL,
+    [Country] NVARCHAR(100) NULL,
+    [Website] NVARCHAR(200) NULL,
+    [YearsInBusiness] INT NULL,
+    [IsPremium] BIT NULL,
+    [IsVerified] BIT NULL,
+    [IsActive] BIT NULL,
+    [Rating] DECIMAL(3,2) NULL,
+    [ReviewCount] INT NULL,
+    [ViewCount] INT NULL,
+    [CreatedAt] DATETIME NULL,
+    [UpdatedAt] DATETIME NULL,
+    [Latitude] DECIMAL(10,8) NULL,
+    [Longitude] DECIMAL(11,8) NULL,
+    [CoverPhoto] NVARCHAR(510) NULL,
+    [Logo] NVARCHAR(510) NULL,
+    [PrimaryCategory] NVARCHAR(100) NULL,
+    [SetupStep] INT NULL,
+    [SetupCompleted] BIT NULL,
+    [GalleryCompleted] BIT NULL,
+    [PackagesCompleted] BIT NULL,
+    [ServicesCompleted] BIT NULL,
+    [SocialMediaCompleted] BIT NULL,
+    [AvailabilityCompleted] BIT NULL,
+    [DepositRequirements] NVARCHAR(MAX) NULL,
+    [CancellationPolicy] NVARCHAR(MAX) NULL,
+    [ReschedulingPolicy] NVARCHAR(MAX) NULL,
+    [PaymentMethods] NVARCHAR(MAX) NULL,
+    [PaymentTerms] NVARCHAR(MAX) NULL,
+    [Awards] NVARCHAR(MAX) NULL,
+    [Certifications] NVARCHAR(MAX) NULL,
+    [AdditionalCitiesServed] NVARCHAR(MAX) NULL,
+    CONSTRAINT [PK__VendorPr__1E8B7B3B] PRIMARY KEY CLUSTERED ([VendorProfileID] ASC)
+);
+GO
+
+-- Re-insert the data
+SET IDENTITY_INSERT [dbo].[VendorProfiles] ON;
+INSERT INTO [dbo].[VendorProfiles] (
+    [VendorProfileID],
+    [UserID],
+    [BusinessName],
+    [DisplayName],
+    [BusinessDescription],
+    [Tagline],
+    [BusinessEmail],
+    [BusinessPhone],
+    [BusinessAddress],
+    [City],
+    [State],
+    [PostalCode],
+    [Country],
+    [Website],
+    [YearsInBusiness],
+    [IsPremium],
+    [IsVerified],
+    [IsActive],
+    [Rating],
+    [ReviewCount],
+    [ViewCount],
+    [CreatedAt],
+    [UpdatedAt],
+    [Latitude],
+    [Longitude],
+    [CoverPhoto],
+    [Logo],
+    [PrimaryCategory],
+    [SetupStep],
+    [SetupCompleted],
+    [GalleryCompleted],
+    [PackagesCompleted],
+    [ServicesCompleted],
+    [SocialMediaCompleted],
+    [AvailabilityCompleted],
+    [DepositRequirements],
+    [CancellationPolicy],
+    [ReschedulingPolicy],
+    [PaymentMethods],
+    [PaymentTerms],
+    [Awards],
+    [Certifications],
+    [AdditionalCitiesServed]
+) 
+SELECT * FROM #TempVendorProfiles;
+SET IDENTITY_INSERT [dbo].[VendorProfiles] OFF;
+GO
+
+-- Drop the temporary table
+DROP TABLE #TempVendorProfiles;
+GO
+
+-- Recreate any foreign key constraints if they existed
+ALTER TABLE [dbo].[VendorProfiles] WITH CHECK ADD CONSTRAINT [FK_VendorProfiles_Users] 
+FOREIGN KEY([UserID]) REFERENCES [dbo].[Users] ([UserID]);
+GO
