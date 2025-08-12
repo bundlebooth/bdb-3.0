@@ -2145,4 +2145,69 @@ router.post('/setup/step7-category-questions', async (req, res) => {
   }
 });
 
+// Save FAQ data for step 8 (policies step repurposed as FAQ)
+router.post('/setup/step8-policies', async (req, res) => {
+  try {
+    const { vendorProfileId, faqs } = req.body;
+    
+    if (!vendorProfileId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Vendor profile ID is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Handle FAQ data if provided
+    if (faqs && faqs.length > 0) {
+      // First, delete existing FAQs for this vendor to avoid duplicates
+      const deleteRequest = new sql.Request(pool);
+      deleteRequest.input('VendorProfileId', sql.Int, vendorProfileId);
+      await deleteRequest.query(`
+        DELETE FROM VendorFAQs 
+        WHERE VendorProfileID = @VendorProfileId 
+        AND QuestionId IS NULL
+      `);
+
+      // Insert new FAQs
+      for (let i = 0; i < faqs.length; i++) {
+        const faq = faqs[i];
+        if (faq.question && faq.answer) {
+          const insertRequest = new sql.Request(pool);
+          insertRequest.input('VendorProfileId', sql.Int, vendorProfileId);
+          insertRequest.input('Question', sql.NVarChar(500), faq.question);
+          insertRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
+          insertRequest.input('DisplayOrder', sql.Int, i + 1);
+          await insertRequest.query(`
+            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, CreatedAt)
+            VALUES (@VendorProfileId, @Question, @Answer, @DisplayOrder, GETDATE())
+          `);
+        }
+      }
+    }
+
+    // If policies data is sent (for backward compatibility), we can ignore it or store it
+    // For now, we'll just acknowledge it was received but focus on FAQ functionality
+    
+    res.json({
+      success: true,
+      message: 'FAQ data saved successfully',
+      data: {
+        vendorProfileId: vendorProfileId,
+        faqsCount: faqs?.length || 0,
+        note: 'Step 8 configured for FAQ data instead of policies'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error saving FAQ data:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to save FAQ data',
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;
