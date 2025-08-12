@@ -6151,20 +6151,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             primaryCategory: document.getElementById('primary-category')?.value || ''
                         };
                         break;
-                    case 8: // Policies & Preferences
-                        const paymentMethods = [];
-                        ['cash', 'check', 'credit', 'debit', 'paypal', 'venmo', 'zelle', 'bank'].forEach(method => {
-                            if (document.getElementById(`payment-${method}`)?.checked) {
-                                paymentMethods.push(method);
+                    case 8: // FAQ Section
+                        // Collect FAQ data from the FAQ list
+                        const faqs = [];
+                        const faqItems = document.querySelectorAll('#faqs-list .faq-item-display');
+                        
+                        faqItems.forEach(item => {
+                            const question = item.querySelector('.faq-question-text')?.textContent?.trim();
+                            const answer = item.querySelector('.faq-answer-text')?.textContent?.trim();
+                            
+                            if (question && answer) {
+                                faqs.push({
+                                    question: question,
+                                    answer: answer
+                                });
                             }
                         });
                         
                         vendorSetupState.stepData.step8 = {
-                            depositRequirements: document.getElementById('deposit-requirements')?.value || '',
-                            cancellationPolicy: document.getElementById('cancellation-policy')?.value || '',
-                            reschedulingPolicy: document.getElementById('rescheduling-policy')?.value || '',
-                            paymentMethods,
-                            paymentTerms: document.getElementById('payment-terms')?.value || ''
+                            faqs: faqs
                         };
                         break;
                     case 9: // Verification & Legal
