@@ -25,6 +25,7 @@ ELSE
 BEGIN
     PRINT 'CategoryQuestions table already exists';
 END
+GO
 
 -- 2. Create VendorAdditionalDetails table for category-specific answers
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='VendorAdditionalDetails' AND xtype='U')
@@ -45,6 +46,7 @@ ELSE
 BEGIN
     PRINT 'VendorAdditionalDetails table already exists';
 END
+GO
 
 -- 3. Add AdditionalCitiesServed column to VendorProfiles if it doesn't exist
 IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'VendorProfiles' AND COLUMN_NAME = 'AdditionalCitiesServed')
@@ -57,6 +59,7 @@ ELSE
 BEGIN
     PRINT 'AdditionalCitiesServed column already exists in VendorProfiles';
 END
+GO
 
 -- 4. Insert category-specific questions
 IF NOT EXISTS (SELECT * FROM CategoryQuestions WHERE Category = 'photo')
@@ -175,6 +178,7 @@ ELSE
 BEGIN
     PRINT 'Category questions already exist';
 END
+GO
 
 -- 5. Create stored procedure to get category questions
 IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'sp_GetCategoryQuestions')
@@ -182,7 +186,6 @@ BEGIN
     DROP PROCEDURE sp_GetCategoryQuestions;
     PRINT 'Dropped existing sp_GetCategoryQuestions';
 END
-
 GO
 
 CREATE PROCEDURE sp_GetCategoryQuestions
@@ -203,6 +206,7 @@ BEGIN
     WHERE Category = @Category AND IsActive = 1
     ORDER BY DisplayOrder ASC;
 END;
+GO
 PRINT 'Created sp_GetCategoryQuestions stored procedure';
 
 -- 6. Create stored procedure to save additional details
@@ -211,7 +215,6 @@ BEGIN
     DROP PROCEDURE sp_SaveVendorAdditionalDetails;
     PRINT 'Dropped existing sp_SaveVendorAdditionalDetails';
 END
-
 GO
 
 CREATE PROCEDURE sp_SaveVendorAdditionalDetails
@@ -253,6 +256,7 @@ BEGIN
         SELECT 0 as Success, ERROR_MESSAGE() as Message;
     END CATCH
 END;
+GO
 PRINT 'Created sp_SaveVendorAdditionalDetails stored procedure';
 
 -- 7. Create stored procedure to get vendor summary data
@@ -261,6 +265,7 @@ BEGIN
     DROP PROCEDURE sp_GetVendorSummary;
     PRINT 'Dropped existing sp_GetVendorSummary';
 END
+GO
 
 CREATE PROCEDURE sp_GetVendorSummary
     @VendorProfileID INT
@@ -343,6 +348,7 @@ BEGIN
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY DisplayOrder;
 END;
+GO
 PRINT 'Created sp_GetVendorSummary stored procedure';
 
 PRINT '';
