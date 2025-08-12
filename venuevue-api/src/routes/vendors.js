@@ -3,7 +3,6 @@ const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
-const cloudinaryService = require('../services/cloudinaryService');
 
 // Helper function to resolve UserID to VendorProfileID
 async function resolveVendorProfileId(id, pool) {
@@ -46,76 +45,6 @@ async function resolveVendorProfileId(id, pool) {
   return null;
 }
 
-// Helper function to enhance vendor data with Cloudinary images
-async function enhanceVendorWithImages(vendor, pool) {
-  try {
-    const imageRequest = new sql.Request(pool);
-    imageRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID || vendor.id);
-    
-    const imageResult = await imageRequest.query(`
-      SELECT 
-        ImageID,
-        ImageURL,
-        CloudinaryPublicId,
-        IsPrimary,
-        DisplayOrder,
-        ImageType,
-        Caption
-      FROM VendorImages 
-      WHERE VendorProfileID = @VendorProfileID 
-      ORDER BY IsPrimary DESC, DisplayOrder ASC
-    `);
-
-    // Process images with Cloudinary enhancements
-    const images = imageResult.recordset.map(img => {
-      const imageData = {
-        imageId: img.ImageID,
-        url: img.ImageURL,
-        isPrimary: img.IsPrimary,
-        displayOrder: img.DisplayOrder,
-        imageType: img.ImageType,
-        caption: img.Caption
-      };
-
-      // Add Cloudinary transformations if public ID exists
-      if (img.CloudinaryPublicId) {
-        imageData.cloudinaryPublicId = img.CloudinaryPublicId;
-        imageData.thumbnailUrl = cloudinaryService.getThumbnailUrl(img.CloudinaryPublicId, 300, 200);
-        imageData.optimizedUrl = cloudinaryService.getOptimizedUrl(img.CloudinaryPublicId);
-        imageData.squareUrl = cloudinaryService.getSquareUrl(img.CloudinaryPublicId, 400);
-        
-        // Different sizes for responsive display
-        imageData.sizes = {
-          small: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 300, height: 200, crop: 'fill' }),
-          medium: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 600, height: 400, crop: 'fill' }),
-          large: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 1200, height: 800, crop: 'fill' })
-        };
-      }
-
-      return imageData;
-    });
-
-    // Get featured image (primary image or first image)
-    const featuredImage = images.find(img => img.isPrimary) || images[0] || null;
-    
-    return {
-      ...vendor,
-      featuredImage: featuredImage,
-      images: images,
-      imageCount: images.length
-    };
-
-  } catch (error) {
-    console.error('Error enhancing vendor with images:', error);
-    return {
-      ...vendor,
-      featuredImage: null,
-      images: [],
-      imageCount: 0
-    };
-  }
-}
-
 // Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
   try {
@@ -132,8 +61,7 @@ router.get('/', async (req, res) => {
       radiusMiles,
       pageNumber,
       pageSize,
-      sortBy,
-      includeImages
+      sortBy
     } = req.query;
 
     const pool = await poolPromise;
@@ -160,9 +88,8 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
-    let formattedVendors = result.recordset.map(vendor => ({
+    const formattedVendors = result.recordset.map(vendor => ({
       id: vendor.id,
-      vendorProfileId: vendor.VendorProfileID || vendor.id,
       name: vendor.name || '',
       type: vendor.type || '',
       location: vendor.location || '',
@@ -173,7 +100,7 @@ router.get('/', async (req, res) => {
       reviewCount: vendor.ReviewCount,
       favoriteCount: vendor.FavoriteCount,
       bookingCount: vendor.BookingCount,
-      image: vendor.image || '', // Legacy image field
+      image: vendor.image || '',
       capacity: vendor.Capacity,
       rooms: vendor.Rooms,
       isPremium: vendor.IsPremium,
@@ -186,32 +113,9 @@ router.get('/', async (req, res) => {
       reviews: vendor.reviews ? JSON.parse(vendor.reviews) : []
     }));
 
-    // Enhance with Cloudinary images if requested (default: true for better UX)
-    if (includeImages !== 'false') {
-      console.log('Enhancing vendors with Cloudinary images...');
-      
-      // Process vendors in batches to avoid overwhelming the database
-      const batchSize = 5;
-      const enhancedVendors = [];
-      
-      for (let i = 0; i < formattedVendors.length; i += batchSize) {
-        const batch = formattedVendors.slice(i, i + batchSize);
-        const enhancedBatch = await Promise.all(
-          batch.map(vendor => enhanceVendorWithImages(vendor, pool))
-        );
-        enhancedVendors.push(...enhancedBatch);
-      }
-      
-      formattedVendors = enhancedVendors;
-    }
-
     res.json({
-      success: true,
       vendors: formattedVendors,
-      totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0,
-      pageNumber: parseInt(pageNumber) || 1,
-      pageSize: parseInt(pageSize) || 10,
-      hasImages: includeImages !== 'false'
+      totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0
     });
 
   } catch (err) {
@@ -503,64 +407,6 @@ router.get('/profile', async (req, res) => {
       });
     }
 
-    // DEBUG: Log all recordsets to identify where images are located
-    console.log(`🔍 DEBUGGING RECORDSETS FROM sp_GetVendorDetails:`);
-    console.log(`📊 Total recordsets: ${profileResult.recordsets.length}`);
-    
-    profileResult.recordsets.forEach((recordset, index) => {
-      console.log(`📋 Recordset[${index}]: ${recordset.length} records`);
-      if (recordset.length > 0) {
-        const firstRecord = recordset[0];
-        const keys = Object.keys(firstRecord);
-        console.log(`   🔑 Keys: ${keys.join(', ')}`);
-        
-        // Check if this recordset contains images
-        if (keys.includes('images')) {
-          console.log(`   🖼️  FOUND IMAGES in recordset[${index}]:`, firstRecord.images);
-        }
-      }
-    });
-
-    // Parse images JSON array from updated sp_GetVendorDetails stored procedure
-    let imagesFromStoredProcedure = [];
-    let imagesRecordsetIndex = -1;
-    
-    // Search for the recordset containing images
-    for (let i = 0; i < profileResult.recordsets.length; i++) {
-      const recordset = profileResult.recordsets[i];
-      if (recordset.length > 0 && recordset[0].hasOwnProperty('images')) {
-        imagesRecordsetIndex = i;
-        break;
-      }
-    }
-    
-    console.log(`🎯 Images found in recordset index: ${imagesRecordsetIndex}`);
-    
-    try {
-      if (imagesRecordsetIndex >= 0) {
-        const imagesJson = profileResult.recordsets[imagesRecordsetIndex][0].images;
-        console.log(`📝 Raw images JSON from recordset[${imagesRecordsetIndex}]:`, imagesJson);
-        
-        if (imagesJson) {
-          imagesFromStoredProcedure = JSON.parse(imagesJson);
-          console.log(`✅ PARSED IMAGES FROM STORED PROCEDURE:`, imagesFromStoredProcedure);
-        } else {
-          console.log(`❌ Images JSON is null/empty`);
-        }
-      } else {
-        console.log(`❌ NO RECORDSET WITH IMAGES FOUND`);
-      }
-    } catch (e) {
-      console.error(`❌ ERROR PARSING IMAGES FROM STORED PROCEDURE:`, e);
-      imagesFromStoredProcedure = [];
-    }
-
-    // Use images from stored procedure (dynamic, no fallback)
-    const galleryImages = imagesFromStoredProcedure;
-    
-    console.log(`FINAL GALLERY IMAGES TO RETURN:`, galleryImages);
-    console.log(`FINAL GALLERY IMAGES LENGTH:`, galleryImages.length);
-
     // Structure the comprehensive profile data
     const profileData = {
       profile: profileResult.recordsets[0][0] || {},
@@ -573,7 +419,7 @@ router.get('/profile', async (req, res) => {
       team: profileResult.recordsets[7] || [],
       socialMedia: profileResult.recordsets[8] || [],
       businessHours: profileResult.recordsets[9] || [],
-      images: galleryImages, // Use directly fetched gallery images
+      images: profileResult.recordsets[10] || [],
       isFavorite: profileResult.recordsets[11] ? profileResult.recordsets[11][0]?.IsFavorite || false : false,
       availableSlots: profileResult.recordsets[12] || []
     };
@@ -662,78 +508,18 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Get enhanced images and portfolio with Cloudinary
-    const vendorProfile = result.recordsets[0][0];
-    const enhancedVendor = await enhanceVendorWithImages({ 
-      VendorProfileID: vendorProfileId,
-      ...vendorProfile 
-    }, pool);
-
-    // Get enhanced portfolio with Cloudinary
-    const portfolioRequest = new sql.Request(pool);
-    portfolioRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const portfolioResult = await portfolioRequest.query(`
-      SELECT 
-        PortfolioID,
-        Title,
-        Description,
-        ImageURL,
-        CloudinaryPublicId,
-        ProjectDate,
-        DisplayOrder,
-        CreatedAt
-      FROM VendorPortfolio 
-      WHERE VendorProfileID = @VendorProfileID 
-      ORDER BY DisplayOrder ASC
-    `);
-
-    // Process portfolio with Cloudinary enhancements
-    const enhancedPortfolio = portfolioResult.recordset.map(item => {
-      const portfolioData = {
-        portfolioId: item.PortfolioID,
-        title: item.Title,
-        description: item.Description,
-        url: item.ImageURL,
-        projectDate: item.ProjectDate,
-        displayOrder: item.DisplayOrder,
-        createdAt: item.CreatedAt
-      };
-
-      // Add Cloudinary transformations if public ID exists
-      if (item.CloudinaryPublicId) {
-        portfolioData.cloudinaryPublicId = item.CloudinaryPublicId;
-        portfolioData.thumbnailUrl = cloudinaryService.getThumbnailUrl(item.CloudinaryPublicId, 300, 200);
-        portfolioData.optimizedUrl = cloudinaryService.getOptimizedUrl(item.CloudinaryPublicId);
-        
-        // Different sizes for portfolio display
-        portfolioData.sizes = {
-          thumbnail: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 200, height: 150, crop: 'fill' }),
-          medium: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 500, height: 375, crop: 'fill' }),
-          large: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 1000, height: 750, crop: 'fill' })
-        };
-      }
-
-      return portfolioData;
-    });
-
     const vendorDetails = {
-      profile: {
-        ...vendorProfile,
-        featuredImage: enhancedVendor.featuredImage,
-        imageCount: enhancedVendor.imageCount,
-        portfolioCount: enhancedPortfolio.length
-      },
+      profile: result.recordsets[0][0],
       categories: result.recordsets[1],
       services: result.recordsets[2],
       addOns: result.recordsets[3],
-      portfolio: enhancedPortfolio, // Enhanced portfolio with Cloudinary
+      portfolio: result.recordsets[4],
       reviews: result.recordsets[5],
       faqs: result.recordsets[6],
       team: result.recordsets[7],
       socialMedia: result.recordsets[8],
       businessHours: result.recordsets[9],
-      images: enhancedVendor.images, // Enhanced images with Cloudinary
+      images: result.recordsets[10],
       isFavorite: result.recordsets[11] ? result.recordsets[11][0].IsFavorite : false,
       availableSlots: result.recordsets[12]
     };
@@ -1461,60 +1247,67 @@ router.post('/setup/step7-availability', async (req, res) => {
   }
 });
 
-// Step 8: Policies & Preferences
+// Step 8: FAQ Section (policies step repurposed as FAQ)
 router.post('/setup/step8-policies', async (req, res) => {
   try {
-    const {
-      vendorProfileId,
-      depositRequirements,
-      cancellationPolicy,
-      reschedulingPolicy,
-      paymentMethods,
-      paymentTerms
-    } = req.body;
-
+    const { vendorProfileId, faqs } = req.body;
+    
     if (!vendorProfileId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vendor profile ID is required'
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Vendor profile ID is required' 
       });
     }
 
     const pool = await poolPromise;
     
-    // Update policies in vendor profile
-    const updateRequest = new sql.Request(pool);
-    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    updateRequest.input('DepositRequirements', sql.NVarChar, JSON.stringify(depositRequirements) || null);
-    updateRequest.input('CancellationPolicy', sql.NVarChar, cancellationPolicy || null);
-    updateRequest.input('ReschedulingPolicy', sql.NVarChar, reschedulingPolicy || null);
-    updateRequest.input('PaymentMethods', sql.NVarChar, JSON.stringify(paymentMethods) || null);
-    updateRequest.input('PaymentTerms', sql.NVarChar, paymentTerms || null);
-    
-    await updateRequest.query(`
-      UPDATE VendorProfiles 
-      SET DepositRequirements = @DepositRequirements,
-          CancellationPolicy = @CancellationPolicy,
-          ReschedulingPolicy = @ReschedulingPolicy,
-          PaymentMethods = @PaymentMethods,
-          PaymentTerms = @PaymentTerms,
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    // Handle FAQ data if provided
+    if (faqs && faqs.length > 0) {
+      // First, delete existing FAQs for this vendor to avoid duplicates
+      const deleteRequest = new sql.Request(pool);
+      deleteRequest.input('VendorProfileId', sql.Int, vendorProfileId);
+      await deleteRequest.query(`
+        DELETE FROM VendorFAQs 
+        WHERE VendorProfileID = @VendorProfileId 
+        AND QuestionId IS NULL
+      `);
+
+      // Insert new FAQs
+      for (let i = 0; i < faqs.length; i++) {
+        const faq = faqs[i];
+        if (faq.question && faq.answer) {
+          const insertRequest = new sql.Request(pool);
+          insertRequest.input('VendorProfileId', sql.Int, vendorProfileId);
+          insertRequest.input('Question', sql.NVarChar(500), faq.question);
+          insertRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
+          insertRequest.input('DisplayOrder', sql.Int, i + 1);
+          await insertRequest.query(`
+            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
+            VALUES (@VendorProfileId, @Question, @Answer, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
+          `);
+        }
+      }
+    }
+
+    // Policies data is ignored - this step is FAQ-only
+    // PaymentTerms, ReschedulingPolicy, DepositRequirements, PaymentMethods are not stored
     
     res.json({
       success: true,
-      message: 'Policies and preferences saved successfully',
-      step: 8,
-      nextStep: 9
+      message: faqs && faqs.length > 0 ? 'FAQ data saved successfully' : 'Step 8 completed (FAQ step - policies data ignored)',
+      data: {
+        vendorProfileId: vendorProfileId,
+        faqsCount: faqs?.length || 0,
+        note: 'Step 8 is FAQ-only. Policies data (PaymentTerms, ReschedulingPolicy, etc.) is ignored.'
+      }
     });
-    
-  } catch (err) {
-    console.error('Step 8 setup error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to save policies and preferences',
-      error: err.message
+
+  } catch (error) {
+    console.error('Error saving FAQ data:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to save FAQ data',
+      error: error.message 
     });
   }
 });
@@ -2088,124 +1881,44 @@ router.get('/:id/setup-data', async (req, res) => {
   }
 });
 
-// Save category-specific question answers for step 7
-router.post('/setup/step7-category-questions', async (req, res) => {
+// Save category-specific answers (Step 1 completion)
+router.post('/setup/step1-business-basics', async (req, res) => {
   try {
     const { vendorProfileId, categoryAnswers, primaryCategory } = req.body;
-    
-    if (!vendorProfileId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Vendor profile ID is required' 
+
+    if (!vendorProfileId || !categoryAnswers) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
       });
     }
 
     const pool = await poolPromise;
+    const request = new sql.Request(pool);
     
-    // Save category-specific question answers
-    if (categoryAnswers && categoryAnswers.length > 0) {
-      // First, delete existing answers for this vendor to avoid duplicates
-      const deleteRequest = new sql.Request(pool);
-      deleteRequest.input('VendorProfileId', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM VendorFAQs 
-        WHERE VendorProfileID = @VendorProfileId 
-        AND QuestionId IS NOT NULL
-      `);
-
-      // Insert new answers
-      for (const answer of categoryAnswers) {
-        const insertRequest = new sql.Request(pool);
-        insertRequest.input('VendorProfileId', sql.Int, vendorProfileId);
-        insertRequest.input('QuestionId', sql.Int, answer.questionId);
-        insertRequest.input('Answer', sql.NVarChar(sql.MAX), answer.answer);
-        await insertRequest.query(`
-          INSERT INTO VendorFAQs (VendorProfileID, QuestionId, Answer, CreatedAt)
-          VALUES (@VendorProfileId, @QuestionId, @Answer, GETDATE())
-        `);
-      }
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('AdditionalDetailsJSON', sql.NVarChar(sql.MAX), JSON.stringify(categoryAnswers));
+    
+    const result = await request.execute('sp_SaveVendorAdditionalDetails');
+    
+    if (result.recordset[0].Success) {
+      res.json({
+        success: true,
+        message: 'Category answers saved successfully'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.recordset[0].Message
+      });
     }
 
-    res.json({
-      success: true,
-      message: 'Category-specific answers saved successfully',
-      data: {
-        vendorProfileId: vendorProfileId,
-        answersCount: categoryAnswers?.length || 0
-      }
-    });
-
-  } catch (error) {
-    console.error('Error saving category-specific answers:', error);
-    res.status(500).json({ 
-      success: false, 
+  } catch (err) {
+    console.error('Category answers error:', err);
+    res.status(500).json({
+      success: false,
       message: 'Failed to save category-specific answers',
-      error: error.message 
-    });
-  }
-});
-
-// Save FAQ data for step 8 (policies step repurposed as FAQ)
-router.post('/setup/step8-policies', async (req, res) => {
-  try {
-    const { vendorProfileId, faqs } = req.body;
-    
-    if (!vendorProfileId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Vendor profile ID is required' 
-      });
-    }
-
-    const pool = await poolPromise;
-    
-    // Handle FAQ data if provided
-    if (faqs && faqs.length > 0) {
-      // First, delete existing FAQs for this vendor to avoid duplicates
-      const deleteRequest = new sql.Request(pool);
-      deleteRequest.input('VendorProfileId', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM VendorFAQs 
-        WHERE VendorProfileID = @VendorProfileId 
-        AND QuestionId IS NULL
-      `);
-
-      // Insert new FAQs
-      for (let i = 0; i < faqs.length; i++) {
-        const faq = faqs[i];
-        if (faq.question && faq.answer) {
-          const insertRequest = new sql.Request(pool);
-          insertRequest.input('VendorProfileId', sql.Int, vendorProfileId);
-          insertRequest.input('Question', sql.NVarChar(500), faq.question);
-          insertRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
-          insertRequest.input('DisplayOrder', sql.Int, i + 1);
-          await insertRequest.query(`
-            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
-            VALUES (@VendorProfileId, @Question, @Answer, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
-          `);
-        }
-      }
-    }
-
-    // Policies data is ignored - this step is FAQ-only
-    // PaymentTerms, ReschedulingPolicy, DepositRequirements, PaymentMethods are not stored
-    
-    res.json({
-      success: true,
-      message: faqs && faqs.length > 0 ? 'FAQ data saved successfully' : 'Step 8 completed (FAQ step - policies data ignored)',
-      data: {
-        vendorProfileId: vendorProfileId,
-        faqsCount: faqs?.length || 0,
-        note: 'Step 8 is FAQ-only. Policies data (PaymentTerms, ReschedulingPolicy, etc.) is ignored.'
-      }
-    });
-
-  } catch (error) {
-    console.error('Error saving FAQ data:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to save FAQ data',
-      error: error.message 
+      error: err.message
     });
   }
 });
