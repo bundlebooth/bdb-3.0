@@ -2210,70 +2210,156 @@ router.get('/summary/:vendorProfileId', async (req, res) => {
     }
 
     const pool = await sql.connect();
-    const request = new sql.Request(pool);
     
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    // Get basic vendor information
+    const vendorRequest = new sql.Request(pool);
+    vendorRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    // Use the new stored procedure that gets comprehensive vendor data
-    const result = await request.execute('sp_GetVendorSummary');
-    
-    if (result.recordsets.length === 0 || result.recordsets[0].length === 0) {
+    const vendorResult = await vendorRequest.query(`
+      SELECT 
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.BusinessDescription,
+        vp.BusinessPhone,
+        vp.BusinessEmail,
+        vp.Website,
+        vp.Address,
+        vp.City,
+        vp.State,
+        vp.Country,
+        vp.PostalCode,
+        vp.YearsInBusiness,
+        vp.Tagline,
+        vp.CreatedAt,
+        u.FirstName,
+        u.LastName
+      FROM VendorProfiles vp
+      LEFT JOIN Users u ON vp.UserID = u.UserID
+      WHERE vp.VendorProfileID = @VendorProfileID
+    `);
+
+    if (vendorResult.recordset.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Vendor not found'
       });
     }
 
-    // Extract data from multiple recordsets returned by the stored procedure
-    const basicInfo = result.recordsets[0][0]; // Basic vendor information
-    const categories = result.recordsets[1] || []; // Categories
-    const imageCount = result.recordsets[2][0] || { ImageCount: 0 }; // Images count
-    const serviceCount = result.recordsets[3][0] || { ServiceCount: 0 }; // Services count
-    const packageCount = result.recordsets[4][0] || { PackageCount: 0 }; // Packages count
-    const socialMedia = result.recordsets[5] || []; // Social media links
-    const businessHours = result.recordsets[6] || []; // Business hours
-    const additionalDetails = result.recordsets[7] || []; // Category-specific answers
-    const faqs = result.recordsets[8] || []; // FAQs
+    const vendor = vendorResult.recordset[0];
+
+    // Get categories
+    const categoriesRequest = new sql.Request(pool);
+    categoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const categoriesResult = await categoriesRequest.query(`
+      SELECT Category FROM VendorCategories 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    // Get services count
+    const servicesRequest = new sql.Request(pool);
+    servicesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const servicesResult = await servicesRequest.query(`
+      SELECT COUNT(*) as ServiceCount FROM Services s
+      INNER JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+      WHERE sc.VendorProfileID = @VendorProfileID
+    `);
+
+    // Get packages count
+    const packagesRequest = new sql.Request(pool);
+    packagesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const packagesResult = await packagesRequest.query(`
+      SELECT COUNT(*) as PackageCount FROM Packages 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    // Get social media
+    const socialRequest = new sql.Request(pool);
+    socialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const socialResult = await socialRequest.query(`
+      SELECT Platform, URL FROM VendorSocialMedia 
+      WHERE VendorProfileID = @VendorProfileID
+      ORDER BY DisplayOrder
+    `);
+
+    // Get business hours
+    const hoursRequest = new sql.Request(pool);
+    hoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const hoursResult = await hoursRequest.query(`
+      SELECT DayOfWeek, OpenTime, CloseTime, IsAvailable 
+      FROM VendorBusinessHours 
+      WHERE VendorProfileID = @VendorProfileID
+      ORDER BY DayOfWeek
+    `);
+
+    // Get FAQs (including category-specific answers)
+    const faqRequest = new sql.Request(pool);
+    faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const faqResult = await faqRequest.query(`
+      SELECT Question, Answer FROM VendorFAQs 
+      WHERE VendorProfileID = @VendorProfileID
+      ORDER BY DisplayOrder
+    `);
+
+    // Separate category questions from regular FAQs
+    const categoryQuestions = faqResult.recordset.filter(faq => 
+      faq.Question.startsWith('Category Question:')
+    );
+    const regularFaqs = faqResult.recordset.filter(faq => 
+      !faq.Question.startsWith('Category Question:')
+    );
+
+    // Get images count
+    const imagesRequest = new sql.Request(pool);
+    imagesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const imagesResult = await imagesRequest.query(`
+      SELECT COUNT(*) as ImageCount FROM VendorImages 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
 
     // Build comprehensive summary response
     const summaryData = {
       basicInfo: {
-        businessName: basicInfo.BusinessName,
-        displayName: basicInfo.DisplayName,
-        description: basicInfo.BusinessDescription,
-        tagline: basicInfo.Tagline,
-        phone: basicInfo.BusinessPhone,
-        email: basicInfo.BusinessEmail,
-        website: basicInfo.Website,
-        address: basicInfo.Address,
-        city: basicInfo.City,
-        state: basicInfo.State,
-        country: basicInfo.Country,
-        postalCode: basicInfo.PostalCode,
-        additionalCitiesServed: basicInfo.AdditionalCitiesServed,
-        yearsInBusiness: basicInfo.YearsInBusiness,
-        featuredImageURL: basicInfo.FeaturedImageURL,
-        acceptingBookings: basicInfo.AcceptingBookings,
-        averageResponseTime: basicInfo.AverageResponseTime
+        businessName: vendor.BusinessName,
+        displayName: vendor.DisplayName,
+        description: vendor.BusinessDescription,
+        tagline: vendor.Tagline,
+        phone: vendor.BusinessPhone,
+        email: vendor.BusinessEmail,
+        website: vendor.Website,
+        address: vendor.Address,
+        city: vendor.City,
+        state: vendor.State,
+        country: vendor.Country,
+        postalCode: vendor.PostalCode,
+        yearsInBusiness: vendor.YearsInBusiness,
+        ownerName: `${vendor.FirstName || ''} ${vendor.LastName || ''}`.trim(),
+        memberSince: vendor.CreatedAt
       },
-      categories: categories.map(row => row.Category),
-      serviceCount: serviceCount.ServiceCount,
-      packageCount: packageCount.PackageCount,
-      imageCount: imageCount.ImageCount,
-      socialMedia: socialMedia,
-      businessHours: businessHours,
-      additionalDetails: additionalDetails, // Category-specific Q&A
-      faqs: faqs,
+      categories: categoriesResult.recordset.map(row => row.Category),
+      serviceCount: servicesResult.recordset[0].ServiceCount,
+      packageCount: packagesResult.recordset[0].PackageCount,
+      imageCount: imagesResult.recordset[0].ImageCount,
+      socialMedia: socialResult.recordset,
+      businessHours: hoursResult.recordset,
+      additionalDetails: categoryQuestions, // Category-specific Q&A
+      faqs: regularFaqs,
       completionStatus: {
-        basicInfo: !!(basicInfo.BusinessName && basicInfo.BusinessDescription),
-        categories: categories.length > 0,
-        services: serviceCount.ServiceCount > 0,
-        packages: packageCount.PackageCount > 0,
-        socialMedia: socialMedia.length > 0,
-        businessHours: businessHours.length > 0,
-        additionalDetails: additionalDetails.length > 0,
-        faqs: faqs.length > 0,
-        images: imageCount.ImageCount > 0
+        basicInfo: !!(vendor.BusinessName && vendor.BusinessDescription),
+        categories: categoriesResult.recordset.length > 0,
+        services: servicesResult.recordset[0].ServiceCount > 0,
+        packages: packagesResult.recordset[0].PackageCount > 0,
+        socialMedia: socialResult.recordset.length > 0,
+        businessHours: hoursResult.recordset.length > 0,
+        additionalDetails: categoryQuestions.length > 0,
+        faqs: regularFaqs.length > 0,
+        images: imagesResult.recordset[0].ImageCount > 0
       }
     };
 
@@ -2305,30 +2391,35 @@ router.post('/setup/step7-category-questions', async (req, res) => {
     }
 
     const pool = await sql.connect();
-    const request = new sql.Request(pool);
     
-    // Convert categoryAnswers array to JSON string for the stored procedure
-    const additionalDetailsJSON = JSON.stringify(categoryAnswers);
+    // Delete existing category answers for this vendor
+    const deleteRequest = new sql.Request(pool);
+    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('AdditionalDetailsJSON', sql.NVarChar(sql.MAX), additionalDetailsJSON);
+    await deleteRequest.query(`
+      DELETE FROM VendorFAQs 
+      WHERE VendorProfileID = @VendorProfileID 
+      AND Question LIKE 'Category Question:%'
+    `);
     
-    const result = await request.execute('sp_SaveVendorAdditionalDetails');
-    
-    const response = result.recordset[0];
-    
-    if (response.Success) {
-      res.json({
-        success: true,
-        message: 'Category-specific answers saved successfully'
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: 'Failed to save category-specific answers',
-        error: response.Message
-      });
+    // Insert new category answers
+    for (const answer of categoryAnswers) {
+      const insertRequest = new sql.Request(pool);
+      insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      insertRequest.input('Question', sql.NVarChar(500), `Category Question: ${answer.questionId}`);
+      insertRequest.input('Answer', sql.NVarChar(sql.MAX), answer.answer);
+      insertRequest.input('DisplayOrder', sql.Int, answer.questionId);
+      
+      await insertRequest.query(`
+        INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, CreatedAt, UpdatedAt)
+        VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder, GETDATE(), GETDATE())
+      `);
     }
+
+    res.json({
+      success: true,
+      message: 'Category-specific answers saved successfully'
+    });
 
   } catch (err) {
     console.error('Save category answers error:', err);
