@@ -3,7 +3,6 @@ const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
-const cloudinaryService = require('../services/cloudinaryService');
 
 // Helper function to resolve UserID to VendorProfileID
 async function resolveVendorProfileId(id, pool) {
@@ -46,76 +45,6 @@ async function resolveVendorProfileId(id, pool) {
   return null;
 }
 
-// Helper function to enhance vendor data with Cloudinary images
-async function enhanceVendorWithImages(vendor, pool) {
-  try {
-    const imageRequest = new sql.Request(pool);
-    imageRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID || vendor.id);
-    
-    const imageResult = await imageRequest.query(`
-      SELECT 
-        ImageID,
-        ImageURL,
-        CloudinaryPublicId,
-        IsPrimary,
-        DisplayOrder,
-        ImageType,
-        Caption
-      FROM VendorImages 
-      WHERE VendorProfileID = @VendorProfileID 
-      ORDER BY IsPrimary DESC, DisplayOrder ASC
-    `);
-
-    // Process images with Cloudinary enhancements
-    const images = imageResult.recordset.map(img => {
-      const imageData = {
-        imageId: img.ImageID,
-        url: img.ImageURL,
-        isPrimary: img.IsPrimary,
-        displayOrder: img.DisplayOrder,
-        imageType: img.ImageType,
-        caption: img.Caption
-      };
-
-      // Add Cloudinary transformations if public ID exists
-      if (img.CloudinaryPublicId) {
-        imageData.cloudinaryPublicId = img.CloudinaryPublicId;
-        imageData.thumbnailUrl = cloudinaryService.getThumbnailUrl(img.CloudinaryPublicId, 300, 200);
-        imageData.optimizedUrl = cloudinaryService.getOptimizedUrl(img.CloudinaryPublicId);
-        imageData.squareUrl = cloudinaryService.getSquareUrl(img.CloudinaryPublicId, 400);
-        
-        // Different sizes for responsive display
-        imageData.sizes = {
-          small: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 300, height: 200, crop: 'fill' }),
-          medium: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 600, height: 400, crop: 'fill' }),
-          large: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 1200, height: 800, crop: 'fill' })
-        };
-      }
-
-      return imageData;
-    });
-
-    // Get featured image (primary image or first image)
-    const featuredImage = images.find(img => img.isPrimary) || images[0] || null;
-    
-    return {
-      ...vendor,
-      featuredImage: featuredImage,
-      images: images,
-      imageCount: images.length
-    };
-
-  } catch (error) {
-    console.error('Error enhancing vendor with images:', error);
-    return {
-      ...vendor,
-      featuredImage: null,
-      images: [],
-      imageCount: 0
-    };
-  }
-}
-
 // Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
   try {
@@ -132,8 +61,7 @@ router.get('/', async (req, res) => {
       radiusMiles,
       pageNumber,
       pageSize,
-      sortBy,
-      includeImages
+      sortBy
     } = req.query;
 
     const pool = await poolPromise;
@@ -160,9 +88,8 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
-    let formattedVendors = result.recordset.map(vendor => ({
+    const formattedVendors = result.recordset.map(vendor => ({
       id: vendor.id,
-      vendorProfileId: vendor.VendorProfileID || vendor.id,
       name: vendor.name || '',
       type: vendor.type || '',
       location: vendor.location || '',
@@ -173,7 +100,7 @@ router.get('/', async (req, res) => {
       reviewCount: vendor.ReviewCount,
       favoriteCount: vendor.FavoriteCount,
       bookingCount: vendor.BookingCount,
-      image: vendor.image || '', // Legacy image field
+      image: vendor.image || '',
       capacity: vendor.Capacity,
       rooms: vendor.Rooms,
       isPremium: vendor.IsPremium,
@@ -186,32 +113,9 @@ router.get('/', async (req, res) => {
       reviews: vendor.reviews ? JSON.parse(vendor.reviews) : []
     }));
 
-    // Enhance with Cloudinary images if requested (default: true for better UX)
-    if (includeImages !== 'false') {
-      console.log('Enhancing vendors with Cloudinary images...');
-      
-      // Process vendors in batches to avoid overwhelming the database
-      const batchSize = 5;
-      const enhancedVendors = [];
-      
-      for (let i = 0; i < formattedVendors.length; i += batchSize) {
-        const batch = formattedVendors.slice(i, i + batchSize);
-        const enhancedBatch = await Promise.all(
-          batch.map(vendor => enhanceVendorWithImages(vendor, pool))
-        );
-        enhancedVendors.push(...enhancedBatch);
-      }
-      
-      formattedVendors = enhancedVendors;
-    }
-
     res.json({
-      success: true,
       vendors: formattedVendors,
-      totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0,
-      pageNumber: parseInt(pageNumber) || 1,
-      pageSize: parseInt(pageSize) || 10,
-      hasImages: includeImages !== 'false'
+      totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0
     });
 
   } catch (err) {
@@ -503,64 +407,6 @@ router.get('/profile', async (req, res) => {
       });
     }
 
-    // DEBUG: Log all recordsets to identify where images are located
-    console.log(`🔍 DEBUGGING RECORDSETS FROM sp_GetVendorDetails:`);
-    console.log(`📊 Total recordsets: ${profileResult.recordsets.length}`);
-    
-    profileResult.recordsets.forEach((recordset, index) => {
-      console.log(`📋 Recordset[${index}]: ${recordset.length} records`);
-      if (recordset.length > 0) {
-        const firstRecord = recordset[0];
-        const keys = Object.keys(firstRecord);
-        console.log(`   🔑 Keys: ${keys.join(', ')}`);
-        
-        // Check if this recordset contains images
-        if (keys.includes('images')) {
-          console.log(`   🖼️  FOUND IMAGES in recordset[${index}]:`, firstRecord.images);
-        }
-      }
-    });
-
-    // Parse images JSON array from updated sp_GetVendorDetails stored procedure
-    let imagesFromStoredProcedure = [];
-    let imagesRecordsetIndex = -1;
-    
-    // Search for the recordset containing images
-    for (let i = 0; i < profileResult.recordsets.length; i++) {
-      const recordset = profileResult.recordsets[i];
-      if (recordset.length > 0 && recordset[0].hasOwnProperty('images')) {
-        imagesRecordsetIndex = i;
-        break;
-      }
-    }
-    
-    console.log(`🎯 Images found in recordset index: ${imagesRecordsetIndex}`);
-    
-    try {
-      if (imagesRecordsetIndex >= 0) {
-        const imagesJson = profileResult.recordsets[imagesRecordsetIndex][0].images;
-        console.log(`📝 Raw images JSON from recordset[${imagesRecordsetIndex}]:`, imagesJson);
-        
-        if (imagesJson) {
-          imagesFromStoredProcedure = JSON.parse(imagesJson);
-          console.log(`✅ PARSED IMAGES FROM STORED PROCEDURE:`, imagesFromStoredProcedure);
-        } else {
-          console.log(`❌ Images JSON is null/empty`);
-        }
-      } else {
-        console.log(`❌ NO RECORDSET WITH IMAGES FOUND`);
-      }
-    } catch (e) {
-      console.error(`❌ ERROR PARSING IMAGES FROM STORED PROCEDURE:`, e);
-      imagesFromStoredProcedure = [];
-    }
-
-    // Use images from stored procedure (dynamic, no fallback)
-    const galleryImages = imagesFromStoredProcedure;
-    
-    console.log(`FINAL GALLERY IMAGES TO RETURN:`, galleryImages);
-    console.log(`FINAL GALLERY IMAGES LENGTH:`, galleryImages.length);
-
     // Structure the comprehensive profile data
     const profileData = {
       profile: profileResult.recordsets[0][0] || {},
@@ -573,7 +419,7 @@ router.get('/profile', async (req, res) => {
       team: profileResult.recordsets[7] || [],
       socialMedia: profileResult.recordsets[8] || [],
       businessHours: profileResult.recordsets[9] || [],
-      images: galleryImages, // Use directly fetched gallery images
+      images: profileResult.recordsets[10] || [],
       isFavorite: profileResult.recordsets[11] ? profileResult.recordsets[11][0]?.IsFavorite || false : false,
       availableSlots: profileResult.recordsets[12] || []
     };
@@ -662,78 +508,18 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Get enhanced images and portfolio with Cloudinary
-    const vendorProfile = result.recordsets[0][0];
-    const enhancedVendor = await enhanceVendorWithImages({ 
-      VendorProfileID: vendorProfileId,
-      ...vendorProfile 
-    }, pool);
-
-    // Get enhanced portfolio with Cloudinary
-    const portfolioRequest = new sql.Request(pool);
-    portfolioRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const portfolioResult = await portfolioRequest.query(`
-      SELECT 
-        PortfolioID,
-        Title,
-        Description,
-        ImageURL,
-        CloudinaryPublicId,
-        ProjectDate,
-        DisplayOrder,
-        CreatedAt
-      FROM VendorPortfolio 
-      WHERE VendorProfileID = @VendorProfileID 
-      ORDER BY DisplayOrder ASC
-    `);
-
-    // Process portfolio with Cloudinary enhancements
-    const enhancedPortfolio = portfolioResult.recordset.map(item => {
-      const portfolioData = {
-        portfolioId: item.PortfolioID,
-        title: item.Title,
-        description: item.Description,
-        url: item.ImageURL,
-        projectDate: item.ProjectDate,
-        displayOrder: item.DisplayOrder,
-        createdAt: item.CreatedAt
-      };
-
-      // Add Cloudinary transformations if public ID exists
-      if (item.CloudinaryPublicId) {
-        portfolioData.cloudinaryPublicId = item.CloudinaryPublicId;
-        portfolioData.thumbnailUrl = cloudinaryService.getThumbnailUrl(item.CloudinaryPublicId, 300, 200);
-        portfolioData.optimizedUrl = cloudinaryService.getOptimizedUrl(item.CloudinaryPublicId);
-        
-        // Different sizes for portfolio display
-        portfolioData.sizes = {
-          thumbnail: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 200, height: 150, crop: 'fill' }),
-          medium: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 500, height: 375, crop: 'fill' }),
-          large: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 1000, height: 750, crop: 'fill' })
-        };
-      }
-
-      return portfolioData;
-    });
-
     const vendorDetails = {
-      profile: {
-        ...vendorProfile,
-        featuredImage: enhancedVendor.featuredImage,
-        imageCount: enhancedVendor.imageCount,
-        portfolioCount: enhancedPortfolio.length
-      },
+      profile: result.recordsets[0][0],
       categories: result.recordsets[1],
       services: result.recordsets[2],
       addOns: result.recordsets[3],
-      portfolio: enhancedPortfolio, // Enhanced portfolio with Cloudinary
+      portfolio: result.recordsets[4],
       reviews: result.recordsets[5],
       faqs: result.recordsets[6],
       team: result.recordsets[7],
       socialMedia: result.recordsets[8],
       businessHours: result.recordsets[9],
-      images: enhancedVendor.images, // Enhanced images with Cloudinary
+      images: result.recordsets[10],
       isFavorite: result.recordsets[11] ? result.recordsets[11][0].IsFavorite : false,
       availableSlots: result.recordsets[12]
     };
@@ -2088,341 +1874,45 @@ router.get('/:id/setup-data', async (req, res) => {
   }
 });
 
-// Get category-specific questions for vendor setup
-router.get('/category-questions/:category', async (req, res) => {
-  try {
-    const { category } = req.params;
-    
-    if (!category) {
-      return res.status(400).json({
-        success: false,
-        message: 'Category parameter is required'
-      });
-    }
-
-    const pool = await poolPromise;
-    
-    if (!pool.connected) {
-      throw new Error('Database connection not established');
-    }
-
-    const request = new sql.Request(pool);
-    request.input('Category', sql.NVarChar(100), category);
-
-    // Get FAQ templates for this category
-    const result = await request.execute('sp_GetCategoryQuestions');
-    
-    // Debug: Log the actual database response to see field names
-    console.log('Database response for category questions:', JSON.stringify(result.recordset, null, 2));
-    
-    const questions = result.recordset.map(row => ({
-      QuestionId: row.TemplateFAQID || row.QuestionId || row.ID,
-      QuestionText: row.Question || row.QuestionText || row.Text || 'Question not available',
-      QuestionType: 'YesNo', // Changed to Yes/No radio buttons
-      IsRequired: row.IsRequired || false,
-      SuggestedAnswer: row.SuggestedAnswer,
-      DisplayOrder: row.DisplayOrder || 1
-    }));
-
-    res.json({
-      success: true,
-      questions: questions,
-      category: category
-    });
-
-  } catch (err) {
-    console.error('Category questions error:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to load category questions',
-      error: err.message 
-    });
-  }
-});
-
-// Save category-specific question answers for step 7
-router.post('/setup/step7-category-questions', async (req, res) => {
+// Save category-specific answers (Step 1 completion)
+router.post('/setup/step1-business-basics', async (req, res) => {
   try {
     const { vendorProfileId, categoryAnswers, primaryCategory } = req.body;
-    
-    if (!vendorProfileId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Vendor profile ID is required' 
-      });
-    }
-
-    const pool = await poolPromise;
-    
-    // Save category-specific question answers
-    if (categoryAnswers && categoryAnswers.length > 0) {
-      // First, delete existing answers for this vendor to avoid duplicates
-      const deleteRequest = new sql.Request(pool);
-      deleteRequest.input('VendorProfileId', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM VendorFAQs 
-        WHERE VendorProfileID = @VendorProfileId 
-        AND QuestionId IS NOT NULL
-      `);
-
-      // Insert new answers
-      for (const answer of categoryAnswers) {
-        const insertRequest = new sql.Request(pool);
-        insertRequest.input('VendorProfileId', sql.Int, vendorProfileId);
-        insertRequest.input('QuestionId', sql.Int, answer.questionId);
-        insertRequest.input('Answer', sql.NVarChar(sql.MAX), answer.answer);
-        await insertRequest.query(`
-          INSERT INTO VendorFAQs (VendorProfileID, QuestionId, Answer, CreatedAt)
-          VALUES (@VendorProfileId, @QuestionId, @Answer, GETDATE())
-        `);
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'Category-specific answers saved successfully',
-      data: {
-        vendorProfileId: vendorProfileId,
-        answersCount: categoryAnswers?.length || 0
-      }
-    });
-
-  } catch (error) {
-    console.error('Error saving category-specific answers:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to save category-specific answers',
-      error: error.message 
-    });
-  }
-});
-
-// Get vendor summary for setup completion
-router.get('/summary/:vendorProfileId', async (req, res) => {
-  try {
-    const { vendorProfileId } = req.params;
-    
-    if (!vendorProfileId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vendor Profile ID is required'
-      });
-    }
-
-    const pool = await sql.connect();
-    
-    // Get basic vendor information
-    const vendorRequest = new sql.Request(pool);
-    vendorRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const vendorResult = await vendorRequest.query(`
-      SELECT 
-        vp.BusinessName,
-        vp.DisplayName,
-        vp.BusinessDescription,
-        vp.BusinessPhone,
-        vp.BusinessEmail,
-        vp.Website,
-        vp.Address,
-        vp.City,
-        vp.State,
-        vp.Country,
-        vp.PostalCode,
-        vp.YearsInBusiness,
-        vp.Tagline,
-        vp.CreatedAt,
-        u.FirstName,
-        u.LastName
-      FROM VendorProfiles vp
-      LEFT JOIN Users u ON vp.UserID = u.UserID
-      WHERE vp.VendorProfileID = @VendorProfileID
-    `);
-
-    if (vendorResult.recordset.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
-      });
-    }
-
-    const vendor = vendorResult.recordset[0];
-
-    // Get categories
-    const categoriesRequest = new sql.Request(pool);
-    categoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const categoriesResult = await categoriesRequest.query(`
-      SELECT Category FROM VendorCategories 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Get services count
-    const servicesRequest = new sql.Request(pool);
-    servicesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const servicesResult = await servicesRequest.query(`
-      SELECT COUNT(*) as ServiceCount FROM Services s
-      INNER JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
-      WHERE sc.VendorProfileID = @VendorProfileID
-    `);
-
-    // Get packages count
-    const packagesRequest = new sql.Request(pool);
-    packagesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const packagesResult = await packagesRequest.query(`
-      SELECT COUNT(*) as PackageCount FROM Packages 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Get social media
-    const socialRequest = new sql.Request(pool);
-    socialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const socialResult = await socialRequest.query(`
-      SELECT Platform, URL FROM VendorSocialMedia 
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DisplayOrder
-    `);
-
-    // Get business hours
-    const hoursRequest = new sql.Request(pool);
-    hoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const hoursResult = await hoursRequest.query(`
-      SELECT DayOfWeek, OpenTime, CloseTime, IsAvailable 
-      FROM VendorBusinessHours 
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DayOfWeek
-    `);
-
-    // Get FAQs (including category-specific answers)
-    const faqRequest = new sql.Request(pool);
-    faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const faqResult = await faqRequest.query(`
-      SELECT Question, Answer FROM VendorFAQs 
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DisplayOrder
-    `);
-
-    // Separate category questions from regular FAQs
-    const categoryQuestions = faqResult.recordset.filter(faq => 
-      faq.Question.startsWith('Category Question:')
-    );
-    const regularFaqs = faqResult.recordset.filter(faq => 
-      !faq.Question.startsWith('Category Question:')
-    );
-
-    // Get images count
-    const imagesRequest = new sql.Request(pool);
-    imagesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const imagesResult = await imagesRequest.query(`
-      SELECT COUNT(*) as ImageCount FROM VendorImages 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Build comprehensive summary response
-    const summaryData = {
-      basicInfo: {
-        businessName: vendor.BusinessName,
-        displayName: vendor.DisplayName,
-        description: vendor.BusinessDescription,
-        tagline: vendor.Tagline,
-        phone: vendor.BusinessPhone,
-        email: vendor.BusinessEmail,
-        website: vendor.Website,
-        address: vendor.Address,
-        city: vendor.City,
-        state: vendor.State,
-        country: vendor.Country,
-        postalCode: vendor.PostalCode,
-        yearsInBusiness: vendor.YearsInBusiness,
-        ownerName: `${vendor.FirstName || ''} ${vendor.LastName || ''}`.trim(),
-        memberSince: vendor.CreatedAt
-      },
-      categories: categoriesResult.recordset.map(row => row.Category),
-      serviceCount: servicesResult.recordset[0].ServiceCount,
-      packageCount: packagesResult.recordset[0].PackageCount,
-      imageCount: imagesResult.recordset[0].ImageCount,
-      socialMedia: socialResult.recordset,
-      businessHours: hoursResult.recordset,
-      additionalDetails: categoryQuestions, // Category-specific Q&A
-      faqs: regularFaqs,
-      completionStatus: {
-        basicInfo: !!(vendor.BusinessName && vendor.BusinessDescription),
-        categories: categoriesResult.recordset.length > 0,
-        services: servicesResult.recordset[0].ServiceCount > 0,
-        packages: packagesResult.recordset[0].PackageCount > 0,
-        socialMedia: socialResult.recordset.length > 0,
-        businessHours: hoursResult.recordset.length > 0,
-        additionalDetails: categoryQuestions.length > 0,
-        faqs: regularFaqs.length > 0,
-        images: imagesResult.recordset[0].ImageCount > 0
-      }
-    };
-
-    res.json({
-      success: true,
-      data: summaryData
-    });
-
-  } catch (err) {
-    console.error('Vendor summary error:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to load vendor summary',
-      error: err.message 
-    });
-  }
-});
-
-// POST /vendors/setup/step7-category-questions - Save category-specific answers
-router.post('/setup/step7-category-questions', async (req, res) => {
-  try {
-    const { vendorProfileId, categoryAnswers } = req.body;
 
     if (!vendorProfileId || !categoryAnswers) {
       return res.status(400).json({
         success: false,
-        message: 'Vendor profile ID and category answers are required'
+        message: 'Missing required fields'
       });
     }
 
-    const pool = await sql.connect();
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
     
-    // Delete existing category answers for this vendor
-    const deleteRequest = new sql.Request(pool);
-    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('CategoryAnswersJSON', sql.NVarChar(sql.MAX), JSON.stringify(categoryAnswers));
+    request.input('PrimaryCategory', sql.NVarChar(100), primaryCategory);
     
-    await deleteRequest.query(`
-      DELETE FROM VendorFAQs 
-      WHERE VendorProfileID = @VendorProfileID 
-      AND Question LIKE 'Category Question:%'
-    `);
+    const result = await request.execute('sp_SaveVendorCategoryAnswers');
     
-    // Insert new category answers
-    for (const answer of categoryAnswers) {
-      const insertRequest = new sql.Request(pool);
-      insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      insertRequest.input('Question', sql.NVarChar(500), `Category Question: ${answer.questionId}`);
-      insertRequest.input('Answer', sql.NVarChar(sql.MAX), answer.answer);
-      insertRequest.input('DisplayOrder', sql.Int, answer.questionId);
-      
-      await insertRequest.query(`
-        INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, CreatedAt, UpdatedAt)
-        VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder, GETDATE(), GETDATE())
-      `);
+    if (result.recordset[0].Success) {
+      res.json({
+        success: true,
+        message: result.recordset[0].Message,
+        answersSaved: result.recordset[0].AnswersSaved,
+        primaryCategory: result.recordset[0].PrimaryCategory
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.recordset[0].Message,
+        errorNumber: result.recordset[0].ErrorNumber,
+        errorLine: result.recordset[0].ErrorLine
+      });
     }
 
-    res.json({
-      success: true,
-      message: 'Category-specific answers saved successfully'
-    });
-
   } catch (err) {
-    console.error('Save category answers error:', err);
+    console.error('Category answers error:', err);
     res.status(500).json({
       success: false,
       message: 'Failed to save category-specific answers',
