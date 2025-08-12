@@ -260,6 +260,7 @@ CREATE TABLE [dbo].[VendorSocialMedia] (
     [Platform] NVARCHAR(50) NOT NULL,
     [URL] NVARCHAR(500) NOT NULL,
     [Username] NVARCHAR(100) NULL,
+    [DisplayOrder] INT NOT NULL DEFAULT 0,
     [IsActive] BIT NOT NULL DEFAULT 1,
     [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
     CONSTRAINT [PK_VendorSocialMedia] PRIMARY KEY ([SocialMediaID]),
