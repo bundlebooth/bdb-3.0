@@ -2276,15 +2276,15 @@
                 <!-- Progress Bar -->
                 <div style="margin-bottom: 2rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
-                        <span class="step-indicator active" id="step-indicator-1">1: Business</span>
-                        <span class="step-indicator" id="step-indicator-2">2: Location</span>
-                        <span class="step-indicator" id="step-indicator-3">3: Gallery</span>
-                        <span class="step-indicator" id="step-indicator-4">4: Services</span>
-                        <span class="step-indicator" id="step-indicator-5">5: Social</span>
-                        <span class="step-indicator" id="step-indicator-6">6: Schedule</span>
-                        <span class="step-indicator" id="step-indicator-7">7: Additional Details</span>
+                        <span class="step-indicator active" id="step-indicator-1">1: Business Basics</span>
+                        <span class="step-indicator" id="step-indicator-2">2: Location Information</span>
+                        <span class="step-indicator" id="step-indicator-3">3: Services & Packages</span>
+                        <span class="step-indicator" id="step-indicator-4">4: Additional Details</span>
+                        <span class="step-indicator" id="step-indicator-5">5: Availability & Scheduling</span>
+                        <span class="step-indicator" id="step-indicator-6">6: Gallery & Media</span>
+                        <span class="step-indicator" id="step-indicator-7">7: Social Media</span>
                         <span class="step-indicator" id="step-indicator-8">8: FAQ</span>
-                        <span class="step-indicator" id="step-indicator-9">9: Summary</span>
+                        <span class="step-indicator" id="step-indicator-9">9: Summary & Completion</span>
                     </div>
                     <div style="background-color: var(--border); height: 4px; border-radius: 2px; overflow: hidden;">
                         <div id="setup-progress-bar" style="background-color: var(--primary); height: 100%; width: 11.11%; transition: width 0.3s ease;"></div>
@@ -2459,99 +2459,13 @@
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
                         <button type="button" class="btn btn-outline" id="back-to-step-1">Back: Business Basics</button>
-                        <button type="button" class="btn btn-primary" id="next-to-step-3">Next: Gallery & Media</button>
+                        <button type="button" class="btn btn-primary" id="next-to-step-3">Next: Services & Packages</button>
                     </div>
                 </div>
 
-                <!-- Step 3: Gallery & Media -->
+                <!-- Step 3: Services & Packages -->
                 <div class="setup-step" id="setup-step-3" style="display: none;">
-                    <h4 class="form-section-title">Step 3: Gallery & Media</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Showcase your work with images and portfolio items.</p>
-                    
-                    <h5 style="margin-bottom: 1rem; color: var(--primary);">Featured Image</h5>
-                    <div class="form-group">
-                        <label for="featured-image">Featured/Primary Image *</label>
-                        <input type="file" id="featured-image" accept="image/*" required>
-                        <small style="color: var(--text-light);">This will be the main image displayed on your profile</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="featured-image-url">Or Featured Image URL</label>
-                        <input type="url" id="featured-image-url" placeholder="https://example.com/featured-image.jpg">
-                    </div>
-                    
-                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Gallery Images</h5>
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="gallery-images">Upload Gallery Images</label>
-                                <input type="file" id="gallery-images" accept="image/*" multiple>
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="gallery-image-url">Or Add Image URL</label>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <input type="url" id="gallery-image-url" placeholder="https://example.com/image.jpg">
-                                    <button type="button" class="btn btn-outline" id="add-gallery-url-btn">Add</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div id="gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin: 1.5rem 0;">
-                        <!-- Gallery items will be added here -->
-                    </div>
-                    
-                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Portfolio Items</h5>
-                    <div id="portfolio-list" style="margin-bottom: 1rem;">
-                        <!-- Portfolio items will be listed here -->
-                    </div>
-                    <button type="button" class="btn btn-outline" id="add-portfolio-btn">Add Portfolio Item</button>
-                    
-                    <!-- Portfolio Form -->
-                    <div id="portfolio-form" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
-                        <div class="form-group">
-                            <label>Project Title</label>
-                            <input type="text" id="portfolio-title" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Project Description</label>
-                            <textarea id="portfolio-description" rows="3"></textarea>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-col">
-                                <div class="form-group">
-                                    <label>Project Image</label>
-                                    <input type="file" id="portfolio-image" accept="image/*">
-                                </div>
-                            </div>
-                            <div class="form-col">
-                                <div class="form-group">
-                                    <label>Or Image URL</label>
-                                    <input type="url" id="portfolio-image-url" placeholder="https://example.com/project.jpg">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Project Date</label>
-                            <input type="date" id="portfolio-date">
-                        </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button type="button" class="btn btn-primary" id="add-portfolio-item-btn">Add Portfolio Item</button>
-                            <button type="button" class="btn btn-outline" onclick="document.getElementById('portfolio-form').style.display='none'">Cancel</button>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-2">Back: Location</button>
-                        <button type="button" class="btn btn-primary" id="next-to-step-4">Next: Services & Packages</button>
-                    </div>
-                </div>
-
-                <!-- Step 4: Services & Packages -->
-                <div class="setup-step" id="setup-step-4" style="display: none;">
-                    <h4 class="form-section-title">Step 4: Services & Packages</h4>
+                    <h4 class="form-section-title">Step 3: Services & Packages</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Define your service offerings and packages for clients.</p>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
@@ -2602,33 +2516,15 @@
                                     <div class="form-col">
                                         <div class="form-group">
                                             <label>Price ($) *</label>
-                                            <input type="number" id="service-price" step="0.01" required>
+                                            <input type="number" id="service-price" min="0" step="0.01" required>
                                         </div>
                                     </div>
                                     <div class="form-col">
                                         <div class="form-group">
                                             <label>Duration (minutes)</label>
-                                            <input type="number" id="service-duration" placeholder="120">
+                                            <input type="number" id="service-duration" min="15" step="15" value="60">
                                         </div>
                                     </div>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-col">
-                                        <div class="form-group">
-                                            <label>Max Attendees/Capacity</label>
-                                            <input type="number" id="service-capacity" min="1">
-                                        </div>
-                                    </div>
-                                    <div class="form-col">
-                                        <div class="form-group">
-                                            <label>Deposit Required (%)</label>
-                                            <input type="number" id="service-deposit" min="0" max="100" value="20">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="form-group">
-                                    <label>Cancellation Policy</label>
-                                    <textarea id="service-cancellation" rows="2" placeholder="Describe your cancellation policy for this service"></textarea>
                                 </div>
                                 <div style="display: flex; gap: 0.5rem;">
                                     <button type="button" class="btn btn-primary" id="add-service-item-btn">Add Service</button>
@@ -2638,66 +2534,181 @@
                         </div>
                     </div>
                     
-                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Packages</h5>
-                    <div id="packages-list" style="margin-bottom: 1rem;">
-                        <!-- Packages will be listed here -->
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="back-to-step-2">Back: Location Information</button>
+                        <button type="button" class="btn btn-primary" id="next-to-step-4">Next: Additional Details</button>
                     </div>
-                    <button type="button" class="btn btn-outline" id="add-package-btn">Add Package</button>
+                </div>
+
+                <!-- Step 4: Additional Details -->
+                <div class="setup-step" id="setup-step-4" style="display: none;">
+                    <h4 class="form-section-title">Step 4: Additional Details</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Please answer the following questions related to your primary category.</p>
                     
-                    <!-- Package Form -->
-                    <div id="package-form" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
-                        <div class="form-group">
-                            <label>Package Name *</label>
-                            <input type="text" id="package-name" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Description *</label>
-                            <textarea id="package-description" rows="3" required></textarea>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-col">
-                                <div class="form-group">
-                                    <label>Price ($) *</label>
-                                    <input type="number" id="package-price" step="0.01" required>
-                                </div>
-                            </div>
-                            <div class="form-col">
-                                <div class="form-group">
-                                    <label>Duration (minutes)</label>
-                                    <input type="number" id="package-duration" placeholder="240">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-col">
-                                <div class="form-group">
-                                    <label>Maximum Guests</label>
-                                    <input type="number" id="package-max-guests" min="1">
-                                </div>
-                            </div>
-                            <div class="form-col">
-                                <div class="form-group">
-                                    <label>What's Included</label>
-                                    <input type="text" id="package-includes" placeholder="Setup, cleanup, decorations, etc.">
-                                </div>
+                    <div id="category-questions-container" style="margin-bottom: 1rem;">
+                        <!-- Category-specific questions will be dynamically loaded here -->
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="back-to-step-3">Back: Services & Packages</button>
+                        <button type="button" class="btn btn-primary" id="next-to-step-5">Next: Availability & Scheduling</button>
+                    </div>
+                </div>
+
+                <!-- Step 5: Availability & Scheduling -->
+                <div class="setup-step" id="setup-step-5" style="display: none;">
+                    <h4 class="form-section-title">Step 5: Availability & Scheduling</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Set your business hours and availability preferences.</p>
+                    
+                    <h5 style="margin-bottom: 1rem; color: var(--primary);">Regular Business Hours</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                        <div class="availability-day">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <input type="checkbox" id="available-0">
+                                <strong>Sunday</strong>
+                            </label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="time" id="start-time-0" style="flex: 1;">
+                                <span style="align-self: center;">to</span>
+                                <input type="time" id="end-time-0" style="flex: 1;">
                             </div>
                         </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button type="button" class="btn btn-primary" id="add-package-item-btn">Add Package</button>
-                            <button type="button" class="btn btn-outline" onclick="document.getElementById('package-form').style.display='none'">Cancel</button>
+                        <div class="availability-day">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <input type="checkbox" id="available-1" checked>
+                                <strong>Monday</strong>
+                            </label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="time" id="start-time-1" value="09:00" style="flex: 1;">
+                                <span style="align-self: center;">to</span>
+                                <input type="time" id="end-time-1" value="17:00" style="flex: 1;">
+                            </div>
+                        </div>
+                        <div class="availability-day">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <input type="checkbox" id="available-2" checked>
+                                <strong>Tuesday</strong>
+                            </label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="time" id="start-time-2" value="09:00" style="flex: 1;">
+                                <span style="align-self: center;">to</span>
+                                <input type="time" id="end-time-2" value="17:00" style="flex: 1;">
+                            </div>
+                        </div>
+                        <div class="availability-day">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <input type="checkbox" id="available-3" checked>
+                                <strong>Wednesday</strong>
+                            </label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="time" id="start-time-3" value="09:00" style="flex: 1;">
+                                <span style="align-self: center;">to</span>
+                                <input type="time" id="end-time-3" value="17:00" style="flex: 1;">
+                            </div>
+                        </div>
+                        <div class="availability-day">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <input type="checkbox" id="available-4" checked>
+                                <strong>Thursday</strong>
+                            </label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="time" id="start-time-4" value="09:00" style="flex: 1;">
+                                <span style="align-self: center;">to</span>
+                                <input type="time" id="end-time-4" value="17:00" style="flex: 1;">
+                            </div>
+                        </div>
+                        <div class="availability-day">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <input type="checkbox" id="available-5" checked>
+                                <strong>Friday</strong>
+                            </label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="time" id="start-time-5" value="09:00" style="flex: 1;">
+                                <span style="align-self: center;">to</span>
+                                <input type="time" id="end-time-5" value="17:00" style="flex: 1;">
+                            </div>
+                        </div>
+                        <div class="availability-day">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <input type="checkbox" id="available-6">
+                                <strong>Saturday</strong>
+                            </label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="time" id="start-time-6" style="flex: 1;">
+                                <span style="align-self: center;">to</span>
+                                <input type="time" id="end-time-6" style="flex: 1;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="accepting-bookings" checked>
+                                    Currently accepting new bookings
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="lead-time">Minimum booking lead time</label>
+                                <select id="lead-time">
+                                    <option value="same-day">Same day</option>
+                                    <option value="1-day" selected>1 day</option>
+                                    <option value="3-days">3 days</option>
+                                    <option value="1-week">1 week</option>
+                                    <option value="2-weeks">2 weeks</option>
+                                    <option value="1-month">1 month</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-3">Back: Gallery</button>
-                        <button type="button" class="btn btn-primary" id="next-to-step-5">Next: Team Information</button>
+                        <button type="button" class="btn btn-outline" id="back-to-step-4">Back: Additional Details</button>
+                        <button type="button" class="btn btn-primary" id="next-to-step-6">Next: Gallery & Media</button>
                     </div>
                 </div>
 
+                <!-- Step 6: Gallery & Media -->
+                <div class="setup-step" id="setup-step-6" style="display: none;">
+                    <h4 class="form-section-title">Step 6: Gallery & Media</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Upload images to showcase your work and attract potential clients.</p>
+                    
+                    <h5 style="margin-bottom: 1rem; color: var(--primary);">Featured Image</h5>
+                    <div class="form-group">
+                        <label for="featured-image">Main Profile Image *</label>
+                        <input type="file" id="featured-image" accept="image/*" required>
+                        <small style="color: var(--text-light);">This will be the main image displayed on your profile. Recommended size: 800x600px</small>
+                    </div>
+                    
+                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Gallery Images</h5>
+                    <div class="form-group">
+                        <label for="gallery-images">Additional Images</label>
+                        <input type="file" id="gallery-images" accept="image/*" multiple>
+                        <small style="color: var(--text-light);">Upload multiple images to showcase your work. You can select up to 20 images.</small>
+                    </div>
+                    
+                    <div id="image-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                        <!-- Image previews will appear here -->
+                    </div>
+                    
+                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Portfolio Links</h5>
+                    <div class="form-group">
+                        <label for="portfolio-website">Portfolio Website</label>
+                        <input type="url" id="portfolio-website" placeholder="https://yourportfolio.com">
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="back-to-step-5">Back: Availability & Scheduling</button>
+                        <button type="button" class="btn btn-primary" id="next-to-step-7">Next: Social Media</button>
+                    </div>
+</div>
 
-                <!-- Step 5: Social Media -->
-                <div class="setup-step" id="setup-step-5" style="display: none;">
-                    <h4 class="form-section-title">Step 5: Social Media</h4>
+                <!-- Step 7: Social Media -->
+                <div class="setup-step" id="setup-step-7" style="display: none;">
+                    <h4 class="form-section-title">Step 7: Social Media</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Add your social media profiles to help clients connect with you.</p>
                     
                     <h5 style="margin-bottom: 1rem; color: var(--primary);">Social Media Profiles</h5>
@@ -2728,139 +2739,20 @@
                         </div>
                     </div>
                     
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-4">Back: Services</button>
-                        <button type="button" class="btn btn-primary" id="next-to-step-6">Next: Availability</button>
-                    </div>
-                </div>
-
-                <!-- Step 6: Availability & Scheduling -->
-                <div class="setup-step" id="setup-step-6" style="display: none;">
-                    <h4 class="form-section-title">Step 6: Availability & Scheduling</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Set your business hours and availability preferences.</p>
-                    
-                    <h5 style="margin-bottom: 1rem; color: var(--primary);">Regular Business Hours</h5>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-0">
-                                <strong>Sunday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="sunday-open" style="flex: 1;">
-                                <input type="time" id="sunday-close" style="flex: 1;">
-                            </div>
+                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Professional Links</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                        <div class="form-group">
+                            <label for="booking-link">Online Booking Link</label>
+                            <input type="url" id="booking-link" placeholder="https://yourbookingsite.com">
                         </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-1">
-                                <strong>Monday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="monday-open" style="flex: 1;">
-                                <input type="time" id="monday-close" style="flex: 1;">
-                            </div>
+                        <div class="form-group">
+                            <label for="portfolio-link">Portfolio Website</label>
+                            <input type="url" id="portfolio-link" placeholder="https://yourportfolio.com">
                         </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-2">
-                                <strong>Tuesday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="tuesday-open" style="flex: 1;">
-                                <input type="time" id="tuesday-close" style="flex: 1;">
-                            </div>
-                        </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-3">
-                                <strong>Wednesday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="wednesday-open" style="flex: 1;">
-                                <input type="time" id="wednesday-close" style="flex: 1;">
-                            </div>
-                        </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-4">
-                                <strong>Thursday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="thursday-open" style="flex: 1;">
-                                <input type="time" id="thursday-close" style="flex: 1;">
-                            </div>
-                        </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-5">
-                                <strong>Friday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="friday-open" style="flex: 1;">
-                                <input type="time" id="friday-close" style="flex: 1;">
-                            </div>
-                        </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-6">
-                                <strong>Saturday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="saturday-open" style="flex: 1;">
-                                <input type="time" id="saturday-close" style="flex: 1;">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Booking Settings</h5>
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <input type="checkbox" id="accepting-bookings">
-                                    <strong>Currently Accepting Bookings</strong>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="response-time">Response Time Expectation (hours)</label>
-                                <select id="response-time">
-                                    <option value="1">Within 1 hour</option>
-                                    <option value="2">Within 2 hours</option>
-                                    <option value="4">Within 4 hours</option>
-                                    <option value="12">Within 12 hours</option>
-                                    <option value="24" selected>Within 24 hours</option>
-                                    <option value="48">Within 48 hours</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="buffer-time">Buffer Time Between Bookings (minutes)</label>
-                        <input type="number" id="buffer-time" min="0" max="480" value="30" placeholder="30">
-                        <small style="color: var(--text-light);">Time needed between bookings for setup/cleanup</small>
-                    </div>
-                    
-<div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-    <button type="button" class="btn btn-outline" id="back-to-step-5">Back: Social Media</button>
-    <button type="button" class="btn btn-primary" id="next-to-step-7">Next: Additional Details</button>
-</div>
-</div>
-
-                <!-- Step 7: Additional Details -->
-                <div class="setup-step" id="setup-step-7" style="display: none;">
-                    <h4 class="form-section-title">Step 7: Additional Details</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Please answer the following questions related to your primary category.</p>
-                    
-                    <div id="category-questions-container" style="margin-bottom: 1rem;">
-                        <!-- Category-specific questions will be dynamically loaded here -->
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-6">Back: Availability</button>
+                        <button type="button" class="btn btn-outline" id="back-to-step-6">Back: Gallery & Media</button>
                         <button type="button" class="btn btn-primary" id="next-to-step-8">Next: FAQ</button>
                     </div>
                 </div>
@@ -2919,313 +2811,9 @@
                     </div>
                 </div>
 
-                <!-- Step 10: Policies & Preferences (moved to step 10) -->
-                <div class="setup-step" id="setup-step-10" style="display: none;">
-                    <h4 class="form-section-title">Step 10: Policies & Preferences</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Define your business policies and payment preferences.</p>
-                    
-                    <h5 style="margin-bottom: 1rem; color: var(--primary);">Booking Policies</h5>
-                    <div class="form-group">
-                        <label for="deposit-requirements">Deposit Requirements</label>
-                        <textarea id="deposit-requirements" rows="3" placeholder="Describe your deposit requirements (e.g., 25% deposit required to secure booking)"></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="cancellation-policy">Cancellation Policy</label>
-                        <textarea id="cancellation-policy" rows="3" placeholder="Describe your cancellation policy and any fees"></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="rescheduling-policy">Rescheduling Policy</label>
-                        <textarea id="rescheduling-policy" rows="3" placeholder="Describe your rescheduling policy and any restrictions"></textarea>
-                    </div>
-                    
-                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Payment Preferences</h5>
-                    <div class="form-group">
-                        <label>Accepted Payment Methods</label>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; margin-top: 0.5rem;">
-                            <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="checkbox" id="payment-cash">
-                                Cash
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="checkbox" id="payment-check">
-                                Check
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="checkbox" id="payment-credit">
-                                Credit Card
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="checkbox" id="payment-debit">
-                                Debit Card
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="checkbox" id="payment-paypal">
-                                PayPal
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="checkbox" id="payment-venmo">
-                                Venmo
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="checkbox" id="payment-zelle">
-                                Zelle
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                <input type="checkbox" id="payment-bank">
-                                Bank Transfer
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="payment-terms">Payment Terms</label>
-                        <textarea id="payment-terms" rows="3" placeholder="Describe your payment terms (e.g., full payment due 7 days before event)"></textarea>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-7">Back: Availability</button>
-                        <button type="button" class="btn btn-primary" id="next-to-step-9">Next: Verification</button>
-                    </div>
-                </div>
 
-                <!-- Step 9: Verification & Legal -->
-                <div class="setup-step" id="setup-step-9" style="display: none;">
-                    <h4 class="form-section-title">Step 9: Verification & Legal</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Provide verification information to build trust with clients.</p>
-                    
-                    <h5 style="margin-bottom: 1rem; color: var(--primary);">Business Verification</h5>
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="license-number">License Number</label>
-                                <input type="text" id="license-number" placeholder="Business license number">
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <input type="checkbox" id="insurance-verified">
-                                    <strong>Insurance Verified</strong>
-                                </label>
-                                <small style="color: var(--text-light);">Check if you have liability insurance</small>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="awards-certifications">Awards & Certifications</label>
-                        <textarea id="awards-certifications" rows="3" placeholder="List any awards, certifications, or professional memberships"></textarea>
-                    </div>
-                    
-                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Business Attributes</h5>
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <input type="checkbox" id="eco-friendly">
-                                    <strong>Eco-Friendly Practices</strong>
-                                </label>
-                                <small style="color: var(--text-light);">Check if you use sustainable/eco-friendly practices</small>
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <input type="checkbox" id="premium-status">
-                                    <strong>Premium Status</strong>
-                                </label>
-                                <small style="color: var(--text-light);">Request premium listing status</small>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-8">Back: Policies</button>
-                        <button type="button" class="btn btn-primary" id="next-to-step-10">Next: Complete Setup</button>
-                    </div>
-                </div>
 
-                <!-- Step 10: Setup Completion -->
-                <div class="setup-step" id="setup-step-10" style="display: none;">
-                    <h4 class="form-section-title">Step 10: Setup Completion</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Add optional information and complete your vendor profile setup.</p>
-                    
-                    <h5 style="margin-bottom: 1rem; color: var(--primary);">FAQ Section (Optional)</h5>
-                    <div id="faqs-list" style="margin-bottom: 1rem;">
-                        <!-- FAQs will be listed here -->
-                    </div>
-                    <button type="button" class="btn btn-outline" id="add-faq-btn">Add FAQ</button>
-                    
-                    <!-- FAQ Form -->
-                    <div id="faq-form" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
-                        <div class="form-group">
-                            <label>Question</label>
-                            <input type="text" id="faq-question" required placeholder="What is your typical response time?">
-                        </div>
-                        <div class="form-group">
-                            <label>Answer</label>
-                            <textarea id="faq-answer" rows="3" required placeholder="I typically respond to inquiries within 24 hours..."></textarea>
-                        </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button type="button" class="btn btn-primary" id="add-faq-item-btn">Add FAQ</button>
-                            <button type="button" class="btn btn-outline" onclick="document.getElementById('faq-form').style.display='none'">Cancel</button>
-                        </div>
-                    </div>
-                    
-                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Setup Summary</h5>
-                    <div id="setup-summary" style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem;">
-                        <p style="margin-bottom: 1rem;">🎉 <strong>Congratulations!</strong> You're about to complete your vendor profile setup.</p>
-                        <p style="margin-bottom: 1rem;">Your profile will include:</p>
-                        <ul style="margin-left: 1.5rem; margin-bottom: 1rem;">
-                            <li>Business information and categories</li>
-                            <li>Location and service areas</li>
-                            <li>Gallery and portfolio</li>
-                            <li>Services and packages</li>
-                            <li>Team information</li>
-                            <li>Social media links</li>
-                            <li>Availability schedule</li>
-                            <li>Business policies</li>
-                            <li>Verification details</li>
-                        </ul>
-                        <p><strong>Once completed, your profile will be live and visible to potential clients!</strong></p>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-9">Back: Verification</button>
-                        <button type="button" class="btn btn-primary" id="complete-setup-btn" style="background-color: #28a745; border-color: #28a745;">🚀 Complete Setup & Go Live!</button>
-                    </div>
-                </div>
 
-                <!-- Step 3: Social Media -->
-                <div class="setup-step" id="setup-step-3" style="display: none;">
-                    <h4 class="form-section-title">Step 3: Social Media Links</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Add your social media profiles to help clients connect with you.</p>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-                        <div class="form-group">
-                            <label for="social-facebook">Facebook</label>
-                            <input type="url" id="social-facebook" placeholder="https://facebook.com/yourpage">
-                        </div>
-                        <div class="form-group">
-                            <label for="social-instagram">Instagram</label>
-                            <input type="url" id="social-instagram" placeholder="https://instagram.com/youraccount">
-                        </div>
-                        <div class="form-group">
-                            <label for="social-twitter">Twitter</label>
-                            <input type="url" id="social-twitter" placeholder="https://twitter.com/youraccount">
-                        </div>
-                        <div class="form-group">
-                            <label for="social-linkedin">LinkedIn</label>
-                            <input type="url" id="social-linkedin" placeholder="https://linkedin.com/company/yourcompany">
-                        </div>
-                        <div class="form-group">
-                            <label for="social-youtube">YouTube</label>
-                            <input type="url" id="social-youtube" placeholder="https://youtube.com/yourchannel">
-                        </div>
-                        <div class="form-group">
-                            <label for="social-tiktok">TikTok</label>
-                            <input type="url" id="social-tiktok" placeholder="https://tiktok.com/@youraccount">
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-2">Back: Packages &amp; Services</button>
-                        <button type="button" class="btn btn-primary" id="next-to-step-4">Next: Availability</button>
-                    </div>
-                </div>
-
-                <!-- Step 4: Availability -->
-                <div class="setup-step" id="setup-step-4" style="display: none;">
-                    <h4 class="form-section-title">Step 4: Set Your Availability</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Let clients know when you're available for bookings.</p>
-                    
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-0">
-                                <strong>Sunday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-0" style="flex: 1;">
-                                <span style="align-self: center;">to</span>
-                                <input type="time" id="end-0" style="flex: 1;">
-                            </div>
-                        </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-1">
-                                <strong>Monday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-1" style="flex: 1;">
-                                <span style="align-self: center;">to</span>
-                                <input type="time" id="end-1" style="flex: 1;">
-                            </div>
-                        </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-2">
-                                <strong>Tuesday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-2" style="flex: 1;">
-                                <span style="align-self: center;">to</span>
-                                <input type="time" id="end-2" style="flex: 1;">
-                            </div>
-                        </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-3">
-                                <strong>Wednesday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-3" style="flex: 1;">
-                                <span style="align-self: center;">to</span>
-                                <input type="time" id="end-3" style="flex: 1;">
-                            </div>
-                        </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-4">
-                                <strong>Thursday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-4" style="flex: 1;">
-                                <span style="align-self: center;">to</span>
-                                <input type="time" id="end-4" style="flex: 1;">
-                            </div>
-                        </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-5">
-                                <strong>Friday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-5" style="flex: 1;">
-                                <span style="align-self: center;">to</span>
-                                <input type="time" id="end-5" style="flex: 1;">
-                            </div>
-                        </div>
-                        <div class="availability-day">
-                            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <input type="checkbox" id="available-6">
-                                <strong>Saturday</strong>
-                            </label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-6" style="flex: 1;">
-                                <span style="align-self: center;">to</span>
-                                <input type="time" id="end-6" style="flex: 1;">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-3">Back: Social Media</button>
-                        <button type="button" class="btn btn-primary" id="complete-setup-btn">Complete Setup</button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -6151,21 +5739,52 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             primaryCategory: document.getElementById('primary-category')?.value || ''
                         };
                         break;
-                    case 8: // Policies & Preferences
-                        const paymentMethods = [];
-                        ['cash', 'check', 'credit', 'debit', 'paypal', 'venmo', 'zelle', 'bank'].forEach(method => {
-                            if (document.getElementById(`payment-${method}`)?.checked) {
-                                paymentMethods.push(method);
+                    case 8: // FAQ Section - COMPLETELY OVERRIDE ANY LEGACY POLICIES DATA
+                        // Collect FAQ data from the FAQ list
+                        const faqs = [];
+                        const faqItems = document.querySelectorAll('#faqs-list .faq-item-display');
+                        
+                        faqItems.forEach(item => {
+                            const questionText = item.querySelector('.faq-question-text')?.textContent?.trim();
+                            const answerText = item.querySelector('.faq-answer-text')?.textContent?.trim();
+                            
+                            // Clean up the question and answer text (remove "Q:" and "A:" prefixes)
+                            const question = questionText ? questionText.replace(/^Q:\s*/, '').trim() : '';
+                            const answer = answerText ? answerText.replace(/^A:\s*/, '').trim() : '';
+                            
+                            if (question && answer) {
+                                faqs.push({
+                                    question: question,
+                                    answer: answer
+                                });
                             }
                         });
                         
+                        // Also collect from vendorSetupState.faqs if it exists
+                        if (vendorSetupState.faqs && vendorSetupState.faqs.length > 0) {
+                            vendorSetupState.faqs.forEach(faq => {
+                                if (faq.question && faq.answer) {
+                                    faqs.push({
+                                        question: faq.question,
+                                        answer: faq.answer
+                                    });
+                                }
+                            });
+                        }
+                        
+                        // FORCE FAQ data structure - completely override any legacy policies data
                         vendorSetupState.stepData.step8 = {
-                            depositRequirements: document.getElementById('deposit-requirements')?.value || '',
-                            cancellationPolicy: document.getElementById('cancellation-policy')?.value || '',
-                            reschedulingPolicy: document.getElementById('rescheduling-policy')?.value || '',
-                            paymentMethods,
-                            paymentTerms: document.getElementById('payment-terms')?.value || ''
+                            faqs: faqs
                         };
+                        
+                        // CRITICAL: Remove any legacy policies data that might exist
+                        delete vendorSetupState.stepData.step8.depositRequirements;
+                        delete vendorSetupState.stepData.step8.cancellationPolicy;
+                        delete vendorSetupState.stepData.step8.reschedulingPolicy;
+                        delete vendorSetupState.stepData.step8.paymentMethods;
+                        delete vendorSetupState.stepData.step8.paymentTerms;
+                        
+                        console.log('Step 8 FAQ data collected:', vendorSetupState.stepData.step8);
                         break;
                     case 9: // Verification & Legal
                         vendorSetupState.stepData.step9 = {
@@ -6396,16 +6015,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('faq-form').style.display = 'block';
             }
 
-            function addFaqItem() {
-                const question = document.getElementById('faq-question')?.value;
-                const answer = document.getElementById('faq-answer')?.value;
-                
-                if (question && answer) {
-                    vendorSetupState.faqs.push({ question, answer });
-                    updateFaqDisplay();
-                    clearFaqForm();
-                }
-            }
+            // Old addFaqItem function removed - using the new one that properly handles FAQ data
 
             // Display Update Functions
             function updateGalleryDisplay() {
@@ -6534,6 +6144,111 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('faq-form').style.display = 'none';
             }
 
+            // FAQ Management Functions
+            function addFaqItem() {
+                const question = document.getElementById('faq-question').value.trim();
+                const answer = document.getElementById('faq-answer').value.trim();
+                
+                if (!question || !answer) {
+                    alert('Please provide both question and answer.');
+                    return;
+                }
+                
+                // Initialize FAQ array if it doesn't exist
+                if (!vendorSetupState.faqs) {
+                    vendorSetupState.faqs = [];
+                }
+                
+                // Add FAQ to state
+                vendorSetupState.faqs.push({
+                    question: question,
+                    answer: answer
+                });
+                
+                // Update display
+                updateFaqsDisplay();
+                
+                // Clear form
+                clearFaqForm();
+            }
+
+            function updateFaqsDisplay() {
+                const faqsList = document.getElementById('faqs-list');
+                if (!faqsList) return;
+                
+                faqsList.innerHTML = '';
+                
+                if (vendorSetupState.faqs && vendorSetupState.faqs.length > 0) {
+                    vendorSetupState.faqs.forEach((faq, index) => {
+                        const faqItem = document.createElement('div');
+                        faqItem.className = 'faq-item-display';
+                        faqItem.style.cssText = 'background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem;';
+                        faqItem.innerHTML = `
+                            <div class="faq-question-text" style="font-weight: 600; margin-bottom: 0.5rem; color: var(--primary);">
+                                Q: ${faq.question}
+                            </div>
+                            <div class="faq-answer-text" style="margin-bottom: 1rem; color: var(--text);">
+                                A: ${faq.answer}
+                            </div>
+                            <button type="button" class="btn btn-outline" onclick="removeFaq(${index})" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;">
+                                Remove
+                            </button>
+                        `;
+                        faqsList.appendChild(faqItem);
+                    });
+                }
+            }
+
+            function removeFaq(index) {
+                if (vendorSetupState.faqs && vendorSetupState.faqs[index]) {
+                    vendorSetupState.faqs.splice(index, 1);
+                    updateFaqsDisplay();
+                }
+            }
+
+            // Step 8 API Submission Function
+            async function submitStep8FAQ() {
+                try {
+                    // Save current step data
+                    saveCurrentStepData();
+                    
+                    const step8Data = vendorSetupState.stepData.step8;
+                    
+                    if (!vendorSetupState.vendorProfileId) {
+                        throw new Error('Vendor profile ID not found');
+                    }
+                    
+                    // Submit FAQ data to backend
+                    const response = await fetch(`${API_BASE_URL}/vendors/setup/step8-faq`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            faqs: step8Data.faqs || []
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Failed to save FAQ data');
+                    }
+                    
+                    const result = await response.json();
+                    console.log('Step 8 FAQ data saved successfully:', result);
+                    
+                    // Move to next step
+                    vendorSetupState.currentStep = 9;
+                    showSetupStep(9);
+                    
+                } catch (error) {
+                    console.error('Error submitting Step 8 FAQ data:', error);
+                    alert('Failed to save FAQ data: ' + error.message);
+                }
+            }
+
             // Remove Functions
             function removeServiceCategory(index) {
                 if (vendorSetupState.serviceCategories) {
@@ -6570,7 +6285,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     }
 
                     // Submit completion data to backend
-                    const response = await fetch(`${API_BASE_URL}/vendors/setup/step10-completion`, {
+                    const response = await fetch(`${API_BASE_URL}/vendors/setup/step9-completion`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -10286,6 +10001,141 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // REMOVED: Old auto-population interval code that was causing issues
             // Gallery is now populated directly in renderVendorProfile() function
             console.log('✅ Gallery population is now handled directly in renderVendorProfile() function');
+
+            // Step Navigation Event Handlers
+            function setupStepNavigationHandlers() {
+                // Step 8 Navigation Handlers
+                const nextToStep9Btn = document.getElementById('next-to-step-9');
+                if (nextToStep9Btn) {
+                    nextToStep9Btn.addEventListener('click', async () => {
+                        await handleStep8Transition();
+                    });
+                }
+
+                // FAQ Form Handlers
+                const addFaqBtn = document.getElementById('add-faq-btn');
+                if (addFaqBtn) {
+                    addFaqBtn.addEventListener('click', showFaqForm);
+                }
+
+                const addFaqItemBtn = document.getElementById('add-faq-item-btn');
+                if (addFaqItemBtn) {
+                    addFaqItemBtn.addEventListener('click', addFaqItem);
+                }
+
+                // Other step navigation handlers can be added here
+                console.log('✅ Step navigation handlers set up');
+            }
+
+            // Handle Step 8 to Step 9 Transition
+            async function handleStep8Transition() {
+                try {
+                    // Force save current step data (FAQ data) - override any legacy logic
+                    saveCurrentStepData();
+                    
+                    // Ensure we're using FAQ data, not policies data
+                    const step8Data = vendorSetupState.stepData.step8;
+                    
+                    if (!vendorSetupState.vendorProfileId) {
+                        throw new Error('Vendor profile ID not found');
+                    }
+                    
+                    // Force FAQ data structure - override any legacy policies data
+                    const faqData = {
+                        vendorProfileId: vendorSetupState.vendorProfileId,
+                        faqs: step8Data.faqs || vendorSetupState.faqs || []
+                    };
+                    
+                    console.log('Sending FAQ data to backend:', faqData);
+                    
+                    // Submit FAQ data to backend
+                    const response = await fetch(`${API_BASE_URL}/vendors/setup/step8-policies`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify(faqData)
+                    });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Failed to save FAQ data');
+                    }
+                    
+                    const result = await response.json();
+                    console.log('Step 8 FAQ data saved successfully:', result);
+                    
+                    // Move to next step
+                    vendorSetupState.currentStep = 9;
+                    showSetupStep(9);
+                    
+                } catch (error) {
+                    console.error('Error in Step 8 transition:', error);
+                    alert('Failed to save FAQ data: ' + error.message);
+                }
+            }
+
+            // GLOBAL OVERRIDE: Intercept any fetch calls to step8-policies and replace policies data with FAQ data
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options) {
+                // Check if this is a call to the step8-faq endpoint
+                if (url && url.includes('/setup/step8-faq')) {
+                    console.log('🚨 INTERCEPTED step8-faq API call');
+                    console.log('Original request body:', options?.body);
+                    
+                    // Parse the request body
+                    let requestData;
+                    try {
+                        requestData = JSON.parse(options?.body || '{}');
+                    } catch (e) {
+                        requestData = {};
+                    }
+                    
+                    // Check if this contains policies data (legacy)
+                    if (requestData.depositRequirements !== undefined || 
+                        requestData.cancellationPolicy !== undefined ||
+                        requestData.reschedulingPolicy !== undefined ||
+                        requestData.paymentMethods !== undefined ||
+                        requestData.paymentTerms !== undefined) {
+                        
+                        console.log('🚨 DETECTED LEGACY POLICIES DATA - REPLACING WITH FAQ DATA');
+                        
+                        // Get FAQ data from current state
+                        const faqData = [];
+                        if (vendorSetupState.faqs && vendorSetupState.faqs.length > 0) {
+                            faqData.push(...vendorSetupState.faqs);
+                        }
+                        if (vendorSetupState.stepData.step8 && vendorSetupState.stepData.step8.faqs) {
+                            faqData.push(...vendorSetupState.stepData.step8.faqs);
+                        }
+                        
+                        // Replace with FAQ data structure
+                        const newRequestData = {
+                            vendorProfileId: requestData.vendorProfileId,
+                            faqs: faqData
+                        };
+                        
+                        console.log('✅ REPLACED WITH FAQ DATA:', newRequestData);
+                        
+                        // Update the request options
+                        options = {
+                            ...options,
+                            body: JSON.stringify(newRequestData)
+                        };
+                    }
+                }
+                
+                // Call the original fetch with potentially modified options
+                return originalFetch.call(this, url, options);
+            };
+
+            // Initialize event handlers when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', setupStepNavigationHandlers);
+            } else {
+                setupStepNavigationHandlers();
+            }
 
         });
     </script>
