@@ -2112,13 +2112,16 @@ router.get('/category-questions/:category', async (req, res) => {
     // Get FAQ templates for this category
     const result = await request.execute('sp_GetCategoryQuestions');
     
+    // Debug: Log the actual database response to see field names
+    console.log('Database response for category questions:', JSON.stringify(result.recordset, null, 2));
+    
     const questions = result.recordset.map(row => ({
-      QuestionID: row.TemplateFAQID,
-      QuestionText: row.Question,
-      QuestionType: 'Text', // Default to text type
+      QuestionID: row.TemplateFAQID || row.QuestionID || row.ID,
+      QuestionText: row.Question || row.QuestionText || row.Text || 'Question not available',
+      QuestionType: 'YesNo', // Changed to Yes/No radio buttons
       IsRequired: row.IsRequired || false,
       SuggestedAnswer: row.SuggestedAnswer,
-      DisplayOrder: row.DisplayOrder
+      DisplayOrder: row.DisplayOrder || 1
     }));
 
     res.json({
