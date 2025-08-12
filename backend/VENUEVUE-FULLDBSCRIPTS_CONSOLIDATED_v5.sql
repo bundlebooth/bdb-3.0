@@ -1,6 +1,6 @@
 -- COMPLETE DATABASE DDL SCRIPT
 -- Database: VV_DB
--- Generated: 2025-08-11 15:06:38
+-- Generated: 2025-08-12 03:04:35
 -- Creation order: Tables ? Views ? Functions ? Procedures ? Triggers
 --
 -- To save: Right-click in Messages tab ? "Save Results As..." ? .sql file
@@ -57,6 +57,25 @@ CREATE TABLE [dbo].[BookingTimeline] (
 );
 GO
 
+-- Table: [dbo].[CategoryQuestions]
+CREATE TABLE [dbo].[CategoryQuestions] (
+    [QuestionID] int NOT NULL,
+    [Category] nvarchar(100) NOT NULL,
+    [QuestionText] nvarchar(1000) NOT NULL,
+    [QuestionType] nvarchar(40) NOT NULL,
+    [Options] nvarchar(MAX) NULL,
+    [IsRequired] bit NOT NULL,
+    [DisplayOrder] int NOT NULL,
+    [IsActive] bit NOT NULL,
+    [CreatedAt] datetime2 NOT NULL,
+    [UpdatedAt] datetime2 NOT NULL
+);
+GO
+
+-- Constraints for: [dbo].[CategoryQuestions]
+ALTER TABLE [dbo].[CategoryQuestions] ADD CONSTRAINT [PK__Category__0DC06F8C7AAD956F] PRIMARY KEY NONCLUSTERED
+([QuestionID] ASC);
+GO
 -- Table: [dbo].[Conversations]
 CREATE TABLE [dbo].[Conversations] (
     [ConversationID] int NOT NULL,
@@ -337,6 +356,17 @@ CREATE TABLE [dbo].[UserSessions] (
 );
 GO
 
+-- Table: [dbo].[VendorAdditionalDetails]
+CREATE TABLE [dbo].[VendorAdditionalDetails] (
+    [DetailID] int NOT NULL,
+    [VendorProfileID] int NOT NULL,
+    [QuestionID] int NOT NULL,
+    [Answer] nvarchar(MAX) NOT NULL,
+    [CreatedAt] datetime2 NOT NULL,
+    [UpdatedAt] datetime2 NOT NULL
+);
+GO
+
 -- Table: [dbo].[VendorAvailabilityExceptions]
 CREATE TABLE [dbo].[VendorAvailabilityExceptions] (
     [ExceptionID] int NOT NULL,
@@ -458,7 +488,8 @@ CREATE TABLE [dbo].[VendorProfiles] (
     [PaymentMethods] nvarchar(MAX) NULL,
     [PaymentTerms] nvarchar(MAX) NULL,
     [Awards] nvarchar(MAX) NULL,
-    [Certifications] nvarchar(MAX) NULL
+    [Certifications] nvarchar(MAX) NULL,
+    [AdditionalCitiesServed] nvarchar(MAX) NULL
 );
 GO
 
@@ -1924,6 +1955,29 @@ BEGIN
 END;
 GO
 
+-- Procedure: [dbo].[sp_GetCategoryQuestions]
+CREATE PROCEDURE sp_GetCategoryQuestions
+    @Category NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        QuestionID,
+        Category,
+        QuestionText,
+        QuestionType,
+        Options,
+        IsRequired,
+        DisplayOrder
+    FROM CategoryQuestions 
+    WHERE Category = @Category AND IsActive = 1
+    ORDER BY DisplayOrder ASC;
+END;
+
+-- 6. Create stored procedure to save additional details
+GO
+
 -- Procedure: [dbo].[sp_GetConversationMessages]
 
 
@@ -2807,6 +2861,99 @@ BEGIN
 END;
 GO
 
+-- Procedure: [dbo].[sp_GetVendorSummary]
+CREATE PROCEDURE sp_GetVendorSummary
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Basic vendor information
+    SELECT 
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.BusinessEmail,
+        vp.BusinessPhone,
+        vp.Website,
+        vp.BusinessDescription,
+        vp.Tagline,
+        vp.YearsInBusiness,
+        vp.Address,
+        vp.City,
+        vp.State,
+        vp.Country,
+        vp.PostalCode,
+        vp.AdditionalCitiesServed,
+        vp.FeaturedImageURL,
+        vp.AcceptingBookings,
+        vp.AverageResponseTime
+    FROM VendorProfiles vp
+    WHERE vp.VendorProfileID = @VendorProfileID;
+    
+    -- Categories
+    SELECT Category 
+    FROM VendorCategories 
+    WHERE VendorProfileID = @VendorProfileID;
+    
+    -- Images count
+    SELECT COUNT(*) as ImageCount
+    FROM VendorImages 
+    WHERE VendorProfileID = @VendorProfileID;
+    
+    -- Services count
+    SELECT COUNT(*) as ServiceCount
+    FROM Services s
+    INNER JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    WHERE sc.VendorProfileID = @VendorProfileID;
+    
+    -- Packages count
+    SELECT COUNT(*) as PackageCount
+    FROM Packages 
+    WHERE VendorProfileID = @VendorProfileID;
+    
+    -- Social media links
+    SELECT Platform, URL 
+    FROM VendorSocialMedia 
+    WHERE VendorProfileID = @VendorProfileID
+    ORDER BY DisplayOrder;
+    
+    -- Business hours
+    SELECT 
+        DayOfWeek,
+        OpenTime,
+        CloseTime,
+        IsAvailable
+    FROM VendorBusinessHours 
+    WHERE VendorProfileID = @VendorProfileID
+    ORDER BY DayOfWeek;
+    
+    -- Additional details with questions
+    SELECT 
+        cq.QuestionText,
+        vad.Answer,
+        cq.Category
+    FROM VendorAdditionalDetails vad
+    INNER JOIN CategoryQuestions cq ON vad.QuestionID = cq.QuestionID
+    WHERE vad.VendorProfileID = @VendorProfileID
+    ORDER BY cq.Category, cq.DisplayOrder;
+    
+    -- FAQs
+    SELECT Question, Answer 
+    FROM VendorFAQs 
+    WHERE VendorProfileID = @VendorProfileID
+    ORDER BY DisplayOrder;
+END;
+
+-- 8. Update existing Step 2 stored procedure to handle additional cities
+-- (This would be an update to the existing sp_SaveVendorLocation or similar)
+
+PRINT 'Database schema updates completed successfully!';
+PRINT 'Tables created: CategoryQuestions, VendorAdditionalDetails';
+PRINT 'Column added: VendorProfiles.AdditionalCitiesServed';
+PRINT 'Stored procedures created: sp_GetCategoryQuestions, sp_SaveVendorAdditionalDetails, sp_GetVendorSummary';
+PRINT 'Category questions inserted for all 13 categories';
+GO
+
 -- Procedure: [dbo].[sp_RegisterSocialUser]
 
 -- NEW: Stored procedure for social user registration or lookup
@@ -3012,6 +3159,46 @@ BEGIN
         THROW;
     END CATCH
 END;
+GO
+
+-- Procedure: [dbo].[sp_SaveVendorAdditionalDetails]
+CREATE PROCEDURE sp_SaveVendorAdditionalDetails
+    @VendorProfileID INT,
+    @AdditionalDetailsJSON NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Delete existing additional details for this vendor
+        DELETE FROM VendorAdditionalDetails 
+        WHERE VendorProfileID = @VendorProfileID;
+        
+        -- Parse and insert new additional details
+        IF @AdditionalDetailsJSON IS NOT NULL AND @AdditionalDetailsJSON != ''
+        BEGIN
+            INSERT INTO VendorAdditionalDetails (VendorProfileID, QuestionID, Answer)
+            SELECT 
+                @VendorProfileID,
+                JSON_VALUE(value, '$.questionId'),
+                JSON_VALUE(value, '$.answer')
+            FROM OPENJSON(@AdditionalDetailsJSON);
+        END;
+        
+        COMMIT TRANSACTION;
+        
+        SELECT 1 as Success, 'Additional details saved successfully' as Message;
+        
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        SELECT 0 as Success, ERROR_MESSAGE() as Message;
+    END CATCH
+END;
+
+-- 7. Create stored procedure to get vendor summary data
 GO
 
 -- Procedure: [dbo].[sp_SearchVendors]
