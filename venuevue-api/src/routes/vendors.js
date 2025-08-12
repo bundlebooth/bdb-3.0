@@ -2116,7 +2116,7 @@ router.get('/category-questions/:category', async (req, res) => {
     console.log('Database response for category questions:', JSON.stringify(result.recordset, null, 2));
     
     const questions = result.recordset.map(row => ({
-      QuestionID: row.TemplateFAQID || row.QuestionID || row.ID,
+      QuestionId: row.TemplateFAQID || row.QuestionId || row.ID,
       QuestionText: row.Question || row.QuestionText || row.Text || 'Question not available',
       QuestionType: 'YesNo', // Changed to Yes/No radio buttons
       IsRequired: row.IsRequired || false,
@@ -2162,7 +2162,7 @@ router.post('/setup/step7-category-questions', async (req, res) => {
       await deleteRequest.query(`
         DELETE FROM VendorFAQs 
         WHERE VendorProfileID = @VendorProfileId 
-        AND QuestionID IS NOT NULL
+        AND QuestionId IS NOT NULL
       `);
 
       // Insert new answers
@@ -2172,7 +2172,7 @@ router.post('/setup/step7-category-questions', async (req, res) => {
         insertRequest.input('QuestionId', sql.Int, answer.questionId);
         insertRequest.input('Answer', sql.NVarChar(sql.MAX), answer.answer);
         await insertRequest.query(`
-          INSERT INTO VendorFAQs (VendorProfileID, QuestionID, Answer, CreatedAt)
+          INSERT INTO VendorFAQs (VendorProfileID, QuestionId, Answer, CreatedAt)
           VALUES (@VendorProfileId, @QuestionId, @Answer, GETDATE())
         `);
       }
