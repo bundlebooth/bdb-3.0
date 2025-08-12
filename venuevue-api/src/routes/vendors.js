@@ -2138,7 +2138,7 @@ router.get('/category-questions/:category', async (req, res) => {
 });
 
 // Save category-specific question answers for step 7
-router.post('/setup/step7-category-questions', authenticateToken, async (req, res) => {
+router.post('/setup/step7-category-questions', async (req, res) => {
   try {
     const { vendorProfileId, categoryAnswers, primaryCategory } = req.body;
     
