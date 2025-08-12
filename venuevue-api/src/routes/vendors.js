@@ -1890,24 +1890,19 @@ router.post('/setup/step1-business-basics', async (req, res) => {
     const request = new sql.Request(pool);
     
     request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('CategoryAnswersJSON', sql.NVarChar(sql.MAX), JSON.stringify(categoryAnswers));
-    request.input('PrimaryCategory', sql.NVarChar(100), primaryCategory);
+    request.input('AdditionalDetailsJSON', sql.NVarChar(sql.MAX), JSON.stringify(categoryAnswers));
     
-    const result = await request.execute('sp_SaveVendorCategoryAnswers');
+    const result = await request.execute('sp_SaveVendorAdditionalDetails');
     
     if (result.recordset[0].Success) {
       res.json({
         success: true,
-        message: result.recordset[0].Message,
-        answersSaved: result.recordset[0].AnswersSaved,
-        primaryCategory: result.recordset[0].PrimaryCategory
+        message: 'Category answers saved successfully'
       });
     } else {
       res.status(500).json({
         success: false,
-        message: result.recordset[0].Message,
-        errorNumber: result.recordset[0].ErrorNumber,
-        errorLine: result.recordset[0].ErrorLine
+        message: result.recordset[0].Message
       });
     }
 
