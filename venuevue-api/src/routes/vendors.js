@@ -3,6 +3,13 @@
 // Additional Cities/Regions, Category Questions, Enhanced Summary
 // ============================================
 
+const express = require('express');
+const sql = require('mssql');
+const router = express.Router();
+
+// Database connection pool
+const { poolPromise } = require('../config/db');
+
 // Update Step 2: Location Information to include Additional Cities
 router.post('/setup/step2-location', async (req, res) => {
   try {
@@ -320,3 +327,5 @@ router.post('/setup/step9-completion', async (req, res) => {
     });
   }
 });
+
+module.exports = router;
