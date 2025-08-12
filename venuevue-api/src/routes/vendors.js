@@ -2209,154 +2209,71 @@ router.get('/summary/:vendorProfileId', async (req, res) => {
       });
     }
 
-    const pool = await poolPromise;
+    const pool = await sql.connect();
+    const request = new sql.Request(pool);
     
-    if (!pool.connected) {
-      throw new Error('Database connection not established');
-    }
-
-    // Get basic vendor information
-    const vendorRequest = new sql.Request(pool);
-    vendorRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const vendorResult = await vendorRequest.query(`
-      SELECT 
-        vp.BusinessName,
-        vp.DisplayName,
-        vp.BusinessDescription,
-        vp.Phone,
-        vp.Email,
-        vp.Website,
-        vp.Address,
-        vp.City,
-        vp.State,
-        vp.Country,
-        vp.PostalCode,
-        vp.YearsInBusiness,
-        vp.IsPremium,
-        vp.IsEcoFriendly,
-        vp.IsAwardWinning,
-        vp.Tagline,
-        vp.CreatedAt,
-        u.FirstName,
-        u.LastName
-      FROM VendorProfiles vp
-      LEFT JOIN Users u ON vp.UserID = u.UserID
-      WHERE vp.VendorProfileID = @VendorProfileID
-    `);
-
-    if (vendorResult.recordset.length === 0) {
+    // Use the new stored procedure that gets comprehensive vendor data
+    const result = await request.execute('sp_GetVendorSummary');
+    
+    if (result.recordsets.length === 0 || result.recordsets[0].length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Vendor not found'
       });
     }
 
-    const vendor = vendorResult.recordset[0];
+    // Extract data from multiple recordsets returned by the stored procedure
+    const basicInfo = result.recordsets[0][0]; // Basic vendor information
+    const categories = result.recordsets[1] || []; // Categories
+    const imageCount = result.recordsets[2][0] || { ImageCount: 0 }; // Images count
+    const serviceCount = result.recordsets[3][0] || { ServiceCount: 0 }; // Services count
+    const packageCount = result.recordsets[4][0] || { PackageCount: 0 }; // Packages count
+    const socialMedia = result.recordsets[5] || []; // Social media links
+    const businessHours = result.recordsets[6] || []; // Business hours
+    const additionalDetails = result.recordsets[7] || []; // Category-specific answers
+    const faqs = result.recordsets[8] || []; // FAQs
 
-    // Get vendor categories
-    const categoriesRequest = new sql.Request(pool);
-    categoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const categoriesResult = await categoriesRequest.query(`
-      SELECT Category FROM VendorCategories 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Get services count
-    const servicesRequest = new sql.Request(pool);
-    servicesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const servicesResult = await servicesRequest.query(`
-      SELECT COUNT(*) as ServiceCount FROM Services 
-      WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
-    `);
-
-    // Get packages count
-    const packagesRequest = new sql.Request(pool);
-    packagesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const packagesResult = await packagesRequest.query(`
-      SELECT COUNT(*) as PackageCount FROM Packages 
-      WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
-    `);
-
-    // Get social media profiles
-    const socialRequest = new sql.Request(pool);
-    socialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const socialResult = await socialRequest.query(`
-      SELECT Platform, URL FROM VendorSocialMedia 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Get business hours
-    const hoursRequest = new sql.Request(pool);
-    hoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const hoursResult = await hoursRequest.query(`
-      SELECT DayOfWeek, StartTime, EndTime FROM VendorBusinessHours 
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DayOfWeek
-    `);
-
-    // Get FAQs
-    const faqRequest = new sql.Request(pool);
-    faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const faqResult = await faqRequest.query(`
-      SELECT Question, Answer FROM VendorFAQs 
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DisplayOrder
-    `);
-
-    // Get images count
-    const imagesRequest = new sql.Request(pool);
-    imagesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const imagesResult = await imagesRequest.query(`
-      SELECT COUNT(*) as ImageCount FROM VendorImages 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Build summary response
+    // Build comprehensive summary response
     const summaryData = {
       basicInfo: {
-        businessName: vendor.BusinessName,
-        displayName: vendor.DisplayName,
-        description: vendor.BusinessDescription,
-        tagline: vendor.Tagline,
-        phone: vendor.Phone,
-        email: vendor.Email,
-        website: vendor.Website,
-        address: vendor.Address,
-        city: vendor.City,
-        state: vendor.State,
-        country: vendor.Country,
-        postalCode: vendor.PostalCode,
-        yearsInBusiness: vendor.YearsInBusiness,
-        ownerName: `${vendor.FirstName || ''} ${vendor.LastName || ''}`.trim(),
-        isPremium: vendor.IsPremium,
-        isEcoFriendly: vendor.IsEcoFriendly,
-        isAwardWinning: vendor.IsAwardWinning,
-        memberSince: vendor.CreatedAt
+        businessName: basicInfo.BusinessName,
+        displayName: basicInfo.DisplayName,
+        description: basicInfo.BusinessDescription,
+        tagline: basicInfo.Tagline,
+        phone: basicInfo.BusinessPhone,
+        email: basicInfo.BusinessEmail,
+        website: basicInfo.Website,
+        address: basicInfo.Address,
+        city: basicInfo.City,
+        state: basicInfo.State,
+        country: basicInfo.Country,
+        postalCode: basicInfo.PostalCode,
+        additionalCitiesServed: basicInfo.AdditionalCitiesServed,
+        yearsInBusiness: basicInfo.YearsInBusiness,
+        featuredImageURL: basicInfo.FeaturedImageURL,
+        acceptingBookings: basicInfo.AcceptingBookings,
+        averageResponseTime: basicInfo.AverageResponseTime
       },
-      categories: categoriesResult.recordset.map(row => row.Category),
-      serviceCount: servicesResult.recordset[0].ServiceCount,
-      packageCount: packagesResult.recordset[0].PackageCount,
-      socialMedia: socialResult.recordset,
-      businessHours: hoursResult.recordset,
-      faqs: faqResult.recordset,
-      imageCount: imagesResult.recordset[0].ImageCount,
+      categories: categories.map(row => row.Category),
+      serviceCount: serviceCount.ServiceCount,
+      packageCount: packageCount.PackageCount,
+      imageCount: imageCount.ImageCount,
+      socialMedia: socialMedia,
+      businessHours: businessHours,
+      additionalDetails: additionalDetails, // Category-specific Q&A
+      faqs: faqs,
       completionStatus: {
-        basicInfo: !!(vendor.BusinessName && vendor.BusinessDescription),
-        categories: categoriesResult.recordset.length > 0,
-        services: servicesResult.recordset[0].ServiceCount > 0,
-        packages: packagesResult.recordset[0].PackageCount > 0,
-        socialMedia: socialResult.recordset.length > 0,
-        businessHours: hoursResult.recordset.length > 0,
-        faqs: faqResult.recordset.length > 0,
-        images: imagesResult.recordset[0].ImageCount > 0
+        basicInfo: !!(basicInfo.BusinessName && basicInfo.BusinessDescription),
+        categories: categories.length > 0,
+        services: serviceCount.ServiceCount > 0,
+        packages: packageCount.PackageCount > 0,
+        socialMedia: socialMedia.length > 0,
+        businessHours: businessHours.length > 0,
+        additionalDetails: additionalDetails.length > 0,
+        faqs: faqs.length > 0,
+        images: imageCount.ImageCount > 0
       }
     };
 
@@ -2371,6 +2288,54 @@ router.get('/summary/:vendorProfileId', async (req, res) => {
       success: false,
       message: 'Failed to load vendor summary',
       error: err.message 
+    });
+  }
+});
+
+// POST /vendors/setup/step7-category-questions - Save category-specific answers
+router.post('/setup/step7-category-questions', async (req, res) => {
+  try {
+    const { vendorProfileId, categoryAnswers } = req.body;
+
+    if (!vendorProfileId || !categoryAnswers) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID and category answers are required'
+      });
+    }
+
+    const pool = await sql.connect();
+    const request = new sql.Request(pool);
+    
+    // Convert categoryAnswers array to JSON string for the stored procedure
+    const additionalDetailsJSON = JSON.stringify(categoryAnswers);
+    
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('AdditionalDetailsJSON', sql.NVarChar(sql.MAX), additionalDetailsJSON);
+    
+    const result = await request.execute('sp_SaveVendorAdditionalDetails');
+    
+    const response = result.recordset[0];
+    
+    if (response.Success) {
+      res.json({
+        success: true,
+        message: 'Category-specific answers saved successfully'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to save category-specific answers',
+        error: response.Message
+      });
+    }
+
+  } catch (err) {
+    console.error('Save category answers error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save category-specific answers',
+      error: err.message
     });
   }
 });
