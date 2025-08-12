@@ -1957,6 +1957,154 @@ router.get('/setup/progress/:vendorProfileId', async (req, res) => {
 
 // ===== ENHANCED VENDOR SETUP ENDPOINTS =====
 
+// Get category-specific questions
+router.get('/category-questions/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+
+    if (!category) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    const request = new sql.Request(pool);
+    request.input('Category', sql.NVarChar(50), category);
+
+    const result = await request.execute('sp_GetCategoryQuestions');
+    
+    res.json({
+      success: true,
+      questions: result.recordset,
+      category: category
+    });
+
+  } catch (err) {
+    console.error('Category questions error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get category questions',
+      error: err.message 
+    });
+  }
+});
+
+// Step 7: Additional Details (Category-specific questions)
+router.post('/setup/step7-additional-details', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      additionalDetails
+    } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('AdditionalDetailsJSON', sql.NVarChar(sql.MAX), JSON.stringify(additionalDetails) || null);
+
+    const result = await request.execute('sp_SaveVendorAdditionalDetails');
+    
+    const response = result.recordset[0];
+    
+    if (response.Success) {
+      res.json({
+        success: true,
+        message: response.Message,
+        step: 7,
+        nextStep: 8
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: response.Message
+      });
+    }
+    
+  } catch (err) {
+    console.error('Step 7 additional details error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save additional details',
+      error: err.message
+    });
+  }
+});
+
+// Get vendor summary for final step
+router.get('/:id/summary', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    // Resolve the ID to VendorProfileID
+    const vendorProfileId = await resolveVendorProfileId(id, pool);
+    
+    if (!vendorProfileId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found'
+      });
+    }
+
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+
+    const result = await request.execute('sp_GetVendorSummary');
+    
+    if (result.recordsets.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor summary not found'
+      });
+    }
+
+    const summaryData = {
+      basicInfo: result.recordsets[0][0] || {},
+      categories: result.recordsets[1] || [],
+      imageCount: result.recordsets[2][0]?.ImageCount || 0,
+      serviceCount: result.recordsets[3][0]?.ServiceCount || 0,
+      packageCount: result.recordsets[4][0]?.PackageCount || 0,
+      socialMedia: result.recordsets[5] || [],
+      businessHours: result.recordsets[6] || [],
+      additionalDetails: result.recordsets[7] || [],
+      faqs: result.recordsets[8] || []
+    };
+
+    res.json({
+      success: true,
+      data: summaryData
+    });
+
+  } catch (err) {
+    console.error('Vendor summary error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get vendor summary',
+      error: err.message 
+    });
+  }
+});
+
 // Get vendor setup progress
 router.get('/:id/setup-progress', async (req, res) => {
   try {
@@ -2538,4 +2686,132 @@ router.post('/setup/step2-location-enhanced', async (req, res) => {
   }
 });
 
-module.exports = router;
+// ============================================
+// NEW ENHANCED ENDPOINTS FOR CATEGORY-SPECIFIC QUESTIONS
+// ============================================
+
+// Get category-specific questions
+router.get('/category-questions/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+
+    if (!category) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('Category', sql.NVarChar(50), category);
+
+    const result = await request.execute('sp_GetCategoryQuestions');
+    
+    res.json({
+      success: true,
+      questions: result.recordset,
+      category: category
+    });
+
+  } catch (err) {
+    console.error('Category questions error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get category questions',
+      error: err.message
+    });
+  }
+});
+
+// NEW: Step 7 - Additional Details (Category-specific questions)
+router.post('/setup/step7-additional-details', async (req, res) => {
+  try {
+    const {
+      vendorProfileId,
+      additionalDetails
+    } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('AdditionalDetailsJSON', sql.NVarChar(sql.MAX), JSON.stringify(additionalDetails) || null);
+
+    const result = await request.execute('sp_SaveVendorAdditionalDetails');
+    
+    if (result.recordset[0].Success) {
+      res.json({
+        success: true,
+        message: 'Additional details saved successfully',
+        step: 7,
+        nextStep: 8
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: result.recordset[0].Message
+      });
+    }
+
+  } catch (err) {
+    console.error('Step 7 additional details error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save additional details',
+      error: err.message
+    });
+  }
+});
+
+// NEW: Get vendor summary for final step
+router.get('/setup/summary/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+
+    const result = await request.execute('sp_GetVendorSummary');
+    
+    const summary = {
+      basicInfo: result.recordsets[0][0] || {},
+      categories: result.recordsets[1] || [],
+      imageCount: result.recordsets[2][0]?.ImageCount || 0,
+      serviceCount: result.recordsets[3][0]?.ServiceCount || 0,
+      packageCount: result.recordsets[4][0]?.PackageCount || 0,
+      socialMedia: result.recordsets[5] || [],
+      businessHours: result.recordsets[6] || [],
+      additionalDetails: result.recordsets[7] || [],
+      faqs: result.recordsets[8] || []
+    };
+
+    res.json({
+      success: true,
+      summary: summary
+    });
+
+  } catch (err) {
+    console.error('Vendor summary error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get vendor summary',
+      error: err.message
+    });
+  }
+});
+
