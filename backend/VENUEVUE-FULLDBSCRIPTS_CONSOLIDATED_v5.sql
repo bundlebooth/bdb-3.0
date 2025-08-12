@@ -4127,3 +4127,21 @@ GO
 -- =============================================
 -- DATABASE DDL GENERATION COMPLETE
 -- =============================================
+-- First, drop the primary key constraint if it exists
+IF EXISTS (SELECT * FROM sys.key_constraints WHERE name = 'PK__Users__1788CCAC0EA41595')
+    ALTER TABLE [dbo].[Users] DROP CONSTRAINT [PK__Users__1788CCAC0EA41595];
+GO
+
+-- Add IDENTITY specification to UserID
+ALTER TABLE [dbo].[Users] 
+    DROP COLUMN [UserID];
+GO
+
+ALTER TABLE [dbo].[Users] 
+    ADD [UserID] INT IDENTITY(1,1) NOT NULL;
+GO
+
+-- Re-add the primary key constraint
+ALTER TABLE [dbo].[Users] 
+    ADD CONSTRAINT [PK__Users__1788CCAC0EA41595] PRIMARY KEY ([UserID]);
+GO
