@@ -2180,23 +2180,23 @@ router.post('/setup/step8-policies', async (req, res) => {
           insertRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
           insertRequest.input('DisplayOrder', sql.Int, i + 1);
           await insertRequest.query(`
-            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, CreatedAt)
-            VALUES (@VendorProfileId, @Question, @Answer, @DisplayOrder, GETDATE())
+            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
+            VALUES (@VendorProfileId, @Question, @Answer, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
           `);
         }
       }
     }
 
-    // If policies data is sent (for backward compatibility), we can ignore it or store it
-    // For now, we'll just acknowledge it was received but focus on FAQ functionality
+    // Policies data is ignored - this step is FAQ-only
+    // PaymentTerms, ReschedulingPolicy, DepositRequirements, PaymentMethods are not stored
     
     res.json({
       success: true,
-      message: 'FAQ data saved successfully',
+      message: faqs && faqs.length > 0 ? 'FAQ data saved successfully' : 'Step 8 completed (FAQ step - policies data ignored)',
       data: {
         vendorProfileId: vendorProfileId,
         faqsCount: faqs?.length || 0,
-        note: 'Step 8 configured for FAQ data instead of policies'
+        note: 'Step 8 is FAQ-only. Policies data (PaymentTerms, ReschedulingPolicy, etc.) is ignored.'
       }
     });
 
