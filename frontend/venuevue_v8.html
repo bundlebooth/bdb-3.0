@@ -1896,77 +1896,7 @@
                 <div class="map-venue-list" id="map-venue-list"></div>
             </div>
 
-            <div class="vendor-grid" id="vendor-grid"><div class="vendor-card">
-                    <div class="vendor-image">
-                        <img src="https://placehold.co/800x600/5e72e4/ffffff?text=Primary" alt="Epic Events Photography" style="width:100%;height:100%;object-fit:cover;">
-                        <div class="vendor-favorite " data-id="1">❤</div>
-                        <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
-                            
-                            
-                            
-                        </div>
-                    </div>
-                    <div class="vendor-details">
-                        <h3 class="vendor-name">Epic Events Photography</h3>
-                        <div class="vendor-location">
-                            📍 Los Angeles, CA
-                        </div>
-                        <div class="vendor-features">
-                            <div class="feature">
-                                <span class="feature-icon">📷</span>
-                                <span>Photo/Video</span>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-icon">⭐</span>
-                                <span>5.000000 (1)</span>
-                            </div>
-                            <div class="feature">
-                                <div class="price-indicator">
-                                    <span class="price-dot filled"></span><span class="price-dot filled"></span><span class="price-dot "></span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="vendor-footer">
-                            <button class="btn btn-outline save-btn" data-id="1">Save</button>
-                            <button class="btn btn-primary view-btn" data-id="1">View</button>
-                        </div>
-                    </div>
-                </div><div class="vendor-card">
-                    <div class="vendor-image">
-                        🎉
-                        <div class="vendor-favorite " data-id="2">❤</div>
-                        <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
-                            
-                            
-                            
-                        </div>
-                    </div>
-                    <div class="vendor-details">
-                        <h3 class="vendor-name">Sami Test</h3>
-                        <div class="vendor-location">
-                            📍 , 
-                        </div>
-                        <div class="vendor-features">
-                            <div class="feature">
-                                <span class="feature-icon">🎉</span>
-                                <span>Vendor</span>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-icon">⭐</span>
-                                <span>4.5 (0)</span>
-                            </div>
-                            <div class="feature">
-                                <div class="price-indicator">
-                                    <span class="price-dot filled"></span><span class="price-dot filled"></span><span class="price-dot "></span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="vendor-footer">
-                            <button class="btn btn-outline save-btn" data-id="2">Save</button>
-                            <button class="btn btn-primary view-btn" data-id="2">View</button>
-                        </div>
-                    </div>
-                </div></div>
+            <div class="vendor-grid" id="vendor-grid"></div>
 
             <div class="pagination" id="pagination" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin: 2rem 0;">
                 <div class="page-btn" id="prev-page">«</div>
@@ -2350,15 +2280,14 @@
                         <span class="step-indicator" id="step-indicator-2">2: Location</span>
                         <span class="step-indicator" id="step-indicator-3">3: Gallery</span>
                         <span class="step-indicator" id="step-indicator-4">4: Services</span>
-                        <span class="step-indicator" id="step-indicator-5">5: Team</span>
-                        <span class="step-indicator" id="step-indicator-6">6: Social</span>
-                        <span class="step-indicator" id="step-indicator-7">7: Schedule</span>
-                        <span class="step-indicator" id="step-indicator-8">8: Policies</span>
-                        <span class="step-indicator" id="step-indicator-9">9: Legal</span>
-                        <span class="step-indicator" id="step-indicator-10">10: Complete</span>
+                        <span class="step-indicator" id="step-indicator-5">5: Social</span>
+                        <span class="step-indicator" id="step-indicator-6">6: Schedule</span>
+                        <span class="step-indicator" id="step-indicator-7">7: Additional Details</span>
+                        <span class="step-indicator" id="step-indicator-8">8: FAQ</span>
+                        <span class="step-indicator" id="step-indicator-9">9: Summary</span>
                     </div>
                     <div style="background-color: var(--border); height: 4px; border-radius: 2px; overflow: hidden;">
-                        <div id="setup-progress-bar" style="background-color: var(--primary); height: 100%; width: 10%; transition: width 0.3s ease;"></div>
+                        <div id="setup-progress-bar" style="background-color: var(--primary); height: 100%; width: 11.11%; transition: width 0.3s ease;"></div>
                     </div>
                 </div>
 
@@ -2430,16 +2359,19 @@
                                 <label for="primary-category">Primary Category *</label>
                                 <select id="primary-category" required>
                                     <option value="">Select primary category</option>
-                                    <option value="Photography">Photography</option>
-                                    <option value="Catering">Catering</option>
-                                    <option value="DJ/Music">DJ/Music</option>
-                                    <option value="Florist">Florist</option>
-                                    <option value="Venue">Venue</option>
-                                    <option value="Wedding Planning">Wedding Planning</option>
-                                    <option value="Decoration">Decoration</option>
-                                    <option value="Transportation">Transportation</option>
-                                    <option value="Entertainment">Entertainment</option>
-                                    <option value="Other">Other</option>
+                                    <option value="beauty">Beauty</option>
+                                    <option value="cake">Cake</option>
+                                    <option value="catering">Catering</option>
+                                    <option value="decor">Decor</option>
+                                    <option value="entertainment">Entertainment</option>
+                                    <option value="experiences">Experiences</option>
+                                    <option value="fashion">Fashion</option>
+                                    <option value="music">Music</option>
+                                    <option value="photo">Photo</option>
+                                    <option value="planner">Planner</option>
+                                    <option value="stationery">Stationery</option>
+                                    <option value="transport">Transport</option>
+                                    <option value="venue">Venue</option>
                                 </select>
                             </div>
                         </div>
@@ -2447,21 +2379,19 @@
                             <div class="form-group">
                                 <label for="additional-categories">Additional Categories</label>
                                 <select id="additional-categories" multiple style="height: 120px;">
-                                    <option value="Photography">Photography</option>
-                                    <option value="Videography">Videography</option>
-                                    <option value="Catering">Catering</option>
-                                    <option value="DJ/Music">DJ/Music</option>
-                                    <option value="Live Band">Live Band</option>
-                                    <option value="Florist">Florist</option>
-                                    <option value="Venue">Venue</option>
-                                    <option value="Wedding Planning">Wedding Planning</option>
-                                    <option value="Event Planning">Event Planning</option>
-                                    <option value="Decoration">Decoration</option>
-                                    <option value="Lighting">Lighting</option>
-                                    <option value="Transportation">Transportation</option>
-                                    <option value="Entertainment">Entertainment</option>
-                                    <option value="Makeup Artist">Makeup Artist</option>
-                                    <option value="Hair Stylist">Hair Stylist</option>
+                                    <option value="beauty">Beauty</option>
+                                    <option value="cake">Cake</option>
+                                    <option value="catering">Catering</option>
+                                    <option value="decor">Decor</option>
+                                    <option value="entertainment">Entertainment</option>
+                                    <option value="experiences">Experiences</option>
+                                    <option value="fashion">Fashion</option>
+                                    <option value="music">Music</option>
+                                    <option value="photo">Photo</option>
+                                    <option value="planner">Planner</option>
+                                    <option value="stationery">Stationery</option>
+                                    <option value="transport">Transport</option>
+                                    <option value="venue">Venue</option>
                                 </select>
                                 <small style="color: var(--text-light);">Hold Ctrl/Cmd to select multiple</small>
                             </div>
@@ -2473,7 +2403,7 @@
                     </div>
                 </div>
 
-                <!-- Step 2: Location Information -->
+                <!-- Step 2: Location Information (ENHANCED) -->
                 <div class="setup-step" id="setup-step-2" style="display: none;">
                     <h4 class="form-section-title">Step 2: Location Information</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Tell us where your business is located and which areas you serve.</p>
@@ -2501,60 +2431,31 @@
                     
                     <div class="form-row">
                         <div class="form-col">
-                            <div class="form-group">
-                                <label for="business-country">Country</label>
-                                <select id="business-country">
-                                    <option value="USA">United States</option>
-                                    <option value="Canada">Canada</option>
-                                    <option value="UK">United Kingdom</option>
-                                    <option value="Australia">Australia</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="business-postal">Postal/Zip Code *</label>
-                                <input type="text" id="business-postal" required>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="business-latitude">Latitude (optional)</label>
-                                <input type="number" id="business-latitude" step="any" placeholder="40.7128">
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="business-longitude">Longitude (optional)</label>
-                                <input type="number" id="business-longitude" step="any" placeholder="-74.0060">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Service Areas</h5>
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="service-radius">Service Radius (miles)</label>
-                                <input type="number" id="service-radius" min="1" max="500" value="25">
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="additional-service-areas">Additional Cities/Regions Served</label>
-                                <textarea id="additional-service-areas" rows="3" placeholder="Enter cities or regions you serve, separated by commas"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <div class="form-group">
-                        <label for="extended-area-fees">Additional Fees for Extended Areas</label>
-                        <textarea id="extended-area-fees" rows="2" placeholder="Describe any additional fees for travel or extended service areas"></textarea>
+                        <label for="business-country">Country</label>
+                        <select id="business-country">
+                            <option value="USA">United States</option>
+                            <option value="Canada">Canada</option>
+                            <option value="UK">United Kingdom</option>
+                            <option value="Australia">Australia</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
+                </div>
+                <div class="form-col">
+                    <div class="form-group">
+                        <label for="business-postal">Postal/Zip Code *</label>
+                        <input type="text" id="business-postal" required>
+                    </div>
+                </div>
+            </div>
+
+            <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Service Areas</h5>
+            <div class="form-group">
+                <label for="additional-cities">Additional Cities/Regions Served</label>
+                <textarea id="additional-cities" rows="3" placeholder="List additional cities or regions served, separated by commas (e.g., New York, Los Angeles, Chicago)"></textarea>
+                <small style="color: var(--text-light); font-size: 0.8rem;">Include any cities, towns, or regions outside your primary location where you provide services. This helps clients find you when searching in those areas.</small>
+            </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
                         <button type="button" class="btn btn-outline" id="back-to-step-1">Back: Business Basics</button>
@@ -2793,60 +2694,11 @@
                     </div>
                 </div>
 
-                <!-- Step 5: Team Information -->
-                <div class="setup-step" id="setup-step-5" style="display: none;">
-                    <h4 class="form-section-title">Step 5: Team Information (Optional)</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Introduce your team members to build trust with potential clients.</p>
-                    
-                    <div id="team-members-list" style="margin-bottom: 1rem;">
-                        <!-- Team members will be listed here -->
-                    </div>
-                    <button type="button" class="btn btn-outline" id="add-team-member-btn">Add Team Member</button>
-                    
-                    <!-- Team Member Form -->
-                    <div id="team-member-form" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
-                        <div class="form-group">
-                            <label>Name *</label>
-                            <input type="text" id="team-member-name" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Role/Position</label>
-                            <input type="text" id="team-member-role" placeholder="e.g., Lead Photographer, Event Coordinator">
-                        </div>
-                        <div class="form-group">
-                            <label>Bio</label>
-                            <textarea id="team-member-bio" rows="3" placeholder="Brief description of their experience and expertise"></textarea>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-col">
-                                <div class="form-group">
-                                    <label>Photo</label>
-                                    <input type="file" id="team-member-photo" accept="image/*">
-                                </div>
-                            </div>
-                            <div class="form-col">
-                                <div class="form-group">
-                                    <label>Or Photo URL</label>
-                                    <input type="url" id="team-member-photo-url" placeholder="https://example.com/photo.jpg">
-                                </div>
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button type="button" class="btn btn-primary" id="add-team-member-item-btn">Add Team Member</button>
-                            <button type="button" class="btn btn-outline" onclick="document.getElementById('team-member-form').style.display='none'">Cancel</button>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-4">Back: Services</button>
-                        <button type="button" class="btn btn-primary" id="next-to-step-6">Next: Social Media</button>
-                    </div>
-                </div>
 
-                <!-- Step 6: Social Media & Links -->
-                <div class="setup-step" id="setup-step-6" style="display: none;">
-                    <h4 class="form-section-title">Step 6: Social Media & Links</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Add your social media profiles and external links to help clients connect with you.</p>
+                <!-- Step 5: Social Media -->
+                <div class="setup-step" id="setup-step-5" style="display: none;">
+                    <h4 class="form-section-title">Step 5: Social Media</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Add your social media profiles to help clients connect with you.</p>
                     
                     <h5 style="margin-bottom: 1rem; color: var(--primary);">Social Media Profiles</h5>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
@@ -2876,27 +2728,15 @@
                         </div>
                     </div>
                     
-                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">External Links</h5>
-                    <div class="form-group">
-                        <label for="booking-link">Booking Link</label>
-                        <input type="url" id="booking-link" placeholder="https://yourbookingsite.com">
-                        <small style="color: var(--text-light);">Direct link for clients to book your services</small>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="other-links">Other Relevant Links</label>
-                        <textarea id="other-links" rows="3" placeholder="Enter other relevant links (portfolio site, blog, etc.), one per line"></textarea>
-                    </div>
-                    
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-5">Back: Team</button>
-                        <button type="button" class="btn btn-primary" id="next-to-step-7">Next: Availability</button>
+                        <button type="button" class="btn btn-outline" id="back-to-step-4">Back: Services</button>
+                        <button type="button" class="btn btn-primary" id="next-to-step-6">Next: Availability</button>
                     </div>
                 </div>
 
-                <!-- Step 7: Availability & Scheduling -->
-                <div class="setup-step" id="setup-step-7" style="display: none;">
-                    <h4 class="form-section-title">Step 7: Availability & Scheduling</h4>
+                <!-- Step 6: Availability & Scheduling -->
+                <div class="setup-step" id="setup-step-6" style="display: none;">
+                    <h4 class="form-section-title">Step 6: Availability & Scheduling</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Set your business hours and availability preferences.</p>
                     
                     <h5 style="margin-bottom: 1rem; color: var(--primary);">Regular Business Hours</h5>
@@ -3004,15 +2844,84 @@
                         <small style="color: var(--text-light);">Time needed between bookings for setup/cleanup</small>
                     </div>
                     
+<div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+    <button type="button" class="btn btn-outline" id="back-to-step-5">Back: Social Media</button>
+    <button type="button" class="btn btn-primary" id="next-to-step-7">Next: Additional Details</button>
+</div>
+</div>
+
+                <!-- Step 7: Additional Details -->
+                <div class="setup-step" id="setup-step-7" style="display: none;">
+                    <h4 class="form-section-title">Step 7: Additional Details</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Please answer the following questions related to your primary category.</p>
+                    
+                    <div id="category-questions-container" style="margin-bottom: 1rem;">
+                        <!-- Category-specific questions will be dynamically loaded here -->
+                    </div>
+                    
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-step-6">Back: Social Media</button>
-                        <button type="button" class="btn btn-primary" id="next-to-step-8">Next: Policies</button>
+                        <button type="button" class="btn btn-outline" id="back-to-step-6">Back: Availability</button>
+                        <button type="button" class="btn btn-primary" id="next-to-step-8">Next: FAQ</button>
                     </div>
                 </div>
 
-                <!-- Step 8: Policies & Preferences -->
+                <!-- Step 8: FAQ Section -->
                 <div class="setup-step" id="setup-step-8" style="display: none;">
-                    <h4 class="form-section-title">Step 8: Policies & Preferences</h4>
+                    <h4 class="form-section-title">Step 8: FAQ Section</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Add frequently asked questions to help potential clients understand your services better.</p>
+                    
+                    <h5 style="margin-bottom: 1rem; color: var(--primary);">Frequently Asked Questions</h5>
+                    <div id="faqs-list" style="margin-bottom: 1rem;">
+                        <!-- FAQs will be listed here -->
+                    </div>
+                    <button type="button" class="btn btn-outline" id="add-faq-btn">Add FAQ</button>
+                    
+                    <!-- FAQ Form -->
+                    <div id="faq-form" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                        <div class="form-group">
+                            <label>Question</label>
+                            <input type="text" id="faq-question" required placeholder="What is your typical response time?">
+                        </div>
+                        <div class="form-group">
+                            <label>Answer</label>
+                            <textarea id="faq-answer" rows="3" required placeholder="I typically respond to inquiries within 24 hours..."></textarea>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="btn btn-primary" id="add-faq-item-btn">Add FAQ</button>
+                            <button type="button" class="btn btn-outline" onclick="document.getElementById('faq-form').style.display='none'">Cancel</button>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="back-to-step-7">Back: Additional Details</button>
+                        <button type="button" class="btn btn-primary" id="next-to-step-9">Next: Summary</button>
+                    </div>
+                </div>
+
+                <!-- Step 9: Summary -->
+                <div class="setup-step" id="setup-step-9" style="display: none;">
+                    <h4 class="form-section-title">Step 9: Setup Summary</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Review all the information you've entered before completing your vendor profile setup.</p>
+                    
+                    <div id="setup-summary-content" style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem;">
+                        <!-- Summary content will be dynamically populated here -->
+                        <div class="summary-loading">Loading your information...</div>
+                    </div>
+                    
+                    <div style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem;">
+                        <p style="margin-bottom: 1rem;">🎉 <strong>Congratulations!</strong> You're about to complete your vendor profile setup.</p>
+                        <p><strong>Once completed, your profile will be live and visible to potential clients!</strong></p>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="back-to-step-8">Back: FAQ</button>
+                        <button type="button" class="btn btn-primary" id="complete-setup-btn" style="background-color: #28a745; border-color: #28a745;">🚀 Complete Setup & Go Live!</button>
+                    </div>
+                </div>
+
+                <!-- Step 10: Policies & Preferences (moved to step 10) -->
+                <div class="setup-step" id="setup-step-10" style="display: none;">
+                    <h4 class="form-section-title">Step 10: Policies & Preferences</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Define your business policies and payment preferences.</p>
                     
                     <h5 style="margin-bottom: 1rem; color: var(--primary);">Booking Policies</h5>
@@ -3610,7 +3519,7 @@
 
     <!-- Main Application Script -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
             // API base URL
             const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
 
@@ -3685,6 +3594,416 @@
             // Vendor registration elements
             const vendorRegistrationModal = document.getElementById('vendor-registration-modal');
             const regStatusMessage = document.getElementById('reg-status-message');
+
+            // Comprehensive Vendor Setup Wizard State (consolidated)
+            if (typeof vendorSetupState === 'undefined') {
+                var vendorSetupState = {
+                    currentStep: 1,
+                    vendorId: null,
+                    vendorProfileId: null,
+                    stepData: {
+                        step1: {}, // Business Basics
+                        step2: {}, // Location Information
+                        step3: {}, // Gallery & Media
+                        step4: {}, // Services & Packages
+                        step5: {}, // Team Information
+                        step6: {}, // Social Media & Links
+                        step7: {}, // Additional Details (Category-specific questions)
+                        step8: {}, // FAQ Section
+                        step9: {}, // Summary
+                        step10: {} // Policies & Preferences
+                    },
+                    gallery: [],
+                    portfolio: [],
+                    packages: [],
+                    services: [],
+                    teamMembers: [],
+                    faqs: [],
+                    additionalDetailsAnswers: {}
+                };
+            }
+
+            // Initialize Vendor Setup
+            function initializeVendorSetup(vendorId) {
+                vendorSetupState.vendorId = vendorId;
+                vendorSetupState.currentStep = 1;
+                
+                // Reset all data
+                Object.keys(vendorSetupState.stepData).forEach(key => {
+                    vendorSetupState.stepData[key] = {};
+                });
+                vendorSetupState.gallery = [];
+                vendorSetupState.portfolio = [];
+                vendorSetupState.packages = [];
+                vendorSetupState.services = [];
+                vendorSetupState.teamMembers = [];
+                vendorSetupState.faqs = [];
+                vendorSetupState.additionalDetailsAnswers = {};
+                
+                // Show the setup modal
+                vendorRegistrationModal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                
+                // Setup event listeners
+                setupVendorSetupEventListeners();
+                
+                // Show first step
+                showSetupStep(1);
+            }
+
+            // Setup Event Listeners for All Steps
+            function setupVendorSetupEventListeners() {
+                // Navigation buttons - Forward
+                document.getElementById('next-to-step-2')?.addEventListener('click', () => goToSetupStep(2));
+                document.getElementById('next-to-step-3')?.addEventListener('click', () => goToSetupStep(3));
+                document.getElementById('next-to-step-4')?.addEventListener('click', () => goToSetupStep(4));
+                document.getElementById('next-to-step-5')?.addEventListener('click', () => goToSetupStep(5));
+                document.getElementById('next-to-step-6')?.addEventListener('click', () => goToSetupStep(6));
+                document.getElementById('next-to-step-7')?.addEventListener('click', () => goToSetupStep(7));
+                document.getElementById('next-to-step-8')?.addEventListener('click', () => goToSetupStep(8));
+                document.getElementById('next-to-step-9')?.addEventListener('click', () => goToSetupStep(9));
+                document.getElementById('next-to-step-10')?.addEventListener('click', () => goToSetupStep(10));
+                
+                // Navigation buttons - Backward
+                document.getElementById('back-to-step-1')?.addEventListener('click', () => goToSetupStep(1));
+                document.getElementById('back-to-step-2')?.addEventListener('click', () => goToSetupStep(2));
+                document.getElementById('back-to-step-3')?.addEventListener('click', () => goToSetupStep(3));
+                document.getElementById('back-to-step-4')?.addEventListener('click', () => goToSetupStep(4));
+                document.getElementById('back-to-step-5')?.addEventListener('click', () => goToSetupStep(5));
+                document.getElementById('back-to-step-6')?.addEventListener('click', () => goToSetupStep(6));
+                document.getElementById('back-to-step-7')?.addEventListener('click', () => goToSetupStep(7));
+                document.getElementById('back-to-step-8')?.addEventListener('click', () => goToSetupStep(8));
+                document.getElementById('back-to-step-9')?.addEventListener('click', () => goToSetupStep(9));
+                
+                // Step 3: Gallery & Media functionality
+                document.getElementById('featured-image')?.addEventListener('change', handleFeaturedImageUpload);
+                document.getElementById('gallery-images')?.addEventListener('change', handleGalleryUpload);
+                document.getElementById('add-portfolio-btn')?.addEventListener('click', showPortfolioForm);
+                document.getElementById('add-portfolio-item-btn')?.addEventListener('click', addPortfolioItem);
+                
+                // Step 4: Services & Packages functionality
+                document.getElementById('add-service-category-btn')?.addEventListener('click', showServiceCategoryForm);
+                document.getElementById('add-category-item-btn')?.addEventListener('click', addServiceCategory);
+                document.getElementById('add-service-btn')?.addEventListener('click', showServiceForm);
+                document.getElementById('add-service-item-btn')?.addEventListener('click', addServiceItem);
+                document.getElementById('add-package-btn')?.addEventListener('click', showPackageForm);
+                document.getElementById('add-package-item-btn')?.addEventListener('click', addPackageItem);
+                
+                // Step 5: Team functionality
+                document.getElementById('add-team-member-btn')?.addEventListener('click', showTeamMemberForm);
+                document.getElementById('add-team-item-btn')?.addEventListener('click', addTeamMember);
+                
+                // Step 8: FAQ functionality
+                document.getElementById('add-faq-btn')?.addEventListener('click', showFaqForm);
+                document.getElementById('add-faq-item-btn')?.addEventListener('click', addFaqItem);
+                
+                // Complete setup
+                document.getElementById('complete-setup-btn')?.addEventListener('click', completeVendorSetup);
+            }
+
+            // Navigation Functions
+            async function goToSetupStep(step) {
+                // Validate current step before proceeding
+                if (!validateCurrentStep()) {
+                    return;
+                }
+                
+                // Save current step data
+                saveCurrentStepData();
+                
+                // Submit current step data to backend
+                try {
+                    await submitCurrentStepToBackend();
+                } catch (error) {
+                    console.error('Failed to save step data:', error);
+                    alert('Failed to save step data. Please try again.');
+                    return;
+                }
+                
+                // Load category-specific questions when entering step 7
+                if (step === 7) {
+                    await loadCategoryQuestions();
+                }
+                
+                // Load summary when entering step 9
+                if (step === 9) {
+                    await loadVendorSummary();
+                }
+                
+                // Update step
+                vendorSetupState.currentStep = step;
+                showSetupStep(step);
+            }
+
+            // Load category-specific questions based on primary category
+            async function loadCategoryQuestions() {
+                const primaryCategory = document.getElementById('primary-category')?.value;
+                if (!primaryCategory) {
+                    console.warn('No primary category selected');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/vendors/category-questions/${primaryCategory}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load category questions');
+                    }
+
+                    const data = await response.json();
+                    renderCategoryQuestions(data.questions || []);
+
+                } catch (error) {
+                    console.error('Error loading category questions:', error);
+                    document.getElementById('category-questions-container').innerHTML = 
+                        '<p style="color: var(--accent);">Failed to load questions. Please try again.</p>';
+                }
+            }
+
+            // Render category-specific questions
+            function renderCategoryQuestions(questions) {
+                const container = document.getElementById('category-questions-container');
+                if (!container) return;
+
+                if (questions.length === 0) {
+                    container.innerHTML = '<p>No additional questions for this category.</p>';
+                    return;
+                }
+
+                let html = '<div style="display: grid; gap: 1rem;">';
+                
+                questions.forEach((question, index) => {
+                    html += `
+                        <div class="form-group" style="padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">
+                                ${question.QuestionText}
+                                ${question.IsRequired ? '<span style="color: var(--accent);">*</span>' : ''}
+                            </label>
+                    `;
+
+                    if (question.QuestionType === 'YesNo') {
+                        html += `
+                            <div style="display: flex; gap: 1rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal;">
+                                    <input type="radio" name="question_${question.QuestionID}" value="Yes" ${question.IsRequired ? 'required' : ''}>
+                                    Yes
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal;">
+                                    <input type="radio" name="question_${question.QuestionID}" value="No" ${question.IsRequired ? 'required' : ''}>
+                                    No
+                                </label>
+                            </div>
+                        `;
+                    } else if (question.QuestionType === 'Text') {
+                        html += `
+                            <textarea name="question_${question.QuestionID}" rows="3" 
+                                     style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);"
+                                     ${question.IsRequired ? 'required' : ''}></textarea>
+                        `;
+                    } else if (question.QuestionType === 'Number') {
+                        html += `
+                            <input type="number" name="question_${question.QuestionID}" 
+                                   style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);"
+                                   ${question.IsRequired ? 'required' : ''}>
+                        `;
+                    }
+
+                    html += '</div>';
+                });
+
+                html += '</div>';
+                container.innerHTML = html;
+            }
+
+            // Load and display vendor summary
+            async function loadVendorSummary() {
+                const container = document.getElementById('setup-summary-content');
+                if (!container) return;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/vendors/summary/${vendorSetupState.vendorProfileId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load vendor summary');
+                    }
+
+                    const data = await response.json();
+                    renderVendorSummary(data);
+
+                } catch (error) {
+                    console.error('Error loading vendor summary:', error);
+                    container.innerHTML = '<p style="color: var(--accent);">Failed to load summary. Please try again.</p>';
+                }
+            }
+
+            // Render comprehensive vendor summary
+            function renderVendorSummary(summaryData) {
+                const container = document.getElementById('setup-summary-content');
+                if (!container || !summaryData.success) return;
+
+                const data = summaryData.data;
+                let html = '<div style="display: grid; gap: 1.5rem;">';
+
+                // Business Information
+                if (data.basicInfo) {
+                    const info = data.basicInfo;
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                📋 Business Information
+                            </h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                                <div><strong>Business Name:</strong> ${info.BusinessName || 'Not provided'}</div>
+                                <div><strong>Display Name:</strong> ${info.DisplayName || 'Not provided'}</div>
+                                <div><strong>Email:</strong> ${info.BusinessEmail || 'Not provided'}</div>
+                                <div><strong>Phone:</strong> ${info.BusinessPhone || 'Not provided'}</div>
+                                <div><strong>Website:</strong> ${info.Website || 'Not provided'}</div>
+                                <div><strong>Years in Business:</strong> ${info.YearsInBusiness || 'Not provided'}</div>
+                            </div>
+                            ${info.BusinessDescription ? `<div style="margin-top: 1rem;"><strong>Description:</strong><br>${info.BusinessDescription}</div>` : ''}
+                            ${info.Tagline ? `<div style="margin-top: 0.5rem;"><strong>Tagline:</strong> ${info.Tagline}</div>` : ''}
+                        </div>
+                    `;
+                }
+
+                // Location Information
+                if (data.basicInfo) {
+                    const info = data.basicInfo;
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                📍 Location Information
+                            </h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                                <div><strong>Address:</strong> ${info.Address || 'Not provided'}</div>
+                                <div><strong>City:</strong> ${info.City || 'Not provided'}</div>
+                                <div><strong>State:</strong> ${info.State || 'Not provided'}</div>
+                                <div><strong>Country:</strong> ${info.Country || 'Not provided'}</div>
+                                <div><strong>Postal Code:</strong> ${info.PostalCode || 'Not provided'}</div>
+                            </div>
+                            ${info.AdditionalCitiesServed ? `<div style="margin-top: 1rem;"><strong>Additional Cities/Regions Served:</strong><br>${info.AdditionalCitiesServed}</div>` : ''}
+                        </div>
+                    `;
+                }
+
+                // Categories
+                if (data.categories && data.categories.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                🏷️ Categories
+                            </h5>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                ${data.categories.map(cat => `<span style="background-color: var(--primary); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.9rem;">${cat.Category}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Gallery
+                if (data.imageCount > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                🖼️ Gallery
+                            </h5>
+                            <div><strong>Images Uploaded:</strong> ${data.imageCount} images</div>
+                            ${data.basicInfo?.FeaturedImageURL ? '<div style="margin-top: 0.5rem;"><strong>Featured Image:</strong> ✅ Set</div>' : ''}
+                        </div>
+                    `;
+                }
+
+                // Services & Packages
+                if (data.serviceCount > 0 || data.packageCount > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                💼 Services & Packages
+                            </h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                                <div><strong>Services:</strong> ${data.serviceCount || 0} services</div>
+                                <div><strong>Packages:</strong> ${data.packageCount || 0} packages</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Social Media
+                if (data.socialMedia && data.socialMedia.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                🌐 Social Media
+                            </h5>
+                            <div style="display: grid; gap: 0.5rem;">
+                                ${data.socialMedia.map(social => `<div><strong>${social.Platform}:</strong> ${social.URL}</div>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Business Hours
+                if (data.businessHours && data.businessHours.length > 0) {
+                    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                🕒 Business Hours
+                            </h5>
+                            <div style="display: grid; gap: 0.5rem;">
+                                ${data.businessHours.map(hours => `
+                                    <div><strong>${days[hours.DayOfWeek]}:</strong> 
+                                    ${hours.IsAvailable ? `${hours.OpenTime} - ${hours.CloseTime}` : 'Closed'}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Additional Details (Category-specific questions)
+                if (data.additionalDetails && data.additionalDetails.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                ❓ Additional Details
+                            </h5>
+                            <div style="display: grid; gap: 0.5rem;">
+                                ${data.additionalDetails.map(detail => `<div><strong>${detail.QuestionText}:</strong> ${detail.Answer}</div>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // FAQs
+                if (data.faqs && data.faqs.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                ❓ Frequently Asked Questions
+                            </h5>
+                            <div style="display: grid; gap: 1rem;">
+                                ${data.faqs.map(faq => `
+                                    <div style="padding: 1rem; background-color: white; border-radius: var(--radius); border: 1px solid var(--border);">
+                                        <div style="font-weight: 600; margin-bottom: 0.5rem;">Q: ${faq.Question}</div>
+                                        <div>A: ${faq.Answer}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += '</div>';
+                container.innerHTML = html;
+            }
 
 
             // Chat state manager
@@ -5299,29 +5618,32 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
-            // Comprehensive Vendor Setup Wizard State
-            let vendorSetupState = {
-                currentStep: 1,
-                vendorId: null,
-                stepData: {
-                    step1: {}, // Business Basics
-                    step2: {}, // Location Information
-                    step3: {}, // Gallery & Media
-                    step4: {}, // Services & Packages
-                    step5: {}, // Team Information
-                    step6: {}, // Social Media & Links
-                    step7: {}, // Availability & Scheduling
-                    step8: {}, // Policies & Preferences
-                    step9: {}, // Verification & Legal
-                    step10: {} // Setup Completion
-                },
-                gallery: [],
-                portfolio: [],
-                packages: [],
-                services: [],
-                teamMembers: [],
-                faqs: []
-            };
+            // Comprehensive Vendor Setup Wizard State (updated with new steps)
+            if (typeof vendorSetupState === 'undefined') {
+                var vendorSetupState = {
+                    currentStep: 1,
+                    vendorId: null,
+                    stepData: {
+                        step1: {}, // Business Basics
+                        step2: {}, // Location Information
+                        step3: {}, // Gallery & Media
+                        step4: {}, // Services & Packages
+                        step5: {}, // Social Media
+                        step6: {}, // Availability & Scheduling
+                        step7: {}, // Additional Details (Category-specific questions)
+                        step8: {}, // FAQ Section
+                        step9: {} // Summary & Completion
+                    },
+                    gallery: [],
+                    portfolio: [],
+                    packages: [],
+                    services: [],
+                    teamMembers: [],
+                    faqs: [],
+                    categoryQuestions: [],
+                    additionalDetails: []
+                };
+            }
 
             // Initialize Vendor Setup
             function initializeVendorSetup(vendorId) {
@@ -5393,6 +5715,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('add-team-item-btn')?.addEventListener('click', addTeamMember);
                 
                 // Step 10: FAQ functionality
+                // Move FAQ event listeners to Step 7 for immediate FAQ step functionality
                 document.getElementById('add-faq-btn')?.addEventListener('click', showFaqForm);
                 document.getElementById('add-faq-item-btn')?.addEventListener('click', addFaqItem);
                 
@@ -5419,9 +5742,289 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return;
                 }
                 
+                // Load category-specific questions when entering step 7
+                if (step === 7) {
+                    await loadCategoryQuestions();
+                }
+                
+                // Load summary when entering step 9
+                if (step === 9) {
+                    await loadVendorSummary();
+                }
+                
                 // Update step
                 vendorSetupState.currentStep = step;
                 showSetupStep(step);
+            }
+
+            // Load category-specific questions based on primary category
+            async function loadCategoryQuestions() {
+                const primaryCategory = document.getElementById('primary-category')?.value;
+                if (!primaryCategory) {
+                    console.warn('No primary category selected');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/vendors/category-questions/${primaryCategory}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load category questions');
+                    }
+
+                    const data = await response.json();
+                    renderCategoryQuestions(data.questions || []);
+
+                } catch (error) {
+                    console.error('Error loading category questions:', error);
+                    document.getElementById('category-questions-container').innerHTML = 
+                        '<p style="color: var(--accent);">Failed to load questions. Please try again.</p>';
+                }
+            }
+
+            // Render category-specific questions
+            function renderCategoryQuestions(questions) {
+                const container = document.getElementById('category-questions-container');
+                if (!container) return;
+
+                if (questions.length === 0) {
+                    container.innerHTML = '<p>No additional questions for this category.</p>';
+                    return;
+                }
+
+                let html = '<div style="display: grid; gap: 1rem;">';
+                
+                questions.forEach((question, index) => {
+                    html += `
+                        <div class="form-group" style="padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                            <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">
+                                ${question.QuestionText}
+                                ${question.IsRequired ? '<span style="color: var(--accent);">*</span>' : ''}
+                            </label>
+                    `;
+
+                    if (question.QuestionType === 'YesNo') {
+                        html += `
+                            <div style="display: flex; gap: 1rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal;">
+                                    <input type="radio" name="question_${question.QuestionID}" value="Yes" ${question.IsRequired ? 'required' : ''}>
+                                    Yes
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal;">
+                                    <input type="radio" name="question_${question.QuestionID}" value="No" ${question.IsRequired ? 'required' : ''}>
+                                    No
+                                </label>
+                            </div>
+                        `;
+                    } else if (question.QuestionType === 'Text') {
+                        html += `
+                            <textarea name="question_${question.QuestionID}" rows="3" 
+                                     style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);"
+                                     ${question.IsRequired ? 'required' : ''}></textarea>
+                        `;
+                    } else if (question.QuestionType === 'Number') {
+                        html += `
+                            <input type="number" name="question_${question.QuestionID}" 
+                                   style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);"
+                                   ${question.IsRequired ? 'required' : ''}>
+                        `;
+                    }
+
+                    html += '</div>';
+                });
+
+                html += '</div>';
+                container.innerHTML = html;
+            }
+
+            // Load and display vendor summary
+            async function loadVendorSummary() {
+                const container = document.getElementById('setup-summary-content');
+                if (!container) return;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/vendors/summary/${vendorSetupState.vendorProfileId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load vendor summary');
+                    }
+
+                    const data = await response.json();
+                    renderVendorSummary(data);
+
+                } catch (error) {
+                    console.error('Error loading vendor summary:', error);
+                    container.innerHTML = '<p style="color: var(--accent);">Failed to load summary. Please try again.</p>';
+                }
+            }
+
+            // Render comprehensive vendor summary
+            function renderVendorSummary(summaryData) {
+                const container = document.getElementById('setup-summary-content');
+                if (!container || !summaryData.success) return;
+
+                const data = summaryData.data;
+                let html = '<div style="display: grid; gap: 1.5rem;">';
+
+                // Business Information
+                if (data.basicInfo) {
+                    const info = data.basicInfo;
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                📋 Business Information
+                            </h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                                <div><strong>Business Name:</strong> ${info.BusinessName || 'Not provided'}</div>
+                                <div><strong>Display Name:</strong> ${info.DisplayName || 'Not provided'}</div>
+                                <div><strong>Email:</strong> ${info.BusinessEmail || 'Not provided'}</div>
+                                <div><strong>Phone:</strong> ${info.BusinessPhone || 'Not provided'}</div>
+                                <div><strong>Website:</strong> ${info.Website || 'Not provided'}</div>
+                                <div><strong>Years in Business:</strong> ${info.YearsInBusiness || 'Not provided'}</div>
+                            </div>
+                            ${info.BusinessDescription ? `<div style="margin-top: 1rem;"><strong>Description:</strong><br>${info.BusinessDescription}</div>` : ''}
+                            ${info.Tagline ? `<div style="margin-top: 0.5rem;"><strong>Tagline:</strong> ${info.Tagline}</div>` : ''}
+                        </div>
+                    `;
+                }
+
+                // Location Information
+                if (data.basicInfo) {
+                    const info = data.basicInfo;
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                📍 Location Information
+                            </h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                                <div><strong>Address:</strong> ${info.Address || 'Not provided'}</div>
+                                <div><strong>City:</strong> ${info.City || 'Not provided'}</div>
+                                <div><strong>State:</strong> ${info.State || 'Not provided'}</div>
+                                <div><strong>Country:</strong> ${info.Country || 'Not provided'}</div>
+                                <div><strong>Postal Code:</strong> ${info.PostalCode || 'Not provided'}</div>
+                            </div>
+                            ${info.AdditionalCitiesServed ? `<div style="margin-top: 1rem;"><strong>Additional Cities/Regions Served:</strong><br>${info.AdditionalCitiesServed}</div>` : ''}
+                        </div>
+                    `;
+                }
+
+                // Categories
+                if (data.categories && data.categories.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                🏷️ Categories
+                            </h5>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                ${data.categories.map(cat => `<span style="background-color: var(--primary); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.9rem;">${cat.Category}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Gallery
+                if (data.imageCount > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                🖼️ Gallery
+                            </h5>
+                            <div><strong>Images Uploaded:</strong> ${data.imageCount} images</div>
+                            ${data.basicInfo?.FeaturedImageURL ? '<div style="margin-top: 0.5rem;"><strong>Featured Image:</strong> ✅ Set</div>' : ''}
+                        </div>
+                    `;
+                }
+
+                // Services & Packages
+                if (data.serviceCount > 0 || data.packageCount > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                💼 Services & Packages
+                            </h5>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                                <div><strong>Services:</strong> ${data.serviceCount || 0} services</div>
+                                <div><strong>Packages:</strong> ${data.packageCount || 0} packages</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Social Media
+                if (data.socialMedia && data.socialMedia.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                🌐 Social Media
+                            </h5>
+                            <div style="display: grid; gap: 0.5rem;">
+                                ${data.socialMedia.map(social => `<div><strong>${social.Platform}:</strong> ${social.URL}</div>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Business Hours
+                if (data.businessHours && data.businessHours.length > 0) {
+                    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                🕒 Business Hours
+                            </h5>
+                            <div style="display: grid; gap: 0.5rem;">
+                                ${data.businessHours.map(hours => `
+                                    <div><strong>${days[hours.DayOfWeek]}:</strong> 
+                                    ${hours.IsAvailable ? `${hours.OpenTime} - ${hours.CloseTime}` : 'Closed'}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Additional Details (Category-specific questions)
+                if (data.additionalDetails && data.additionalDetails.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                ❓ Additional Details
+                            </h5>
+                            <div style="display: grid; gap: 0.5rem;">
+                                ${data.additionalDetails.map(detail => `<div><strong>${detail.QuestionText}:</strong> ${detail.Answer}</div>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // FAQs
+                if (data.faqs && data.faqs.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                                ❓ Frequently Asked Questions
+                            </h5>
+                            <div style="display: grid; gap: 1rem;">
+                                ${data.faqs.map(faq => `
+                                    <div style="padding: 1rem; background-color: white; border-radius: var(--radius); border: 1px solid var(--border);">
+                                        <div style="font-weight: 600; margin-bottom: 0.5rem;">Q: ${faq.Question}</div>
+                                        <div>A: ${faq.Answer}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += '</div>';
+                container.innerHTML = html;
             }
 
             function showSetupStep(step) {
@@ -5499,7 +6102,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             state: document.getElementById('business-state')?.value || '',
                             zipCode: document.getElementById('business-zip')?.value || '',
                             serviceRadius: document.getElementById('service-radius')?.value || '',
-                            serviceAreas: document.getElementById('service-areas')?.value || ''
+                            serviceAreas: document.getElementById('service-areas')?.value || '',
+                            additionalCitiesServed: document.getElementById('additional-cities-served')?.value || ''
                         };
                         break;
                     case 6: // Social Media & Links
@@ -5513,28 +6117,38 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             tiktok: document.getElementById('social-tiktok')?.value || ''
                         };
                         break;
-                    case 7: // Availability & Scheduling
-                        const businessHours = [];
-                        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                        days.forEach((day, index) => {
-                            const available = document.getElementById(`available-${index}`)?.checked || false;
-                            const openTime = document.getElementById(`${day}-open`)?.value || '';
-                            const closeTime = document.getElementById(`${day}-close`)?.value || '';
-                            if (available && openTime && closeTime) {
-                                businessHours.push({
-                                    dayOfWeek: index,
-                                    openTime,
-                                    closeTime,
-                                    isAvailable: true
-                                });
+                    case 7: // Additional Details (Category-specific questions)
+                        const categoryAnswers = [];
+                        const questionInputs = document.querySelectorAll('#category-questions-container input, #category-questions-container textarea, #category-questions-container select');
+                        
+                        questionInputs.forEach(input => {
+                            if (input.name && input.name.startsWith('question_')) {
+                                const questionId = input.name.replace('question_', '');
+                                let answer = input.value?.trim() || '';
+                                
+                                // Handle different input types
+                                if (input.type === 'checkbox') {
+                                    answer = input.checked ? 'Yes' : 'No';
+                                } else if (input.type === 'radio') {
+                                    if (input.checked) {
+                                        answer = input.value;
+                                    } else {
+                                        return; // Skip unchecked radio buttons
+                                    }
+                                }
+                                
+                                if (answer) {
+                                    categoryAnswers.push({
+                                        questionId: parseInt(questionId),
+                                        answer: answer
+                                    });
+                                }
                             }
                         });
                         
                         vendorSetupState.stepData.step7 = {
-                            businessHours,
-                            acceptingBookings: document.getElementById('accepting-bookings')?.checked || false,
-                            responseTime: document.getElementById('response-time')?.value || '24',
-                            bufferTime: document.getElementById('buffer-time')?.value || '30'
+                            categoryAnswers: categoryAnswers,
+                            primaryCategory: document.getElementById('primary-category')?.value || ''
                         };
                         break;
                     case 8: // Policies & Preferences
@@ -5562,6 +6176,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             premiumStatus: document.getElementById('premium-status')?.checked || false
                         };
                         break;
+
                 }
             }
 
@@ -6275,34 +6890,30 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         endpoint = '/vendors/setup/step6-social';
                         break;
 
-                    case 7: // Availability & Scheduling
-                        const businessHours = [];
-                        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                        days.forEach((day, index) => {
-                            const available = document.getElementById(`available-${index}`)?.checked || false;
-                            const openTime = document.getElementById(`${day}-open`)?.value || '';
-                            const closeTime = document.getElementById(`${day}-close`)?.value || '';
-                            if (available && openTime && closeTime) {
-                                // Ensure proper time format for SQL Server
-                                const formatTime = (time) => {
-                                    if (!time) return null;
-                                    // If already has seconds, don't add more
-                                    if (time.split(':').length === 3) return time;
-                                    // Add seconds if only HH:MM format
-                                    if (time.split(':').length === 2) return time + ':00';
-                                    return time;
-                                };
+                    case 7: // Additional Details (Category-specific questions)
+                        const categoryAnswers = [];
+                        const questionInputs = document.querySelectorAll('#category-questions-container input, #category-questions-container textarea, #category-questions-container select');
+                        
+                        questionInputs.forEach(input => {
+                            if (input.name && input.name.startsWith('question_')) {
+                                const questionId = input.name.replace('question_', '');
+                                let answer = input.value?.trim() || '';
                                 
-                                const formattedOpenTime = formatTime(openTime);
-                                const formattedCloseTime = formatTime(closeTime);
+                                // Handle different input types
+                                if (input.type === 'checkbox') {
+                                    answer = input.checked ? 'Yes' : 'No';
+                                } else if (input.type === 'radio') {
+                                    if (input.checked) {
+                                        answer = input.value;
+                                    } else {
+                                        return; // Skip unchecked radio buttons
+                                    }
+                                }
                                 
-                                // Only add if both times are valid
-                                if (formattedOpenTime && formattedCloseTime) {
-                                    businessHours.push({
-                                        dayOfWeek: index,
-                                        openTime: formattedOpenTime,
-                                        closeTime: formattedCloseTime,
-                                        isAvailable: true
+                                if (answer) {
+                                    categoryAnswers.push({
+                                        questionId: parseInt(questionId),
+                                        answer: answer
                                     });
                                 }
                             }
@@ -6310,12 +6921,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
-                            businessHours,
-                            acceptingBookings: document.getElementById('accepting-bookings')?.checked || false,
-                            responseTimeExpectation: parseInt(document.getElementById('response-time')?.value) || 24,
-                            bufferTime: parseInt(document.getElementById('buffer-time')?.value) || 30
+                            categoryAnswers: categoryAnswers,
+                            primaryCategory: document.getElementById('primary-category')?.value || ''
                         };
-                        endpoint = '/vendors/setup/step7-availability';
+                        endpoint = '/vendors/setup/step7-category-questions';
                         break;
 
                     case 8: // Policies & Preferences
