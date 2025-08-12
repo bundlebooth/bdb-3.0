@@ -3,6 +3,7 @@ const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
+const cloudinaryService = require('../services/cloudinaryService');
 
 // Helper function to resolve UserID to VendorProfileID
 async function resolveVendorProfileId(id, pool) {
@@ -45,6 +46,76 @@ async function resolveVendorProfileId(id, pool) {
   return null;
 }
 
+// Helper function to enhance vendor data with Cloudinary images
+async function enhanceVendorWithImages(vendor, pool) {
+  try {
+    const imageRequest = new sql.Request(pool);
+    imageRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID || vendor.id);
+    
+    const imageResult = await imageRequest.query(`
+      SELECT 
+        ImageID,
+        ImageURL,
+        CloudinaryPublicId,
+        IsPrimary,
+        DisplayOrder,
+        ImageType,
+        Caption
+      FROM VendorImages 
+      WHERE VendorProfileID = @VendorProfileID 
+      ORDER BY IsPrimary DESC, DisplayOrder ASC
+    `);
+
+    // Process images with Cloudinary enhancements
+    const images = imageResult.recordset.map(img => {
+      const imageData = {
+        imageId: img.ImageID,
+        url: img.ImageURL,
+        isPrimary: img.IsPrimary,
+        displayOrder: img.DisplayOrder,
+        imageType: img.ImageType,
+        caption: img.Caption
+      };
+
+      // Add Cloudinary transformations if public ID exists
+      if (img.CloudinaryPublicId) {
+        imageData.cloudinaryPublicId = img.CloudinaryPublicId;
+        imageData.thumbnailUrl = cloudinaryService.getThumbnailUrl(img.CloudinaryPublicId, 300, 200);
+        imageData.optimizedUrl = cloudinaryService.getOptimizedUrl(img.CloudinaryPublicId);
+        imageData.squareUrl = cloudinaryService.getSquareUrl(img.CloudinaryPublicId, 400);
+        
+        // Different sizes for responsive display
+        imageData.sizes = {
+          small: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 300, height: 200, crop: 'fill' }),
+          medium: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 600, height: 400, crop: 'fill' }),
+          large: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 1200, height: 800, crop: 'fill' })
+        };
+      }
+
+      return imageData;
+    });
+
+    // Get featured image (primary image or first image)
+    const featuredImage = images.find(img => img.isPrimary) || images[0] || null;
+    
+    return {
+      ...vendor,
+      featuredImage: featuredImage,
+      images: images,
+      imageCount: images.length
+    };
+
+  } catch (error) {
+    console.error('Error enhancing vendor with images:', error);
+    return {
+      ...vendor,
+      featuredImage: null,
+      images: [],
+      imageCount: 0
+    };
+  }
+}
+
 // Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
   try {
@@ -61,7 +132,8 @@ router.get('/', async (req, res) => {
       radiusMiles,
       pageNumber,
       pageSize,
-      sortBy
+      sortBy,
+      includeImages
     } = req.query;
 
     const pool = await poolPromise;
@@ -88,8 +160,9 @@ router.get('/', async (req, res) => {
 
     const result = await request.execute('sp_SearchVendors');
     
-    const formattedVendors = result.recordset.map(vendor => ({
+    let formattedVendors = result.recordset.map(vendor => ({
       id: vendor.id,
+      vendorProfileId: vendor.VendorProfileID || vendor.id,
       name: vendor.name || '',
       type: vendor.type || '',
       location: vendor.location || '',
@@ -100,7 +173,7 @@ router.get('/', async (req, res) => {
       reviewCount: vendor.ReviewCount,
       favoriteCount: vendor.FavoriteCount,
       bookingCount: vendor.BookingCount,
-      image: vendor.image || '',
+      image: vendor.image || '', // Legacy image field
       capacity: vendor.Capacity,
       rooms: vendor.Rooms,
       isPremium: vendor.IsPremium,
@@ -113,9 +186,32 @@ router.get('/', async (req, res) => {
       reviews: vendor.reviews ? JSON.parse(vendor.reviews) : []
     }));
 
+    // Enhance with Cloudinary images if requested (default: true for better UX)
+    if (includeImages !== 'false') {
+      console.log('Enhancing vendors with Cloudinary images...');
+      
+      // Process vendors in batches to avoid overwhelming the database
+      const batchSize = 5;
+      const enhancedVendors = [];
+      
+      for (let i = 0; i < formattedVendors.length; i += batchSize) {
+        const batch = formattedVendors.slice(i, i + batchSize);
+        const enhancedBatch = await Promise.all(
+          batch.map(vendor => enhanceVendorWithImages(vendor, pool))
+        );
+        enhancedVendors.push(...enhancedBatch);
+      }
+      
+      formattedVendors = enhancedVendors;
+    }
+
     res.json({
+      success: true,
       vendors: formattedVendors,
-      totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0
+      totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0,
+      pageNumber: parseInt(pageNumber) || 1,
+      pageSize: parseInt(pageSize) || 10,
+      hasImages: includeImages !== 'false'
     });
 
   } catch (err) {
@@ -407,6 +503,64 @@ router.get('/profile', async (req, res) => {
       });
     }
 
+    // DEBUG: Log all recordsets to identify where images are located
+    console.log(`🔍 DEBUGGING RECORDSETS FROM sp_GetVendorDetails:`);
+    console.log(`📊 Total recordsets: ${profileResult.recordsets.length}`);
+    
+    profileResult.recordsets.forEach((recordset, index) => {
+      console.log(`📋 Recordset[${index}]: ${recordset.length} records`);
+      if (recordset.length > 0) {
+        const firstRecord = recordset[0];
+        const keys = Object.keys(firstRecord);
+        console.log(`   🔑 Keys: ${keys.join(', ')}`);
+        
+        // Check if this recordset contains images
+        if (keys.includes('images')) {
+          console.log(`   🖼️  FOUND IMAGES in recordset[${index}]:`, firstRecord.images);
+        }
+      }
+    });
+
+    // Parse images JSON array from updated sp_GetVendorDetails stored procedure
+    let imagesFromStoredProcedure = [];
+    let imagesRecordsetIndex = -1;
+    
+    // Search for the recordset containing images
+    for (let i = 0; i < profileResult.recordsets.length; i++) {
+      const recordset = profileResult.recordsets[i];
+      if (recordset.length > 0 && recordset[0].hasOwnProperty('images')) {
+        imagesRecordsetIndex = i;
+        break;
+      }
+    }
+    
+    console.log(`🎯 Images found in recordset index: ${imagesRecordsetIndex}`);
+    
+    try {
+      if (imagesRecordsetIndex >= 0) {
+        const imagesJson = profileResult.recordsets[imagesRecordsetIndex][0].images;
+        console.log(`📝 Raw images JSON from recordset[${imagesRecordsetIndex}]:`, imagesJson);
+        
+        if (imagesJson) {
+          imagesFromStoredProcedure = JSON.parse(imagesJson);
+          console.log(`✅ PARSED IMAGES FROM STORED PROCEDURE:`, imagesFromStoredProcedure);
+        } else {
+          console.log(`❌ Images JSON is null/empty`);
+        }
+      } else {
+        console.log(`❌ NO RECORDSET WITH IMAGES FOUND`);
+      }
+    } catch (e) {
+      console.error(`❌ ERROR PARSING IMAGES FROM STORED PROCEDURE:`, e);
+      imagesFromStoredProcedure = [];
+    }
+
+    // Use images from stored procedure (dynamic, no fallback)
+    const galleryImages = imagesFromStoredProcedure;
+    
+    console.log(`FINAL GALLERY IMAGES TO RETURN:`, galleryImages);
+    console.log(`FINAL GALLERY IMAGES LENGTH:`, galleryImages.length);
+
     // Structure the comprehensive profile data
     const profileData = {
       profile: profileResult.recordsets[0][0] || {},
@@ -419,7 +573,7 @@ router.get('/profile', async (req, res) => {
       team: profileResult.recordsets[7] || [],
       socialMedia: profileResult.recordsets[8] || [],
       businessHours: profileResult.recordsets[9] || [],
-      images: profileResult.recordsets[10] || [],
+      images: galleryImages, // Use directly fetched gallery images
       isFavorite: profileResult.recordsets[11] ? profileResult.recordsets[11][0]?.IsFavorite || false : false,
       availableSlots: profileResult.recordsets[12] || []
     };
@@ -508,18 +662,78 @@ router.get('/:id', async (req, res) => {
       });
     }
 
+    // Get enhanced images and portfolio with Cloudinary
+    const vendorProfile = result.recordsets[0][0];
+    const enhancedVendor = await enhanceVendorWithImages({ 
+      VendorProfileID: vendorProfileId,
+      ...vendorProfile 
+    }, pool);
+
+    // Get enhanced portfolio with Cloudinary
+    const portfolioRequest = new sql.Request(pool);
+    portfolioRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const portfolioResult = await portfolioRequest.query(`
+      SELECT 
+        PortfolioID,
+        Title,
+        Description,
+        ImageURL,
+        CloudinaryPublicId,
+        ProjectDate,
+        DisplayOrder,
+        CreatedAt
+      FROM VendorPortfolio 
+      WHERE VendorProfileID = @VendorProfileID 
+      ORDER BY DisplayOrder ASC
+    `);
+
+    // Process portfolio with Cloudinary enhancements
+    const enhancedPortfolio = portfolioResult.recordset.map(item => {
+      const portfolioData = {
+        portfolioId: item.PortfolioID,
+        title: item.Title,
+        description: item.Description,
+        url: item.ImageURL,
+        projectDate: item.ProjectDate,
+        displayOrder: item.DisplayOrder,
+        createdAt: item.CreatedAt
+      };
+
+      // Add Cloudinary transformations if public ID exists
+      if (item.CloudinaryPublicId) {
+        portfolioData.cloudinaryPublicId = item.CloudinaryPublicId;
+        portfolioData.thumbnailUrl = cloudinaryService.getThumbnailUrl(item.CloudinaryPublicId, 300, 200);
+        portfolioData.optimizedUrl = cloudinaryService.getOptimizedUrl(item.CloudinaryPublicId);
+        
+        // Different sizes for portfolio display
+        portfolioData.sizes = {
+          thumbnail: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 200, height: 150, crop: 'fill' }),
+          medium: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 500, height: 375, crop: 'fill' }),
+          large: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 1000, height: 750, crop: 'fill' })
+        };
+      }
+
+      return portfolioData;
+    });
+
     const vendorDetails = {
-      profile: result.recordsets[0][0],
+      profile: {
+        ...vendorProfile,
+        featuredImage: enhancedVendor.featuredImage,
+        imageCount: enhancedVendor.imageCount,
+        portfolioCount: enhancedPortfolio.length
+      },
       categories: result.recordsets[1],
       services: result.recordsets[2],
       addOns: result.recordsets[3],
-      portfolio: result.recordsets[4],
+      portfolio: enhancedPortfolio, // Enhanced portfolio with Cloudinary
       reviews: result.recordsets[5],
       faqs: result.recordsets[6],
       team: result.recordsets[7],
       socialMedia: result.recordsets[8],
       businessHours: result.recordsets[9],
-      images: result.recordsets[10],
+      images: enhancedVendor.images, // Enhanced images with Cloudinary
       isFavorite: result.recordsets[11] ? result.recordsets[11][0].IsFavorite : false,
       availableSlots: result.recordsets[12]
     };
@@ -1870,48 +2084,6 @@ router.get('/:id/setup-data', async (req, res) => {
       success: false,
       message: 'Failed to get setup data',
       error: err.message 
-    });
-  }
-});
-
-// Save category-specific answers (Step 1 completion)
-router.post('/setup/step1-business-basics', async (req, res) => {
-  try {
-    const { vendorProfileId, categoryAnswers, primaryCategory } = req.body;
-
-    if (!vendorProfileId || !categoryAnswers) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields'
-      });
-    }
-
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('AdditionalDetailsJSON', sql.NVarChar(sql.MAX), JSON.stringify(categoryAnswers));
-    
-    const result = await request.execute('sp_SaveVendorAdditionalDetails');
-    
-    if (result.recordset[0].Success) {
-      res.json({
-        success: true,
-        message: 'Category answers saved successfully'
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: result.recordset[0].Message
-      });
-    }
-
-  } catch (err) {
-    console.error('Category answers error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to save category-specific answers',
-      error: err.message
     });
   }
 });
