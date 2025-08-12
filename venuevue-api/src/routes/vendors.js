@@ -2526,4 +2526,44 @@ router.post('/setup/step9-completion', async (req, res) => {
   }
 });
 
+// Get category-specific questions for Step 4
+router.get('/category-questions/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    
+    if (!category) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Category parameter is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('Category', sql.NVarChar(50), category);
+    
+    const result = await request.execute('sp_GetCategoryQuestions');
+    
+    if (result.recordset) {
+      res.json({ 
+        success: true, 
+        questions: result.recordset 
+      });
+    } else {
+      res.json({ 
+        success: true, 
+        questions: [] 
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error fetching category questions:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch category questions',
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;
