@@ -2110,7 +2110,7 @@ router.get('/category-questions/:category', async (req, res) => {
     request.input('Category', sql.NVarChar(100), category);
 
     // Get FAQ templates for this category
-    const result = await request.execute('sp_GetFAQTemplatesByCategory');
+    const result = await request.execute('sp_GetCategoryQuestions');
     
     const questions = result.recordset.map(row => ({
       QuestionID: row.TemplateFAQID,
