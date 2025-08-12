@@ -267,6 +267,33 @@ CREATE TABLE [dbo].[VendorSocialMedia] (
     CONSTRAINT [FK_VendorSocialMedia_VendorProfiles] FOREIGN KEY ([VendorProfileID]) REFERENCES [VendorProfiles]([VendorProfileID])
 );
 
+-- VendorFAQs table for category-specific questions and answers
+CREATE TABLE [dbo].[VendorFAQs] (
+    [FAQID] INT IDENTITY(1,1) NOT NULL,
+    [VendorProfileID] INT NOT NULL,
+    [QuestionId] INT NULL,
+    [Question] NVARCHAR(500) NULL,
+    [Answer] NVARCHAR(MAX) NULL,
+    [Category] NVARCHAR(100) NULL,
+    [DisplayOrder] INT NOT NULL DEFAULT 0,
+    [IsActive] BIT NOT NULL DEFAULT 1,
+    [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    CONSTRAINT [PK_VendorFAQs] PRIMARY KEY ([FAQID]),
+    CONSTRAINT [FK_VendorFAQs_VendorProfiles] FOREIGN KEY ([VendorProfileID]) REFERENCES [VendorProfiles]([VendorProfileID])
+);
+
+-- VendorCategories table
+CREATE TABLE [dbo].[VendorCategories] (
+    [VendorCategoryID] INT IDENTITY(1,1) NOT NULL,
+    [VendorProfileID] INT NOT NULL,
+    [Category] NVARCHAR(100) NOT NULL,
+    [IsActive] BIT NOT NULL DEFAULT 1,
+    [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    CONSTRAINT [PK_VendorCategories] PRIMARY KEY ([VendorCategoryID]),
+    CONSTRAINT [FK_VendorCategories_VendorProfiles] FOREIGN KEY ([VendorProfileID]) REFERENCES [VendorProfiles]([VendorProfileID])
+);
+
 -- VendorBusinessHours table
 CREATE TABLE [dbo].[VendorBusinessHours] (
     [BusinessHourID] INT IDENTITY(1,1) NOT NULL,
