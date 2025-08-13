@@ -7369,9 +7369,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return hoursHtml;
                 }
 
-                // Helper function to render social media links
-                function renderSocialMedia(socialMedia) {
-                    if (!socialMedia || socialMedia.length === 0) return '<p style="color: var(--text-light);">No social media links available.</p>';
+                // Helper function to render social media links (compact version for header)
+                function renderSocialMediaIcons(socialMedia) {
+                    if (!socialMedia || socialMedia.length === 0) return '';
                     
                     let socialHtml = '';
                     socialMedia.forEach(social => {
@@ -7386,9 +7386,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const iconUrl = platformIcons[social.Platform.toLowerCase()] || 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg';
                         socialHtml += `
                             <a href="${social.URL.startsWith('http') ? social.URL : 'https://' + social.URL}" target="_blank" 
-                               style="text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 0.5rem;">
-                                <img src="${iconUrl}" width="36" height="36" alt="${social.Platform}" style="border-radius: 4px;">
-                                <span style="text-transform: capitalize;">${social.Platform}</span>
+                               style="text-decoration: none; opacity: 0.8; transition: opacity 0.2s;" 
+                               onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+                                <img src="${iconUrl}" width="28" height="28" alt="${social.Platform}" style="border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             </a>
                         `;
                     });
@@ -7397,9 +7397,49 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (profile.Website) {
                         socialHtml += `
                             <a href="${profile.Website.startsWith('http') ? profile.Website : 'https://' + profile.Website}" target="_blank" 
-                               style="text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 0.5rem;">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" width="36" height="36" alt="Website" style="border-radius: 4px;">
-                                <span>Website</span>
+                               style="text-decoration: none; opacity: 0.8; transition: opacity 0.2s;" 
+                               onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" width="28" height="28" alt="Website" style="border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            </a>
+                        `;
+                    }
+                    
+                    return socialHtml;
+                }
+
+                // Helper function to render social media links (detailed version for content section)
+                function renderSocialMedia(socialMedia) {
+                    if (!socialMedia || socialMedia.length === 0) return '<p style="color: var(--text-light); font-style: italic;">No social media links available.</p>';
+                    
+                    let socialHtml = '';
+                    socialMedia.forEach(social => {
+                        const platformIcons = {
+                            'facebook': 'https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg',
+                            'instagram': 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png',
+                            'twitter': 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg',
+                            'linkedin': 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
+                            'youtube': 'https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png'
+                        };
+                        
+                        const iconUrl = platformIcons[social.Platform.toLowerCase()] || 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg';
+                        socialHtml += `
+                            <a href="${social.URL.startsWith('http') ? social.URL : 'https://' + social.URL}" target="_blank" 
+                               style="text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 8px; transition: background-color 0.2s;" 
+                               onmouseover="this.style.backgroundColor='var(--secondary)'" onmouseout="this.style.backgroundColor='transparent'">
+                                <img src="${iconUrl}" width="32" height="32" alt="${social.Platform}" style="border-radius: 6px;">
+                                <span style="text-transform: capitalize; font-weight: 500;">${social.Platform}</span>
+                            </a>
+                        `;
+                    });
+                    
+                    // Add website if available
+                    if (profile.Website) {
+                        socialHtml += `
+                            <a href="${profile.Website.startsWith('http') ? profile.Website : 'https://' + profile.Website}" target="_blank" 
+                               style="text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 8px; transition: background-color 0.2s;" 
+                               onmouseover="this.style.backgroundColor='var(--secondary)'" onmouseout="this.style.backgroundColor='transparent'">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" width="32" height="32" alt="Website" style="border-radius: 6px;">
+                                <span style="font-weight: 500;">Website</span>
                             </a>
                         `;
                     }
@@ -7484,50 +7524,56 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     </div>
 
                     <!-- Vendor Header -->
-                    <div class="vendor-profile-header">
-                        <div class="vendor-profile-info">
-                            <h1 style="font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem;">${profile.BusinessName || profile.DisplayName}</h1>
-                            <p style="font-size: 1.1rem; color: var(--primary); margin-bottom: 1rem;">${profile.Tagline || 'Professional Event Services'}</p>
-                            <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-light); margin-bottom: 1rem; flex-wrap: wrap;">
-                                <span>📍 Location</span>
-                                ${profile.YearsInBusiness ? `<span>🏆 ${profile.YearsInBusiness} years in business</span>` : ''}
-                                <span class="review-rating" style="color: #fbbf24;">★★★★★</span>
-                                <span>(5.0) | 1 Reviews</span>
+                    <div class="vendor-profile-header" style="padding: 1.5rem 0; margin-bottom: 2rem; border-bottom: 1px solid var(--border);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem;">
+                            <div class="vendor-profile-info" style="flex: 1;">
+                                <h1 style="font-size: 2.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text);">${profile.BusinessName || profile.DisplayName}</h1>
+                                <p style="font-size: 1.1rem; color: var(--primary); margin-bottom: 1rem;">${profile.Tagline || 'Professional Event Services'}</p>
+                                
+                                <!-- Main Info Row -->
+                                <div style="display: flex; align-items: center; gap: 1.25rem; color: var(--text-light); margin-bottom: 0.75rem; flex-wrap: wrap; font-size: 0.9rem;">
+                                    <span>📍 Location</span>
+                                    ${profile.YearsInBusiness ? `<span>🏆 ${profile.YearsInBusiness} years in business</span>` : ''}
+                                    <span style="color: #fbbf24;">★★★★★ (5.0) • 1 Reviews</span>
+                                </div>
+                                
+                                <!-- Social Media Icons Row -->
+                                ${socialMedia.length > 0 || profile.Website ? `
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem;">
+                                    ${renderSocialMediaIcons(socialMedia)}
+                                </div>
+                                ` : ''}
                             </div>
+                            
+                            <!-- Favorite Button -->
+                            <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${profile.VendorProfileID}" style="flex-shrink: 0; font-size: 1.25rem; cursor: pointer; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">❤</div>
                         </div>
-                         <!-- Favorite Button -->
-                        <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${profile.VendorProfileID}" style="flex-shrink: 0; align-self: flex-start; margin-top: 1rem;">❤</div>
                     </div>
 
                     <!-- Vendor Content Sections -->
-                    <div style="display: grid; grid-template-columns: 1fr 320px; gap: 2rem; margin-top: 2rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 320px; gap: 2rem; margin-top: 1rem;">
                         <!-- Main Content Area -->
                         <div>
-                            <h2 class="services-title">About Us</h2>
-                            <p style="line-height: 1.6;">${profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}</p>
+                            <!-- About Section -->
+                            <div style="margin-bottom: 2rem;">
+                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">About Us</h2>
+                                <p style="line-height: 1.6; color: var(--text);">${profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}</p>
+                            </div>
                             
                             ${businessHours.length > 0 ? `
                             <!-- Business Hours Section -->
-                            <div class="services-section">
-                                <h2 class="services-title">Business Hours</h2>
-                                <div style="background-color: white; padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border);">
+                            <div style="margin-bottom: 2rem;">
+                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Business Hours</h2>
+                                <div style="background: var(--secondary); padding: 1.25rem; border-radius: 8px;">
                                     ${formatBusinessHours(businessHours)}
                                 </div>
                             </div>
                             ` : ''}
                             
-                            <!-- Social Media Section -->
-                            <div class="services-section">
-                                <h2 class="services-title">Connect With Us</h2>
-                                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                                    ${renderSocialMedia(socialMedia)}
-                                </div>
-                            </div>
-                            
                             ${categoryAnswers.length > 0 ? `
                             <!-- Category Services Section -->
-                            <div class="services-section">
-                                <h2 class="services-title">Our Specialties</h2>
+                            <div style="margin-bottom: 2rem;">
+                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Our Specialties</h2>
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
                                     ${renderCategoryAnswers(categoryAnswers)}
                                 </div>
@@ -7536,9 +7582,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             
                             ${faqs.length > 0 ? `
                             <!-- FAQ Section -->
-                            <div class="services-section">
-                                <h2 class="services-title">Frequently Asked Questions</h2>
-                                <div>
+                            <div style="margin-bottom: 2rem;">
+                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Frequently Asked Questions</h2>
+                                <div style="display: flex; flex-direction: column; gap: 1rem;">
                                     ${renderFAQs(faqs)}
                                 </div>
                             </div>
@@ -7546,44 +7592,45 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             
                             ${team.length > 0 ? `
                             <!-- Team Section -->
-                            <div class="services-section">
-                                <h2 class="services-title">Our Team</h2>
+                            <div style="margin-bottom: 2rem;">
+                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Our Team</h2>
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
                                     ${renderTeam(team)}
                                 </div>
                             </div>
                             ` : ''}
+{{ ... }}
 
                             <!-- Reviews Section -->
-                            <div class="reviews-section">
-                                <h2 class="reviews-title">Reviews (1)</h2>
-                                <div id="vendor-profile-reviews-list">
+                            <div style="margin-bottom: 2rem;">
+                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Reviews (1)</h2>
+                                <div id="vendor-profile-reviews-list" style="margin-bottom: 1rem;">
                                     ${renderReviews(details.reviews || [])}
                                 </div>
                                 ${currentUser ? `
                                     <button class="btn btn-outline add-review-btn" id="show-review-form" style="margin-top: 1rem;">Add Review</button>
-                                    <div class="review-form" id="review-form" style="display: none;">
-                                        <div class="rating-input">
-                                            <span class="rating-star" data-rating="1">☆</span>
-                                            <span class="rating-star" data-rating="2">☆</span>
-                                            <span class="rating-star" data-rating="3">☆</span>
-                                            <span class="rating-star" data-rating="4">☆</span>
-                                            <span class="rating-star" data-rating="5">☆</span>
+                                    <div class="review-form" id="review-form" style="display: none; margin-top: 1rem; padding: 1.25rem; background: var(--secondary); border-radius: 8px;">
+                                        <div class="rating-input" style="margin-bottom: 1rem;">
+                                            <span class="rating-star" data-rating="1" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">☆</span>
+                                            <span class="rating-star" data-rating="2" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">☆</span>
+                                            <span class="rating-star" data-rating="3" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">☆</span>
+                                            <span class="rating-star" data-rating="4" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">☆</span>
+                                            <span class="rating-star" data-rating="5" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">☆</span>
                                         </div>
-                                        <textarea class="review-textarea" id="review-text" placeholder="Share your experience..."></textarea>
+                                        <textarea class="review-textarea" id="review-text" placeholder="Share your experience..." style="width: 100%; min-height: 80px; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; resize: vertical; margin-bottom: 1rem;"></textarea>
                                         <button class="btn btn-primary" id="submit-review">Submit Review</button>
                                     </div>
-                                ` : '<p><a href="#" id="login-to-review" style="color: var(--primary);">Log in</a> to leave a review</p>'}
+                                ` : '<p style="padding: 0.75rem; background: var(--secondary); border-radius: 6px; margin-top: 1rem; text-align: center;"><a href="#" id="login-to-review" style="color: var(--primary); text-decoration: none;">Log in</a> to leave a review</p>'}
                             </div>
                         </div>
 
                         <!-- Sidebar -->
-                        <div style="display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 2rem;">
+                        <div style="display: flex; flex-direction: column; gap: 1.5rem; position: sticky; top: 5.5rem; align-self: flex-start; height: fit-content; max-height: calc(100vh - 11rem); overflow-y: auto;">
                             <!-- Booking Summary -->
-                            <div id="booking-summary" style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
+                            <div id="booking-summary" style="background: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
                                 <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Your Booking</h3>
-                                <div id="selected-services-list">
-                                    <p style="font-size: 0.9rem; color: var(--text-light);">Select services from the list to get started.</p>
+                                <div id="selected-services-list" style="margin-bottom: 1rem;">
+                                    <p style="font-size: 0.9rem; color: var(--text-light); text-align: center; font-style: italic;">Select services from the list to get started.</p>
                                 </div>
                                 <div style="border-top: 1px solid var(--border); margin: 1rem 0; padding-top: 1rem; display: flex; justify-content: space-between; font-weight: 600;">
                                     <span>Total</span>
@@ -7593,7 +7640,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </div>
 
                             <!-- Contact -->
-                            <div style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
+                            <div style="background: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
                                 <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Contact Vendor</h3>
                                 <p style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-light);">Have questions? Get in touch!</p>
                                 <button class="btn btn-outline" id="open-chat-btn" style="width: 100%;">Message Vendor</button>
