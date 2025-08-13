@@ -6425,6 +6425,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             function saveCurrentStepData() {
+                console.log('saveCurrentStepData called for step:', vendorSetupState.currentStep);
                 switch (vendorSetupState.currentStep) {
                     case 3: // Social Media
                         const platforms = ['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok'];
@@ -6473,10 +6474,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         break;
                     case 5: // Availability & Scheduling
                         vendorSetupState.availability = [];
+                        console.log('Collecting availability data for step 5...');
                         for (let day = 0; day < 7; day++) {
                             const checkbox = document.getElementById(`available-${day}`);
-                            const startTime = document.getElementById(`start-${day}`);
-                            const endTime = document.getElementById(`end-${day}`);
+                            const startTime = document.getElementById(`start-time-${day}`);
+                            const endTime = document.getElementById(`end-time-${day}`);
+                            
+                            console.log(`Day ${day}:`, {
+                                checkbox: checkbox ? 'found' : 'not found',
+                                checked: checkbox ? checkbox.checked : 'N/A',
+                                startTime: startTime ? startTime.value : 'not found',
+                                endTime: endTime ? endTime.value : 'not found'
+                            });
                             
                             if (checkbox && checkbox.checked && startTime && startTime.value && endTime && endTime.value) {
                                 vendorSetupState.availability.push({
@@ -6486,6 +6495,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 });
                             }
                         }
+                        console.log('Final availability data:', vendorSetupState.availability);
                         break;
                     case 10: // Setup Completion - Collect FAQ data
                         // Collect FAQ data from the UI
@@ -6602,9 +6612,22 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         break;
 
                     case 5: // Availability & Scheduling
+                        // Convert availability array to businessHours object format expected by backend
+                        const businessHours = {};
+                        if (vendorSetupState.availability && vendorSetupState.availability.length > 0) {
+                            vendorSetupState.availability.forEach(avail => {
+                                businessHours[avail.day] = {
+                                    isOpen: true,
+                                    openTime: avail.start,
+                                    closeTime: avail.end
+                                };
+                            });
+                        }
+                        
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
-                            availability: vendorSetupState.availability || []
+                            businessHours: businessHours,
+                            bookingSettings: {} // Add empty bookingSettings if needed
                         };
                         endpoint = '/vendors/setup/step5-availability';
                         break;
