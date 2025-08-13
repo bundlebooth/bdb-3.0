@@ -2516,11 +2516,10 @@ router.post('/setup/step8-faq', async (req, res) => {
     if (faqs && faqs.length > 0) {
       // First, delete existing FAQs for this vendor to avoid duplicates
       const deleteRequest = new sql.Request(pool);
-      deleteRequest.input('VendorProfileId', sql.Int, vendorProfileId);
+      deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       await deleteRequest.query(`
         DELETE FROM VendorFAQs 
-        WHERE VendorProfileID = @VendorProfileId 
-        AND QuestionId IS NULL
+        WHERE VendorProfileID = @VendorProfileID
       `);
 
       // Insert new FAQs
@@ -2528,13 +2527,13 @@ router.post('/setup/step8-faq', async (req, res) => {
         const faq = faqs[i];
         if (faq.question && faq.answer) {
           const insertRequest = new sql.Request(pool);
-          insertRequest.input('VendorProfileId', sql.Int, vendorProfileId);
+          insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
           insertRequest.input('Question', sql.NVarChar(500), faq.question);
           insertRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
           insertRequest.input('DisplayOrder', sql.Int, i + 1);
           await insertRequest.query(`
             INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
-            VALUES (@VendorProfileId, @Question, @Answer, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
+            VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
           `);
         }
       }
