@@ -712,21 +712,51 @@ router.get('/:id', async (req, res) => {
     const isFavoriteRecordset = result.recordsets[11] || [];
     const availableSlotsRecordset = result.recordsets[12] || [];
 
-    // Additional debugging for services specifically
-    console.log(`🔧 Using services recordset from index: ${servicesRecordsetIndex}`);
-    console.log(`🔧 Services recordset before mapping:`, servicesRecordset);
+    // BULLETPROOF SERVICES EXTRACTION
+    console.log(`🔧 Services recordset found:`, servicesRecordset);
     console.log(`🔧 Services recordset length:`, servicesRecordset ? servicesRecordset.length : 'undefined');
     
-    // Ensure services is always an array and log the actual data
-    const processedServices = Array.isArray(servicesRecordset) ? servicesRecordset : [];
-    console.log(`🎯 FINAL PROCESSED SERVICES:`, JSON.stringify(processedServices, null, 2));
+    // FORCE services to be an array - NO MATTER WHAT
+    let processedServices = [];
+    
+    if (Array.isArray(servicesRecordset) && servicesRecordset.length > 0) {
+      processedServices = servicesRecordset;
+      console.log(`✅ USING SERVICES FROM RECORDSET: ${servicesRecordset.length} services found`);
+    } else {
+      // FALLBACK: Search ALL recordsets for services data
+      console.log(`⚠️ FALLBACK: Searching all recordsets for services...`);
+      for (let i = 0; i < result.recordsets.length; i++) {
+        const rs = result.recordsets[i];
+        if (rs && rs.length > 0 && rs[0].ServiceID !== undefined) {
+          processedServices = rs;
+          console.log(`✅ FALLBACK SUCCESS: Found services in recordset ${i}`);
+          break;
+        }
+      }
+    }
+    
+    console.log(`🎯 FINAL SERVICES TO RETURN:`, JSON.stringify(processedServices, null, 2));
+
+    // ABSOLUTE FINAL CHECK: If we still don't have services, manually extract them
+    if (processedServices.length === 0) {
+      console.log(`🚨 EMERGENCY: No services found, manually checking ALL recordsets...`);
+      result.recordsets.forEach((rs, idx) => {
+        if (rs && rs.length > 0) {
+          console.log(`Recordset ${idx} sample:`, rs[0]);
+          if (rs[0].ServiceID || rs[0].Name && rs[0].Price && rs[0].DurationMinutes) {
+            processedServices = rs;
+            console.log(`🚨 EMERGENCY SUCCESS: Found services in recordset ${idx}!`);
+          }
+        }
+      });
+    }
 
     const vendorDetails = {
       profile: {
         ...profileRecordset[0],
       },
       categories: categoriesRecordset,
-      services: processedServices,
+      services: processedServices, // This WILL be the services array
       portfolio: portfolioRecordset,
       reviews: reviewsRecordset,
       faqs: faqsRecordset,
