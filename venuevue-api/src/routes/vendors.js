@@ -2314,8 +2314,11 @@ router.post('/setup/step5-availability', async (req, res) => {
           const request = new sql.Request(pool);
           request.input('VendorProfileID', sql.Int, vendorProfileId);
           request.input('DayOfWeek', sql.Int, parseInt(day));
-          request.input('OpenTime', sql.Time, hours.openTime);
-          request.input('CloseTime', sql.Time, hours.closeTime);
+          // Format time values to include seconds for SQL Server TIME type
+          const openTime = hours.openTime.includes(':') ? `${hours.openTime}:00` : hours.openTime;
+          const closeTime = hours.closeTime.includes(':') ? `${hours.closeTime}:00` : hours.closeTime;
+          request.input('OpenTime', sql.Time, openTime);
+          request.input('CloseTime', sql.Time, closeTime);
           
           await request.query(`
             INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsActive, CreatedAt, UpdatedAt)
