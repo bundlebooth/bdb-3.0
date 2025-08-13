@@ -2130,6 +2130,7 @@ router.post('/setup/step3-services', async (req, res) => {
     if (services && services.length > 0) {
       for (const service of services) {
         const request = new sql.Request(pool);
+        request.input('VendorProfileID', sql.Int, vendorProfileId);
         request.input('Name', sql.NVarChar(255), service.name);
         request.input('Description', sql.NVarChar(sql.MAX), service.description);
         request.input('Price', sql.Decimal(10, 2), service.price);
@@ -2174,8 +2175,8 @@ router.post('/setup/step3-services', async (req, res) => {
         request.input('CategoryID', sql.Int, categoryId);
         
         await request.query(`
-          INSERT INTO Services (CategoryID, Name, Description, Price, DurationMinutes, IsActive, CreatedAt, UpdatedAt)
-          VALUES (@CategoryID, @Name, @Description, @Price, @DurationMinutes, 1, GETUTCDATE(), GETUTCDATE())
+          INSERT INTO Services (VendorProfileID, CategoryID, Name, Description, Price, DurationMinutes, IsActive, CreatedAt, UpdatedAt)
+          VALUES (@VendorProfileID, @CategoryID, @Name, @Description, @Price, @DurationMinutes, 1, GETUTCDATE(), GETUTCDATE())
         `);
       }
     }
