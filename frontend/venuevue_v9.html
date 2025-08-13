@@ -795,7 +795,7 @@
             border-radius: var(--radius);
             overflow: hidden;
             margin-bottom: 2rem;
-            background-color: #f1f5f9;
+            background-color: transparent;
         }
 
         /* Left side: large image */
@@ -831,7 +831,7 @@
             position: relative;
             overflow: hidden;
             cursor: pointer;
-            background-color: #d1d5db; /* Gray placeholder background */
+            background-color: transparent; /* Transparent background */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1923,7 +1923,7 @@
                     <!-- Image Gallery - Dynamic -->
                     <div id="modal-image-gallery" class="image-gallery">
                         <div class="gallery-item large-image">
-                            <img id="main-vendor-image" src="https://placehold.co/800x600/e2e8f0/718096?text=Loading..." alt="Main Venue Image">
+                            <img id="main-vendor-image" src="https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png" alt="Main Venue Image">
                         </div>
                         <div class="thumbnails-container" id="vendor-thumbnails">
                             <!-- Thumbnails will be populated dynamically -->
@@ -7560,15 +7560,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <p style="line-height: 1.6; color: var(--text);">${profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}</p>
                             </div>
                             
-                            ${businessHours.length > 0 ? `
-                            <!-- Business Hours Section -->
-                            <div style="margin-bottom: 2rem;">
-                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Business Hours</h2>
-                                <div style="background: var(--secondary); padding: 1.25rem; border-radius: 8px;">
-                                    ${formatBusinessHours(businessHours)}
-                                </div>
-                            </div>
-                            ` : ''}
+
                             
                             ${categoryAnswers.length > 0 ? `
                             <!-- Category Services Section -->
@@ -7638,6 +7630,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 </div>
                                 <button class="btn btn-primary" id="proceed-to-book-btn" style="width: 100%;" disabled>Choose Services</button>
                             </div>
+
+                            ${businessHours.length > 0 ? `
+                            <!-- Business Hours -->
+                            <div style="background: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
+                                <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Business Hours</h3>
+                                <div style="font-size: 0.9rem;">
+                                    ${formatBusinessHours(businessHours)}
+                                </div>
+                            </div>
+                            ` : ''}
 
                             <!-- Contact -->
                             <div style="background: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
@@ -9029,7 +9031,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 lightboxImages = imageUrls;
 
                 const totalImages = imageUrls.length;
-                const placeholderImage = "https://placehold.co/400x400/e2e8f0/718096?text=No+Image";
+                const placeholderImage = "https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png";
 
                 // Create main image (large)
                 const largeImageDiv = document.createElement('div');
@@ -9127,11 +9129,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         mainImageDiv.className = 'gallery-item large-image';
         
         const mainImg = document.createElement('img');
-        mainImg.src = imageUrls.length > 0 ? imageUrls[0] : 'https://placehold.co/800x600/e2e8f0/718096?text=No+Image';
+        mainImg.src = imageUrls.length > 0 ? imageUrls[0] : 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
         mainImg.alt = 'Main Venue Image';
         mainImg.style.width = '100%';
         mainImg.style.height = '100%';
         mainImg.style.objectFit = 'cover';
+        
+        // Add subtle border for placeholder images
+        if (imageUrls.length === 0) {
+            mainImg.style.border = '1px solid var(--border)';
+            mainImg.style.borderRadius = 'var(--radius)';
+        }
         
         if (imageUrls.length > 0) {
             mainImg.style.cursor = 'pointer';
@@ -9151,11 +9159,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             thumbDiv.className = 'gallery-item';
             
             const thumbImg = document.createElement('img');
-            thumbImg.src = i < imageUrls.length ? imageUrls[i] : 'https://placehold.co/400x400/e2e8f0/718096?text=No+Image';
+            thumbImg.src = i < imageUrls.length ? imageUrls[i] : 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
             thumbImg.alt = `Thumbnail ${i}`;
             thumbImg.style.width = '100%';
             thumbImg.style.height = '100%';
             thumbImg.style.objectFit = 'cover';
+            
+            // Add subtle border for placeholder thumbnails
+            if (i >= imageUrls.length) {
+                thumbImg.style.border = '1px solid var(--border)';
+                thumbImg.style.borderRadius = 'var(--radius)';
+            }
             
             // FIXED: Add click functionality for real images - ONLY open lightbox, don't change main image
             if (i < imageUrls.length) {
@@ -9247,7 +9261,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (lightboxImages.length > 0) {
                     lightboxImage.src = lightboxImages[currentLightboxIndex];
                 } else {
-                     lightboxImage.src = 'https://placehold.co/800x600/e2e8f0/718096?text=No+Image';
+                     lightboxImage.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
                 }
             }
 
@@ -9292,7 +9306,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                    vendor.featuredImage?.url || 
                                    vendor.featuredImage?.thumbnailUrl || 
                                    (vendor.images && vendor.images.length > 0 ? vendor.images[0].url : null) ||
-                                   'https://placehold.co/800x600/e2e8f0/718096?text=No+Image';
+                                   'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
                     
                     console.log('Rendering vendor:', vendor.name || vendor.BusinessName, 'with image:', imageUrl, 'Available fields:', Object.keys(vendor));
                     console.log('Full vendor object:', vendor);
