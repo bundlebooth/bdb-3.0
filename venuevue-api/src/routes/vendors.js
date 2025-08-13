@@ -652,29 +652,48 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Capture the recordsets into their respective variables
-    const [
-      profileRecordset, 
-      categoriesRecordset, 
-      servicesRecordset,
-      portfolioRecordset, 
-      reviewsRecordset, 
-      faqsRecordset,
-      teamRecordset,
-      socialMediaRecordset,
-      businessHoursRecordset,
-      imagesRecordset,
-      categoryAnswersRecordset,
-      isFavoriteRecordset,
-      availableSlotsRecordset
-    ] = result.recordsets;
+    // Debug logging for recordsets
+    console.log(`🔍 DEBUGGING sp_GetVendorDetails for VendorProfileID: ${vendorProfileId}`);
+    console.log(`📊 Total recordsets returned: ${result.recordsets.length}`);
+    
+    result.recordsets.forEach((recordset, index) => {
+      console.log(`📋 Recordset[${index}]: ${recordset.length} records`);
+      if (recordset.length > 0) {
+        console.log(`   First record keys: ${Object.keys(recordset[0]).join(', ')}`);
+      }
+      if (index === 2) { // Services recordset
+        console.log(`🛠️ Services recordset (index 2) details:`, JSON.stringify(recordset, null, 2));
+      }
+    });
+
+    // Capture the recordsets into their respective variables with safe fallbacks
+    const profileRecordset = result.recordsets[0] || [];
+    const categoriesRecordset = result.recordsets[1] || [];
+    const servicesRecordset = result.recordsets[2] || [];
+    const portfolioRecordset = result.recordsets[3] || [];
+    const reviewsRecordset = result.recordsets[4] || [];
+    const faqsRecordset = result.recordsets[5] || [];
+    const teamRecordset = result.recordsets[6] || [];
+    const socialMediaRecordset = result.recordsets[7] || [];
+    const businessHoursRecordset = result.recordsets[8] || [];
+    const imagesRecordset = result.recordsets[9] || [];
+    const categoryAnswersRecordset = result.recordsets[10] || [];
+    const isFavoriteRecordset = result.recordsets[11] || [];
+    const availableSlotsRecordset = result.recordsets[12] || [];
+
+    // Additional debugging for services specifically
+    console.log(`🔧 Services recordset before mapping:`, servicesRecordset);
+    console.log(`🔧 Services recordset length:`, servicesRecordset ? servicesRecordset.length : 'undefined');
+    
+    // Ensure services is always an array
+    const processedServices = Array.isArray(servicesRecordset) ? servicesRecordset : [];
 
     const vendorDetails = {
       profile: {
         ...profileRecordset[0],
       },
       categories: categoriesRecordset,
-      services: servicesRecordset,
+      services: processedServices,
       portfolio: portfolioRecordset,
       reviews: reviewsRecordset,
       faqs: faqsRecordset,
@@ -686,6 +705,10 @@ router.get('/:id', async (req, res) => {
       isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
       availableSlots: availableSlotsRecordset
     };
+
+    // Debug the final services in vendorDetails
+    console.log(`🎯 Final vendorDetails.services:`, vendorDetails.services);
+    console.log(`🎯 Final services count:`, vendorDetails.services.length);
 
     res.json({
       success: true,
