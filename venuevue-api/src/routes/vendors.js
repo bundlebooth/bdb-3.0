@@ -56,7 +56,6 @@ async function enhanceVendorWithImages(vendor, pool) {
       SELECT 
         ImageID,
         ImageURL,
-        CloudinaryPublicId,
         IsPrimary,
         DisplayOrder,
         ImageType,
@@ -77,20 +76,10 @@ async function enhanceVendorWithImages(vendor, pool) {
         caption: img.Caption
       };
 
-      // Add Cloudinary transformations if public ID exists
-      if (img.CloudinaryPublicId) {
-        imageData.cloudinaryPublicId = img.CloudinaryPublicId;
-        imageData.thumbnailUrl = cloudinaryService.getThumbnailUrl(img.CloudinaryPublicId, 300, 200);
-        imageData.optimizedUrl = cloudinaryService.getOptimizedUrl(img.CloudinaryPublicId);
-        imageData.squareUrl = cloudinaryService.getSquareUrl(img.CloudinaryPublicId, 400);
-        
-        // Different sizes for responsive display
-        imageData.sizes = {
-          small: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 300, height: 200, crop: 'fill' }),
-          medium: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 600, height: 400, crop: 'fill' }),
-          large: cloudinaryService.getTransformedUrl(img.CloudinaryPublicId, { width: 1200, height: 800, crop: 'fill' })
-        };
-      }
+      // Use the direct image URL since Cloudinary columns may not exist yet
+      imageData.thumbnailUrl = img.ImageURL;
+      imageData.optimizedUrl = img.ImageURL;
+      imageData.squareUrl = img.ImageURL;
 
       return imageData;
     });
