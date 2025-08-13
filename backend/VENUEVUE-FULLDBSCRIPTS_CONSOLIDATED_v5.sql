@@ -191,6 +191,18 @@ CREATE TABLE VendorPortfolio (
 );
 GO
 
+-- Vendor Category Question Answers
+CREATE TABLE VendorCategoryAnswers (
+    AnswerID INT PRIMARY KEY IDENTITY(1,1),
+    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+    QuestionID INT FOREIGN KEY REFERENCES CategoryQuestions(QuestionID),
+    Answer NVARCHAR(MAX) NOT NULL,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT UC_VendorCategoryAnswer UNIQUE (VendorProfileID, QuestionID)
+);
+GO
+
 -- Vendor FAQs
 CREATE TABLE VendorFAQs (
     FAQID INT PRIMARY KEY IDENTITY(1,1),
