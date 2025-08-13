@@ -618,6 +618,7 @@ router.get('/profile', async (req, res) => {
 
 // Get vendor details by ID
 // Get vendor details by ID
+// Get vendor details by ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -645,46 +646,45 @@ router.get('/:id', async (req, res) => {
 
     const result = await request.execute('sp_GetVendorDetails');
     
-    if (result.recordsets.length === 0) {
+    if (!result.recordsets || result.recordsets.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor details not found'
+        message: 'Vendor details not found or stored procedure returned no data.'
       });
     }
 
-    // Capture the recordsets into their respective variables
+    // Capture the recordsets into their respective variables by index
     const [
       profileRecordset, 
       categoriesRecordset, 
-      servicesRecordset,
+      servicesRecordset, // Index 2 contains services
       portfolioRecordset, 
       reviewsRecordset, 
       faqsRecordset,
       teamRecordset,
       socialMediaRecordset,
       businessHoursRecordset,
-      imagesRecordset,
+      imagesRecordset, // Index 9 contains images
       categoryAnswersRecordset,
       isFavoriteRecordset,
       availableSlotsRecordset
     ] = result.recordsets;
 
+    // Create the final structured JSON object
     const vendorDetails = {
-      profile: {
-        ...profileRecordset[0],
-      },
-      categories: categoriesRecordset,
-      services: servicesRecordset,
-      portfolio: portfolioRecordset,
-      reviews: reviewsRecordset,
-      faqs: faqsRecordset,
-      team: teamRecordset,
-      socialMedia: socialMediaRecordset,
-      businessHours: businessHoursRecordset,
-      images: imagesRecordset,
-      categoryAnswers: categoryAnswersRecordset,
+      profile: profileRecordset && profileRecordset.length > 0 ? profileRecordset[0] : null,
+      categories: categoriesRecordset || [],
+      services: servicesRecordset || [], // This is now correctly populated
+      portfolio: portfolioRecordset || [],
+      reviews: reviewsRecordset || [],
+      faqs: faqsRecordset || [],
+      team: teamRecordset || [],
+      socialMedia: socialMediaRecordset || [],
+      businessHours: businessHoursRecordset || [],
+      images: imagesRecordset || [], // This is now correctly populated
+      categoryAnswers: categoryAnswersRecordset || [],
       isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
-      availableSlots: availableSlotsRecordset
+      availableSlots: availableSlotsRecordset || []
     };
 
     res.json({
@@ -701,6 +701,8 @@ router.get('/:id', async (req, res) => {
     });
   }
 });
+
+module.exports = router;
 
 // Update vendor profile
 router.put('/:id', upload.array('images', 5), async (req, res) => {
