@@ -652,111 +652,29 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Debug logging for recordsets
-    console.log(`🔍 DEBUGGING sp_GetVendorDetails for VendorProfileID: ${vendorProfileId}`);
-    console.log(`📊 Total recordsets returned: ${result.recordsets.length}`);
-    
-    result.recordsets.forEach((recordset, index) => {
-      console.log(`📋 Recordset[${index}]: ${recordset.length} records`);
-      if (recordset.length > 0) {
-        const firstRecord = recordset[0];
-        const keys = Object.keys(firstRecord);
-        console.log(`   Recordset[${index}] keys: ${keys.join(', ')}`);
-        
-        // Identify what type of data this recordset contains
-        if (keys.includes('VendorProfileID') && keys.includes('BusinessName')) {
-          console.log(`   ➜ Recordset[${index}] = PROFILE DATA`);
-        } else if (keys.includes('Category')) {
-          console.log(`   ➜ Recordset[${index}] = CATEGORIES DATA`);
-        } else if (keys.includes('ServiceID') && keys.includes('Name') && keys.includes('Price')) {
-          console.log(`   ➜ Recordset[${index}] = SERVICES DATA ✅`);
-          console.log(`🎯 SERVICES FOUND AT INDEX ${index}:`, JSON.stringify(recordset, null, 2));
-        } else if (keys.includes('Question') && keys.includes('Answer')) {
-          console.log(`   ➜ Recordset[${index}] = FAQ DATA`);
-        } else if (keys.includes('ImageID') && keys.includes('ImageURL')) {
-          console.log(`   ➜ Recordset[${index}] = IMAGES DATA`);
-        } else {
-          console.log(`   ➜ Recordset[${index}] = UNKNOWN DATA TYPE`);
-        }
-      }
-    });
-
-    // SIMPLE FIX: Find services recordset by looking for ServiceID field
-    let servicesRecordset = [];
-    
-    for (let i = 0; i < result.recordsets.length; i++) {
-      const recordset = result.recordsets[i];
-      if (recordset && recordset.length > 0 && recordset[0].ServiceID) {
-        console.log(`✅ SERVICES FOUND AT RECORDSET ${i}`);
-        servicesRecordset = recordset;
-        break;
-      }
-    }
-    
-    // If not found, default to recordset 2
-    if (servicesRecordset.length === 0) {
-      servicesRecordset = result.recordsets[2] || [];
-    }
-
-    // Capture the other recordsets
-    const profileRecordset = result.recordsets[0] || [];
-    const categoriesRecordset = result.recordsets[1] || [];
-    const portfolioRecordset = result.recordsets[3] || [];
-    const reviewsRecordset = result.recordsets[4] || [];
-    const faqsRecordset = result.recordsets[5] || [];
-    const teamRecordset = result.recordsets[6] || [];
-    const socialMediaRecordset = result.recordsets[7] || [];
-    const businessHoursRecordset = result.recordsets[8] || [];
-    const imagesRecordset = result.recordsets[9] || [];
-    const categoryAnswersRecordset = result.recordsets[10] || [];
-    const isFavoriteRecordset = result.recordsets[11] || [];
-    const availableSlotsRecordset = result.recordsets[12] || [];
-
-    // BULLETPROOF SERVICES EXTRACTION
-    console.log(`🔧 Services recordset found:`, servicesRecordset);
-    console.log(`🔧 Services recordset length:`, servicesRecordset ? servicesRecordset.length : 'undefined');
-    
-    // FORCE services to be an array - NO MATTER WHAT
-    let processedServices = [];
-    
-    if (Array.isArray(servicesRecordset) && servicesRecordset.length > 0) {
-      processedServices = servicesRecordset;
-      console.log(`✅ USING SERVICES FROM RECORDSET: ${servicesRecordset.length} services found`);
-    } else {
-      // FALLBACK: Search ALL recordsets for services data
-      console.log(`⚠️ FALLBACK: Searching all recordsets for services...`);
-      for (let i = 0; i < result.recordsets.length; i++) {
-        const rs = result.recordsets[i];
-        if (rs && rs.length > 0 && rs[0].ServiceID !== undefined) {
-          processedServices = rs;
-          console.log(`✅ FALLBACK SUCCESS: Found services in recordset ${i}`);
-          break;
-        }
-      }
-    }
-    
-    console.log(`🎯 FINAL SERVICES TO RETURN:`, JSON.stringify(processedServices, null, 2));
-
-    // ABSOLUTE FINAL CHECK: If we still don't have services, manually extract them
-    if (processedServices.length === 0) {
-      console.log(`🚨 EMERGENCY: No services found, manually checking ALL recordsets...`);
-      result.recordsets.forEach((rs, idx) => {
-        if (rs && rs.length > 0) {
-          console.log(`Recordset ${idx} sample:`, rs[0]);
-          if (rs[0].ServiceID || rs[0].Name && rs[0].Price && rs[0].DurationMinutes) {
-            processedServices = rs;
-            console.log(`🚨 EMERGENCY SUCCESS: Found services in recordset ${idx}!`);
-          }
-        }
-      });
-    }
+    // Capture the recordsets into their respective variables
+    const [
+      profileRecordset, 
+      categoriesRecordset, 
+      servicesRecordset,
+      portfolioRecordset, 
+      reviewsRecordset, 
+      faqsRecordset,
+      teamRecordset,
+      socialMediaRecordset,
+      businessHoursRecordset,
+      imagesRecordset,
+      categoryAnswersRecordset,
+      isFavoriteRecordset,
+      availableSlotsRecordset
+    ] = result.recordsets;
 
     const vendorDetails = {
       profile: {
         ...profileRecordset[0],
       },
       categories: categoriesRecordset,
-      services: processedServices, // This WILL be the services array
+      services: servicesRecordset,
       portfolio: portfolioRecordset,
       reviews: reviewsRecordset,
       faqs: faqsRecordset,
@@ -768,10 +686,6 @@ router.get('/:id', async (req, res) => {
       isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
       availableSlots: availableSlotsRecordset
     };
-
-    // Debug the final services in vendorDetails
-    console.log(`🎯 Final vendorDetails.services:`, vendorDetails.services);
-    console.log(`🎯 Final services count:`, vendorDetails.services.length);
 
     res.json({
       success: true,
