@@ -2314,9 +2314,19 @@ router.post('/setup/step5-availability', async (req, res) => {
           const request = new sql.Request(pool);
           request.input('VendorProfileID', sql.Int, vendorProfileId);
           request.input('DayOfWeek', sql.Int, parseInt(day));
-          // Format time values to include seconds for SQL Server TIME type
-          const openTime = hours.openTime.includes(':') ? `${hours.openTime}:00` : hours.openTime;
-          const closeTime = hours.closeTime.includes(':') ? `${hours.closeTime}:00` : hours.closeTime;
+          // Format time values properly for SQL Server TIME type
+          const formatTimeForSQL = (timeStr) => {
+            if (!timeStr) return null;
+            // Ensure format is HH:MM:SS
+            const parts = timeStr.split(':');
+            if (parts.length === 2) {
+              return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:00`;
+            }
+            return timeStr;
+          };
+          
+          const openTime = formatTimeForSQL(hours.openTime);
+          const closeTime = formatTimeForSQL(hours.closeTime);
           request.input('OpenTime', sql.Time, openTime);
           request.input('CloseTime', sql.Time, closeTime);
           
