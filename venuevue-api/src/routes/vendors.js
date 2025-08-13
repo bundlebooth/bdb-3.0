@@ -2377,7 +2377,10 @@ router.post('/setup/step6-gallery', async (req, res) => {
     }
     
     // Save gallery images if provided
+    console.log('Gallery images received:', galleryImages);
     if (galleryImages && Array.isArray(galleryImages) && galleryImages.length > 0) {
+      console.log(`Processing ${galleryImages.length} gallery images...`);
+      
       // First, delete existing gallery images for this vendor
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
@@ -2385,10 +2388,12 @@ router.post('/setup/step6-gallery', async (req, res) => {
         DELETE FROM VendorImages 
         WHERE VendorProfileID = @VendorProfileID AND ImageType = 'Gallery'
       `);
+      console.log('Deleted existing gallery images');
       
       // Insert new gallery images
       for (let i = 0; i < galleryImages.length; i++) {
         const image = galleryImages[i];
+        console.log(`Processing image ${i}:`, image);
         if (image.url) {
           const insertRequest = new sql.Request(pool);
           insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
@@ -2401,8 +2406,13 @@ router.post('/setup/step6-gallery', async (req, res) => {
             INSERT INTO VendorImages (VendorProfileID, ImageURL, Caption, ImageType, DisplayOrder, IsPrimary, CreatedAt)
             VALUES (@VendorProfileID, @ImageURL, @Caption, @ImageType, @DisplayOrder, 0, GETUTCDATE())
           `);
+          console.log(`Inserted gallery image ${i} successfully`);
+        } else {
+          console.log(`Skipping image ${i} - no URL`);
         }
       }
+    } else {
+      console.log('No gallery images to process or invalid format');
     }
     
     res.json({ success: true, message: 'Gallery and media saved successfully' });
