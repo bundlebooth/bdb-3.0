@@ -617,6 +617,7 @@ router.get('/profile', async (req, res) => {
 });
 
 // Get vendor details by ID
+// Get vendor details by ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -651,69 +652,39 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Get enhanced images and portfolio with Cloudinary
-    const vendorProfile = result.recordsets[0][0];
-    const enhancedVendor = await enhanceVendorWithImages({ 
-      VendorProfileID: vendorProfileId,
-      ...vendorProfile 
-    }, pool);
-
-    // Get enhanced portfolio with Cloudinary
-    const portfolioRequest = new sql.Request(pool);
-    portfolioRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const portfolioResult = await portfolioRequest.query(`
-      SELECT 
-        PortfolioID,
-        Title,
-        Description,
-        ImageURL,
-        ProjectDate,
-        DisplayOrder,
-        CreatedAt
-      FROM VendorPortfolio 
-      WHERE VendorProfileID = @VendorProfileID 
-      ORDER BY DisplayOrder ASC
-    `);
-
-    // Process portfolio with Cloudinary enhancements
-    const enhancedPortfolio = portfolioResult.recordset.map(item => {
-      const portfolioData = {
-        portfolioId: item.PortfolioID,
-        title: item.Title,
-        description: item.Description,
-        url: item.ImageURL,
-        projectDate: item.ProjectDate,
-        displayOrder: item.DisplayOrder,
-        createdAt: item.CreatedAt
-      };
-
-      // Use direct image URL since Cloudinary columns may not exist yet
-      portfolioData.thumbnailUrl = item.ImageURL;
-      portfolioData.optimizedUrl = item.ImageURL;
-
-      return portfolioData;
-    });
+    // Capture the recordsets into their respective variables
+    const [
+      profileRecordset, 
+      categoriesRecordset, 
+      servicesRecordset,
+      portfolioRecordset, 
+      reviewsRecordset, 
+      faqsRecordset,
+      teamRecordset,
+      socialMediaRecordset,
+      businessHoursRecordset,
+      imagesRecordset,
+      categoryAnswersRecordset,
+      isFavoriteRecordset,
+      availableSlotsRecordset
+    ] = result.recordsets;
 
     const vendorDetails = {
       profile: {
-        ...vendorProfile,
-        featuredImage: enhancedVendor.featuredImage,
-        imageCount: enhancedVendor.imageCount,
-        portfolioCount: enhancedPortfolio.length
+        ...profileRecordset[0],
       },
-      categories: result.recordsets[1],
-      services: result.recordsets[2],
-      addOns: result.recordsets[3],
-      portfolio: enhancedPortfolio, // Enhanced portfolio with Cloudinary
-      reviews: result.recordsets[5],
-      faqs: result.recordsets[6],
-      team: result.recordsets[7],
-      socialMedia: result.recordsets[8],
-      businessHours: result.recordsets[9],
-      images: enhancedVendor.images, // Enhanced images with Cloudinary
-      isFavorite: result.recordsets[11] ? result.recordsets[11][0].IsFavorite : false,
-      availableSlots: result.recordsets[12]
+      categories: categoriesRecordset,
+      services: servicesRecordset,
+      portfolio: portfolioRecordset,
+      reviews: reviewsRecordset,
+      faqs: faqsRecordset,
+      team: teamRecordset,
+      socialMedia: socialMediaRecordset,
+      businessHours: businessHoursRecordset,
+      images: imagesRecordset,
+      categoryAnswers: categoryAnswersRecordset,
+      isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
+      availableSlots: availableSlotsRecordset
     };
 
     res.json({
