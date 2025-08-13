@@ -2336,7 +2336,7 @@ router.post('/setup/step5-availability', async (req, res) => {
           request.input('CloseTime', sql.VarChar(8), closeTime);
           
           await request.query(`
-            INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsActive, CreatedAt, UpdatedAt)
+            INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable, CreatedAt, UpdatedAt)
             VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, 1, GETUTCDATE(), GETUTCDATE())
           `);
         }
