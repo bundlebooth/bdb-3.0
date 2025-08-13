@@ -661,17 +661,23 @@ router.get('/:id', async (req, res) => {
       if (recordset.length > 0) {
         const firstRecord = recordset[0];
         const keys = Object.keys(firstRecord);
-        console.log(`   First record keys: ${keys.join(', ')}`);
+        console.log(`   Recordset[${index}] keys: ${keys.join(', ')}`);
         
-        // Check if this recordset contains service-like data
-        if (keys.some(key => key.toLowerCase().includes('service') || key.toLowerCase().includes('price') || key.toLowerCase().includes('duration'))) {
-          console.log(`🎯 POTENTIAL SERVICES RECORDSET FOUND AT INDEX ${index}:`, JSON.stringify(recordset, null, 2));
+        // Identify what type of data this recordset contains
+        if (keys.includes('VendorProfileID') && keys.includes('BusinessName')) {
+          console.log(`   ➜ Recordset[${index}] = PROFILE DATA`);
+        } else if (keys.includes('Category')) {
+          console.log(`   ➜ Recordset[${index}] = CATEGORIES DATA`);
+        } else if (keys.includes('ServiceID') && keys.includes('Name') && keys.includes('Price')) {
+          console.log(`   ➜ Recordset[${index}] = SERVICES DATA ✅`);
+          console.log(`🎯 SERVICES FOUND AT INDEX ${index}:`, JSON.stringify(recordset, null, 2));
+        } else if (keys.includes('Question') && keys.includes('Answer')) {
+          console.log(`   ➜ Recordset[${index}] = FAQ DATA`);
+        } else if (keys.includes('ImageID') && keys.includes('ImageURL')) {
+          console.log(`   ➜ Recordset[${index}] = IMAGES DATA`);
+        } else {
+          console.log(`   ➜ Recordset[${index}] = UNKNOWN DATA TYPE`);
         }
-      }
-      
-      // Always log what we think is the services recordset
-      if (index === 2) {
-        console.log(`🛠️ Expected Services recordset (index 2) details:`, JSON.stringify(recordset, null, 2));
       }
     });
 
@@ -687,11 +693,16 @@ router.get('/:id', async (req, res) => {
         const hasServiceFields = keys.some(key => 
           key.toLowerCase().includes('serviceid') || 
           key.toLowerCase().includes('servicename') ||
-          (key.toLowerCase().includes('name') && keys.some(k => k.toLowerCase().includes('price'))) ||
-          (key.toLowerCase().includes('price') && keys.some(k => k.toLowerCase().includes('duration')))
+          (key.toLowerCase().includes('name') && keys.some(k => k.toLowerCase().includes('price')) && keys.some(k => k.toLowerCase().includes('duration')))
         );
         
-        if (hasServiceFields) {
+        // Make sure it's NOT profile data (avoid false positives)
+        const isProfileData = keys.some(key => 
+          key.toLowerCase().includes('vendorprofileid') && 
+          key.toLowerCase().includes('businessname')
+        );
+        
+        if (hasServiceFields && !isProfileData) {
           console.log(`🎯 FOUND ACTUAL SERVICES RECORDSET AT INDEX ${i}!`);
           servicesRecordsetIndex = i;
           actualServicesRecordset = recordset;
