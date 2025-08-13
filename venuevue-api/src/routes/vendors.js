@@ -619,6 +619,7 @@ router.get('/profile', async (req, res) => {
 // Get vendor details by ID
 // Get vendor details by ID
 // Get vendor details by ID
+// Get vendor details by ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
