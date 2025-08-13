@@ -2327,8 +2327,13 @@ router.post('/setup/step5-availability', async (req, res) => {
           
           const openTime = formatTimeForSQL(hours.openTime);
           const closeTime = formatTimeForSQL(hours.closeTime);
-          request.input('OpenTime', sql.Time, openTime);
-          request.input('CloseTime', sql.Time, closeTime);
+          
+          console.log(`Day ${day}: Original times - Open: "${hours.openTime}", Close: "${hours.closeTime}"`);
+          console.log(`Day ${day}: Formatted times - Open: "${openTime}", Close: "${closeTime}"`);
+          
+          // Try using VarChar instead of Time type to avoid validation issues
+          request.input('OpenTime', sql.VarChar(8), openTime);
+          request.input('CloseTime', sql.VarChar(8), closeTime);
           
           await request.query(`
             INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsActive, CreatedAt, UpdatedAt)
