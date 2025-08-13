@@ -2426,7 +2426,7 @@ router.post('/setup/step6-gallery', async (req, res) => {
 // Step 7: Social Media
 router.post('/setup/step7-social', async (req, res) => {
   try {
-    const { vendorProfileId, socialMedia } = req.body;
+    const { vendorProfileId, socialMedia, socialMediaProfiles } = req.body;
 
     if (!vendorProfileId) {
       return res.status(400).json({ success: false, message: 'Vendor profile ID is required' });
@@ -2434,21 +2434,60 @@ router.post('/setup/step7-social', async (req, res) => {
 
     const pool = await poolPromise;
     
-    // Handle social media if provided
-    if (socialMedia) {
-      for (const [platform, url] of Object.entries(socialMedia)) {
-        if (url) {
-          const request = new sql.Request(pool);
-          request.input('VendorProfileID', sql.Int, vendorProfileId);
-          request.input('Platform', sql.NVarChar(50), platform);
-          request.input('URL', sql.NVarChar(500), url);
-          
-          await request.query(`
-            INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
-            VALUES (@VendorProfileID, @Platform, @URL, 1, 1, GETUTCDATE(), GETUTCDATE())
-          `);
+    // Handle social media profiles if provided (array format from frontend)
+    const socialProfiles = socialMediaProfiles || socialMedia;
+    console.log('Social media data received:', socialProfiles);
+    
+    if (socialProfiles) {
+      // First, delete existing social media for this vendor
+      const deleteRequest = new sql.Request(pool);
+      deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteRequest.query(`
+        DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID
+      `);
+      console.log('Deleted existing social media');
+      
+      // Handle array format (socialMediaProfiles)
+      if (Array.isArray(socialProfiles)) {
+        for (let i = 0; i < socialProfiles.length; i++) {
+          const profile = socialProfiles[i];
+          console.log(`Processing social profile ${i}:`, profile);
+          if (profile.platform && profile.url) {
+            const request = new sql.Request(pool);
+            request.input('VendorProfileID', sql.Int, vendorProfileId);
+            request.input('Platform', sql.NVarChar(50), profile.platform);
+            request.input('URL', sql.NVarChar(500), profile.url);
+            request.input('DisplayOrder', sql.Int, i);
+            
+            await request.query(`
+              INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
+              VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
+            `);
+            console.log(`Inserted social media ${i} successfully`);
+          }
+        }
+      } 
+      // Handle object format (socialMedia)
+      else if (typeof socialProfiles === 'object') {
+        let displayOrder = 0;
+        for (const [platform, url] of Object.entries(socialProfiles)) {
+          if (url) {
+            const request = new sql.Request(pool);
+            request.input('VendorProfileID', sql.Int, vendorProfileId);
+            request.input('Platform', sql.NVarChar(50), platform);
+            request.input('URL', sql.NVarChar(500), url);
+            request.input('DisplayOrder', sql.Int, displayOrder++);
+            
+            await request.query(`
+              INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
+              VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
+            `);
+            console.log(`Inserted social media ${platform} successfully`);
+          }
         }
       }
+    } else {
+      console.log('No social media data to process');
     }
     
     res.json({ success: true, message: 'Social media saved successfully' });
