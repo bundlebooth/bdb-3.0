@@ -702,8 +702,6 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
-
 // Update vendor profile
 router.put('/:id', upload.array('images', 5), async (req, res) => {
   try {
