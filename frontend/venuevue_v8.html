@@ -3308,8 +3308,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // Load category-specific questions when entering step 7
-                if (step === 7) {
+                // Load category-specific questions when entering step 4
+                if (step === 4) {
                     await loadCategoryQuestions();
                 }
                 
@@ -5330,8 +5330,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return;
                 }
                 
-                // Load category-specific questions when entering step 7
-                if (step === 7) {
+                // Load category-specific questions when entering step 4
+                if (step === 4) {
                     await loadCategoryQuestions();
                 }
                 
@@ -5734,7 +5734,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             }
                         });
                         
-                        vendorSetupState.stepData.step7 = {
+                        vendorSetupState.stepData.step4 = {
                             categoryAnswers: categoryAnswers,
                             primaryCategory: document.getElementById('primary-category')?.value || ''
                         };
@@ -6435,14 +6435,50 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             }
                         });
                         break;
-                    case 4: // Availability
+                    case 4: // Additional Details - Category Questions
+                        // Collect category question responses
+                        if (!vendorSetupState.categoryQuestions) {
+                            vendorSetupState.categoryQuestions = [];
+                        }
+                        
+                        // Find all question inputs in the category-questions-container
+                        const container = document.getElementById('category-questions-container');
+                        if (container) {
+                            const questionInputs = container.querySelectorAll('input[name^="question_"], textarea[name^="question_"]');
+                            questionInputs.forEach(input => {
+                                const questionId = input.name.replace('question_', '');
+                                let value = null;
+                                
+                                if (input.type === 'radio' && input.checked) {
+                                    value = input.value;
+                                } else if (input.type === 'number' || input.tagName === 'TEXTAREA') {
+                                    value = input.value.trim();
+                                }
+                                
+                                if (value) {
+                                    // Update existing answer or add new one
+                                    const existingIndex = vendorSetupState.categoryQuestions.findIndex(q => q.questionId === questionId);
+                                    if (existingIndex >= 0) {
+                                        vendorSetupState.categoryQuestions[existingIndex].answer = value;
+                                    } else {
+                                        vendorSetupState.categoryQuestions.push({
+                                            questionId: questionId,
+                                            answer: value
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                        console.log('Step 4 - Category questions collected:', vendorSetupState.categoryQuestions);
+                        break;
+                    case 5: // Availability & Scheduling
                         vendorSetupState.availability = [];
                         for (let day = 0; day < 7; day++) {
                             const checkbox = document.getElementById(`available-${day}`);
                             const startTime = document.getElementById(`start-${day}`);
                             const endTime = document.getElementById(`end-${day}`);
                             
-                            if (checkbox.checked && startTime.value && endTime.value) {
+                            if (checkbox && checkbox.checked && startTime && startTime.value && endTime && endTime.value) {
                                 vendorSetupState.availability.push({
                                     day: day,
                                     start: startTime.value,
@@ -6540,7 +6576,40 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         endpoint = '/vendors/setup/step2-location';
                         break;
 
-                    case 3: // Gallery & Media
+                    case 3: // Services & Packages
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            serviceCategories: vendorSetupState.serviceCategories || [],
+                            services: vendorSetupState.services || [],
+                            packages: vendorSetupState.packages || []
+                        };
+                        endpoint = '/vendors/setup/step3-services';
+                        break;
+
+                    case 4: // Additional Details - Category Questions
+                        // Convert categoryQuestions to the format expected by backend
+                        const categoryAnswers = (vendorSetupState.categoryQuestions || []).map(q => ({
+                            questionId: parseInt(q.questionId), // Convert to integer
+                            answer: q.answer
+                        }));
+                        
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            categoryAnswers: categoryAnswers,
+                            primaryCategory: document.getElementById('primary-category')?.value || ''
+                        };
+                        endpoint = '/vendors/setup/step4-additional-details';
+                        break;
+
+                    case 5: // Availability & Scheduling
+                        stepData = {
+                            vendorProfileId: vendorSetupState.vendorProfileId,
+                            availability: vendorSetupState.availability || []
+                        };
+                        endpoint = '/vendors/setup/step5-availability';
+                        break;
+
+                    case 6: // Gallery & Media
                         // Use the Cloudinary URLs that were uploaded via handleFeaturedImageUpload
                         const featuredImage = vendorSetupState.stepData.step3?.featuredImage || 
                                             document.getElementById('featured-image-url')?.value || 
@@ -6552,28 +6621,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             galleryImages: vendorSetupState.gallery || [],
                             portfolioItems: vendorSetupState.portfolio || []
                         };
-                        endpoint = '/vendors/setup/step3-gallery';
+                        endpoint = '/vendors/setup/step6-gallery';
                         break;
 
-                    case 4: // Services & Packages
-                        stepData = {
-                            vendorProfileId: vendorSetupState.vendorProfileId,
-                            serviceCategories: vendorSetupState.serviceCategories || [],
-                            services: vendorSetupState.services || [],
-                            packages: vendorSetupState.packages || []
-                        };
-                        endpoint = '/vendors/setup/step4-services';
-                        break;
-
-                    case 5: // Team Information
-                        stepData = {
-                            vendorProfileId: vendorSetupState.vendorProfileId,
-                            teamMembers: vendorSetupState.teamMembers || []
-                        };
-                        endpoint = '/vendors/setup/step5-team';
-                        break;
-
-                    case 6: // Social Media & Links
+                    case 7: // Social Media
                         const socialMediaProfiles = [];
                         
                         // Collect social media profiles
@@ -6602,63 +6653,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             socialMediaProfiles,
                             bookingLink: document.getElementById('booking-link')?.value || ''
                         };
-                        endpoint = '/vendors/setup/step6-social';
+                        endpoint = '/vendors/setup/step7-social';
                         break;
 
-                    case 7: // Additional Details (Category-specific questions)
-                        const categoryAnswers = [];
-                        const questionInputs = document.querySelectorAll('#category-questions-container input, #category-questions-container textarea, #category-questions-container select');
-                        
-                        questionInputs.forEach(input => {
-                            if (input.name && input.name.startsWith('question_')) {
-                                const questionId = input.name.replace('question_', '');
-                                let answer = input.value?.trim() || '';
-                                
-                                // Handle different input types
-                                if (input.type === 'checkbox') {
-                                    answer = input.checked ? 'Yes' : 'No';
-                                } else if (input.type === 'radio') {
-                                    if (input.checked) {
-                                        answer = input.value;
-                                    } else {
-                                        return; // Skip unchecked radio buttons
-                                    }
-                                }
-                                
-                                if (answer) {
-                                    categoryAnswers.push({
-                                        questionId: parseInt(questionId),
-                                        answer: answer
-                                    });
-                                }
-                            }
-                        });
-
+                    case 8: // FAQ
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
-                            categoryAnswers: categoryAnswers,
-                            primaryCategory: document.getElementById('primary-category')?.value || ''
+                            faqs: vendorSetupState.faqs || []
                         };
-                        endpoint = '/vendors/setup/step7-category-questions';
-                        break;
-
-                    case 8: // Policies & Preferences
-                        const paymentMethods = [];
-                        ['cash', 'check', 'credit', 'debit', 'paypal', 'venmo', 'zelle', 'bank'].forEach(method => {
-                            if (document.getElementById(`payment-${method}`)?.checked) {
-                                paymentMethods.push(method);
-                            }
-                        });
-
-                        stepData = {
-                            vendorProfileId: vendorSetupState.vendorProfileId,
-                            depositRequirements: document.getElementById('deposit-requirements')?.value || '',
-                            cancellationPolicy: document.getElementById('cancellation-policy')?.value || '',
-                            reschedulingPolicy: document.getElementById('rescheduling-policy')?.value || '',
-                            paymentMethods,
-                            paymentTerms: document.getElementById('payment-terms')?.value || ''
-                        };
-                        endpoint = '/vendors/setup/step8-policies';
+                        endpoint = '/vendors/setup/step8-faq';
                         break;
 
                     case 9: // Verification & Legal
