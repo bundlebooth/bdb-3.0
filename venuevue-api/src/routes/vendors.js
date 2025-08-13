@@ -659,17 +659,51 @@ router.get('/:id', async (req, res) => {
     result.recordsets.forEach((recordset, index) => {
       console.log(`📋 Recordset[${index}]: ${recordset.length} records`);
       if (recordset.length > 0) {
-        console.log(`   First record keys: ${Object.keys(recordset[0]).join(', ')}`);
+        const firstRecord = recordset[0];
+        const keys = Object.keys(firstRecord);
+        console.log(`   First record keys: ${keys.join(', ')}`);
+        
+        // Check if this recordset contains service-like data
+        if (keys.some(key => key.toLowerCase().includes('service') || key.toLowerCase().includes('price') || key.toLowerCase().includes('duration'))) {
+          console.log(`🎯 POTENTIAL SERVICES RECORDSET FOUND AT INDEX ${index}:`, JSON.stringify(recordset, null, 2));
+        }
       }
-      if (index === 2) { // Services recordset
-        console.log(`🛠️ Services recordset (index 2) details:`, JSON.stringify(recordset, null, 2));
+      
+      // Always log what we think is the services recordset
+      if (index === 2) {
+        console.log(`🛠️ Expected Services recordset (index 2) details:`, JSON.stringify(recordset, null, 2));
       }
     });
+
+    // Try to find the services recordset dynamically
+    let servicesRecordsetIndex = 2; // Default expected position
+    let actualServicesRecordset = result.recordsets[2] || [];
+    
+    // Search for the actual services recordset by looking for service-like fields
+    for (let i = 0; i < result.recordsets.length; i++) {
+      const recordset = result.recordsets[i];
+      if (recordset && recordset.length > 0) {
+        const keys = Object.keys(recordset[0]);
+        const hasServiceFields = keys.some(key => 
+          key.toLowerCase().includes('serviceid') || 
+          key.toLowerCase().includes('servicename') ||
+          (key.toLowerCase().includes('name') && keys.some(k => k.toLowerCase().includes('price'))) ||
+          (key.toLowerCase().includes('price') && keys.some(k => k.toLowerCase().includes('duration')))
+        );
+        
+        if (hasServiceFields) {
+          console.log(`🎯 FOUND ACTUAL SERVICES RECORDSET AT INDEX ${i}!`);
+          servicesRecordsetIndex = i;
+          actualServicesRecordset = recordset;
+          break;
+        }
+      }
+    }
 
     // Capture the recordsets into their respective variables with safe fallbacks
     const profileRecordset = result.recordsets[0] || [];
     const categoriesRecordset = result.recordsets[1] || [];
-    const servicesRecordset = result.recordsets[2] || [];
+    const servicesRecordset = actualServicesRecordset;
     const portfolioRecordset = result.recordsets[3] || [];
     const reviewsRecordset = result.recordsets[4] || [];
     const faqsRecordset = result.recordsets[5] || [];
@@ -682,11 +716,13 @@ router.get('/:id', async (req, res) => {
     const availableSlotsRecordset = result.recordsets[12] || [];
 
     // Additional debugging for services specifically
+    console.log(`🔧 Using services recordset from index: ${servicesRecordsetIndex}`);
     console.log(`🔧 Services recordset before mapping:`, servicesRecordset);
     console.log(`🔧 Services recordset length:`, servicesRecordset ? servicesRecordset.length : 'undefined');
     
-    // Ensure services is always an array
+    // Ensure services is always an array and log the actual data
     const processedServices = Array.isArray(servicesRecordset) ? servicesRecordset : [];
+    console.log(`🎯 FINAL PROCESSED SERVICES:`, JSON.stringify(processedServices, null, 2));
 
     const vendorDetails = {
       profile: {
