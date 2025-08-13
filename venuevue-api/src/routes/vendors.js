@@ -2621,6 +2621,96 @@ router.post('/setup/step9-completion', async (req, res) => {
   }
 });
 
+// Get vendor summary data for Step 9
+router.get('/summary/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    
+    if (!vendorProfileId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Vendor profile ID is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Get vendor profile data
+    const profileRequest = new sql.Request(pool);
+    profileRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const profileResult = await profileRequest.query(`
+      SELECT * FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    if (!profileResult.recordset || profileResult.recordset.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Vendor profile not found' 
+      });
+    }
+    
+    const vendorProfile = profileResult.recordset[0];
+    
+    // Get category answers
+    const categoryRequest = new sql.Request(pool);
+    categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const categoryResult = await categoryRequest.query(`
+      SELECT ca.*, cq.QuestionText, cq.Category 
+      FROM VendorCategoryAnswers ca
+      JOIN CategoryQuestions cq ON ca.QuestionID = cq.QuestionID
+      WHERE ca.VendorProfileID = @VendorProfileID
+    `);
+    
+    // Get business hours
+    const hoursRequest = new sql.Request(pool);
+    hoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const hoursResult = await hoursRequest.query(`
+      SELECT * FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID ORDER BY DayOfWeek
+    `);
+    
+    // Get gallery images
+    const imagesRequest = new sql.Request(pool);
+    imagesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const imagesResult = await imagesRequest.query(`
+      SELECT * FROM VendorImages WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
+    `);
+    
+    // Get social media
+    const socialRequest = new sql.Request(pool);
+    socialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const socialResult = await socialRequest.query(`
+      SELECT * FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
+    `);
+    
+    // Get FAQs
+    const faqRequest = new sql.Request(pool);
+    faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const faqResult = await faqRequest.query(`
+      SELECT * FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
+    `);
+    
+    res.json({
+      success: true,
+      data: {
+        profile: vendorProfile,
+        categoryAnswers: categoryResult.recordset || [],
+        businessHours: hoursResult.recordset || [],
+        galleryImages: imagesResult.recordset || [],
+        socialMedia: socialResult.recordset || [],
+        faqs: faqResult.recordset || []
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching vendor summary:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch vendor summary',
+      error: error.message 
+    });
+  }
+});
+
 // Get category-specific questions for Step 4
 router.get('/category-questions/:category', async (req, res) => {
   try {
