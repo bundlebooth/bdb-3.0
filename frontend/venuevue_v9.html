@@ -1953,6 +1953,14 @@
                             <h2 class="services-title">About Us</h2>
                             <p id="vendor-description" style="line-height: 1.6;">Loading business description...</p>
                             
+                            <!-- Services & Packages Section -->
+                            <div id="services-section" class="services-section" style="display: none;">
+                                <h2 class="services-title">Services & Packages</h2>
+                                <div id="services-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+                                    <!-- Services will be populated dynamically -->
+                                </div>
+                            </div>
+                            
                             <!-- Business Hours Section -->
                             <div id="business-hours-section" class="services-section" style="display: none;">
                                 <h2 class="services-title">Business Hours</h2>
@@ -7234,6 +7242,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const data = await response.json();
                     const fullVendorDetails = data.data;
 
+                    // Debug logging for services
+                    console.log('🔍 Full API Response:', data);
+                    console.log('🔍 Vendor Details:', fullVendorDetails);
+                    console.log('🔍 Services Data:', fullVendorDetails.services);
+                    console.log('🔍 Services Length:', fullVendorDetails.services ? fullVendorDetails.services.length : 'undefined');
+
                     renderVendorProfile(fullVendorDetails);
                     
                     // Add logic for the new review form
@@ -7321,6 +7335,73 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     console.error('Error fetching vendor profile:', error);
                     vendorProfilePage.innerHTML = `<p style="text-align: center; color: var(--accent); margin-top: 5rem;">Error loading profile: ${error.message}</p>`;
                 }
+            }
+
+            // Helper function to render services with booking functionality
+            function renderServices(services) {
+                console.log('🔍 renderServices called with:', services);
+                console.log('🔍 Services type:', typeof services);
+                console.log('🔍 Services is array:', Array.isArray(services));
+                
+                if (!services || services.length === 0) {
+                    console.log('🔍 No services found or empty array');
+                    return '';
+                }
+                
+                console.log('🔍 Rendering', services.length, 'services');
+                let servicesHtml = '';
+                services.forEach((service, index) => {
+                    console.log(`🔍 Service ${index}:`, service);
+                    console.log(`🔍 Service properties:`, Object.keys(service));
+                    
+                    // Try different possible property names from database
+                    const serviceName = service.ServiceName || service.Name || service.service_name || service.name || 'Unnamed Service';
+                    const servicePrice = service.Price || service.price || service.BasePrice || service.base_price || 0;
+                    const serviceDescription = service.Description || service.description || service.ServiceDescription || service.service_description || '';
+                    const serviceDuration = service.Duration || service.duration || service.EstimatedDuration || service.estimated_duration || '';
+                    const serviceCapacity = service.Capacity || service.capacity || service.MaxCapacity || service.max_capacity || '';
+                    const serviceId = service.ServiceID || service.ID || service.id || service.service_id || index;
+                    
+                    console.log(`🔍 Mapped values - Name: ${serviceName}, Price: ${servicePrice}, Description: ${serviceDescription}`);
+                    
+                    const price = servicePrice ? `$${parseFloat(servicePrice).toFixed(2)}` : 'Contact for pricing';
+                    const duration = serviceDuration ? ` • ${serviceDuration}` : '';
+                    const capacity = serviceCapacity ? ` • Up to ${serviceCapacity} people` : '';
+                    
+                    servicesHtml += `
+                        <div class="service-card" style="background-color: white; padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); transition: all 0.2s; cursor: pointer;" 
+                             onmouseover="this.style.borderColor='var(--primary)'; this.style.boxShadow='var(--shadow)'" 
+                             onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='none'">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                <h3 class="service-name" style="font-weight: 600; margin: 0; color: var(--text);">${serviceName}</h3>
+                                <div class="service-price" style="font-weight: 600; color: var(--primary); white-space: nowrap;">${price}</div>
+                            </div>
+                            
+                            ${serviceDescription ? `
+                            <p class="service-description" style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem; line-height: 1.5;">
+                                ${serviceDescription}
+                            </p>
+                            ` : ''}
+                            
+                            ${(duration || capacity) ? `
+                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem;">
+                                ${duration}${capacity}
+                            </div>
+                            ` : ''}
+                            
+                            <div class="service-actions" style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                                <button class="btn btn-outline btn-sm add-to-booking-btn" 
+                                        data-service-id="${serviceId}" 
+                                        data-service-name="${serviceName}" 
+                                        data-service-price="${servicePrice || 0}"
+                                        style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                    Add to Booking
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                return servicesHtml;
             }
 
             function renderVendorProfile(details) {
@@ -7560,7 +7641,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <p style="line-height: 1.6; color: var(--text);">${profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}</p>
                             </div>
                             
-
+                            ${(() => {
+                                console.log('🔍 Checking services condition:', details.services);
+                                console.log('🔍 Services exists:', !!details.services);
+                                console.log('🔍 Services length:', details.services ? details.services.length : 'N/A');
+                                const hasServices = details.services && details.services.length > 0;
+                                console.log('🔍 Will render services section:', hasServices);
+                                return hasServices;
+                            })() ? `
+                            <!-- Services & Packages Section -->
+                            <div style="margin-bottom: 2rem;">
+                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Services & Packages</h2>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                                    ${renderServices(details.services)}
+                                </div>
+                            </div>
+                            ` : (() => {
+                                console.log('🔍 Services section NOT rendered - no services found');
+                                return '';
+                            })()}
                             
                             ${categoryAnswers.length > 0 ? `
                             <!-- Category Services Section -->
@@ -7705,33 +7804,125 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                          showLoginView();
                     });
                 }
+
+                // Add event listeners for service booking buttons
+                const addToBookingBtns = vendorProfilePage.querySelectorAll('.add-to-booking-btn');
+                addToBookingBtns.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const serviceId = btn.dataset.serviceId;
+                        const serviceName = btn.dataset.serviceName;
+                        const servicePrice = parseFloat(btn.dataset.servicePrice) || 0;
+                        
+                        addServiceToBooking({
+                            id: serviceId,
+                            name: serviceName,
+                            price: servicePrice
+                        });
+                        
+                        // Update button state
+                        btn.textContent = 'Added ✓';
+                        btn.style.backgroundColor = 'var(--primary)';
+                        btn.style.color = 'white';
+                        btn.disabled = true;
+                    });
+                });
             }
 
-            // Render services for a vendor
-            function renderServices(serviceCategories) {
-                return serviceCategories.map(category => `
-                    <div class="service-category">
-                        <h4 class="category-title">${category.CategoryName || category.Name}</h4>
-                        <div class="service-grid">
-                            ${(category.services || []).map(service => `
-                                <div class="service-card">
-                                    <div class="service-name">${service.name}</div>
-                                    <div class="service-description">${service.description}</div>
-                                    <div class="service-price">$${service.Price || service.price || 'N/A'}</div>
-                                    <div class="service-actions">
-                                        <button class="btn btn-outline btn-sm add-service-btn"
-                                                data-service-id="${service.ServiceID}"
-                                                data-service-name="${service.name}"
-                                                data-price="${service.Price || service.price}">
-                                            Add
-                                        </button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('');
+            // Booking management functionality
+            let selectedServices = [];
+            
+            function addServiceToBooking(service) {
+                // Check if service is already added
+                const existingService = selectedServices.find(s => s.id === service.id);
+                if (existingService) {
+                    return; // Service already added
+                }
+                
+                selectedServices.push(service);
+                updateBookingSummary();
             }
+            
+            function removeServiceFromBooking(serviceId) {
+                selectedServices = selectedServices.filter(s => s.id !== serviceId);
+                updateBookingSummary();
+                
+                // Reset the button state
+                const btn = document.querySelector(`[data-service-id="${serviceId}"]`);
+                if (btn) {
+                    btn.textContent = 'Add to Booking';
+                    btn.style.backgroundColor = '';
+                    btn.style.color = '';
+                    btn.disabled = false;
+                }
+            }
+            
+            function updateBookingSummary() {
+                const selectedServicesList = document.getElementById('selected-services-list');
+                const bookingTotalPrice = document.getElementById('booking-total-price');
+                const proceedToBookBtn = document.getElementById('proceed-to-book-btn');
+                
+                if (!selectedServicesList || !bookingTotalPrice || !proceedToBookBtn) {
+                    return; // Elements not found
+                }
+                
+                if (selectedServices.length === 0) {
+                    selectedServicesList.innerHTML = '<p style="font-size: 0.9rem; color: var(--text-light); text-align: center; font-style: italic;">Select services from the list to get started.</p>';
+                    bookingTotalPrice.textContent = '$0.00';
+                    proceedToBookBtn.textContent = 'Choose Services';
+                    proceedToBookBtn.disabled = true;
+                } else {
+                    let servicesHtml = '';
+                    let total = 0;
+                    
+                    selectedServices.forEach(service => {
+                        const price = service.price || 0;
+                        total += price;
+                        
+                        servicesHtml += `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border);">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500; font-size: 0.9rem;">${service.name}</div>
+                                    <div style="font-size: 0.8rem; color: var(--text-light);">$${price.toFixed(2)}</div>
+                                </div>
+                                <button onclick="removeServiceFromBooking('${service.id}')" 
+                                        style="background: none; border: none; color: var(--accent); cursor: pointer; padding: 0.25rem; font-size: 0.8rem;"
+                                        title="Remove service">
+                                    ✕
+                                </button>
+                            </div>
+                        `;
+                    });
+                    
+                    selectedServicesList.innerHTML = servicesHtml;
+                    bookingTotalPrice.textContent = `$${total.toFixed(2)}`;
+                    proceedToBookBtn.textContent = `Book ${selectedServices.length} Service${selectedServices.length > 1 ? 's' : ''}`;
+                    proceedToBookBtn.disabled = false;
+                    
+                    // Add click handler for proceed to book button
+                    proceedToBookBtn.onclick = () => {
+                        if (!currentUser) {
+                            alert('Please log in to book services.');
+                            profileModal.style.display = 'flex';
+                            showLoginView();
+                            return;
+                        }
+                        
+                        // For now, show a confirmation dialog
+                        const serviceNames = selectedServices.map(s => s.name).join(', ');
+                        const confirmed = confirm(`Ready to book these services?\n\n${serviceNames}\n\nTotal: $${total.toFixed(2)}\n\nThis will redirect you to the booking process.`);
+                        
+                        if (confirmed) {
+                            alert('Booking feature coming soon! Your selected services have been saved.');
+                            // Here you would typically redirect to a booking/checkout page
+                            // or open a booking modal with calendar and payment options
+                        }
+                    };
+                }
+            }
+
+            // Make removeServiceFromBooking available globally
+            window.removeServiceFromBooking = removeServiceFromBooking;
 
             // Render reviews for a vendor
             function renderReviews(reviews) {
