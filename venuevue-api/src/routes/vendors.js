@@ -2362,6 +2362,7 @@ router.post('/setup/step6-gallery', async (req, res) => {
 
     const pool = await poolPromise;
     
+    // Update featured image if provided
     if (featuredImageURL) {
       const request = new sql.Request(pool);
       request.input('VendorProfileID', sql.Int, vendorProfileId);
@@ -2373,6 +2374,35 @@ router.post('/setup/step6-gallery', async (req, res) => {
             UpdatedAt = GETUTCDATE()
         WHERE VendorProfileID = @VendorProfileID
       `);
+    }
+    
+    // Save gallery images if provided
+    if (galleryImages && Array.isArray(galleryImages) && galleryImages.length > 0) {
+      // First, delete existing gallery images for this vendor
+      const deleteRequest = new sql.Request(pool);
+      deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteRequest.query(`
+        DELETE FROM VendorImages 
+        WHERE VendorProfileID = @VendorProfileID AND ImageType = 'Gallery'
+      `);
+      
+      // Insert new gallery images
+      for (let i = 0; i < galleryImages.length; i++) {
+        const image = galleryImages[i];
+        if (image.url) {
+          const insertRequest = new sql.Request(pool);
+          insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          insertRequest.input('ImageURL', sql.NVarChar(500), image.url);
+          insertRequest.input('Caption', sql.NVarChar(255), image.caption || '');
+          insertRequest.input('ImageType', sql.NVarChar(20), 'Gallery');
+          insertRequest.input('DisplayOrder', sql.Int, i);
+          
+          await insertRequest.query(`
+            INSERT INTO VendorImages (VendorProfileID, ImageURL, Caption, ImageType, DisplayOrder, IsPrimary, CreatedAt)
+            VALUES (@VendorProfileID, @ImageURL, @Caption, @ImageType, @DisplayOrder, 0, GETUTCDATE())
+          `);
+        }
+      }
     }
     
     res.json({ success: true, message: 'Gallery and media saved successfully' });
