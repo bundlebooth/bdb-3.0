@@ -2260,9 +2260,8 @@ router.post('/setup/step4-additional-details', async (req, res) => {
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileId', sql.Int, vendorProfileId);
       await deleteRequest.query(`
-        DELETE FROM VendorFAQs 
-        WHERE VendorProfileID = @VendorProfileId 
-        AND QuestionId IS NOT NULL
+        DELETE FROM VendorCategoryAnswers 
+        WHERE VendorProfileID = @VendorProfileId
       `);
 
       // Insert new answers
@@ -2272,8 +2271,8 @@ router.post('/setup/step4-additional-details', async (req, res) => {
         insertRequest.input('QuestionId', sql.Int, answer.questionId);
         insertRequest.input('Answer', sql.NVarChar(sql.MAX), answer.answer);
         await insertRequest.query(`
-          INSERT INTO VendorFAQs (VendorProfileID, QuestionId, Answer, CreatedAt)
-          VALUES (@VendorProfileId, @QuestionId, @Answer, GETDATE())
+          INSERT INTO VendorCategoryAnswers (VendorProfileID, QuestionID, Answer, CreatedAt, UpdatedAt)
+          VALUES (@VendorProfileId, @QuestionId, @Answer, GETDATE(), GETDATE())
         `);
       }
     }
