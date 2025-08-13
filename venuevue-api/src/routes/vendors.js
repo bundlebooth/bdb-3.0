@@ -2577,8 +2577,7 @@ router.post('/setup/step9-completion', async (req, res) => {
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     await updateRequest.query(`
       UPDATE VendorProfiles 
-      SET SetupProgress = 100,
-          IsCompleted = 1,
+      SET IsCompleted = 1,
           SetupCompletedAt = GETUTCDATE(),
           UpdatedAt = GETUTCDATE()
       WHERE VendorProfileID = @VendorProfileID
