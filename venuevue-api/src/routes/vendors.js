@@ -618,8 +618,6 @@ router.get('/profile', async (req, res) => {
 
 // Get vendor details by ID
 // Get vendor details by ID
-// Get vendor details by ID
-// Get vendor details by ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -647,45 +645,46 @@ router.get('/:id', async (req, res) => {
 
     const result = await request.execute('sp_GetVendorDetails');
     
-    if (!result.recordsets || result.recordsets.length === 0) {
+    if (result.recordsets.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor details not found or stored procedure returned no data.'
+        message: 'Vendor details not found'
       });
     }
 
-    // Capture the recordsets into their respective variables by index
+    // Capture the recordsets into their respective variables
     const [
       profileRecordset, 
       categoriesRecordset, 
-      servicesRecordset, // Index 2 contains services
+      servicesRecordset,
       portfolioRecordset, 
       reviewsRecordset, 
       faqsRecordset,
       teamRecordset,
       socialMediaRecordset,
       businessHoursRecordset,
-      imagesRecordset, // Index 9 contains images
+      imagesRecordset,
       categoryAnswersRecordset,
       isFavoriteRecordset,
       availableSlotsRecordset
     ] = result.recordsets;
 
-    // Create the final structured JSON object
     const vendorDetails = {
-      profile: profileRecordset && profileRecordset.length > 0 ? profileRecordset[0] : null,
-      categories: categoriesRecordset || [],
-      services: servicesRecordset || [], // This is now correctly populated
-      portfolio: portfolioRecordset || [],
-      reviews: reviewsRecordset || [],
-      faqs: faqsRecordset || [],
-      team: teamRecordset || [],
-      socialMedia: socialMediaRecordset || [],
-      businessHours: businessHoursRecordset || [],
-      images: imagesRecordset || [], // This is now correctly populated
-      categoryAnswers: categoryAnswersRecordset || [],
+      profile: {
+        ...profileRecordset[0],
+      },
+      categories: categoriesRecordset,
+      services: servicesRecordset,
+      portfolio: portfolioRecordset,
+      reviews: reviewsRecordset,
+      faqs: faqsRecordset,
+      team: teamRecordset,
+      socialMedia: socialMediaRecordset,
+      businessHours: businessHoursRecordset,
+      images: imagesRecordset,
+      categoryAnswers: categoryAnswersRecordset,
       isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
-      availableSlots: availableSlotsRecordset || []
+      availableSlots: availableSlotsRecordset
     };
 
     res.json({
