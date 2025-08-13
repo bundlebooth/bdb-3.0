@@ -668,7 +668,6 @@ router.get('/:id', async (req, res) => {
         Title,
         Description,
         ImageURL,
-        CloudinaryPublicId,
         ProjectDate,
         DisplayOrder,
         CreatedAt
@@ -689,19 +688,9 @@ router.get('/:id', async (req, res) => {
         createdAt: item.CreatedAt
       };
 
-      // Add Cloudinary transformations if public ID exists
-      if (item.CloudinaryPublicId) {
-        portfolioData.cloudinaryPublicId = item.CloudinaryPublicId;
-        portfolioData.thumbnailUrl = cloudinaryService.getThumbnailUrl(item.CloudinaryPublicId, 300, 200);
-        portfolioData.optimizedUrl = cloudinaryService.getOptimizedUrl(item.CloudinaryPublicId);
-        
-        // Different sizes for portfolio display
-        portfolioData.sizes = {
-          thumbnail: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 200, height: 150, crop: 'fill' }),
-          medium: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 500, height: 375, crop: 'fill' }),
-          large: cloudinaryService.getTransformedUrl(item.CloudinaryPublicId, { width: 1000, height: 750, crop: 'fill' })
-        };
-      }
+      // Use direct image URL since Cloudinary columns may not exist yet
+      portfolioData.thumbnailUrl = item.ImageURL;
+      portfolioData.optimizedUrl = item.ImageURL;
 
       return portfolioData;
     });
