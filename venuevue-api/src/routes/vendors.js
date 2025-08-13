@@ -618,8 +618,6 @@ router.get('/profile', async (req, res) => {
 
 // Get vendor details by ID
 // Get vendor details by ID
-// Get vendor details by ID
-// Get vendor details by ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -647,46 +645,103 @@ router.get('/:id', async (req, res) => {
 
     const result = await request.execute('sp_GetVendorDetails');
     
-    if (!result.recordsets || result.recordsets.length === 0) {
+    if (result.recordsets.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Vendor details not found or stored procedure returned no data.'
+        message: 'Vendor details not found'
       });
     }
 
-    // Capture the recordsets into their respective variables by index
-    const [
-      profileRecordset, 
-      categoriesRecordset, 
-      servicesRecordset, // Index 2 contains services
-      portfolioRecordset, 
-      reviewsRecordset, 
-      faqsRecordset,
-      teamRecordset,
-      socialMediaRecordset,
-      businessHoursRecordset,
-      imagesRecordset, // Index 9 contains images
-      categoryAnswersRecordset,
-      isFavoriteRecordset,
-      availableSlotsRecordset
-    ] = result.recordsets;
+    // Debug logging for recordsets
+    console.log(`🔍 DEBUGGING sp_GetVendorDetails for VendorProfileID: ${vendorProfileId}`);
+    console.log(`📊 Total recordsets returned: ${result.recordsets.length}`);
+    
+    result.recordsets.forEach((recordset, index) => {
+      console.log(`📋 Recordset[${index}]: ${recordset.length} records`);
+      if (recordset.length > 0) {
+        const firstRecord = recordset[0];
+        const keys = Object.keys(firstRecord);
+        console.log(`   Recordset[${index}] keys: ${keys.join(', ')}`);
+        
+        // Identify what type of data this recordset contains
+        if (keys.includes('VendorProfileID') && keys.includes('BusinessName')) {
+          console.log(`   ➜ Recordset[${index}] = PROFILE DATA`);
+        } else if (keys.includes('Category')) {
+          console.log(`   ➜ Recordset[${index}] = CATEGORIES DATA`);
+        } else if (keys.includes('ServiceID') && keys.includes('Name') && keys.includes('Price')) {
+          console.log(`   ➜ Recordset[${index}] = SERVICES DATA ✅`);
+          console.log(`🎯 SERVICES FOUND AT INDEX ${index}:`, JSON.stringify(recordset, null, 2));
+        } else if (keys.includes('Question') && keys.includes('Answer')) {
+          console.log(`   ➜ Recordset[${index}] = FAQ DATA`);
+        } else if (keys.includes('ImageID') && keys.includes('ImageURL')) {
+          console.log(`   ➜ Recordset[${index}] = IMAGES DATA`);
+        } else {
+          console.log(`   ➜ Recordset[${index}] = UNKNOWN DATA TYPE`);
+        }
+      }
+    });
 
-    // Create the final structured JSON object
+    // SIMPLE FIX: Find services recordset by looking for ServiceID field
+    let servicesRecordset = [];
+    
+    for (let i = 0; i < result.recordsets.length; i++) {
+      const recordset = result.recordsets[i];
+      if (recordset && recordset.length > 0 && recordset[0].ServiceID) {
+        console.log(`✅ SERVICES FOUND AT RECORDSET ${i}`);
+        servicesRecordset = recordset;
+        break;
+      }
+    }
+    
+    // If not found, default to recordset 2
+    if (servicesRecordset.length === 0) {
+      servicesRecordset = result.recordsets[2] || [];
+    }
+
+    // Capture the other recordsets
+    const profileRecordset = result.recordsets[0] || [];
+    const categoriesRecordset = result.recordsets[1] || [];
+    const portfolioRecordset = result.recordsets[3] || [];
+    const reviewsRecordset = result.recordsets[4] || [];
+    const faqsRecordset = result.recordsets[5] || [];
+    const teamRecordset = result.recordsets[6] || [];
+    const socialMediaRecordset = result.recordsets[7] || [];
+    const businessHoursRecordset = result.recordsets[8] || [];
+    const imagesRecordset = result.recordsets[9] || [];
+    const categoryAnswersRecordset = result.recordsets[10] || [];
+    const isFavoriteRecordset = result.recordsets[11] || [];
+    const availableSlotsRecordset = result.recordsets[12] || [];
+
+    // Additional debugging for services specifically
+    console.log(`🔧 Using services recordset from index: ${servicesRecordsetIndex}`);
+    console.log(`🔧 Services recordset before mapping:`, servicesRecordset);
+    console.log(`🔧 Services recordset length:`, servicesRecordset ? servicesRecordset.length : 'undefined');
+    
+    // Ensure services is always an array and log the actual data
+    const processedServices = Array.isArray(servicesRecordset) ? servicesRecordset : [];
+    console.log(`🎯 FINAL PROCESSED SERVICES:`, JSON.stringify(processedServices, null, 2));
+
     const vendorDetails = {
-      profile: profileRecordset && profileRecordset.length > 0 ? profileRecordset[0] : null,
-      categories: categoriesRecordset || [],
-      services: servicesRecordset || [], // This is now correctly populated
-      portfolio: portfolioRecordset || [],
-      reviews: reviewsRecordset || [],
-      faqs: faqsRecordset || [],
-      team: teamRecordset || [],
-      socialMedia: socialMediaRecordset || [],
-      businessHours: businessHoursRecordset || [],
-      images: imagesRecordset || [], // This is now correctly populated
-      categoryAnswers: categoryAnswersRecordset || [],
+      profile: {
+        ...profileRecordset[0],
+      },
+      categories: categoriesRecordset,
+      services: processedServices,
+      portfolio: portfolioRecordset,
+      reviews: reviewsRecordset,
+      faqs: faqsRecordset,
+      team: teamRecordset,
+      socialMedia: socialMediaRecordset,
+      businessHours: businessHoursRecordset,
+      images: imagesRecordset,
+      categoryAnswers: categoryAnswersRecordset,
       isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
-      availableSlots: availableSlotsRecordset || []
+      availableSlots: availableSlotsRecordset
     };
+
+    // Debug the final services in vendorDetails
+    console.log(`🎯 Final vendorDetails.services:`, vendorDetails.services);
+    console.log(`🎯 Final services count:`, vendorDetails.services.length);
 
     res.json({
       success: true,
