@@ -1653,19 +1653,25 @@ BEGIN
     -- Vendor categories (recordset 2)
     SELECT Category FROM VendorCategories WHERE VendorProfileID = @VendorProfileID ORDER BY Category;
     
-    -- Services and packages (recordset 3)
+    -- Services and packages (recordset 3) - UPDATED to use direct VendorProfileID link
     SELECT 
-        sc.CategoryID,
-        sc.Name AS CategoryName,
         s.ServiceID,
-        s.Name AS ServiceName,
-        s.Description AS ServiceDescription,
+        s.Name,
+        s.Description,
         s.Price,
         s.DurationMinutes,
-        s.MaxAttendees
-    FROM ServiceCategories sc
-    JOIN Services s ON sc.CategoryID = s.CategoryID
-    WHERE sc.VendorProfileID = @VendorProfileID AND s.IsActive = 1;
+        s.MinDuration,
+        s.MaxAttendees,
+        s.RequiresDeposit,
+        s.DepositPercentage,
+        s.CancellationPolicy,
+        s.IsActive,
+        sc.Name AS CategoryName,
+        sc.CategoryID
+    FROM Services s
+    LEFT JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    WHERE s.VendorProfileID = @VendorProfileID AND s.IsActive = 1
+    ORDER BY sc.DisplayOrder, s.Name;
     
     -- Vendor portfolio (recordset 4)
     SELECT PortfolioID, Title, Description, ImageURL, ProjectDate, DisplayOrder
