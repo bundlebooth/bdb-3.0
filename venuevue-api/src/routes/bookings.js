@@ -211,14 +211,18 @@ router.post('/requests', async (req, res) => {
       expiresAt.setHours(expiresAt.getHours() + 24);
       request.input('ExpiresAt', sql.DateTime, expiresAt);
 
+      // Format the date and time separately for the database
+      request.input('EventDateOnly', sql.Date, eventDate);
+      request.input('EventTimeOnly', sql.Time, formattedTime);
+      
       const result = await request.query(`
         INSERT INTO BookingRequests (
-          UserID, VendorProfileID, Services, EventDate, EventLocation, 
+          UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
           AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
         )
         OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
         VALUES (
-          @UserID, @VendorProfileID, @Services, @EventDate, @EventLocation,
+          @UserID, @VendorProfileID, @Services, @EventDateOnly, @EventTimeOnly, @EventLocation,
           @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
         )
       `);
