@@ -112,7 +112,7 @@ router.post('/:id/payment', async (req, res) => {
   }
 });
 
-// NEW: Endpoint to create a Stripe Payment Intent (client-side)
+// Create a Stripe Payment Intent (client-side)
 router.post('/create-payment-intent', async (req, res) => {
   try {
     const { amount, currency = 'usd' } = req.body;
@@ -140,18 +140,7 @@ router.post('/create-payment-intent', async (req, res) => {
   }
 });
 
-// Helper function to format time for SQL Server TIME type
-const formatTimeForSQL = (timeStr) => {
-  if (!timeStr) return '12:00:00'; // Default to noon if no time provided
-  // Ensure format is HH:MM:SS
-  const parts = timeStr.split(':');
-  if (parts.length === 2) {
-    return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:00`;
-  }
-  return timeStr;
-};
-
-// NEW: Multi-step booking request endpoints
+// Multi-step booking request endpoints
 router.post('/requests', async (req, res) => {
   try {
     const {
@@ -180,17 +169,27 @@ router.post('/requests', async (req, res) => {
     const pool = await poolPromise;
     const requests = [];
 
-    // Format the time for SQL Server
-    const formattedTime = formatTimeForSQL(eventDetails.time);
-    const eventDate = new Date(eventDetails.date);
+    // Format and validate the time
+    let eventTime = eventDetails.time || '12:00:00';
     
+    // Ensure time is in HH:MM:SS format
+    const timeParts = eventTime.split(':');
+    if (timeParts.length < 3) {
+      eventTime += ':00'; // Add seconds if missing
+    }
+    
+    // Validate the time format
+    if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(eventTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time format. Please use HH:MM:SS'
+      });
+    }
+
     // Combine date and time for the event
-    const eventDateTime = new Date(
-      eventDate.getFullYear(),
-      eventDate.getMonth(),
-      eventDate.getDate(),
-      ...formattedTime.split(':').map(Number)
-    );
+    const eventDate = new Date(eventDetails.date);
+    const [hours, minutes, seconds] = eventTime.split(':');
+    eventDate.setHours(hours, minutes, seconds);
 
     // Create booking requests for each vendor
     for (const vendorId of vendorIds) {
@@ -199,7 +198,7 @@ router.post('/requests', async (req, res) => {
       request.input('UserID', sql.Int, userId);
       request.input('VendorProfileID', sql.Int, vendorId);
       request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
-      request.input('EventDate', sql.DateTime, eventDateTime);
+      request.input('EventDate', sql.DateTime, eventDate);
       request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
       request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
       request.input('Budget', sql.Decimal(10, 2), budget);
@@ -211,37 +210,10 @@ router.post('/requests', async (req, res) => {
       expiresAt.setHours(expiresAt.getHours() + 24);
       request.input('ExpiresAt', sql.DateTime, expiresAt);
 
-      // Format the date and time for the database
-      const eventDateOnly = eventDetails.date; // Should be in 'YYYY-MM-DD' format
+      // Use the properly formatted date and time
+      request.input('EventDateParam', sql.Date, eventDetails.date);
+      request.input('EventTimeParam', sql.Time, eventTime);
       
-      // Ensure time is in HH:MM:SS format
-      let eventTimeOnly = formattedTime;
-      if (!eventTimeOnly) {
-        eventTimeOnly = '12:00:00'; // Default to noon if no time provided
-      } else if (eventTimeOnly.split(':').length === 2) {
-        // If only hours and minutes are provided, add seconds
-        eventTimeOnly += ':00';
-      }
-      
-      // Log the values for debugging
-      console.log('Event Date:', eventDateOnly);
-      console.log('Event Time (formatted):', eventTimeOnly);
-      
-      // Create a JavaScript Date object to validate the time
-      const [hours, minutes, seconds] = eventTimeOnly.split(':');
-      const timeDate = new Date();
-      timeDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds || '0', 10));
-      
-      // Format time as HH:MM:SS
-      const formattedTimeForSQL = timeDate.toTimeString().split(' ')[0];
-      
-      console.log('Formatted Time for SQL:', formattedTimeForSQL);
-      
-      // Add parameters for the query
-      request.input('EventDateParam', sql.Date, eventDateOnly);
-      request.input('EventTimeParam', sql.Time(0), formattedTimeForSQL);
-      
-      // Log the SQL query for debugging
       const sqlQuery = `
         INSERT INTO BookingRequests (
           UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
@@ -284,9 +256,8 @@ router.post('/requests', async (req, res) => {
   }
 });
 
-// Get service categories for booking modal - COMPLETELY ISOLATED
+// Get service categories for booking modal
 router.get('/service-categories', (req, res) => {
-  // No try-catch, no database, no async - just return data immediately
   const categories = [
     { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
     { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
@@ -316,7 +287,6 @@ router.get('/services/:categoryId', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
-    // First, get the category name from the service-categories endpoint mapping
     const categoryMap = {
       1: 'venue', 2: 'photo', 3: 'music', 4: 'catering', 5: 'entertainment',
       6: 'experiences', 7: 'decor', 8: 'beauty', 9: 'cake', 10: 'transport',
@@ -332,7 +302,6 @@ router.get('/services/:categoryId', async (req, res) => {
       });
     }
     
-    // Get vendors that offer services in this category
     request.input('Category', sql.NVarChar(50), categoryKey);
     
     const result = await request.query(`
@@ -354,9 +323,7 @@ router.get('/services/:categoryId', async (req, res) => {
       ORDER BY vp.BusinessName
     `);
 
-    // Transform vendor data into services format
     const services = result.recordset.map((vendor, index) => {
-      // Generate service name based on category and vendor
       const serviceNames = {
         'venue': `${vendor.BusinessName} - Event Space`,
         'photo': `${vendor.BusinessName} - Photography Services`,
@@ -373,7 +340,6 @@ router.get('/services/:categoryId', async (req, res) => {
         'stationery': `${vendor.BusinessName} - Stationery Services`
       };
       
-      // Estimate pricing based on price level
       const pricingMap = {
         '$': { min: 200, max: 500 },
         '$$': { min: 500, max: 1200 },
@@ -397,7 +363,6 @@ router.get('/services/:categoryId', async (req, res) => {
       };
     });
 
-    // If no services found, return sample services for the category
     if (services.length === 0) {
       const sampleServices = {
         'venue': [
@@ -441,7 +406,6 @@ router.get('/services/:categoryId', async (req, res) => {
   } catch (err) {
     console.error('Error fetching services:', err);
     
-    // Return fallback services on error
     const fallbackServices = [
       { ServiceID: 1, Name: 'Professional Service', Description: 'High-quality professional service', BasePrice: 500, PriceUnit: 'per event', CategoryName: 'Service' }
     ];
@@ -539,13 +503,6 @@ router.put('/requests/:requestId/respond', async (req, res) => {
         message: 'Booking request not found' 
       });
     }
-
-    // TODO: Send real-time notification to user via Socket.IO
-    // io.to(`user_${result.recordset[0].UserID}`).emit('booking_response', {
-    //   requestId: requestId,
-    //   status: status,
-    //   responseMessage: responseMessage
-    // });
 
     res.json({
       success: true,
