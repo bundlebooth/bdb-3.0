@@ -151,6 +151,7 @@ router.post('/requests', async (req, res) => {
       budget
     } = req.body;
 
+    // Input validation
     if (!userId || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
       return res.status(400).json({ 
         success: false, 
@@ -158,7 +159,6 @@ router.post('/requests', async (req, res) => {
       });
     }
 
-    // Validate required fields
     if (!eventDetails || !eventDetails.date || !eventDetails.time) {
       return res.status(400).json({
         success: false,
@@ -169,75 +169,101 @@ router.post('/requests', async (req, res) => {
     const pool = await poolPromise;
     const requests = [];
 
-    // Format and validate the time
-    let eventTime = eventDetails.time || '12:00:00';
+    // Enhanced time validation and formatting
+    let eventTime = eventDetails.time.trim();
     
-    // Ensure time is in HH:MM:SS format
-    const timeParts = eventTime.split(':');
-    if (timeParts.length < 3) {
-      eventTime += ':00'; // Add seconds if missing
+    // 1. Ensure basic format (HH:MM:SS)
+    if (!eventTime.includes(':')) {
+      eventTime = '12:00:00'; // Default if completely invalid
     }
     
-    // Validate the time format
-    if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/.test(eventTime)) {
+    // 2. Split and validate components
+    const timeParts = eventTime.split(':');
+    while (timeParts.length < 3) {
+      timeParts.push('00'); // Ensure we have hours, minutes, seconds
+    }
+    
+    // 3. Validate each component
+    const hours = parseInt(timeParts[0], minutes = parseInt(timeParts[1]), seconds = parseInt(timeParts[2]);
+    if (isNaN(hours) || hours < 0 || hours > 23 ||
+        isNaN(minutes) || minutes < 0 || minutes > 59 ||
+        isNaN(seconds) || seconds < 0 || seconds > 59) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid time format. Please use HH:MM:SS'
+        message: 'Invalid time components. Hours (0-23), Minutes (0-59), Seconds (0-59)'
       });
     }
 
-    // Combine date and time for the event
-    const eventDate = new Date(eventDetails.date);
-    const [hours, minutes, seconds] = eventTime.split(':');
-    eventDate.setHours(hours, minutes, seconds);
+    // 4. Reconstruct the time string with proper padding
+    const formattedTime = 
+      `${hours.toString().padStart(2, '0')}:` +
+      `${minutes.toString().padStart(2, '0')}:` +
+      `${seconds.toString().padStart(2, '0')}`;
 
-    // Create booking requests for each vendor
+    console.log('Formatted time for SQL:', formattedTime); // Debug log
+
+    // Create requests for each vendor
     for (const vendorId of vendorIds) {
-      const request = new sql.Request(pool);
-      
-      request.input('UserID', sql.Int, userId);
-      request.input('VendorProfileID', sql.Int, vendorId);
-      request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
-      request.input('EventDate', sql.DateTime, eventDate);
-      request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
-      request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
-      request.input('Budget', sql.Decimal(10, 2), budget);
-      request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || null);
-      request.input('Status', sql.NVarChar(50), 'pending');
-      
-      // Set expiry to 24 hours from now
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-      request.input('ExpiresAt', sql.DateTime, expiresAt);
-
-      // Use the properly formatted date and time
-      request.input('EventDateParam', sql.Date, eventDetails.date);
-      request.input('EventTimeParam', sql.Time, eventTime);
-      
-      const sqlQuery = `
-        INSERT INTO BookingRequests (
-          UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
-          AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
-        )
-        OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
-        VALUES (
-          @UserID, @VendorProfileID, @Services, @EventDateParam, @EventTimeParam, @EventLocation,
-          @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
-        )
-      `;
-      
-      console.log('Executing SQL:', sqlQuery);
-      
-      const result = await request.query(sqlQuery);
-
-      if (result.recordset.length > 0) {
-        requests.push({
-          requestId: result.recordset[0].RequestID,
-          vendorId: vendorId,
-          status: 'pending',
-          createdAt: result.recordset[0].CreatedAt,
-          expiresAt: result.recordset[0].ExpiresAt
+      try {
+        const request = new sql.Request(pool);
+        
+        // Debug: Log all parameters before execution
+        console.log('Creating request with parameters:', {
+          userId,
+          vendorId,
+          eventDate: eventDetails.date,
+          eventTime: formattedTime,
+          location: eventDetails.location,
+          attendeeCount: eventDetails.attendeeCount,
+          budget
         });
+
+        request.input('UserID', sql.Int, userId);
+        request.input('VendorProfileID', sql.Int, vendorId);
+        request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
+        request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
+        request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
+        request.input('Budget', sql.Decimal(10, 2), budget);
+        request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || null);
+        request.input('Status', sql.NVarChar(50), 'pending');
+        
+        // Using separate date and time parameters
+        request.input('EventDateParam', sql.Date, eventDetails.date);
+        request.input('EventTimeParam', sql.Time, formattedTime);
+        
+        // Set expiry to 24 hours from now
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+        request.input('ExpiresAt', sql.DateTime, expiresAt);
+
+        const sqlQuery = `
+          INSERT INTO BookingRequests (
+            UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
+            AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
+          )
+          OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
+          VALUES (
+            @UserID, @VendorProfileID, @Services, @EventDateParam, @EventTimeParam, @EventLocation,
+            @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
+          )
+        `;
+        
+        console.log('Executing SQL:', sqlQuery); // Debug log
+        
+        const result = await request.query(sqlQuery);
+
+        if (result.recordset.length > 0) {
+          requests.push({
+            requestId: result.recordset[0].RequestID,
+            vendorId: vendorId,
+            status: 'pending',
+            createdAt: result.recordset[0].CreatedAt,
+            expiresAt: result.recordset[0].ExpiresAt
+          });
+        }
+      } catch (err) {
+        console.error(`Error creating request for vendor ${vendorId}:`, err);
+        throw err; // Re-throw to be caught by outer try-catch
       }
     }
 
@@ -247,11 +273,25 @@ router.post('/requests', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Database error:', err);
+    console.error('Database error details:', {
+      message: err.message,
+      code: err.code,
+      number: err.number,
+      state: err.state,
+      class: err.class,
+      serverName: err.serverName,
+      procName: err.procName,
+      lineNumber: err.lineNumber
+    });
+    
     res.status(500).json({ 
       success: false,
       message: 'Failed to create booking requests',
-      error: err.message 
+      error: err.message,
+      details: {
+        code: err.code,
+        number: err.number
+      }
     });
   }
 });
