@@ -211,21 +211,34 @@ router.post('/requests', async (req, res) => {
       expiresAt.setHours(expiresAt.getHours() + 24);
       request.input('ExpiresAt', sql.DateTime, expiresAt);
 
-      // Format the date and time separately for the database
-      request.input('EventDateOnly', sql.Date, eventDate);
-      request.input('EventTimeOnly', sql.Time, formattedTime);
+      // Format the date and time for the database
+      const eventDateOnly = eventDetails.date; // Should be in 'YYYY-MM-DD' format
+      const eventTimeOnly = formattedTime; // Should be in 'HH:MM:SS' format
       
-      const result = await request.query(`
+      // Log the values for debugging
+      console.log('Event Date:', eventDateOnly);
+      console.log('Event Time:', eventTimeOnly);
+      
+      // Add parameters for the query
+      request.input('EventDateParam', sql.Date, eventDateOnly);
+      request.input('EventTimeParam', sql.Time, eventTimeOnly);
+      
+      // Log the SQL query for debugging
+      const sqlQuery = `
         INSERT INTO BookingRequests (
           UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
           AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
         )
         OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
         VALUES (
-          @UserID, @VendorProfileID, @Services, @EventDateOnly, @EventTimeOnly, @EventLocation,
+          @UserID, @VendorProfileID, @Services, @EventDateParam, @EventTimeParam, @EventLocation,
           @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
         )
-      `);
+      `;
+      
+      console.log('Executing SQL:', sqlQuery);
+      
+      const result = await request.query(sqlQuery);
 
       if (result.recordset.length > 0) {
         requests.push({
