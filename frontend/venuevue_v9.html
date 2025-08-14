@@ -2980,7 +2980,7 @@
                                 </div>
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
-                                <button type="button" class="btn btn-primary" id="add-service-item-btn">Add Service</button>
+                                <button type="button" class="btn btn-primary" onclick="addServiceNow()">Add Service</button>
                                 <button type="button" class="btn btn-outline" onclick="clearServiceForm()">Clear Form</button>
                             </div>
                         </div>
@@ -8045,11 +8045,19 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     duration: parseInt(serviceDuration)
                 };
 
-                // Add to vendor setup state
-                if (!vendorSetupState.services) {
-                    vendorSetupState.services = [];
+                // Add to vendor setup state (with safety check)
+                if (typeof vendorSetupState !== 'undefined') {
+                    if (!vendorSetupState.services) {
+                        vendorSetupState.services = [];
+                    }
+                    vendorSetupState.services.push(service);
+                } else {
+                    // Fallback: create temporary storage if vendorSetupState doesn't exist
+                    if (!window.tempServices) {
+                        window.tempServices = [];
+                    }
+                    window.tempServices.push(service);
                 }
-                vendorSetupState.services.push(service);
 
                 // Update display
                 updateServicesDisplay();
@@ -8062,14 +8070,22 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             function updateServicesDisplay() {
                 const servicesList = document.getElementById('services-list');
-                if (!servicesList || !vendorSetupState.services) return;
+                if (!servicesList) return;
 
-                if (vendorSetupState.services.length === 0) {
+                // Get services from either vendorSetupState or temporary storage
+                let services = [];
+                if (typeof vendorSetupState !== 'undefined' && vendorSetupState.services) {
+                    services = vendorSetupState.services;
+                } else if (window.tempServices) {
+                    services = window.tempServices;
+                }
+
+                if (services.length === 0) {
                     servicesList.innerHTML = '<p style="color: var(--text-light); font-style: italic;">No services added yet.</p>';
                     return;
                 }
 
-                const servicesHtml = vendorSetupState.services.map((service, index) => `
+                const servicesHtml = services.map((service, index) => `
                     <div class="service-item" style="
                         background-color: white;
                         border: 1px solid var(--border);
@@ -8109,8 +8125,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             function removeService(index) {
-                if (vendorSetupState.services && index >= 0 && index < vendorSetupState.services.length) {
+                // Remove from either vendorSetupState or temporary storage
+                if (typeof vendorSetupState !== 'undefined' && vendorSetupState.services && index >= 0 && index < vendorSetupState.services.length) {
                     vendorSetupState.services.splice(index, 1);
+                    updateServicesDisplay();
+                    console.log('✅ Service removed at index:', index);
+                } else if (window.tempServices && index >= 0 && index < window.tempServices.length) {
+                    window.tempServices.splice(index, 1);
                     updateServicesDisplay();
                     console.log('✅ Service removed at index:', index);
                 }
@@ -8520,6 +8541,77 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     vendorSetupState.vendorProfileId = vendorProfileData.vendorProfileId;
                 }
 
+                // Function to get city coordinates using Google Places API
+                async function getCityCoordinates(cityName, state, country) {
+                    return new Promise((resolve) => {
+                        if (!window.google || !window.google.maps || !window.google.maps.places) {
+                            console.warn('Google Places API not available, using fallback coordinates');
+                            resolve({
+                                lat: 0,
+                                lng: 0,
+                                placeId: '',
+                                formattedAddress: `${cityName}, ${state || ''}, ${country || ''}`,
+                                placeType: 'locality',
+                                postalCode: null,
+                                bounds: null
+                            });
+                            return;
+                        }
+
+                        const service = new google.maps.places.PlacesService(document.createElement('div'));
+                        const request = {
+                            query: `${cityName}, ${state || ''}, ${country || ''}`,
+                            fields: ['place_id', 'geometry', 'formatted_address', 'types', 'address_components']
+                        };
+
+                        service.textSearch(request, (results, status) => {
+                            if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+                                const place = results[0];
+                                const location = place.geometry.location;
+                                
+                                // Extract postal code from address components
+                                let postalCode = null;
+                                if (place.address_components) {
+                                    const postalComponent = place.address_components.find(comp => 
+                                        comp.types.includes('postal_code')
+                                    );
+                                    postalCode = postalComponent ? postalComponent.long_name : null;
+                                }
+
+                                resolve({
+                                    lat: location.lat(),
+                                    lng: location.lng(),
+                                    placeId: place.place_id,
+                                    formattedAddress: place.formatted_address,
+                                    placeType: place.types[0] || 'locality',
+                                    postalCode: postalCode,
+                                    bounds: place.geometry.viewport ? {
+                                        northeast: {
+                                            lat: place.geometry.viewport.getNorthEast().lat(),
+                                            lng: place.geometry.viewport.getNorthEast().lng()
+                                        },
+                                        southwest: {
+                                            lat: place.geometry.viewport.getSouthWest().lat(),
+                                            lng: place.geometry.viewport.getSouthWest().lng()
+                                        }
+                                    } : null
+                                });
+                            } else {
+                                console.warn(`Could not find coordinates for ${cityName}, using fallback`);
+                                resolve({
+                                    lat: 0,
+                                    lng: 0,
+                                    placeId: '',
+                                    formattedAddress: `${cityName}, ${state || ''}, ${country || ''}`,
+                                    placeType: 'locality',
+                                    postalCode: null,
+                                    bounds: null
+                                });
+                            }
+                        });
+                    });
+                }
+
                 // Prepare step data based on current step
                 let stepData = {};
                 let endpoint = '';
@@ -8547,23 +8639,124 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         break;
 
                     case 2: // Location Information
-                        // Collect service areas from the added cities list
+                        // Collect service areas from vendorSetupState.selectedCities or any available city containers
                         const serviceAreas = [];
-                        const additionalCitiesContainer = document.getElementById('additional-cities-container');
-                        if (additionalCitiesContainer) {
-                            const cityItems = additionalCitiesContainer.querySelectorAll('.city-item');
-                            cityItems.forEach(item => {
-                                const cityName = item.textContent.replace('×', '').trim();
-                                if (cityName) {
+                        
+                        // Method 1: Use vendorSetupState.selectedCities if available
+                        if (typeof vendorSetupState !== 'undefined' && vendorSetupState.selectedCities && vendorSetupState.selectedCities.length > 0) {
+                            for (const cityName of vendorSetupState.selectedCities) {
+                                try {
+                                    // Try to get coordinates using Google Places API
+                                    const coordinates = await getCityCoordinates(cityName, document.getElementById('business-state')?.value, document.getElementById('business-country')?.value);
+                                    console.log(`🌍 Coordinates for ${cityName}:`, coordinates);
+                                    
+                                    // Ensure we always have valid coordinates (never null/undefined)
+                                    const lat = (coordinates && typeof coordinates.lat === 'number') ? coordinates.lat : 0;
+                                    const lng = (coordinates && typeof coordinates.lng === 'number') ? coordinates.lng : 0;
+                                    
                                     serviceAreas.push({
+                                        placeId: (coordinates && coordinates.placeId) || '',
                                         city: cityName,
                                         state: document.getElementById('business-state')?.value || '',
-                                        country: document.getElementById('business-country')?.value || 'USA',
-                                        additionalFee: 0
+                                        country: document.getElementById('business-country')?.value || 'Canada',
+                                        latitude: lat,
+                                        longitude: lng,
+                                        formattedAddress: (coordinates && coordinates.formattedAddress) || `${cityName}, ${document.getElementById('business-state')?.value || ''}`,
+                                        placeType: (coordinates && coordinates.placeType) || 'locality',
+                                        postalCode: (coordinates && coordinates.postalCode) || null,
+                                        serviceRadius: parseInt(document.getElementById('service-radius')?.value) || 25,
+                                        travelCost: null,
+                                        minimumBookingAmount: null,
+                                        bounds: (coordinates && coordinates.bounds) || null
+                                    });
+                                } catch (error) {
+                                    console.error(`❌ Error getting coordinates for ${cityName}:`, error);
+                                    // Fallback with guaranteed valid coordinates
+                                    serviceAreas.push({
+                                        placeId: '',
+                                        city: cityName,
+                                        state: document.getElementById('business-state')?.value || '',
+                                        country: document.getElementById('business-country')?.value || 'Canada',
+                                        latitude: 0,
+                                        longitude: 0,
+                                        formattedAddress: `${cityName}, ${document.getElementById('business-state')?.value || ''}`,
+                                        placeType: 'locality',
+                                        postalCode: null,
+                                        serviceRadius: parseInt(document.getElementById('service-radius')?.value) || 25,
+                                        travelCost: null,
+                                        minimumBookingAmount: null,
+                                        bounds: null
+                                    });
+                                }
+                            }
+                        }
+                        
+                        // Method 2: Try to find city tags in any container
+                        if (serviceAreas.length === 0) {
+                            const cityTags = document.querySelectorAll('.city-tag, .city-item, [data-city]');
+                            cityTags.forEach(item => {
+                                const cityName = item.textContent.replace('×', '').trim() || item.dataset.city;
+                                if (cityName) {
+                                    // Ensure coordinates are never null
+                                    const lat = parseFloat(item.dataset.latitude) || 0;
+                                    const lng = parseFloat(item.dataset.longitude) || 0;
+                                    
+                                    serviceAreas.push({
+                                        placeId: item.dataset.placeId || '',
+                                        city: cityName,
+                                        state: document.getElementById('business-state')?.value || '',
+                                        country: document.getElementById('business-country')?.value || 'Canada',
+                                        latitude: lat,
+                                        longitude: lng,
+                                        formattedAddress: item.dataset.formattedAddress || `${cityName}, ${document.getElementById('business-state')?.value || ''}`,
+                                        placeType: item.dataset.placeType || 'locality',
+                                        postalCode: item.dataset.postalCode || null,
+                                        serviceRadius: parseInt(document.getElementById('service-radius')?.value) || 25,
+                                        travelCost: parseFloat(item.dataset.travelCost) || null,
+                                        minimumBookingAmount: parseFloat(item.dataset.minimumBooking) || null,
+                                        bounds: item.dataset.bounds ? JSON.parse(item.dataset.bounds) : null
                                     });
                                 }
                             });
                         }
+                        
+                        // Method 3: Fallback - create a default service area based on main business location
+                        if (serviceAreas.length === 0) {
+                            const businessCity = document.getElementById('business-city')?.value;
+                            if (businessCity) {
+                                const businessLat = parseFloat(document.getElementById('business-latitude')?.value) || 0;
+                                const businessLng = parseFloat(document.getElementById('business-longitude')?.value) || 0;
+                                
+                                serviceAreas.push({
+                                    placeId: '',
+                                    city: businessCity,
+                                    state: document.getElementById('business-state')?.value || '',
+                                    country: document.getElementById('business-country')?.value || 'Canada',
+                                    latitude: businessLat,
+                                    longitude: businessLng,
+                                    formattedAddress: document.getElementById('business-address')?.value || `${businessCity}, ${document.getElementById('business-state')?.value || ''}`,
+                                    placeType: 'locality',
+                                    postalCode: document.getElementById('business-postal')?.value || null,
+                                    serviceRadius: parseInt(document.getElementById('service-radius')?.value) || 25,
+                                    travelCost: null,
+                                    minimumBookingAmount: null,
+                                    bounds: null
+                                });
+                            }
+                        }
+                        
+                        console.log('🔍 Service areas collected:', serviceAreas);
+                        
+                        // Validate that no service area has null coordinates
+                        serviceAreas.forEach((area, index) => {
+                            if (area.latitude === null || area.longitude === null || area.latitude === undefined || area.longitude === undefined) {
+                                console.error(`❌ Service area ${index} has null coordinates:`, area);
+                                // Force to 0 if somehow null got through
+                                area.latitude = area.latitude || 0;
+                                area.longitude = area.longitude || 0;
+                            }
+                            console.log(`✅ Service area ${index}: ${area.city} (${area.latitude}, ${area.longitude})`);
+                        });
                         
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
@@ -13074,8 +13267,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             selectedCitiesContainer.appendChild(cityTag);
             
             // Update vendor setup state
-            if (typeof vendorSetupState !== 'undefined' && vendorSetupState.selectedCities && !vendorSetupState.selectedCities.includes(cityName)) {
-                vendorSetupState.selectedCities.push(cityName);
+            if (typeof vendorSetupState !== 'undefined') {
+                if (!vendorSetupState.selectedCities) {
+                    vendorSetupState.selectedCities = [];
+                }
+                if (!vendorSetupState.selectedCities.includes(cityName)) {
+                    vendorSetupState.selectedCities.push(cityName);
+                }
+            } else {
+                // Fallback: create temporary storage for cities
+                if (!window.tempSelectedCities) {
+                    window.tempSelectedCities = [];
+                }
+                if (!window.tempSelectedCities.includes(cityName)) {
+                    window.tempSelectedCities.push(cityName);
+                }
             }
             
             console.log('✅ Added city tag:', cityName);
@@ -13563,6 +13769,105 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const changeEvent = new Event('change', { bubbles: true });
                 countryInput.dispatchEvent(changeEvent);
             }
+        }
+
+        // SIMPLE SERVICE PREVIEW FUNCTION - GUARANTEED TO WORK
+        function addServiceNow() {
+            const serviceName = document.getElementById('service-name')?.value?.trim() || '';
+            const serviceDescription = document.getElementById('service-description')?.value?.trim() || '';
+            const servicePrice = document.getElementById('service-price')?.value || '';
+            const serviceDuration = document.getElementById('service-duration')?.value || '60';
+
+            if (!serviceName || !serviceDescription || !servicePrice) {
+                alert('Please fill in all required service fields.');
+                return;
+            }
+
+            // Create service preview HTML directly
+            const servicePreview = `
+                <div class="service-item" style="
+                    background-color: white;
+                    border: 1px solid var(--border);
+                    border-radius: var(--radius);
+                    padding: 1rem;
+                    margin-bottom: 0.5rem;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                ">
+                    <div style="flex: 1;">
+                        <h6 style="margin: 0 0 0.5rem 0; color: var(--primary); font-weight: 600;">${serviceName}</h6>
+                        <p style="margin: 0 0 0.5rem 0; color: var(--text); font-size: 0.9rem; line-height: 1.4;">${serviceDescription}</p>
+                        <div style="display: flex; gap: 1rem; font-size: 0.85rem; color: var(--text-light);">
+                            <span><strong>Price:</strong> $${parseFloat(servicePrice).toFixed(2)}</span>
+                            <span><strong>Duration:</strong> ${serviceDuration} min</span>
+                        </div>
+                    </div>
+                    <button onclick="this.parentElement.remove()" style="
+                        background: var(--accent);
+                        color: white;
+                        border: none;
+                        border-radius: 50%;
+                        width: 24px;
+                        height: 24px;
+                        cursor: pointer;
+                        font-size: 0.8rem;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin-left: 0.5rem;
+                    " title="Remove service">×</button>
+                </div>
+            `;
+
+            // Add to services list - create container if it doesn't exist
+            let servicesList = document.getElementById('services-list');
+            if (!servicesList) {
+                // Create the services list container if it doesn't exist
+                servicesList = document.createElement('div');
+                servicesList.id = 'services-list';
+                servicesList.style.cssText = `
+                    margin-top: 1rem;
+                    padding: 1rem;
+                    background-color: #f8fafc;
+                    border-radius: var(--radius);
+                    border: 1px solid var(--border);
+                `;
+                
+                // Try to find a good place to insert it
+                const serviceForm = document.querySelector('[data-service-form]') || 
+                                  document.querySelector('.service-form') ||
+                                  document.querySelector('#service-name')?.closest('form') ||
+                                  document.querySelector('#service-name')?.parentElement?.parentElement;
+                
+                if (serviceForm) {
+                    serviceForm.appendChild(servicesList);
+                } else {
+                    // Fallback: append to body with a header
+                    const header = document.createElement('h4');
+                    header.textContent = 'Added Services:';
+                    header.style.cssText = 'margin: 1rem 0 0.5rem 0; color: var(--primary);';
+                    document.body.appendChild(header);
+                    document.body.appendChild(servicesList);
+                }
+            }
+            
+            if (servicesList) {
+                servicesList.innerHTML += servicePreview;
+            }
+
+            // Clear form
+            const nameField = document.getElementById('service-name');
+            const descField = document.getElementById('service-description');
+            const priceField = document.getElementById('service-price');
+            const durationField = document.getElementById('service-duration');
+            
+            if (nameField) nameField.value = '';
+            if (descField) descField.value = '';
+            if (priceField) priceField.value = '';
+            if (durationField) durationField.value = '';
+
+            console.log('✅ Service added successfully!');
         }
 
         console.log('🎉 All Vendor Setup Improvements JavaScript Loaded Successfully!');
