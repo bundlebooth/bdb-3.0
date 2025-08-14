@@ -550,6 +550,18 @@ router.get('/profile', async (req, res) => {
     console.log(`FINAL GALLERY IMAGES TO RETURN:`, galleryImages);
     console.log(`FINAL GALLERY IMAGES LENGTH:`, galleryImages.length);
 
+    // Get service areas for this vendor
+    const serviceAreasRequest = new sql.Request(pool);
+    serviceAreasRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+    const serviceAreasResult = await serviceAreasRequest.query(`
+      SELECT CityName, Province, Country, PostalCode 
+      FROM VendorServiceAreas 
+      WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
+      ORDER BY CityName
+    `);
+    
+    const serviceAreas = serviceAreasResult.recordset || [];
+    
     // Structure the comprehensive profile data
     const profileData = {
       profile: profileResult.recordsets[0][0] || {},
@@ -562,6 +574,7 @@ router.get('/profile', async (req, res) => {
       team: profileResult.recordsets[7] || [],
       socialMedia: profileResult.recordsets[8] || [],
       businessHours: profileResult.recordsets[9] || [],
+      serviceAreas: serviceAreas,
       images: galleryImages, // Use directly fetched gallery images
       isFavorite: profileResult.recordsets[11] ? profileResult.recordsets[11][0]?.IsFavorite || false : false,
       availableSlots: profileResult.recordsets[12] || []
@@ -2182,7 +2195,7 @@ router.post('/setup/step1-business-basics', async (req, res) => {
 // Step 2: Location Information
 router.post('/setup/step2-location', async (req, res) => {
   try {
-    const { vendorProfileId, address, city, state, country, postalCode, serviceAreas } = req.body;
+    const { vendorProfileId, address, city, state, country, postalCode, serviceAreas, serviceRadius, latitude, longitude } = req.body;
 
     if (!vendorProfileId) {
       return res.status(400).json({ success: false, message: 'Vendor profile ID is required' });
@@ -2197,6 +2210,9 @@ router.post('/setup/step2-location', async (req, res) => {
     request.input('State', sql.NVarChar(100), state);
     request.input('Country', sql.NVarChar(100), country);
     request.input('PostalCode', sql.NVarChar(20), postalCode);
+    request.input('ServiceRadius', sql.Int, serviceRadius || 25);
+    request.input('Latitude', sql.Decimal(10, 8), latitude);
+    request.input('Longitude', sql.Decimal(11, 8), longitude);
     
     await request.query(`
       UPDATE VendorProfiles 
@@ -2205,9 +2221,37 @@ router.post('/setup/step2-location', async (req, res) => {
           State = @State,
           Country = @Country,
           PostalCode = @PostalCode,
+          ServiceRadius = @ServiceRadius,
+          Latitude = @Latitude,
+          Longitude = @Longitude,
           UpdatedAt = GETUTCDATE()
       WHERE VendorProfileID = @VendorProfileID
     `);
+    
+    // Handle service areas if provided
+    if (serviceAreas && serviceAreas.length > 0) {
+      // First, clear existing service areas
+      const clearRequest = new sql.Request(pool);
+      clearRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await clearRequest.query(`
+        DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID
+      `);
+      
+      // Insert new service areas
+      for (const area of serviceAreas) {
+        const areaRequest = new sql.Request(pool);
+        areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        areaRequest.input('CityName', sql.NVarChar(100), area.city || area.name || area);
+        areaRequest.input('Province', sql.NVarChar(100), area.province || area.state || state);
+        areaRequest.input('Country', sql.NVarChar(100), area.country || country);
+        areaRequest.input('PostalCode', sql.NVarChar(20), area.postalCode || null);
+        
+        await areaRequest.query(`
+          INSERT INTO VendorServiceAreas (VendorProfileID, CityName, Province, Country, PostalCode, IsActive, CreatedAt, UpdatedAt)
+          VALUES (@VendorProfileID, @CityName, @Province, @Country, @PostalCode, 1, GETUTCDATE(), GETUTCDATE())
+        `);
+      }
+    }
     
     res.json({ success: true, message: 'Location information saved successfully' });
 
