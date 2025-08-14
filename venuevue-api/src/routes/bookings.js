@@ -143,13 +143,7 @@ router.post('/create-payment-intent', async (req, res) => {
 // Multi-step booking request endpoints
 router.post('/requests', async (req, res) => {
   try {
-    const {
-      userId,
-      vendorIds,
-      services,
-      eventDetails,
-      budget
-    } = req.body;
+    const { userId, vendorIds, services, eventDetails, budget } = req.body;
 
     // Input validation
     if (!userId || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
@@ -169,80 +163,76 @@ router.post('/requests', async (req, res) => {
     const pool = await poolPromise;
     const requests = [];
 
-    // Enhanced time validation and formatting
-    let eventTime = eventDetails.time.trim();
+    // 1. Parse and validate the time string
+    const timeString = eventDetails.time.trim();
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
     
-    // 1. Ensure basic format (HH:MM:SS)
-    if (!eventTime.includes(':')) {
-      eventTime = '12:00:00'; // Default if completely invalid
-    }
-    
-    // 2. Split and validate components
-    const timeParts = eventTime.split(':');
-    while (timeParts.length < 3) {
-      timeParts.push('00'); // Ensure we have hours, minutes, seconds
-    }
-    
-    // 3. Validate each component (FIXED SYNTAX)
-    const hours = parseInt(timeParts[0]);
-    const minutes = parseInt(timeParts[1]);
-    const seconds = parseInt(timeParts[2]);
-
-    if (isNaN(hours) || hours < 0 || hours > 23 ||
-        isNaN(minutes) || minutes < 0 || minutes > 59 ||
-        isNaN(seconds) || seconds < 0 || seconds > 59) {
+    if (!timeRegex.test(timeString)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid time components. Hours (0-23), Minutes (0-59), Seconds (0-59)'
+        message: 'Invalid time format. Please use HH:MM or HH:MM:SS'
       });
     }
 
-    // 4. Reconstruct the time string with proper padding
-    const formattedTime = 
-      `${hours.toString().padStart(2, '0')}:` +
-      `${minutes.toString().padStart(2, '0')}:` +
-      `${seconds.toString().padStart(2, '0')}`;
+    // 2. Normalize to HH:MM:SS format
+    const timeParts = timeString.split(':');
+    const hours = parseInt(timeParts[0], 10);
+    const minutes = parseInt(timeParts[1], 10);
+    const seconds = timeParts[2] ? parseInt(timeParts[2], 10) : 0;
+    
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time values. Hours (0-23), Minutes (0-59), Seconds (0-59)'
+      });
+    }
 
-    console.log('Formatted time for SQL:', formattedTime);
+    const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+    // 3. Create a combined datetime object
+    const eventDateTime = new Date(`${eventDetails.date}T${formattedTime}`);
+    if (isNaN(eventDateTime.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date/time combination'
+      });
+    }
 
     // Create requests for each vendor
     for (const vendorId of vendorIds) {
       try {
         const request = new sql.Request(pool);
         
+        // Using a single DateTime parameter instead of separate Date and Time
         request.input('UserID', sql.Int, userId);
         request.input('VendorProfileID', sql.Int, vendorId);
         request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
+        request.input('EventDateTime', sql.DateTime, eventDateTime);
         request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
         request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
         request.input('Budget', sql.Decimal(10, 2), budget);
         request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || null);
         request.input('Status', sql.NVarChar(50), 'pending');
         
-        // Using separate date and time parameters
-        request.input('EventDateParam', sql.Date, eventDetails.date);
-        request.input('EventTimeParam', sql.Time, formattedTime);
-        
         // Set expiry to 24 hours from now
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + 24);
         request.input('ExpiresAt', sql.DateTime, expiresAt);
 
-        const sqlQuery = `
+        const result = await request.query(`
           INSERT INTO BookingRequests (
             UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
             AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
           )
           OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
           VALUES (
-            @UserID, @VendorProfileID, @Services, @EventDateParam, @EventTimeParam, @EventLocation,
+            @UserID, @VendorProfileID, @Services, 
+            CONVERT(DATE, @EventDateTime), 
+            CONVERT(TIME, @EventDateTime), 
+            @EventLocation,
             @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
           )
-        `;
-        
-        console.log('Executing SQL:', sqlQuery);
-        
-        const result = await request.query(sqlQuery);
+        `);
 
         if (result.recordset.length > 0) {
           requests.push({
@@ -265,15 +255,11 @@ router.post('/requests', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Database error details:', {
+    console.error('Database error:', {
       message: err.message,
       code: err.code,
       number: err.number,
-      state: err.state,
-      class: err.class,
-      serverName: err.serverName,
-      procName: err.procName,
-      lineNumber: err.lineNumber
+      stack: err.stack
     });
     
     res.status(500).json({ 
