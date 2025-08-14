@@ -224,15 +224,15 @@ router.post('/create-payment-intent', async (req, res) => {
   }
 });
 
-// NEW: Multi-step booking request endpoints
+// In your bookings.js file, find the /requests endpoint and update it as follows:
 router.post('/requests', async (req, res) => {
   try {
-    console.log('Request Body:', JSON.stringify(req.body, null, 2)); // Log the entire request body
-
     const {
       userId,
       vendorIds,
       services,
+      eventDate,  // This should be in format 'YYYY-MM-DD'
+      eventTime,  // This should be in format 'HH:MM:SS'
       eventDetails,
       budget
     } = req.body;
@@ -244,8 +244,6 @@ router.post('/requests', async (req, res) => {
       });
     }
 
-    console.log('Event Details:', JSON.stringify(eventDetails, null, 2)); // Log event details
-
     const pool = await poolPromise;
     const requests = [];
 
@@ -253,21 +251,22 @@ router.post('/requests', async (req, res) => {
     for (const vendorId of vendorIds) {
       const request = new sql.Request(pool);
       
-      // Parse date and time separately with validation
-      const eventDate = eventDetails.date ? new Date(eventDetails.date) : new Date();
-      const eventTime = eventDetails.time || '12:00:00'; // Ensure time is in HH:MM:SS format
-
-      console.log(`Processing vendor ${vendorId} with date: ${eventDate}, time: ${eventTime}`);
+      // Combine date and time into a single datetime
+      const eventDateTime = new Date(`${eventDate}T${eventTime}`);
+      
+      if (isNaN(eventDateTime.getTime())) {
+        throw new Error('Invalid date or time format. Please use YYYY-MM-DD for date and HH:MM:SS for time.');
+      }
 
       request.input('UserID', sql.Int, userId);
       request.input('VendorProfileID', sql.Int, vendorId);
       request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
       request.input('EventDate', sql.Date, eventDate);
       request.input('EventTime', sql.Time, eventTime);
-      request.input('EventLocation', sql.NVarChar(500), eventDetails.location || 'Not specified');
-      request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
-      request.input('Budget', sql.Decimal(10, 2), budget || 0);
-      request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || 'No special requests');
+      request.input('EventLocation', sql.NVarChar(500), eventDetails?.location || null);
+      request.input('AttendeeCount', sql.Int, eventDetails?.attendeeCount || 50);
+      request.input('Budget', sql.Decimal(10, 2), budget);
+      request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails?.specialRequests || null);
       request.input('Status', sql.NVarChar(50), 'pending');
       request.input('ExpiresAt', sql.DateTime, new Date(Date.now() + 24 * 60 * 60 * 1000)); // 24 hours
 
@@ -284,8 +283,6 @@ router.post('/requests', async (req, res) => {
           )
         `);
 
-        console.log('Insert result:', result.recordset[0]); // Log the insert result
-
         if (result.recordset.length > 0) {
           requests.push({
             requestId: result.recordset[0].RequestID,
@@ -296,16 +293,20 @@ router.post('/requests', async (req, res) => {
           });
         }
       } catch (dbError) {
-        console.error('Database error details:', {
-          message: dbError.message,
-          number: dbError.number,
-          state: dbError.state,
-          class: dbError.class,
-          serverName: dbError.serverName,
-          procName: dbError.procName,
-          lineNumber: dbError.lineNumber
+        console.error('Database error in request creation:', {
+          error: dbError.message,
+          vendorId: vendorId,
+          parameters: {
+            UserID: userId,
+            VendorProfileID: vendorId,
+            EventDate: eventDate,
+            EventTime: eventTime,
+            EventLocation: eventDetails?.location,
+            AttendeeCount: eventDetails?.attendeeCount || 50,
+            Budget: budget
+          }
         });
-        throw dbError; // Re-throw to be caught by the outer catch
+        throw dbError;
       }
     }
 
@@ -316,18 +317,18 @@ router.post('/requests', async (req, res) => {
 
   } catch (err) {
     console.error('Error in /requests endpoint:', {
-      message: err.message,
+      error: err.message,
       stack: err.stack,
-      name: err.name
+      requestBody: req.body
     });
     res.status(500).json({ 
       success: false,
       message: 'Failed to create booking requests',
-      error: err.message,
-      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      error: err.message 
     });
   }
 });
+
 // Get services by category for booking modal
 router.get('/services/:categoryId', async (req, res) => {
   try {
