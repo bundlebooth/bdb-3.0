@@ -213,15 +213,33 @@ router.post('/requests', async (req, res) => {
 
       // Format the date and time for the database
       const eventDateOnly = eventDetails.date; // Should be in 'YYYY-MM-DD' format
-      const eventTimeOnly = formattedTime; // Should be in 'HH:MM:SS' format
+      
+      // Ensure time is in HH:MM:SS format
+      let eventTimeOnly = formattedTime;
+      if (!eventTimeOnly) {
+        eventTimeOnly = '12:00:00'; // Default to noon if no time provided
+      } else if (eventTimeOnly.split(':').length === 2) {
+        // If only hours and minutes are provided, add seconds
+        eventTimeOnly += ':00';
+      }
       
       // Log the values for debugging
       console.log('Event Date:', eventDateOnly);
-      console.log('Event Time:', eventTimeOnly);
+      console.log('Event Time (formatted):', eventTimeOnly);
+      
+      // Create a JavaScript Date object to validate the time
+      const [hours, minutes, seconds] = eventTimeOnly.split(':');
+      const timeDate = new Date();
+      timeDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds || '0', 10));
+      
+      // Format time as HH:MM:SS
+      const formattedTimeForSQL = timeDate.toTimeString().split(' ')[0];
+      
+      console.log('Formatted Time for SQL:', formattedTimeForSQL);
       
       // Add parameters for the query
       request.input('EventDateParam', sql.Date, eventDateOnly);
-      request.input('EventTimeParam', sql.Time, eventTimeOnly);
+      request.input('EventTimeParam', sql.Time(0), formattedTimeForSQL);
       
       // Log the SQL query for debugging
       const sqlQuery = `
