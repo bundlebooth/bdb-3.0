@@ -2146,7 +2146,6 @@ router.post('/setup/step2-location', async (req, res) => {
     request.input('State', sql.NVarChar(100), state);
     request.input('Country', sql.NVarChar(100), country);
     request.input('PostalCode', sql.NVarChar(20), postalCode);
-    request.input('ServiceRadius', sql.Int, serviceRadius || 25);
     request.input('Latitude', sql.Decimal(10, 8), latitude);
     request.input('Longitude', sql.Decimal(11, 8), longitude);
     
@@ -2157,7 +2156,6 @@ router.post('/setup/step2-location', async (req, res) => {
           State = @State,
           Country = @Country,
           PostalCode = @PostalCode,
-          ServiceRadius = @ServiceRadius,
           Latitude = @Latitude,
           Longitude = @Longitude,
           UpdatedAt = GETUTCDATE()
