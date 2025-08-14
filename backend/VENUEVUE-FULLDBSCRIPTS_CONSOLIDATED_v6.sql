@@ -165,19 +165,6 @@ CREATE TABLE VendorAvailabilityExceptions (
 );
 GO
 
--- Vendor service areas
-CREATE TABLE VendorServiceAreas (
-    AreaID INT PRIMARY KEY IDENTITY(1,1),
-    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    City NVARCHAR(100) NOT NULL,
-    State NVARCHAR(50) NOT NULL,
-    Country NVARCHAR(50) NOT NULL,
-    RadiusMiles INT DEFAULT 25,
-    AdditionalFee DECIMAL(10,2) DEFAULT 0.00,
-    CONSTRAINT UC_VendorServiceArea UNIQUE (VendorProfileID, City, State, Country)
-);
-GO
-
 -- Vendor portfolio items
 CREATE TABLE VendorPortfolio (
     PortfolioID INT PRIMARY KEY IDENTITY(1,1),
@@ -244,19 +231,6 @@ CREATE TABLE Packages (
     DisplayOrder INT DEFAULT 0,
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE()
-);
-GO
-
--- Service areas table for location-based services
-CREATE TABLE VendorServiceAreas (
-    ServiceAreaID INT PRIMARY KEY IDENTITY(1,1),
-    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
-    AreaName NVARCHAR(100) NOT NULL,
-    State NVARCHAR(50),
-    ZipCode NVARCHAR(20),
-    ServiceRadius INT, -- in miles
-    AdditionalFee DECIMAL(10, 2) DEFAULT 0,
-    CreatedAt DATETIME DEFAULT GETDATE()
 );
 GO
 
