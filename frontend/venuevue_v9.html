@@ -15,6 +15,10 @@
     <!-- Add Chart.js for analytics graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Add Select2 for enhanced dropdowns -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <!-- Google Places API will be loaded dynamically with API key from backend -->
     <style>
         :root {
             --primary: #5e72e4;
@@ -2814,8 +2818,8 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="business-description">Business Description *</label>
-                        <textarea id="business-description" rows="4" required placeholder="Describe your business and what makes you unique..."></textarea>
+                        <label for="business-description">Business Description <span style="color: red;">*</span></label>
+                        <textarea id="business-description" rows="6" required placeholder="Describe your business and what makes you unique..." style="min-height: 150px; resize: vertical;"></textarea>
                     </div>
                     
                     <div class="form-group">
@@ -2826,8 +2830,8 @@
                     <div class="form-row">
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="primary-category">Primary Category *</label>
-                                <select id="primary-category" required>
+                                <label for="primary-category">Primary Category <span style="color: red;">*</span></label>
+                                <select id="primary-category" required class="select2-category">
                                     <option value="">Select primary category</option>
                                     <option value="beauty">Beauty</option>
                                     <option value="cake">Cake</option>
@@ -2848,7 +2852,7 @@
                         <div class="form-col">
                             <div class="form-group">
                                 <label for="additional-categories">Additional Categories</label>
-                                <select id="additional-categories" multiple style="height: 120px;">
+                                <select id="additional-categories" multiple class="select2-category">
                                     <option value="beauty">Beauty</option>
                                     <option value="cake">Cake</option>
                                     <option value="catering">Catering</option>
@@ -2863,7 +2867,7 @@
                                     <option value="transport">Transport</option>
                                     <option value="venue">Venue</option>
                                 </select>
-                                <small style="color: var(--text-light);">Hold Ctrl/Cmd to select multiple</small>
+                                <small style="color: var(--text-light);">Select multiple categories that apply to your business</small>
                             </div>
                         </div>
                     </div>
@@ -2880,51 +2884,61 @@
                     
                     <h5 style="margin-bottom: 1rem; color: var(--primary);">Physical Location</h5>
                     <div class="form-group">
-                        <label for="business-address">Street Address *</label>
-                        <input type="text" id="business-address" required placeholder="123 Main Street">
+                        <label for="business-address">Street Address <span style="color: red;">*</span></label>
+                        <input type="text" id="business-address" required placeholder="123 Main Street" class="google-autocomplete">
+                        <small style="color: var(--text-light);">Start typing your address and select from suggestions</small>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="business-city">City *</label>
-                                <input type="text" id="business-city" required>
+                                <label for="business-city">City <span style="color: red;">*</span></label>
+                                <input type="text" id="business-city" required readonly style="background-color: #f8f9fa;">
                             </div>
                         </div>
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="business-state">State/Province *</label>
-                                <input type="text" id="business-state" required>
+                                <label for="business-state">State/Province <span style="color: red;">*</span></label>
+                                <input type="text" id="business-state" required readonly style="background-color: #f8f9fa;">
                             </div>
                         </div>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-col">
-                    <div class="form-group">
-                        <label for="business-country">Country</label>
-                        <select id="business-country">
-                            <option value="USA">United States</option>
-                            <option value="Canada">Canada</option>
-                            <option value="UK">United Kingdom</option>
-                            <option value="Australia">Australia</option>
-                            <option value="Other">Other</option>
-                        </select>
+                            <div class="form-group">
+                                <label for="business-country">Country</label>
+                                <select id="business-country">
+                                    <option value="USA">United States</option>
+                                    <option value="Canada">Canada</option>
+                                    <option value="UK">United Kingdom</option>
+                                    <option value="Australia">Australia</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="business-postal">Postal/Zip Code <span style="color: red;">*</span></label>
+                                <input type="text" id="business-postal" required readonly style="background-color: #f8f9fa;">
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="form-col">
-                    <div class="form-group">
-                        <label for="business-postal">Postal/Zip Code *</label>
-                        <input type="text" id="business-postal" required>
-                    </div>
-                </div>
-            </div>
+                    
+                    <!-- Hidden fields for latitude and longitude -->
+                    <input type="hidden" id="business-latitude">
+                    <input type="hidden" id="business-longitude">
 
             <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Service Areas</h5>
             <div class="form-group">
                 <label for="additional-cities">Additional Cities/Regions Served</label>
-                <textarea id="additional-cities" rows="3" placeholder="List additional cities or regions served, separated by commas (e.g., New York, Los Angeles, Chicago)"></textarea>
-                <small style="color: var(--text-light); font-size: 0.8rem;">Include any cities, towns, or regions outside your primary location where you provide services. This helps clients find you when searching in those areas.</small>
+                <div id="additional-cities-container" style="min-height: 120px; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; background-color: white;">
+                    <input type="text" id="additional-cities-input" placeholder="Start typing a city name..." class="google-places-input" style="width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem;">
+                    <div id="selected-cities" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <!-- Selected cities will appear here as tags -->
+                    </div>
+                </div>
+                <small style="color: var(--text-light); font-size: 0.8rem;">Type city names and select from Google's suggestions. Selected cities will appear as tags above.</small>
             </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
@@ -2938,68 +2952,42 @@
                     <h4 class="form-section-title">Step 3: Services & Packages</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Define your service offerings and packages for clients.</p>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                        <!-- Service Categories Section -->
-                        <div>
-                            <h5 style="margin-bottom: 1rem; color: var(--primary);">Service Categories</h5>
-                            <div id="service-categories-list" style="margin-bottom: 1rem;">
-                                <!-- Service categories will be listed here -->
-                            </div>
-                            <button type="button" class="btn btn-outline" id="add-service-category-btn">Add Category</button>
-                            
-                            <!-- Service Category Form -->
-                            <div id="service-category-form" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
-                                <div class="form-group">
-                                    <label>Category Name</label>
-                                    <input type="text" id="category-name" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Category Description</label>
-                                    <textarea id="category-description" rows="2"></textarea>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <button type="button" class="btn btn-primary" id="add-category-item-btn">Add Category</button>
-                                    <button type="button" class="btn btn-outline" onclick="document.getElementById('service-category-form').style.display='none'">Cancel</button>
-                                </div>
-                            </div>
+                    <!-- Services Section -->
+                    <div>
+                        <h5 style="margin-bottom: 1rem; color: var(--primary);">Your Services</h5>
+                        <p style="color: var(--text-light); margin-bottom: 1.5rem;">Add the services you offer to potential clients. You can add multiple services with different pricing.</p>
+                        <div id="services-list" style="margin-bottom: 1rem;">
+                            <!-- Services will be listed here -->
                         </div>
+                        <button type="button" class="btn btn-outline" id="add-service-btn">Add Service</button>
                         
-                        <!-- Services Section -->
-                        <div>
-                            <h5 style="margin-bottom: 1rem; color: var(--primary);">Individual Services</h5>
-                            <div id="services-list" style="margin-bottom: 1rem;">
-                                <!-- Services will be listed here -->
+                        <!-- Service Form -->
+                        <div id="service-form" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                            <div class="form-group">
+                                <label>Service Name <span style="color: red;">*</span></label>
+                                <input type="text" id="service-name" required placeholder="e.g., Wedding Photography Package">
                             </div>
-                            <button type="button" class="btn btn-outline" id="add-service-btn">Add Service</button>
-                            
-                            <!-- Service Form -->
-                            <div id="service-form" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
-                                <div class="form-group">
-                                    <label>Service Name *</label>
-                                    <input type="text" id="service-name" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Description *</label>
-                                    <textarea id="service-description" rows="3" required></textarea>
-                                </div>
-                                <div class="form-row">
-                                    <div class="form-col">
-                                        <div class="form-group">
-                                            <label>Price ($) *</label>
-                                            <input type="number" id="service-price" min="0" step="0.01" required>
-                                        </div>
-                                    </div>
-                                    <div class="form-col">
-                                        <div class="form-group">
-                                            <label>Duration (minutes)</label>
-                                            <input type="number" id="service-duration" min="15" step="15" value="60">
-                                        </div>
+                            <div class="form-group">
+                                <label>Description <span style="color: red;">*</span></label>
+                                <textarea id="service-description" rows="3" required placeholder="Describe what's included in this service..."></textarea>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-col">
+                                    <div class="form-group">
+                                        <label>Price ($) <span style="color: red;">*</span></label>
+                                        <input type="number" id="service-price" min="0" step="0.01" required placeholder="0.00">
                                     </div>
                                 </div>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <button type="button" class="btn btn-primary" id="add-service-item-btn">Add Service</button>
-                                    <button type="button" class="btn btn-outline" onclick="document.getElementById('service-form').style.display='none'">Cancel</button>
+                                <div class="form-col">
+                                    <div class="form-group">
+                                        <label>Duration (minutes)</label>
+                                        <input type="number" id="service-duration" min="15" step="15" placeholder="60">
+                                    </div>
                                 </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button type="button" class="btn btn-primary" id="add-service-item-btn">Add Service</button>
+                                <button type="button" class="btn btn-outline" onclick="document.getElementById('service-form').style.display='none'">Cancel</button>
                             </div>
                         </div>
                     </div>
@@ -3049,9 +3037,9 @@
                                 <strong>Monday</strong>
                             </label>
                             <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-time-1" value="09:00" style="flex: 1;">
+                                <input type="time" id="start-time-1" style="flex: 1;">
                                 <span style="align-self: center;">to</span>
-                                <input type="time" id="end-time-1" value="17:00" style="flex: 1;">
+                                <input type="time" id="end-time-1" style="flex: 1;">
                             </div>
                         </div>
                         <div class="availability-day">
@@ -3060,9 +3048,9 @@
                                 <strong>Tuesday</strong>
                             </label>
                             <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-time-2" value="09:00" style="flex: 1;">
+                                <input type="time" id="start-time-2" style="flex: 1;">
                                 <span style="align-self: center;">to</span>
-                                <input type="time" id="end-time-2" value="17:00" style="flex: 1;">
+                                <input type="time" id="end-time-2" style="flex: 1;">
                             </div>
                         </div>
                         <div class="availability-day">
@@ -3071,9 +3059,9 @@
                                 <strong>Wednesday</strong>
                             </label>
                             <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-time-3" value="09:00" style="flex: 1;">
+                                <input type="time" id="start-time-3" style="flex: 1;">
                                 <span style="align-self: center;">to</span>
-                                <input type="time" id="end-time-3" value="17:00" style="flex: 1;">
+                                <input type="time" id="end-time-3" style="flex: 1;">
                             </div>
                         </div>
                         <div class="availability-day">
@@ -3082,9 +3070,9 @@
                                 <strong>Thursday</strong>
                             </label>
                             <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-time-4" value="09:00" style="flex: 1;">
+                                <input type="time" id="start-time-4" style="flex: 1;">
                                 <span style="align-self: center;">to</span>
-                                <input type="time" id="end-time-4" value="17:00" style="flex: 1;">
+                                <input type="time" id="end-time-4" style="flex: 1;">
                             </div>
                         </div>
                         <div class="availability-day">
@@ -3093,9 +3081,9 @@
                                 <strong>Friday</strong>
                             </label>
                             <div style="display: flex; gap: 0.5rem;">
-                                <input type="time" id="start-time-5" value="09:00" style="flex: 1;">
+                                <input type="time" id="start-time-5" style="flex: 1;">
                                 <span style="align-self: center;">to</span>
-                                <input type="time" id="end-time-5" value="17:00" style="flex: 1;">
+                                <input type="time" id="end-time-5" style="flex: 1;">
                             </div>
                         </div>
                         <div class="availability-day">
@@ -3148,9 +3136,13 @@
                     
                     <h5 style="margin-bottom: 1rem; color: var(--primary);">Featured Image</h5>
                     <div class="form-group">
-                        <label for="featured-image">Main Profile Image *</label>
+                        <label for="featured-image">Main Profile Image <span style="color: red;">*</span></label>
                         <input type="file" id="featured-image" accept="image/*" required>
                         <small style="color: var(--text-light);">This will be the main image displayed on your profile. Recommended size: 800x600px</small>
+                        <div id="featured-image-preview" style="margin-top: 1rem; display: none;">
+                            <img id="featured-image-display" style="max-width: 300px; max-height: 200px; border-radius: var(--radius); border: 1px solid var(--border);">
+                            <p style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-light);">Preview of your main profile image</p>
+                        </div>
                     </div>
                     
                     <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Gallery Images</h5>
@@ -3158,17 +3150,17 @@
                         <label for="gallery-images">Additional Images</label>
                         <input type="file" id="gallery-images" accept="image/*" multiple>
                         <small style="color: var(--text-light);">Upload multiple images to showcase your work. You can select up to 20 images.</small>
+                        <div id="selected-images-list" style="margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius); background-color: #f8f9fa; display: none;">
+                            <h6 style="margin-bottom: 0.5rem; color: var(--primary);">Selected Images:</h6>
+                            <div id="image-names-list" style="font-size: 0.9rem; color: var(--text-light);"></div>
+                        </div>
                     </div>
                     
-                    <div id="image-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                    <div id="image-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; margin-top: 1rem;">
                         <!-- Image previews will appear here -->
                     </div>
                     
-                    <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Portfolio Links</h5>
-                    <div class="form-group">
-                        <label for="portfolio-website">Portfolio Website</label>
-                        <input type="url" id="portfolio-website" placeholder="https://yourportfolio.com">
-                    </div>
+                    <!-- Portfolio Links section removed as requested -->
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
                         <button type="button" class="btn btn-outline" id="back-to-step-5">Back: Availability & Scheduling</button>
@@ -3184,28 +3176,64 @@
                     <h5 style="margin-bottom: 1rem; color: var(--primary);">Social Media Profiles</h5>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
                         <div class="form-group">
-                            <label for="social-facebook">Facebook</label>
-                            <input type="url" id="social-facebook" placeholder="https://facebook.com/yourpage">
+                            <label for="social-facebook" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fab fa-facebook" style="color: #1877f2; font-size: 1.2rem;"></i>
+                                Facebook
+                            </label>
+                            <div style="position: relative;">
+                                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-light); font-size: 0.9rem; pointer-events: none;">https://facebook.com/</span>
+                                <input type="text" id="social-facebook" placeholder="yourpage" style="padding-left: 140px;" data-prefix="https://facebook.com/">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="social-instagram">Instagram</label>
-                            <input type="url" id="social-instagram" placeholder="https://instagram.com/youraccount">
+                            <label for="social-instagram" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fab fa-instagram" style="color: #E4405F; font-size: 1.2rem;"></i>
+                                Instagram
+                            </label>
+                            <div style="position: relative;">
+                                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-light); font-size: 0.9rem; pointer-events: none;">https://instagram.com/</span>
+                                <input type="text" id="social-instagram" placeholder="youraccount" style="padding-left: 150px;" data-prefix="https://instagram.com/">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="social-twitter">Twitter</label>
-                            <input type="url" id="social-twitter" placeholder="https://twitter.com/youraccount">
+                            <label for="social-twitter" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fab fa-twitter" style="color: #1DA1F2; font-size: 1.2rem;"></i>
+                                Twitter
+                            </label>
+                            <div style="position: relative;">
+                                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-light); font-size: 0.9rem; pointer-events: none;">https://twitter.com/</span>
+                                <input type="text" id="social-twitter" placeholder="youraccount" style="padding-left: 130px;" data-prefix="https://twitter.com/">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="social-linkedin">LinkedIn</label>
-                            <input type="url" id="social-linkedin" placeholder="https://linkedin.com/company/yourcompany">
+                            <label for="social-linkedin" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fab fa-linkedin" style="color: #0077B5; font-size: 1.2rem;"></i>
+                                LinkedIn
+                            </label>
+                            <div style="position: relative;">
+                                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-light); font-size: 0.9rem; pointer-events: none;">https://linkedin.com/company/</span>
+                                <input type="text" id="social-linkedin" placeholder="yourcompany" style="padding-left: 180px;" data-prefix="https://linkedin.com/company/">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="social-youtube">YouTube</label>
-                            <input type="url" id="social-youtube" placeholder="https://youtube.com/yourchannel">
+                            <label for="social-youtube" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fab fa-youtube" style="color: #FF0000; font-size: 1.2rem;"></i>
+                                YouTube
+                            </label>
+                            <div style="position: relative;">
+                                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-light); font-size: 0.9rem; pointer-events: none;">https://youtube.com/</span>
+                                <input type="text" id="social-youtube" placeholder="yourchannel" style="padding-left: 140px;" data-prefix="https://youtube.com/">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="social-tiktok">TikTok</label>
-                            <input type="url" id="social-tiktok" placeholder="https://tiktok.com/@youraccount">
+                            <label for="social-tiktok" style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fab fa-tiktok" style="color: #000000; font-size: 1.2rem;"></i>
+                                TikTok
+                            </label>
+                            <div style="position: relative;">
+                                <span style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-light); font-size: 0.9rem; pointer-events: none;">https://tiktok.com/@</span>
+                                <input type="text" id="social-tiktok" placeholder="youraccount" style="padding-left: 130px;" data-prefix="https://tiktok.com/@">
+                            </div>
                         </div>
                     </div>
                     
@@ -3215,10 +3243,7 @@
                             <label for="booking-link">Online Booking Link</label>
                             <input type="url" id="booking-link" placeholder="https://yourbookingsite.com">
                         </div>
-                        <div class="form-group">
-                            <label for="portfolio-link">Portfolio Website</label>
-                            <input type="url" id="portfolio-link" placeholder="https://yourportfolio.com">
-                        </div>
+                        <!-- Portfolio Website removed as requested -->
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
@@ -12388,5 +12413,534 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
         });
+
+        // ===== VENDOR SETUP IMPROVEMENTS JAVASCRIPT =====
+        
+        // Global variable to store configuration
+        let appConfig = null;
+        
+        // Initialize all vendor setup improvements when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeVendorSetupImprovements();
+        });
+
+        async function initializeVendorSetupImprovements() {
+            console.log('🚀 Initializing Vendor Setup Improvements...');
+            
+            try {
+                // First, load configuration from backend
+                await loadAppConfiguration();
+                
+                // Initialize Select2 for category dropdowns
+                initializeSelect2();
+                
+                // Load Google Places API dynamically and then initialize
+                await loadGooglePlacesAPI();
+                
+                // Initialize image upload handlers
+                initializeImageUpload();
+                
+                // Initialize social media handlers
+                initializeSocialMediaHandlers();
+                
+                // Initialize summary page functionality
+                initializeSummaryPage();
+                
+                // Add red asterisks to all required fields
+                addRequiredFieldAsterisks();
+                
+                console.log('✅ Vendor Setup Improvements Initialized');
+            } catch (error) {
+                console.error('❌ Error initializing vendor setup improvements:', error);
+                // Continue with basic functionality even if some features fail
+                initializeSelect2();
+                initializeImageUpload();
+                initializeSocialMediaHandlers();
+                initializeSummaryPage();
+                addRequiredFieldAsterisks();
+            }
+        }
+
+        // Load application configuration from backend
+        async function loadAppConfiguration() {
+            try {
+                const response = await fetch('/api/config');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                if (result.status === 'success') {
+                    appConfig = result.data;
+                    console.log('✅ App configuration loaded:', appConfig);
+                } else {
+                    throw new Error('Failed to load configuration');
+                }
+            } catch (error) {
+                console.error('❌ Error loading app configuration:', error);
+                // Fallback configuration
+                appConfig = {
+                    googleMapsApiKey: '',
+                    apiBaseUrl: 'http://localhost:3000/api'
+                };
+            }
+        }
+
+        // Dynamically load Google Places API
+        async function loadGooglePlacesAPI() {
+            return new Promise((resolve, reject) => {
+                if (!appConfig || !appConfig.googleMapsApiKey) {
+                    console.warn('⚠️ Google Maps API key not available, skipping Google Places initialization');
+                    resolve();
+                    return;
+                }
+
+                // Check if Google Maps is already loaded
+                if (window.google && window.google.maps) {
+                    console.log('✅ Google Maps API already loaded');
+                    initializeGooglePlaces();
+                    resolve();
+                    return;
+                }
+
+                // Create script element to load Google Maps API
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${appConfig.googleMapsApiKey}&libraries=places`;
+                script.async = true;
+                script.defer = true;
+                
+                script.onload = () => {
+                    console.log('✅ Google Maps API loaded successfully');
+                    // Initialize Google Places after API is loaded
+                    setTimeout(() => {
+                        initializeGooglePlaces();
+                        resolve();
+                    }, 100);
+                };
+                
+                script.onerror = (error) => {
+                    console.error('❌ Error loading Google Maps API:', error);
+                    reject(error);
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+
+        // Initialize Select2 for enhanced dropdowns
+        function initializeSelect2() {
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $('.select2-category').select2({
+                    placeholder: 'Select categories...',
+                    allowClear: true,
+                    width: '100%'
+                });
+                console.log('✅ Select2 initialized for category dropdowns');
+            } else {
+                console.warn('⚠️ Select2 not available, using standard dropdowns');
+            }
+        }
+
+        // Initialize Google Places Autocomplete
+        function initializeGooglePlaces() {
+            if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                // Main address autocomplete
+                const addressInput = document.getElementById('business-address');
+                if (addressInput) {
+                    const autocomplete = new google.maps.places.Autocomplete(addressInput);
+                    autocomplete.addListener('place_changed', function() {
+                        const place = autocomplete.getPlace();
+                        fillAddressFields(place);
+                    });
+                }
+
+                // Additional cities autocomplete
+                const citiesInput = document.getElementById('additional-cities-input');
+                if (citiesInput) {
+                    const citiesAutocomplete = new google.maps.places.Autocomplete(citiesInput, {
+                        types: ['(cities)']
+                    });
+                    citiesAutocomplete.addListener('place_changed', function() {
+                        const place = citiesAutocomplete.getPlace();
+                        addCityTag(place.name);
+                        citiesInput.value = '';
+                    });
+                }
+                console.log('✅ Google Places Autocomplete initialized');
+            } else {
+                console.warn('⚠️ Google Places API not available');
+            }
+        }
+
+        // Fill address fields from Google Places result
+        function fillAddressFields(place) {
+            const components = place.address_components;
+            const cityInput = document.getElementById('business-city');
+            const stateInput = document.getElementById('business-state');
+            const postalInput = document.getElementById('business-postal');
+            const latInput = document.getElementById('business-latitude');
+            const lngInput = document.getElementById('business-longitude');
+
+            // Clear existing values
+            if (cityInput) cityInput.value = '';
+            if (stateInput) stateInput.value = '';
+            if (postalInput) postalInput.value = '';
+
+            // Fill fields based on address components
+            components.forEach(component => {
+                const types = component.types;
+                if (types.includes('locality') && cityInput) {
+                    cityInput.value = component.long_name;
+                } else if (types.includes('administrative_area_level_1') && stateInput) {
+                    stateInput.value = component.long_name;
+                } else if (types.includes('postal_code') && postalInput) {
+                    postalInput.value = component.long_name;
+                }
+            });
+
+            // Fill latitude and longitude
+            if (place.geometry && place.geometry.location) {
+                if (latInput) latInput.value = place.geometry.location.lat();
+                if (lngInput) lngInput.value = place.geometry.location.lng();
+            }
+
+            console.log('✅ Address fields filled from Google Places');
+        }
+
+        // Add city tag to additional cities
+        function addCityTag(cityName) {
+            const selectedCitiesContainer = document.getElementById('selected-cities');
+            if (!selectedCitiesContainer || !cityName) return;
+
+            // Check if city already exists
+            const existingTags = selectedCitiesContainer.querySelectorAll('.city-tag');
+            for (let tag of existingTags) {
+                if (tag.textContent.includes(cityName)) {
+                    return; // City already added
+                }
+            }
+
+            // Create city tag
+            const cityTag = document.createElement('div');
+            cityTag.className = 'city-tag';
+            cityTag.style.cssText = `
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                background-color: var(--primary);
+                color: white;
+                padding: 0.5rem 0.75rem;
+                border-radius: 20px;
+                font-size: 0.9rem;
+                margin: 0.25rem;
+            `;
+            
+            cityTag.innerHTML = `
+                ${cityName}
+                <button type="button" onclick="this.parentElement.remove()" style="
+                    background: none;
+                    border: none;
+                    color: white;
+                    cursor: pointer;
+                    font-size: 1rem;
+                    padding: 0;
+                    margin-left: 0.25rem;
+                ">×</button>
+            `;
+
+            selectedCitiesContainer.appendChild(cityTag);
+            console.log('✅ Added city tag:', cityName);
+        }
+
+        // Initialize image upload handlers
+        function initializeImageUpload() {
+            // Main profile image upload
+            const featuredImageInput = document.getElementById('featured-image');
+            if (featuredImageInput) {
+                featuredImageInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        displayFeaturedImagePreview(file);
+                    }
+                });
+            }
+
+            // Gallery images upload
+            const galleryImagesInput = document.getElementById('gallery-images');
+            if (galleryImagesInput) {
+                galleryImagesInput.addEventListener('change', function(e) {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 0) {
+                        displayGalleryImagePreviews(files);
+                        showSelectedImagesList(files);
+                    }
+                });
+            }
+
+            console.log('✅ Image upload handlers initialized');
+        }
+
+        // Display featured image preview
+        function displayFeaturedImagePreview(file) {
+            const previewContainer = document.getElementById('featured-image-preview');
+            const previewImage = document.getElementById('featured-image-display');
+            
+            if (previewContainer && previewImage) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImage.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+                console.log('✅ Featured image preview displayed');
+            }
+        }
+
+        // Display gallery image previews
+        function displayGalleryImagePreviews(files) {
+            const previewContainer = document.getElementById('image-preview');
+            if (!previewContainer) return;
+
+            previewContainer.innerHTML = ''; // Clear existing previews
+
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imageDiv = document.createElement('div');
+                    imageDiv.style.cssText = `
+                        position: relative;
+                        border-radius: var(--radius);
+                        overflow: hidden;
+                        border: 1px solid var(--border);
+                    `;
+
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = `
+                        width: 100%;
+                        height: 100px;
+                        object-fit: cover;
+                        display: block;
+                    `;
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.innerHTML = '×';
+                    removeBtn.style.cssText = `
+                        position: absolute;
+                        top: 5px;
+                        right: 5px;
+                        background: rgba(0,0,0,0.7);
+                        color: white;
+                        border: none;
+                        border-radius: 50%;
+                        width: 25px;
+                        height: 25px;
+                        cursor: pointer;
+                        font-size: 16px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    `;
+                    removeBtn.onclick = () => imageDiv.remove();
+
+                    imageDiv.appendChild(img);
+                    imageDiv.appendChild(removeBtn);
+                    previewContainer.appendChild(imageDiv);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            console.log('✅ Gallery image previews displayed');
+        }
+
+        // Show selected images list
+        function showSelectedImagesList(files) {
+            const listContainer = document.getElementById('selected-images-list');
+            const namesContainer = document.getElementById('image-names-list');
+            
+            if (listContainer && namesContainer) {
+                const fileNames = files.map(file => file.name).join(', ');
+                namesContainer.textContent = `${files.length} images selected: ${fileNames}`;
+                listContainer.style.display = 'block';
+                console.log('✅ Selected images list displayed');
+            }
+        }
+
+        // Initialize social media handlers
+        function initializeSocialMediaHandlers() {
+            const socialInputs = document.querySelectorAll('[data-prefix]');
+            
+            socialInputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    const prefix = this.getAttribute('data-prefix');
+                    const value = this.value.trim();
+                    
+                    if (value && !value.startsWith('http')) {
+                        // Store the full URL in a hidden field or data attribute
+                        this.setAttribute('data-full-url', prefix + value);
+                        console.log('✅ Social media URL processed:', prefix + value);
+                    }
+                });
+            });
+
+            console.log('✅ Social media handlers initialized');
+        }
+
+        // Initialize summary page functionality
+        function initializeSummaryPage() {
+            // This will be called when user reaches the summary step
+            window.generateVendorSetupSummary = function() {
+                const summaryContainer = document.getElementById('setup-summary-content');
+                if (!summaryContainer) return;
+
+                const summaryHTML = generateComprehensiveSummary();
+                summaryContainer.innerHTML = summaryHTML;
+                console.log('✅ Vendor setup summary generated');
+            };
+        }
+
+        // Generate comprehensive summary of all vendor information
+        function generateComprehensiveSummary() {
+            const summary = [];
+
+            // Business Basics
+            summary.push('<div class="summary-section">');
+            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;">📋 Business Information</h5>');
+            
+            const businessName = document.getElementById('business-name')?.value || 'Not provided';
+            const businessDescription = document.getElementById('business-description')?.value || 'Not provided';
+            const tagline = document.getElementById('tagline')?.value || 'Not provided';
+            const websiteUrl = document.getElementById('website-url')?.value || 'Not provided';
+            const yearsInBusiness = document.getElementById('years-in-business')?.value || 'Not provided';
+            
+            summary.push(`<p><strong>Business Name:</strong> ${businessName}</p>`);
+            summary.push(`<p><strong>Description:</strong> ${businessDescription}</p>`);
+            summary.push(`<p><strong>Tagline:</strong> ${tagline}</p>`);
+            summary.push(`<p><strong>Website:</strong> ${websiteUrl}</p>`);
+            summary.push(`<p><strong>Years in Business:</strong> ${yearsInBusiness}</p>`);
+            summary.push('</div>');
+
+            // Categories
+            summary.push('<div class="summary-section" style="margin-top: 2rem;">');
+            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;">🏷️ Categories</h5>');
+            
+            const primaryCategory = document.getElementById('primary-category')?.value || 'Not selected';
+            const additionalCategories = Array.from(document.getElementById('additional-categories')?.selectedOptions || [])
+                .map(option => option.text).join(', ') || 'None selected';
+            
+            summary.push(`<p><strong>Primary Category:</strong> ${primaryCategory}</p>`);
+            summary.push(`<p><strong>Additional Categories:</strong> ${additionalCategories}</p>`);
+            summary.push('</div>');
+
+            // Location Information
+            summary.push('<div class="summary-section" style="margin-top: 2rem;">');
+            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;">📍 Location</h5>');
+            
+            const address = document.getElementById('business-address')?.value || 'Not provided';
+            const city = document.getElementById('business-city')?.value || 'Not provided';
+            const state = document.getElementById('business-state')?.value || 'Not provided';
+            const postal = document.getElementById('business-postal')?.value || 'Not provided';
+            const country = document.getElementById('business-country')?.value || 'Not provided';
+            
+            summary.push(`<p><strong>Address:</strong> ${address}</p>`);
+            summary.push(`<p><strong>City:</strong> ${city}</p>`);
+            summary.push(`<p><strong>State/Province:</strong> ${state}</p>`);
+            summary.push(`<p><strong>Postal Code:</strong> ${postal}</p>`);
+            summary.push(`<p><strong>Country:</strong> ${country}</p>`);
+            
+            // Additional Cities
+            const additionalCities = Array.from(document.querySelectorAll('#selected-cities .city-tag'))
+                .map(tag => tag.textContent.replace('×', '').trim()).join(', ') || 'None specified';
+            summary.push(`<p><strong>Additional Service Areas:</strong> ${additionalCities}</p>`);
+            summary.push('</div>');
+
+            // Business Hours
+            summary.push('<div class="summary-section" style="margin-top: 2rem;">');
+            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;">🕒 Business Hours</h5>');
+            
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            days.forEach((day, index) => {
+                const availableCheckbox = document.getElementById(`available-${index}`);
+                const startTime = document.getElementById(`start-time-${index}`)?.value;
+                const endTime = document.getElementById(`end-time-${index}`)?.value;
+                
+                if (availableCheckbox?.checked && startTime && endTime) {
+                    summary.push(`<p><strong>${day}:</strong> ${formatTime(startTime)} - ${formatTime(endTime)}</p>`);
+                } else {
+                    summary.push(`<p><strong>${day}:</strong> Closed</p>`);
+                }
+            });
+            summary.push('</div>');
+
+            // Social Media
+            summary.push('<div class="summary-section" style="margin-top: 2rem;">');
+            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;">🌐 Social Media</h5>');
+            
+            const socialPlatforms = [
+                { id: 'social-facebook', name: 'Facebook', prefix: 'https://facebook.com/' },
+                { id: 'social-instagram', name: 'Instagram', prefix: 'https://instagram.com/' },
+                { id: 'social-twitter', name: 'Twitter', prefix: 'https://twitter.com/' },
+                { id: 'social-linkedin', name: 'LinkedIn', prefix: 'https://linkedin.com/company/' },
+                { id: 'social-youtube', name: 'YouTube', prefix: 'https://youtube.com/' },
+                { id: 'social-tiktok', name: 'TikTok', prefix: 'https://tiktok.com/@' }
+            ];
+            
+            socialPlatforms.forEach(platform => {
+                const input = document.getElementById(platform.id);
+                const value = input?.value?.trim();
+                if (value) {
+                    const fullUrl = value.startsWith('http') ? value : platform.prefix + value;
+                    summary.push(`<p><strong>${platform.name}:</strong> <a href="${fullUrl}" target="_blank">${fullUrl}</a></p>`);
+                }
+            });
+            summary.push('</div>');
+
+            return summary.join('');
+        }
+
+        // Format time for display
+        function formatTime(timeString) {
+            if (!timeString) return '';
+            const [hours, minutes] = timeString.split(':');
+            const hour = parseInt(hours);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${ampm}`;
+        }
+
+        // Add red asterisks to required fields
+        function addRequiredFieldAsterisks() {
+            const requiredFields = document.querySelectorAll('input[required], textarea[required], select[required]');
+            
+            requiredFields.forEach(field => {
+                const label = document.querySelector(`label[for="${field.id}"]`);
+                if (label && !label.innerHTML.includes('*')) {
+                    // Check if asterisk is already added
+                    if (!label.innerHTML.includes('<span style="color: red;">*</span>')) {
+                        label.innerHTML += ' <span style="color: red;">*</span>';
+                    }
+                }
+            });
+            
+            console.log('✅ Required field asterisks added');
+        }
+
+        // Override the existing step navigation to include summary generation
+        const originalShowSetupStep = window.showSetupStep;
+        if (originalShowSetupStep) {
+            window.showSetupStep = function(stepNumber) {
+                originalShowSetupStep(stepNumber);
+                
+                // If moving to summary step, generate the summary
+                if (stepNumber === 9) {
+                    setTimeout(() => {
+                        if (window.generateVendorSetupSummary) {
+                            window.generateVendorSetupSummary();
+                        }
+                    }, 100);
+                }
+            };
+        }
+
+        console.log('🎉 All Vendor Setup Improvements JavaScript Loaded Successfully!');
     </script>
 </html>
