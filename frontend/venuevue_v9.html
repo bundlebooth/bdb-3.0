@@ -8025,6 +8025,196 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
+            // Services Functions
+            function addServiceItem() {
+                const serviceName = document.getElementById('service-name')?.value?.trim();
+                const serviceDescription = document.getElementById('service-description')?.value?.trim();
+                const servicePrice = document.getElementById('service-price')?.value;
+                const serviceDuration = document.getElementById('service-duration')?.value || '60';
+
+                if (!serviceName || !serviceDescription || !servicePrice) {
+                    alert('Please fill in all required service fields.');
+                    return;
+                }
+
+                const service = {
+                    id: Date.now(),
+                    name: serviceName,
+                    description: serviceDescription,
+                    price: parseFloat(servicePrice),
+                    duration: parseInt(serviceDuration)
+                };
+
+                // Add to vendor setup state
+                if (!vendorSetupState.services) {
+                    vendorSetupState.services = [];
+                }
+                vendorSetupState.services.push(service);
+
+                // Update display
+                updateServicesDisplay();
+
+                // Clear form
+                clearServiceForm();
+
+                console.log('✅ Service added:', service);
+            }
+
+            function updateServicesDisplay() {
+                const servicesList = document.getElementById('services-list');
+                if (!servicesList || !vendorSetupState.services) return;
+
+                if (vendorSetupState.services.length === 0) {
+                    servicesList.innerHTML = '<p style="color: var(--text-light); font-style: italic;">No services added yet.</p>';
+                    return;
+                }
+
+                const servicesHtml = vendorSetupState.services.map((service, index) => `
+                    <div class="service-item" style="
+                        background-color: white;
+                        border: 1px solid var(--border);
+                        border-radius: var(--radius);
+                        padding: 1rem;
+                        margin-bottom: 0.5rem;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                    ">
+                        <div style="flex: 1;">
+                            <h6 style="margin: 0 0 0.5rem 0; color: var(--primary); font-weight: 600;">${service.name}</h6>
+                            <p style="margin: 0 0 0.5rem 0; color: var(--text); font-size: 0.9rem; line-height: 1.4;">${service.description}</p>
+                            <div style="display: flex; gap: 1rem; font-size: 0.85rem; color: var(--text-light);">
+                                <span><strong>Price:</strong> $${service.price.toFixed(2)}</span>
+                                <span><strong>Duration:</strong> ${service.duration} min</span>
+                            </div>
+                        </div>
+                        <button onclick="removeService(${index})" style="
+                            background: var(--accent);
+                            color: white;
+                            border: none;
+                            border-radius: 50%;
+                            width: 24px;
+                            height: 24px;
+                            cursor: pointer;
+                            font-size: 0.8rem;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            margin-left: 0.5rem;
+                        " title="Remove service">×</button>
+                    </div>
+                `).join('');
+
+                servicesList.innerHTML = servicesHtml;
+            }
+
+            function removeService(index) {
+                if (vendorSetupState.services && index >= 0 && index < vendorSetupState.services.length) {
+                    vendorSetupState.services.splice(index, 1);
+                    updateServicesDisplay();
+                    console.log('✅ Service removed at index:', index);
+                }
+            }
+
+            function clearServiceForm() {
+                document.getElementById('service-name').value = '';
+                document.getElementById('service-description').value = '';
+                document.getElementById('service-price').value = '';
+                document.getElementById('service-duration').value = '';
+            }
+
+            // FAQ Functions (ensure they exist)
+            function showFaqForm() {
+                const faqForm = document.getElementById('faq-form');
+                if (faqForm) {
+                    faqForm.style.display = 'block';
+                }
+            }
+
+            function addFaqItem() {
+                const faqQuestion = document.getElementById('faq-question')?.value?.trim();
+                const faqAnswer = document.getElementById('faq-answer')?.value?.trim();
+
+                if (!faqQuestion || !faqAnswer) {
+                    alert('Please fill in both question and answer fields.');
+                    return;
+                }
+
+                const faq = {
+                    id: Date.now(),
+                    question: faqQuestion,
+                    answer: faqAnswer
+                };
+
+                // Add to vendor setup state
+                if (!vendorSetupState.faqs) {
+                    vendorSetupState.faqs = [];
+                }
+                vendorSetupState.faqs.push(faq);
+
+                // Update display
+                updateFaqsDisplay();
+
+                // Clear form and hide it
+                document.getElementById('faq-question').value = '';
+                document.getElementById('faq-answer').value = '';
+                document.getElementById('faq-form').style.display = 'none';
+
+                console.log('✅ FAQ added:', faq);
+            }
+
+            function updateFaqsDisplay() {
+                const faqsList = document.getElementById('faqs-list');
+                if (!faqsList || !vendorSetupState.faqs) return;
+
+                if (vendorSetupState.faqs.length === 0) {
+                    faqsList.innerHTML = '<p style="color: var(--text-light); font-style: italic;">No FAQs added yet.</p>';
+                    return;
+                }
+
+                const faqsHtml = vendorSetupState.faqs.map((faq, index) => `
+                    <div class="faq-item" style="
+                        background-color: white;
+                        border: 1px solid var(--border);
+                        border-radius: var(--radius);
+                        padding: 1rem;
+                        margin-bottom: 0.5rem;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                    ">
+                        <div style="flex: 1;">
+                            <h6 style="margin: 0 0 0.5rem 0; color: var(--primary); font-weight: 600;">${faq.question}</h6>
+                            <p style="margin: 0; color: var(--text); font-size: 0.9rem; line-height: 1.4;">${faq.answer}</p>
+                        </div>
+                        <button onclick="removeFaq(${index})" style="
+                            background: var(--accent);
+                            color: white;
+                            border: none;
+                            border-radius: 50%;
+                            width: 24px;
+                            height: 24px;
+                            cursor: pointer;
+                            font-size: 0.8rem;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            margin-left: 0.5rem;
+                        " title="Remove FAQ">×</button>
+                    </div>
+                `).join('');
+
+                faqsList.innerHTML = faqsHtml;
+            }
+
+            function removeFaq(index) {
+                if (vendorSetupState.faqs && index >= 0 && index < vendorSetupState.faqs.length) {
+                    vendorSetupState.faqs.splice(index, 1);
+                    updateFaqsDisplay();
+                    console.log('✅ FAQ removed at index:', index);
+                }
+            }
+
             // Complete Vendor Setup
             async function completeVendorSetup() {
                 try {
@@ -12884,12 +13074,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             selectedCitiesContainer.appendChild(cityTag);
             
             // Update vendor setup state
-            if (!vendorSetupState.selectedCities.includes(cityName)) {
+            if (typeof vendorSetupState !== 'undefined' && vendorSetupState.selectedCities && !vendorSetupState.selectedCities.includes(cityName)) {
                 vendorSetupState.selectedCities.push(cityName);
             }
             
             console.log('✅ Added city tag:', cityName);
-            console.log('Selected cities:', vendorSetupState.selectedCities);
+            if (typeof vendorSetupState !== 'undefined' && vendorSetupState.selectedCities) {
+                console.log('Selected cities:', vendorSetupState.selectedCities);
+            }
         }
         
         // Remove city tag function
@@ -12898,13 +13090,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             button.parentElement.remove();
             
             // Remove from vendor setup state
-            const index = vendorSetupState.selectedCities.indexOf(cityName);
-            if (index > -1) {
-                vendorSetupState.selectedCities.splice(index, 1);
+            if (typeof vendorSetupState !== 'undefined' && vendorSetupState.selectedCities) {
+                const index = vendorSetupState.selectedCities.indexOf(cityName);
+                if (index > -1) {
+                    vendorSetupState.selectedCities.splice(index, 1);
+                }
+                console.log('Selected cities:', vendorSetupState.selectedCities);
             }
             
             console.log('Removed city tag:', cityName);
-            console.log('Selected cities:', vendorSetupState.selectedCities);
         }
 
         // Initialize image upload handlers
