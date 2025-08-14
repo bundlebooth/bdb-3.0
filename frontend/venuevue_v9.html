@@ -1731,368 +1731,351 @@
             }
         }
 
-        /* Booking Modal Styles */
-        .budget-bar {
-            background: white;
-            border-bottom: 1px solid var(--border);
-            padding: 1rem 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 2rem;
-            box-shadow: var(--shadow);
-            z-index: 100;
-            position: relative;
+        /* Multi-Step Booking Modal Styles */
+        .booking-progress {
+            margin-bottom: 2rem;
         }
 
-        .budget-section {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .budget-input {
-            padding: 0.5rem;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            width: 120px;
-        }
-
-        .budget-display {
-            font-weight: 600;
-            color: var(--text);
-        }
-
-        .multi-select-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            border-radius: var(--radius);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-
-        .multi-select-btn:hover {
-            background: #4c63d2;
-        }
-
-        .multi-select-btn.active {
-            background: var(--accent);
-        }
-
-        .booking-modal-content {
-            width: 1000px;
-            max-width: 95vw;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .booking-layout {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-        }
-
-        .booking-left,
-        .booking-right {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .booking-section {
-            background: #f8fafc;
-            border-radius: var(--radius);
-            padding: 1.5rem;
-        }
-
-        .booking-section h4 {
-            margin-bottom: 1rem;
-            color: var(--text);
-            font-weight: 600;
-        }
-
-        .service-grid {
-            display: grid;
-            gap: 0.75rem;
-        }
-
-        .service-item {
-            background: white;
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .service-item:hover {
-            border-color: var(--primary);
-        }
-
-        .service-item.selected {
-            border-color: var(--primary);
-            background: #f0f4ff;
-        }
-
-        .service-item h5 {
-            margin-bottom: 0.5rem;
-            color: var(--text);
-        }
-
-        .service-item p {
-            color: var(--text-light);
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .service-price {
-            font-weight: 600;
-            color: var(--primary);
-            font-size: 1.1rem;
-        }
-
-        .timeslot-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 0.5rem;
-        }
-
-        .timeslot {
-            background: white;
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            padding: 0.75rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-
-        .timeslot:hover {
-            border-color: var(--primary);
-        }
-
-        .timeslot.selected {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .timeslot.unavailable {
-            background: #f1f5f9;
-            color: var(--text-light);
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        .booking-summary {
-            background: white;
-            border-radius: var(--radius);
-            padding: 1rem;
-        }
-
-        .summary-line {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-            padding: 0.5rem 0;
-        }
-
-        .summary-line.total {
-            border-top: 1px solid var(--border);
-            font-weight: 600;
-            font-size: 1.1rem;
-            color: var(--primary);
-        }
-
-        .summary-line.budget {
-            color: var(--accent);
-            font-weight: 600;
-        }
-
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        .form-group input,
-        .form-group textarea {
+        .progress-bar {
             width: 100%;
-            padding: 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            font-size: 1rem;
+            height: 8px;
+            background-color: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
         }
 
-        .form-group input:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.1);
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
         }
 
-        .stripe-element {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-        }
-
-        .error-message {
-            color: var(--accent);
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
-        }
-
-        .confirm-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: var(--radius);
-            font-size: 1.1rem;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            transition: all 0.2s;
-            width: 100%;
-        }
-
-        .confirm-btn:hover:not(:disabled) {
-            background: #4c63d2;
-        }
-
-        .confirm-btn:disabled {
-            background: var(--text-light);
-            cursor: not-allowed;
-        }
-
-        .vendor-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .vendor-booking-item {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1rem;
-        }
-
-        .vendor-booking-item h5 {
-            margin-bottom: 0.5rem;
-            color: var(--text);
-        }
-
-        .multi-booking-summary {
-            position: fixed;
-            right: 2rem;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 320px;
-            background: white;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            z-index: 1000;
+        .booking-step {
             display: none;
         }
 
-        .multi-booking-summary.show {
+        .booking-step.active {
             display: block;
         }
 
-        .summary-header {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .service-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
         }
 
-        .summary-header h4 {
+        .category-card {
+            background-color: white;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .category-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .category-card.selected {
+            border-color: var(--primary);
+            background-color: rgba(94, 114, 228, 0.05);
+        }
+
+        .category-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .category-card.selected .category-icon {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .category-info {
+            flex: 1;
+        }
+
+        .category-info h5 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1.1rem;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .category-info p {
             margin: 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .category-checkbox {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .category-checkbox input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .category-checkbox .checkmark {
+            position: relative;
+            height: 20px;
+            width: 20px;
+            background-color: white;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            display: block;
+            transition: all 0.2s ease;
+        }
+
+        .category-checkbox input[type="checkbox"]:checked + .checkmark {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .category-checkbox input[type="checkbox"]:checked + .checkmark::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .service-category {
+            background-color: white;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .service-category:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+
+        .service-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 1.5rem;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .service-checkbox input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkmark {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-radius: 4px;
+            margin-right: 1rem;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .service-checkbox input[type="checkbox"]:checked + .checkmark {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .service-checkbox input[type="checkbox"]:checked + .checkmark::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .service-info h5 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
             color: var(--text);
         }
 
-        .clear-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 0.5rem;
-            border-radius: var(--radius);
+        .service-info p {
+            margin: 0;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .budget-slider-container {
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        .budget-slider-container input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: var(--border);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .budget-slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
             cursor: pointer;
+        }
+
+        .budget-slider-container input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: none;
+        }
+
+        .budget-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .vendor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .vendor-card {
+            background-color: white;
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .vendor-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+
+        .vendor-card.selected {
+            border-color: var(--primary);
+            background-color: rgba(94, 114, 228, 0.05);
+        }
+
+        .vendor-card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .vendor-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 1rem;
+        }
+
+        .vendor-info h5 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1.1rem;
+            color: var(--text);
+        }
+
+        .vendor-rating {
             display: flex;
             align-items: center;
             gap: 0.25rem;
+            color: var(--text-light);
+            font-size: 0.9rem;
         }
 
-        .selected-vendors {
-            max-height: 300px;
-            overflow-y: auto;
-            padding: 1rem;
+        .vendor-services {
+            margin-bottom: 1rem;
         }
 
-        .summary-footer {
-            padding: 1rem;
-            border-top: 1px solid var(--border);
+        .vendor-services h6 {
+            margin: 0 0 0.5rem 0;
+            color: var(--primary);
+            font-size: 0.9rem;
         }
 
-        .total-display {
+        .vendor-price {
             font-size: 1.2rem;
-            font-weight: 600;
+            font-weight: bold;
             color: var(--primary);
             margin-bottom: 1rem;
         }
 
-        .book-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
+        .vendor-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-select-vendor {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--primary);
+            background-color: transparent;
+            color: var(--primary);
             border-radius: var(--radius);
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            font-weight: 600;
-            width: 100%;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
         }
 
-        .book-btn:hover:not(:disabled) {
-            background: #4c63d2;
+        .btn-select-vendor:hover {
+            background-color: var(--primary);
+            color: white;
         }
 
-        .book-btn:disabled {
-            background: var(--text-light);
-            cursor: not-allowed;
+        .btn-select-vendor.selected {
+            background-color: var(--primary);
+            color: white;
         }
 
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-        }
-
-        .spinner {
-            border: 3px solid var(--border);
-            border-top: 3px solid var(--primary);
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--primary);
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
             animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
         }
 
         @keyframes spin {
@@ -2100,55 +2083,105 @@
             100% { transform: rotate(360deg); }
         }
 
-        .alert {
-            padding: 1rem;
+        .request-item {
+            background-color: white;
+            border: 1px solid var(--border);
             border-radius: var(--radius);
+            padding: 1.5rem;
             margin-bottom: 1rem;
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .request-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .request-status.pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .request-status.approved {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .request-status.declined {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .request-status.expired {
+            background-color: #f8f9fa;
+            color: #6c757d;
+        }
+
+        .countdown-timer {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            color: var(--text-light);
+            font-size: 0.9rem;
         }
 
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+        .countdown-timer.urgent {
+            color: var(--accent);
         }
 
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+        .booking-summary-card {
+            background-color: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
         }
 
-        .alert-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
         }
 
-        /* Responsive styles for booking modal */
+        .summary-row:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .payment-section {
+            background-color: var(--secondary);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
         @media (max-width: 768px) {
-            .booking-layout {
+            .service-categories {
                 grid-template-columns: 1fr;
             }
-
-            .booking-modal-content {
-                width: 95vw;
-                margin: 1rem;
+            
+            .vendor-grid {
+                grid-template-columns: 1fr;
             }
-
-            .budget-bar {
+            
+            .form-row {
                 flex-direction: column;
-                gap: 1rem;
-                padding: 1rem;
             }
-
-            .multi-booking-summary {
-                position: static;
-                transform: none;
-                width: 100%;
-                margin-top: 2rem;
+            
+            .booking-progress .step-indicator {
+                font-size: 0.8rem;
+                padding: 0.25rem 0.5rem;
             }
         }
     </style>
@@ -2171,6 +2204,9 @@
         </div>
 
         <div class="user-nav">
+            <button class="btn btn-primary" id="book-now-btn" onclick="openBookingModal()" style="margin-right: 1rem; padding: 0.75rem 1.5rem; font-weight: 600;">
+                📅 Book Now
+            </button>
             <div class="nav-icon" id="wishlist-btn">
                 ❤
                 <span class="badge" id="favorites-badge">0</span>
@@ -3523,6 +3559,192 @@
         <button class="lightbox-nav lightbox-next">❯</button>
     </div>
 
+    <!-- Multi-Step Booking Modal -->
+    <div id="booking-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 id="booking-modal-title">Book Your Event</h3>
+                <span class="close-modal">×</span>
+            </div>
+            <div class="modal-body">
+                <!-- Progress Bar -->
+                <div class="booking-progress" style="margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <span class="step-indicator active" id="booking-step-indicator-1">1: Services</span>
+                        <span class="step-indicator" id="booking-step-indicator-2">2: Details</span>
+                        <span class="step-indicator" id="booking-step-indicator-3">3: Vendors</span>
+                        <span class="step-indicator" id="booking-step-indicator-4">4: Requests</span>
+                        <span class="step-indicator" id="booking-step-indicator-5">5: Approval</span>
+                        <span class="step-indicator" id="booking-step-indicator-6">6: Payment</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="booking-progress-fill" style="width: 16.67%;"></div>
+                    </div>
+                </div>
+
+                <!-- Step 1: Service Selection -->
+                <div class="booking-step" id="booking-step-1" style="display: block;">
+                    <h4 class="form-section-title">Select Your Services</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Choose the service categories you need for your event.</p>
+                    
+                    <div class="service-categories" id="service-categories">
+                        <!-- Service categories will be loaded dynamically from the database -->
+                        <div class="loading-message" style="text-align: center; padding: 2rem; color: var(--text-light);">
+                            <i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>
+                            Loading service categories...
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-primary" id="next-to-booking-step-2" disabled>Next: Event Details</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Budget & Event Details -->
+                <div class="booking-step" id="booking-step-2" style="display: none;">
+                    <h4 class="form-section-title">Event Details & Budget</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Tell us about your event and set your budget.</p>
+                    
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="event-date">Event Date *</label>
+                                <input type="date" id="event-date" required>
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="event-time">Event Time *</label>
+                                <input type="time" id="event-time" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="event-location">Event Location</label>
+                                <input type="text" id="event-location" placeholder="Enter event location">
+                            </div>
+                        </div>
+                        <div class="form-col">
+                            <div class="form-group">
+                                <label for="attendee-count">Number of Attendees</label>
+                                <input type="number" id="attendee-count" min="1" value="50">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="budget-range">Total Budget: $<span id="budget-display">2000</span></label>
+                        <div class="budget-slider-container">
+                            <input type="range" id="budget-slider" min="500" max="20000" value="2000" step="100">
+                            <div class="budget-labels">
+                                <span>$500</span>
+                                <span>$20,000+</span>
+                            </div>
+                        </div>
+                        <input type="number" id="budget-input" min="500" max="50000" value="2000" style="margin-top: 0.5rem;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="special-requests">Special Requests</label>
+                        <textarea id="special-requests" rows="3" placeholder="Any special requirements or preferences..."></textarea>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="back-to-booking-step-1">Back: Services</button>
+                        <button type="button" class="btn btn-primary" id="find-vendors-btn">Find Vendors</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Vendor Matching -->
+                <div class="booking-step" id="booking-step-3" style="display: none;">
+                    <h4 class="form-section-title">Available Vendors</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select vendors that match your requirements.</p>
+                    
+                    <div id="vendor-loading" style="text-align: center; padding: 2rem; display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Finding vendors that match your requirements...</p>
+                    </div>
+                    
+                    <div id="vendor-results" class="vendor-grid">
+                        <!-- Vendor cards will be populated here -->
+                    </div>
+                    
+                    <div id="no-vendors-found" style="display: none; text-align: center; padding: 2rem;">
+                        <h5>No vendors found</h5>
+                        <p style="color: var(--text-light);">Try adjusting your budget or service requirements.</p>
+                        <button type="button" class="btn btn-outline" id="adjust-criteria-btn">Adjust Criteria</button>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="back-to-booking-step-2">Back: Event Details</button>
+                        <button type="button" class="btn btn-primary" id="send-requests-btn" disabled>Send Requests</button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Request Submission -->
+                <div class="booking-step" id="booking-step-4" style="display: none;">
+                    <h4 class="form-section-title">Booking Requests Sent</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Your requests have been sent to the selected vendors.</p>
+                    
+                    <div class="request-summary" id="request-summary">
+                        <!-- Request summary will be populated here -->
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="back-to-booking-step-3">Back: Vendors</button>
+                        <button type="button" class="btn btn-primary" id="continue-to-approval">Continue</button>
+                    </div>
+                </div>
+
+                <!-- Step 5: Approval Handling -->
+                <div class="booking-step" id="booking-step-5" style="display: none;">
+                    <h4 class="form-section-title">Vendor Approvals</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Waiting for vendor responses. You'll be notified when vendors approve or decline.</p>
+                    
+                    <div class="approval-status" id="approval-status">
+                        <!-- Approval status will be populated here -->
+                    </div>
+                    
+                    <div class="approval-actions" style="margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="add-backup-vendors">Add Backup Vendors</button>
+                        <button type="button" class="btn btn-outline" id="cancel-requests">Cancel All Requests</button>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="back-to-booking-step-4">Back: Requests</button>
+                        <button type="button" class="btn btn-primary" id="proceed-to-payment" disabled>Proceed to Payment</button>
+                    </div>
+                </div>
+
+                <!-- Step 6: Payment & Confirmation -->
+                <div class="booking-step" id="booking-step-6" style="display: none;">
+                    <h4 class="form-section-title">Payment & Confirmation</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Review your booking details and complete payment.</p>
+                    
+                    <div class="booking-summary" id="booking-summary">
+                        <!-- Booking summary will be populated here -->
+                    </div>
+                    
+                    <div class="payment-section" id="payment-section">
+                        <h5 style="margin-bottom: 1rem; color: var(--primary);">Payment Details</h5>
+                        <div id="card-element" style="padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;">
+                            <!-- Stripe Elements will create form elements here -->
+                        </div>
+                        <div id="card-errors" role="alert" style="color: var(--accent); margin-bottom: 1rem;"></div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                        <button type="button" class="btn btn-outline" id="back-to-booking-step-5">Back: Approvals</button>
+                        <button type="button" class="btn btn-primary" id="complete-booking">Complete Booking</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Google Maps API -->
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&amp;libraries=places&amp;v=weekly" defer=""></script>
 
@@ -4119,7 +4341,58 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Lightbox state
             let lightboxImages = [];
-            let currentLightboxIndex = 0;
+            async function openBookingModal() {
+                // Reset booking state
+                bookingState = {
+                    currentStep: 1,
+                    selectedServices: [],
+                    serviceCategories: [],
+                    eventDetails: {},
+                    selectedVendors: [],
+                    sentRequests: [],
+                    approvedVendors: [],
+                    totalCost: 0,
+                    countdownTimers: {},
+                    approvalPollingInterval: null
+                };
+
+                // Show modal
+                const modal = document.getElementById('booking-modal');
+                modal.style.display = 'flex';
+                
+                // Initialize first step and load service categories
+                updateBookingStep(1);
+                await loadServiceCategories();
+            }
+
+            // Multi-Step Booking Modal State
+            const bookingState = {
+                currentStep: 1,
+                selectedServices: [],
+                eventDetails: {},
+                budget: 2000,
+                availableVendors: [],
+                selectedVendors: [],
+                sentRequests: [],
+                approvedVendors: [],
+                totalCost: 0,
+                paymentIntent: null,
+                countdownTimers: {},
+                
+                reset: function() {
+                    this.currentStep = 1;
+                    this.selectedServices = [];
+                    this.eventDetails = {};
+                    this.budget = 2000;
+                    this.availableVendors = [];
+                    this.selectedVendors = [];
+                    this.sentRequests = [];
+                    this.approvedVendors = [];
+                    this.totalCost = 0;
+                    this.paymentIntent = null;
+                    this.countdownTimers = {};
+                }
+            };
 
             // Initialize the app
             init();
@@ -4161,11 +4434,1001 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Setup lightbox event listeners
                     setupLightboxEventListeners();
 
+                    // Setup booking modal event listeners
+                    setupBookingModalEventListeners();
+
                 } catch (error) {
                     console.error('Initialization error:', error);
                     showError("Failed to load vendors. Please try again later.");
                 }
             }
+
+            // Multi-Step Booking Modal Functions
+            async function openBookingModal() {
+                const bookingModal = document.getElementById('booking-modal');
+                bookingState.reset();
+                updateBookingStep(1);
+                bookingModal.style.display = 'flex';
+                
+                // Set minimum date to today
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('event-date').min = today;
+                
+                // Load service categories
+                await loadServiceCategories();
+            }
+
+            // Service Categories Loading Functions
+            async function loadServiceCategories() {
+                try {
+                    console.log('Loading service categories...');
+                    const response = await fetch(`${API_BASE_URL}/bookings/service-categories`);
+                    const data = await response.json();
+                    
+                    console.log('Service categories response:', data);
+                    
+                    if (data.success && data.categories) {
+                        bookingState.serviceCategories = data.categories;
+                        renderServiceCategories();
+                    } else {
+                        console.warn('No categories found, using fallback');
+                        renderDefaultServiceCategories();
+                    }
+                } catch (error) {
+                    console.error('Error loading service categories:', error);
+                    // Fallback to default categories if API fails
+                    renderDefaultServiceCategories();
+                }
+            }
+
+            function renderServiceCategories() {
+                const categoriesContainer = document.getElementById('service-categories');
+                if (!categoriesContainer) {
+                    console.error('Service categories container not found');
+                    return;
+                }
+
+                const categoriesHtml = bookingState.serviceCategories.map(category => `
+                    <div class="category-card" data-category-id="${category.id}">
+                        <div class="category-icon">
+                            <i class="${category.icon}"></i>
+                        </div>
+                        <div class="category-info">
+                            <h5>${category.name}</h5>
+                            <p>${category.serviceCount} services available</p>
+                        </div>
+                        <div class="category-checkbox">
+                            <input type="checkbox" id="cat-${category.id}" />
+                            <span class="checkmark"></span>
+                        </div>
+                    </div>
+                `).join('');
+
+                categoriesContainer.innerHTML = categoriesHtml;
+                
+                // Add click event listeners to category cards
+                categoriesContainer.querySelectorAll('.category-card').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        const categoryId = card.getAttribute('data-category-id');
+                        const category = bookingState.serviceCategories.find(c => c.id == categoryId);
+                        if (category) {
+                            toggleCategorySelection(categoryId, category.key);
+                        }
+                    });
+                });
+            }
+
+            function renderDefaultServiceCategories() {
+                const categoriesContainer = document.getElementById('service-categories');
+                if (!categoriesContainer) {
+                    console.error('Service categories container not found');
+                    return;
+                }
+
+                const defaultCategories = [
+                    { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building' },
+                    { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera' },
+                    { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music' },
+                    { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils' },
+                    { id: 5, key: 'entertainment', name: 'Entertainment', icon: 'fas fa-theater-masks' },
+                    { id: 6, key: 'experiences', name: 'Experiences', icon: 'fas fa-star' },
+                    { id: 7, key: 'decor', name: 'Decorations', icon: 'fas fa-ribbon' },
+                    { id: 8, key: 'beauty', name: 'Beauty', icon: 'fas fa-spa' },
+                    { id: 9, key: 'cake', name: 'Cake', icon: 'fas fa-birthday-cake' },
+                    { id: 10, key: 'transport', name: 'Transportation', icon: 'fas fa-shuttle-van' },
+                    { id: 11, key: 'planner', name: 'Planners', icon: 'fas fa-clipboard-list' },
+                    { id: 12, key: 'fashion', name: 'Fashion', icon: 'fas fa-tshirt' },
+                    { id: 13, key: 'stationery', name: 'Stationery', icon: 'fas fa-envelope' }
+                ];
+
+                const categoriesHtml = defaultCategories.map(category => `
+                    <div class="category-card" data-category-id="${category.id}" data-category-key="${category.key}">
+                        <div class="category-icon">
+                            <i class="${category.icon}"></i>
+                        </div>
+                        <div class="category-info">
+                            <h5>${category.name}</h5>
+                            <p>Multiple services available</p>
+                        </div>
+                        <div class="category-checkbox">
+                            <input type="checkbox" id="cat-${category.id}" />
+                            <span class="checkmark"></span>
+                        </div>
+                    </div>
+                `).join('');
+
+                categoriesContainer.innerHTML = categoriesHtml;
+                
+                // Add click event listeners to default category cards
+                categoriesContainer.querySelectorAll('.category-card').forEach(card => {
+                    card.addEventListener('click', (e) => {
+                        const categoryId = card.getAttribute('data-category-id');
+                        const categoryKey = card.getAttribute('data-category-key');
+                        toggleCategorySelection(categoryId, categoryKey);
+                    });
+                });
+            }
+
+            async function toggleCategorySelection(categoryId, categoryKey) {
+                const categoryCard = document.querySelector(`[data-category-id="${categoryId}"]`);
+                const checkbox = categoryCard.querySelector('input[type="checkbox"]');
+                
+                if (checkbox.checked) {
+                    // Unselect category
+                    checkbox.checked = false;
+                    categoryCard.classList.remove('selected');
+                    
+                    // Remove all services from this category
+                    bookingState.selectedServices = bookingState.selectedServices.filter(s => s.categoryId !== parseInt(categoryId));
+                } else {
+                    // Select category and load its services
+                    checkbox.checked = true;
+                    categoryCard.classList.add('selected');
+                    
+                    await loadCategoryServices(categoryId, categoryKey);
+                }
+                
+                updateBudgetRange();
+                updateNextStepButton();
+            }
+
+            function updateBudgetRange() {
+                // Update budget range based on selected services
+                const totalServices = bookingState.selectedServices.length;
+                if (totalServices > 0) {
+                    // Adjust minimum budget based on number of services
+                    const minBudget = Math.max(500, totalServices * 200);
+                    const budgetSlider = document.getElementById('budget-slider');
+                    const budgetInput = document.getElementById('budget-input');
+                    
+                    if (budgetSlider) {
+                        budgetSlider.min = minBudget;
+                        if (parseInt(budgetSlider.value) < minBudget) {
+                            budgetSlider.value = minBudget;
+                            bookingState.budget = minBudget;
+                        }
+                    }
+                    
+                    if (budgetInput) {
+                        budgetInput.min = minBudget;
+                        if (parseInt(budgetInput.value) < minBudget) {
+                            budgetInput.value = minBudget;
+                            bookingState.budget = minBudget;
+                        }
+                    }
+                    
+                    // Update budget display
+                    const budgetDisplay = document.getElementById('budget-display');
+                    if (budgetDisplay) {
+                        budgetDisplay.textContent = bookingState.budget;
+                    }
+                }
+            }
+            
+            function updateNextStepButton() {
+                const nextBtn = document.getElementById('next-to-booking-step-2');
+                if (nextBtn) {
+                    nextBtn.disabled = bookingState.selectedServices.length === 0;
+                }
+            }
+
+            async function loadCategoryServices(categoryId, categoryKey) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/bookings/services/${categoryId}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.services) {
+                        // Add services from this category to selected services
+                        data.services.forEach(service => {
+                            const existingIndex = bookingState.selectedServices.findIndex(s => s.id === service.ServiceID);
+                            if (existingIndex === -1) {
+                                bookingState.selectedServices.push({
+                                    id: service.ServiceID,
+                                    categoryId: parseInt(categoryId),
+                                    categoryKey: categoryKey,
+                                    type: service.Name,
+                                    description: service.Description,
+                                    basePrice: service.BasePrice || 0,
+                                    priceUnit: service.PriceUnit || 'fixed',
+                                    priceRange: estimatePriceRange(service.BasePrice, categoryKey)
+                                });
+                            }
+                        });
+                    } else {
+                        // Fallback to default service for category
+                        addDefaultCategoryService(categoryId, categoryKey);
+                    }
+                } catch (error) {
+                    console.error('Error loading category services:', error);
+                    // Fallback to default service for category
+                    addDefaultCategoryService(categoryId, categoryKey);
+                }
+            }
+
+            function addDefaultCategoryService(categoryId, categoryKey) {
+                const defaultServices = {
+                    'photo': { name: 'Photography & Videography', priceRange: { min: 800, max: 3000 } },
+                    'music': { name: 'DJ & Music Services', priceRange: { min: 400, max: 1500 } },
+                    'catering': { name: 'Catering Services', priceRange: { min: 25, max: 150 } },
+                    'venue': { name: 'Venue Rental', priceRange: { min: 500, max: 5000 } },
+                    'decor': { name: 'Decorations & Flowers', priceRange: { min: 200, max: 1500 } },
+                    'beauty': { name: 'Beauty & Styling', priceRange: { min: 100, max: 800 } }
+                };
+
+                const serviceInfo = defaultServices[categoryKey] || { name: 'Service', priceRange: { min: 100, max: 1000 } };
+                
+                bookingState.selectedServices.push({
+                    id: `default-${categoryId}`,
+                    categoryId: parseInt(categoryId),
+                    categoryKey: categoryKey,
+                    type: serviceInfo.name,
+                    priceRange: serviceInfo.priceRange
+                });
+            }
+
+            function estimatePriceRange(basePrice, categoryKey) {
+                if (basePrice && basePrice > 0) {
+                    return { min: basePrice, max: basePrice * 2 };
+                }
+
+                // Default price ranges by category
+                const defaultRanges = {
+                    'photo': { min: 800, max: 3000 },
+                    'music': { min: 400, max: 1500 },
+                    'catering': { min: 25, max: 150 },
+                    'venue': { min: 500, max: 5000 },
+                    'decor': { min: 200, max: 1500 },
+                    'beauty': { min: 100, max: 800 }
+                };
+
+                return defaultRanges[categoryKey] || { min: 100, max: 1000 };
+            }
+
+            function closeBookingModal() {
+                const bookingModal = document.getElementById('booking-modal');
+                bookingModal.style.display = 'none';
+                bookingState.reset();
+                
+                // Clear any countdown timers
+                Object.values(bookingState.countdownTimers).forEach(timer => clearInterval(timer));
+            }
+
+            function updateBookingStep(step) {
+                // Hide all steps
+                for (let i = 1; i <= 6; i++) {
+                    const stepElement = document.getElementById(`booking-step-${i}`);
+                    const indicatorElement = document.getElementById(`booking-step-indicator-${i}`);
+                    
+                    if (stepElement) stepElement.style.display = 'none';
+                    if (indicatorElement) indicatorElement.classList.remove('active');
+                }
+                
+                // Show current step
+                const currentStepElement = document.getElementById(`booking-step-${step}`);
+                const currentIndicatorElement = document.getElementById(`booking-step-indicator-${step}`);
+                
+                if (currentStepElement) currentStepElement.style.display = 'block';
+                if (currentIndicatorElement) currentIndicatorElement.classList.add('active');
+                
+                // Update progress bar
+                const progressFill = document.getElementById('booking-progress-fill');
+                if (progressFill) {
+                    const progressPercentage = (step / 6) * 100;
+                    progressFill.style.width = `${progressPercentage}%`;
+                }
+                
+                bookingState.currentStep = step;
+                
+                // Update modal title based on step
+                const modalTitle = document.getElementById('booking-modal-title');
+                const stepTitles = {
+                    1: 'Select Services',
+                    2: 'Event Details & Budget',
+                    3: 'Choose Vendors',
+                    4: 'Review Requests',
+                    5: 'Vendor Approvals',
+                    6: 'Payment & Confirmation'
+                };
+                if (modalTitle) modalTitle.textContent = stepTitles[step] || 'Book Your Event';
+            }
+
+            function setupBookingModalEventListeners() {
+                // Service selection checkboxes
+                const serviceCheckboxes = document.querySelectorAll('#service-categories input[type="checkbox"]');
+                serviceCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', handleServiceSelection);
+                });
+
+                // Budget slider and input
+                const budgetSlider = document.getElementById('budget-slider');
+                const budgetInput = document.getElementById('budget-input');
+                const budgetDisplay = document.getElementById('budget-display');
+
+                if (budgetSlider && budgetInput && budgetDisplay) {
+                    budgetSlider.addEventListener('input', (e) => {
+                        const value = e.target.value;
+                        budgetInput.value = value;
+                        budgetDisplay.textContent = parseInt(value).toLocaleString();
+                        bookingState.budget = parseInt(value);
+                    });
+
+                    budgetInput.addEventListener('input', (e) => {
+                        const value = Math.max(500, Math.min(50000, parseInt(e.target.value) || 500));
+                        budgetSlider.value = Math.min(20000, value);
+                        budgetDisplay.textContent = value.toLocaleString();
+                        bookingState.budget = value;
+                    });
+                }
+
+                // Navigation buttons
+                document.getElementById('next-to-booking-step-2')?.addEventListener('click', () => {
+                    if (validateStep1()) updateBookingStep(2);
+                });
+
+                document.getElementById('back-to-booking-step-1')?.addEventListener('click', () => updateBookingStep(1));
+                document.getElementById('find-vendors-btn')?.addEventListener('click', handleFindVendors);
+                document.getElementById('back-to-booking-step-2')?.addEventListener('click', () => updateBookingStep(2));
+                document.getElementById('send-requests-btn')?.addEventListener('click', handleSendRequests);
+                document.getElementById('back-to-booking-step-3')?.addEventListener('click', () => updateBookingStep(3));
+                document.getElementById('continue-to-approval')?.addEventListener('click', () => updateBookingStep(5));
+                document.getElementById('back-to-booking-step-4')?.addEventListener('click', () => updateBookingStep(4));
+                document.getElementById('proceed-to-payment')?.addEventListener('click', () => updateBookingStep(6));
+                document.getElementById('back-to-booking-step-5')?.addEventListener('click', () => updateBookingStep(5));
+                document.getElementById('complete-booking')?.addEventListener('click', handleCompleteBooking);
+
+                // Adjust criteria button
+                document.getElementById('adjust-criteria-btn')?.addEventListener('click', () => updateBookingStep(2));
+
+                // Modal close functionality
+                document.querySelector('#booking-modal .close-modal')?.addEventListener('click', closeBookingModal);
+                document.getElementById('booking-modal')?.addEventListener('click', (e) => {
+                    if (e.target.id === 'booking-modal') closeBookingModal();
+                });
+            }
+
+            function handleServiceSelection() {
+                const selectedCheckboxes = document.querySelectorAll('#service-categories input[type="checkbox"]:checked');
+                bookingState.selectedServices = Array.from(selectedCheckboxes).map(cb => ({
+                    type: cb.value,
+                    minPrice: parseInt(cb.dataset.minPrice),
+                    maxPrice: parseInt(cb.dataset.maxPrice)
+                }));
+
+                // Update budget range based on selected services
+                if (bookingState.selectedServices.length > 0) {
+                    const totalMinPrice = bookingState.selectedServices.reduce((sum, service) => sum + service.minPrice, 0);
+                    const totalMaxPrice = bookingState.selectedServices.reduce((sum, service) => sum + service.maxPrice, 0);
+                    
+                    const budgetSlider = document.getElementById('budget-slider');
+                    const budgetInput = document.getElementById('budget-input');
+                    
+                    if (budgetSlider && budgetInput) {
+                        budgetSlider.min = totalMinPrice;
+                        budgetSlider.max = Math.max(totalMaxPrice, 20000);
+                        budgetInput.min = totalMinPrice;
+                        
+                        // Adjust current budget if it's below minimum
+                        if (bookingState.budget < totalMinPrice) {
+                            bookingState.budget = totalMinPrice;
+                            budgetSlider.value = totalMinPrice;
+                            budgetInput.value = totalMinPrice;
+                            document.getElementById('budget-display').textContent = totalMinPrice.toLocaleString();
+                        }
+                    }
+                }
+
+                // Enable/disable next button
+                const nextButton = document.getElementById('next-to-booking-step-2');
+                if (nextButton) {
+                    nextButton.disabled = bookingState.selectedServices.length === 0;
+                }
+            }
+
+            function validateStep1() {
+                return bookingState.selectedServices.length > 0;
+            }
+
+            function validateStep2() {
+                const eventDate = document.getElementById('event-date').value;
+                const eventTime = document.getElementById('event-time').value;
+                return eventDate && eventTime;
+            }
+
+            async function handleFindVendors() {
+                if (!validateStep2()) {
+                    showError('Please fill in all required event details.');
+                    return;
+                }
+
+                // Collect event details
+                bookingState.eventDetails = {
+                    date: document.getElementById('event-date').value,
+                    time: document.getElementById('event-time').value,
+                    location: document.getElementById('event-location').value,
+                    attendeeCount: parseInt(document.getElementById('attendee-count').value) || 50,
+                    specialRequests: document.getElementById('special-requests').value
+                };
+
+                // Show loading state
+                document.getElementById('vendor-loading').style.display = 'block';
+                document.getElementById('vendor-results').innerHTML = '';
+                document.getElementById('no-vendors-found').style.display = 'none';
+
+                updateBookingStep(3);
+
+                try {
+                    // Search for vendors based on selected services and budget
+                    const searchParams = new URLSearchParams({
+                        services: bookingState.selectedServices.map(s => s.type).join(','),
+                        budget: bookingState.budget,
+                        date: bookingState.eventDetails.date,
+                        location: bookingState.eventDetails.location || ''
+                    });
+
+                    const response = await fetch(`${API_BASE_URL}/vendors?${searchParams}`);
+                    const data = await response.json();
+
+                    document.getElementById('vendor-loading').style.display = 'none';
+
+                    if (data.vendors && data.vendors.length > 0) {
+                        bookingState.availableVendors = data.vendors;
+                        renderVendorResults(data.vendors);
+                    } else {
+                        document.getElementById('no-vendors-found').style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error finding vendors:', error);
+                    document.getElementById('vendor-loading').style.display = 'none';
+                    document.getElementById('no-vendors-found').style.display = 'block';
+                    showError('Failed to find vendors. Please try again.');
+                }
+            }
+
+            function renderVendorResults(vendors) {
+                const vendorResults = document.getElementById('vendor-results');
+                
+                const vendorCards = vendors.map(vendor => {
+                    // Fix: vendor.categories is a string, not an array
+                    const vendorCategories = vendor.categories ? vendor.categories.toLowerCase() : '';
+                    const services = bookingState.selectedServices.filter(service => 
+                        vendorCategories.includes(service.categoryKey.toLowerCase()) ||
+                        vendorCategories.includes(service.type?.toLowerCase() || '')
+                    );
+                    
+                    // Calculate estimated price based on selected services
+                    const estimatedPrice = services.reduce((sum, service) => {
+                        // Use service base price if available, otherwise estimate
+                        const servicePrice = service.basePrice || service.minPrice || 500;
+                        return sum + servicePrice;
+                    }, 0);
+
+                    return `
+                        <div class="vendor-card" data-vendor-id="${vendor.VendorProfileID || vendor.id}">
+                            <div class="vendor-card-header">
+                                <div class="vendor-avatar">
+                                    ${(vendor.BusinessName || vendor.name || 'V').charAt(0).toUpperCase()}
+                                </div>
+                                <div class="vendor-info">
+                                    <h5>${vendor.BusinessName || vendor.name || 'Vendor'}</h5>
+                                    <div class="vendor-rating">
+                                        <span>⭐ ${vendor.rating || '4.5'}</span>
+                                        <span>(${vendor.reviewCount || '12'} reviews)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="vendor-services">
+                                <h6>Services:</h6>
+                                <p>${services.map(s => s.type).join(', ') || 'Multiple services'}</p>
+                            </div>
+                            <div class="vendor-price">
+                                $${Math.round(estimatedPrice).toLocaleString()}
+                            </div>
+                            <div class="vendor-actions">
+                                <button class="btn-select-vendor" onclick="toggleVendorSelection(${vendor.VendorProfileID || vendor.id})">
+                                    Select Vendor
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                vendorResults.innerHTML = vendorCards;
+            }
+
+            function toggleVendorSelection(vendorId) {
+                const vendorCard = document.querySelector(`[data-vendor-id="${vendorId}"]`);
+                const selectButton = vendorCard.querySelector('.btn-select-vendor');
+                
+                const isSelected = bookingState.selectedVendors.some(v => v.id === vendorId);
+                
+                if (isSelected) {
+                    // Deselect vendor
+                    bookingState.selectedVendors = bookingState.selectedVendors.filter(v => v.id !== vendorId);
+                    vendorCard.classList.remove('selected');
+                    selectButton.classList.remove('selected');
+                    selectButton.textContent = 'Select Vendor';
+                } else {
+                    // Select vendor
+                    const vendor = bookingState.availableVendors.find(v => (v.VendorProfileID || v.id) === vendorId);
+                    if (vendor) {
+                        bookingState.selectedVendors.push({
+                            id: vendorId,
+                            name: vendor.BusinessName || vendor.name,
+                            ...vendor
+                        });
+                        vendorCard.classList.add('selected');
+                        selectButton.classList.add('selected');
+                        selectButton.textContent = 'Selected';
+                    }
+                }
+
+                // Enable/disable send requests button
+                const sendRequestsBtn = document.getElementById('send-requests-btn');
+                if (sendRequestsBtn) {
+                    sendRequestsBtn.disabled = bookingState.selectedVendors.length === 0;
+                }
+            }
+
+            // Helper function to format time to HH:MM:SS
+            function formatTimeForBackend(timeStr) {
+                if (!timeStr) return '12:00:00'; // Default to noon if no time provided
+                
+                // If time is already in HH:MM:SS format, return as is
+                if (timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+                    return timeStr;
+                }
+                
+                // If time is in HH:MM format, add seconds
+                if (timeStr.match(/^\d{1,2}:\d{2}$/)) {
+                    const [hours, minutes] = timeStr.split(':');
+                    return `${hours.padStart(2, '0')}:${minutes}:00`;
+                }
+                
+                // Fallback to default time
+                return '12:00:00';
+            }
+
+            async function handleSendRequests() {
+                if (bookingState.selectedVendors.length === 0) {
+                    showError('Please select at least one vendor.');
+                    return;
+                }
+
+                if (!currentUser?.id) {
+                    showError('Please log in to send booking requests.');
+                    return;
+                }
+
+                // Validate and format time
+                if (!bookingState.eventDetails?.time) {
+                    showError('Please select an event time.');
+                    return;
+                }
+
+                const formattedTime = formatTimeForBackend(bookingState.eventDetails.time);
+
+                try {
+                    // Send booking requests to backend API
+                    const requestData = {
+                        userId: currentUser.id,
+                        vendorIds: bookingState.selectedVendors.map(v => v.id),
+                        services: bookingState.selectedServices,
+                        eventDetails: {
+                            ...bookingState.eventDetails,
+                            time: formattedTime
+                        },
+                        budget: bookingState.budget
+                    };
+
+                    const response = await fetch(`${API_BASE_URL}/bookings/requests`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success && data.requests) {
+                        // Map API response to booking state format
+                        bookingState.sentRequests = data.requests.map(req => ({
+                            id: req.requestId,
+                            vendorId: req.vendorId,
+                            vendorName: bookingState.selectedVendors.find(v => v.id === req.vendorId)?.name || 'Vendor',
+                            status: req.status,
+                            sentAt: new Date(req.createdAt),
+                            expiresAt: new Date(req.expiresAt),
+                            services: bookingState.selectedServices,
+                            eventDetails: bookingState.eventDetails
+                        }));
+
+                        renderRequestSummary();
+                        updateBookingStep(4);
+                        
+                        // Start polling for approval updates
+                        startApprovalPolling();
+                    } else {
+                        throw new Error(data.message || 'Failed to send requests');
+                    }
+
+                } catch (error) {
+                    console.error('Error sending requests:', error);
+                    showError('Failed to send booking requests. Please try again.');
+                }
+            }
+
+            function renderRequestSummary() {
+                const requestSummary = document.getElementById('request-summary');
+                
+                const summaryHtml = bookingState.sentRequests.map(request => `
+                    <div class="request-item">
+                        <div class="request-header">
+                            <h5>${request.vendorName}</h5>
+                            <span class="request-status ${request.status}">${request.status.toUpperCase()}</span>
+                        </div>
+                        <p><strong>Services:</strong> ${request.services.map(s => s.type).join(', ')}</p>
+                        <p><strong>Event Date:</strong> ${request.eventDetails.date} at ${request.eventDetails.time}</p>
+                        <div class="countdown-timer" id="timer-${request.id}">
+                            <span>⏰</span>
+                            <span>Expires in: <span class="time-remaining">24:00:00</span></span>
+                        </div>
+                    </div>
+                `).join('');
+
+                requestSummary.innerHTML = summaryHtml;
+
+                // Start countdown timers
+                bookingState.sentRequests.forEach(request => {
+                    startCountdownTimer(request.id, request.expiresAt);
+                });
+            }
+
+            function startCountdownTimer(requestId, expiresAt) {
+                const timerElement = document.getElementById(`timer-${requestId}`);
+                if (!timerElement) return;
+
+                const timer = setInterval(() => {
+                    const now = new Date().getTime();
+                    const expiry = new Date(expiresAt).getTime();
+                    const timeLeft = expiry - now;
+
+                    if (timeLeft <= 0) {
+                        clearInterval(timer);
+                        const timeDisplay = timerElement.querySelector('.time-remaining');
+                        if (timeDisplay) {
+                            timeDisplay.textContent = 'EXPIRED';
+                            timerElement.classList.add('urgent');
+                        }
+                        return;
+                    }
+
+                    const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                    const timeDisplay = timerElement.querySelector('.time-remaining');
+                    if (timeDisplay) {
+                        timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        
+                        // Add urgent class if less than 2 hours remaining
+                        if (timeLeft < 2 * 60 * 60 * 1000) {
+                            timerElement.classList.add('urgent');
+                        }
+                    }
+                }, 1000);
+
+                bookingState.countdownTimers[requestId] = timer;
+            }
+
+            // Approval polling and real-time updates
+            function startApprovalPolling() {
+                // Poll for approval updates every 30 seconds
+                const pollInterval = setInterval(async () => {
+                    if (bookingState.currentStep !== 5 && bookingState.currentStep !== 4) {
+                        clearInterval(pollInterval);
+                        return;
+                    }
+
+                    try {
+                        await checkApprovalUpdates();
+                    } catch (error) {
+                        console.error('Error polling for approvals:', error);
+                    }
+                }, 30000);
+
+                // Store interval for cleanup
+                bookingState.approvalPollingInterval = pollInterval;
+            }
+
+            async function checkApprovalUpdates() {
+                if (!currentUser?.id) return;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${currentUser.id}`);
+                    const data = await response.json();
+
+                    if (data.success && data.requests) {
+                        // Update request statuses
+                        bookingState.sentRequests.forEach(sentRequest => {
+                            const updatedRequest = data.requests.find(r => r.RequestID === sentRequest.id);
+                            if (updatedRequest && updatedRequest.Status !== sentRequest.status) {
+                                sentRequest.status = updatedRequest.Status;
+                                sentRequest.responseMessage = updatedRequest.ResponseMessage;
+                                sentRequest.proposedPrice = updatedRequest.ProposedPrice;
+                            }
+                        });
+
+                        // Update approved vendors
+                        bookingState.approvedVendors = bookingState.sentRequests
+                            .filter(req => req.status === 'approved')
+                            .map(req => ({
+                                id: req.vendorId,
+                                name: req.vendorName,
+                                proposedPrice: req.proposedPrice || 0,
+                                services: req.services
+                            }));
+
+                        // Calculate total cost
+                        bookingState.totalCost = bookingState.approvedVendors.reduce((sum, vendor) => 
+                            sum + (vendor.proposedPrice || 0), 0
+                        );
+
+                        // Update UI if on approval step
+                        if (bookingState.currentStep === 5) {
+                            renderApprovalStatus();
+                        }
+
+                        // Check if we can proceed to payment
+                        const hasAllApprovals = bookingState.approvedVendors.length > 0;
+                        const proceedButton = document.getElementById('proceed-to-payment');
+                        if (proceedButton) {
+                            proceedButton.disabled = !hasAllApprovals;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error checking approval updates:', error);
+                }
+            }
+
+            function renderApprovalStatus() {
+                const approvalStatus = document.getElementById('approval-status');
+                if (!approvalStatus) return;
+
+                const statusHtml = bookingState.sentRequests.map(request => {
+                    const statusClass = request.status === 'approved' ? 'approved' : 
+                                       request.status === 'declined' ? 'declined' : 'pending';
+                    
+                    const timeRemaining = request.status === 'pending' ? 
+                        getTimeRemaining(request.expiresAt) : null;
+
+                    return `
+                        <div class="request-item">
+                            <div class="request-header">
+                                <h5>${request.vendorName}</h5>
+                                <span class="request-status ${statusClass}">
+                                    ${request.status === 'approved' ? '✅ APPROVED' : 
+                                      request.status === 'declined' ? '❌ DECLINED' : 
+                                      '⏳ PENDING'}
+                                </span>
+                            </div>
+                            <p><strong>Services:</strong> ${request.services.map(s => s.type).join(', ')}</p>
+                            ${request.proposedPrice ? `<p><strong>Proposed Price:</strong> $${request.proposedPrice.toLocaleString()}</p>` : ''}
+                            ${request.responseMessage ? `<p><strong>Message:</strong> ${request.responseMessage}</p>` : ''}
+                            ${timeRemaining ? `
+                                <div class="countdown-timer ${timeRemaining.urgent ? 'urgent' : ''}">
+                                    <span>⏰</span>
+                                    <span>Expires in: ${timeRemaining.display}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+
+                approvalStatus.innerHTML = statusHtml;
+            }
+
+            function getTimeRemaining(expiresAt) {
+                const now = new Date().getTime();
+                const expiry = new Date(expiresAt).getTime();
+                const timeLeft = expiry - now;
+
+                if (timeLeft <= 0) {
+                    return { display: 'EXPIRED', urgent: true };
+                }
+
+                const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                return {
+                    display: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
+                    urgent: timeLeft < 2 * 60 * 60 * 1000 // Less than 2 hours
+                };
+            }
+
+            async function handleCompleteBooking() {
+                try {
+                    if (bookingState.approvedVendors.length === 0) {
+                        showError('No approved vendors to book.');
+                        return;
+                    }
+
+                    // Create payment intent with Stripe
+                    const response = await fetch(`${API_BASE_URL}/bookings/create-payment-intent`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            amount: bookingState.totalCost,
+                            currency: 'usd'
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.clientSecret) {
+                        // Initialize Stripe Elements for payment
+                        if (state.stripe && state.elements) {
+                            const cardElement = state.elements.create('card');
+                            cardElement.mount('#card-element');
+
+                            // Handle form submission
+                            const { error, paymentIntent } = await state.stripe.confirmCardPayment(data.clientSecret, {
+                                payment_method: {
+                                    card: cardElement,
+                                    billing_details: {
+                                        name: currentUser?.name || 'Customer'
+                                    }
+                                }
+                            });
+
+                            if (error) {
+                                showError(`Payment failed: ${error.message}`);
+                            } else if (paymentIntent.status === 'succeeded') {
+                                // Create final bookings
+                                await createFinalBookings(paymentIntent.id);
+                                showSuccess('Booking completed successfully! You will receive confirmation emails shortly.');
+                                closeBookingModal();
+                            }
+                        } else {
+                            // Fallback for demo - simulate successful payment
+                            console.log('Processing payment:', { amount: bookingState.totalCost });
+                            showSuccess('Booking completed successfully! You will receive confirmation emails shortly.');
+                            closeBookingModal();
+                        }
+                    } else {
+                        throw new Error('Failed to create payment intent');
+                    }
+
+                } catch (error) {
+                    console.error('Error completing booking:', error);
+                    showError('Failed to complete booking. Please try again.');
+                }
+            }
+
+            async function createFinalBookings(paymentIntentId) {
+                // Create final bookings for approved vendors
+                const bookingPromises = bookingState.approvedVendors.map(vendor => {
+                    return fetch(`${API_BASE_URL}/bookings`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            userId: currentUser.id,
+                            vendorProfileId: vendor.id,
+                            eventDate: bookingState.eventDetails.date,
+                            endDate: bookingState.eventDetails.date, // Same day for now
+                            attendeeCount: bookingState.eventDetails.attendeeCount,
+                            specialRequests: bookingState.eventDetails.specialRequests,
+                            services: vendor.services,
+                            paymentIntentId: paymentIntentId
+                        })
+                    });
+                });
+
+                await Promise.all(bookingPromises);
+            }
+
+            function renderBookingSummary() {
+                const bookingSummary = document.getElementById('booking-summary');
+                if (!bookingSummary || bookingState.approvedVendors.length === 0) return;
+
+                const summaryHtml = `
+                    <div class="booking-summary-card">
+                        <h5 style="margin-bottom: 1rem; color: var(--primary);">Booking Summary</h5>
+                        
+                        <div class="summary-row">
+                            <span>Event Date:</span>
+                            <span>${bookingState.eventDetails.date} at ${bookingState.eventDetails.time}</span>
+                        </div>
+                        
+                        <div class="summary-row">
+                            <span>Location:</span>
+                            <span>${bookingState.eventDetails.location || 'TBD'}</span>
+                        </div>
+                        
+                        <div class="summary-row">
+                            <span>Attendees:</span>
+                            <span>${bookingState.eventDetails.attendeeCount}</span>
+                        </div>
+                        
+                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border);">
+                        
+                        <h6 style="margin-bottom: 0.5rem; color: var(--primary);">Confirmed Vendors:</h6>
+                        ${bookingState.approvedVendors.map(vendor => `
+                            <div class="summary-row">
+                                <span>${vendor.name}</span>
+                                <span>$${vendor.proposedPrice?.toLocaleString() || '0'}</span>
+                            </div>
+                        `).join('')}
+                        
+                        <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border);">
+                        
+                        <div class="summary-row">
+                            <span><strong>Total Cost:</strong></span>
+                            <span><strong>$${bookingState.totalCost.toLocaleString()}</strong></span>
+                        </div>
+                    </div>
+                `;
+
+                bookingSummary.innerHTML = summaryHtml;
+            }
+
+            // Override updateBookingStep to handle step-specific logic
+            const originalUpdateBookingStep = updateBookingStep;
+            updateBookingStep = function(step) {
+                originalUpdateBookingStep(step);
+                
+                // Step-specific logic
+                if (step === 5) {
+                    renderApprovalStatus();
+                } else if (step === 6) {
+                    renderBookingSummary();
+                }
+                
+                // Clean up polling when leaving approval steps
+                if (step !== 4 && step !== 5 && bookingState.approvalPollingInterval) {
+                    clearInterval(bookingState.approvalPollingInterval);
+                    bookingState.approvalPollingInterval = null;
+                }
+            };
+
+            // Override closeBookingModal to clean up polling
+            const originalCloseBookingModal = closeBookingModal;
+            closeBookingModal = function() {
+                if (bookingState.approvalPollingInterval) {
+                    clearInterval(bookingState.approvalPollingInterval);
+                    bookingState.approvalPollingInterval = null;
+                }
+                originalCloseBookingModal();
+            };
+
+            // Make functions globally available
+            window.openBookingModal = openBookingModal;
+            window.toggleVendorSelection = toggleVendorSelection;
             
             // New router-like functionality for SPA
             function handleUrlChange() {
@@ -10893,9 +12156,101 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 });
             };
 
-            // REMOVED: Old auto-population interval code that was causing issues
-            // Gallery is now populated directly in renderVendorProfile() function
-            console.log('✅ Gallery population is now handled directly in renderVendorProfile() function');
+            // Initialize booking modal when DOM is loaded
+            document.addEventListener('DOMContentLoaded', function() {
+                // Add event listener for Book Now button
+                const bookNowBtn = document.getElementById('book-now-btn');
+                if (bookNowBtn) {
+                    bookNowBtn.addEventListener('click', openBookingModal);
+                }
+                
+                // Add event listener for closing booking modal
+                const bookingModal = document.getElementById('booking-modal');
+                if (bookingModal) {
+                    bookingModal.addEventListener('click', function(e) {
+                        if (e.target === bookingModal) {
+                            closeBookingModal();
+                        }
+                    });
+                }
+                
+                // Add event listeners for booking step navigation
+                setupBookingStepNavigation();
+            });
+            
+            function setupBookingStepNavigation() {
+                // Step 1 to Step 2
+                const nextToStep2Btn = document.getElementById('next-to-booking-step-2');
+                if (nextToStep2Btn) {
+                    nextToStep2Btn.addEventListener('click', function() {
+                        if (bookingState.selectedServices.length === 0) {
+                            showError('Please select at least one service category.');
+                            return;
+                        }
+                        updateBookingStep(2);
+                    });
+                }
+                
+                // Step 2 navigation
+                const backToStep1Btn = document.getElementById('back-to-booking-step-1');
+                const findVendorsBtn = document.getElementById('find-vendors-btn');
+                
+                if (backToStep1Btn) {
+                    backToStep1Btn.addEventListener('click', () => updateBookingStep(1));
+                }
+                
+                if (findVendorsBtn) {
+                    findVendorsBtn.addEventListener('click', handleFindVendors);
+                }
+                
+                // Step 3 navigation
+                const backToStep2Btn = document.getElementById('back-to-booking-step-2');
+                const sendRequestsBtn = document.getElementById('send-requests-btn');
+                
+                if (backToStep2Btn) {
+                    backToStep2Btn.addEventListener('click', () => updateBookingStep(2));
+                }
+                
+                if (sendRequestsBtn) {
+                    sendRequestsBtn.addEventListener('click', handleSendRequests);
+                }
+                
+                // Step 4 navigation
+                const backToStep3Btn = document.getElementById('back-to-booking-step-3');
+                const continueToApprovalBtn = document.getElementById('continue-to-approval');
+                
+                if (backToStep3Btn) {
+                    backToStep3Btn.addEventListener('click', () => updateBookingStep(3));
+                }
+                
+                if (continueToApprovalBtn) {
+                    continueToApprovalBtn.addEventListener('click', () => updateBookingStep(5));
+                }
+                
+                // Step 5 navigation
+                const backToStep4Btn = document.getElementById('back-to-booking-step-4');
+                const proceedToPaymentBtn = document.getElementById('proceed-to-payment');
+                
+                if (backToStep4Btn) {
+                    backToStep4Btn.addEventListener('click', () => updateBookingStep(4));
+                }
+                
+                if (proceedToPaymentBtn) {
+                    proceedToPaymentBtn.addEventListener('click', () => updateBookingStep(6));
+                }
+                
+                // Step 6 navigation
+                const backToStep5Btn = document.getElementById('back-to-booking-step-5');
+                const confirmBookingBtn = document.getElementById('confirm-booking');
+                
+                if (backToStep5Btn) {
+                    backToStep5Btn.addEventListener('click', () => updateBookingStep(5));
+                }
+                
+                if (confirmBookingBtn) {
+                    confirmBookingBtn.addEventListener('click', handleConfirmBooking);
+                }
+            }
 
             // Step Navigation Event Handlers
             function setupStepNavigationHandlers() {
@@ -11034,218 +12389,4 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
         });
     </script>
-
-    <!-- Budget Bar for Multi-Vendor Selection -->
-    <div class="budget-bar">
-        <div class="budget-section">
-            <label for="budget-input">Event Budget:</label>
-            <input type="number" id="budget-input" class="budget-input" placeholder="5000" min="0" step="100">
-            <span class="budget-display">Budget: $<span id="budget-amount">0</span></span>
-        </div>
-        <div class="budget-section">
-            <span class="budget-display">Selected: $<span id="selected-amount">0</span></span>
-            <span class="budget-display">Remaining: $<span id="remaining-amount">0</span></span>
-        </div>
-        <button class="multi-select-btn" id="multi-select-toggle">
-            <i class="fas fa-check-square"></i>
-            Multi-Select Mode
-        </button>
-        <button class="multi-select-btn" id="book-selected-btn" style="display: none;">
-            <i class="fas fa-calendar-check"></i>
-            Book Selected Vendors
-        </button>
-    </div>
-
-    <!-- Booking Modal for Single Vendor -->
-    <div id="booking-modal" class="modal">
-        <div class="modal-content booking-modal-content">
-            <div class="modal-header">
-                <h3 id="booking-modal-title">Book Service</h3>
-                <span class="close-modal">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="booking-layout">
-                    <!-- Left Column: Service Selection & Calendar -->
-                    <div class="booking-left">
-                        <!-- Service Selection -->
-                        <div class="booking-section">
-                            <h4>Select Service</h4>
-                            <div id="service-selection" class="service-grid">
-                                <!-- Services will be populated here -->
-                            </div>
-                        </div>
-
-                        <!-- Calendar -->
-                        <div class="booking-section">
-                            <h4>Select Date</h4>
-                            <div id="booking-calendar"></div>
-                        </div>
-
-                        <!-- Time Slots -->
-                        <div class="booking-section">
-                            <h4>Available Times</h4>
-                            <div id="timeslot-grid" class="timeslot-grid">
-                                <!-- Time slots will be populated here -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Right Column: Summary & Payment -->
-                    <div class="booking-right">
-                        <!-- Booking Summary -->
-                        <div class="booking-section">
-                            <h4>Booking Summary</h4>
-                            <div id="booking-summary" class="booking-summary">
-                                <p>Please select a service and date to see booking details.</p>
-                            </div>
-                        </div>
-
-                        <!-- Customer Information -->
-                        <div class="booking-section">
-                            <h4>Customer Information</h4>
-                            <div class="form-group">
-                                <input type="text" id="customer-name" placeholder="Full Name" required>
-                            </div>
-                            <div class="form-group">
-                                <input type="email" id="customer-email" placeholder="Email Address" required>
-                            </div>
-                            <div class="form-group">
-                                <input type="tel" id="customer-phone" placeholder="Phone Number" required>
-                            </div>
-                            <div class="form-group">
-                                <textarea id="event-details" placeholder="Event Details (Optional)" rows="3"></textarea>
-                            </div>
-                        </div>
-
-                        <!-- Payment -->
-                        <div class="booking-section">
-                            <h4>Payment Information</h4>
-                            <div id="card-element" class="stripe-element">
-                                <!-- Stripe Elements will create form elements here -->
-                            </div>
-                            <div id="card-errors" role="alert" class="error-message"></div>
-                        </div>
-
-                        <!-- Confirm Button -->
-                        <button id="confirm-booking-btn" class="confirm-btn" disabled>
-                            <i class="fas fa-credit-card"></i>
-                            Complete Booking
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Multi-Vendor Booking Modal -->
-    <div id="multi-booking-modal" class="modal">
-        <div class="modal-content booking-modal-content">
-            <div class="modal-header">
-                <h3>Book Multiple Vendors</h3>
-                <span class="close-modal">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="booking-layout">
-                    <!-- Left Column: Selected Vendors & Calendar -->
-                    <div class="booking-left">
-                        <!-- Selected Vendors -->
-                        <div class="booking-section">
-                            <h4>Selected Vendors</h4>
-                            <div id="multi-vendor-list" class="vendor-list">
-                                <!-- Selected vendors will be populated here -->
-                            </div>
-                        </div>
-
-                        <!-- Calendar -->
-                        <div class="booking-section">
-                            <h4>Event Date</h4>
-                            <div id="multi-booking-calendar"></div>
-                        </div>
-                    </div>
-
-                    <!-- Right Column: Summary & Payment -->
-                    <div class="booking-right">
-                        <!-- Booking Summary -->
-                        <div class="booking-section">
-                            <h4>Booking Summary</h4>
-                            <div class="summary-line">
-                                <span>Subtotal:</span>
-                                <span id="multi-subtotal">$0</span>
-                            </div>
-                            <div class="summary-line">
-                                <span>Platform Fee (5%):</span>
-                                <span id="multi-platform-fee">$0</span>
-                            </div>
-                            <div class="summary-line total">
-                                <span>Total:</span>
-                                <span id="multi-total">$0</span>
-                            </div>
-                            <div class="summary-line budget">
-                                <span>Budget Remaining:</span>
-                                <span id="budget-remaining">$0</span>
-                            </div>
-                        </div>
-
-                        <!-- Customer Information -->
-                        <div class="booking-section">
-                            <h4>Customer Information</h4>
-                            <div class="form-group">
-                                <input type="text" id="multi-customer-name" placeholder="Full Name" required>
-                            </div>
-                            <div class="form-group">
-                                <input type="email" id="multi-customer-email" placeholder="Email Address" required>
-                            </div>
-                            <div class="form-group">
-                                <input type="tel" id="multi-customer-phone" placeholder="Phone Number" required>
-                            </div>
-                            <div class="form-group">
-                                <textarea id="multi-event-details" placeholder="Event Details (Optional)" rows="3"></textarea>
-                            </div>
-                        </div>
-
-                        <!-- Payment -->
-                        <div class="booking-section">
-                            <h4>Payment Information</h4>
-                            <div id="multi-card-element" class="stripe-element">
-                                <!-- Stripe Elements will create form elements here -->
-                            </div>
-                            <div id="multi-card-errors" role="alert" class="error-message"></div>
-                        </div>
-
-                        <!-- Confirm Button -->
-                        <button id="confirm-multi-booking-btn" class="confirm-btn" disabled>
-                            <i class="fas fa-credit-card"></i>
-                            Complete Multi-Booking
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Multi-Vendor Booking Summary Sidebar -->
-    <div id="multi-booking-summary" class="multi-booking-summary">
-        <div class="summary-header">
-            <h4>Selected Vendors</h4>
-            <button id="clear-selection-btn" class="clear-btn">
-                <i class="fas fa-times"></i>
-                Clear All
-            </button>
-        </div>
-        <div id="selected-vendors-list" class="selected-vendors">
-            <!-- Selected vendors will appear here -->
-        </div>
-        <div class="summary-footer">
-            <div class="total-display">
-                Total: $<span id="sidebar-total">0</span>
-            </div>
-            <button id="sidebar-book-btn" class="book-btn" disabled>
-                <i class="fas fa-calendar-check"></i>
-                Book All
-            </button>
-        </div>
-    </div>
-
-    <!-- Include the booking modal JavaScript -->
-    <script src="booking-modal.js"></script>
 </html>
