@@ -140,6 +140,17 @@ router.post('/create-payment-intent', async (req, res) => {
   }
 });
 
+// Helper function to format time for SQL Server TIME type
+const formatTimeForSQL = (timeStr) => {
+  if (!timeStr) return '12:00:00'; // Default to noon if no time provided
+  // Ensure format is HH:MM:SS
+  const parts = timeStr.split(':');
+  if (parts.length === 2) {
+    return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:00`;
+  }
+  return timeStr;
+};
+
 // NEW: Multi-step booking request endpoints
 router.post('/requests', async (req, res) => {
   try {
@@ -158,17 +169,32 @@ router.post('/requests', async (req, res) => {
       });
     }
 
+    // Validate required fields
+    if (!eventDetails || !eventDetails.date || !eventDetails.time) {
+      return res.status(400).json({
+        success: false,
+        message: 'Event date and time are required'
+      });
+    }
+
     const pool = await poolPromise;
     const requests = [];
+
+    // Format the time for SQL Server
+    const formattedTime = formatTimeForSQL(eventDetails.time);
+    const eventDate = new Date(eventDetails.date);
+    
+    // Combine date and time for the event
+    const eventDateTime = new Date(
+      eventDate.getFullYear(),
+      eventDate.getMonth(),
+      eventDate.getDate(),
+      ...formattedTime.split(':').map(Number)
+    );
 
     // Create booking requests for each vendor
     for (const vendorId of vendorIds) {
       const request = new sql.Request(pool);
-      
-      // Format the date and time for SQL Server
-      const eventDateTime = new Date(eventDetails.date);
-      const [hours, minutes] = eventDetails.time.split(':');
-      eventDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0);
       
       request.input('UserID', sql.Int, userId);
       request.input('VendorProfileID', sql.Int, vendorId);
