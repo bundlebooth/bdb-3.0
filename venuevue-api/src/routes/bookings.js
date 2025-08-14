@@ -49,91 +49,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// MOVED: Get service categories for booking modal - BEFORE /:id route
-router.get('/service-categories', async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    // Query to get service categories from database
-    const result = await request.query(`
-      SELECT DISTINCT 
-        ROW_NUMBER() OVER (ORDER BY Category) as id,
-        Category as key,
-        Category as name,
-        CASE Category
-          WHEN 'venue' THEN 'fas fa-building'
-          WHEN 'photo' THEN 'fas fa-camera'
-          WHEN 'music' THEN 'fas fa-music'
-          WHEN 'catering' THEN 'fas fa-utensils'
-          WHEN 'entertainment' THEN 'fas fa-theater-masks'
-          WHEN 'experiences' THEN 'fas fa-star'
-          WHEN 'decor' THEN 'fas fa-ribbon'
-          WHEN 'beauty' THEN 'fas fa-spa'
-          WHEN 'cake' THEN 'fas fa-birthday-cake'
-          WHEN 'transport' THEN 'fas fa-shuttle-van'
-          WHEN 'planner' THEN 'fas fa-clipboard-list'
-          WHEN 'fashion' THEN 'fas fa-tshirt'
-          WHEN 'stationery' THEN 'fas fa-envelope'
-          ELSE 'fas fa-star'
-        END as icon,
-        COUNT(*) as serviceCount
-      FROM VendorProfiles 
-      WHERE Category IS NOT NULL AND Category != ''
-      GROUP BY Category
-      ORDER BY Category
-    `);
-
-    const categories = result.recordset;
-
-    // If no categories found, return default categories
-    if (categories.length === 0) {
-      const defaultCategories = [
-        { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
-        { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
-        { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
-        { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 },
-        { id: 5, key: 'entertainment', name: 'Entertainment', icon: 'fas fa-theater-masks', serviceCount: 0 },
-        { id: 6, key: 'experiences', name: 'Experiences', icon: 'fas fa-star', serviceCount: 0 },
-        { id: 7, key: 'decor', name: 'Decorations', icon: 'fas fa-ribbon', serviceCount: 0 },
-        { id: 8, key: 'beauty', name: 'Beauty', icon: 'fas fa-spa', serviceCount: 0 },
-        { id: 9, key: 'cake', name: 'Cake', icon: 'fas fa-birthday-cake', serviceCount: 0 },
-        { id: 10, key: 'transport', name: 'Transportation', icon: 'fas fa-shuttle-van', serviceCount: 0 },
-        { id: 11, key: 'planner', name: 'Planners', icon: 'fas fa-clipboard-list', serviceCount: 0 },
-        { id: 12, key: 'fashion', name: 'Fashion', icon: 'fas fa-tshirt', serviceCount: 0 },
-        { id: 13, key: 'stationery', name: 'Stationery', icon: 'fas fa-envelope', serviceCount: 0 }
-      ];
-      
-      return res.json({
-        success: true,
-        categories: defaultCategories
-      });
-    }
-
-    res.json({
-      success: true,
-      categories: categories
-    });
-
-  } catch (err) {
-    console.error('Error fetching service categories:', err);
-    
-    // Return fallback categories on error
-    const fallbackCategories = [
-      { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
-      { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
-      { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
-      { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 }
-    ];
-    
-    res.json({
-      success: true,
-      categories: fallbackCategories
-    });
-  }
-});
-
-// Get booking details - NOW COMES AFTER service-categories
+// Get booking details
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -224,6 +140,7 @@ router.post('/create-payment-intent', async (req, res) => {
   }
 });
 
+// NEW: Multi-step booking request endpoints
 router.post('/requests', async (req, res) => {
   try {
     const {
@@ -244,116 +161,50 @@ router.post('/requests', async (req, res) => {
     const pool = await poolPromise;
     const requests = [];
 
-    // Format time to ensure it's in HH:MM:SS format
-    const formatTime = (timeStr) => {
-      if (!timeStr) return '12:00:00'; // Default to noon if no time provided
-      
-      // Handle various time formats
-      const timeParts = timeStr.split(':');
-      if (timeParts.length >= 2) {
-        // Ensure we have hours and minutes
-        const hours = timeParts[0].padStart(2, '0');
-        const minutes = timeParts[1].padStart(2, '0');
-        const seconds = timeParts[2] ? timeParts[2].padStart(2, '0') : '00';
-        return `${hours}:${minutes}:${seconds}`;
-      }
-      return '12:00:00'; // Fallback to default
-    };
-
-    // Parse and validate date
-    const parseDate = (dateStr) => {
-      if (!dateStr) {
-        throw new Error('Date is required');
-      }
-      
-      // Check if date is in YYYY-MM-DD format
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(dateStr)) {
-        throw new Error('Invalid date format. Please use YYYY-MM-DD');
-      }
-      
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) {
-        throw new Error('Invalid date');
-      }
-      
-      return date.toISOString().split('T')[0]; // Return in YYYY-MM-DD format
-    };
-
-    // Log incoming request for debugging
-    console.log('Incoming request:', {
-      userId,
-      vendorIds,
-      services,
-      eventDetails,
-      budget
-    });
-
     // Create booking requests for each vendor
     for (const vendorId of vendorIds) {
       const request = new sql.Request(pool);
       
-      try {
-        const eventDate = parseDate(eventDetails?.date);
-        const eventTime = formatTime(eventDetails?.time);
+      // Format the date and time for SQL Server
+      const eventDateTime = new Date(eventDetails.date);
+      const [hours, minutes] = eventDetails.time.split(':');
+      eventDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0);
+      
+      request.input('UserID', sql.Int, userId);
+      request.input('VendorProfileID', sql.Int, vendorId);
+      request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
+      request.input('EventDate', sql.DateTime, eventDateTime);
+      request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
+      request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
+      request.input('Budget', sql.Decimal(10, 2), budget);
+      request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || null);
+      request.input('Status', sql.NVarChar(50), 'pending');
+      
+      // Set expiry to 24 hours from now
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      request.input('ExpiresAt', sql.DateTime, expiresAt);
 
-        console.log('Processing request for vendor:', {
-          vendorId,
-          eventDate,
-          eventTime,
-          location: eventDetails?.location,
-          attendeeCount: eventDetails?.attendeeCount,
-          budget
+      const result = await request.query(`
+        INSERT INTO BookingRequests (
+          UserID, VendorProfileID, Services, EventDate, EventLocation, 
+          AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
+        )
+        OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
+        VALUES (
+          @UserID, @VendorProfileID, @Services, @EventDate, @EventLocation,
+          @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
+        )
+      `);
+
+      if (result.recordset.length > 0) {
+        requests.push({
+          requestId: result.recordset[0].RequestID,
+          vendorId: vendorId,
+          status: 'pending',
+          createdAt: result.recordset[0].CreatedAt,
+          expiresAt: result.recordset[0].ExpiresAt
         });
-
-        request.input('UserID', sql.Int, userId);
-        request.input('VendorProfileID', sql.Int, vendorId);
-        request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
-        request.input('EventDate', sql.Date, eventDate);
-        request.input('EventTime', sql.Time, eventTime);
-        request.input('EventLocation', sql.NVarChar(500), eventDetails?.location || '');
-        request.input('AttendeeCount', sql.Int, eventDetails?.attendeeCount || 50);
-        request.input('Budget', sql.Decimal(10, 2), budget);
-        request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails?.specialRequests || '');
-        request.input('Status', sql.NVarChar(50), 'pending');
-        request.input('ExpiresAt', sql.DateTime, new Date(Date.now() + 24 * 60 * 60 * 1000)); // 24 hours
-
-        const result = await request.query(`
-          INSERT INTO BookingRequests (
-            UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
-            AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
-          )
-          OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
-          VALUES (
-            @UserID, @VendorProfileID, @Services, @EventDate, @EventTime, @EventLocation,
-            @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
-          )
-        `);
-
-        if (result.recordset.length > 0) {
-          requests.push({
-            requestId: result.recordset[0].RequestID,
-            vendorId: vendorId,
-            status: 'pending',
-            createdAt: result.recordset[0].CreatedAt,
-            expiresAt: result.recordset[0].ExpiresAt
-          });
-        }
-      } catch (dbError) {
-        console.error('Database error for vendor', vendorId, ':', {
-          error: dbError.message,
-          stack: dbError.stack,
-          parameters: {
-            UserID: userId,
-            VendorProfileID: vendorId,
-            EventDate: eventDetails?.date,
-            EventTime: eventDetails?.time,
-            EventLocation: eventDetails?.location,
-            AttendeeCount: eventDetails?.attendeeCount,
-            Budget: budget
-          }
-        });
-        throw dbError;
       }
     }
 
@@ -363,25 +214,38 @@ router.post('/requests', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Error in /requests endpoint:', {
-      error: err.message,
-      stack: err.stack,
-      requestBody: req.body
-    });
-    
-    // More specific error messages
-    let errorMessage = 'Failed to create booking requests';
-    if (err.message.includes('date') || err.message.includes('time')) {
-      errorMessage = err.message;
-    }
-    
+    console.error('Database error:', err);
     res.status(500).json({ 
       success: false,
-      message: errorMessage,
-      error: err.message,
-      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+      message: 'Failed to create booking requests',
+      error: err.message 
     });
   }
+});
+
+// Get service categories for booking modal - COMPLETELY ISOLATED
+router.get('/service-categories', (req, res) => {
+  // No try-catch, no database, no async - just return data immediately
+  const categories = [
+    { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
+    { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
+    { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
+    { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 },
+    { id: 5, key: 'entertainment', name: 'Entertainment', icon: 'fas fa-theater-masks', serviceCount: 0 },
+    { id: 6, key: 'experiences', name: 'Experiences', icon: 'fas fa-star', serviceCount: 0 },
+    { id: 7, key: 'decor', name: 'Decorations', icon: 'fas fa-ribbon', serviceCount: 0 },
+    { id: 8, key: 'beauty', name: 'Beauty', icon: 'fas fa-spa', serviceCount: 0 },
+    { id: 9, key: 'cake', name: 'Cake', icon: 'fas fa-birthday-cake', serviceCount: 0 },
+    { id: 10, key: 'transport', name: 'Transportation', icon: 'fas fa-shuttle-van', serviceCount: 0 },
+    { id: 11, key: 'planner', name: 'Planners', icon: 'fas fa-clipboard-list', serviceCount: 0 },
+    { id: 12, key: 'fashion', name: 'Fashion', icon: 'fas fa-tshirt', serviceCount: 0 },
+    { id: 13, key: 'stationery', name: 'Stationery', icon: 'fas fa-envelope', serviceCount: 0 }
+  ];
+
+  res.status(200).json({
+    success: true,
+    categories: categories
+  });
 });
 
 // Get services by category for booking modal
@@ -423,6 +287,7 @@ router.get('/services/:categoryId', async (req, res) => {
       INNER JOIN VendorProfiles vp ON vc.VendorProfileID = vp.VendorProfileID
       LEFT JOIN VendorAdditionalDetails vad ON vp.VendorProfileID = vad.VendorProfileID
       WHERE vc.Category LIKE '%' + @Category + '%'
+        AND vp.IsActive = 1 
         AND vp.IsCompleted = 1
         AND vp.AcceptingBookings = 1
       ORDER BY vp.BusinessName
