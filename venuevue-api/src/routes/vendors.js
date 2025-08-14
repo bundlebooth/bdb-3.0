@@ -2037,6 +2037,108 @@ router.get('/:id/setup-data', async (req, res) => {
   }
 });
 
+// Get vendor summary for Step 8 display
+router.get('/summary/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+
+    // Get basic vendor info
+    const vendorResult = await request.query(`
+      SELECT 
+        BusinessName, DisplayName, BusinessEmail, BusinessPhone, Website,
+        YearsInBusiness, BusinessDescription, Tagline, Address, City, State,
+        Country, PostalCode, FeaturedImageURL
+      FROM VendorProfiles 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    if (vendorResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Vendor not found' });
+    }
+
+    const basicInfo = vendorResult.recordset[0];
+
+    // Get categories
+    const categoriesResult = await request.query(`
+      SELECT vc.Category 
+      FROM VendorCategories vc
+      WHERE vc.VendorProfileID = @VendorProfileID
+    `);
+
+    // Get service areas
+    const serviceAreasResult = await request.query(`
+      SELECT City, State, Country, RadiusMiles, AdditionalFee
+      FROM VendorServiceAreas 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    // Get services count
+    const servicesResult = await request.query(`
+      SELECT COUNT(*) as ServiceCount 
+      FROM Services s
+      INNER JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+      WHERE sc.VendorProfileID = @VendorProfileID
+    `);
+
+    // Get packages count
+    const packagesResult = await request.query(`
+      SELECT COUNT(*) as PackageCount 
+      FROM Packages 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    // Get images count
+    const imagesResult = await request.query(`
+      SELECT COUNT(*) as ImageCount 
+      FROM VendorImages 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    // Get social media
+    const socialMediaResult = await request.query(`
+      SELECT Platform, URL 
+      FROM VendorSocialMedia 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    // Get business hours
+    const businessHoursResult = await request.query(`
+      SELECT DayOfWeek, OpenTime, CloseTime, IsAvailable
+      FROM VendorBusinessHours 
+      WHERE VendorProfileID = @VendorProfileID
+      ORDER BY DayOfWeek
+    `);
+
+    const summaryData = {
+      basicInfo,
+      categories: categoriesResult.recordset,
+      serviceAreas: serviceAreasResult.recordset,
+      serviceCount: servicesResult.recordset[0]?.ServiceCount || 0,
+      packageCount: packagesResult.recordset[0]?.PackageCount || 0,
+      imageCount: imagesResult.recordset[0]?.ImageCount || 0,
+      socialMedia: socialMediaResult.recordset,
+      businessHours: businessHoursResult.recordset
+    };
+
+    res.json({
+      success: true,
+      data: summaryData
+    });
+
+  } catch (err) {
+    console.error('Vendor summary error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get vendor summary',
+      error: err.message 
+    });
+  }
+});
+
 // Step 1: Business Basics
 router.post('/setup/step1-business-basics', async (req, res) => {
   try {
