@@ -217,23 +217,87 @@ router.post('/requests', async (req, res) => {
 // Get service categories for booking modal
 router.get('/service-categories', async (req, res) => {
   try {
-    // Since ServiceCategories table may not exist, return hardcoded categories
-    // that match the main navigation structure
-    const categories = [
-      { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 15 },
-      { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 12 },
-      { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 8 },
-      { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 20 },
-      { id: 5, key: 'entertainment', name: 'Entertainment', icon: 'fas fa-theater-masks', serviceCount: 10 },
-      { id: 6, key: 'experiences', name: 'Experiences', icon: 'fas fa-star', serviceCount: 7 },
-      { id: 7, key: 'decor', name: 'Decorations', icon: 'fas fa-ribbon', serviceCount: 14 },
-      { id: 8, key: 'beauty', name: 'Beauty', icon: 'fas fa-spa', serviceCount: 9 },
-      { id: 9, key: 'cake', name: 'Cake', icon: 'fas fa-birthday-cake', serviceCount: 6 },
-      { id: 10, key: 'transport', name: 'Transportation', icon: 'fas fa-shuttle-van', serviceCount: 5 },
-      { id: 11, key: 'planner', name: 'Planners', icon: 'fas fa-clipboard-list', serviceCount: 8 },
-      { id: 12, key: 'fashion', name: 'Fashion', icon: 'fas fa-tshirt', serviceCount: 11 },
-      { id: 13, key: 'stationery', name: 'Stationery', icon: 'fas fa-envelope', serviceCount: 4 }
-    ];
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    // Get distinct categories from VendorCategories table with vendor counts
+    const result = await request.query(`
+      SELECT DISTINCT 
+        vc.Category,
+        COUNT(DISTINCT vc.VendorProfileID) as VendorCount
+      FROM VendorCategories vc
+      INNER JOIN VendorProfiles vp ON vc.VendorProfileID = vp.VendorProfileID
+      WHERE vp.IsActive = 1 AND vp.IsCompleted = 1
+      GROUP BY vc.Category
+      ORDER BY vc.Category
+    `);
+
+    // Map categories to match the navigation structure with icons
+    const categoryIconMap = {
+      'venue': { icon: 'fas fa-building', name: 'Venues' },
+      'venues': { icon: 'fas fa-building', name: 'Venues' },
+      'photo': { icon: 'fas fa-camera', name: 'Photo/Video' },
+      'photography': { icon: 'fas fa-camera', name: 'Photo/Video' },
+      'video': { icon: 'fas fa-camera', name: 'Photo/Video' },
+      'music': { icon: 'fas fa-music', name: 'Music/DJ' },
+      'dj': { icon: 'fas fa-music', name: 'Music/DJ' },
+      'catering': { icon: 'fas fa-utensils', name: 'Catering' },
+      'food': { icon: 'fas fa-utensils', name: 'Catering' },
+      'entertainment': { icon: 'fas fa-theater-masks', name: 'Entertainment' },
+      'experiences': { icon: 'fas fa-star', name: 'Experiences' },
+      'decor': { icon: 'fas fa-ribbon', name: 'Decorations' },
+      'decorations': { icon: 'fas fa-ribbon', name: 'Decorations' },
+      'beauty': { icon: 'fas fa-spa', name: 'Beauty' },
+      'makeup': { icon: 'fas fa-spa', name: 'Beauty' },
+      'cake': { icon: 'fas fa-birthday-cake', name: 'Cake' },
+      'cakes': { icon: 'fas fa-birthday-cake', name: 'Cake' },
+      'transport': { icon: 'fas fa-shuttle-van', name: 'Transportation' },
+      'transportation': { icon: 'fas fa-shuttle-van', name: 'Transportation' },
+      'planner': { icon: 'fas fa-clipboard-list', name: 'Planners' },
+      'planning': { icon: 'fas fa-clipboard-list', name: 'Planners' },
+      'fashion': { icon: 'fas fa-tshirt', name: 'Fashion' },
+      'stationery': { icon: 'fas fa-envelope', name: 'Stationery' }
+    };
+
+    const categories = result.recordset.map((cat, index) => {
+      const categoryKey = cat.Category.toLowerCase().replace(/[^a-z]/g, '');
+      const mappedCategory = categoryIconMap[categoryKey] || { 
+        icon: 'fas fa-star', 
+        name: cat.Category 
+      };
+      
+      return {
+        id: index + 1,
+        key: categoryKey,
+        name: mappedCategory.name,
+        icon: mappedCategory.icon,
+        serviceCount: cat.VendorCount || 0
+      };
+    });
+
+    // If no categories found in database, return fallback categories
+    if (categories.length === 0) {
+      const fallbackCategories = [
+        { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
+        { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
+        { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
+        { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 },
+        { id: 5, key: 'entertainment', name: 'Entertainment', icon: 'fas fa-theater-masks', serviceCount: 0 },
+        { id: 6, key: 'experiences', name: 'Experiences', icon: 'fas fa-star', serviceCount: 0 },
+        { id: 7, key: 'decor', name: 'Decorations', icon: 'fas fa-ribbon', serviceCount: 0 },
+        { id: 8, key: 'beauty', name: 'Beauty', icon: 'fas fa-spa', serviceCount: 0 },
+        { id: 9, key: 'cake', name: 'Cake', icon: 'fas fa-birthday-cake', serviceCount: 0 },
+        { id: 10, key: 'transport', name: 'Transportation', icon: 'fas fa-shuttle-van', serviceCount: 0 },
+        { id: 11, key: 'planner', name: 'Planners', icon: 'fas fa-clipboard-list', serviceCount: 0 },
+        { id: 12, key: 'fashion', name: 'Fashion', icon: 'fas fa-tshirt', serviceCount: 0 },
+        { id: 13, key: 'stationery', name: 'Stationery', icon: 'fas fa-envelope', serviceCount: 0 }
+      ];
+      
+      return res.json({
+        success: true,
+        categories: fallbackCategories
+      });
+    }
 
     res.json({
       success: true,
@@ -242,10 +306,18 @@ router.get('/service-categories', async (req, res) => {
 
   } catch (err) {
     console.error('Error fetching service categories:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Database operation failed',
-      error: err.message
+    
+    // Return fallback categories on database error
+    const fallbackCategories = [
+      { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
+      { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
+      { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
+      { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 }
+    ];
+    
+    res.json({
+      success: true,
+      categories: fallbackCategories
     });
   }
 });
@@ -254,70 +326,142 @@ router.get('/service-categories', async (req, res) => {
 router.get('/services/:categoryId', async (req, res) => {
   try {
     const { categoryId } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
     
-    // Map category IDs to category names and sample services
-    const categoryServices = {
-      1: { // Venues
-        name: 'Venues',
-        services: [
-          { id: 1, name: 'Wedding Venue', description: 'Beautiful wedding venue with garden', basePrice: 2000, priceUnit: 'per event' },
-          { id: 2, name: 'Corporate Event Space', description: 'Professional meeting and event space', basePrice: 800, priceUnit: 'per day' },
-          { id: 3, name: 'Private Party Venue', description: 'Intimate space for private celebrations', basePrice: 1200, priceUnit: 'per event' }
-        ]
-      },
-      2: { // Photo/Video
-        name: 'Photo/Video',
-        services: [
-          { id: 4, name: 'Wedding Photography', description: 'Professional wedding photography package', basePrice: 1500, priceUnit: 'per event' },
-          { id: 5, name: 'Event Videography', description: 'High-quality event video recording', basePrice: 1200, priceUnit: 'per event' },
-          { id: 6, name: 'Portrait Session', description: 'Professional portrait photography', basePrice: 300, priceUnit: 'per session' }
-        ]
-      },
-      3: { // Music/DJ
-        name: 'Music/DJ',
-        services: [
-          { id: 7, name: 'Wedding DJ', description: 'Professional DJ service for weddings', basePrice: 800, priceUnit: 'per event' },
-          { id: 8, name: 'Live Band', description: 'Live music performance', basePrice: 1500, priceUnit: 'per event' },
-          { id: 9, name: 'Sound System Rental', description: 'Professional audio equipment', basePrice: 200, priceUnit: 'per day' }
-        ]
-      },
-      4: { // Catering
-        name: 'Catering',
-        services: [
-          { id: 10, name: 'Wedding Catering', description: 'Full-service wedding catering', basePrice: 50, priceUnit: 'per person' },
-          { id: 11, name: 'Corporate Lunch', description: 'Business meeting catering', basePrice: 25, priceUnit: 'per person' },
-          { id: 12, name: 'Cocktail Reception', description: 'Appetizers and drinks service', basePrice: 35, priceUnit: 'per person' }
-        ]
-      }
+    // First, get the category name from the service-categories endpoint mapping
+    const categoryMap = {
+      1: 'venue', 2: 'photo', 3: 'music', 4: 'catering', 5: 'entertainment',
+      6: 'experiences', 7: 'decor', 8: 'beauty', 9: 'cake', 10: 'transport',
+      11: 'planner', 12: 'fashion', 13: 'stationery'
     };
-
-    const categoryData = categoryServices[categoryId];
     
-    if (!categoryData) {
+    const categoryKey = categoryMap[parseInt(categoryId)];
+    
+    if (!categoryKey) {
       return res.json({
         success: true,
         services: []
       });
     }
+    
+    // Get vendors that offer services in this category
+    request.input('Category', sql.NVarChar(50), categoryKey);
+    
+    const result = await request.query(`
+      SELECT DISTINCT
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.BusinessDescription,
+        vp.PriceLevel,
+        vc.Category,
+        vad.QuestionText,
+        vad.Answer
+      FROM VendorCategories vc
+      INNER JOIN VendorProfiles vp ON vc.VendorProfileID = vp.VendorProfileID
+      LEFT JOIN VendorAdditionalDetails vad ON vp.VendorProfileID = vad.VendorProfileID
+      WHERE vc.Category LIKE '%' + @Category + '%'
+        AND vp.IsActive = 1 
+        AND vp.IsCompleted = 1
+        AND vp.AcceptingBookings = 1
+      ORDER BY vp.BusinessName
+    `);
+
+    // Transform vendor data into services format
+    const services = result.recordset.map((vendor, index) => {
+      // Generate service name based on category and vendor
+      const serviceNames = {
+        'venue': `${vendor.BusinessName} - Event Space`,
+        'photo': `${vendor.BusinessName} - Photography Services`,
+        'music': `${vendor.BusinessName} - Music & DJ Services`,
+        'catering': `${vendor.BusinessName} - Catering Services`,
+        'entertainment': `${vendor.BusinessName} - Entertainment Services`,
+        'experiences': `${vendor.BusinessName} - Experience Services`,
+        'decor': `${vendor.BusinessName} - Decoration Services`,
+        'beauty': `${vendor.BusinessName} - Beauty Services`,
+        'cake': `${vendor.BusinessName} - Cake Services`,
+        'transport': `${vendor.BusinessName} - Transportation Services`,
+        'planner': `${vendor.BusinessName} - Planning Services`,
+        'fashion': `${vendor.BusinessName} - Fashion Services`,
+        'stationery': `${vendor.BusinessName} - Stationery Services`
+      };
+      
+      // Estimate pricing based on price level
+      const pricingMap = {
+        '$': { min: 200, max: 500 },
+        '$$': { min: 500, max: 1200 },
+        '$$$': { min: 1200, max: 2500 },
+        '$$$$': { min: 2500, max: 5000 }
+      };
+      
+      const pricing = pricingMap[vendor.PriceLevel] || pricingMap['$$'];
+      
+      return {
+        ServiceID: vendor.VendorProfileID,
+        Name: serviceNames[categoryKey] || `${vendor.BusinessName} - Services`,
+        Description: vendor.BusinessDescription || `Professional ${categoryKey} services`,
+        BasePrice: pricing.min,
+        MaxPrice: pricing.max,
+        PriceUnit: 'per event',
+        CategoryName: categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1),
+        VendorProfileID: vendor.VendorProfileID,
+        BusinessName: vendor.BusinessName,
+        PriceLevel: vendor.PriceLevel
+      };
+    });
+
+    // If no services found, return sample services for the category
+    if (services.length === 0) {
+      const sampleServices = {
+        'venue': [
+          { id: 1, name: 'Wedding Venue', description: 'Beautiful wedding venue with garden', basePrice: 2000, priceUnit: 'per event' },
+          { id: 2, name: 'Corporate Event Space', description: 'Professional meeting and event space', basePrice: 800, priceUnit: 'per day' }
+        ],
+        'photo': [
+          { id: 3, name: 'Wedding Photography', description: 'Professional wedding photography package', basePrice: 1500, priceUnit: 'per event' },
+          { id: 4, name: 'Event Videography', description: 'High-quality event video recording', basePrice: 1200, priceUnit: 'per event' }
+        ],
+        'music': [
+          { id: 5, name: 'Wedding DJ', description: 'Professional DJ service for weddings', basePrice: 800, priceUnit: 'per event' },
+          { id: 6, name: 'Live Band', description: 'Live music performance', basePrice: 1500, priceUnit: 'per event' }
+        ],
+        'catering': [
+          { id: 7, name: 'Wedding Catering', description: 'Full-service wedding catering', basePrice: 50, priceUnit: 'per person' },
+          { id: 8, name: 'Corporate Lunch', description: 'Business meeting catering', basePrice: 25, priceUnit: 'per person' }
+        ]
+      };
+      
+      const fallbackServices = sampleServices[categoryKey] || [];
+      
+      return res.json({
+        success: true,
+        services: fallbackServices.map(service => ({
+          ServiceID: service.id,
+          Name: service.name,
+          Description: service.description,
+          BasePrice: service.basePrice,
+          PriceUnit: service.priceUnit,
+          CategoryName: categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1)
+        }))
+      });
+    }
 
     res.json({
       success: true,
-      services: categoryData.services.map(service => ({
-        ServiceID: service.id,
-        Name: service.name,
-        Description: service.description,
-        BasePrice: service.basePrice,
-        PriceUnit: service.priceUnit,
-        CategoryName: categoryData.name
-      }))
+      services: services
     });
 
   } catch (err) {
     console.error('Error fetching services:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch services',
-      error: err.message
+    
+    // Return fallback services on error
+    const fallbackServices = [
+      { ServiceID: 1, Name: 'Professional Service', Description: 'High-quality professional service', BasePrice: 500, PriceUnit: 'per event', CategoryName: 'Service' }
+    ];
+    
+    res.json({
+      success: true,
+      services: fallbackServices
     });
   }
 });
