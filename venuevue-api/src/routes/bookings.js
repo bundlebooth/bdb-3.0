@@ -244,54 +244,79 @@ router.post('/requests', async (req, res) => {
     const pool = await poolPromise;
     const requests = [];
 
-    // Format time to ensure it has seconds
+    // Format time to ensure it's in HH:MM:SS format
     const formatTime = (timeStr) => {
       if (!timeStr) return '12:00:00'; // Default to noon if no time provided
-      const parts = timeStr.split(':');
-      if (parts.length === 2) {
-        return `${timeStr}:00`; // Add seconds if they're missing
+      
+      // Handle various time formats
+      const timeParts = timeStr.split(':');
+      if (timeParts.length >= 2) {
+        // Ensure we have hours and minutes
+        const hours = timeParts[0].padStart(2, '0');
+        const minutes = timeParts[1].padStart(2, '0');
+        const seconds = timeParts[2] ? timeParts[2].padStart(2, '0') : '00';
+        return `${hours}:${minutes}:${seconds}`;
       }
-      return timeStr; // Return as-is if already in HH:MM:SS format
+      return '12:00:00'; // Fallback to default
     };
 
     // Parse and validate date
     const parseDate = (dateStr) => {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) {
+      if (!dateStr) {
+        throw new Error('Date is required');
+      }
+      
+      // Check if date is in YYYY-MM-DD format
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(dateStr)) {
         throw new Error('Invalid date format. Please use YYYY-MM-DD');
       }
+      
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid date');
+      }
+      
       return date.toISOString().split('T')[0]; // Return in YYYY-MM-DD format
     };
+
+    // Log incoming request for debugging
+    console.log('Incoming request:', {
+      userId,
+      vendorIds,
+      services,
+      eventDetails,
+      budget
+    });
 
     // Create booking requests for each vendor
     for (const vendorId of vendorIds) {
       const request = new sql.Request(pool);
       
-      const eventDate = parseDate(eventDetails.date);
-      const eventTime = formatTime(eventDetails.time);
-
-      request.input('UserID', sql.Int, userId);
-      request.input('VendorProfileID', sql.Int, vendorId);
-      request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
-      request.input('EventDate', sql.Date, eventDate);
-      request.input('EventTime', sql.Time, eventTime);
-      request.input('EventLocation', sql.NVarChar(500), eventDetails?.location || '');
-      request.input('AttendeeCount', sql.Int, eventDetails?.attendeeCount || 50);
-      request.input('Budget', sql.Decimal(10, 2), budget);
-      request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails?.specialRequests || '');
-      request.input('Status', sql.NVarChar(50), 'pending');
-      request.input('ExpiresAt', sql.DateTime, new Date(Date.now() + 24 * 60 * 60 * 1000)); // 24 hours
-
       try {
-        console.log('Executing query with parameters:', {
-          UserID: userId,
-          VendorProfileID: vendorId,
-          EventDate: eventDate,
-          EventTime: eventTime,
-          EventLocation: eventDetails?.location || '',
-          AttendeeCount: eventDetails?.attendeeCount || 50,
-          Budget: budget
+        const eventDate = parseDate(eventDetails?.date);
+        const eventTime = formatTime(eventDetails?.time);
+
+        console.log('Processing request for vendor:', {
+          vendorId,
+          eventDate,
+          eventTime,
+          location: eventDetails?.location,
+          attendeeCount: eventDetails?.attendeeCount,
+          budget
         });
+
+        request.input('UserID', sql.Int, userId);
+        request.input('VendorProfileID', sql.Int, vendorId);
+        request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
+        request.input('EventDate', sql.Date, eventDate);
+        request.input('EventTime', sql.Time, eventTime);
+        request.input('EventLocation', sql.NVarChar(500), eventDetails?.location || '');
+        request.input('AttendeeCount', sql.Int, eventDetails?.attendeeCount || 50);
+        request.input('Budget', sql.Decimal(10, 2), budget);
+        request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails?.specialRequests || '');
+        request.input('Status', sql.NVarChar(50), 'pending');
+        request.input('ExpiresAt', sql.DateTime, new Date(Date.now() + 24 * 60 * 60 * 1000)); // 24 hours
 
         const result = await request.query(`
           INSERT INTO BookingRequests (
@@ -315,19 +340,18 @@ router.post('/requests', async (req, res) => {
           });
         }
       } catch (dbError) {
-        console.error('Database error in request creation:', {
+        console.error('Database error for vendor', vendorId, ':', {
           error: dbError.message,
-          vendorId: vendorId,
+          stack: dbError.stack,
           parameters: {
             UserID: userId,
             VendorProfileID: vendorId,
-            EventDate: eventDate,
-            EventTime: eventTime,
+            EventDate: eventDetails?.date,
+            EventTime: eventDetails?.time,
             EventLocation: eventDetails?.location,
-            AttendeeCount: eventDetails?.attendeeCount || 50,
+            AttendeeCount: eventDetails?.attendeeCount,
             Budget: budget
-          },
-          sqlError: dbError.originalError?.info || 'No additional error info'
+          }
         });
         throw dbError;
       }
@@ -344,9 +368,16 @@ router.post('/requests', async (req, res) => {
       stack: err.stack,
       requestBody: req.body
     });
+    
+    // More specific error messages
+    let errorMessage = 'Failed to create booking requests';
+    if (err.message.includes('date') || err.message.includes('time')) {
+      errorMessage = err.message;
+    }
+    
     res.status(500).json({ 
       success: false,
-      message: 'Failed to create booking requests',
+      message: errorMessage,
       error: err.message,
       details: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
