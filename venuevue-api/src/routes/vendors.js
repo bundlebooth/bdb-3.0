@@ -551,16 +551,38 @@ router.get('/profile', async (req, res) => {
     console.log(`FINAL GALLERY IMAGES LENGTH:`, galleryImages.length);
 
     // Get service areas for this vendor
-    const serviceAreasRequest = new sql.Request(pool);
-    serviceAreasRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-    const serviceAreasResult = await serviceAreasRequest.query(`
-      SELECT CityName, Province, Country, PostalCode 
-      FROM VendorServiceAreas 
-      WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
-      ORDER BY CityName
-    `);
-    
-    const serviceAreas = serviceAreasResult.recordset || [];
+    let serviceAreas = [];
+    try {
+      const serviceAreasRequest = new sql.Request(pool);
+      serviceAreasRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+      const serviceAreasResult = await serviceAreasRequest.query(`
+        SELECT 
+          VendorServiceAreaID,
+          GooglePlaceID,
+          CityName,
+          [State/Province] as StateProvince,
+          Country,
+          Latitude,
+          Longitude,
+          ServiceRadius,
+          FormattedAddress,
+          PlaceType,
+          PostalCode,
+          TravelCost,
+          MinimumBookingAmount,
+          BoundsNortheastLat,
+          BoundsNortheastLng,
+          BoundsSouthwestLat,
+          BoundsSouthwestLng
+        FROM VendorServiceAreas 
+        WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
+        ORDER BY CityName
+      `);
+      serviceAreas = serviceAreasResult.recordset || [];
+    } catch (serviceAreasError) {
+      console.warn('Service areas query failed, using empty array:', serviceAreasError.message);
+      serviceAreas = [];
+    }
     
     // Structure the comprehensive profile data
     const profileData = {
@@ -2237,18 +2259,43 @@ router.post('/setup/step2-location', async (req, res) => {
         DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID
       `);
       
-      // Insert new service areas
+      // Insert new service areas with Google Maps data
       for (const area of serviceAreas) {
         const areaRequest = new sql.Request(pool);
         areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        areaRequest.input('CityName', sql.NVarChar(100), area.city || area.name || area);
-        areaRequest.input('Province', sql.NVarChar(100), area.province || area.state || state);
+        areaRequest.input('GooglePlaceID', sql.NVarChar(100), area.placeId || area.googlePlaceId || '');
+        areaRequest.input('CityName', sql.NVarChar(100), area.city || area.name || area.locality || area);
+        areaRequest.input('StateProvince', sql.NVarChar(100), area.province || area.state || area.administrative_area_level_1 || state);
         areaRequest.input('Country', sql.NVarChar(100), area.country || country);
-        areaRequest.input('PostalCode', sql.NVarChar(20), area.postalCode || null);
+        areaRequest.input('Latitude', sql.Decimal(9, 6), area.latitude || area.lat || null);
+        areaRequest.input('Longitude', sql.Decimal(9, 6), area.longitude || area.lng || null);
+        areaRequest.input('ServiceRadius', sql.Decimal(10, 2), area.serviceRadius || serviceRadius || 25.0);
+        areaRequest.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || area.formatted_address || null);
+        areaRequest.input('PlaceType', sql.NVarChar(50), area.placeType || area.types?.[0] || null);
+        areaRequest.input('PostalCode', sql.NVarChar(20), area.postalCode || area.postal_code || null);
+        areaRequest.input('TravelCost', sql.Decimal(10, 2), area.travelCost || null);
+        areaRequest.input('MinimumBookingAmount', sql.Decimal(10, 2), area.minimumBookingAmount || null);
+        
+        // Handle bounds if provided
+        const bounds = area.bounds || area.geometry?.viewport;
+        areaRequest.input('BoundsNortheastLat', sql.Decimal(9, 6), bounds?.northeast?.lat || null);
+        areaRequest.input('BoundsNortheastLng', sql.Decimal(9, 6), bounds?.northeast?.lng || null);
+        areaRequest.input('BoundsSouthwestLat', sql.Decimal(9, 6), bounds?.southwest?.lat || null);
+        areaRequest.input('BoundsSouthwestLng', sql.Decimal(9, 6), bounds?.southwest?.lng || null);
         
         await areaRequest.query(`
-          INSERT INTO VendorServiceAreas (VendorProfileID, CityName, Province, Country, PostalCode, IsActive, CreatedAt, UpdatedAt)
-          VALUES (@VendorProfileID, @CityName, @Province, @Country, @PostalCode, 1, GETUTCDATE(), GETUTCDATE())
+          INSERT INTO VendorServiceAreas (
+            VendorProfileID, GooglePlaceID, CityName, [State/Province], Country, 
+            Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, PostalCode,
+            TravelCost, MinimumBookingAmount, BoundsNortheastLat, BoundsNortheastLng, 
+            BoundsSouthwestLat, BoundsSouthwestLng, IsActive, CreatedDate, LastModifiedDate
+          )
+          VALUES (
+            @VendorProfileID, @GooglePlaceID, @CityName, @StateProvince, @Country,
+            @Latitude, @Longitude, @ServiceRadius, @FormattedAddress, @PlaceType, @PostalCode,
+            @TravelCost, @MinimumBookingAmount, @BoundsNortheastLat, @BoundsNortheastLng,
+            @BoundsSouthwestLat, @BoundsSouthwestLng, 1, GETDATE(), GETDATE()
+          )
         `);
       }
     }
