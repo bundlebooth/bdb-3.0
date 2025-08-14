@@ -183,8 +183,11 @@ router.post('/requests', async (req, res) => {
       timeParts.push('00'); // Ensure we have hours, minutes, seconds
     }
     
-    // 3. Validate each component
-    const hours = parseInt(timeParts[0], minutes = parseInt(timeParts[1]), seconds = parseInt(timeParts[2]);
+    // 3. Validate each component (FIXED SYNTAX)
+    const hours = parseInt(timeParts[0]);
+    const minutes = parseInt(timeParts[1]);
+    const seconds = parseInt(timeParts[2]);
+
     if (isNaN(hours) || hours < 0 || hours > 23 ||
         isNaN(minutes) || minutes < 0 || minutes > 59 ||
         isNaN(seconds) || seconds < 0 || seconds > 59) {
@@ -200,24 +203,13 @@ router.post('/requests', async (req, res) => {
       `${minutes.toString().padStart(2, '0')}:` +
       `${seconds.toString().padStart(2, '0')}`;
 
-    console.log('Formatted time for SQL:', formattedTime); // Debug log
+    console.log('Formatted time for SQL:', formattedTime);
 
     // Create requests for each vendor
     for (const vendorId of vendorIds) {
       try {
         const request = new sql.Request(pool);
         
-        // Debug: Log all parameters before execution
-        console.log('Creating request with parameters:', {
-          userId,
-          vendorId,
-          eventDate: eventDetails.date,
-          eventTime: formattedTime,
-          location: eventDetails.location,
-          attendeeCount: eventDetails.attendeeCount,
-          budget
-        });
-
         request.input('UserID', sql.Int, userId);
         request.input('VendorProfileID', sql.Int, vendorId);
         request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
@@ -248,7 +240,7 @@ router.post('/requests', async (req, res) => {
           )
         `;
         
-        console.log('Executing SQL:', sqlQuery); // Debug log
+        console.log('Executing SQL:', sqlQuery);
         
         const result = await request.query(sqlQuery);
 
@@ -263,7 +255,7 @@ router.post('/requests', async (req, res) => {
         }
       } catch (err) {
         console.error(`Error creating request for vendor ${vendorId}:`, err);
-        throw err; // Re-throw to be caught by outer try-catch
+        throw err;
       }
     }
 
