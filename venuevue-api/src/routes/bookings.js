@@ -224,15 +224,12 @@ router.post('/create-payment-intent', async (req, res) => {
   }
 });
 
-// In your bookings.js file, find the /requests endpoint and update it as follows:
 router.post('/requests', async (req, res) => {
   try {
     const {
       userId,
       vendorIds,
       services,
-      eventDate,  // This should be in format 'YYYY-MM-DD'
-      eventTime,  // This should be in format 'HH:MM:SS'
       eventDetails,
       budget
     } = req.body;
@@ -247,30 +244,55 @@ router.post('/requests', async (req, res) => {
     const pool = await poolPromise;
     const requests = [];
 
+    // Format time to ensure it has seconds
+    const formatTime = (timeStr) => {
+      if (!timeStr) return '12:00:00'; // Default to noon if no time provided
+      const parts = timeStr.split(':');
+      if (parts.length === 2) {
+        return `${timeStr}:00`; // Add seconds if they're missing
+      }
+      return timeStr; // Return as-is if already in HH:MM:SS format
+    };
+
+    // Parse and validate date
+    const parseDate = (dateStr) => {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid date format. Please use YYYY-MM-DD');
+      }
+      return date.toISOString().split('T')[0]; // Return in YYYY-MM-DD format
+    };
+
     // Create booking requests for each vendor
     for (const vendorId of vendorIds) {
       const request = new sql.Request(pool);
       
-      // Combine date and time into a single datetime
-      const eventDateTime = new Date(`${eventDate}T${eventTime}`);
-      
-      if (isNaN(eventDateTime.getTime())) {
-        throw new Error('Invalid date or time format. Please use YYYY-MM-DD for date and HH:MM:SS for time.');
-      }
+      const eventDate = parseDate(eventDetails.date);
+      const eventTime = formatTime(eventDetails.time);
 
       request.input('UserID', sql.Int, userId);
       request.input('VendorProfileID', sql.Int, vendorId);
       request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
       request.input('EventDate', sql.Date, eventDate);
       request.input('EventTime', sql.Time, eventTime);
-      request.input('EventLocation', sql.NVarChar(500), eventDetails?.location || null);
+      request.input('EventLocation', sql.NVarChar(500), eventDetails?.location || '');
       request.input('AttendeeCount', sql.Int, eventDetails?.attendeeCount || 50);
       request.input('Budget', sql.Decimal(10, 2), budget);
-      request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails?.specialRequests || null);
+      request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails?.specialRequests || '');
       request.input('Status', sql.NVarChar(50), 'pending');
       request.input('ExpiresAt', sql.DateTime, new Date(Date.now() + 24 * 60 * 60 * 1000)); // 24 hours
 
       try {
+        console.log('Executing query with parameters:', {
+          UserID: userId,
+          VendorProfileID: vendorId,
+          EventDate: eventDate,
+          EventTime: eventTime,
+          EventLocation: eventDetails?.location || '',
+          AttendeeCount: eventDetails?.attendeeCount || 50,
+          Budget: budget
+        });
+
         const result = await request.query(`
           INSERT INTO BookingRequests (
             UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
@@ -304,7 +326,8 @@ router.post('/requests', async (req, res) => {
             EventLocation: eventDetails?.location,
             AttendeeCount: eventDetails?.attendeeCount || 50,
             Budget: budget
-          }
+          },
+          sqlError: dbError.originalError?.info || 'No additional error info'
         });
         throw dbError;
       }
@@ -324,7 +347,8 @@ router.post('/requests', async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Failed to create booking requests',
-      error: err.message 
+      error: err.message,
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
 });
