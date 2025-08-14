@@ -49,7 +49,91 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get booking details
+// MOVED: Get service categories for booking modal - BEFORE /:id route
+router.get('/service-categories', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    // Query to get service categories from database
+    const result = await request.query(`
+      SELECT DISTINCT 
+        ROW_NUMBER() OVER (ORDER BY Category) as id,
+        Category as key,
+        Category as name,
+        CASE Category
+          WHEN 'venue' THEN 'fas fa-building'
+          WHEN 'photo' THEN 'fas fa-camera'
+          WHEN 'music' THEN 'fas fa-music'
+          WHEN 'catering' THEN 'fas fa-utensils'
+          WHEN 'entertainment' THEN 'fas fa-theater-masks'
+          WHEN 'experiences' THEN 'fas fa-star'
+          WHEN 'decor' THEN 'fas fa-ribbon'
+          WHEN 'beauty' THEN 'fas fa-spa'
+          WHEN 'cake' THEN 'fas fa-birthday-cake'
+          WHEN 'transport' THEN 'fas fa-shuttle-van'
+          WHEN 'planner' THEN 'fas fa-clipboard-list'
+          WHEN 'fashion' THEN 'fas fa-tshirt'
+          WHEN 'stationery' THEN 'fas fa-envelope'
+          ELSE 'fas fa-star'
+        END as icon,
+        COUNT(*) as serviceCount
+      FROM VendorProfiles 
+      WHERE Category IS NOT NULL AND Category != ''
+      GROUP BY Category
+      ORDER BY Category
+    `);
+
+    const categories = result.recordset;
+
+    // If no categories found, return default categories
+    if (categories.length === 0) {
+      const defaultCategories = [
+        { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
+        { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
+        { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
+        { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 },
+        { id: 5, key: 'entertainment', name: 'Entertainment', icon: 'fas fa-theater-masks', serviceCount: 0 },
+        { id: 6, key: 'experiences', name: 'Experiences', icon: 'fas fa-star', serviceCount: 0 },
+        { id: 7, key: 'decor', name: 'Decorations', icon: 'fas fa-ribbon', serviceCount: 0 },
+        { id: 8, key: 'beauty', name: 'Beauty', icon: 'fas fa-spa', serviceCount: 0 },
+        { id: 9, key: 'cake', name: 'Cake', icon: 'fas fa-birthday-cake', serviceCount: 0 },
+        { id: 10, key: 'transport', name: 'Transportation', icon: 'fas fa-shuttle-van', serviceCount: 0 },
+        { id: 11, key: 'planner', name: 'Planners', icon: 'fas fa-clipboard-list', serviceCount: 0 },
+        { id: 12, key: 'fashion', name: 'Fashion', icon: 'fas fa-tshirt', serviceCount: 0 },
+        { id: 13, key: 'stationery', name: 'Stationery', icon: 'fas fa-envelope', serviceCount: 0 }
+      ];
+      
+      return res.json({
+        success: true,
+        categories: defaultCategories
+      });
+    }
+
+    res.json({
+      success: true,
+      categories: categories
+    });
+
+  } catch (err) {
+    console.error('Error fetching service categories:', err);
+    
+    // Return fallback categories on error
+    const fallbackCategories = [
+      { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
+      { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
+      { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
+      { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 }
+    ];
+    
+    res.json({
+      success: true,
+      categories: fallbackCategories
+    });
+  }
+});
+
+// Get booking details - NOW COMES AFTER service-categories
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -210,114 +294,6 @@ router.post('/requests', async (req, res) => {
       success: false,
       message: 'Failed to create booking requests',
       error: err.message 
-    });
-  }
-});
-
-// Get service categories for booking modal
-router.get('/service-categories', async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    // Get distinct categories from VendorCategories table with vendor counts
-    const result = await request.query(`
-      SELECT DISTINCT 
-        vc.Category,
-        COUNT(DISTINCT vc.VendorProfileID) as VendorCount
-      FROM VendorCategories vc
-      INNER JOIN VendorProfiles vp ON vc.VendorProfileID = vp.VendorProfileID
-      WHERE vp.IsCompleted = 1
-      GROUP BY vc.Category
-      ORDER BY vc.Category
-    `);
-
-    // Map categories to match the navigation structure with icons
-    const categoryIconMap = {
-      'venue': { icon: 'fas fa-building', name: 'Venues' },
-      'venues': { icon: 'fas fa-building', name: 'Venues' },
-      'photo': { icon: 'fas fa-camera', name: 'Photo/Video' },
-      'photography': { icon: 'fas fa-camera', name: 'Photo/Video' },
-      'video': { icon: 'fas fa-camera', name: 'Photo/Video' },
-      'music': { icon: 'fas fa-music', name: 'Music/DJ' },
-      'dj': { icon: 'fas fa-music', name: 'Music/DJ' },
-      'catering': { icon: 'fas fa-utensils', name: 'Catering' },
-      'food': { icon: 'fas fa-utensils', name: 'Catering' },
-      'entertainment': { icon: 'fas fa-theater-masks', name: 'Entertainment' },
-      'experiences': { icon: 'fas fa-star', name: 'Experiences' },
-      'decor': { icon: 'fas fa-ribbon', name: 'Decorations' },
-      'decorations': { icon: 'fas fa-ribbon', name: 'Decorations' },
-      'beauty': { icon: 'fas fa-spa', name: 'Beauty' },
-      'makeup': { icon: 'fas fa-spa', name: 'Beauty' },
-      'cake': { icon: 'fas fa-birthday-cake', name: 'Cake' },
-      'cakes': { icon: 'fas fa-birthday-cake', name: 'Cake' },
-      'transport': { icon: 'fas fa-shuttle-van', name: 'Transportation' },
-      'transportation': { icon: 'fas fa-shuttle-van', name: 'Transportation' },
-      'planner': { icon: 'fas fa-clipboard-list', name: 'Planners' },
-      'planning': { icon: 'fas fa-clipboard-list', name: 'Planners' },
-      'fashion': { icon: 'fas fa-tshirt', name: 'Fashion' },
-      'stationery': { icon: 'fas fa-envelope', name: 'Stationery' }
-    };
-
-    const categories = result.recordset.map((cat, index) => {
-      const categoryKey = cat.Category.toLowerCase().replace(/[^a-z]/g, '');
-      const mappedCategory = categoryIconMap[categoryKey] || { 
-        icon: 'fas fa-star', 
-        name: cat.Category 
-      };
-      
-      return {
-        id: index + 1,
-        key: categoryKey,
-        name: mappedCategory.name,
-        icon: mappedCategory.icon,
-        serviceCount: cat.VendorCount || 0
-      };
-    });
-
-    // If no categories found in database, return fallback categories
-    if (categories.length === 0) {
-      const fallbackCategories = [
-        { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
-        { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
-        { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
-        { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 },
-        { id: 5, key: 'entertainment', name: 'Entertainment', icon: 'fas fa-theater-masks', serviceCount: 0 },
-        { id: 6, key: 'experiences', name: 'Experiences', icon: 'fas fa-star', serviceCount: 0 },
-        { id: 7, key: 'decor', name: 'Decorations', icon: 'fas fa-ribbon', serviceCount: 0 },
-        { id: 8, key: 'beauty', name: 'Beauty', icon: 'fas fa-spa', serviceCount: 0 },
-        { id: 9, key: 'cake', name: 'Cake', icon: 'fas fa-birthday-cake', serviceCount: 0 },
-        { id: 10, key: 'transport', name: 'Transportation', icon: 'fas fa-shuttle-van', serviceCount: 0 },
-        { id: 11, key: 'planner', name: 'Planners', icon: 'fas fa-clipboard-list', serviceCount: 0 },
-        { id: 12, key: 'fashion', name: 'Fashion', icon: 'fas fa-tshirt', serviceCount: 0 },
-        { id: 13, key: 'stationery', name: 'Stationery', icon: 'fas fa-envelope', serviceCount: 0 }
-      ];
-      
-      return res.json({
-        success: true,
-        categories: fallbackCategories
-      });
-    }
-
-    res.json({
-      success: true,
-      categories: categories
-    });
-
-  } catch (err) {
-    console.error('Error fetching service categories:', err);
-    
-    // Return fallback categories on database error
-    const fallbackCategories = [
-      { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
-      { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
-      { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
-      { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 }
-    ];
-    
-    res.json({
-      success: true,
-      categories: fallbackCategories
     });
   }
 });
