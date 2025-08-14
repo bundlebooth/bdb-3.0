@@ -227,6 +227,8 @@ router.post('/create-payment-intent', async (req, res) => {
 // NEW: Multi-step booking request endpoints
 router.post('/requests', async (req, res) => {
   try {
+    console.log('Request Body:', JSON.stringify(req.body, null, 2)); // Log the entire request body
+
     const {
       userId,
       vendorIds,
@@ -242,6 +244,8 @@ router.post('/requests', async (req, res) => {
       });
     }
 
+    console.log('Event Details:', JSON.stringify(eventDetails, null, 2)); // Log event details
+
     const pool = await poolPromise;
     const requests = [];
 
@@ -249,42 +253,59 @@ router.post('/requests', async (req, res) => {
     for (const vendorId of vendorIds) {
       const request = new sql.Request(pool);
       
-      // Parse date and time separately
-      const eventDate = new Date(eventDetails.date);
-      const eventTime = eventDetails.time || '12:00'; // Default to noon if no time provided
-      
+      // Parse date and time separately with validation
+      const eventDate = eventDetails.date ? new Date(eventDetails.date) : new Date();
+      const eventTime = eventDetails.time || '12:00:00'; // Ensure time is in HH:MM:SS format
+
+      console.log(`Processing vendor ${vendorId} with date: ${eventDate}, time: ${eventTime}`);
+
       request.input('UserID', sql.Int, userId);
       request.input('VendorProfileID', sql.Int, vendorId);
       request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
       request.input('EventDate', sql.Date, eventDate);
       request.input('EventTime', sql.Time, eventTime);
-      request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
+      request.input('EventLocation', sql.NVarChar(500), eventDetails.location || 'Not specified');
       request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
-      request.input('Budget', sql.Decimal(10, 2), budget);
-      request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || null);
+      request.input('Budget', sql.Decimal(10, 2), budget || 0);
+      request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || 'No special requests');
       request.input('Status', sql.NVarChar(50), 'pending');
       request.input('ExpiresAt', sql.DateTime, new Date(Date.now() + 24 * 60 * 60 * 1000)); // 24 hours
 
-      const result = await request.query(`
-        INSERT INTO BookingRequests (
-          UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
-          AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
-        )
-        OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
-        VALUES (
-          @UserID, @VendorProfileID, @Services, @EventDate, @EventTime, @EventLocation,
-          @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
-        )
-      `);
+      try {
+        const result = await request.query(`
+          INSERT INTO BookingRequests (
+            UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
+            AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
+          )
+          OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
+          VALUES (
+            @UserID, @VendorProfileID, @Services, @EventDate, @EventTime, @EventLocation,
+            @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
+          )
+        `);
 
-      if (result.recordset.length > 0) {
-        requests.push({
-          requestId: result.recordset[0].RequestID,
-          vendorId: vendorId,
-          status: 'pending',
-          createdAt: result.recordset[0].CreatedAt,
-          expiresAt: result.recordset[0].ExpiresAt
+        console.log('Insert result:', result.recordset[0]); // Log the insert result
+
+        if (result.recordset.length > 0) {
+          requests.push({
+            requestId: result.recordset[0].RequestID,
+            vendorId: vendorId,
+            status: 'pending',
+            createdAt: result.recordset[0].CreatedAt,
+            expiresAt: result.recordset[0].ExpiresAt
+          });
+        }
+      } catch (dbError) {
+        console.error('Database error details:', {
+          message: dbError.message,
+          number: dbError.number,
+          state: dbError.state,
+          class: dbError.class,
+          serverName: dbError.serverName,
+          procName: dbError.procName,
+          lineNumber: dbError.lineNumber
         });
+        throw dbError; // Re-throw to be caught by the outer catch
       }
     }
 
@@ -294,15 +315,19 @@ router.post('/requests', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Database error:', err);
+    console.error('Error in /requests endpoint:', {
+      message: err.message,
+      stack: err.stack,
+      name: err.name
+    });
     res.status(500).json({ 
       success: false,
       message: 'Failed to create booking requests',
-      error: err.message 
+      error: err.message,
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
 });
-
 // Get services by category for booking modal
 router.get('/services/:categoryId', async (req, res) => {
   try {
