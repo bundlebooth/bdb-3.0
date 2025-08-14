@@ -577,6 +577,42 @@ CREATE TABLE UserSessions (
 );
 GO
 
+-- VendorServiceAreas table for Google Maps integration and location-based search
+CREATE TABLE VendorServiceAreas (
+    VendorServiceAreaID INT IDENTITY(1,1) PRIMARY KEY,
+    VendorProfileID INT NOT NULL,
+    GooglePlaceID NVARCHAR(100) NOT NULL,
+    CityName NVARCHAR(100) NOT NULL,
+    [State/Province] NVARCHAR(100) NOT NULL,
+    Country NVARCHAR(100) NOT NULL,
+    Latitude DECIMAL(9,6) NOT NULL,
+    Longitude DECIMAL(9,6) NOT NULL,
+    ServiceRadius DECIMAL(10,2) NULL DEFAULT 25.0,
+    IsActive BIT NOT NULL DEFAULT 1,
+    FormattedAddress NVARCHAR(255) NULL,
+    -- Bounds for area coverage
+    BoundsNortheastLat DECIMAL(9,6) NULL,
+    BoundsNortheastLng DECIMAL(9,6) NULL,
+    BoundsSouthwestLat DECIMAL(9,6) NULL,
+    BoundsSouthwestLng DECIMAL(9,6) NULL,
+    -- Additional fields for better search
+    PlaceType NVARCHAR(50) NULL,
+    PostalCode NVARCHAR(20) NULL,
+    TravelCost DECIMAL(10,2) NULL,
+    MinimumBookingAmount DECIMAL(10,2) NULL,
+    CreatedDate DATETIME NOT NULL DEFAULT GETDATE(),
+    LastModifiedDate DATETIME NOT NULL DEFAULT GETDATE(),
+    FOREIGN KEY (VendorProfileID) REFERENCES VendorProfiles(VendorProfileID)
+);
+GO
+
+-- Create indexes for optimal search performance
+CREATE INDEX IX_VendorServiceAreas_Location ON VendorServiceAreas (Latitude, Longitude);
+CREATE INDEX IX_VendorServiceAreas_VendorProfileID ON VendorServiceAreas (VendorProfileID);
+CREATE INDEX IX_VendorServiceAreas_GooglePlaceID ON VendorServiceAreas (GooglePlaceID);
+CREATE INDEX IX_VendorServiceAreas_CityState ON VendorServiceAreas (CityName, [State/Province]);
+GO
+
 -- ======================
 -- VIEWS
 -- ======================
