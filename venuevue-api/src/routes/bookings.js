@@ -249,10 +249,15 @@ router.post('/requests', async (req, res) => {
     for (const vendorId of vendorIds) {
       const request = new sql.Request(pool);
       
+      // Parse date and time separately
+      const eventDate = new Date(eventDetails.date);
+      const eventTime = eventDetails.time || '12:00'; // Default to noon if no time provided
+      
       request.input('UserID', sql.Int, userId);
       request.input('VendorProfileID', sql.Int, vendorId);
       request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
-      request.input('EventDate', sql.DateTime, new Date(eventDetails.date + 'T' + eventDetails.time));
+      request.input('EventDate', sql.Date, eventDate);
+      request.input('EventTime', sql.Time, eventTime);
       request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
       request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
       request.input('Budget', sql.Decimal(10, 2), budget);
@@ -262,12 +267,12 @@ router.post('/requests', async (req, res) => {
 
       const result = await request.query(`
         INSERT INTO BookingRequests (
-          UserID, VendorProfileID, Services, EventDate, EventLocation, 
+          UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
           AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
         )
         OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
         VALUES (
-          @UserID, @VendorProfileID, @Services, @EventDate, @EventLocation,
+          @UserID, @VendorProfileID, @Services, @EventDate, @EventTime, @EventLocation,
           @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
         )
       `);
