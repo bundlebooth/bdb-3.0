@@ -2134,254 +2134,62 @@
             align-items: center;
             gap: 0.5rem;
             color: var(--text-light);
+            font-size: 0.9rem;
         }
 
-        .budget-slider-container input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: var(--primary);
-            cursor: pointer;
+        .countdown-timer.urgent {
+            color: var(--accent);
         }
 
-            .budget-slider-container input[type="range"]::-moz-range-thumb {
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                background: var(--primary);
-                cursor: pointer;
-                border: none;
-            }
+        .booking-summary-card {
+            background-color: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
 
-            .budget-labels {
-                display: flex;
-                justify-content: space-between;
-                margin-top: 0.5rem;
-                font-size: 0.9rem;
-                color: var(--text-light);
-            }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
 
+        .summary-row:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .payment-section {
+            background-color: var(--secondary);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .service-categories {
+                grid-template-columns: 1fr;
+            }
+            
             .vendor-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 1.5rem;
-                margin-bottom: 1.5rem;
+                grid-template-columns: 1fr;
             }
-
-            .vendor-card {
-                background-color: white;
-                border: 2px solid var(--border);
-                border-radius: var(--radius);
-                padding: 1.5rem;
-                transition: all 0.2s ease;
-                position: relative;
+            
+            .form-row {
+                flex-direction: column;
             }
-
-            .vendor-card:hover {
-                border-color: var(--primary);
-                box-shadow: var(--shadow);
-            }
-
-            .vendor-card.selected {
-                border-color: var(--primary);
-                background-color: rgba(94, 114, 228, 0.05);
-            }
-
-            .vendor-card-header {
-                display: flex;
-                align-items: center;
-                margin-bottom: 1rem;
-            }
-
-            .vendor-avatar {
-                width: 50px;
-                height: 50px;
-                border-radius: 50%;
-                background-color: var(--primary);
-                color: white;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: bold;
-                margin-right: 1rem;
-            }
-
-            .vendor-info h5 {
-                margin: 0 0 0.25rem 0;
-                font-size: 1.1rem;
-                color: var(--text);
-            }
-
-            .vendor-rating {
-                display: flex;
-                align-items: center;
-                gap: 0.25rem;
-                color: var(--text-light);
-                font-size: 0.9rem;
-            }
-
-            .vendor-services {
-                margin-bottom: 1rem;
-            }
-
-            .vendor-services h6 {
-                margin: 0 0 0.5rem 0;
-                color: var(--primary);
-                font-size: 0.9rem;
-            }
-
-            .vendor-price {
-                font-size: 1.2rem;
-                font-weight: bold;
-                color: var(--primary);
-                margin-bottom: 1rem;
-            }
-
-            .vendor-actions {
-                display: flex;
-                gap: 0.5rem;
-            }
-
-            .btn-select-vendor {
-                flex: 1;
-                padding: 0.5rem 1rem;
-                border: 2px solid var(--primary);
-                background-color: transparent;
-                color: var(--primary);
-                border-radius: var(--radius);
-                cursor: pointer;
-                transition: all 0.2s ease;
-            }
-
-            .btn-select-vendor:hover {
-                background-color: var(--primary);
-                color: white;
-            }
-
-            .btn-select-vendor.selected {
-                background-color: var(--primary);
-                color: white;
-            }
-
-            .loading-spinner {
-                width: 40px;
-                height: 40px;
-                border: 4px solid var(--border);
-                border-top: 4px solid var(--primary);
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 1rem;
-            }
-
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-
-            .request-item {
-                background-color: white;
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                padding: 1.5rem;
-                margin-bottom: 1rem;
-            }
-
-            .request-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 1rem;
-            }
-
-            .request-status {
-                padding: 0.25rem 0.75rem;
-                border-radius: 20px;
+            
+            .booking-progress .step-indicator {
                 font-size: 0.8rem;
-                font-weight: 500;
+                padding: 0.25rem 0.5rem;
             }
-
-            .request-status.pending {
-                background-color: #fff3cd;
-                color: #856404;
-            }
-
-            .request-status.approved {
-                background-color: #d4edda;
-                color: #155724;
-            }
-
-            .request-status.declined {
-                background-color: #f8d7da;
-                color: #721c24;
-            }
-
-            .request-status.expired {
-                background-color: #f8f9fa;
-                color: #6c757d;
-            }
-
-            .countdown-timer {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                color: var(--text-light);
-            }
-
-            .countdown-timer.urgent {
-                color: var(--accent);
-            }
-
-            .booking-summary-card {
-                background-color: white;
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                padding: 1.5rem;
-                margin-bottom: 1rem;
-            }
-
-            .summary-row {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 0.5rem 0;
-                border-bottom: 1px solid var(--border);
-            }
-
-            .summary-row:last-child {
-                border-bottom: none;
-                font-weight: bold;
-                font-size: 1.1rem;
-            }
-
-            .payment-section {
-                background-color: var(--secondary);
-                border-radius: var(--radius);
-                padding: 1.5rem;
-                margin-top: 1rem;
-            }
-
-            @media (max-width: 768px) {
-                .service-categories {
-                    grid-template-columns: 1fr;
-                }
-                
-                .vendor-grid {
-                    grid-template-columns: 1fr;
-                }
-                
-                .form-row {
-                    flex-direction: column;
-                }
-                
-                .booking-progress .step-indicator {
-                    font-size: 0.8rem;
-                    padding: 0.25rem 0.5rem;
-                }
-            }
-        </style>
-<style id="googleidentityservice_button_styles">.qJTHM{-moz-user-select:none;color:#202124;direction:ltr;font-family:"Roboto-Regular",arial,sans-serif;font-weight:400;margin:0;overflow:hidden}.ynRLnc{left:-9999px;position:absolute;top:-9999px}.L6cTce{display:none}.bltWBb{word-break:break-all}.hSRGPd{color:#1a73e8;cursor:pointer;font-weight:500;text-decoration:none}.Bz112c-W3lGp{height:16px;width:16px}.Bz112c-E3DyYd{height:20px;width:20px}.Bz112c-r9oPif{height:24px;width:24px}.Bz112c-u2z5K{height:36px;width:36px}.Bz112c-uaxL4e{-moz-border-radius:10px;border-radius:10px}.LgbsSe-Bz112c{display:block}.S9gUrf-YoZ4jf,.S9gUrf-YoZ4jf *{border:none;margin:0;padding:0}.fFW7wc-ibnC6b>.aZ2wEe>div{border-color:#4285f4}.P1ekSe-ZMv3u>div:nth-child(1){background-color:#1a73e8!important}.P1ekSe-ZMv3u>div:nth-child(2),.P1ekSe-ZMv3u>div:nth-child(3){background-image:linear-gradient(to right,rgba(255,255,255,.7),rgba(255,255,255,.7)),linear-gradient(to right,#1a73e8,#1a73e8)!important}.haAclf{display:inline-block}.nsm7Bb-HzV7m-LgbsSe{border-radius:4px;box-sizing:border-box;transition:background-color .218s,border-color .218s;-moz-user-select:none;background-color:#fff;background-image:none;border:1px solid #dadce0;color:#3c4043;cursor:pointer;font-family:"Google Sans",arial,sans-serif;font-size:14px;height:40px;letter-spacing:0.25px;outline:none;overflow:hidden;padding:0 12px;position:relative;text-align:center;vertical-align:middle;white-space:nowrap;width:auto}@media screen and (-ms-high-contrast:active){.nsm7Bb-HzV7m-LgbsSe{border:2px solid windowText;color:windowText}}@media screen and (preferes-contrast:more){.nsm7Bb-HzV7m-LgbsSe{color:#000}}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe{font-size:14px;height:32px;letter-spacing:0.25px;padding:0 10px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe{font-size:11px;height:20px;letter-spacing:0.3px;padding:0 8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe{padding:0;width:40px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe{width:32px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe{width:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK{border-radius:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.pSzOP-SxQuSe{border-radius:16px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.purZT-SxQuSe{border-radius:10px}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc{border:none;color:#fff}.nsm7Bb-HzV7m-LgbsSe.MFS4be-v3pZbf-Ia7Qfc{background-color:#1a73e8}.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{background-color:#202124;color:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{color:#fff}}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:18px;margin-right:8px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:14px;min-width:14px;width:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:10px;min-width:10px;width:10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin-left:8px;margin-right:-4px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:10px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:4px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:3px;border-bottom-left-radius:3px;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;justify-content:center;align-items:center;background-color:#fff;height:36px;margin-left:-10px;margin-right:12px;min-width:36px;width:36px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c,.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:28px;margin-left:-8px;margin-right:10px;min-width:28px;width:28px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:16px;margin-left:-6px;margin-right:8px;min-width:16px;width:16px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:3px;margin-left:2px;margin-right:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:8px}.nsm7Bb-HzV7m-LgbsSe .n1UuX-DkfjY{border-radius:50%;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;height:20px;margin-left:-4px;margin-right:8px;min-width:20px;width:20px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-family:"Roboto";font-size:12px;text-align:left}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .ssJRIf,.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .fmcmS{overflow:hidden;text-overflow:ellipsis}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;color:#5f6368;fill:#5f6368;font-size:11px;font-weight:400}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#e8eaed;fill:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff,.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#000;fill:#000}}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .Bz112c{height:18px;margin:-3px -3px -3px 2px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:0;border-bottom-left-radius:0;border-top-right-radius:3px;border-bottom-right-radius:3px;margin-left:12px;margin-right:-10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.L5Fo6c-sM5MNb{border:0;display:block;left:0;position:relative;top:0}.L5Fo6c-bF1uUb{-moz-border-radius:4px;border-radius:4px;bottom:0;cursor:pointer;left:0;position:absolute;right:0;top:0}.L5Fo6c-bF1uUb:focus{border:none;outline:none}sentinel{}</style><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/common.js"></script><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/util.js"></script></head>
+        }
+    </style>
+<style id="googleidentityservice_button_styles">.qJTHM{-moz-user-select:none;color:#202124;direction:ltr;font-family:"Roboto-Regular",arial,sans-serif;font-weight:400;margin:0;overflow:hidden}.ynRLnc{left:-9999px;position:absolute;top:-9999px}.L6cTce{display:none}.bltWBb{word-break:break-all}.hSRGPd{color:#1a73e8;cursor:pointer;font-weight:500;text-decoration:none}.Bz112c-W3lGp{height:16px;width:16px}.Bz112c-E3DyYd{height:20px;width:20px}.Bz112c-r9oPif{height:24px;width:24px}.Bz112c-u2z5K{height:36px;width:36px}.Bz112c-uaxL4e{-moz-border-radius:10px;border-radius:10px}.LgbsSe-Bz112c{display:block}.S9gUrf-YoZ4jf,.S9gUrf-YoZ4jf *{border:none;margin:0;padding:0}.fFW7wc-ibnC6b>.aZ2wEe>div{border-color:#4285f4}.P1ekSe-ZMv3u>div:nth-child(1){background-color:#1a73e8!important}.P1ekSe-ZMv3u>div:nth-child(2),.P1ekSe-ZMv3u>div:nth-child(3){background-image:linear-gradient(to right,rgba(255,255,255,.7),rgba(255,255,255,.7)),linear-gradient(to right,#1a73e8,#1a73e8)!important}.haAclf{display:inline-block}.nsm7Bb-HzV7m-LgbsSe{border-radius:4px;box-sizing:border-box;transition:background-color .218s,border-color .218s;-moz-user-select:none;background-color:#fff;background-image:none;border:1px solid #dadce0;color:#3c4043;cursor:pointer;font-family:"Google Sans",arial,sans-serif;font-size:14px;height:40px;letter-spacing:0.25px;outline:none;overflow:hidden;padding:0 12px;position:relative;text-align:center;vertical-align:middle;white-space:nowrap;width:auto}@media screen and (-ms-high-contrast:active){.nsm7Bb-HzV7m-LgbsSe{border:2px solid windowText;color:windowText}}@media screen and (preferes-contrast:more){.nsm7Bb-HzV7m-LgbsSe{color:#000}}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe{font-size:14px;height:32px;letter-spacing:0.25px;padding:0 10px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe{font-size:11px;height:20px;letter-spacing:0.3px;padding:0 8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe{padding:0;width:40px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe{width:32px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe{width:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK{border-radius:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.pSzOP-SxQuSe{border-radius:16px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.purZT-SxQuSe{border-radius:10px}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc{border:none;color:#fff}.nsm7Bb-HzV7m-LgbsSe.MFS4be-v3pZbf-Ia7Qfc{background-color:#1a73e8}.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{background-color:#202124;color:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{color:#fff}}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:18px;margin-right:8px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:14px;min-width:14px;width:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:10px;min-width:10px;width:10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin-left:8px;margin-right:-4px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:10px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:4px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:3px;border-bottom-left-radius:3px;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;justify-content:center;align-items:center;background-color:#fff;height:36px;margin-left:-10px;margin-right:12px;min-width:36px;width:36px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c,.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:28px;margin-left:-8px;margin-right:10px;min-width:28px;width:28px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:16px;margin-left:-6px;margin-right:8px;min-width:16px;width:16px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:3px;margin-left:2px;margin-right:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:8px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-bN97Pc-sM5MNb{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;flex-direction:row;justify-content:space-between;flex-wrap:nowrap;height:100%;position:relative;width:100%}.nsm7Bb-HzV7m-LgbsSe .oXtfBe-l4eHX{justify-content:center}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{flex-grow:1;font-family:"Google Sans",arial,sans-serif;font-weight:500;overflow:hidden;text-overflow:ellipsis;vertical-align:top}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-weight:300}.nsm7Bb-HzV7m-LgbsSe .oXtfBe-l4eHX .nsm7Bb-HzV7m-LgbsSe-BPrWId{flex-grow:0}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-MJoBVe{transition:background-color .218s;bottom:0;left:0;position:absolute;right:0;top:0}.nsm7Bb-HzV7m-LgbsSe:hover,.nsm7Bb-HzV7m-LgbsSe:focus{box-shadow:none;border-color:rgb(210,227,252);outline:none}.nsm7Bb-HzV7m-LgbsSe:focus-within{outline:2px solid #00639b;border-color:transparent}.nsm7Bb-HzV7m-LgbsSe:hover .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(66,133,244,.08)}.nsm7Bb-HzV7m-LgbsSe:active .nsm7Bb-HzV7m-LgbsSe-MJoBVe,.nsm7Bb-HzV7m-LgbsSe:focus .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(66,133,244,.1)}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:hover .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(255,255,255,.24)}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:active .nsm7Bb-HzV7m-LgbsSe-MJoBVe,.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:focus .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(255,255,255,.32)}.nsm7Bb-HzV7m-LgbsSe .n1UuX-DkfjY{border-radius:50%;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;height:20px;margin-left:-4px;margin-right:8px;min-width:20px;width:20px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-family:"Roboto";font-size:12px;text-align:left}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .ssJRIf,.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .fmcmS{overflow:hidden;text-overflow:ellipsis}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;color:#5f6368;fill:#5f6368;font-size:11px;font-weight:400}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#e8eaed;fill:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff,.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#000;fill:#000}}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .Bz112c{height:18px;margin:-3px -3px -3px 2px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:0;border-bottom-left-radius:0;border-top-right-radius:3px;border-bottom-right-radius:3px;margin-left:12px;margin-right:-10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.L5Fo6c-sM5MNb{border:0;display:block;left:0;position:relative;top:0}.L5Fo6c-bF1uUb{-moz-border-radius:4px;border-radius:4px;bottom:0;cursor:pointer;left:0;position:absolute;right:0;top:0}.L5Fo6c-bF1uUb:focus{border:none;outline:none}sentinel{}</style><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/common.js"></script><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/util.js"></script></head>
 <body data-new-gr-c-s-check-loaded="8.932.0" data-gr-ext-installed="" style="overflow: auto;">
     <!-- Main App View -->
     <header class="header">
@@ -2982,13 +2790,13 @@
                     <div class="form-row">
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="business-email">Business Email <span class="required-asterisk">*</span></label>
+                                <label for="business-email">Business Email *</label>
                                 <input type="email" id="business-email" required>
                             </div>
                         </div>
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="business-phone">Business Phone <span class="required-asterisk">*</span></label>
+                                <label for="business-phone">Business Phone *</label>
                                 <input type="tel" id="business-phone" required>
                             </div>
                         </div>
@@ -3010,20 +2818,8 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="business-description">Business Description <span class="required-asterisk">*</span></label>
-                        <textarea id="business-description" rows="4" required placeholder="Describe your business and what makes you unique..." style="
-                            width: 100%;
-                            padding: 0.75rem;
-                            border: 1px solid var(--border);
-                            border-radius: var(--radius);
-                            font-size: 0.9rem;
-                            font-family: inherit;
-                            line-height: 1.5;
-                            resize: vertical;
-                            min-height: 120px;
-                            max-height: 200px;
-                            transition: border-color 0.2s, box-shadow 0.2s;
-                        " onfocus="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 0 0 3px rgba(94, 114, 228, 0.1)';" onblur="this.style.borderColor='var(--border)'; this.style.boxShadow='none';"></textarea>
+                        <label for="business-description">Business Description <span style="color: red;">*</span></label>
+                        <textarea id="business-description" rows="6" required placeholder="Describe your business and what makes you unique..." style="min-height: 150px; resize: vertical;"></textarea>
                     </div>
                     
                     <div class="form-group">
@@ -3034,7 +2830,7 @@
                     <div class="form-row">
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="primary-category">Primary Category <span class="required-asterisk">*</span></label>
+                                <label for="primary-category">Primary Category <span style="color: red;">*</span></label>
                                 <select id="primary-category" required class="select2-category">
                                     <option value="">Select primary category</option>
                                     <option value="beauty">Beauty</option>
@@ -3086,26 +2882,24 @@
                     <h4 class="form-section-title">Step 2: Location Information</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Tell us where your business is located and which areas you serve.</p>
                     
-                    <h5 style="margin-bottom: 1rem; color: var(--primary);">Physical Office Location (Optional)</h5>
-                    <p style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">If you have a physical office or storefront, provide the address below. This is optional for service-based businesses.</p>
-                    
+                    <h5 style="margin-bottom: 1rem; color: var(--primary);">Physical Location</h5>
                     <div class="form-group">
-                        <label for="business-address">Street Address</label>
-                        <input type="text" id="business-address" placeholder="123 Main Street" class="google-autocomplete">
+                        <label for="business-address">Street Address <span style="color: red;">*</span></label>
+                        <input type="text" id="business-address" required placeholder="123 Main Street" class="google-autocomplete">
                         <small style="color: var(--text-light);">Start typing your address and select from suggestions</small>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="business-city">City</label>
-                                <input type="text" id="business-city" readonly style="background-color: #f8f9fa;">
+                                <label for="business-city">City <span style="color: red;">*</span></label>
+                                <input type="text" id="business-city" required readonly style="background-color: #f8f9fa;">
                             </div>
                         </div>
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="business-state">State/Province</label>
-                                <input type="text" id="business-state" readonly style="background-color: #f8f9fa;">
+                                <label for="business-state">State/Province <span style="color: red;">*</span></label>
+                                <input type="text" id="business-state" required readonly style="background-color: #f8f9fa;">
                             </div>
                         </div>
                     </div>
@@ -3115,7 +2909,6 @@
                             <div class="form-group">
                                 <label for="business-country">Country</label>
                                 <select id="business-country">
-                                    <option value="">Select Country</option>
                                     <option value="USA">United States</option>
                                     <option value="Canada">Canada</option>
                                     <option value="UK">United Kingdom</option>
@@ -3126,8 +2919,8 @@
                         </div>
                         <div class="form-col">
                             <div class="form-group">
-                                <label for="business-postal">Postal/Zip Code</label>
-                                <input type="text" id="business-postal" readonly style="background-color: #f8f9fa;">
+                                <label for="business-postal">Postal/Zip Code <span style="color: red;">*</span></label>
+                                <input type="text" id="business-postal" required readonly style="background-color: #f8f9fa;">
                             </div>
                         </div>
                     </div>
@@ -3136,18 +2929,16 @@
                     <input type="hidden" id="business-latitude">
                     <input type="hidden" id="business-longitude">
 
-            <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Service Areas <span class="required-asterisk">*</span></h5>
-            <p style="color: var(--text-light); margin-bottom: 1rem; font-size: 0.9rem;">Specify the cities and regions where you provide your services. This is required.</p>
-            
+            <h5 style="margin: 2rem 0 1rem 0; color: var(--primary);">Service Areas</h5>
             <div class="form-group">
-                <label for="additional-cities">Cities/Regions You Serve <span class="required-asterisk">*</span></label>
+                <label for="additional-cities">Additional Cities/Regions Served</label>
                 <div id="additional-cities-container" style="min-height: 120px; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; background-color: white;">
-                    <input type="text" id="additional-cities-input" placeholder="Start typing a city name..." class="google-places-input" style="width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem;" required>
+                    <input type="text" id="additional-cities-input" placeholder="Start typing a city name..." class="google-places-input" style="width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem;">
                     <div id="selected-cities" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                         <!-- Selected cities will appear here as tags -->
                     </div>
                 </div>
-                <small style="color: var(--text-light); font-size: 0.8rem;">Type city names and select from Google's suggestions. You must add at least one service area.</small>
+                <small style="color: var(--text-light); font-size: 0.8rem;">Type city names and select from Google's suggestions. Selected cities will appear as tags above.</small>
             </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
@@ -3173,17 +2964,17 @@
                         <!-- Service Form -->
                         <div id="service-form" style="display: none; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius);">
                             <div class="form-group">
-                                <label>Service Name <span class="required-asterisk">*</span></label>
+                                <label>Service Name <span style="color: red;">*</span></label>
                                 <input type="text" id="service-name" required placeholder="e.g., Wedding Photography Package">
                             </div>
                             <div class="form-group">
-                                <label>Description <span class="required-asterisk">*</span></label>
+                                <label>Description <span style="color: red;">*</span></label>
                                 <textarea id="service-description" rows="3" required placeholder="Describe what's included in this service..."></textarea>
                             </div>
                             <div class="form-row">
                                 <div class="form-col">
                                     <div class="form-group">
-                                        <label>Price ($) <span class="required-asterisk">*</span></label>
+                                        <label>Price ($) <span style="color: red;">*</span></label>
                                         <input type="number" id="service-price" min="0" step="0.01" required placeholder="0.00">
                                     </div>
                                 </div>
@@ -3345,7 +3136,7 @@
                     
                     <h5 style="margin-bottom: 1rem; color: var(--primary);">Featured Image</h5>
                     <div class="form-group">
-                        <label for="featured-image">Main Profile Image <span class="required-asterisk">*</span></label>
+                        <label for="featured-image">Main Profile Image <span style="color: red;">*</span></label>
                         <input type="file" id="featured-image" accept="image/*" required>
                         <small style="color: var(--text-light);">This will be the main image displayed on your profile. Recommended size: 800x600px</small>
                         <div id="featured-image-preview" style="margin-top: 1rem; display: none;">
@@ -12688,72 +12479,51 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 console.error('❌ Error loading app configuration:', error);
                 // Fallback configuration
                 appConfig = {
-                    googleMapsApiKey: '',
+                    googleMapsApiKey: 'AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg',
                     apiBaseUrl: 'http://localhost:3000/api'
                 };
             }
         }
 
-        // Dynamically load Google Maps API
-        async function loadGoogleMapsAPI() {
-            try {
-                // Check if Google Maps API is already loaded
-                if (window.google && window.google.maps && window.google.maps.places) {
+        // Dynamically load Google Places API
+        async function loadGooglePlacesAPI() {
+            return new Promise((resolve, reject) => {
+                if (!appConfig || !appConfig.googleMapsApiKey) {
+                    console.warn('⚠️ Google Maps API key not available, skipping Google Places initialization');
+                    resolve();
+                    return;
+                }
+
+                // Check if Google Maps is already loaded
+                if (window.google && window.google.maps) {
                     console.log('✅ Google Maps API already loaded');
-                    initializeGoogleAutocomplete();
+                    initializeGooglePlaces();
+                    resolve();
                     return;
                 }
 
-                console.log('🔄 Loading Google Maps API...');
-                
-                // Fetch API key from backend with debugging
-                console.log('📡 Fetching API key from backend...');
-                const response = await fetch('/api/config');
-                console.log('📡 Backend response status:', response.status);
-                
-                if (!response.ok) {
-                    console.error('❌ Backend config request failed:', response.status, response.statusText);
-                    throw new Error(`Failed to fetch configuration: ${response.status}`);
-                }
-                
-                const config = await response.json();
-                console.log('📡 Backend config response:', config);
-                
-                const apiKey = config.data?.googleMapsApiKey;
-                console.log('🔑 API Key received:', apiKey ? `${apiKey.substring(0, 10)}...` : 'EMPTY');
-                
-                if (!apiKey || apiKey.trim() === '') {
-                    console.error('❌ Google Maps API key is empty or not found in configuration');
-                    alert('Google Maps API key is not configured. Please check your backend configuration.');
-                    return;
-                }
-
-                // Create script element
-                const scriptUrl = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initializeGoogleAutocomplete`;
-                console.log('🌐 Loading Google Maps script from:', scriptUrl);
-                
+                // Create script element to load Google Maps API
                 const script = document.createElement('script');
-                script.src = scriptUrl;
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${appConfig.googleMapsApiKey}&libraries=places`;
                 script.async = true;
                 script.defer = true;
                 
-                // Add success and error handling
                 script.onload = () => {
-                    console.log('✅ Google Maps script loaded successfully');
+                    console.log('✅ Google Maps API loaded successfully');
+                    // Initialize Google Places after API is loaded
+                    setTimeout(() => {
+                        initializeGooglePlaces();
+                        resolve();
+                    }, 100);
                 };
                 
                 script.onerror = (error) => {
-                    console.error('❌ Failed to load Google Maps API script:', error);
-                    alert('Failed to load Google Maps API. Please check your API key and internet connection.');
+                    console.error('❌ Error loading Google Maps API:', error);
+                    reject(error);
                 };
                 
                 document.head.appendChild(script);
-                console.log('📜 Google Maps script added to document head');
-                
-            } catch (error) {
-                console.error('❌ Error loading Google Maps API:', error);
-                alert(`Error loading Google Maps API: ${error.message}`);
-            }
+            });
         }
 
         // Initialize Select2 for enhanced dropdowns
