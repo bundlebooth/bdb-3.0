@@ -140,117 +140,83 @@ router.post('/create-payment-intent', async (req, res) => {
   }
 });
 
-// Enhanced multi-step booking request endpoints
+// Multi-step booking request endpoints
 router.post('/requests', async (req, res) => {
   try {
-    const { 
-      userId, 
-      selectedServices, 
-      selectedVendors, 
-      eventLocation, 
-      eventDate, 
-      startTime, 
-      endTime, 
-      guestCount, 
-      eventType, 
-      budgetRange, 
-      specialRequests 
-    } = req.body;
+    const { userId, vendorIds, services, eventDetails, budget } = req.body;
 
     // Input validation
-    if (!userId) {
+    if (!userId || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
       return res.status(400).json({ 
         success: false, 
-        message: 'User ID is required' 
+        message: 'User ID and vendor IDs are required' 
       });
     }
 
-    if (!selectedServices || !Array.isArray(selectedServices) || selectedServices.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'At least one service must be selected' 
-      });
-    }
-
-    if (!selectedVendors || Object.keys(selectedVendors).length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Vendors must be selected for each service' 
-      });
-    }
-
-    if (!eventDate || !startTime || !endTime) {
+    if (!eventDetails || !eventDetails.date || !eventDetails.time) {
       return res.status(400).json({
         success: false,
-        message: 'Event date, start time, and end time are required'
-      });
-    }
-
-    if (!eventLocation || !eventLocation.address) {
-      return res.status(400).json({
-        success: false,
-        message: 'Event location is required'
+        message: 'Event date and time are required'
       });
     }
 
     const pool = await poolPromise;
     const requests = [];
 
-    // Create datetime objects
-    const startDateTime = new Date(`${eventDate}T${startTime}`);
-    const endDateTime = new Date(`${eventDate}T${endTime}`);
+    // 1. Parse and validate the time string
+    const timeString = eventDetails.time.trim();
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
     
-    if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+    if (!timeRegex.test(timeString)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time format. Please use HH:MM or HH:MM:SS'
+      });
+    }
+
+    // 2. Normalize to HH:MM:SS format
+    const timeParts = timeString.split(':');
+    const hours = parseInt(timeParts[0], 10);
+    const minutes = parseInt(timeParts[1], 10);
+    const seconds = timeParts[2] ? parseInt(timeParts[2], 10) : 0;
+    
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time values. Hours (0-23), Minutes (0-59), Seconds (0-59)'
+      });
+    }
+
+    const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+    // 3. Create a combined datetime object
+    const eventDateTime = new Date(`${eventDetails.date}T${formattedTime}`);
+    if (isNaN(eventDateTime.getTime())) {
       return res.status(400).json({
         success: false,
         message: 'Invalid date/time combination'
       });
     }
 
-    if (endDateTime <= startDateTime) {
-      return res.status(400).json({
-        success: false,
-        message: 'End time must be after start time'
-      });
-    }
-
-    // Parse budget range
-    let budgetMin = 0, budgetMax = 0;
-    if (budgetRange) {
-      if (budgetRange === '25000+') {
-        budgetMin = 25000;
-        budgetMax = 100000;
-      } else {
-        const [min, max] = budgetRange.split('-').map(val => parseInt(val));
-        budgetMin = min;
-        budgetMax = max;
-      }
-    }
-
-    // Create requests for each selected vendor
-    for (const [serviceId, vendorId] of Object.entries(selectedVendors)) {
+    // Create requests for each vendor
+    for (const vendorId of vendorIds) {
       try {
         const request = new sql.Request(pool);
         
+        // Using a single DateTime parameter instead of separate Date and Time
         request.input('UserID', sql.Int, userId);
         request.input('VendorProfileID', sql.Int, vendorId);
-        request.input('ServiceCategoryID', sql.Int, parseInt(serviceId));
-        request.input('EventDate', sql.Date, eventDate);
-        request.input('StartTime', sql.Time, startTime);
-        request.input('EndTime', sql.Time, endTime);
-        request.input('EventLocation', sql.NVarChar(500), eventLocation.address);
-        request.input('EventLatitude', sql.Decimal(10, 8), eventLocation.lat || null);
-        request.input('EventLongitude', sql.Decimal(11, 8), eventLocation.lng || null);
-        request.input('AttendeeCount', sql.Int, guestCount ? parseInt(guestCount) : null);
-        request.input('EventType', sql.NVarChar(50), eventType || null);
-        request.input('BudgetMin', sql.Decimal(10, 2), budgetMin);
-        request.input('BudgetMax', sql.Decimal(10, 2), budgetMax);
-        request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequests || null);
+        request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
+        request.input('EventDateTime', sql.DateTime, eventDateTime);
+        request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
+        request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
+        request.input('Budget', sql.Decimal(10, 2), budget);
+        request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || null);
         request.input('Status', sql.NVarChar(50), 'pending');
         
-        // Set expiry to 48 hours from now for enhanced bookings
+        // Set expiry to 24 hours from now
         const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 48);
+        expiresAt.setHours(expiresAt.getHours() + 24);
         request.input('ExpiresAt', sql.DateTime, expiresAt);
 
         const result = await request.query(`
@@ -260,10 +226,11 @@ router.post('/requests', async (req, res) => {
           )
           OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
           VALUES (
-            @UserID, @VendorProfileID, 
-            JSON_OBJECT('serviceId', @ServiceCategoryID, 'eventType', @EventType, 'startTime', @StartTime, 'endTime', @EndTime),
-            @EventDate, @StartTime, @EventLocation,
-            @AttendeeCount, @BudgetMax, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
+            @UserID, @VendorProfileID, @Services, 
+            CONVERT(DATE, @EventDateTime), 
+            CONVERT(TIME, @EventDateTime), 
+            @EventLocation,
+            @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
           )
         `);
 
@@ -271,33 +238,24 @@ router.post('/requests', async (req, res) => {
           requests.push({
             requestId: result.recordset[0].RequestID,
             vendorId: vendorId,
-            serviceId: parseInt(serviceId),
             status: 'pending',
             createdAt: result.recordset[0].CreatedAt,
             expiresAt: result.recordset[0].ExpiresAt
           });
         }
       } catch (err) {
-        console.error(`Error creating request for vendor ${vendorId} in service ${serviceId}:`, err);
-        // Continue with other vendors instead of failing completely
+        console.error(`Error creating request for vendor ${vendorId}:`, err);
+        throw err;
       }
-    }
-
-    if (requests.length === 0) {
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to create any booking requests'
-      });
     }
 
     res.json({
       success: true,
-      requests: requests,
-      message: `Successfully created ${requests.length} booking request(s)`
+      requests: requests
     });
 
   } catch (err) {
-    console.error('Enhanced booking request error:', {
+    console.error('Database error:', {
       message: err.message,
       code: err.code,
       number: err.number,
@@ -623,132 +581,6 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
       success: false,
       message: 'Failed to get vendor requests',
       error: err.message 
-    });
-  }
-});
-
-// Get vendors by service category with location filtering
-router.get('/vendors-by-service/:categoryId', async (req, res) => {
-  try {
-    const { categoryId } = req.params;
-    const { latitude, longitude, radius = 25 } = req.query;
-    
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    const categoryMap = {
-      1: 'venue', 2: 'photo', 3: 'music', 4: 'catering', 5: 'entertainment',
-      6: 'experiences', 7: 'decor', 8: 'beauty', 9: 'cake', 10: 'transport',
-      11: 'planner', 12: 'fashion', 13: 'stationery'
-    };
-    
-    const categoryKey = categoryMap[parseInt(categoryId)];
-    
-    if (!categoryKey) {
-      return res.json({
-        success: true,
-        vendors: []
-      });
-    }
-    
-    request.input('Category', sql.NVarChar(50), categoryKey);
-    request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
-    request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
-    request.input('RadiusMiles', sql.Int, parseInt(radius));
-    
-    const result = await request.query(`
-      SELECT DISTINCT
-        vp.VendorProfileID,
-        vp.BusinessName,
-        vp.DisplayName,
-        vp.BusinessDescription,
-        vp.PriceLevel,
-        vp.City,
-        vp.State,
-        vp.Address,
-        vp.Latitude,
-        vp.Longitude,
-        vc.Category,
-        COALESCE(AVG(CAST(vr.Rating AS FLOAT)), 0) as AverageRating,
-        COUNT(vr.ReviewID) as ReviewCount,
-        CASE 
-          WHEN @Latitude IS NOT NULL AND @Longitude IS NOT NULL AND vp.Latitude IS NOT NULL AND vp.Longitude IS NOT NULL
-          THEN (
-            3959 * ACOS(
-              COS(RADIANS(@Latitude)) * COS(RADIANS(vp.Latitude)) * 
-              COS(RADIANS(vp.Longitude) - RADIANS(@Longitude)) + 
-              SIN(RADIANS(@Latitude)) * SIN(RADIANS(vp.Latitude))
-            )
-          )
-          ELSE NULL
-        END as DistanceMiles
-      FROM VendorCategories vc
-      INNER JOIN VendorProfiles vp ON vc.VendorProfileID = vp.VendorProfileID
-      LEFT JOIN VendorReviews vr ON vp.VendorProfileID = vr.VendorProfileID
-      WHERE vc.Category LIKE '%' + @Category + '%'
-        AND vp.IsActive = 1 
-        AND vp.IsCompleted = 1
-        AND vp.AcceptingBookings = 1
-        AND (
-          @Latitude IS NULL OR @Longitude IS NULL OR
-          (
-            vp.Latitude IS NOT NULL AND vp.Longitude IS NOT NULL AND
-            (
-              3959 * ACOS(
-                COS(RADIANS(@Latitude)) * COS(RADIANS(vp.Latitude)) * 
-                COS(RADIANS(vp.Longitude) - RADIANS(@Longitude)) + 
-                SIN(RADIANS(@Latitude)) * SIN(RADIANS(vp.Latitude))
-              )
-            ) <= @RadiusMiles
-          )
-        )
-      GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.BusinessDescription, 
-               vp.PriceLevel, vp.City, vp.State, vp.Address, vp.Latitude, vp.Longitude, vc.Category
-      ORDER BY 
-        CASE WHEN @Latitude IS NOT NULL AND @Longitude IS NOT NULL THEN DistanceMiles END ASC,
-        AverageRating DESC, 
-        ReviewCount DESC,
-        vp.BusinessName
-    `);
-
-    const vendors = result.recordset.map(vendor => {
-      const pricingMap = {
-        '$': { min: 200, max: 500 },
-        '$$': { min: 500, max: 1200 },
-        '$$$': { min: 1200, max: 2500 },
-        '$$$$': { min: 2500, max: 5000 }
-      };
-      
-      const pricing = pricingMap[vendor.PriceLevel] || pricingMap['$$'];
-      
-      return {
-        vendorProfileId: vendor.VendorProfileID,
-        businessName: vendor.BusinessName,
-        displayName: vendor.DisplayName || vendor.BusinessName,
-        description: vendor.BusinessDescription,
-        priceLevel: vendor.PriceLevel,
-        priceRange: `$${pricing.min} - $${pricing.max}`,
-        location: `${vendor.City || ''}, ${vendor.State || ''}`.replace(/^,\s*|,\s*$/g, ''),
-        address: vendor.Address,
-        rating: parseFloat(vendor.AverageRating || 0).toFixed(1),
-        reviewCount: vendor.ReviewCount || 0,
-        distanceMiles: vendor.DistanceMiles ? parseFloat(vendor.DistanceMiles).toFixed(1) : null,
-        category: vendor.Category
-      };
-    });
-
-    res.json({
-      success: true,
-      vendors: vendors,
-      categoryName: categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1)
-    });
-
-  } catch (err) {
-    console.error('Error fetching vendors by service:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch vendors',
-      error: err.message
     });
   }
 });
