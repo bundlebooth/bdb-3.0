@@ -135,15 +135,14 @@ router.get('/multi-search', async (req, res) => {
     
     request.input('Categories', sql.NVarChar(500), categories);
     request.input('Budget', sql.Decimal(10, 2), budget ? parseFloat(budget) : null);
-    request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+    request.input('EventDate', sql.DateTime, eventDate ? new Date(eventDate) : null);
     request.input('City', sql.NVarChar(100), city || null);
     request.input('State', sql.NVarChar(50), state || null);
     request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
     request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
-    request.input('RadiusMiles', sql.Int, parseInt(radiusMiles));
+    request.input('MaxDistance', sql.Int, parseInt(radiusMiles));
     request.input('PageNumber', sql.Int, parseInt(pageNumber));
     request.input('PageSize', sql.Int, parseInt(pageSize));
-    request.input('SortBy', sql.NVarChar(20), sortBy);
 
     const result = await request.execute('sp_SearchVendorsMultiCategory');
     
