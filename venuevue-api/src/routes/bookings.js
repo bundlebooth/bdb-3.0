@@ -585,4 +585,130 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
   }
 });
 
+// Get vendors by service category with location filtering
+router.get('/vendors-by-service/:categoryId', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { latitude, longitude, radius = 25 } = req.query;
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    const categoryMap = {
+      1: 'venue', 2: 'photo', 3: 'music', 4: 'catering', 5: 'entertainment',
+      6: 'experiences', 7: 'decor', 8: 'beauty', 9: 'cake', 10: 'transport',
+      11: 'planner', 12: 'fashion', 13: 'stationery'
+    };
+    
+    const categoryKey = categoryMap[parseInt(categoryId)];
+    
+    if (!categoryKey) {
+      return res.json({
+        success: true,
+        vendors: []
+      });
+    }
+    
+    request.input('Category', sql.NVarChar(50), categoryKey);
+    request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
+    request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
+    request.input('RadiusMiles', sql.Int, parseInt(radius));
+    
+    const result = await request.query(`
+      SELECT DISTINCT
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.BusinessDescription,
+        vp.PriceLevel,
+        vp.City,
+        vp.State,
+        vp.Address,
+        vp.Latitude,
+        vp.Longitude,
+        vc.Category,
+        COALESCE(AVG(CAST(vr.Rating AS FLOAT)), 0) as AverageRating,
+        COUNT(vr.ReviewID) as ReviewCount,
+        CASE 
+          WHEN @Latitude IS NOT NULL AND @Longitude IS NOT NULL AND vp.Latitude IS NOT NULL AND vp.Longitude IS NOT NULL
+          THEN (
+            3959 * ACOS(
+              COS(RADIANS(@Latitude)) * COS(RADIANS(vp.Latitude)) * 
+              COS(RADIANS(vp.Longitude) - RADIANS(@Longitude)) + 
+              SIN(RADIANS(@Latitude)) * SIN(RADIANS(vp.Latitude))
+            )
+          )
+          ELSE NULL
+        END as DistanceMiles
+      FROM VendorCategories vc
+      INNER JOIN VendorProfiles vp ON vc.VendorProfileID = vp.VendorProfileID
+      LEFT JOIN VendorReviews vr ON vp.VendorProfileID = vr.VendorProfileID
+      WHERE vc.Category LIKE '%' + @Category + '%'
+        AND vp.IsActive = 1 
+        AND vp.IsCompleted = 1
+        AND vp.AcceptingBookings = 1
+        AND (
+          @Latitude IS NULL OR @Longitude IS NULL OR
+          (
+            vp.Latitude IS NOT NULL AND vp.Longitude IS NOT NULL AND
+            (
+              3959 * ACOS(
+                COS(RADIANS(@Latitude)) * COS(RADIANS(vp.Latitude)) * 
+                COS(RADIANS(vp.Longitude) - RADIANS(@Longitude)) + 
+                SIN(RADIANS(@Latitude)) * SIN(RADIANS(vp.Latitude))
+              )
+            ) <= @RadiusMiles
+          )
+        )
+      GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.BusinessDescription, 
+               vp.PriceLevel, vp.City, vp.State, vp.Address, vp.Latitude, vp.Longitude, vc.Category
+      ORDER BY 
+        CASE WHEN @Latitude IS NOT NULL AND @Longitude IS NOT NULL THEN DistanceMiles END ASC,
+        AverageRating DESC, 
+        ReviewCount DESC,
+        vp.BusinessName
+    `);
+
+    const vendors = result.recordset.map(vendor => {
+      const pricingMap = {
+        '$': { min: 200, max: 500 },
+        '$$': { min: 500, max: 1200 },
+        '$$$': { min: 1200, max: 2500 },
+        '$$$$': { min: 2500, max: 5000 }
+      };
+      
+      const pricing = pricingMap[vendor.PriceLevel] || pricingMap['$$'];
+      
+      return {
+        vendorProfileId: vendor.VendorProfileID,
+        businessName: vendor.BusinessName,
+        displayName: vendor.DisplayName || vendor.BusinessName,
+        description: vendor.BusinessDescription,
+        priceLevel: vendor.PriceLevel,
+        priceRange: `$${pricing.min} - $${pricing.max}`,
+        location: `${vendor.City || ''}, ${vendor.State || ''}`.replace(/^,\s*|,\s*$/g, ''),
+        address: vendor.Address,
+        rating: parseFloat(vendor.AverageRating || 0).toFixed(1),
+        reviewCount: vendor.ReviewCount || 0,
+        distanceMiles: vendor.DistanceMiles ? parseFloat(vendor.DistanceMiles).toFixed(1) : null,
+        category: vendor.Category
+      };
+    });
+
+    res.json({
+      success: true,
+      vendors: vendors,
+      categoryName: categoryKey.charAt(0).toUpperCase() + categoryKey.slice(1)
+    });
+
+  } catch (err) {
+    console.error('Error fetching vendors by service:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch vendors',
+      error: err.message
+    });
+  }
+});
+
 module.exports = router;
