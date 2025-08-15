@@ -49,30 +49,6 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get service categories for booking modal (MUST come before /:id route)
-router.get('/service-categories', (req, res) => {
-  const categories = [
-    { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
-    { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
-    { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
-    { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 },
-    { id: 5, key: 'entertainment', name: 'Entertainment', icon: 'fas fa-theater-masks', serviceCount: 0 },
-    { id: 6, key: 'experiences', name: 'Experiences', icon: 'fas fa-star', serviceCount: 0 },
-    { id: 7, key: 'decor', name: 'Decorations', icon: 'fas fa-ribbon', serviceCount: 0 },
-    { id: 8, key: 'beauty', name: 'Beauty', icon: 'fas fa-spa', serviceCount: 0 },
-    { id: 9, key: 'cake', name: 'Cake', icon: 'fas fa-birthday-cake', serviceCount: 0 },
-    { id: 10, key: 'transport', name: 'Transportation', icon: 'fas fa-shuttle-van', serviceCount: 0 },
-    { id: 11, key: 'planner', name: 'Planners', icon: 'fas fa-clipboard-list', serviceCount: 0 },
-    { id: 12, key: 'fashion', name: 'Fashion', icon: 'fas fa-tshirt', serviceCount: 0 },
-    { id: 13, key: 'stationery', name: 'Stationery', icon: 'fas fa-envelope', serviceCount: 0 }
-  ];
-
-  res.status(200).json({
-    success: true,
-    categories: categories
-  });
-});
-
 // Get booking details
 router.get('/:id', async (req, res) => {
   try {
@@ -298,7 +274,29 @@ router.post('/requests', async (req, res) => {
   }
 });
 
+// Get service categories for booking modal
+router.get('/service-categories', (req, res) => {
+  const categories = [
+    { id: 1, key: 'venue', name: 'Venues', icon: 'fas fa-building', serviceCount: 0 },
+    { id: 2, key: 'photo', name: 'Photo/Video', icon: 'fas fa-camera', serviceCount: 0 },
+    { id: 3, key: 'music', name: 'Music/DJ', icon: 'fas fa-music', serviceCount: 0 },
+    { id: 4, key: 'catering', name: 'Catering', icon: 'fas fa-utensils', serviceCount: 0 },
+    { id: 5, key: 'entertainment', name: 'Entertainment', icon: 'fas fa-theater-masks', serviceCount: 0 },
+    { id: 6, key: 'experiences', name: 'Experiences', icon: 'fas fa-star', serviceCount: 0 },
+    { id: 7, key: 'decor', name: 'Decorations', icon: 'fas fa-ribbon', serviceCount: 0 },
+    { id: 8, key: 'beauty', name: 'Beauty', icon: 'fas fa-spa', serviceCount: 0 },
+    { id: 9, key: 'cake', name: 'Cake', icon: 'fas fa-birthday-cake', serviceCount: 0 },
+    { id: 10, key: 'transport', name: 'Transportation', icon: 'fas fa-shuttle-van', serviceCount: 0 },
+    { id: 11, key: 'planner', name: 'Planners', icon: 'fas fa-clipboard-list', serviceCount: 0 },
+    { id: 12, key: 'fashion', name: 'Fashion', icon: 'fas fa-tshirt', serviceCount: 0 },
+    { id: 13, key: 'stationery', name: 'Stationery', icon: 'fas fa-envelope', serviceCount: 0 }
+  ];
 
+  res.status(200).json({
+    success: true,
+    categories: categories
+  });
+});
 
 // Get services by category for booking modal
 router.get('/services/:categoryId', async (req, res) => {
@@ -582,305 +580,6 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Failed to get vendor requests',
-      error: err.message 
-    });
-  }
-});
-
-// Enhanced multi-vendor booking request creation
-router.post('/multi-requests', async (req, res) => {
-  try {
-    const { 
-      userId, 
-      vendorIds, 
-      services, 
-      eventDate, 
-      eventStartTime,
-      eventEndTime, 
-      eventLocation, 
-      attendeeCount, 
-      serviceBudgets,
-      totalBudget, 
-      specialRequests 
-    } = req.body;
-
-    // Input validation
-    if (!userId || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'User ID and vendor IDs are required' 
-      });
-    }
-
-    if (!eventDate || !eventStartTime) {
-      return res.status(400).json({
-        success: false,
-        message: 'Event date and start time are required'
-      });
-    }
-
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    // Combine date and start time for the stored procedure
-    const eventDateTime = new Date(`${eventDate}T${eventStartTime}`);
-    const eventEndDateTime = eventEndTime ? new Date(`${eventDate}T${eventEndTime}`) : null;
-    
-    request.input('UserID', sql.Int, userId);
-    request.input('VendorIds', sql.NVarChar(sql.MAX), JSON.stringify(vendorIds));
-    request.input('EventDate', sql.DateTime, eventDateTime);
-    request.input('EndDate', sql.DateTime, eventEndDateTime);
-    request.input('EventLocation', sql.NVarChar(255), eventLocation || null);
-    request.input('AttendeeCount', sql.Int, attendeeCount || 50);
-    request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequests || null);
-    request.input('ServicesRequested', sql.NVarChar(sql.MAX), JSON.stringify(services || {}));
-    request.input('ServiceBudgets', sql.NVarChar(sql.MAX), JSON.stringify(serviceBudgets || {}));
-    request.input('GroupID', sql.NVarChar(50), null); // Let stored procedure generate it
-
-    const result = await request.execute('sp_CreateMultiBookingRequest');
-
-    res.json({
-      success: true,
-      requests: result.recordset,
-      message: 'Multi-vendor booking requests created successfully'
-    });
-
-  } catch (err) {
-    console.error('Multi-booking request error:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to create multi-vendor booking requests',
-      error: err.message 
-    });
-  }
-});
-
-// Coordinated payment processing for multiple approved bookings
-router.post('/confirm-multi-payment', async (req, res) => {
-  try {
-    const { 
-      paymentIntentId, 
-      groupId,
-      userId,
-      totalAmount 
-    } = req.body;
-
-    // Input validation
-    if (!paymentIntentId || !groupId || !userId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Payment Intent ID, Group ID, and User ID are required' 
-      });
-    }
-
-    if (!totalAmount || totalAmount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid total amount is required'
-      });
-    }
-
-    // Verify payment with Stripe
-    try {
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
-      if (paymentIntent.status !== 'succeeded') {
-        return res.status(400).json({
-          success: false,
-          message: 'Payment has not been completed successfully'
-        });
-      }
-
-      // Verify amount matches
-      const paidAmount = paymentIntent.amount / 100; // Stripe amounts are in cents
-      if (Math.abs(paidAmount - totalAmount) > 0.01) {
-        return res.status(400).json({
-          success: false,
-          message: 'Payment amount does not match expected total'
-        });
-      }
-    } catch (stripeError) {
-      console.error('Stripe verification error:', stripeError);
-      return res.status(400).json({
-        success: false,
-        message: 'Failed to verify payment with Stripe',
-        error: stripeError.message
-      });
-    }
-
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    request.input('GroupID', sql.NVarChar(50), groupId);
-    request.input('PaymentIntentID', sql.NVarChar(100), paymentIntentId);
-    request.input('UserID', sql.Int, userId);
-
-    const result = await request.execute('sp_ConfirmMultiBookingPayment');
-    
-    if (result.recordset[0].Success === 0) {
-      return res.status(400).json({
-        success: false,
-        message: result.recordset[0].Message
-      });
-    }
-
-    res.json({
-      success: true,
-      message: result.recordset[0].Message,
-      bookingsCreated: result.recordset[0].BookingsCreated,
-      paymentIntentId
-    });
-
-  } catch (err) {
-    console.error('Multi-payment confirmation error:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to confirm multi-vendor payment',
-      error: err.message 
-    });
-  }
-});
-
-// Vendor response to booking request
-router.put('/requests/:requestId/respond', async (req, res) => {
-  try {
-    const { requestId } = req.params;
-    const { 
-      vendorProfileId, 
-      status, 
-      proposedPrice, 
-      responseMessage 
-    } = req.body;
-
-    // Input validation
-    if (!vendorProfileId || !status) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vendor profile ID and status are required'
-      });
-    }
-
-    if (!['approved', 'declined'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Status must be either "approved" or "declined"'
-      });
-    }
-
-    if (status === 'approved' && (!proposedPrice || proposedPrice <= 0)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Proposed price is required for approved requests'
-      });
-    }
-
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    request.input('RequestID', sql.Int, parseInt(requestId));
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('Status', sql.NVarChar(20), status);
-    request.input('ProposedPrice', sql.Decimal(10, 2), proposedPrice || null);
-    request.input('ResponseMessage', sql.NVarChar(sql.MAX), responseMessage || null);
-
-    const result = await request.execute('sp_RespondToBookingRequest');
-    
-    if (result.recordset[0].Success === 0) {
-      return res.status(400).json({
-        success: false,
-        message: result.recordset[0].Message
-      });
-    }
-
-    res.json({
-      success: true,
-      message: result.recordset[0].Message,
-      status: status,
-      proposedPrice: proposedPrice
-    });
-
-  } catch (err) {
-    console.error('Booking request response error:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to respond to booking request',
-      error: err.message 
-    });
-  }
-});
-
-// Get approved requests ready for payment
-router.get('/approved-requests/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { groupId } = req.query; // Optional: to group related requests
-    
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    request.input('UserID', sql.Int, userId);
-    if (groupId) {
-      request.input('GroupID', sql.NVarChar(50), groupId);
-    }
-
-    // Get approved requests ready for payment
-    let query = `
-      SELECT 
-        br.RequestID,
-        br.GroupID,
-        br.VendorProfileID,
-        vp.BusinessName,
-        vp.DisplayName,
-        br.EventDate,
-        br.EventLocation,
-        br.AttendeeCount,
-        br.ServicesRequested,
-        br.ProposedPrice,
-        br.ResponseMessage,
-        br.RespondedAt,
-        br.Status
-      FROM BookingRequests br
-      INNER JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
-      WHERE br.UserID = @UserID 
-      AND br.Status = 'approved'
-      AND br.ExpiresAt > GETDATE()
-    `;
-    
-    if (groupId) {
-      query += ' AND br.GroupID = @GroupID';
-    }
-    
-    query += ' ORDER BY br.RespondedAt DESC';
-
-    const result = await request.query(query);
-
-    // Group requests by GroupID for easier frontend handling
-    const groupedRequests = {};
-    result.recordset.forEach(request => {
-      if (!groupedRequests[request.GroupID]) {
-        groupedRequests[request.GroupID] = {
-          groupId: request.GroupID,
-          requests: [],
-          totalAmount: 0,
-          eventDate: request.EventDate,
-          eventLocation: request.EventLocation
-        };
-      }
-      groupedRequests[request.GroupID].requests.push(request);
-      groupedRequests[request.GroupID].totalAmount += request.ProposedPrice || 0;
-    });
-
-    res.json({
-      success: true,
-      approvedRequests: Object.values(groupedRequests),
-      message: 'Approved requests retrieved successfully'
-    });
-
-  } catch (err) {
-    console.error('Error fetching approved requests:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Failed to fetch approved requests',
       error: err.message 
     });
   }
