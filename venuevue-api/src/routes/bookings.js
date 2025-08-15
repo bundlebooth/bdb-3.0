@@ -618,18 +618,18 @@ router.post('/multi-requests', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
-    // Convert vendorIds array to comma-separated string
-    const vendorIdsString = vendorIds.join(',');
+    // Combine date and time for the stored procedure
+    const eventDateTime = new Date(`${eventDate}T${eventTime}`);
     
     request.input('UserID', sql.Int, userId);
-    request.input('VendorIds', sql.NVarChar(500), vendorIdsString);
-    request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
-    request.input('EventDate', sql.Date, new Date(eventDate));
-    request.input('EventTime', sql.Time, eventTime);
-    request.input('EventLocation', sql.NVarChar(500), eventLocation || null);
+    request.input('VendorIds', sql.NVarChar(sql.MAX), JSON.stringify(vendorIds));
+    request.input('EventDate', sql.DateTime, eventDateTime);
+    request.input('EndDate', sql.DateTime, null); // Can be extended later
+    request.input('EventLocation', sql.NVarChar(255), eventLocation || null);
     request.input('AttendeeCount', sql.Int, attendeeCount || 50);
-    request.input('TotalBudget', sql.Decimal(10, 2), totalBudget);
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequests || null);
+    request.input('ServicesRequested', sql.NVarChar(sql.MAX), JSON.stringify(services || {}));
+    request.input('GroupID', sql.NVarChar(50), null); // Let stored procedure generate it
 
     const result = await request.execute('sp_CreateMultiBookingRequest');
 
@@ -654,15 +654,16 @@ router.post('/confirm-multi-payment', async (req, res) => {
   try {
     const { 
       paymentIntentId, 
-      requestIds, 
+      groupId,
+      userId,
       totalAmount 
     } = req.body;
 
     // Input validation
-    if (!paymentIntentId || !requestIds || !Array.isArray(requestIds) || requestIds.length === 0) {
+    if (!paymentIntentId || !groupId || !userId) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Payment Intent ID and request IDs are required' 
+        message: 'Payment Intent ID, Group ID, and User ID are required' 
       });
     }
 
@@ -704,19 +705,23 @@ router.post('/confirm-multi-payment', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
-    // Convert requestIds array to comma-separated string
-    const requestIdsString = requestIds.join(',');
-    
+    request.input('GroupID', sql.NVarChar(50), groupId);
     request.input('PaymentIntentID', sql.NVarChar(100), paymentIntentId);
-    request.input('RequestIDs', sql.NVarChar(500), requestIdsString);
-    request.input('TotalAmount', sql.Decimal(10, 2), totalAmount);
+    request.input('UserID', sql.Int, userId);
 
     const result = await request.execute('sp_ConfirmMultiBookingPayment');
+    
+    if (result.recordset[0].Success === 0) {
+      return res.status(400).json({
+        success: false,
+        message: result.recordset[0].Message
+      });
+    }
 
     res.json({
       success: true,
-      bookings: result.recordset,
-      message: 'Multi-vendor bookings confirmed successfully',
+      message: result.recordset[0].Message,
+      bookingsCreated: result.recordset[0].BookingsCreated,
       paymentIntentId
     });
 
@@ -725,6 +730,74 @@ router.post('/confirm-multi-payment', async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Failed to confirm multi-vendor payment',
+      error: err.message 
+    });
+  }
+});
+
+// Vendor response to booking request
+router.put('/requests/:requestId/respond', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { 
+      vendorProfileId, 
+      status, 
+      proposedPrice, 
+      responseMessage 
+    } = req.body;
+
+    // Input validation
+    if (!vendorProfileId || !status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID and status are required'
+      });
+    }
+
+    if (!['approved', 'declined'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be either "approved" or "declined"'
+      });
+    }
+
+    if (status === 'approved' && (!proposedPrice || proposedPrice <= 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Proposed price is required for approved requests'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    request.input('RequestID', sql.Int, parseInt(requestId));
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('Status', sql.NVarChar(20), status);
+    request.input('ProposedPrice', sql.Decimal(10, 2), proposedPrice || null);
+    request.input('ResponseMessage', sql.NVarChar(sql.MAX), responseMessage || null);
+
+    const result = await request.execute('sp_RespondToBookingRequest');
+    
+    if (result.recordset[0].Success === 0) {
+      return res.status(400).json({
+        success: false,
+        message: result.recordset[0].Message
+      });
+    }
+
+    res.json({
+      success: true,
+      message: result.recordset[0].Message,
+      status: status,
+      proposedPrice: proposedPrice
+    });
+
+  } catch (err) {
+    console.error('Booking request response error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to respond to booking request',
       error: err.message 
     });
   }
@@ -740,58 +813,68 @@ router.get('/approved-requests/:userId', async (req, res) => {
     const request = new sql.Request(pool);
     
     request.input('UserID', sql.Int, userId);
-    
+    if (groupId) {
+      request.input('GroupID', sql.NVarChar(50), groupId);
+    }
+
+    // Get approved requests ready for payment
     let query = `
       SELECT 
         br.RequestID,
+        br.GroupID,
         br.VendorProfileID,
-        vp.BusinessName as VendorName,
-        br.Services,
+        vp.BusinessName,
+        vp.DisplayName,
         br.EventDate,
-        br.EventTime,
         br.EventLocation,
         br.AttendeeCount,
-        br.Budget,
+        br.ServicesRequested,
         br.ProposedPrice,
-        br.SpecialRequests,
-        br.Status,
         br.ResponseMessage,
-        br.CreatedAt,
         br.RespondedAt,
-        br.ExpiresAt
+        br.Status
       FROM BookingRequests br
-      LEFT JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
-      WHERE br.UserID = @UserID
-        AND br.Status = 'approved'
-        AND br.ExpiresAt > GETDATE()
+      INNER JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+      WHERE br.UserID = @UserID 
+      AND br.Status = 'approved'
+      AND br.ExpiresAt > GETDATE()
     `;
     
     if (groupId) {
-      request.input('GroupID', sql.NVarChar(100), groupId);
       query += ' AND br.GroupID = @GroupID';
     }
     
     query += ' ORDER BY br.RespondedAt DESC';
-    
+
     const result = await request.query(query);
 
-    // Calculate total estimated cost
-    const totalCost = result.recordset.reduce((sum, req) => {
-      return sum + (req.ProposedPrice || req.Budget || 0);
-    }, 0);
+    // Group requests by GroupID for easier frontend handling
+    const groupedRequests = {};
+    result.recordset.forEach(request => {
+      if (!groupedRequests[request.GroupID]) {
+        groupedRequests[request.GroupID] = {
+          groupId: request.GroupID,
+          requests: [],
+          totalAmount: 0,
+          eventDate: request.EventDate,
+          eventLocation: request.EventLocation
+        };
+      }
+      groupedRequests[request.GroupID].requests.push(request);
+      groupedRequests[request.GroupID].totalAmount += request.ProposedPrice || 0;
+    });
 
     res.json({
       success: true,
-      approvedRequests: result.recordset,
-      totalCost,
-      readyForPayment: result.recordset.length > 0
+      approvedRequests: Object.values(groupedRequests),
+      message: 'Approved requests retrieved successfully'
     });
 
   } catch (err) {
-    console.error('Database error:', err);
+    console.error('Error fetching approved requests:', err);
     res.status(500).json({ 
       success: false,
-      message: 'Failed to get approved requests',
+      message: 'Failed to fetch approved requests',
       error: err.message 
     });
   }
