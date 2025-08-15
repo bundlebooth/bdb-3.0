@@ -585,4 +585,216 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
   }
 });
 
+// Enhanced multi-vendor booking request creation
+router.post('/multi-requests', async (req, res) => {
+  try {
+    const { 
+      userId, 
+      vendorIds, 
+      services, 
+      eventDate, 
+      eventTime, 
+      eventLocation, 
+      attendeeCount, 
+      totalBudget, 
+      specialRequests 
+    } = req.body;
+
+    // Input validation
+    if (!userId || !vendorIds || !Array.isArray(vendorIds) || vendorIds.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User ID and vendor IDs are required' 
+      });
+    }
+
+    if (!eventDate || !eventTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'Event date and time are required'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    // Convert vendorIds array to comma-separated string
+    const vendorIdsString = vendorIds.join(',');
+    
+    request.input('UserID', sql.Int, userId);
+    request.input('VendorIds', sql.NVarChar(500), vendorIdsString);
+    request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
+    request.input('EventDate', sql.Date, new Date(eventDate));
+    request.input('EventTime', sql.Time, eventTime);
+    request.input('EventLocation', sql.NVarChar(500), eventLocation || null);
+    request.input('AttendeeCount', sql.Int, attendeeCount || 50);
+    request.input('TotalBudget', sql.Decimal(10, 2), totalBudget);
+    request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequests || null);
+
+    const result = await request.execute('sp_CreateMultiBookingRequest');
+
+    res.json({
+      success: true,
+      requests: result.recordset,
+      message: 'Multi-vendor booking requests created successfully'
+    });
+
+  } catch (err) {
+    console.error('Multi-booking request error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to create multi-vendor booking requests',
+      error: err.message 
+    });
+  }
+});
+
+// Coordinated payment processing for multiple approved bookings
+router.post('/confirm-multi-payment', async (req, res) => {
+  try {
+    const { 
+      paymentIntentId, 
+      requestIds, 
+      totalAmount 
+    } = req.body;
+
+    // Input validation
+    if (!paymentIntentId || !requestIds || !Array.isArray(requestIds) || requestIds.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Payment Intent ID and request IDs are required' 
+      });
+    }
+
+    if (!totalAmount || totalAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid total amount is required'
+      });
+    }
+
+    // Verify payment with Stripe
+    try {
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      if (paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment has not been completed successfully'
+        });
+      }
+
+      // Verify amount matches
+      const paidAmount = paymentIntent.amount / 100; // Stripe amounts are in cents
+      if (Math.abs(paidAmount - totalAmount) > 0.01) {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment amount does not match expected total'
+        });
+      }
+    } catch (stripeError) {
+      console.error('Stripe verification error:', stripeError);
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to verify payment with Stripe',
+        error: stripeError.message
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    // Convert requestIds array to comma-separated string
+    const requestIdsString = requestIds.join(',');
+    
+    request.input('PaymentIntentID', sql.NVarChar(100), paymentIntentId);
+    request.input('RequestIDs', sql.NVarChar(500), requestIdsString);
+    request.input('TotalAmount', sql.Decimal(10, 2), totalAmount);
+
+    const result = await request.execute('sp_ConfirmMultiBookingPayment');
+
+    res.json({
+      success: true,
+      bookings: result.recordset,
+      message: 'Multi-vendor bookings confirmed successfully',
+      paymentIntentId
+    });
+
+  } catch (err) {
+    console.error('Multi-payment confirmation error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to confirm multi-vendor payment',
+      error: err.message 
+    });
+  }
+});
+
+// Get approved requests ready for payment
+router.get('/approved-requests/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { groupId } = req.query; // Optional: to group related requests
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    request.input('UserID', sql.Int, userId);
+    
+    let query = `
+      SELECT 
+        br.RequestID,
+        br.VendorProfileID,
+        vp.BusinessName as VendorName,
+        br.Services,
+        br.EventDate,
+        br.EventTime,
+        br.EventLocation,
+        br.AttendeeCount,
+        br.Budget,
+        br.ProposedPrice,
+        br.SpecialRequests,
+        br.Status,
+        br.ResponseMessage,
+        br.CreatedAt,
+        br.RespondedAt,
+        br.ExpiresAt
+      FROM BookingRequests br
+      LEFT JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+      WHERE br.UserID = @UserID
+        AND br.Status = 'approved'
+        AND br.ExpiresAt > GETDATE()
+    `;
+    
+    if (groupId) {
+      request.input('GroupID', sql.NVarChar(100), groupId);
+      query += ' AND br.GroupID = @GroupID';
+    }
+    
+    query += ' ORDER BY br.RespondedAt DESC';
+    
+    const result = await request.query(query);
+
+    // Calculate total estimated cost
+    const totalCost = result.recordset.reduce((sum, req) => {
+      return sum + (req.ProposedPrice || req.Budget || 0);
+    }, 0);
+
+    res.json({
+      success: true,
+      approvedRequests: result.recordset,
+      totalCost,
+      readyForPayment: result.recordset.length > 0
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to get approved requests',
+      error: err.message 
+    });
+  }
+});
+
 module.exports = router;
