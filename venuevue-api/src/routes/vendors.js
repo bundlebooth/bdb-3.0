@@ -134,7 +134,33 @@ router.get('/', async (req, res) => {
     const request = new sql.Request(pool);
 
     request.input('SearchTerm', sql.NVarChar(100), searchTerm || null);
-    request.input('Category', sql.NVarChar(50), category || null);
+    
+    // Map frontend category keys to database category values
+    const categoryMapping = {
+      'photo': 'Photography',
+      'music': 'Music',
+      'catering': 'Catering',
+      'venue': 'Venue',
+      'decor': 'Decoration',
+      'transport': 'Transportation',
+      'entertainment': 'Entertainment',
+      'planning': 'Event Planning'
+    };
+    
+    const mappedCategory = category ? (categoryMapping[category.toLowerCase()] || category) : null;
+    
+    // Debug logging for parameter values
+    console.log('🔍 VENDOR SEARCH DEBUG:');
+    console.log('  Original category:', category);
+    console.log('  Mapped category:', mappedCategory);
+    console.log('  SearchTerm:', searchTerm);
+    console.log('  MinPrice:', minPrice);
+    console.log('  MaxPrice:', maxPrice);
+    console.log('  Latitude:', latitude);
+    console.log('  Longitude:', longitude);
+    console.log('  RadiusMiles:', radiusMiles);
+    
+    request.input('Category', sql.NVarChar(50), mappedCategory);
     request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
     request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
     request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
@@ -148,6 +174,21 @@ router.get('/', async (req, res) => {
     request.input('SortBy', sql.NVarChar(50), sortBy || 'recommended');
 
     const result = await request.execute('sp_SearchVendors');
+    
+    // Debug logging for stored procedure results
+    console.log('📊 STORED PROCEDURE RESULTS:');
+    console.log('  Records returned:', result.recordset.length);
+    if (result.recordset.length > 0) {
+      console.log('  First record keys:', Object.keys(result.recordset[0]));
+      console.log('  Sample record:', JSON.stringify(result.recordset[0], null, 2));
+    } else {
+      console.log('❌ NO VENDORS FOUND - Possible issues:');
+      console.log('  1. No vendors in VendorProfiles table');
+      console.log('  2. No matching category in VendorCategories table');
+      console.log('  3. Location filter too restrictive');
+      console.log('  4. Price filter excluding all vendors');
+      console.log('  5. All vendors are IsVerified = 0 or user IsActive = 0');
+    }
     
     let formattedVendors = result.recordset.map(vendor => ({
       id: vendor.id,
@@ -204,10 +245,30 @@ router.get('/', async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Database error:', err);
+    console.error('🚨 VENDOR SEARCH ERROR:', err);
+    console.error('  Error message:', err.message);
+    console.error('  Stack trace:', err.stack);
+    
+    // Check if it's a stored procedure issue
+    if (err.message.includes('sp_SearchVendors')) {
+      console.error('  ⚠️  Stored procedure sp_SearchVendors may not exist or has errors');
+      console.error('  💡 Solution: Run the fixed stored procedure from sp_SearchVendors_FIXED.sql');
+    }
+    
     res.status(500).json({ 
-      message: 'Database operation failed',
-      error: err.message 
+      success: false,
+      message: 'Vendor search failed',
+      error: err.message,
+      debug: {
+        searchParams: {
+          category: req.query.category,
+          searchTerm: req.query.searchTerm,
+          latitude: req.query.latitude,
+          longitude: req.query.longitude,
+          minPrice: req.query.minPrice,
+          maxPrice: req.query.maxPrice
+        }
+      }
     });
   }
 });
