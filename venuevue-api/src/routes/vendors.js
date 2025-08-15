@@ -105,6 +105,80 @@ async function enhanceVendorWithImages(vendor, pool) {
   }
 }
 
+// Enhanced multi-category vendor search
+router.get('/multi-search', async (req, res) => {
+  try {
+    const {
+      categories, // Comma-separated list of categories
+      budget,
+      eventDate,
+      city,
+      state,
+      latitude,
+      longitude,
+      radiusMiles = 50,
+      pageNumber = 1,
+      pageSize = 20,
+      sortBy = 'relevance'
+    } = req.query;
+
+    // Validate required parameters
+    if (!categories) {
+      return res.status(400).json({
+        success: false,
+        message: 'Categories parameter is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    request.input('Categories', sql.NVarChar(500), categories);
+    request.input('Budget', sql.Decimal(10, 2), budget ? parseFloat(budget) : null);
+    request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+    request.input('City', sql.NVarChar(100), city || null);
+    request.input('State', sql.NVarChar(50), state || null);
+    request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
+    request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
+    request.input('RadiusMiles', sql.Int, parseInt(radiusMiles));
+    request.input('PageNumber', sql.Int, parseInt(pageNumber));
+    request.input('PageSize', sql.Int, parseInt(pageSize));
+    request.input('SortBy', sql.NVarChar(20), sortBy);
+
+    const result = await request.execute('sp_SearchVendorsMultiCategory');
+    
+    // Enhance results with Cloudinary images
+    const enhancedVendors = await Promise.all(
+      result.recordset.map(async (vendor) => {
+        return await enhanceVendorWithImages(vendor, pool);
+      })
+    );
+
+    res.json({
+      success: true,
+      vendors: enhancedVendors,
+      totalCount: enhancedVendors.length > 0 ? enhancedVendors[0].TotalCount : 0,
+      pageNumber: parseInt(pageNumber),
+      pageSize: parseInt(pageSize),
+      searchCriteria: {
+        categories: categories.split(','),
+        budget,
+        eventDate,
+        location: city && state ? `${city}, ${state}` : null,
+        radiusMiles: parseInt(radiusMiles)
+      }
+    });
+
+  } catch (err) {
+    console.error('Multi-category search error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to search vendors',
+      error: err.message 
+    });
+  }
+});
+
 // Search vendors using sp_SearchVendors
 router.get('/', async (req, res) => {
   try {
@@ -2179,8 +2253,8 @@ router.post('/setup/step2-location', async (req, res) => {
         areaRequest.input('CityName', sql.NVarChar(100), area.city || area.name || area.locality || area);
         areaRequest.input('StateProvince', sql.NVarChar(100), area.province || area.state || area.administrative_area_level_1 || state);
         areaRequest.input('Country', sql.NVarChar(100), area.country || country);
-        areaRequest.input('Latitude', sql.Decimal(9, 6), area.latitude || area.lat || null);
-        areaRequest.input('Longitude', sql.Decimal(9, 6), area.longitude || area.lng || null);
+        areaRequest.input('Latitude', sql.Decimal(9, 6), area.latitude ?? area.lat ?? 0);
+        areaRequest.input('Longitude', sql.Decimal(9, 6), area.longitude ?? area.lng ?? 0);
         areaRequest.input('ServiceRadius', sql.Decimal(10, 2), area.serviceRadius || serviceRadius || 25.0);
         areaRequest.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || area.formatted_address || null);
         areaRequest.input('PlaceType', sql.NVarChar(50), area.placeType || area.types?.[0] || null);
