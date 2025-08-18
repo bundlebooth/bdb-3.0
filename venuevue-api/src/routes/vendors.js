@@ -1061,6 +1061,21 @@ router.get('/predefined-services', async (req, res) => {
   try {
     const pool = await poolPromise;
     
+    // First check if table exists
+    const checkTableRequest = new sql.Request(pool);
+    const tableCheckResult = await checkTableRequest.query(`
+      SELECT COUNT(*) as TableExists 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_NAME = 'PredefinedServices'
+    `);
+    
+    if (tableCheckResult.recordset[0].TableExists === 0) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'PredefinedServices table does not exist in database' 
+      });
+    }
+    
     const request = new sql.Request(pool);
     
     const result = await request.query(`
@@ -1092,13 +1107,16 @@ router.get('/predefined-services', async (req, res) => {
     
     res.json({ 
       success: true, 
-      servicesByCategory 
+      servicesByCategory,
+      totalServices: result.recordset.length
     });
   } catch (error) {
     console.error('Error fetching all predefined services:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Failed to fetch predefined services' 
+      message: 'Failed to fetch predefined services',
+      error: error.message,
+      details: error.toString()
     });
   }
 });
