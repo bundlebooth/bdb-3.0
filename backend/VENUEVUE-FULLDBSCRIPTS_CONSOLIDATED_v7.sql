@@ -5401,9 +5401,448 @@ BEGIN
 END;
 GO
 
--- ======================
--- ENHANCED VENDOR SETUP COMPLETION MESSAGE
--- ======================
+-- ==============================================
+-- PREDEFINED SERVICES SYSTEM
+-- This section creates tables for predefined services that vendors can select from
+-- ==============================================
+
+-- Master table for predefined services organized by category
+CREATE TABLE PredefinedServices (
+    PredefinedServiceID INT PRIMARY KEY IDENTITY(1,1),
+    Category NVARCHAR(50) NOT NULL,
+    ServiceName NVARCHAR(100) NOT NULL,
+    ServiceDescription NVARCHAR(MAX),
+    DefaultDurationMinutes INT NULL,
+    IsActive BIT DEFAULT 1,
+    DisplayOrder INT DEFAULT 0,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT UC_CategoryService UNIQUE (Category, ServiceName)
+);
+GO
+
+-- Junction table for vendor-selected services with vendor-specific pricing
+CREATE TABLE VendorSelectedServices (
+    VendorSelectedServiceID INT PRIMARY KEY IDENTITY(1,1),
+    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+    PredefinedServiceID INT FOREIGN KEY REFERENCES PredefinedServices(PredefinedServiceID),
+    VendorPrice DECIMAL(10, 2) NOT NULL, -- Vendor must provide price
+    VendorDurationMinutes INT NULL, -- Vendor's custom duration
+    VendorDescription NVARCHAR(MAX) NULL, -- Vendor's custom description
+    IsActive BIT DEFAULT 1,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT UC_VendorService UNIQUE (VendorProfileID, PredefinedServiceID)
+);
+GO
+
+-- Create indexes for performance
+CREATE INDEX IX_PredefinedServices_Category ON PredefinedServices (Category);
+CREATE INDEX IX_VendorSelectedServices_VendorProfileID ON VendorSelectedServices (VendorProfileID);
+CREATE INDEX IX_VendorSelectedServices_PredefinedServiceID ON VendorSelectedServices (PredefinedServiceID);
+GO
+
+-- Create view for easy querying of vendor services with predefined service details
+CREATE OR ALTER VIEW vw_VendorPredefinedServices AS
+SELECT 
+    vss.VendorSelectedServiceID,
+    vss.VendorProfileID,
+    vp.BusinessName AS VendorName,
+    ps.PredefinedServiceID,
+    ps.Category,
+    ps.ServiceName,
+    ps.ServiceDescription,
+    vss.VendorPrice AS Price,
+    COALESCE(vss.VendorDurationMinutes, ps.DefaultDurationMinutes) AS DurationMinutes,
+    COALESCE(vss.VendorDescription, ps.ServiceDescription) AS Description,
+    vss.IsActive AS VendorServiceActive,
+    ps.IsActive AS PredefinedServiceActive,
+    vss.CreatedAt AS SelectedAt
+FROM VendorSelectedServices vss
+JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+JOIN VendorProfiles vp ON vss.VendorProfileID = vp.VendorProfileID
+WHERE vss.IsActive = 1 AND ps.IsActive = 1;
+GO
+
+-- Stored procedure to get predefined services by category
+CREATE OR ALTER PROCEDURE sp_GetPredefinedServicesByCategory
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        PredefinedServiceID,
+        Category,
+        ServiceName,
+        ServiceDescription,
+        DefaultDurationMinutes,
+        DisplayOrder
+    FROM PredefinedServices
+    WHERE IsActive = 1
+        AND (@Category IS NULL OR Category = @Category)
+    ORDER BY Category, DisplayOrder, ServiceName;
+END
+GO
+
+-- Stored procedure to get vendor's selected services
+CREATE OR ALTER PROCEDURE sp_GetVendorSelectedServices
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        vss.VendorSelectedServiceID,
+        ps.PredefinedServiceID,
+        ps.Category,
+        ps.ServiceName,
+        ps.ServiceDescription,
+        ps.DefaultDurationMinutes,
+        vss.VendorPrice,
+        vss.VendorDurationMinutes,
+        vss.VendorDescription,
+        vss.VendorPrice AS FinalPrice,
+        COALESCE(vss.VendorDurationMinutes, ps.DefaultDurationMinutes) AS FinalDurationMinutes,
+        COALESCE(vss.VendorDescription, ps.ServiceDescription) AS FinalDescription
+    FROM VendorSelectedServices vss
+    JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+    WHERE vss.VendorProfileID = @VendorProfileID
+        AND vss.IsActive = 1
+        AND ps.IsActive = 1
+    ORDER BY ps.Category, ps.DisplayOrder, ps.ServiceName;
+END
+GO
+
+-- Stored procedure to add/update vendor service selection
+CREATE OR ALTER PROCEDURE sp_UpdateVendorServiceSelection
+    @VendorProfileID INT,
+    @PredefinedServiceID INT,
+    @VendorPrice DECIMAL(10, 2),
+    @VendorDurationMinutes INT = NULL,
+    @VendorDescription NVARCHAR(MAX) = NULL,
+    @IsActive BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        -- Check if selection already exists
+        IF EXISTS (SELECT 1 FROM VendorSelectedServices 
+                   WHERE VendorProfileID = @VendorProfileID 
+                   AND PredefinedServiceID = @PredefinedServiceID)
+        BEGIN
+            -- Update existing selection
+            UPDATE VendorSelectedServices
+            SET VendorPrice = @VendorPrice,
+                VendorDurationMinutes = @VendorDurationMinutes,
+                VendorDescription = @VendorDescription,
+                IsActive = @IsActive,
+                UpdatedAt = GETDATE()
+            WHERE VendorProfileID = @VendorProfileID 
+                AND PredefinedServiceID = @PredefinedServiceID;
+        END
+        ELSE
+        BEGIN
+            -- Insert new selection
+            INSERT INTO VendorSelectedServices (
+                VendorProfileID, 
+                PredefinedServiceID, 
+                VendorPrice, 
+                VendorDurationMinutes, 
+                VendorDescription, 
+                IsActive
+            )
+            VALUES (
+                @VendorProfileID, 
+                @PredefinedServiceID, 
+                @VendorPrice, 
+                @VendorDurationMinutes, 
+                @VendorDescription, 
+                @IsActive
+            );
+        END
+        
+        SELECT 1 AS Success;
+    END TRY
+    BEGIN CATCH
+        SELECT 0 AS Success, ERROR_MESSAGE() AS ErrorMessage;
+    END CATCH
+END
+GO
+
+-- Insert comprehensive predefined services for all categories (no default prices)
+INSERT INTO PredefinedServices (Category, ServiceName, ServiceDescription, DefaultDurationMinutes, DisplayOrder) VALUES
+
+-- Wedding Services (40+ services)
+('Wedding', 'Wedding Photography', 'Professional wedding photography coverage for ceremony and reception', 480, 1),
+('Wedding', 'Wedding Videography', 'Cinematic wedding video production with highlight reel', 480, 2),
+('Wedding', 'Bridal Makeup', 'Professional bridal makeup application and touch-ups', 120, 3),
+('Wedding', 'Bridal Hair Styling', 'Professional bridal hair styling and updo creation', 90, 4),
+('Wedding', 'Wedding Planning', 'Full-service wedding planning and day-of coordination', NULL, 5),
+('Wedding', 'Wedding Flowers', 'Bridal bouquet, boutonnieres, and ceremony arrangements', NULL, 6),
+('Wedding', 'Wedding Catering', 'Reception catering services with menu customization', NULL, 7),
+('Wedding', 'Wedding DJ', 'Music and entertainment for ceremony and reception', 360, 8),
+('Wedding', 'Wedding Venue', 'Ceremony and reception venue rental', NULL, 9),
+('Wedding', 'Wedding Transportation', 'Luxury transportation for wedding party', 240, 10),
+('Wedding', 'Wedding Cake', 'Custom wedding cake design and creation', NULL, 11),
+('Wedding', 'Wedding Officiant', 'Licensed officiant for wedding ceremony', 60, 12),
+('Wedding', 'Wedding Linens', 'Table linens, napkins, and fabric draping', NULL, 13),
+('Wedding', 'Wedding Lighting', 'Ambient and decorative lighting setup', NULL, 14),
+('Wedding', 'Wedding Security', 'Professional security services for wedding event', NULL, 15),
+('Wedding', 'Wedding Coordination', 'Day-of wedding coordination services', 720, 16),
+('Wedding', 'Rehearsal Dinner Planning', 'Planning and coordination for rehearsal dinner', NULL, 17),
+('Wedding', 'Bachelor Party Planning', 'Bachelor party event planning and coordination', NULL, 18),
+('Wedding', 'Bachelorette Party Planning', 'Bachelorette party event planning and coordination', NULL, 19),
+('Wedding', 'Wedding Invitations', 'Custom wedding invitation design and printing', NULL, 20),
+('Wedding', 'Wedding Favors', 'Personalized wedding favor creation and packaging', NULL, 21),
+('Wedding', 'Ceremony Music', 'Live music for wedding ceremony', 60, 22),
+('Wedding', 'Reception Band', 'Live band performance for wedding reception', 240, 23),
+('Wedding', 'Wedding Arch Rental', 'Decorative arch for wedding ceremony', NULL, 24),
+('Wedding', 'Photo Booth', 'Interactive photo booth with props and prints', 240, 25),
+('Wedding', 'Wedding Bartending', 'Professional bartending services', 360, 26),
+('Wedding', 'Wedding Cleanup', 'Post-wedding venue cleanup services', 180, 27),
+('Wedding', 'Bridal Party Makeup', 'Makeup services for bridesmaids and family', 180, 28),
+('Wedding', 'Groomsmen Services', 'Grooming and styling for groomsmen', 120, 29),
+('Wedding', 'Wedding Registry Setup', 'Wedding gift registry creation and management', NULL, 30),
+('Wedding', 'Honeymoon Planning', 'Honeymoon destination and travel planning', NULL, 31),
+('Wedding', 'Wedding Website', 'Custom wedding website creation', NULL, 32),
+('Wedding', 'Save the Date Cards', 'Save the date card design and mailing', NULL, 33),
+('Wedding', 'Wedding Programs', 'Ceremony program design and printing', NULL, 34),
+('Wedding', 'Wedding Menu Cards', 'Reception menu card design and printing', NULL, 35),
+('Wedding', 'Seating Chart Design', 'Wedding reception seating chart creation', NULL, 36),
+('Wedding', 'Wedding Signage', 'Custom wedding signage and directional signs', NULL, 37),
+('Wedding', 'Engagement Party Planning', 'Engagement celebration planning and coordination', NULL, 38),
+('Wedding', 'Wedding Shower Planning', 'Bridal shower event planning and coordination', NULL, 39),
+('Wedding', 'Wedding Insurance', 'Wedding event insurance consultation and setup', NULL, 40),
+
+-- Photography Services (30+ services)
+('Photography', 'Portrait Photography', 'Individual and family portrait sessions', 90, 1),
+('Photography', 'Event Photography', 'Corporate and social event coverage', 240, 2),
+('Photography', 'Product Photography', 'Commercial product photography for businesses', 120, 3),
+('Photography', 'Real Estate Photography', 'Property photography for listings and marketing', 60, 4),
+('Photography', 'Headshot Photography', 'Professional business headshots', 45, 5),
+('Photography', 'Newborn Photography', 'Newborn and baby photography sessions', 120, 6),
+('Photography', 'Maternity Photography', 'Pregnancy and maternity photo sessions', 90, 7),
+('Photography', 'Engagement Photography', 'Couple engagement photo sessions', 90, 8),
+('Photography', 'Senior Photography', 'High school senior portrait sessions', 90, 9),
+('Photography', 'Fashion Photography', 'Fashion and modeling photo shoots', 180, 10),
+('Photography', 'Sports Photography', 'Athletic event and sports photography', 240, 11),
+('Photography', 'Nature Photography', 'Outdoor and landscape photography', 180, 12),
+('Photography', 'Pet Photography', 'Pet and animal photography sessions', 60, 13),
+('Photography', 'Food Photography', 'Restaurant and culinary photography', 120, 14),
+('Photography', 'Architecture Photography', 'Building and architectural photography', 120, 15),
+('Photography', 'Drone Photography', 'Aerial photography and videography', 90, 16),
+('Photography', 'Concert Photography', 'Live music and concert photography', 180, 17),
+('Photography', 'Travel Photography', 'Destination and travel photography', 240, 18),
+('Photography', 'Documentary Photography', 'Storytelling and documentary photo projects', 360, 19),
+('Photography', 'Fine Art Photography', 'Artistic and creative photography sessions', 120, 20),
+('Photography', 'Boudoir Photography', 'Intimate and boudoir photography sessions', 120, 21),
+('Photography', 'Corporate Photography', 'Business and corporate event photography', 180, 22),
+('Photography', 'School Photography', 'School event and yearbook photography', 240, 23),
+('Photography', 'Birthday Photography', 'Birthday party and celebration photography', 120, 24),
+('Photography', 'Anniversary Photography', 'Anniversary celebration photography', 90, 25),
+('Photography', 'Graduation Photography', 'Graduation ceremony and portrait photography', 90, 26),
+('Photography', 'Holiday Photography', 'Seasonal and holiday photo sessions', 90, 27),
+('Photography', 'Photo Editing', 'Professional photo editing and retouching services', NULL, 28),
+('Photography', 'Photo Printing', 'Professional photo printing and album creation', NULL, 29),
+('Photography', 'Photo Booth Services', 'Interactive photo booth rental and operation', 240, 30),
+
+-- Catering Services (35+ services)
+('Catering', 'Corporate Catering', 'Business meeting and conference catering', NULL, 1),
+('Catering', 'Party Catering', 'Social event and party catering services', NULL, 2),
+('Catering', 'Wedding Catering', 'Wedding reception catering with menu customization', NULL, 3),
+('Catering', 'Buffet Service', 'Self-service buffet setup and management', NULL, 4),
+('Catering', 'Plated Dinner Service', 'Formal plated dinner service with waitstaff', NULL, 5),
+('Catering', 'Cocktail Reception', 'Appetizers and cocktail service', NULL, 6),
+('Catering', 'Breakfast Catering', 'Morning event and meeting catering', NULL, 7),
+('Catering', 'Lunch Catering', 'Midday event and meeting catering', NULL, 8),
+('Catering', 'Dinner Catering', 'Evening event and formal dinner catering', NULL, 9),
+('Catering', 'BBQ Catering', 'Barbecue and outdoor grilling services', NULL, 10),
+('Catering', 'Taco Bar', 'Interactive taco bar setup and service', NULL, 11),
+('Catering', 'Pasta Bar', 'Custom pasta bar with multiple sauce options', NULL, 12),
+('Catering', 'Salad Bar', 'Fresh salad bar setup with various toppings', NULL, 13),
+('Catering', 'Dessert Catering', 'Dessert tables and sweet treat catering', NULL, 14),
+('Catering', 'Coffee Service', 'Professional coffee and beverage service', NULL, 15),
+('Catering', 'Bar Service', 'Professional bartending and alcohol service', NULL, 16),
+('Catering', 'Kosher Catering', 'Kosher-certified catering services', NULL, 17),
+('Catering', 'Halal Catering', 'Halal-certified catering services', NULL, 18),
+('Catering', 'Vegan Catering', 'Plant-based and vegan catering options', NULL, 19),
+('Catering', 'Gluten-Free Catering', 'Gluten-free menu options and preparation', NULL, 20),
+('Catering', 'Italian Catering', 'Authentic Italian cuisine catering', NULL, 21),
+('Catering', 'Mexican Catering', 'Traditional Mexican food catering', NULL, 22),
+('Catering', 'Asian Catering', 'Asian cuisine catering with various options', NULL, 23),
+('Catering', 'Mediterranean Catering', 'Mediterranean cuisine catering', NULL, 24),
+('Catering', 'Southern Catering', 'Southern comfort food catering', NULL, 25),
+('Catering', 'Seafood Catering', 'Fresh seafood catering services', NULL, 26),
+('Catering', 'Picnic Catering', 'Outdoor picnic and casual event catering', NULL, 27),
+('Catering', 'Holiday Catering', 'Seasonal and holiday-themed catering', NULL, 28),
+('Catering', 'Drop-off Catering', 'Food delivery without service staff', NULL, 29),
+('Catering', 'Full-Service Catering', 'Complete catering with setup, service, and cleanup', NULL, 30),
+('Catering', 'Food Truck Catering', 'Mobile food truck catering services', NULL, 31),
+('Catering', 'Charcuterie Boards', 'Artisanal cheese and meat board creation', NULL, 32),
+('Catering', 'Grazing Tables', 'Large-scale grazing table setup and styling', NULL, 33),
+('Catering', 'Ice Cream Catering', 'Ice cream bar and frozen treat catering', NULL, 34),
+('Catering', 'Popcorn Bar', 'Gourmet popcorn bar with multiple flavors', NULL, 35),
+
+-- Event Planning Services (25+ services)
+('Event Planning', 'Corporate Event Planning', 'Business conference and meeting planning', NULL, 1),
+('Event Planning', 'Birthday Party Planning', 'Birthday celebration planning and coordination', NULL, 2),
+('Event Planning', 'Anniversary Planning', 'Anniversary celebration planning and setup', NULL, 3),
+('Event Planning', 'Baby Shower Planning', 'Baby shower event planning and coordination', NULL, 4),
+('Event Planning', 'Graduation Party Planning', 'Graduation celebration planning and setup', NULL, 5),
+('Event Planning', 'Holiday Party Planning', 'Seasonal and holiday party planning', NULL, 6),
+('Event Planning', 'Retirement Party Planning', 'Retirement celebration planning and coordination', NULL, 7),
+('Event Planning', 'Fundraising Event Planning', 'Charity and fundraising event coordination', NULL, 8),
+('Event Planning', 'Product Launch Planning', 'Business product launch event planning', NULL, 9),
+('Event Planning', 'Conference Planning', 'Large-scale conference and convention planning', NULL, 10),
+('Event Planning', 'Trade Show Planning', 'Trade show booth and event coordination', NULL, 11),
+('Event Planning', 'Gala Planning', 'Formal gala and awards ceremony planning', NULL, 12),
+('Event Planning', 'Reunion Planning', 'Family and class reunion event planning', NULL, 13),
+('Event Planning', 'Memorial Service Planning', 'Memorial and celebration of life planning', NULL, 14),
+('Event Planning', 'Quinceañera Planning', 'Quinceañera celebration planning and coordination', NULL, 15),
+('Event Planning', 'Bar/Bat Mitzvah Planning', 'Bar/Bat Mitzvah celebration planning', NULL, 16),
+('Event Planning', 'Sweet 16 Planning', 'Sweet sixteen party planning and coordination', NULL, 17),
+('Event Planning', 'Gender Reveal Planning', 'Gender reveal party planning and setup', NULL, 18),
+('Event Planning', 'Housewarming Planning', 'Housewarming party planning and coordination', NULL, 19),
+('Event Planning', 'Networking Event Planning', 'Professional networking event coordination', NULL, 20),
+('Event Planning', 'Team Building Planning', 'Corporate team building event planning', NULL, 21),
+('Event Planning', 'Festival Planning', 'Community festival and fair planning', NULL, 22),
+('Event Planning', 'Auction Planning', 'Charity auction and bidding event planning', NULL, 23),
+('Event Planning', 'Award Ceremony Planning', 'Recognition and award ceremony planning', NULL, 24),
+('Event Planning', 'Grand Opening Planning', 'Business grand opening event planning', NULL, 25),
+
+-- Music & Entertainment Services (30+ services)
+('Music & Entertainment', 'Wedding DJ', 'Wedding reception DJ services with music library', 360, 1),
+('Music & Entertainment', 'Party DJ', 'Party and event DJ services', 240, 2),
+('Music & Entertainment', 'Live Band', 'Live music band performance', 240, 3),
+('Music & Entertainment', 'Solo Musician', 'Solo acoustic or piano performance', 120, 4),
+('Music & Entertainment', 'String Quartet', 'Classical string quartet performance', 120, 5),
+('Music & Entertainment', 'Jazz Band', 'Jazz ensemble performance', 180, 6),
+('Music & Entertainment', 'Rock Band', 'Rock music band performance', 240, 7),
+('Music & Entertainment', 'Country Band', 'Country music band performance', 240, 8),
+('Music & Entertainment', 'MC Services', 'Master of ceremonies and event hosting', 240, 9),
+('Music & Entertainment', 'Karaoke Setup', 'Karaoke equipment rental and hosting', 180, 10),
+('Music & Entertainment', 'Sound System Rental', 'Professional audio equipment rental and setup', NULL, 11),
+('Music & Entertainment', 'Lighting Rental', 'Event lighting equipment rental and setup', NULL, 12),
+('Music & Entertainment', 'Photo Booth', 'Interactive photo booth with props and printing', 240, 13),
+('Music & Entertainment', 'Magician', 'Professional magic show performance', 60, 14),
+('Music & Entertainment', 'Comedian', 'Stand-up comedy performance', 60, 15),
+('Music & Entertainment', 'Dance Instructor', 'Dance lesson instruction and coordination', 90, 16),
+('Music & Entertainment', 'Mariachi Band', 'Traditional mariachi music performance', 120, 17),
+('Music & Entertainment', 'Pianist', 'Solo piano performance for events', 120, 18),
+('Music & Entertainment', 'Violinist', 'Solo violin performance', 90, 19),
+('Music & Entertainment', 'Guitarist', 'Solo guitar performance', 120, 20),
+('Music & Entertainment', 'Harpist', 'Solo harp performance', 90, 21),
+('Music & Entertainment', 'Choir', 'Vocal choir performance', 60, 22),
+('Music & Entertainment', 'Opera Singer', 'Professional opera performance', 60, 23),
+('Music & Entertainment', 'Folk Band', 'Folk music band performance', 180, 24),
+('Music & Entertainment', 'Bluegrass Band', 'Bluegrass music band performance', 180, 25),
+('Music & Entertainment', 'Celtic Band', 'Celtic music band performance', 180, 26),
+('Music & Entertainment', 'Tribute Band', 'Tribute band performance', 240, 27),
+('Music & Entertainment', 'Cover Band', 'Popular music cover band performance', 240, 28),
+('Music & Entertainment', 'Acoustic Duo', 'Acoustic guitar and vocal duo performance', 120, 29),
+('Music & Entertainment', 'Steel Drum Band', 'Caribbean steel drum performance', 120, 30),
+
+-- Beauty & Wellness Services (25+ services)
+('Beauty & Wellness', 'Bridal Makeup', 'Wedding day makeup application and touch-ups', 120, 1),
+('Beauty & Wellness', 'Special Event Makeup', 'Professional makeup for special occasions', 90, 2),
+('Beauty & Wellness', 'Hair Styling', 'Professional hair styling and updo creation', 90, 3),
+('Beauty & Wellness', 'Bridal Hair', 'Wedding day hair styling and accessories', 120, 4),
+('Beauty & Wellness', 'Spa Services', 'Relaxation and wellness spa treatments', 90, 5),
+('Beauty & Wellness', 'Massage Therapy', 'Therapeutic and relaxation massage services', 60, 6),
+('Beauty & Wellness', 'Nail Services', 'Manicure and pedicure services', 90, 7),
+('Beauty & Wellness', 'Facial Treatment', 'Professional skincare and facial services', 75, 8),
+('Beauty & Wellness', 'Eyebrow Services', 'Eyebrow shaping and styling services', 30, 9),
+('Beauty & Wellness', 'Eyelash Extensions', 'Professional eyelash extension application', 120, 10),
+('Beauty & Wellness', 'Teeth Whitening', 'Professional teeth whitening services', 60, 11),
+('Beauty & Wellness', 'Spray Tanning', 'Professional spray tan application', 30, 12),
+('Beauty & Wellness', 'Body Wraps', 'Detoxifying and slimming body wrap treatments', 90, 13),
+('Beauty & Wellness', 'Aromatherapy', 'Essential oil aromatherapy treatments', 60, 14),
+('Beauty & Wellness', 'Reflexology', 'Foot reflexology and pressure point therapy', 60, 15),
+('Beauty & Wellness', 'Acupuncture', 'Traditional acupuncture therapy services', 60, 16),
+('Beauty & Wellness', 'Yoga Instruction', 'Private or group yoga instruction', 60, 17),
+('Beauty & Wellness', 'Meditation Guidance', 'Guided meditation and mindfulness sessions', 45, 18),
+('Beauty & Wellness', 'Personal Training', 'Individual fitness training sessions', 60, 19),
+('Beauty & Wellness', 'Nutrition Consultation', 'Dietary and nutrition planning consultation', 60, 20),
+('Beauty & Wellness', 'Wellness Coaching', 'Holistic wellness and lifestyle coaching', 60, 21),
+('Beauty & Wellness', 'Reiki Healing', 'Energy healing and reiki therapy', 60, 22),
+('Beauty & Wellness', 'Crystal Therapy', 'Crystal healing and energy balancing', 60, 23),
+('Beauty & Wellness', 'Mobile Spa Services', 'On-location spa services and treatments', 120, 24),
+('Beauty & Wellness', 'Bridal Party Services', 'Group beauty services for bridal parties', 240, 25),
+
+-- Venue Services (20+ services)
+('Venue', 'Wedding Venue', 'Wedding ceremony and reception space rental', NULL, 1),
+('Venue', 'Corporate Event Space', 'Business meeting and conference venue rental', NULL, 2),
+('Venue', 'Party Venue', 'Social gathering and celebration space rental', NULL, 3),
+('Venue', 'Outdoor Venue', 'Garden and outdoor event space rental', NULL, 4),
+('Venue', 'Banquet Hall', 'Large capacity dining and event hall rental', NULL, 5),
+('Venue', 'Private Dining Room', 'Intimate dining space rental', NULL, 6),
+('Venue', 'Conference Center', 'Professional conference and meeting facility', NULL, 7),
+('Venue', 'Art Gallery', 'Art gallery space for events and exhibitions', NULL, 8),
+('Venue', 'Historic Venue', 'Historic building and landmark venue rental', NULL, 9),
+('Venue', 'Beach Venue', 'Beachfront and oceanside event space', NULL, 10),
+('Venue', 'Mountain Venue', 'Mountain and scenic overlook venue rental', NULL, 11),
+('Venue', 'Barn Venue', 'Rustic barn and farm venue rental', NULL, 12),
+('Venue', 'Rooftop Venue', 'Urban rooftop event space rental', NULL, 13),
+('Venue', 'Warehouse Venue', 'Industrial warehouse event space rental', NULL, 14),
+('Venue', 'Country Club', 'Country club facilities and grounds rental', NULL, 15),
+('Venue', 'Hotel Ballroom', 'Hotel ballroom and event space rental', NULL, 16),
+('Venue', 'Restaurant Venue', 'Restaurant private dining and event space', NULL, 17),
+('Venue', 'Museum Venue', 'Museum galleries and event space rental', NULL, 18),
+('Venue', 'Library Venue', 'Library event rooms and space rental', NULL, 19),
+('Venue', 'Community Center', 'Community center facility rental', NULL, 20),
+
+-- Transportation Services (15+ services)
+('Transportation', 'Wedding Limousine', 'Luxury limousine service for wedding parties', 240, 1),
+('Transportation', 'Party Bus', 'Group transportation for events and celebrations', 180, 2),
+('Transportation', 'Shuttle Service', 'Guest transportation coordination and service', NULL, 3),
+('Transportation', 'Classic Car Rental', 'Vintage and classic car rental for special occasions', 240, 4),
+('Transportation', 'Airport Transfer', 'Professional airport transportation service', 60, 5),
+('Transportation', 'Corporate Transportation', 'Business executive transportation service', NULL, 6),
+('Transportation', 'Group Transportation', 'Large group transportation coordination', NULL, 7),
+('Transportation', 'Luxury Car Service', 'High-end luxury vehicle transportation', NULL, 8),
+('Transportation', 'Wedding Transportation', 'Comprehensive wedding day transportation', 480, 9),
+('Transportation', 'Event Shuttle', 'Event-specific shuttle transportation service', NULL, 10),
+('Transportation', 'Charter Bus', 'Large group charter bus transportation', NULL, 11),
+('Transportation', 'Trolley Service', 'Vintage trolley transportation for events', 180, 12),
+('Transportation', 'Horse and Carriage', 'Romantic horse-drawn carriage service', 60, 13),
+('Transportation', 'Motorcycle Escort', 'Motorcycle escort and transportation service', 120, 14),
+('Transportation', 'Boat Transportation', 'Water transportation and boat charter service', 240, 15),
+
+-- Floral & Decor Services (30+ services)
+('Floral & Decor', 'Wedding Flowers', 'Bridal bouquet and wedding ceremony arrangements', NULL, 1),
+('Floral & Decor', 'Event Centerpieces', 'Table centerpiece design and arrangement', NULL, 2),
+('Floral & Decor', 'Ceremony Arch', 'Floral ceremony arch design and installation', NULL, 3),
+('Floral & Decor', 'Bridal Bouquet', 'Custom bridal bouquet design and creation', NULL, 4),
+('Floral & Decor', 'Boutonnieres', 'Groom and groomsmen boutonniere creation', NULL, 5),
+('Floral & Decor', 'Corsages', 'Special occasion corsage design and creation', NULL, 6),
+('Floral & Decor', 'Funeral Flowers', 'Sympathy and funeral floral arrangements', NULL, 7),
+('Floral & Decor', 'Corporate Flowers', 'Office and corporate floral arrangements', NULL, 8),
+('Floral & Decor', 'Holiday Decorations', 'Seasonal and holiday decoration services', NULL, 9),
+('Floral & Decor', 'Event Lighting', 'Ambient and decorative lighting design', NULL, 10),
+('Floral & Decor', 'Balloon Decorations', 'Balloon arrangements and artistic displays', NULL, 11),
+('Floral & Decor', 'Linens & Draping', 'Table linens and fabric draping services', NULL, 12),
+('Floral & Decor', 'Backdrop Design', 'Custom backdrop design and installation', NULL, 13),
+('Floral & Decor', 'Table Settings', 'Complete table setting design and setup', NULL, 14),
+('Floral & Decor', 'Candle Arrangements', 'Candle centerpieces and ambient lighting', NULL, 15),
+('Floral & Decor', 'Garland Installation', 'Floral and greenery garland installation', NULL, 16),
+('Floral & Decor', 'Wreath Creation', 'Custom wreath design for events and seasons', NULL, 17),
+('Floral & Decor', 'Petals & Confetti', 'Flower petal and confetti services', NULL, 18),
+('Floral & Decor', 'Aisle Decorations', 'Wedding ceremony aisle decoration services', NULL, 19),
+('Floral & Decor', 'Reception Decor', 'Complete reception decoration and styling', NULL, 20),
+('Floral & Decor', 'Outdoor Decorations', 'Garden and outdoor event decoration services', NULL, 21),
+('Floral & Decor', 'Vintage Decor', 'Vintage and antique decoration rental and styling', NULL, 22),
+('Floral & Decor', 'Modern Decor', 'Contemporary and modern decoration services', NULL, 23),
+('Floral & Decor', 'Rustic Decor', 'Rustic and farmhouse decoration styling', NULL, 24),
+('Floral & Decor', 'Elegant Decor', 'Sophisticated and elegant decoration services', NULL, 25),
+('Floral & Decor', 'Themed Decorations', 'Custom themed decoration design and setup', NULL, 26),
+('Floral & Decor', 'Signage Design', 'Custom event signage design and creation', NULL, 27),
+('Floral & Decor', 'Photo Props', 'Event photo prop design and rental', NULL, 28),
+('Floral & Decor', 'Ceiling Treatments', 'Overhead decoration and ceiling installation', NULL, 29),
+('Floral & Decor', 'Entrance Decor', 'Event entrance decoration and styling', NULL, 30);
+
+GO
 
 PRINT 'Enhanced Vendor Setup Database Schema and Stored Procedures Updated Successfully!';
 PRINT '';
