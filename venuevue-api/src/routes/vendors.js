@@ -1035,11 +1035,11 @@ router.get('/predefined-services/:category', async (req, res) => {
       SELECT 
         PredefinedServiceID,
         ServiceName,
-        serviceDescription,
+        ServiceDescription,
         DefaultDurationMinutes,
         DisplayOrder
       FROM PredefinedServices 
-      WHERE Category = @Category 
+      WHERE Category = @Category
       ORDER BY DisplayOrder, ServiceName
     `);
     
@@ -1068,7 +1068,7 @@ router.get('/predefined-services', async (req, res) => {
         Category,
         PredefinedServiceID,
         ServiceName,
-        serviceDescription,
+        ServiceDescription,
         DefaultDurationMinutes,
         DisplayOrder
       FROM PredefinedServices 
@@ -1084,7 +1084,7 @@ router.get('/predefined-services', async (req, res) => {
       servicesByCategory[service.Category].push({
         id: service.PredefinedServiceID,
         name: service.ServiceName,
-        description: service.Description,
+        description: service.ServiceDescription,
         defaultDuration: service.DefaultDurationMinutes,
         displayOrder: service.DisplayOrder
       });
