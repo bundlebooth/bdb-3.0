@@ -2618,8 +2618,8 @@ router.post('/setup/step3-services', async (req, res) => {
         request.input('CategoryID', sql.Int, categoryId);
         
         await request.query(`
-          INSERT INTO Services (VendorProfileID, CategoryID, Name, Description, Price, DurationMinutes, IsActive, CreatedAt, UpdatedAt)
-          VALUES (@VendorProfileID, @CategoryID, @Name, @Description, @Price, @DurationMinutes, 1, GETUTCDATE(), GETUTCDATE())
+          INSERT INTO Services (VendorProfileID, CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID, IsActive, CreatedAt, UpdatedAt)
+          VALUES (@VendorProfileID, @CategoryID, @Name, @Description, @Price, @DurationMinutes, NULL, 20.00, NULL, NULL, 1, GETUTCDATE(), GETUTCDATE())
         `);
       }
     }
