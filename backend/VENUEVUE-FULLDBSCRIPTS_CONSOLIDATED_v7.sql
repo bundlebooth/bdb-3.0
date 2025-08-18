@@ -274,20 +274,20 @@ GO
 
 -- Services with enhanced fields
 CREATE TABLE Services (
-    ServiceID INT PRIMARY KEY IDENTITY(1,1),
-    CategoryID INT FOREIGN KEY REFERENCES ServiceCategories(CategoryID),
+    ServiceID INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryID INT,
     Name NVARCHAR(100) NOT NULL,
-    Description NVARCHAR(MAX),
-    Price DECIMAL(10, 2) NOT NULL,
+    Description NVARCHAR(500),
+    Price DECIMAL(10,2) NOT NULL,
     DurationMinutes INT,
-    MinDuration INT,
     MaxAttendees INT,
-    IsActive BIT DEFAULT 1,
-    RequiresDeposit BIT DEFAULT 1,
     DepositPercentage DECIMAL(5,2) DEFAULT 20.00,
-    CancellationPolicy NVARCHAR(MAX),
+    CancellationPolicy NVARCHAR(500),
+    LinkedPredefinedServiceID INT NULL,
     CreatedAt DATETIME DEFAULT GETDATE(),
-    UpdatedAt DATETIME DEFAULT GETDATE()
+    UpdatedAt DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (CategoryID) REFERENCES ServiceCategories(CategoryID) ON DELETE CASCADE,
+    FOREIGN KEY (LinkedPredefinedServiceID) REFERENCES PredefinedServices(PredefinedServiceID) ON DELETE SET NULL
 );
 GO
 
