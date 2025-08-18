@@ -275,6 +275,7 @@ GO
 -- Services with enhanced fields
 CREATE TABLE Services (
     ServiceID INT IDENTITY(1,1) PRIMARY KEY,
+    VendorProfileID INT NOT NULL,
     CategoryID INT,
     Name NVARCHAR(100) NOT NULL,
     Description NVARCHAR(500),
@@ -284,8 +285,10 @@ CREATE TABLE Services (
     DepositPercentage DECIMAL(5,2) DEFAULT 20.00,
     CancellationPolicy NVARCHAR(500),
     LinkedPredefinedServiceID INT NULL,
+    IsActive BIT DEFAULT 1,
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (VendorProfileID) REFERENCES VendorProfiles(VendorProfileID) ON DELETE CASCADE,
     FOREIGN KEY (CategoryID) REFERENCES ServiceCategories(CategoryID) ON DELETE CASCADE,
     FOREIGN KEY (LinkedPredefinedServiceID) REFERENCES PredefinedServices(PredefinedServiceID) ON DELETE SET NULL
 );
