@@ -1401,9 +1401,11 @@ router.post('/setup/step4-services', async (req, res) => {
         serviceRequest.input('CancellationPolicy', sql.NVarChar, service.cancellationPolicy || null);
         serviceRequest.input('LinkedPredefinedServiceID', sql.Int, service.linkedPredefinedServiceId || null);
         
+        serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        
         await serviceRequest.query(`
-          INSERT INTO Services (CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID) 
-          VALUES (@CategoryID, @Name, @Description, @Price, @DurationMinutes, @MaxAttendees, @DepositPercentage, @CancellationPolicy, @LinkedPredefinedServiceID)
+          INSERT INTO Services (VendorProfileID, CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID) 
+          VALUES (@VendorProfileID, @CategoryID, @Name, @Description, @Price, @DurationMinutes, @MaxAttendees, @DepositPercentage, @CancellationPolicy, @LinkedPredefinedServiceID)
         `);
       }
     }
