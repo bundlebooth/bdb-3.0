@@ -1035,11 +1035,11 @@ router.get('/predefined-services/:category', async (req, res) => {
       SELECT 
         PredefinedServiceID,
         ServiceName,
-        Description,
+        serviceDescription,
         DefaultDurationMinutes,
         DisplayOrder
       FROM PredefinedServices 
-      WHERE Category = @Category AND IsActive = 1
+      WHERE Category = @Category 
       ORDER BY DisplayOrder, ServiceName
     `);
     
