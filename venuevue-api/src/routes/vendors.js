@@ -1341,10 +1341,11 @@ router.post('/setup/step4-services', async (req, res) => {
         serviceRequest.input('MaxAttendees', sql.Int, service.maxAttendees || null);
         serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), service.depositPercentage || 20);
         serviceRequest.input('CancellationPolicy', sql.NVarChar, service.cancellationPolicy || null);
+        serviceRequest.input('LinkedPredefinedServiceID', sql.Int, service.linkedPredefinedServiceId || null);
         
         await serviceRequest.query(`
-          INSERT INTO Services (CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy)
-          VALUES (@CategoryID, @Name, @Description, @Price, @DurationMinutes, @MaxAttendees, @DepositPercentage, @CancellationPolicy)
+          INSERT INTO Services (CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID) 
+          VALUES (@CategoryID, @Name, @Description, @Price, @DurationMinutes, @MaxAttendees, @DepositPercentage, @CancellationPolicy, @LinkedPredefinedServiceID)
         `);
       }
     }
