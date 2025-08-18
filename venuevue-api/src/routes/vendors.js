@@ -46,6 +46,105 @@ async function resolveVendorProfileId(id, pool) {
   return null;
 }
 
+// Get all predefined services grouped by category
+router.get('/predefined-services', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    // First check if table exists
+    const checkTableRequest = new sql.Request(pool);
+    const tableCheckResult = await checkTableRequest.query(`
+      SELECT COUNT(*) as TableExists 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_NAME = 'PredefinedServices'
+    `);
+    
+    if (tableCheckResult.recordset[0].TableExists === 0) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'PredefinedServices table does not exist in database' 
+      });
+    }
+    
+    const request = new sql.Request(pool);
+    
+    const result = await request.query(`
+      SELECT 
+        Category,
+        PredefinedServiceID,
+        ServiceName,
+        ServiceDescription,
+        DefaultDurationMinutes,
+        DisplayOrder
+      FROM PredefinedServices 
+      ORDER BY Category, DisplayOrder, ServiceName
+    `);
+    
+    // Group services by category
+    const servicesByCategory = {};
+    result.recordset.forEach(service => {
+      if (!servicesByCategory[service.Category]) {
+        servicesByCategory[service.Category] = [];
+      }
+      servicesByCategory[service.Category].push({
+        id: service.PredefinedServiceID,
+        name: service.ServiceName,
+        description: service.ServiceDescription,
+        defaultDuration: service.DefaultDurationMinutes,
+        displayOrder: service.DisplayOrder
+      });
+    });
+    
+    res.json({ 
+      success: true, 
+      servicesByCategory,
+      totalServices: result.recordset.length
+    });
+  } catch (error) {
+    console.error('Error fetching all predefined services:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch predefined services',
+      error: error.message,
+      details: error.toString()
+    });
+  }
+});
+
+// Get predefined services by category
+router.get('/predefined-services/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('Category', sql.NVarChar, category);
+    
+    const result = await request.query(`
+      SELECT 
+        PredefinedServiceID,
+        ServiceName,
+        ServiceDescription,
+        DefaultDurationMinutes,
+        DisplayOrder
+      FROM PredefinedServices 
+      WHERE Category = @Category
+      ORDER BY DisplayOrder, ServiceName
+    `);
+    
+    res.json({ 
+      success: true, 
+      services: result.recordset 
+    });
+  } catch (error) {
+    console.error('Error fetching predefined services:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch predefined services' 
+    });
+  }
+});
+
 // Helper function to enhance vendor data with Cloudinary images
 async function enhanceVendorWithImages(vendor, pool) {
   try {
@@ -1018,105 +1117,6 @@ router.post('/setup/step3-gallery', async (req, res) => {
       success: false,
       message: 'Failed to save gallery and media',
       error: err.message
-    });
-  }
-});
-
-// Get predefined services by category
-router.get('/predefined-services/:category', async (req, res) => {
-  try {
-    const { category } = req.params;
-    const pool = await poolPromise;
-    
-    const request = new sql.Request(pool);
-    request.input('Category', sql.NVarChar, category);
-    
-    const result = await request.query(`
-      SELECT 
-        PredefinedServiceID,
-        ServiceName,
-        ServiceDescription,
-        DefaultDurationMinutes,
-        DisplayOrder
-      FROM PredefinedServices 
-      WHERE Category = @Category
-      ORDER BY DisplayOrder, ServiceName
-    `);
-    
-    res.json({ 
-      success: true, 
-      services: result.recordset 
-    });
-  } catch (error) {
-    console.error('Error fetching predefined services:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch predefined services' 
-    });
-  }
-});
-
-// Get all predefined services grouped by category
-router.get('/predefined-services', async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    
-    // First check if table exists
-    const checkTableRequest = new sql.Request(pool);
-    const tableCheckResult = await checkTableRequest.query(`
-      SELECT COUNT(*) as TableExists 
-      FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_NAME = 'PredefinedServices'
-    `);
-    
-    if (tableCheckResult.recordset[0].TableExists === 0) {
-      return res.status(500).json({ 
-        success: false, 
-        message: 'PredefinedServices table does not exist in database' 
-      });
-    }
-    
-    const request = new sql.Request(pool);
-    
-    const result = await request.query(`
-      SELECT 
-        Category,
-        PredefinedServiceID,
-        ServiceName,
-        ServiceDescription,
-        DefaultDurationMinutes,
-        DisplayOrder
-      FROM PredefinedServices 
-      ORDER BY Category, DisplayOrder, ServiceName
-    `);
-    
-    // Group services by category
-    const servicesByCategory = {};
-    result.recordset.forEach(service => {
-      if (!servicesByCategory[service.Category]) {
-        servicesByCategory[service.Category] = [];
-      }
-      servicesByCategory[service.Category].push({
-        id: service.PredefinedServiceID,
-        name: service.ServiceName,
-        description: service.ServiceDescription,
-        defaultDuration: service.DefaultDurationMinutes,
-        displayOrder: service.DisplayOrder
-      });
-    });
-    
-    res.json({ 
-      success: true, 
-      servicesByCategory,
-      totalServices: result.recordset.length
-    });
-  } catch (error) {
-    console.error('Error fetching all predefined services:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to fetch predefined services',
-      error: error.message,
-      details: error.toString()
     });
   }
 });
