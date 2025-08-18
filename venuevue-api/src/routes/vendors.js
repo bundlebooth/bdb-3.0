@@ -122,7 +122,8 @@ router.get('/', async (req, res) => {
       pageNumber,
       pageSize,
       sortBy,
-      includeImages
+      includeImages,
+      predefinedServices
     } = req.query;
 
     const pool = await poolPromise;
@@ -1021,6 +1022,254 @@ router.post('/setup/step3-gallery', async (req, res) => {
   }
 });
 
+// Get predefined services by category
+router.get('/predefined-services/:category', async (req, res) => {
+  try {
+    const { category } = req.params;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('Category', sql.NVarChar, category);
+    
+    const result = await request.query(`
+      SELECT 
+        PredefinedServiceID,
+        ServiceName,
+        Description,
+        DefaultDurationMinutes,
+        DisplayOrder
+      FROM PredefinedServices 
+      WHERE Category = @Category AND IsActive = 1
+      ORDER BY DisplayOrder, ServiceName
+    `);
+    
+    res.json({ 
+      success: true, 
+      services: result.recordset 
+    });
+  } catch (error) {
+    console.error('Error fetching predefined services:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch predefined services' 
+    });
+  }
+});
+
+// Get all predefined services grouped by category
+router.get('/predefined-services', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    
+    const result = await request.query(`
+      SELECT 
+        Category,
+        PredefinedServiceID,
+        ServiceName,
+        Description,
+        DefaultDurationMinutes,
+        DisplayOrder
+      FROM PredefinedServices 
+      WHERE IsActive = 1
+      ORDER BY Category, DisplayOrder, ServiceName
+    `);
+    
+    // Group services by category
+    const servicesByCategory = {};
+    result.recordset.forEach(service => {
+      if (!servicesByCategory[service.Category]) {
+        servicesByCategory[service.Category] = [];
+      }
+      servicesByCategory[service.Category].push({
+        id: service.PredefinedServiceID,
+        name: service.ServiceName,
+        description: service.Description,
+        defaultDuration: service.DefaultDurationMinutes,
+        displayOrder: service.DisplayOrder
+      });
+    });
+    
+    res.json({ 
+      success: true, 
+      servicesByCategory 
+    });
+  } catch (error) {
+    console.error('Error fetching all predefined services:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch predefined services' 
+    });
+  }
+});
+
+// Search vendors by predefined services
+router.get('/search-by-services', async (req, res) => {
+  try {
+    const { 
+      predefinedServiceIds,
+      category,
+      minPrice,
+      maxPrice,
+      latitude,
+      longitude,
+      radiusMiles,
+      pageNumber,
+      pageSize
+    } = req.query;
+
+    if (!predefinedServiceIds) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one predefined service ID is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+
+    // Parse service IDs (comma-separated)
+    const serviceIds = predefinedServiceIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+    
+    if (serviceIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid predefined service IDs are required'
+      });
+    }
+
+    // Build dynamic query with service filtering
+    let whereClause = `WHERE vp.IsActive = 1`;
+    let joinClause = `
+      FROM VendorProfiles vp
+      INNER JOIN Users u ON vp.UserID = u.UserID
+      INNER JOIN VendorSelectedServices vss ON vp.VendorProfileID = vss.VendorProfileID
+      INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+    `;
+
+    // Add service ID filtering
+    whereClause += ` AND vss.PredefinedServiceID IN (${serviceIds.map((_, index) => `@ServiceID${index}`).join(', ')})`;
+    
+    serviceIds.forEach((serviceId, index) => {
+      request.input(`ServiceID${index}`, sql.Int, serviceId);
+    });
+
+    // Add category filter if provided
+    if (category) {
+      whereClause += ` AND ps.Category = @Category`;
+      request.input('Category', sql.NVarChar, category);
+    }
+
+    // Add price range filter if provided
+    if (minPrice) {
+      whereClause += ` AND vss.VendorPrice >= @MinPrice`;
+      request.input('MinPrice', sql.Decimal(10, 2), parseFloat(minPrice));
+    }
+    if (maxPrice) {
+      whereClause += ` AND vss.VendorPrice <= @MaxPrice`;
+      request.input('MaxPrice', sql.Decimal(10, 2), parseFloat(maxPrice));
+    }
+
+    // Add location filter if provided
+    if (latitude && longitude) {
+      whereClause += ` AND dbo.fn_CalculateDistance(@Latitude, @Longitude, vp.Latitude, vp.Longitude) <= @RadiusMiles`;
+      request.input('Latitude', sql.Decimal(10, 8), parseFloat(latitude));
+      request.input('Longitude', sql.Decimal(11, 8), parseFloat(longitude));
+      request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
+    }
+
+    const query = `
+      SELECT DISTINCT
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.BusinessType,
+        vp.City + ', ' + vp.State as Location,
+        vp.AverageRating,
+        vp.TotalReviews,
+        vp.IsPremium,
+        vp.IsEcoFriendly,
+        vp.IsAwardWinning,
+        vp.ProfileImageURL,
+        COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices
+      ${joinClause}
+      ${whereClause}
+      GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.City, vp.State, 
+               vp.AverageRating, vp.TotalReviews, vp.IsPremium, vp.IsEcoFriendly, 
+               vp.IsAwardWinning, vp.ProfileImageURL
+      ORDER BY MatchingServices DESC, vp.AverageRating DESC
+      OFFSET ${((pageNumber || 1) - 1) * (pageSize || 10)} ROWS
+      FETCH NEXT ${pageSize || 10} ROWS ONLY
+    `;
+
+    const result = await request.query(query);
+    
+    res.json({
+      success: true,
+      vendors: result.recordset,
+      pagination: {
+        currentPage: parseInt(pageNumber) || 1,
+        pageSize: parseInt(pageSize) || 10
+      }
+    });
+
+  } catch (error) {
+    console.error('Error searching vendors by services:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to search vendors by services'
+    });
+  }
+});
+
+// Get vendor's selected predefined services
+router.get('/:id/selected-services', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    
+    if (!vendorProfileId) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Vendor not found' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.query(`
+      SELECT 
+        vss.VendorSelectedServiceID,
+        vss.PredefinedServiceID,
+        ps.ServiceName,
+        ps.Description as PredefinedDescription,
+        ps.Category,
+        ps.DefaultDurationMinutes,
+        vss.VendorPrice,
+        vss.VendorDescription,
+        vss.VendorDurationMinutes,
+        vss.CreatedAt,
+        vss.UpdatedAt
+      FROM VendorSelectedServices vss
+      INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+      WHERE vss.VendorProfileID = @VendorProfileID
+      ORDER BY ps.Category, ps.DisplayOrder, ps.ServiceName
+    `);
+    
+    res.json({ 
+      success: true, 
+      selectedServices: result.recordset 
+    });
+  } catch (error) {
+    console.error('Error fetching vendor selected services:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch vendor selected services' 
+    });
+  }
+});
+
 // Step 4: Services & Packages
 router.post('/setup/step4-services', async (req, res) => {
   try {
@@ -1028,7 +1277,8 @@ router.post('/setup/step4-services', async (req, res) => {
       vendorProfileId,
       serviceCategories,
       services,
-      packages
+      packages,
+      selectedPredefinedServices
     } = req.body;
 
     if (!vendorProfileId) {
@@ -1114,6 +1364,33 @@ router.post('/setup/step4-services', async (req, res) => {
         await packageRequest.query(`
           INSERT INTO Packages (VendorProfileID, Name, Description, Price, DurationMinutes, MaxGuests, WhatsIncluded)
           VALUES (@VendorProfileID, @Name, @Description, @Price, @DurationMinutes, @MaxGuests, @WhatsIncluded)
+        `);
+      }
+    }
+    
+    // Handle selected predefined services
+    if (selectedPredefinedServices && selectedPredefinedServices.length > 0) {
+      // First, delete existing selected predefined services for this vendor
+      const deleteSelectedRequest = new sql.Request(pool);
+      deleteSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteSelectedRequest.query(`
+        DELETE FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID
+      `);
+
+      // Insert new selected predefined services
+      for (const selectedService of selectedPredefinedServices) {
+        const insertSelectedRequest = new sql.Request(pool);
+        insertSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        insertSelectedRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
+        insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
+        insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
+        insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
+        
+        await insertSelectedRequest.query(`
+          INSERT INTO VendorSelectedServices 
+          (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, CreatedAt)
+          VALUES 
+          (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, GETDATE())
         `);
       }
     }
@@ -2223,7 +2500,7 @@ router.post('/setup/step2-location', async (req, res) => {
 // Step 3: Services & Packages
 router.post('/setup/step3-services', async (req, res) => {
   try {
-    const { vendorProfileId, services, packages } = req.body;
+    const { vendorProfileId, serviceCategories, services, packages, selectedPredefinedServices } = req.body;
 
     if (!vendorProfileId) {
       return res.status(400).json({ success: false, message: 'Vendor profile ID is required' });
@@ -2286,11 +2563,37 @@ router.post('/setup/step3-services', async (req, res) => {
       }
     }
     
-    res.json({ success: true, message: 'Services and packages saved successfully' });
+    // Handle selected predefined services
+    if (selectedPredefinedServices && selectedPredefinedServices.length > 0) {
+      // First, delete existing selected predefined services for this vendor
+      const deleteSelectedRequest = new sql.Request(pool);
+      deleteSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteSelectedRequest.query(`
+        DELETE FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID
+      `);
 
-  } catch (err) {
-    console.error('Step 3 error:', err);
-    res.status(500).json({ success: false, message: 'Failed to save services and packages', error: err.message });
+      // Insert new selected predefined services
+      for (const selectedService of selectedPredefinedServices) {
+        const insertSelectedRequest = new sql.Request(pool);
+        insertSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        insertSelectedRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
+        insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
+        insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
+        insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
+        
+        await insertSelectedRequest.query(`
+          INSERT INTO VendorSelectedServices 
+          (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, CreatedAt)
+          VALUES 
+          (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, GETDATE())
+        `);
+      }
+    }
+
+    res.json({ success: true, message: 'Services and packages saved successfully' });
+  } catch (error) {
+    console.error('Error in step4-services:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
