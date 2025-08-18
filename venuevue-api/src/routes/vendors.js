@@ -2604,12 +2604,13 @@ router.post('/setup/step3-services', async (req, res) => {
             // Create default category
             const createCategoryRequest = new sql.Request(pool);
             createCategoryRequest.input('CategoryName', sql.NVarChar(255), 'General Services');
+            createCategoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
             await createCategoryRequest.query(`
-              INSERT INTO ServiceCategories (CategoryName, IsActive, CreatedAt, UpdatedAt)
-              VALUES (@CategoryName, 1, GETUTCDATE(), GETUTCDATE())
+              INSERT INTO ServiceCategories (VendorProfileID, Name, Description, DisplayOrder, CreatedAt, UpdatedAt)
+              VALUES (@VendorProfileID, @CategoryName, 'General services category', 0, GETUTCDATE(), GETUTCDATE())
             `);
             const newCategoryResult = await createCategoryRequest.query(`
-              SELECT CategoryID FROM ServiceCategories WHERE CategoryName = @CategoryName
+              SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID AND Name = @CategoryName
             `);
             categoryId = newCategoryResult.recordset[0].CategoryID;
           }
@@ -2635,19 +2636,73 @@ router.post('/setup/step3-services', async (req, res) => {
 
       // Insert new selected predefined services
       for (const selectedService of selectedPredefinedServices) {
-        const insertSelectedRequest = new sql.Request(pool);
-        insertSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        insertSelectedRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
-        insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
-        insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
-        insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
-        
-        await insertSelectedRequest.query(`
-          INSERT INTO VendorSelectedServices 
-          (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, CreatedAt)
-          VALUES 
-          (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, GETDATE())
+        // First, get the predefined service details
+        const predefinedServiceRequest = new sql.Request(pool);
+        predefinedServiceRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
+        const predefinedServiceResult = await predefinedServiceRequest.query(`
+          SELECT ServiceName, ServiceDescription FROM PredefinedServices WHERE PredefinedServiceID = @PredefinedServiceID
         `);
+        
+        if (predefinedServiceResult.recordset.length > 0) {
+          const predefinedService = predefinedServiceResult.recordset[0];
+          
+          // Insert into VendorSelectedServices table
+          const insertSelectedRequest = new sql.Request(pool);
+          insertSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          insertSelectedRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
+          insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
+          insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
+          insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
+          
+          await insertSelectedRequest.query(`
+            INSERT INTO VendorSelectedServices 
+            (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, CreatedAt)
+            VALUES 
+            (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, GETDATE())
+          `);
+          
+          // ALSO INSERT INTO SERVICES TABLE
+          // Get or create a category for predefined services
+          let predefinedCategoryId = null;
+          const categoryCheckRequest = new sql.Request(pool);
+          categoryCheckRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          categoryCheckRequest.input('CategoryName', sql.NVarChar(255), 'Predefined Services');
+          
+          const categoryCheckResult = await categoryCheckRequest.query(`
+            SELECT CategoryID FROM ServiceCategories 
+            WHERE VendorProfileID = @VendorProfileID AND Name = @CategoryName
+          `);
+          
+          if (categoryCheckResult.recordset.length > 0) {
+            predefinedCategoryId = categoryCheckResult.recordset[0].CategoryID;
+          } else {
+            // Create predefined services category
+            await categoryCheckRequest.query(`
+              INSERT INTO ServiceCategories (VendorProfileID, Name, Description, DisplayOrder, CreatedAt, UpdatedAt)
+              VALUES (@VendorProfileID, @CategoryName, 'Services selected from predefined options', 1, GETUTCDATE(), GETUTCDATE())
+            `);
+            
+            const newCategoryResult = await categoryCheckRequest.query(`
+              SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID AND Name = @CategoryName
+            `);
+            predefinedCategoryId = newCategoryResult.recordset[0].CategoryID;
+          }
+          
+          // Insert into Services table
+          const serviceInsertRequest = new sql.Request(pool);
+          serviceInsertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          serviceInsertRequest.input('CategoryID', sql.Int, predefinedCategoryId);
+          serviceInsertRequest.input('Name', sql.NVarChar(100), predefinedService.ServiceName);
+          serviceInsertRequest.input('Description', sql.NVarChar(500), selectedService.description || predefinedService.ServiceDescription);
+          serviceInsertRequest.input('Price', sql.Decimal(10, 2), selectedService.price);
+          serviceInsertRequest.input('DurationMinutes', sql.Int, selectedService.durationMinutes || 60);
+          serviceInsertRequest.input('LinkedPredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
+          
+          await serviceInsertRequest.query(`
+            INSERT INTO Services (VendorProfileID, CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID, IsActive, CreatedAt, UpdatedAt)
+            VALUES (@VendorProfileID, @CategoryID, @Name, @Description, @Price, @DurationMinutes, NULL, 20.00, NULL, @LinkedPredefinedServiceID, 1, GETUTCDATE(), GETUTCDATE())
+          `);
+        }
       }
     }
 
