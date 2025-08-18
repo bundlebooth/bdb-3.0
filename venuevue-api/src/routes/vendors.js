@@ -1068,11 +1068,10 @@ router.get('/predefined-services', async (req, res) => {
         Category,
         PredefinedServiceID,
         ServiceName,
-        Description,
+        serviceDescription,
         DefaultDurationMinutes,
         DisplayOrder
       FROM PredefinedServices 
-      WHERE IsActive = 1
       ORDER BY Category, DisplayOrder, ServiceName
     `);
     
