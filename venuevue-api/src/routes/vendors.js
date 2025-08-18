@@ -328,7 +328,8 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
       phone,
       address,
       website,
-      services
+      services,
+      selectedPredefinedServices
     } = req.body;
 
     let servicesData = [];
@@ -339,6 +340,17 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
       return res.status(400).json({ 
         success: false,
         message: 'Invalid services format'
+      });
+    }
+
+    let selectedPredefinedServicesData = [];
+    try {
+      selectedPredefinedServicesData = selectedPredefinedServices ? JSON.parse(selectedPredefinedServices) : [];
+    } catch (e) {
+      console.error('Error parsing selected predefined services JSON:', e);
+      return res.status(400).json({ 
+        success: false,
+        message: 'Invalid selected predefined services format'
       });
     }
 
@@ -376,6 +388,34 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
     const result = await request.execute('sp_RegisterVendor');
     
     if (result.recordset[0].Success) {
+      const vendorProfileId = result.recordset[0].VendorProfileID;
+      
+      // Handle selected predefined services with vendor pricing
+      if (selectedPredefinedServicesData && selectedPredefinedServicesData.length > 0) {
+        for (const predefinedService of selectedPredefinedServicesData) {
+          try {
+            const serviceRequest = new sql.Request(pool);
+            serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+            serviceRequest.input('PredefinedServiceID', sql.Int, predefinedService.id);
+            serviceRequest.input('VendorPrice', sql.Decimal(10, 2), predefinedService.vendorPrice);
+            serviceRequest.input('VendorDuration', sql.Int, predefinedService.vendorDuration);
+            serviceRequest.input('VendorDescription', sql.NVarChar(sql.MAX), predefinedService.vendorDescription || null);
+            
+            await serviceRequest.query(`
+              INSERT INTO VendorPredefinedServices 
+              (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDuration, VendorDescription, IsActive, CreatedAt)
+              VALUES 
+              (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDuration, @VendorDescription, 1, GETDATE())
+            `);
+            
+            console.log(`Added predefined service ${predefinedService.id} for vendor ${vendorProfileId}`);
+          } catch (serviceError) {
+            console.error(`Error adding predefined service ${predefinedService.id}:`, serviceError);
+            // Continue with other services even if one fails
+          }
+        }
+      }
+      
       if (req.files && req.files.length > 0) {
         req.files.forEach(file => {
           console.log('Vendor image uploaded:', file);
@@ -386,7 +426,8 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
         success: true,
         message: 'Vendor registered successfully',
         userId: result.recordset[0].UserID,
-        vendorProfileId: result.recordset[0].VendorProfileID
+        vendorProfileId: result.recordset[0].VendorProfileID,
+        predefinedServicesAdded: selectedPredefinedServicesData.length
       });
     } else {
       throw new Error('Registration failed at database level');
@@ -2936,7 +2977,7 @@ router.post('/setup/step8-faq', async (req, res) => {
 // Step 9: Summary & Completion
 router.post('/setup/step9-completion', async (req, res) => {
   try {
-    const { vendorProfileId, faqs, testimonials } = req.body;
+    const { vendorProfileId, faqs, testimonials, selectedPredefinedServices } = req.body;
     
     if (!vendorProfileId) {
       return res.status(400).json({ 
@@ -2976,13 +3017,40 @@ router.post('/setup/step9-completion', async (req, res) => {
       }
     }
     
+    // Handle selected predefined services with vendor pricing
+    if (selectedPredefinedServices && selectedPredefinedServices.length > 0) {
+      for (const predefinedService of selectedPredefinedServices) {
+        try {
+          const serviceRequest = new sql.Request(pool);
+          serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          serviceRequest.input('PredefinedServiceID', sql.Int, predefinedService.id);
+          serviceRequest.input('VendorPrice', sql.Decimal(10, 2), predefinedService.vendorPrice);
+          serviceRequest.input('VendorDuration', sql.Int, predefinedService.vendorDuration);
+          serviceRequest.input('VendorDescription', sql.NVarChar(sql.MAX), predefinedService.vendorDescription || null);
+          
+          await serviceRequest.query(`
+            INSERT INTO VendorPredefinedServices 
+            (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDuration, VendorDescription, IsActive, CreatedAt)
+            VALUES 
+            (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDuration, @VendorDescription, 1, GETDATE())
+          `);
+          
+          console.log(`Added predefined service ${predefinedService.id} for vendor ${vendorProfileId}`);
+        } catch (serviceError) {
+          console.error(`Error adding predefined service ${predefinedService.id}:`, serviceError);
+          // Continue with other services even if one fails
+        }
+      }
+    }
+    
     res.json({
       success: true,
       message: 'Vendor setup completed successfully! Your profile is now live.',
       data: {
         vendorProfileId: vendorProfileId,
         setupComplete: true,
-        faqsAdded: faqs?.length || 0
+        faqsAdded: faqs?.length || 0,
+        predefinedServicesAdded: selectedPredefinedServices?.length || 0
       }
     });
 
