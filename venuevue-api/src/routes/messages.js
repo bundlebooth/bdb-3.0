@@ -162,11 +162,10 @@ router.get('/conversations/user/:userId', async (req, res) => {
     const formattedConversations = result.recordset.map(conv => ({
       id: conv.ConversationID,
       createdAt: conv.CreatedAt,
-      userName: conv.UserName,
-      vendorName: conv.VendorName,
+      OtherPartyName: conv.OtherPartyName,
       lastMessageContent: conv.LastMessageContent || '',
       lastMessageCreatedAt: conv.LastMessageCreatedAt || conv.CreatedAt,
-      unreadCount: 0
+      unreadCount: conv.UnreadCount || 0
     }));
 
     res.json({
@@ -227,7 +226,7 @@ router.post('/conversation/check', async (req, res) => {
 // Create new conversation
 router.post('/conversation', async (req, res) => {
   try {
-    const { userId, vendorProfileId, bookingId, initialMessage } = req.body;
+    const { userId, vendorProfileId, bookingId, requestId, initialMessage } = req.body;
 
     if (!userId || !vendorProfileId) {
       return res.status(400).json({ 
@@ -242,7 +241,22 @@ router.post('/conversation', async (req, res) => {
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('BookingID', sql.Int, bookingId || null);
-    request.input('Subject', sql.NVarChar(255), 'New Conversation');
+    request.input('RequestID', sql.Int, requestId || null);
+    request.input('Subject', sql.NVarChar(255), requestId ? 'Booking Request Discussion' : 'New Conversation');
+    
+    // Check if conversation already exists for this request
+    if (requestId) {
+      const existingConv = await pool.request()
+        .input('RequestID', sql.Int, requestId)
+        .query('SELECT ConversationID FROM Conversations WHERE RequestID = @RequestID');
+      
+      if (existingConv.recordset.length > 0) {
+        return res.json({ 
+          success: true,
+          conversation: { ConversationID: existingConv.recordset[0].ConversationID }
+        });
+      }
+    }
     
     const result = await request.execute('sp_CreateConversation');
     
