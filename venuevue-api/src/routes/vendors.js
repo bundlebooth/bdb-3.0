@@ -1162,43 +1162,38 @@ router.post('/setup/step3-gallery', async (req, res) => {
   }
 });
 
-// Search vendors by predefined services
-router.get('/search-by-services', async (req, res) => {
+// Search vendors by predefined services with enhanced criteria
+router.post('/search-by-services', async (req, res) => {
   try {
     const { 
-      predefinedServiceIds,
-      category,
-      minPrice,
-      maxPrice,
-      latitude,
-      longitude,
-      radiusMiles,
-      pageNumber,
-      pageSize
-    } = req.query;
+      selectedServices,
+      eventDetails,
+      totalBudget,
+      serviceIds
+    } = req.body;
 
-    if (!predefinedServiceIds) {
+    if (!selectedServices || selectedServices.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'At least one predefined service ID is required'
+        message: 'At least one service is required'
       });
     }
 
     const pool = await poolPromise;
     const request = new sql.Request(pool);
 
-    // Parse service IDs (comma-separated)
-    const serviceIds = predefinedServiceIds.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+    // Extract service IDs for filtering
+    const predefinedServiceIds = selectedServices.map(s => s.serviceId).filter(id => !isNaN(id));
     
-    if (serviceIds.length === 0) {
+    if (predefinedServiceIds.length === 0) {
       return res.status(400).json({
         success: false,
         message: 'Valid predefined service IDs are required'
       });
     }
 
-    // Build dynamic query with service filtering
-    let whereClause = `WHERE vp.IsActive = 1`;
+    // Build dynamic query to find vendors who offer the selected services
+    let whereClause = `WHERE vp.IsActive = 1 AND u.IsActive = 1`;
     let joinClause = `
       FROM VendorProfiles vp
       INNER JOIN Users u ON vp.UserID = u.UserID
@@ -1207,41 +1202,35 @@ router.get('/search-by-services', async (req, res) => {
     `;
 
     // Add service ID filtering
-    whereClause += ` AND vss.PredefinedServiceID IN (${serviceIds.map((_, index) => `@ServiceID${index}`).join(', ')})`;
+    whereClause += ` AND vss.PredefinedServiceID IN (${predefinedServiceIds.map((_, index) => `@ServiceID${index}`).join(', ')})`;
     
-    serviceIds.forEach((serviceId, index) => {
+    predefinedServiceIds.forEach((serviceId, index) => {
       request.input(`ServiceID${index}`, sql.Int, serviceId);
     });
 
-    // Add category filter if provided
-    if (category) {
-      whereClause += ` AND ps.Category = @Category`;
-      request.input('Category', sql.NVarChar, category);
+    // Add budget filtering - vendors whose services fit within individual budgets
+    const budgetConditions = selectedServices.map((service, index) => {
+      request.input(`Budget${index}`, sql.Money, service.budget);
+      return `(vss.PredefinedServiceID = @ServiceID${index} AND vss.VendorPrice <= @Budget${index})`;
+    }).join(' OR ');
+    
+    if (budgetConditions) {
+      whereClause += ` AND (${budgetConditions})`;
     }
 
-    // Add price range filter if provided
-    if (minPrice) {
-      whereClause += ` AND vss.VendorPrice >= @MinPrice`;
-      request.input('MinPrice', sql.Decimal(10, 2), parseFloat(minPrice));
-    }
-    if (maxPrice) {
-      whereClause += ` AND vss.VendorPrice <= @MaxPrice`;
-      request.input('MaxPrice', sql.Decimal(10, 2), parseFloat(maxPrice));
+    // Add location filtering if provided
+    if (eventDetails && eventDetails.location) {
+      whereClause += ` AND (vp.ServiceArea LIKE @Location OR vp.BusinessAddress LIKE @Location)`;
+      request.input('Location', sql.NVarChar, `%${eventDetails.location}%`);
     }
 
-    // Add location filter if provided
-    if (latitude && longitude) {
-      whereClause += ` AND dbo.fn_CalculateDistance(@Latitude, @Longitude, vp.Latitude, vp.Longitude) <= @RadiusMiles`;
-      request.input('Latitude', sql.Decimal(10, 8), parseFloat(latitude));
-      request.input('Longitude', sql.Decimal(11, 8), parseFloat(longitude));
-      request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
-    }
-
+    // Execute the query to find matching vendors
     const query = `
       SELECT DISTINCT
         vp.VendorProfileID,
         vp.BusinessName,
         vp.BusinessType,
+        vp.BusinessDescription,
         vp.City + ', ' + vp.State as Location,
         vp.AverageRating,
         vp.TotalReviews,
@@ -1249,25 +1238,63 @@ router.get('/search-by-services', async (req, res) => {
         vp.IsEcoFriendly,
         vp.IsAwardWinning,
         vp.ProfileImageURL,
-        COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices
+        vp.ContactEmail,
+        vp.ContactPhone,
+        COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices,
+        STRING_AGG(ps.ServiceName, ', ') as MatchingServiceNames
       ${joinClause}
       ${whereClause}
-      GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.City, vp.State, 
-               vp.AverageRating, vp.TotalReviews, vp.IsPremium, vp.IsEcoFriendly, 
-               vp.IsAwardWinning, vp.ProfileImageURL
-      ORDER BY MatchingServices DESC, vp.AverageRating DESC
-      OFFSET ${((pageNumber || 1) - 1) * (pageSize || 10)} ROWS
-      FETCH NEXT ${pageSize || 10} ROWS ONLY
+      GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.BusinessDescription,
+               vp.City, vp.State, vp.AverageRating, vp.TotalReviews, vp.IsPremium, 
+               vp.IsEcoFriendly, vp.IsAwardWinning, vp.ProfileImageURL, vp.ContactEmail, vp.ContactPhone
+      HAVING COUNT(DISTINCT vss.PredefinedServiceID) >= @MinMatchingServices
+      ORDER BY MatchingServices DESC, vp.AverageRating DESC, vp.IsPremium DESC
     `;
 
+    // Require vendors to match at least 1 service (can be adjusted)
+    request.input('MinMatchingServices', sql.Int, 1);
+
     const result = await request.query(query);
-    
+
+    // Get detailed service information for each vendor
+    const vendorsWithServices = await Promise.all(result.recordset.map(async (vendor) => {
+      const serviceRequest = new sql.Request(pool);
+      serviceRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID);
+      
+      const serviceQuery = `
+        SELECT 
+          ps.ServiceName,
+          ps.Category,
+          vss.VendorPrice,
+          vss.VendorDescription,
+          vss.VendorDurationMinutes
+        FROM VendorSelectedServices vss
+        INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+        WHERE vss.VendorProfileID = @VendorProfileID
+          AND vss.PredefinedServiceID IN (${predefinedServiceIds.map((_, index) => `@ServiceID${index}`).join(', ')})
+      `;
+      
+      predefinedServiceIds.forEach((serviceId, index) => {
+        serviceRequest.input(`ServiceID${index}`, sql.Int, serviceId);
+      });
+
+      const servicesResult = await serviceRequest.query(serviceQuery);
+      
+      return {
+        ...vendor,
+        services: servicesResult.recordset,
+        totalEstimatedCost: servicesResult.recordset.reduce((sum, service) => sum + (service.VendorPrice || 0), 0)
+      };
+    }));
+
     res.json({
       success: true,
-      vendors: result.recordset,
-      pagination: {
-        currentPage: parseInt(pageNumber) || 1,
-        pageSize: parseInt(pageSize) || 10
+      vendors: vendorsWithServices,
+      totalResults: vendorsWithServices.length,
+      searchCriteria: {
+        selectedServices: selectedServices.map(s => s.serviceName),
+        totalBudget,
+        location: eventDetails?.location
       }
     });
 
@@ -1275,7 +1302,8 @@ router.get('/search-by-services', async (req, res) => {
     console.error('Error searching vendors by services:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to search vendors by services'
+      message: 'Failed to search vendors',
+      error: error.message
     });
   }
 });
