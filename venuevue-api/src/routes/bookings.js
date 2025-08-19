@@ -915,7 +915,7 @@ router.post('/confirmed', async (req, res) => {
     const requestDetails = await pool.request()
       .input('RequestID', sql.Int, requestId)
       .query(`
-        SELECT EventDate, EventTime, EventLocation, AttendeeCount, Budget, Services, SpecialRequestText
+        SELECT EventDate, EventTime, EventLocation, AttendeeCount, Budget, Services, SpecialRequests
         FROM BookingRequests 
         WHERE RequestID = @RequestID
       `);
@@ -937,7 +937,7 @@ router.post('/confirmed', async (req, res) => {
     request.input('EventDate', sql.DateTime, requestData.EventDate || new Date());
     request.input('Status', sql.NVarChar(20), 'confirmed');
     request.input('AttendeeCount', sql.Int, requestData.AttendeeCount || 1);
-    request.input('SpecialRequests', sql.NVarChar(sql.MAX), requestData.SpecialRequestText);
+    request.input('SpecialRequests', sql.NVarChar(sql.MAX), requestData.SpecialRequests);
     request.input('TotalAmount', sql.Decimal(10, 2), requestData.Budget || 0);
 
     const result = await request.query(`
