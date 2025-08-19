@@ -1712,6 +1712,142 @@
             box-shadow: var(--shadow);
         }
 
+        /* Request Management Styles */
+        .requests-filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1rem;
+            border: none;
+            background: none;
+            color: var(--text-light);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-btn:hover {
+            color: var(--primary);
+        }
+
+        .request-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .request-card.pending {
+            border-left-color: #f59e0b;
+        }
+
+        .request-card.approved {
+            border-left-color: #10b981;
+        }
+
+        .request-card.declined {
+            border-left-color: var(--accent);
+        }
+
+        .request-card.expired {
+            border-left-color: #6b7280;
+        }
+
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .request-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .request-status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .request-status.approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .request-status.declined {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .request-status.expired {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .request-timer {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .request-timer.urgent {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .request-details {
+            margin-bottom: 1rem;
+        }
+
+        .request-detail-row {
+            display: flex;
+            margin-bottom: 0.5rem;
+        }
+
+        .request-detail-label {
+            font-weight: 600;
+            min-width: 120px;
+            color: var(--text);
+        }
+
+        .request-detail-value {
+            color: var(--text-light);
+        }
+
+        .request-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .request-actions .btn {
+            flex: 1;
+        }
+
+        .requests-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
         .stat-value {
             font-size: 2rem;
             font-weight: 700;
@@ -2748,6 +2884,7 @@
                         <ul class="dashboard-menu">
                             <li><a href="#" class="active" data-section="dashboard">Dashboard</a></li>
                             <li><a href="#" data-section="bookings">My Bookings</a></li>
+                            <li><a href="#" data-section="requests">My Requests</a></li>
                             <li><a href="#" data-section="favorites">Favorites</a></li>
                             <li><a href="#" data-section="messages">Messages</a></li>
                             <li><a href="#" data-section="reviews">My Reviews</a></li>
@@ -2800,6 +2937,19 @@
                                 </div>
                             </div>
                         </div>
+                        <div id="requests-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">My Requests</h2>
+                                <div class="requests-filter-tabs">
+                                    <button class="tab-btn active" data-filter="all">All Requests</button>
+                                    <button class="tab-btn" data-filter="pending">Pending</button>
+                                    <button class="tab-btn" data-filter="approved">Approved</button>
+                                    <button class="tab-btn" data-filter="declined">Declined</button>
+                                    <button class="tab-btn" data-filter="expired">Expired</button>
+                                </div>
+                                <div id="user-requests"><p>Loading your requests...</p></div>
+                            </div>
+                        </div>
                         <div id="reviews-section" style="display: none;">
                             <div class="dashboard-card">
                                 <h2 class="dashboard-card-title">My Reviews</h2>
@@ -2838,6 +2988,7 @@
                         <ul class="dashboard-menu">
                             <li><a href="#" class="active" data-section="vendor-dashboard">Dashboard</a></li>
                             <li><a href="#" data-section="vendor-bookings">Bookings</a></li>
+                            <li><a href="#" data-section="vendor-requests">Pending Requests</a></li>
                             <li><a href="#" data-section="vendor-services">Services</a></li>
                             <li><a href="#" data-section="vendor-messages">Messages</a></li>
                             <li><a href="#" data-section="vendor-reviews">Reviews</a></li>
@@ -2878,6 +3029,22 @@
                             <div class="dashboard-card">
                                 <h2 class="dashboard-card-title">All Bookings</h2>
                                 <div id="vendor-all-bookings"><p>Loading all bookings...</p></div>
+                            </div>
+                        </div>
+                        <div id="vendor-requests-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Pending Requests</h2>
+                                <div class="requests-stats">
+                                    <div class="stat-card">
+                                        <div class="stat-value" id="pending-requests-count">0</div>
+                                        <div class="stat-label">Pending Requests</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-value" id="expiring-soon-count">0</div>
+                                        <div class="stat-label">Expiring Soon</div>
+                                    </div>
+                                </div>
+                                <div id="vendor-pending-requests"><p>Loading pending requests...</p></div>
                             </div>
                         </div>
                         <div id="vendor-services-section" style="display: none;">
@@ -11942,6 +12109,303 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('profile-avatar').textContent = currentUser.avatar;
             }
 
+            // Request management functions
+            async function loadUserRequests(filter = 'all') {
+                const container = document.getElementById('user-requests');
+                container.innerHTML = '<p>Loading your requests...</p>';
+                
+                try {
+                    if (!currentUser || !currentUser.id) {
+                        throw new Error('User not logged in');
+                    }
+                    
+                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${currentUser.id}`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to fetch requests');
+                    const data = await response.json();
+                    const requests = data.requests || [];
+                    
+                    renderUserRequests(requests, filter);
+                } catch (error) {
+                    console.error('Error loading user requests:', error);
+                    container.innerHTML = `<p style="color:var(--accent);">Failed to load requests: ${error.message}</p>`;
+                }
+            }
+            
+            function renderUserRequests(requests, filter) {
+                const container = document.getElementById('user-requests');
+                
+                let filteredRequests = requests;
+                if (filter !== 'all') {
+                    filteredRequests = requests.filter(req => req.CurrentStatus === filter);
+                }
+                
+                if (filteredRequests.length === 0) {
+                    container.innerHTML = `<p>No ${filter === 'all' ? '' : filter} requests found.</p>`;
+                    return;
+                }
+                
+                container.innerHTML = filteredRequests.map(request => `
+                    <div class="request-card ${request.CurrentStatus}">
+                        <div class="request-header">
+                            <div>
+                                <h4>${request.VendorName}</h4>
+                                <div class="request-timer ${request.HoursRemaining && request.HoursRemaining < 6 ? 'urgent' : ''}">
+                                    ${request.HoursRemaining ? `${request.HoursRemaining} hours remaining` : 'Timer expired'}
+                                </div>
+                            </div>
+                            <span class="request-status ${request.CurrentStatus}">${request.CurrentStatus}</span>
+                        </div>
+                        <div class="request-details">
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Event Date:</span>
+                                <span class="request-detail-value">${new Date(request.EventDate).toLocaleDateString()}</span>
+                            </div>
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Location:</span>
+                                <span class="request-detail-value">${request.EventLocation}</span>
+                            </div>
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Budget:</span>
+                                <span class="request-detail-value">$${request.Budget?.toLocaleString()}</span>
+                            </div>
+                            ${request.SpecialRequests ? `
+                                <div class="request-detail-row">
+                                    <span class="request-detail-label">Special Requests:</span>
+                                    <span class="request-detail-value">${request.SpecialRequests}</span>
+                                </div>
+                            ` : ''}
+                            ${request.ResponseMessage ? `
+                                <div class="request-detail-row">
+                                    <span class="request-detail-label">Vendor Response:</span>
+                                    <span class="request-detail-value">${request.ResponseMessage}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="request-actions">
+                            ${request.ConversationID ? `
+                                <button class="btn btn-primary" onclick="openChatForRequest(${request.ConversationID})">
+                                    <i class="fas fa-comments"></i> Chat
+                                </button>
+                            ` : ''}
+                            ${request.CurrentStatus === 'pending' ? `
+                                <button class="btn btn-danger" onclick="cancelRequest(${request.RequestID})">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            async function loadVendorRequests() {
+                const container = document.getElementById('vendor-pending-requests');
+                const pendingCountEl = document.getElementById('pending-requests-count');
+                const expiringSoonCountEl = document.getElementById('expiring-soon-count');
+                
+                container.innerHTML = '<p>Loading pending requests...</p>';
+                
+                try {
+                    // Get vendor profile ID using current user's ID
+                    if (!currentUser || !currentUser.id) {
+                        throw new Error('User not logged in');
+                    }
+                    
+                    const vendorProfileResponse = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    
+                    if (!vendorProfileResponse.ok) {
+                        throw new Error('Failed to fetch vendor profile');
+                    }
+                    
+                    const vendorProfileData = await vendorProfileResponse.json();
+                    const vendorProfileId = vendorProfileData.vendorProfileId;
+                    
+                    if (!vendorProfileId) {
+                        throw new Error('Vendor profile not found');
+                    }
+                    
+                    const response = await fetch(`${API_BASE_URL}/bookings/vendor/${vendorProfileId}/requests`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to fetch vendor requests');
+                    const data = await response.json();
+                    const requests = data.requests || [];
+                    
+                    // Update stats
+                    const expiringSoon = requests.filter(req => req.HoursRemaining <= 6).length;
+                    pendingCountEl.textContent = requests.length;
+                    expiringSoonCountEl.textContent = expiringSoon;
+                    
+                    renderVendorRequests(requests);
+                } catch (error) {
+                    console.error('Error loading vendor requests:', error);
+                    container.innerHTML = `<p style="color:var(--accent);">Failed to load requests: ${error.message}</p>`;
+                }
+            }
+            
+            function renderVendorRequests(requests) {
+                const container = document.getElementById('vendor-pending-requests');
+                
+                if (requests.length === 0) {
+                    container.innerHTML = '<p>No pending requests at this time.</p>';
+                    return;
+                }
+                
+                container.innerHTML = requests.map(request => `
+                    <div class="request-card pending">
+                        <div class="request-header">
+                            <div>
+                                <h4>${request.ClientName}</h4>
+                                <div class="request-timer ${request.HoursRemaining < 6 ? 'urgent' : ''}">
+                                    ${request.HoursRemaining} hours remaining
+                                </div>
+                            </div>
+                            <span class="request-status pending">pending</span>
+                        </div>
+                        <div class="request-details">
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Event Date:</span>
+                                <span class="request-detail-value">${new Date(request.EventDate).toLocaleDateString()}</span>
+                            </div>
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Location:</span>
+                                <span class="request-detail-value">${request.EventLocation}</span>
+                            </div>
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Attendees:</span>
+                                <span class="request-detail-value">${request.AttendeeCount}</span>
+                            </div>
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Budget:</span>
+                                <span class="request-detail-value">$${request.Budget?.toLocaleString()}</span>
+                            </div>
+                            ${request.SpecialRequests ? `
+                                <div class="request-detail-row">
+                                    <span class="request-detail-label">Special Requests:</span>
+                                    <span class="request-detail-value">${request.SpecialRequests}</span>
+                                </div>
+                            ` : ''}
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Contact:</span>
+                                <span class="request-detail-value">${request.ClientEmail} | ${request.ClientPhone || 'No phone'}</span>
+                            </div>
+                        </div>
+                        <div class="request-actions">
+                            <button class="btn btn-success" onclick="approveRequest(${request.RequestID})">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                            <button class="btn btn-danger" onclick="declineRequest(${request.RequestID})">
+                                <i class="fas fa-times"></i> Decline
+                            </button>
+                            ${request.ConversationID ? `
+                                <button class="btn btn-primary" onclick="openChatForRequest(${request.ConversationID})">
+                                    <i class="fas fa-comments"></i> Chat
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            async function approveRequest(requestId) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/approve`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            responseMessage: 'Request approved! Looking forward to working with you.',
+                            proposedPrice: null
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to approve request');
+                    
+                    showSuccess('Request approved successfully!');
+                    loadVendorRequests(); // Refresh the list
+                } catch (error) {
+                    console.error('Error approving request:', error);
+                    showError(`Failed to approve request: ${error.message}`);
+                }
+            }
+            
+            async function declineRequest(requestId) {
+                const reason = prompt('Please provide a reason for declining (optional):');
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/decline`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            responseMessage: reason || 'Request declined.'
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to decline request');
+                    
+                    showSuccess('Request declined.');
+                    loadVendorRequests(); // Refresh the list
+                } catch (error) {
+                    console.error('Error declining request:', error);
+                    showError(`Failed to decline request: ${error.message}`);
+                }
+            }
+            
+            async function cancelRequest(requestId) {
+                if (!confirm('Are you sure you want to cancel this request?')) return;
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/cancel`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to cancel request');
+                    
+                    showSuccess('Request cancelled successfully.');
+                    loadUserRequests(); // Refresh the list
+                } catch (error) {
+                    console.error('Error cancelling request:', error);
+                    showError(`Failed to cancel request: ${error.message}`);
+                }
+            }
+            
+            function openChatForRequest(conversationId) {
+                // Switch to messages section and load the specific conversation
+                document.querySelector('[data-section="messages"]').click();
+                // TODO: Load specific conversation
+            }
+            
+            function setupRequestFilterTabs() {
+                const tabButtons = document.querySelectorAll('.requests-filter-tabs .tab-btn');
+                
+                tabButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        // Remove active class from all tabs
+                        tabButtons.forEach(tab => tab.classList.remove('active'));
+                        // Add active class to clicked tab
+                        e.target.classList.add('active');
+                        
+                        // Load requests with the selected filter
+                        const filter = e.target.dataset.filter;
+                        loadUserRequests(filter);
+                    });
+                });
+            }
+
             // Unified function to display either client or vendor dashboard
             async function displayUserDashboard(mode, section) {
                 // Update global state and localStorage
@@ -12036,6 +12500,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         renderRecentFavorites(dashboardData.recentFavorites);
                     } else if (section === 'bookings') {
                         await loadAllUserBookings();
+                    } else if (section === 'requests') {
+                        await loadUserRequests();
+                        setupRequestFilterTabs();
                     } else if (section === 'favorites') {
                         await loadUserFavoritesDashboard();
                     } else if (section === 'messages') {
@@ -12344,6 +12811,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         loadConversations('vendor-dashboard-section', 'vendor-chat-input', 'vendor-send-btn');
                     } else if (section === 'vendor-bookings') {
                         await loadAllVendorBookings(vendorProfileId);
+                    } else if (section === 'vendor-requests') {
+                        await loadVendorRequests();
                     } else if (section === 'vendor-services') {
                         await loadVendorServices(vendorProfileId);
                     } else if (section === 'vendor-messages') {
