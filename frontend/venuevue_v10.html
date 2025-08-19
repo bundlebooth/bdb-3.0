@@ -7566,6 +7566,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     bookingState.approvalPollingInterval = null;
                 }
                 originalCloseBookingModal();
+                // Make socket globally available
+                window.socket = state.socket;
+                
+                // Set up global Socket.IO event listeners for new chat system
+                window.socket.on('new-message', (messageData) => {
+                    console.log('Global: Received new message via Socket.IO:', messageData);
+                    if (messageData.conversationId === currentConversation?.id) {
+                        addMessageToUI(messageData);
+                    }
+                    // Update conversation list with new message
+                    updateConversationInList(messageData);
+                });
             };
 
             // Make functions globally available
@@ -8007,20 +8019,36 @@ async function loadInitialMessages() {
 
 
             function setupChatEventListeners(chatInputId, sendButtonId) {
+                console.log(`Setting up chat listeners for: ${chatInputId}, ${sendButtonId}`);
+                
                 const chatInput = document.getElementById(chatInputId);
                 const sendButton = document.getElementById(sendButtonId);
 
-                if (chatInput && sendButton) {
+                console.log('Found elements:', { chatInput: !!chatInput, sendButton: !!sendButton });
 
+                if (chatInput && sendButton) {
+                    // Remove existing listeners
                     sendButton.removeEventListener('click', sendChatMessage);
                     chatInput.removeEventListener('keypress', handleChatInputKeypress);
 
-
-                    sendButton.addEventListener('click', sendChatMessage);
-                    chatInput.addEventListener('keypress', handleChatInputKeypress);
-                    console.log(`Chat event listeners attached for input: ${chatInputId}, button: ${sendButtonId}`);
+                    // Add new listeners
+                    sendButton.addEventListener('click', (e) => {
+                        console.log('Send button clicked!');
+                        e.preventDefault();
+                        sendChatMessage();
+                    });
+                    
+                    chatInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            console.log('Enter key pressed!');
+                            e.preventDefault();
+                            sendChatMessage();
+                        }
+                    });
+                    
+                    console.log(`Chat event listeners attached successfully for input: ${chatInputId}, button: ${sendButtonId}`);
                 } else {
-                    console.warn(`Could not find chat elements: Input ID ${chatInputId}, Button ID ${sendButtonId}`);
+                    console.error(`Could not find chat elements: Input ID ${chatInputId} (${!!chatInput}), Button ID ${sendButtonId} (${!!sendButton})`);
                 }
             }
 
@@ -8031,11 +8059,15 @@ async function loadInitialMessages() {
             }
 
 async function sendChatMessage() {
+                console.log('sendChatMessage function called');
+                
                 const input = document.getElementById('chat-input') ||
                             document.getElementById('dashboard-chat-input') ||
                             document.getElementById('vendor-chat-input') ||
                             document.getElementById('vendor-all-chat-input') ||
                             document.getElementById('profile-chat-input');
+                            
+                console.log('Found input element:', !!input, input?.id);
                 const message = input?.value.trim();
 
                 console.log('Attempting to send message:', message, 'Current User:', currentUser, 'Current Conversation:', state.chat.currentConversation);
@@ -8052,12 +8084,12 @@ async function sendChatMessage() {
                     return;
                 }
                 
-                if (!state.chat.currentChatVendorId) {
-                    alert('Could not determine vendor to message. Please try again from a vendor profile.');
+                if (!state.chat.currentConversation && !state.chat.currentChatVendorId) {
+                    alert('Please select a conversation first.');
                     return;
                 }
                 
-                if (!state.chat.currentConversation) {
+                if (!state.chat.currentConversation && state.chat.currentChatVendorId) {
                     console.log('No existing conversation found, creating a new one...');
                     try {
                         const createResponse = await fetch(`${API_BASE_URL}/messages/conversation`, {
@@ -8123,8 +8155,8 @@ async function sendChatMessage() {
                                 'Authorization': `Bearer ${localStorage.getItem('token')}`
                             },
                             body: JSON.stringify({
-                                conversationId: state.chat.currentConversation,
-                                senderId: currentUser.id,
+                                conversationId: currentConversation.id,
+                                senderId: currentUser?.id,
                                 content: message
                             })
                         });
@@ -8233,10 +8265,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         // Map API response to expected format
                         conversations = conversations.map(conv => ({
                             id: conv.id || conv.ConversationID,
-                            userName: conv.userName || conv.OtherPartyName,
-                            vendorName: conv.vendorName || conv.OtherPartyName,
-                            lastMessage: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
-                            timestamp: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
+                            userName: conv.OtherPartyName || conv.userName || 'Unknown User',
+                            OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
+                            lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
+                            lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
+                            lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
                             unreadCount: conv.unreadCount || conv.UnreadCount || 0
                         }));
                     } else {
@@ -8276,57 +8309,376 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 container.innerHTML = `
                     <div class="dashboard-card">
                         <h2 class="dashboard-card-title">Messages</h2>
-                        <div class="conversations-list" style="max-height: 200px; overflow-y: auto; border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 1rem;">
-                            ${conversations.length === 0 ? '<p>No active conversations.</p>' :
-                                conversations.map(conv => {
-                                    const partnerName = conv.VendorName || conv.UserName || 'Unknown Partner';
-                                    const lastMessagePreview = conv.LastMessageContent ? conv.LastMessageContent.substring(0, 50) + (conv.LastMessageContent.length > 50 ? '...' : '') : 'No messages yet.';
-                                    const lastMessageTime = conv.LastMessageCreatedAt ? new Date(conv.LastMessageCreatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-                                    return `
-                                        <div class="conversation-item" data-id="${conv.ConversationID}"
-                                             style="padding: 0.75rem; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                                            <div>
-                                                <div style="font-weight: 600;">${partnerName}</div>
-                                                <div style="font-size: 0.9rem; color: var(--text-light);">${lastMessagePreview}</div>
-                                            </div>
-                                            <div style="font-size: 0.8rem; color: var(--text-light);">${lastMessageTime}</div>
-                                        </div>
-                                    `;
-                                }).join('')
-                            }
-                        </div>
-                        <div class="chat-container" style="height: 300px;">
-                            <div class="chat-messages" id="${chatInputId.replace('-input', '-messages')}"></div>
-                            <div class="chat-input">
-                                <input type="text" placeholder="Type your message..." id="${chatInputId}">
-                                <button class="btn btn-primary" id="${sendButtonId}">Send</button>
+                        <div id="chat-app" style="height: 500px; display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                            <!-- Conversations sidebar -->
+                            <div id="conversations-sidebar" style="width: 300px; border-right: 1px solid var(--border); background: #f8f9fa;">
+                                <div style="padding: 1rem; border-bottom: 1px solid var(--border); background: white;">
+                                    <h3 style="margin: 0; font-size: 1rem;">Conversations</h3>
+                                </div>
+                                <div id="conversations-list" style="height: calc(100% - 60px); overflow-y: auto;">
+                                    <div style="padding: 1rem; text-align: center; color: #666;">Loading conversations...</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Chat area -->
+                            <div id="chat-area" style="flex: 1; display: flex; flex-direction: column;">
+                                <!-- Chat header -->
+                                <div id="chat-header" style="padding: 1rem; border-bottom: 1px solid var(--border); background: white;">
+                                    <div id="chat-partner-name" style="font-weight: 600; color: #666;">Select a conversation</div>
+                                </div>
+                                
+                                <!-- Messages container -->
+                                <div id="messages-container" style="flex: 1; padding: 1rem; overflow-y: auto; background: #f8f9fa;">
+                                    <div id="welcome-message" style="text-align: center; color: #666; margin-top: 2rem;">
+                                        Select a conversation to start messaging
+                                    </div>
+                                </div>
+                                
+                                <!-- Message input -->
+                                <div id="message-input-area" style="padding: 1rem; border-top: 1px solid var(--border); background: white; display: none;">
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <input type="text" id="message-input" placeholder="Type your message..." 
+                                               style="flex: 1; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; outline: none;">
+                                        <button id="send-message-btn" class="btn btn-primary" style="padding: 0.75rem 1.5rem;">Send</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
 
-                document.querySelectorAll('.conversation-item').forEach(convItem => {
-                    convItem.addEventListener('click', () => {
-                        const conversationId = parseInt(convItem.dataset.id);
-                        state.chat.currentConversation = conversationId;
-                        console.log('Selected conversation:', conversationId);
-                        loadInitialMessages();
-                    });
-                });
+                // Store conversations globally and initialize the new chat system
+                window.lastLoadedConversations = conversations;
+                initializeChatSystem(conversations);
+            }
 
+            // New Clean Chat System
+            let currentConversation = null;
+            let chatPollingInterval = null;
 
-                setupChatEventListeners(chatInputId, sendButtonId);
-
-
-                if (conversations.length > 0 && !state.chat.currentConversation) {
-                    state.chat.currentConversation = conversations[0].ConversationID;
-                    console.log('Defaulting to first conversation:', state.chat.currentConversation);
-                    loadInitialMessages();
-                } else if (state.chat.currentConversation) {
-
-                    loadInitialMessages();
+            function initializeChatSystem(conversations) {
+                console.log('Initializing new chat system with conversations:', conversations);
+                
+                // Populate conversations list
+                populateConversationsList(conversations);
+                
+                // Set up event listeners
+                setupNewChatEventListeners();
+                
+                // Auto-select first conversation if available
+                if (conversations && conversations.length > 0) {
+                    selectConversation(conversations[0]);
                 }
             }
+
+            function populateConversationsList(conversations) {
+                const conversationsList = document.getElementById('conversations-list');
+                if (!conversationsList) return;
+
+                if (!conversations || conversations.length === 0) {
+                    conversationsList.innerHTML = '<div style="padding: 1rem; text-align: center; color: #666;">No conversations found</div>';
+                    return;
+                }
+
+                conversationsList.innerHTML = conversations.map(conv => {
+                    // Format last message with sender prefix
+                    let lastMessageDisplay = 'No messages yet';
+                    if (conv.lastMessageContent) {
+                        const isOwnLastMessage = conv.lastMessageSenderId === currentUser?.id;
+                        const senderPrefix = isOwnLastMessage ? 'You: ' : `${conv.userName || conv.OtherPartyName || 'Other'}: `;
+                        lastMessageDisplay = senderPrefix + conv.lastMessageContent;
+                    }
+                    
+                    return `
+                        <div class="conversation-item" data-conversation-id="${conv.id}" 
+                             style="padding: 1rem; border-bottom: 1px solid #eee; cursor: pointer; transition: background-color 0.2s;">
+                            <div style="font-weight: 600; margin-bottom: 0.25rem;">${conv.userName || conv.OtherPartyName || 'Unknown User'}</div>
+                            <div style="font-size: 0.85rem; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${lastMessageDisplay}
+                            </div>
+                            <div style="font-size: 0.75rem; color: #999; margin-top: 0.25rem;">
+                                ${conv.lastMessageCreatedAt ? new Date(conv.lastMessageCreatedAt).toLocaleString() : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            function setupNewChatEventListeners() {
+                // Conversation selection
+                document.addEventListener('click', (e) => {
+                    if (e.target.closest('.conversation-item')) {
+                        const conversationItem = e.target.closest('.conversation-item');
+                        const conversationId = parseInt(conversationItem.dataset.conversationId);
+                        
+                        // Find conversation data
+                        const conversations = window.lastLoadedConversations || [];
+                        const conversation = conversations.find(c => c.id === conversationId);
+                        
+                        if (conversation) {
+                            selectConversation(conversation);
+                        }
+                    }
+                });
+
+                // Message sending
+                const sendBtn = document.getElementById('send-message-btn');
+                const messageInput = document.getElementById('message-input');
+                
+                if (sendBtn) {
+                    sendBtn.addEventListener('click', sendNewMessage);
+                }
+                
+                if (messageInput) {
+                    messageInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            sendNewMessage();
+                        }
+                    });
+                }
+            }
+
+            function selectConversation(conversation) {
+                console.log('Selecting conversation:', conversation);
+                currentConversation = conversation;
+                
+                // Update UI
+                updateConversationSelection(conversation.id);
+                updateChatHeader(conversation.OtherPartyName || 'Unknown');
+                showMessageInput();
+                
+                // Load messages
+                loadConversationMessages(conversation.id);
+                
+                // Start polling for new messages
+                startMessagePolling(conversation.id);
+            }
+
+            function updateConversationSelection(conversationId) {
+                // Remove previous selection
+                document.querySelectorAll('.conversation-item').forEach(item => {
+                    item.style.backgroundColor = 'transparent';
+                });
+                
+                // Highlight selected
+                const selectedItem = document.querySelector(`[data-conversation-id="${conversationId}"]`);
+                if (selectedItem) {
+                    selectedItem.style.backgroundColor = '#e3f2fd';
+                }
+            }
+
+            function updateChatHeader(partnerName) {
+                const chatPartnerName = document.getElementById('chat-partner-name');
+                if (chatPartnerName) {
+                    chatPartnerName.textContent = partnerName;
+                }
+            }
+
+            function showMessageInput() {
+                const messageInputArea = document.getElementById('message-input-area');
+                const welcomeMessage = document.getElementById('welcome-message');
+                
+                if (messageInputArea) messageInputArea.style.display = 'block';
+                if (welcomeMessage) welcomeMessage.style.display = 'none';
+            }
+
+            async function loadConversationMessages(conversationId) {
+                const messagesContainer = document.getElementById('messages-container');
+                if (!messagesContainer) return;
+
+                messagesContainer.innerHTML = '<div style="text-align: center; color: #666; padding: 2rem;">Loading messages...</div>';
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${currentUser?.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load messages');
+                    }
+
+                    const data = await response.json();
+                    displayMessages(data.messages || []);
+                    
+                } catch (error) {
+                    console.error('Error loading messages:', error);
+                    messagesContainer.innerHTML = '<div style="text-align: center; color: #dc3545; padding: 2rem;">Failed to load messages</div>';
+                }
+            }
+
+            function displayMessages(messages) {
+                const messagesContainer = document.getElementById('messages-container');
+                if (!messagesContainer) return;
+
+                if (!messages || messages.length === 0) {
+                    messagesContainer.innerHTML = '<div style="text-align: center; color: #666; padding: 2rem;">No messages yet. Start the conversation!</div>';
+                    return;
+                }
+
+                messagesContainer.innerHTML = messages.map(message => {
+                    const isOwnMessage = message.SenderID === currentUser?.id;
+                    const containerStyle = isOwnMessage ? 'display: flex; justify-content: flex-end;' : 'display: flex; justify-content: flex-start;';
+                    const bubbleStyle = isOwnMessage 
+                        ? 'background: #007bff; color: white; border-bottom-right-radius: 4px;' 
+                        : 'background: #e9ecef; color: #333; border: 1px solid #dee2e6; border-bottom-left-radius: 4px;';
+                    
+                    // Get sender name
+                    const senderName = isOwnMessage ? 'You' : (message.SenderName || 'Other User');
+                    
+                    return `
+                        <div style="margin-bottom: 1rem; ${containerStyle}">
+                            <div style="padding: 0.75rem 1rem; border-radius: 18px; ${bubbleStyle} box-shadow: 0 1px 2px rgba(0,0,0,0.1); max-width: 70%;">
+                                <div style="font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem; opacity: 0.8;">${senderName}</div>
+                                <div style="margin-bottom: 0.25rem;">${message.Content}</div>
+                                <div style="font-size: 0.75rem; opacity: 0.7;">
+                                    ${new Date(message.CreatedAt).toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Scroll to bottom
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            async function sendNewMessage() {
+                if (!currentConversation) return;
+
+                const messageInput = document.getElementById('message-input');
+                const message = messageInput?.value.trim();
+
+                if (!message) return;
+
+                console.log('Sending message via Socket.IO:', message);
+
+                // Use Socket.IO for real-time message sending
+                if (window.socket) {
+                    window.socket.emit('send-message', {
+                        conversationId: currentConversation.id,
+                        senderId: currentUser?.id,
+                        content: message
+                    });
+
+                    // Clear input immediately
+                    messageInput.value = '';
+                    
+                    // Add message to UI immediately for instant feedback
+                    addMessageToUI({
+                        senderId: currentUser.id,
+                        senderName: 'You',
+                        content: message,
+                        conversationId: currentConversation.id
+                    });
+                } else {
+                    // Fallback to REST API if Socket.IO not available
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/messages`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: JSON.stringify({
+                                conversationId: currentConversation.id,
+                                senderId: currentUser?.id,
+                                content: message
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to send message');
+                        }
+
+                        // Clear input immediately
+                        messageInput.value = '';
+                        
+                        // Add message to UI immediately for instant feedback
+                        addMessageToUI({
+                            senderId: currentUser.id,
+                            senderName: 'You',
+                            content: message,
+                            conversationId: currentConversation.id
+                        });
+
+                    } catch (error) {
+                        console.error('Error sending message:', error);
+                        alert('Failed to send message. Please try again.');
+                    }
+                }
+            }
+
+            function startMessagePolling(conversationId) {
+                // Clear existing polling - we'll use Socket.IO instead
+                if (chatPollingInterval) {
+                    clearInterval(chatPollingInterval);
+                    chatPollingInterval = null;
+                }
+
+                // Socket.IO listeners are now handled globally - no need for duplicate listeners here
+            }
+
+            // Add new message to UI without full reload
+            function addMessageToUI(messageData) {
+                const messagesContainer = document.getElementById('messages-container');
+                if (!messagesContainer) return;
+
+                const isOwnMessage = messageData.senderId === currentUser?.id;
+                const containerStyle = isOwnMessage ? 'display: flex; justify-content: flex-end;' : 'display: flex; justify-content: flex-start;';
+                const bubbleStyle = isOwnMessage 
+                    ? 'background: #007bff; color: white; border-bottom-right-radius: 4px;' 
+                    : 'background: #e9ecef; color: #333; border: 1px solid #dee2e6; border-bottom-left-radius: 4px;';
+                
+                const senderName = isOwnMessage ? 'You' : (messageData.senderName || 'Other User');
+                
+                const messageHTML = `
+                    <div style="margin-bottom: 1rem; ${containerStyle}">
+                        <div style="padding: 0.75rem 1rem; border-radius: 18px; ${bubbleStyle} box-shadow: 0 1px 2px rgba(0,0,0,0.1); max-width: 70%;">
+                            <div style="font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem; opacity: 0.8;">${senderName}</div>
+                            <div style="margin-bottom: 0.25rem;">${messageData.content}</div>
+                            <div style="font-size: 0.75rem; opacity: 0.7;">
+                                ${new Date().toLocaleString()}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                messagesContainer.insertAdjacentHTML('beforeend', messageHTML);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            // Update conversation in list with new message
+            function updateConversationInList(messageData) {
+                const conversationItem = document.querySelector(`[data-conversation-id="${messageData.conversationId}"]`);
+                if (!conversationItem) return;
+
+                const isOwnMessage = messageData.senderId === currentUser?.id;
+                const senderPrefix = isOwnMessage ? 'You: ' : `${messageData.senderName || 'Other'}: `;
+                const lastMessageDisplay = senderPrefix + messageData.content;
+
+                // Update last message content
+                const lastMessageElement = conversationItem.querySelector('div:nth-child(2)');
+                if (lastMessageElement) {
+                    lastMessageElement.textContent = lastMessageDisplay;
+                }
+
+                // Update timestamp
+                const timestampElement = conversationItem.querySelector('div:nth-child(3)');
+                if (timestampElement) {
+                    timestampElement.textContent = new Date().toLocaleString();
+                }
+
+                // Move conversation to top of list
+                const conversationsList = document.getElementById('conversations-list');
+                if (conversationsList && conversationItem.parentNode === conversationsList) {
+                    conversationsList.insertBefore(conversationItem, conversationsList.firstChild);
+                }
+            }
+
+            // Store conversations globally for event handlers
+            window.lastLoadedConversations = null;
 
             function disableChatInput() {
                 const chatInput = document.getElementById('chat-input');
@@ -15868,7 +16220,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         // Load application configuration from backend
         async function loadAppConfiguration() {
             try {
-                const response = await fetch('/api/config');
+                const response = await fetch(`${API_BASE_URL}/config`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
