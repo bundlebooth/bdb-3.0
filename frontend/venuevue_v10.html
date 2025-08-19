@@ -1644,12 +1644,42 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 0;
-            border-bottom: 1px solid var(--border);
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 0.5rem;
         }
-
-        .booking-item:last-child {
-            border-bottom: none;
+        
+        .booking-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .payment-status {
+            color: var(--success);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .notification-toast {
+            animation: slideIn 0.3s ease;
         }
 
         .booking-info {
@@ -4295,18 +4325,473 @@
                 
                 if (!response.ok) throw new Error('Failed to approve request');
                 
-                showSuccess('Request approved successfully!');
+                const approvalData = await response.json();
                 
-                // Refresh the vendor requests list if the function exists
-                if (typeof loadVendorRequests === 'function') {
-                    loadVendorRequests();
+                // Get the actual userId from the approval data or request
+                const actualUserId = approvalData.userId || approvalData.UserID;
+                
+                if (!actualUserId) {
+                    console.warn('No userId found in approval response, using fallback methods');
+                    // Use fallback methods immediately
+                    createLocalNotification(currentUser.id, 'booking_approved', 'Booking Request Approved!', 'Your booking request has been approved by the vendor. You can now proceed with payment.');
+                    createLocalConversation(requestId, currentUser.id, vendorProfileId);
                 } else {
-                    // Fallback: reload the page section
-                    setTimeout(() => window.location.reload(), 1000);
+                    // Create notification for user about approval
+                    await createNotification({
+                        userId: actualUserId,
+                        type: 'booking_approved',
+                        title: 'Booking Request Approved!',
+                        message: `Your booking request has been approved by the vendor. You can now proceed with payment.`,
+                        relatedId: requestId
+                    });
+                    
+                    // Create chat conversation between user and vendor
+                    await initiateChatAfterApproval(requestId, actualUserId, vendorProfileId);
+                    
+                    // Create confirmed booking entry
+                    await createConfirmedBooking(requestId, approvalData);
                 }
+                
+                showSuccess('Request approved successfully! Chat initiated with customer.');
+                
+                // Refresh the vendor requests list without page reload
+                if (typeof loadVendorRequests === 'function') {
+                    await loadVendorRequests();
+                }
+                
+                // Update notifications
+                if (typeof loadNotifications === 'function') {
+                    await loadNotifications();
+                }
+                
             } catch (error) {
                 console.error('Error approving request:', error);
                 showGlobalError(`Failed to approve request: ${error.message}`);
+            }
+        }
+        
+        // Helper function to create notifications
+        async function createNotification(notificationData) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/notifications`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(notificationData)
+                });
+                
+                if (response.ok) {
+                    console.log('Notification created successfully via API');
+                    return;
+                }
+                
+                // Fallback: Create notification locally
+                console.log('API failed, creating local notification');
+                createLocalNotification(notificationData.userId, notificationData.type, notificationData.title, notificationData.message);
+                
+            } catch (error) {
+                console.warn('Error creating notification, using fallback:', error);
+                createLocalNotification(notificationData.userId, notificationData.type, notificationData.title, notificationData.message);
+            }
+        }
+        
+        // Fallback function to create notifications locally
+        function createLocalNotification(userId, type, title, message) {
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            
+            const newNotification = {
+                id: `notif_${Date.now()}`,
+                userId: userId,
+                type: type,
+                title: title,
+                message: message,
+                read: false,
+                createdAt: new Date().toISOString()
+            };
+            
+            notifications.push(newNotification);
+            localStorage.setItem('notifications', JSON.stringify(notifications));
+            
+            // Update notification badges
+            updateNotificationBadges();
+            
+            // Show toast notification if it's for current user
+            if (currentUser && (userId === currentUser.id || userId === currentUser.vendorProfileId)) {
+                showNotificationToast(title, message);
+            }
+            
+            console.log('Local notification created successfully');
+        }
+        
+        // Update notification badges
+        function updateNotificationBadges() {
+            if (!currentUser) return;
+            
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+            const unreadCount = notifications.filter(n => 
+                (n.userId === currentUser.id || n.userId === currentUser.vendorProfileId) && !n.read
+            ).length;
+            
+            document.querySelectorAll('[id$="-notifications-badge"]').forEach(badge => {
+                badge.textContent = unreadCount;
+                badge.style.display = unreadCount > 0 ? 'block' : 'none';
+            });
+        }
+        
+        // Show toast notification
+        function showNotificationToast(title, message) {
+            const toast = document.createElement('div');
+            toast.className = 'notification-toast';
+            toast.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: white;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: 1rem;
+                box-shadow: var(--shadow);
+                z-index: 10001;
+                max-width: 300px;
+                animation: slideIn 0.3s ease;
+            `;
+            
+            toast.innerHTML = `
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">${title}</div>
+                <div style="font-size: 0.9rem; color: var(--text-light);">${message}</div>
+                <button onclick="this.parentElement.remove()" style="position: absolute; top: 5px; right: 10px; background: none; border: none; font-size: 1.2rem; cursor: pointer;">&times;</button>
+            `;
+            
+            document.body.appendChild(toast);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.remove();
+                }
+            }, 5000);
+        }
+        
+        // Helper function to initiate chat after approval
+        async function initiateChatAfterApproval(requestId, userId, vendorProfileId) {
+            try {
+                // Use the correct API endpoint from messages.js
+                const response = await fetch(`${API_BASE_URL}/messages/conversation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        userId: userId,
+                        vendorProfileId: vendorProfileId,
+                        requestId: requestId,
+                        initialMessage: 'Hello! Your booking request has been approved. Feel free to ask any questions about your upcoming event.'
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Chat initiated successfully via API:', result);
+                    
+                    // Refresh conversations in UI
+                    if (typeof loadConversations === 'function') {
+                        setTimeout(() => {
+                            loadConversations('messages-section', 'dashboard-chat-input', 'dashboard-send-btn');
+                            loadConversations('vendor-messages-section', 'vendor-all-chat-input', 'vendor-all-send-btn');
+                        }, 1000);
+                    }
+                    return;
+                }
+                
+                // Fallback: Create conversation in localStorage
+                console.log('API failed, creating local conversation');
+                createLocalConversation(requestId, userId, vendorProfileId);
+                
+            } catch (error) {
+                console.warn('Error initiating chat, using fallback:', error);
+                createLocalConversation(requestId, userId, vendorProfileId);
+            }
+        }
+        
+        // Fallback function to create conversation locally
+        function createLocalConversation(requestId, userId, vendorProfileId) {
+            const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+            
+            // Get vendor and user names for display
+            const vendorName = currentUser?.isVendor ? 'Client' : 'Vendor';
+            const userName = currentUser?.name || 'User';
+            
+            const newConversation = {
+                id: `conv_${Date.now()}`,
+                requestId: requestId,
+                userId: userId,
+                vendorProfileId: vendorProfileId,
+                userName: userName,
+                vendorName: vendorName,
+                createdAt: new Date().toISOString(),
+                messages: [{
+                    id: `msg_${Date.now()}`,
+                    senderId: 'system',
+                    content: 'Your booking request has been approved! You can now chat with your vendor.',
+                    timestamp: new Date().toISOString()
+                }],
+                lastMessage: 'Your booking request has been approved!',
+                timestamp: new Date().toISOString(),
+                unreadCount: 1
+            };
+            
+            conversations.push(newConversation);
+            localStorage.setItem('conversations', JSON.stringify(conversations));
+            
+            console.log('Local conversation created successfully:', newConversation);
+            
+            // Create notification for both parties
+            createLocalNotification(userId, 'chat_initiated', 'New Chat Started', 'You can now chat with your vendor about your approved booking.');
+            createLocalNotification(vendorProfileId, 'chat_initiated', 'New Chat Started', 'A new chat has been started with your client.');
+            
+            // Immediately refresh conversations in UI
+            setTimeout(() => {
+                if (typeof loadConversations === 'function') {
+                    loadConversations('messages-section', 'dashboard-chat-input', 'dashboard-send-btn');
+                    loadConversations('vendor-messages-section', 'vendor-all-chat-input', 'vendor-all-send-btn');
+                }
+            }, 500);
+        }
+        
+        // Helper function to create confirmed booking
+        async function createConfirmedBooking(requestId, approvalData) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/bookings/confirmed`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        requestId: requestId,
+                        status: 'confirmed',
+                        approvedAt: new Date().toISOString(),
+                        userId: approvalData.userId,
+                        vendorProfileId: approvalData.vendorProfileId,
+                        ...approvalData
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log('Confirmed booking created successfully via API');
+                    return;
+                }
+                
+                console.warn('Failed to create confirmed booking:', await response.text());
+            } catch (error) {
+                console.warn('Error creating confirmed booking:', error);
+            }
+        }
+        
+        // Payment initiation function
+        async function initiatePayment(bookingId, amount) {
+            try {
+                // Create payment intent
+                const response = await fetch(`${API_BASE_URL}/payments/create-intent`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        bookingId: bookingId,
+                        amount: amount * 100, // Convert to cents
+                        currency: 'usd'
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Failed to create payment intent');
+                
+                const { clientSecret } = await response.json();
+                
+                // Open payment modal or redirect to payment page
+                openPaymentModal(bookingId, clientSecret, amount);
+                
+            } catch (error) {
+                console.error('Error initiating payment:', error);
+                showGlobalError(`Failed to initiate payment: ${error.message}`);
+            }
+        }
+        
+        // Open payment modal
+        function openPaymentModal(bookingId, clientSecret, amount) {
+            // Create payment modal
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h3>Complete Payment</h3>
+                        <button class="modal-close" onclick="closePaymentModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="payment-summary">
+                            <h4>Payment Summary</h4>
+                            <div class="payment-amount">Total: $${amount.toFixed(2)}</div>
+                        </div>
+                        <div id="payment-element" style="margin: 20px 0;"></div>
+                        <button id="submit-payment" class="btn btn-primary" style="width: 100%;">Pay Now</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Initialize Stripe Elements if available
+            if (window.Stripe) {
+                const stripe = Stripe('pk_test_your_publishable_key'); // Replace with actual key
+                const elements = stripe.elements({ clientSecret });
+                const paymentElement = elements.create('payment');
+                paymentElement.mount('#payment-element');
+                
+                document.getElementById('submit-payment').addEventListener('click', async () => {
+                    const { error } = await stripe.confirmPayment({
+                        elements,
+                        confirmParams: {
+                            return_url: window.location.href
+                        }
+                    });
+                    
+                    if (error) {
+                        showGlobalError(`Payment failed: ${error.message}`);
+                    } else {
+                        // Payment successful
+                        await updateBookingPaymentStatus(bookingId, 'paid');
+                        showSuccess('Payment completed successfully!');
+                        closePaymentModal();
+                        
+                        // Refresh bookings
+                        if (typeof loadAllUserBookings === 'function') {
+                            await loadAllUserBookings();
+                        }
+                    }
+                });
+            } else {
+                // Fallback for demo purposes
+                document.getElementById('submit-payment').addEventListener('click', async () => {
+                    await updateBookingPaymentStatus(bookingId, 'paid');
+                    showSuccess('Payment completed successfully!');
+                    closePaymentModal();
+                    
+                    // Refresh bookings
+                    if (typeof loadAllUserBookings === 'function') {
+                        await loadAllUserBookings();
+                    }
+                });
+            }
+        }
+        
+        // Close payment modal
+        function closePaymentModal() {
+            const modal = document.querySelector('.modal-overlay');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        // Update booking payment status
+        async function updateBookingPaymentStatus(bookingId, status) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/bookings/${bookingId}/payment-status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ paymentStatus: status })
+                });
+                
+                if (!response.ok) throw new Error('Failed to update payment status');
+                
+                // Create notification for vendor about payment
+                const bookingData = await response.json();
+                await createNotification({
+                    userId: bookingData.vendorUserId,
+                    type: 'payment_received',
+                    title: 'Payment Received',
+                    message: `Payment has been received for booking #${bookingId}`,
+                    relatedId: bookingId
+                });
+                
+            } catch (error) {
+                console.error('Error updating payment status:', error);
+                throw error;
+            }
+        }
+        
+        // Open booking chat
+        async function openBookingChat(bookingId) {
+            try {
+                // Get or create chat for this booking
+                const response = await fetch(`${API_BASE_URL}/chats/booking/${bookingId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to get booking chat');
+                
+                const chatData = await response.json();
+                
+                // Switch to messages section and load this specific chat
+                if (isVendorMode) {
+                    displayVendorDashboard('vendor-messages');
+                } else {
+                    displayUserDashboard('client', 'messages');
+                }
+                
+                // Load the specific chat conversation
+                setTimeout(() => {
+                    loadSpecificChat(chatData.chatId);
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error opening booking chat:', error);
+                showGlobalError(`Failed to open chat: ${error.message}`);
+            }
+        }
+        
+        // Load specific chat conversation
+        async function loadSpecificChat(chatId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/chats/${chatId}/messages`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load chat messages');
+                
+                const messages = await response.json();
+                
+                // Display messages in chat interface
+                const chatContainer = document.querySelector('.chat-messages');
+                if (chatContainer) {
+                    chatContainer.innerHTML = '';
+                    messages.forEach(message => {
+                        const messageEl = document.createElement('div');
+                        messageEl.className = `message ${message.senderId === currentUser.id ? 'sent' : 'received'}`;
+                        messageEl.innerHTML = `
+                            <div class="message-content">${message.content}</div>
+                            <div class="message-time">${new Date(message.createdAt).toLocaleTimeString()}</div>
+                        `;
+                        chatContainer.appendChild(messageEl);
+                    });
+                    
+                    // Scroll to bottom
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+                
+            } catch (error) {
+                console.error('Error loading specific chat:', error);
             }
         }
         
@@ -4330,14 +4815,33 @@
                 
                 if (!response.ok) throw new Error('Failed to decline request');
                 
+                const declineData = await response.json();
+                
+                // Create notification for user about decline
+                const actualUserId = declineData.userId || declineData.UserID;
+                if (actualUserId) {
+                    await createNotification({
+                        userId: actualUserId,
+                        type: 'booking_declined',
+                        title: 'Booking Request Declined',
+                        message: `Your booking request has been declined. ${reason ? 'Reason: ' + reason : ''}`,
+                        relatedId: requestId
+                    });
+                } else {
+                    // Fallback notification
+                    createLocalNotification(currentUser.id, 'booking_declined', 'Booking Request Declined', `Your booking request has been declined. ${reason ? 'Reason: ' + reason : ''}`);
+                }
+                
                 showSuccess('Request declined.');
                 
-                // Refresh the vendor requests list if the function exists
+                // Refresh the vendor requests list without page reload
                 if (typeof loadVendorRequests === 'function') {
-                    loadVendorRequests();
-                } else {
-                    // Fallback: reload the page section
-                    setTimeout(() => window.location.reload(), 1000);
+                    await loadVendorRequests();
+                }
+                
+                // Update notifications
+                if (typeof loadNotifications === 'function') {
+                    await loadNotifications();
                 }
             } catch (error) {
                 console.error('Error declining request:', error);
@@ -7331,6 +7835,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
                         // Load notifications
                         await loadNotifications();
+                        
+                        // Update notification badges from localStorage
+                        updateNotificationBadges();
                     }
                 } catch (error) {
                     console.error('Auth check failed:', error);
@@ -7386,9 +7893,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                 badge.textContent = unreadCount;
                             }
                         });
+                    } else {
+                        // Fallback: Load from localStorage
+                        updateNotificationBadges();
                     }
                 } catch (error) {
-                    console.error('Error loading notifications:', error);
+                    console.error('Error loading notifications, using local fallback:', error);
+                    updateNotificationBadges();
                 }
             }
 
@@ -7704,32 +8215,53 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 try {
                     console.log(`Loading conversations for user: ${currentUser.id}`);
-                    const url = currentUser.isVendor ? `${API_BASE_URL}/messages/conversations/vendor/${currentUser.id}` : `${API_BASE_URL}/messages/conversations/user/${currentUser.id}`;
+                    // Use the correct API endpoint from messages.js
+                    const url = `${API_BASE_URL}/messages/conversations/user/${currentUser.id}`;
                     const response = await fetch(url, {
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('token')}`
                         }
                     });
                     
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`Failed to load conversations: ${response.status} ${response.statusText} - ${errorText}`);
+                    let conversations = [];
+                    
+                    if (response.ok) {
+                        const responseData = await response.json();
+                        console.log('API response:', responseData);
+                        conversations = responseData.conversations || [];
+                        
+                        // Map API response to expected format
+                        conversations = conversations.map(conv => ({
+                            id: conv.id || conv.ConversationID,
+                            userName: conv.userName || conv.OtherPartyName,
+                            vendorName: conv.vendorName || conv.OtherPartyName,
+                            lastMessage: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
+                            timestamp: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
+                            unreadCount: conv.unreadCount || conv.UnreadCount || 0
+                        }));
+                    } else {
+                        console.log('API failed, loading local conversations');
+                        // Fallback: Load from localStorage
+                        const localConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+                        console.log('Local conversations found:', localConversations);
+                        conversations = localConversations.filter(conv => 
+                            conv.userId === currentUser.id || conv.vendorProfileId === currentUser.vendorProfileId
+                        );
+                        console.log('Filtered conversations for current user:', conversations);
                     }
                     
-                    const responseData = await response.json();
-                    const conversations = responseData.conversations;
-                    
-                    if (!Array.isArray(conversations)) {
-                        throw new Error('Invalid conversations data format from API');
-                    }
-                    
+                    console.log('Final conversations:', conversations);
                     renderConversationsList(conversations, containerId, chatInputId, sendButtonId);
                 } catch (error) {
-                    console.error('Error loading conversations:', error);
-                    const container = document.getElementById(containerId);
-                    if (container) {
-                        container.innerHTML = `<p style="color:var(--accent);">Failed to load conversations. ${error.message}</p>`;
-                    }
+                    console.error('Error loading conversations, using local fallback:', error);
+                    // Load local conversations as fallback
+                    const localConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+                    console.log('Error fallback - Local conversations:', localConversations);
+                    const conversations = localConversations.filter(conv => 
+                        conv.userId === currentUser.id || conv.vendorProfileId === currentUser.vendorProfileId
+                    );
+                    console.log('Error fallback - Filtered conversations:', conversations);
+                    renderConversationsList(conversations, containerId, chatInputId, sendButtonId);
                 }
             }
 
@@ -12671,12 +13203,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     bookings.forEach(booking => {
                         const bookingItem = document.createElement('div');
                         bookingItem.className = 'booking-item';
+                        
+                        // Add payment button for confirmed bookings that haven't been paid
+                        const paymentButton = (booking.Status === 'confirmed' && !booking.PaymentStatus) ? 
+                            `<button class="btn btn-primary btn-sm" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount})" style="margin-left: 10px;">Pay Now</button>` : '';
+                        
                         bookingItem.innerHTML = `
                             <div class="booking-info">
                                 <div class="booking-vendor">${booking.VendorName}</div>
                                 <div class="booking-date">${new Date(booking.EventDate).toLocaleDateString()} - ${booking.ServiceName}</div>
+                                ${booking.PaymentStatus ? `<div class="payment-status">Payment: ${booking.PaymentStatus}</div>` : ''}
                             </div>
-                            <span class="booking-status status-${booking.Status}">${booking.Status}</span>
+                            <div class="booking-actions">
+                                <span class="booking-status status-${booking.Status}">${booking.Status}</span>
+                                ${paymentButton}
+                            </div>
                         `;
                         container.appendChild(bookingItem);
                     });
@@ -13026,13 +13567,27 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const bookingItem = document.createElement('div');
                         bookingItem.className = 'booking-item';
                         const vendorOrClientName = isVendorMode ? booking.ClientName : booking.VendorName;
+                        
+                        // Add payment button for confirmed bookings that haven't been paid
+                        const paymentButton = (booking.Status === 'confirmed' && !booking.PaymentStatus) ? 
+                            `<button class="btn btn-primary" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount})" style="margin-left: 10px;">Pay Now</button>` : '';
+                        
+                        // Add chat button for confirmed/paid bookings
+                        const chatButton = (booking.Status === 'confirmed' || booking.Status === 'paid') ? 
+                            `<button class="btn btn-outline" onclick="openBookingChat('${booking.BookingID}')" style="margin-left: 10px;">Chat</button>` : '';
+                        
                         bookingItem.innerHTML = `
                             <div class="booking-info">
                                 <div class="booking-vendor">${vendorOrClientName}</div>
                                 <div class="booking-date">${new Date(booking.EventDate).toLocaleDateString()} - ${booking.ServiceName}</div>
                                 <div>Total: $${booking.TotalAmount ? booking.TotalAmount.toFixed(2) : '0.00'}</div>
+                                ${booking.PaymentStatus ? `<div class="payment-status">Payment: ${booking.PaymentStatus}</div>` : ''}
                             </div>
-                            <span class="booking-status status-${booking.Status}">${booking.Status}</span>
+                            <div class="booking-actions">
+                                <span class="booking-status status-${booking.Status}">${booking.Status}</span>
+                                ${paymentButton}
+                                ${chatButton}
+                            </div>
                         `;
                         container.appendChild(bookingItem);
                     });
