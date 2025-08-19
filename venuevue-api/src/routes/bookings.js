@@ -894,4 +894,46 @@ router.post('/requests/:requestId/cancel', async (req, res) => {
   }
 });
 
+// Create confirmed booking
+router.post('/confirmed', async (req, res) => {
+  try {
+    const { requestId, status, approvedAt, userId, vendorProfileId } = req.body;
+
+    if (!requestId || !status) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'requestId and status are required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    request.input('RequestID', sql.Int, requestId);
+    request.input('Status', sql.NVarChar(50), status);
+    request.input('ApprovedAt', sql.DateTime, new Date(approvedAt));
+    request.input('UserID', sql.Int, userId || null);
+    request.input('VendorProfileID', sql.Int, vendorProfileId || null);
+
+    const result = await request.query(`
+      INSERT INTO ConfirmedBookings (RequestID, Status, ApprovedAt, UserID, VendorProfileID, CreatedAt)
+      OUTPUT INSERTED.*
+      VALUES (@RequestID, @Status, @ApprovedAt, @UserID, @VendorProfileID, GETDATE())
+    `);
+    
+    res.json({
+      success: true,
+      booking: result.recordset[0]
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to create confirmed booking',
+      error: err.message 
+    });
+  }
+});
+
 module.exports = router;
