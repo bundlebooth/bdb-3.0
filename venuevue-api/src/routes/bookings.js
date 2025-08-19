@@ -897,40 +897,61 @@ router.post('/requests/:requestId/cancel', async (req, res) => {
   }
 });
 
-// Create confirmed booking
+// Create confirmed booking record
 router.post('/confirmed', async (req, res) => {
   try {
     const { requestId, status, approvedAt, userId, vendorProfileId } = req.body;
 
-    if (!requestId || !status) {
+    if (!requestId || !userId || !vendorProfileId) {
       return res.status(400).json({ 
         success: false,
-        message: 'requestId and status are required' 
+        message: 'RequestId, userId, and vendorProfileId are required' 
       });
     }
 
     const pool = await poolPromise;
-    const request = new sql.Request(pool);
     
-    request.input('RequestID', sql.Int, requestId);
-    request.input('Status', sql.NVarChar(50), status);
-    request.input('ApprovedAt', sql.DateTime, new Date(approvedAt));
-    request.input('UserID', sql.Int, userId || null);
-    request.input('VendorProfileID', sql.Int, vendorProfileId || null);
+    // Get request details to create booking
+    const requestDetails = await pool.request()
+      .input('RequestID', sql.Int, requestId)
+      .query(`
+        SELECT EventDate, EventTime, EventLocation, AttendeeCount, Budget, Services, SpecialRequestText
+        FROM BookingRequests 
+        WHERE RequestID = @RequestID
+      `);
+
+    if (requestDetails.recordset.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Booking request not found' 
+      });
+    }
+
+    const requestData = requestDetails.recordset[0];
+    
+    // Create booking in Bookings table
+    const request = pool.request();
+    request.input('UserID', sql.Int, userId);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('ServiceID', sql.Int, 1); // Default service ID
+    request.input('EventDate', sql.DateTime, requestData.EventDate || new Date());
+    request.input('Status', sql.NVarChar(20), 'confirmed');
+    request.input('AttendeeCount', sql.Int, requestData.AttendeeCount || 1);
+    request.input('SpecialRequests', sql.NVarChar(sql.MAX), requestData.SpecialRequestText);
+    request.input('TotalAmount', sql.Decimal(10, 2), requestData.Budget || 0);
 
     const result = await request.query(`
-      INSERT INTO ConfirmedBookings (RequestID, Status, ApprovedAt, UserID, VendorProfileID, CreatedAt)
-      OUTPUT INSERTED.*
-      VALUES (@RequestID, @Status, @ApprovedAt, @UserID, @VendorProfileID, GETDATE())
+      INSERT INTO Bookings (UserID, VendorProfileID, ServiceID, EventDate, Status, AttendeeCount, SpecialRequests, TotalAmount)
+      VALUES (@UserID, @VendorProfileID, @ServiceID, @EventDate, @Status, @AttendeeCount, @SpecialRequests, @TotalAmount)
     `);
-    
+
     res.json({
       success: true,
-      booking: result.recordset[0]
+      message: 'Confirmed booking created successfully'
     });
 
   } catch (err) {
-    console.error('Database error:', err);
+    console.error('Create confirmed booking error:', err);
     res.status(500).json({ 
       success: false,
       message: 'Failed to create confirmed booking',
