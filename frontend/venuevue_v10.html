@@ -3830,15 +3830,15 @@
                 <!-- Step 3: Vendor Matching -->
                 <div class="booking-step" id="booking-step-3" style="display: none;">
                     <h4 class="form-section-title">Available Vendors</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select vendors that match your requirements.</p>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select vendors that match your requirements. Vendors are grouped by category and service for easy browsing.</p>
                     
-                    <div id="vendor-loading" style="text-align: center; padding: 2rem; display: none;">
+                    <div id="vendor-loading" style="display: none; text-align: center; padding: 2rem;">
                         <div class="loading-spinner"></div>
-                        <p>Finding vendors that match your requirements...</p>
+                        <p>Finding matching vendors for each service...</p>
                     </div>
                     
-                    <div id="vendor-results" class="vendor-grid">
-                        <!-- Vendor cards will be populated here -->
+                    <div id="vendor-results" class="vendor-sections-container">
+                        <!-- Vendor sections will be populated here -->
                     </div>
                     
                     <div id="no-vendors-found" style="display: none; text-align: center; padding: 2rem;">
@@ -5586,51 +5586,88 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateBookingStep(3);
 
                 try {
-                    // Prepare search criteria using predefined services and individual budgets
-                    const selectedServiceIds = bookingState.selectedPredefinedServices.map(s => s.id);
-                    const totalBudget = bookingState.selectedPredefinedServices.reduce((sum, s) => sum + s.budget, 0);
-                    
-                    // Create detailed service requirements for vendor matching
-                    const serviceRequirements = bookingState.selectedPredefinedServices.map(service => ({
-                        serviceId: service.id,
-                        serviceName: service.name,
-                        category: service.category,
-                        budget: service.budget,
-                        duration: service.defaultDuration
-                    }));
-
-                    // Search for vendors using the new predefined services endpoint
-                    const searchPayload = {
-                        selectedServices: serviceRequirements,
-                        eventDetails: bookingState.eventDetails,
-                        totalBudget: totalBudget,
-                        serviceIds: selectedServiceIds
-                    };
-
-                    const response = await fetch(`${API_BASE_URL}/vendors/search-by-services`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(searchPayload)
+                    // Group selected services by category for sectioned display
+                    const servicesByCategory = {};
+                    bookingState.selectedPredefinedServices.forEach(service => {
+                        const category = service.category || 'Other';
+                        if (!servicesByCategory[category]) {
+                            servicesByCategory[category] = [];
+                        }
+                        servicesByCategory[category].push(service);
                     });
 
-                    const data = await response.json();
+                    console.log('Services grouped by category:', servicesByCategory);
+
+                    // Make separate API calls for each category and service combination
+                    const vendorSections = [];
+                    let totalVendorsFound = 0;
+
+                    for (const [category, services] of Object.entries(servicesByCategory)) {
+                        for (const service of services) {
+                            console.log(`Searching vendors for category: ${category}, service: ${service.name}`);
+                            
+                            const serviceRequirement = {
+                                serviceId: service.id,
+                                serviceName: service.name,
+                                category: service.category,
+                                budget: service.budget,
+                                duration: service.defaultDuration
+                            };
+
+                            const searchPayload = {
+                                selectedServices: [serviceRequirement],
+                                eventDetails: bookingState.eventDetails,
+                                totalBudget: service.budget,
+                                serviceIds: [service.id]
+                            };
+
+                            try {
+                                const response = await fetch(`${API_BASE_URL}/vendors/search-by-services`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify(searchPayload)
+                                });
+
+                                const data = await response.json();
+                                
+                                if (data.success && data.vendors && data.vendors.length > 0) {
+                                    vendorSections.push({
+                                        category: category,
+                                        service: service,
+                                        vendors: data.vendors
+                                    });
+                                    totalVendorsFound += data.vendors.length;
+                                    console.log(`Found ${data.vendors.length} vendors for ${category} - ${service.name}`);
+                                } else {
+                                    console.log(`No vendors found for ${category} - ${service.name}`);
+                                }
+                            } catch (sectionError) {
+                                console.error(`Error searching vendors for ${category} - ${service.name}:`, sectionError);
+                            }
+                        }
+                    }
+
                     document.getElementById('vendor-loading').style.display = 'none';
 
-                    if (data.success && data.vendors && data.vendors.length > 0) {
-                        bookingState.availableVendors = data.vendors;
-                        renderVendorResults(data.vendors);
+                    if (vendorSections.length > 0) {
+                        // Store all vendors for selection tracking
+                        bookingState.availableVendors = vendorSections.flatMap(section => section.vendors);
+                        
+                        // Render sectioned vendor results
+                        renderSectionedVendorResults(vendorSections);
                         
                         // Update step 3 header with match info
                         const step3Title = document.querySelector('#booking-step-3 .form-section-title');
                         if (step3Title) {
-                            step3Title.textContent = `Found ${data.vendors.length} Matching Vendors`;
+                            step3Title.textContent = `Found ${totalVendorsFound} Matching Vendors across ${vendorSections.length} Services`;
                         }
                     } else {
                         document.getElementById('no-vendors-found').style.display = 'block';
                         
                         // Show helpful message about no matches
+                        const totalBudget = bookingState.selectedPredefinedServices.reduce((sum, s) => sum + s.budget, 0);
                         const noVendorsDiv = document.getElementById('no-vendors-found');
                         if (noVendorsDiv) {
                             noVendorsDiv.innerHTML = `
@@ -5709,6 +5746,68 @@ document.addEventListener('DOMContentLoaded', function() {
                 }).join('');
 
                 vendorResults.innerHTML = vendorCards;
+            }
+
+            // New function to render vendors grouped by category and service
+            function renderSectionedVendorResults(vendorSections) {
+                const vendorResults = document.getElementById('vendor-results');
+                
+                const sectionedHTML = vendorSections.map(section => {
+                    const { category, service, vendors } = section;
+                    
+                    const vendorCards = vendors.map(vendor => {
+                        // Calculate estimated price for this specific service
+                        const estimatedPrice = service.budget || 500;
+
+                        return `
+                            <div class="vendor-card" data-vendor-id="${vendor.VendorProfileID || vendor.id}">
+                                <div class="vendor-card-header">
+                                    <div class="vendor-avatar">
+                                        ${(vendor.BusinessName || vendor.name || 'V').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div class="vendor-info">
+                                        <h5>${vendor.BusinessName || vendor.name || 'Vendor'}</h5>
+                                        <div class="vendor-rating">
+                                            <span>⭐ ${vendor.rating || '4.5'}</span>
+                                            <span>(${vendor.reviewCount || '12'} reviews)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="vendor-services">
+                                    <h6>Service:</h6>
+                                    <p>${service.name}</p>
+                                    <small style="color: var(--text-light);">Duration: ${service.defaultDuration || 60} minutes</small>
+                                </div>
+                                <div class="vendor-price">
+                                    Budget: $${Math.round(estimatedPrice).toLocaleString()}
+                                </div>
+                                <div class="vendor-actions">
+                                    <button class="btn-select-vendor" onclick="toggleVendorSelection(${vendor.VendorProfileID || vendor.id})">
+                                        Select Vendor
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    return `
+                        <div class="vendor-section" style="margin-bottom: 3rem; border: 2px solid #e1e8f0; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                            <div class="section-header" style="background: #2c3e50; color: #ffffff; padding: 1.2rem; border-radius: 10px 10px 0 0; margin-bottom: 0; border-bottom: 3px solid #34495e;">
+                                <h4 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">
+                                    <span style="color: #3498db; font-weight: 600;">${category}</span> - ${service.name}
+                                </h4>
+                                <p style="margin: 0.5rem 0 0 0; font-size: 0.95rem; color: #ecf0f1; opacity: 0.95;">
+                                    📍 ${vendors.length} vendor${vendors.length !== 1 ? 's' : ''} available • 💰 Budget: $${service.budget?.toLocaleString() || 'Not specified'}
+                                </p>
+                            </div>
+                            <div class="vendor-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; padding: 2rem; background: #ffffff; border-radius: 0 0 10px 10px;">
+                                ${vendorCards}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                vendorResults.innerHTML = sectionedHTML;
             }
 
             function toggleVendorSelection(vendorId) {
