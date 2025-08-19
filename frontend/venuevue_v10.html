@@ -6451,24 +6451,52 @@ document.addEventListener('DOMContentLoaded', function() {
                 return '12:00:00';
             }
 
+            // Booking-specific error handler
+            function showBookingError(message) {
+                const errorContainer = document.getElementById('booking-error-container') || createBookingErrorContainer();
+                errorContainer.innerHTML = `
+                    <div class="alert alert-error" style="margin-bottom: 1rem; padding: 0.75rem; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: 8px; color: var(--accent);">
+                        <strong>Error:</strong> ${message}
+                    </div>
+                `;
+                errorContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            function createBookingErrorContainer() {
+                const container = document.createElement('div');
+                container.id = 'booking-error-container';
+                const modalBody = document.querySelector('#booking-modal .modal-body');
+                modalBody.insertBefore(container, modalBody.firstChild);
+                return container;
+            }
+
+            function clearBookingError() {
+                const errorContainer = document.getElementById('booking-error-container');
+                if (errorContainer) {
+                    errorContainer.innerHTML = '';
+                }
+            }
+
             async function handleSendRequests() {
+                clearBookingError();
+                
                 if (bookingState.selectedVendors.length === 0) {
-                    showError('Please select at least one vendor.');
+                    showBookingError('Please select at least one vendor.');
                     return;
                 }
 
                 if (!currentUser?.id) {
-                    showError('Please log in to send booking requests.');
+                    showBookingError('Please log in to send booking requests.');
                     return;
                 }
 
                 // Validate and format time
-                if (!bookingState.eventDetails?.time) {
-                    showError('Please select an event time.');
+                if (!bookingState.eventDetails?.startTime) {
+                    showBookingError('Please select an event time.');
                     return;
                 }
 
-                const formattedTime = formatTimeForBackend(bookingState.eventDetails.time);
+                const formattedTime = formatTimeForBackend(bookingState.eventDetails.startTime);
 
                 try {
                     // Send booking requests to backend API
@@ -6507,7 +6535,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }));
 
                         renderRequestSummary();
-                        updateBookingStep(4);
+                        updateBookingStep(5);
                         
                         // Start polling for approval updates
                         startApprovalPolling();
@@ -6517,7 +6545,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 } catch (error) {
                     console.error('Error sending requests:', error);
-                    showError('Failed to send booking requests. Please try again.');
+                    showBookingError('Failed to send booking requests. Please try again.');
                 }
             }
 
@@ -6767,7 +6795,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 } catch (error) {
                     console.error('Error completing booking:', error);
-                    showError('Failed to complete booking. Please try again.');
+                    showBookingError('Failed to complete booking. Please try again.');
                 }
             }
 
