@@ -5847,15 +5847,630 @@ INSERT INTO PredefinedServices (Category, ServiceName, ServiceDescription, Defau
 
 GO
 
+-- =============================================
+-- STORED PROCEDURES FOR REQUEST MANAGEMENT SYSTEM
+-- =============================================
+
+-- Create a new booking request
+CREATE OR ALTER PROCEDURE sp_CreateBookingRequest
+    @UserID INT,
+    @VendorProfileID INT,
+    @ServiceID INT = NULL,
+    @EventDate DATE,
+    @EventTime TIME = NULL,
+    @EventLocation NVARCHAR(500) = NULL,
+    @AttendeeCount INT = 1,
+    @Budget DECIMAL(10, 2) = NULL,
+    @SpecialRequests NVARCHAR(MAX) = NULL,
+    @Services NVARCHAR(MAX) = NULL, -- JSON string for multiple services
+    @ExpiresInHours INT = 24
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        DECLARE @RequestID INT;
+        DECLARE @ExpiresAt DATETIME = DATEADD(HOUR, @ExpiresInHours, GETDATE());
+        
+        -- Insert booking request
+        INSERT INTO BookingRequests (
+            UserID, VendorProfileID, ServiceID, EventDate, EventTime, 
+            EventLocation, AttendeeCount, Budget, SpecialRequests, 
+            Services, Status, ExpiresAt, CreatedAt
+        )
+        VALUES (
+            @UserID, @VendorProfileID, @ServiceID, @EventDate, @EventTime,
+            @EventLocation, @AttendeeCount, @Budget, @SpecialRequests,
+            @Services, 'pending', @ExpiresAt, GETDATE()
+        );
+        
+        SET @RequestID = SCOPE_IDENTITY();
+        
+        -- Create conversation for the request
+        DECLARE @ConversationID INT;
+        EXEC sp_CreateConversation 
+            @UserID = @UserID,
+            @VendorProfileID = @VendorProfileID,
+            @Subject = 'Booking Request',
+            @ConversationID = @ConversationID OUTPUT;
+        
+        -- Send initial message
+        IF @ConversationID IS NOT NULL
+        BEGIN
+            DECLARE @InitialMessage NVARCHAR(MAX) = 
+                'New booking request for ' + CONVERT(NVARCHAR(10), @EventDate, 101);
+            
+            IF @EventTime IS NOT NULL
+                SET @InitialMessage = @InitialMessage + ' at ' + CONVERT(NVARCHAR(8), @EventTime, 108);
+            
+            SET @InitialMessage = @InitialMessage + '. Please review and respond within ' + 
+                CAST(@ExpiresInHours AS NVARCHAR(10)) + ' hours.';
+            
+            EXEC sp_SendMessage 
+                @ConversationID = @ConversationID,
+                @SenderID = @UserID,
+                @Content = @InitialMessage;
+        END
+        
+        -- Create notification for vendor
+        INSERT INTO Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
+        SELECT 
+            u.UserID,
+            'New Booking Request',
+            'You have received a new booking request from ' + (SELECT Name FROM Users WHERE UserID = @UserID),
+            'booking_request',
+            @RequestID,
+            'request'
+        FROM Users u
+        JOIN VendorProfiles vp ON u.UserID = vp.UserID
+        WHERE vp.VendorProfileID = @VendorProfileID;
+        
+        SELECT 
+            @RequestID AS RequestID,
+            'success' AS Status,
+            'Booking request created successfully' AS Message;
+        
+        COMMIT TRANSACTION;
+        
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        SELECT 
+            NULL AS RequestID,
+            'error' AS Status,
+            'Error creating booking request: ' + @ErrorMessage AS Message;
+    END CATCH
+END;
+GO
+
+-- Get booking requests for a user
+CREATE OR ALTER PROCEDURE sp_GetUserBookingRequests
+    @UserID INT,
+    @Status NVARCHAR(50) = NULL,
+    @PageSize INT = 20,
+    @PageNumber INT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+    
+    SELECT 
+        br.RequestID,
+        br.VendorProfileID,
+        vp.BusinessName AS VendorName,
+        vp.FeaturedImageURL AS VendorImage,
+        br.ServiceID,
+        s.Name AS ServiceName,
+        br.EventDate,
+        br.EventTime,
+        br.EventLocation,
+        br.AttendeeCount,
+        br.Budget,
+        br.SpecialRequests,
+        br.Status,
+        br.ProposedPrice,
+        br.ResponseMessage,
+        br.CreatedAt,
+        br.ExpiresAt,
+        br.RespondedAt,
+        CASE 
+            WHEN br.ExpiresAt < GETDATE() AND br.Status = 'pending' THEN 1
+            ELSE 0
+        END AS IsExpired,
+        (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) 
+         FROM Reviews r 
+         WHERE r.VendorProfileID = br.VendorProfileID AND r.IsApproved = 1) AS VendorRating,
+        (SELECT COUNT(*) 
+         FROM Reviews r 
+         WHERE r.VendorProfileID = br.VendorProfileID AND r.IsApproved = 1) AS VendorReviewCount
+    FROM BookingRequests br
+    JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+    LEFT JOIN Services s ON br.ServiceID = s.ServiceID
+    WHERE br.UserID = @UserID
+        AND (@Status IS NULL OR br.Status = @Status)
+    ORDER BY br.CreatedAt DESC
+    OFFSET @Offset ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
+-- Get booking requests for a vendor
+CREATE OR ALTER PROCEDURE sp_GetVendorBookingRequests
+    @VendorProfileID INT,
+    @Status NVARCHAR(50) = NULL,
+    @PageSize INT = 20,
+    @PageNumber INT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+    
+    SELECT 
+        br.RequestID,
+        br.UserID,
+        u.Name AS ClientName,
+        u.Email AS ClientEmail,
+        u.Phone AS ClientPhone,
+        u.Avatar AS ClientAvatar,
+        br.ServiceID,
+        s.Name AS ServiceName,
+        br.EventDate,
+        br.EventTime,
+        br.EventLocation,
+        br.AttendeeCount,
+        br.Budget,
+        br.SpecialRequests,
+        br.Services,
+        br.Status,
+        br.ProposedPrice,
+        br.ResponseMessage,
+        br.CreatedAt,
+        br.ExpiresAt,
+        br.RespondedAt,
+        CASE 
+            WHEN br.ExpiresAt < GETDATE() AND br.Status = 'pending' THEN 1
+            ELSE 0
+        END AS IsExpired,
+        DATEDIFF(HOUR, br.CreatedAt, GETDATE()) AS HoursOld
+    FROM BookingRequests br
+    JOIN Users u ON br.UserID = u.UserID
+    LEFT JOIN Services s ON br.ServiceID = s.ServiceID
+    WHERE br.VendorProfileID = @VendorProfileID
+        AND (@Status IS NULL OR br.Status = @Status)
+    ORDER BY 
+        CASE WHEN br.Status = 'pending' THEN 1 ELSE 2 END,
+        br.CreatedAt DESC
+    OFFSET @Offset ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
+END;
+GO
+
+-- Respond to a booking request (approve/decline)
+CREATE OR ALTER PROCEDURE sp_RespondToBookingRequest
+    @RequestID INT,
+    @VendorUserID INT,
+    @Response NVARCHAR(20), -- 'approved', 'declined', 'counter_offer'
+    @ProposedPrice DECIMAL(10, 2) = NULL,
+    @ResponseMessage NVARCHAR(MAX) = NULL,
+    @AlternativeDate DATE = NULL,
+    @AlternativeTime TIME = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Verify vendor owns this request
+        DECLARE @VendorProfileID INT;
+        DECLARE @UserID INT;
+        DECLARE @CurrentStatus NVARCHAR(50);
+        
+        SELECT 
+            @VendorProfileID = br.VendorProfileID,
+            @UserID = br.UserID,
+            @CurrentStatus = br.Status
+        FROM BookingRequests br
+        JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+        WHERE br.RequestID = @RequestID AND vp.UserID = @VendorUserID;
+        
+        IF @VendorProfileID IS NULL
+        BEGIN
+            SELECT 
+                'error' AS Status,
+                'Request not found or access denied' AS Message;
+            RETURN;
+        END
+        
+        IF @CurrentStatus != 'pending'
+        BEGIN
+            SELECT 
+                'error' AS Status,
+                'Request has already been responded to' AS Message;
+            RETURN;
+        END
+        
+        -- Update request
+        UPDATE BookingRequests 
+        SET 
+            Status = @Response,
+            ProposedPrice = @ProposedPrice,
+            ResponseMessage = @ResponseMessage,
+            AlternativeDate = @AlternativeDate,
+            AlternativeTime = @AlternativeTime,
+            RespondedAt = GETDATE()
+        WHERE RequestID = @RequestID;
+        
+        -- Create notification for user
+        DECLARE @NotificationTitle NVARCHAR(200);
+        DECLARE @NotificationMessage NVARCHAR(MAX);
+        DECLARE @VendorName NVARCHAR(100);
+        
+        SELECT @VendorName = BusinessName FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID;
+        
+        IF @Response = 'approved'
+        BEGIN
+            SET @NotificationTitle = 'Booking Request Approved!';
+            SET @NotificationMessage = @VendorName + ' has approved your booking request.';
+        END
+        ELSE IF @Response = 'declined'
+        BEGIN
+            SET @NotificationTitle = 'Booking Request Declined';
+            SET @NotificationMessage = @VendorName + ' has declined your booking request.';
+        END
+        ELSE IF @Response = 'counter_offer'
+        BEGIN
+            SET @NotificationTitle = 'Counter Offer Received';
+            SET @NotificationMessage = @VendorName + ' has sent you a counter offer for your booking request.';
+        END
+        
+        INSERT INTO Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
+        VALUES (@UserID, @NotificationTitle, @NotificationMessage, 'booking_response', @RequestID, 'request');
+        
+        -- Send message in conversation
+        DECLARE @ConversationID INT;
+        SELECT @ConversationID = ConversationID 
+        FROM Conversations 
+        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+        ORDER BY CreatedAt DESC;
+        
+        IF @ConversationID IS NOT NULL AND @ResponseMessage IS NOT NULL
+        BEGIN
+            EXEC sp_SendMessage 
+                @ConversationID = @ConversationID,
+                @SenderID = @VendorUserID,
+                @Content = @ResponseMessage;
+        END
+        
+        SELECT 
+            'success' AS Status,
+            'Response sent successfully' AS Message,
+            @RequestID AS RequestID;
+        
+        COMMIT TRANSACTION;
+        
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        SELECT 
+            'error' AS Status,
+            'Error responding to request: ' + @ErrorMessage AS Message;
+    END CATCH
+END;
+GO
+
+-- Accept a counter offer from vendor
+CREATE OR ALTER PROCEDURE sp_AcceptCounterOffer
+    @RequestID INT,
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Verify user owns this request and it's a counter offer
+        DECLARE @CurrentStatus NVARCHAR(50);
+        DECLARE @VendorProfileID INT;
+        
+        SELECT 
+            @CurrentStatus = Status,
+            @VendorProfileID = VendorProfileID
+        FROM BookingRequests 
+        WHERE RequestID = @RequestID AND UserID = @UserID;
+        
+        IF @CurrentStatus != 'counter_offer'
+        BEGIN
+            SELECT 
+                'error' AS Status,
+                'Invalid request status for acceptance' AS Message;
+            RETURN;
+        END
+        
+        -- Update request to approved
+        UPDATE BookingRequests 
+        SET 
+            Status = 'approved',
+            CounterOfferAcceptedAt = GETDATE()
+        WHERE RequestID = @RequestID;
+        
+        -- Create notification for vendor
+        INSERT INTO Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
+        SELECT 
+            u.UserID,
+            'Counter Offer Accepted',
+            (SELECT Name FROM Users WHERE UserID = @UserID) + ' has accepted your counter offer.',
+            'counter_offer_accepted',
+            @RequestID,
+            'request'
+        FROM Users u
+        JOIN VendorProfiles vp ON u.UserID = vp.UserID
+        WHERE vp.VendorProfileID = @VendorProfileID;
+        
+        SELECT 
+            'success' AS Status,
+            'Counter offer accepted successfully' AS Message,
+            @RequestID AS RequestID;
+        
+        COMMIT TRANSACTION;
+        
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        SELECT 
+            'error' AS Status,
+            'Error accepting counter offer: ' + @ErrorMessage AS Message;
+    END CATCH
+END;
+GO
+
+-- Cancel a booking request
+CREATE OR ALTER PROCEDURE sp_CancelBookingRequest
+    @RequestID INT,
+    @UserID INT,
+    @CancellationReason NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Verify user owns this request
+        DECLARE @CurrentStatus NVARCHAR(50);
+        DECLARE @VendorProfileID INT;
+        
+        SELECT 
+            @CurrentStatus = Status,
+            @VendorProfileID = VendorProfileID
+        FROM BookingRequests 
+        WHERE RequestID = @RequestID AND UserID = @UserID;
+        
+        IF @VendorProfileID IS NULL
+        BEGIN
+            SELECT 
+                'error' AS Status,
+                'Request not found or access denied' AS Message;
+            RETURN;
+        END
+        
+        IF @CurrentStatus IN ('cancelled', 'confirmed')
+        BEGIN
+            SELECT 
+                'error' AS Status,
+                'Request cannot be cancelled in current status' AS Message;
+            RETURN;
+        END
+        
+        -- Update request
+        UPDATE BookingRequests 
+        SET 
+            Status = 'cancelled',
+            CancellationReason = @CancellationReason,
+            CancelledAt = GETDATE()
+        WHERE RequestID = @RequestID;
+        
+        -- Create notification for vendor
+        INSERT INTO Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
+        SELECT 
+            u.UserID,
+            'Booking Request Cancelled',
+            (SELECT Name FROM Users WHERE UserID = @UserID) + ' has cancelled their booking request.',
+            'booking_cancelled',
+            @RequestID,
+            'request'
+        FROM Users u
+        JOIN VendorProfiles vp ON u.UserID = vp.UserID
+        WHERE vp.VendorProfileID = @VendorProfileID;
+        
+        SELECT 
+            'success' AS Status,
+            'Request cancelled successfully' AS Message,
+            @RequestID AS RequestID;
+        
+        COMMIT TRANSACTION;
+        
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        SELECT 
+            'error' AS Status,
+            'Error cancelling request: ' + @ErrorMessage AS Message;
+    END CATCH
+END;
+GO
+
+-- Get request details
+CREATE OR ALTER PROCEDURE sp_GetBookingRequestDetails
+    @RequestID INT,
+    @UserID INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        br.RequestID,
+        br.UserID,
+        u.Name AS ClientName,
+        u.Email AS ClientEmail,
+        u.Phone AS ClientPhone,
+        u.Avatar AS ClientAvatar,
+        br.VendorProfileID,
+        vp.BusinessName AS VendorName,
+        vp.BusinessEmail AS VendorEmail,
+        vp.BusinessPhone AS VendorPhone,
+        vp.FeaturedImageURL AS VendorImage,
+        br.ServiceID,
+        s.Name AS ServiceName,
+        s.Description AS ServiceDescription,
+        s.Price AS ServicePrice,
+        br.EventDate,
+        br.EventTime,
+        br.EventLocation,
+        br.AttendeeCount,
+        br.Budget,
+        br.SpecialRequests,
+        br.Services,
+        br.Status,
+        br.ProposedPrice,
+        br.ResponseMessage,
+        br.AlternativeDate,
+        br.AlternativeTime,
+        br.CancellationReason,
+        br.CreatedAt,
+        br.ExpiresAt,
+        br.RespondedAt,
+        br.CounterOfferAcceptedAt,
+        br.CancelledAt,
+        CASE 
+            WHEN br.ExpiresAt < GETDATE() AND br.Status = 'pending' THEN 1
+            ELSE 0
+        END AS IsExpired,
+        (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) 
+         FROM Reviews r 
+         WHERE r.VendorProfileID = br.VendorProfileID AND r.IsApproved = 1) AS VendorRating,
+        (SELECT COUNT(*) 
+         FROM Reviews r 
+         WHERE r.VendorProfileID = br.VendorProfileID AND r.IsApproved = 1) AS VendorReviewCount
+    FROM BookingRequests br
+    JOIN Users u ON br.UserID = u.UserID
+    JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+    LEFT JOIN Services s ON br.ServiceID = s.ServiceID
+    WHERE br.RequestID = @RequestID
+        AND (@UserID IS NULL OR br.UserID = @UserID OR vp.UserID = @UserID);
+END;
+GO
+
+-- Get request statistics for vendor dashboard
+CREATE OR ALTER PROCEDURE sp_GetVendorRequestStats
+    @VendorProfileID INT,
+    @StartDate DATE = NULL,
+    @EndDate DATE = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    IF @StartDate IS NULL SET @StartDate = DATEADD(MONTH, -1, GETDATE());
+    IF @EndDate IS NULL SET @EndDate = GETDATE();
+    
+    SELECT 
+        COUNT(*) AS TotalRequests,
+        SUM(CASE WHEN Status = 'pending' THEN 1 ELSE 0 END) AS PendingRequests,
+        SUM(CASE WHEN Status = 'approved' THEN 1 ELSE 0 END) AS ApprovedRequests,
+        SUM(CASE WHEN Status = 'declined' THEN 1 ELSE 0 END) AS DeclinedRequests,
+        SUM(CASE WHEN Status = 'counter_offer' THEN 1 ELSE 0 END) AS CounterOffers,
+        SUM(CASE WHEN Status = 'cancelled' THEN 1 ELSE 0 END) AS CancelledRequests,
+        SUM(CASE WHEN Status = 'confirmed' THEN 1 ELSE 0 END) AS ConfirmedRequests,
+        AVG(CASE WHEN RespondedAt IS NOT NULL 
+            THEN DATEDIFF(HOUR, CreatedAt, RespondedAt) 
+            ELSE NULL END) AS AvgResponseTimeHours,
+        CAST(
+            CASE WHEN COUNT(*) > 0 
+            THEN (SUM(CASE WHEN Status IN ('approved', 'confirmed') THEN 1 ELSE 0 END) * 100.0 / COUNT(*))
+            ELSE 0 END AS DECIMAL(5,2)
+        ) AS ApprovalRate
+    FROM BookingRequests
+    WHERE VendorProfileID = @VendorProfileID
+        AND CreatedAt >= @StartDate
+        AND CreatedAt <= @EndDate;
+END;
+GO
+
+-- Auto-expire old pending requests
+CREATE OR ALTER PROCEDURE sp_ExpirePendingRequests
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Update expired requests
+        UPDATE BookingRequests 
+        SET 
+            Status = 'expired',
+            ExpiredAt = GETDATE()
+        WHERE Status = 'pending' 
+            AND ExpiresAt < GETDATE();
+        
+        DECLARE @ExpiredCount INT = @@ROWCOUNT;
+        
+        -- Create notifications for users with expired requests
+        INSERT INTO Notifications (UserID, Title, Message, Type, RelatedID, RelatedType)
+        SELECT 
+            br.UserID,
+            'Booking Request Expired',
+            'Your booking request to ' + vp.BusinessName + ' has expired.',
+            'request_expired',
+            br.RequestID,
+            'request'
+        FROM BookingRequests br
+        JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+        WHERE br.Status = 'expired' 
+            AND br.ExpiredAt >= DATEADD(MINUTE, -5, GETDATE()); -- Only recent expirations
+        
+        SELECT 
+            'success' AS Status,
+            CAST(@ExpiredCount AS NVARCHAR(10)) + ' requests expired' AS Message,
+            @ExpiredCount AS ExpiredCount;
+        
+        COMMIT TRANSACTION;
+        
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        SELECT 
+            'error' AS Status,
+            'Error expiring requests: ' + @ErrorMessage AS Message;
+    END CATCH
+END;
+GO
+
 PRINT 'Enhanced Vendor Setup Database Schema and Stored Procedures Updated Successfully!';
 PRINT '';
-PRINT 'New Features Added to VENUEVUE-FULLDBSCRIPTS_CONSOLIDATED_v3(2).sql:';
+PRINT 'New Features Added to VENUEVUE-FULLDBSCRIPTS_CONSOLIDATED_v7.sql:';
 PRINT '✓ Gallery Management (Upload + URL Support)';
 PRINT '✓ Packages and Services Creation';
 PRINT '✓ Social Media Integration';
 PRINT '✓ Availability Scheduling';
 PRINT '✓ Progress Tracking (Step 1, 2, 3, 4)';
 PRINT '✓ Enhanced Stored Procedures';
+PRINT '✓ REQUEST MANAGEMENT SYSTEM - Complete stored procedures added';
 PRINT '✓ Backward Compatibility Maintained';
 PRINT '';
 PRINT 'Ready for Frontend Integration!';
