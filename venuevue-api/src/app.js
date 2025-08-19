@@ -61,7 +61,6 @@ const usersRouter = require('./routes/users');
 const notificationsRouter = require('./routes/notifications');
 const vendorDashboardRouter = require('./routes/vendorDashboard');
 const uploadRouter = require('./routes/upload');
-
 app.use('/api/users', usersRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/vendors', vendorsRouter);
@@ -89,6 +88,7 @@ app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
                     u.Email AS UserEmail,
                     ISNULL(m.Content, '') AS LastMessageContent,
                     ISNULL(m.CreatedAt, c.CreatedAt) AS LastMessageCreatedAt,
+                    ISNULL(m.SenderID, 0) AS LastMessageSenderID,
                     ISNULL(COUNT(CASE WHEN m2.IsRead = 0 AND m2.SenderID != vp.UserID THEN 1 END), 0) AS UnreadCount
                 FROM Conversations c
                 INNER JOIN VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID
@@ -102,7 +102,7 @@ app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
                     )
                 LEFT JOIN Messages m2 ON c.ConversationID = m2.ConversationID
                 WHERE c.VendorProfileID = @VendorProfileID
-                GROUP BY c.ConversationID, c.CreatedAt, u.UserID, u.Name, u.Email, m.Content, m.CreatedAt
+                GROUP BY c.ConversationID, c.CreatedAt, u.UserID, u.Name, u.Email, m.Content, m.CreatedAt, m.SenderID
                 ORDER BY ISNULL(m.CreatedAt, c.CreatedAt) DESC
             `);
 
@@ -115,6 +115,7 @@ app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
             userEmail: conv.UserEmail,
             lastMessageContent: conv.LastMessageContent,
             lastMessageCreatedAt: conv.LastMessageCreatedAt,
+            lastMessageSenderId: conv.LastMessageSenderID,
             unreadCount: conv.UnreadCount
         }));
 
@@ -151,6 +152,11 @@ app.use((err, req, res, next) => {
 
 // Initialize Socket.IO handlers
 handleSocketIO(io);
+
+// Initialize Request Scheduler
+const RequestScheduler = require('./services/requestScheduler');
+const requestScheduler = new RequestScheduler(io);
+requestScheduler.start();
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
