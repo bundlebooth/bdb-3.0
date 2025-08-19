@@ -48,11 +48,20 @@ const handleSocketIO = (io) => {
               .recordset[0].UserID
           : conversation.UserID;
         
+        // Format message data for frontend
+        const messageForFrontend = {
+          conversationId: messageData.conversationId,
+          senderId: socket.userId,
+          senderName: savedMessage.SenderName || 'User',
+          content: messageData.content,
+          createdAt: new Date().toISOString()
+        };
+        
         // Emit to the specific recipient
-        io.to(`user_${recipientId}`).emit('new-message', savedMessage);
+        io.to(`user_${recipientId}`).emit('new-message', messageForFrontend);
         
         // Also emit to sender for real-time update on their own client
-        socket.emit('new-message', savedMessage);
+        socket.emit('new-message', messageForFrontend);
         
       } catch (err) {
         console.error('Message sending error:', err);
