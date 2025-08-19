@@ -580,4 +580,318 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
   }
 });
 
+// Enhanced request management endpoints
+
+// Create a new request with special request text for a specific vendor
+router.post('/requests/send', async (req, res) => {
+  try {
+    const { 
+      userId, 
+      vendorProfileId, 
+      specialRequestText,
+      eventDate,
+      eventTime,
+      eventLocation,
+      attendeeCount,
+      budget,
+      services
+    } = req.body;
+
+    // Validation
+    if (!userId || !vendorProfileId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'User ID and Vendor Profile ID are required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    
+    // Set expiry to 24 hours from now
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    request.input('UserID', sql.Int, userId);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('SpecialRequestText', sql.NVarChar(sql.MAX), specialRequestText || null);
+    request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+    request.input('EventTime', sql.Time, eventTime || null);
+    request.input('EventLocation', sql.NVarChar(500), eventLocation || null);
+    request.input('AttendeeCount', sql.Int, attendeeCount || null);
+    request.input('Budget', sql.Decimal(10, 2), budget || null);
+    request.input('Services', sql.NVarChar(sql.MAX), services ? JSON.stringify(services) : null);
+    request.input('Status', sql.NVarChar(50), 'pending');
+    request.input('ExpiresAt', sql.DateTime, expiresAt);
+
+    const result = await request.query(`
+      INSERT INTO BookingRequests (
+        UserID, VendorProfileID, SpecialRequests, EventDate, EventTime, 
+        EventLocation, AttendeeCount, Budget, Services, Status, ExpiresAt, CreatedAt
+      )
+      OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
+      VALUES (
+        @UserID, @VendorProfileID, @SpecialRequestText, @EventDate, @EventTime,
+        @EventLocation, @AttendeeCount, @Budget, @Services, @Status, @ExpiresAt, GETDATE()
+      )
+    `);
+
+    if (result.recordset.length === 0) {
+      throw new Error('Failed to create request');
+    }
+
+    const newRequest = result.recordset[0];
+
+    // Create a conversation for this request
+    const conversationRequest = pool.request();
+    conversationRequest.input('UserID', sql.Int, userId);
+    conversationRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    conversationRequest.input('RequestID', sql.Int, newRequest.RequestID);
+    conversationRequest.input('Subject', sql.NVarChar(255), 'New Booking Request');
+
+    const conversationResult = await conversationRequest.query(`
+      INSERT INTO Conversations (UserID, VendorProfileID, RequestID, Subject, CreatedAt)
+      OUTPUT INSERTED.ConversationID
+      VALUES (@UserID, @VendorProfileID, @RequestID, @Subject, GETDATE())
+    `);
+
+    const conversationId = conversationResult.recordset[0].ConversationID;
+
+    // Send initial message if special request text exists
+    if (specialRequestText) {
+      const messageRequest = pool.request();
+      messageRequest.input('ConversationID', sql.Int, conversationId);
+      messageRequest.input('SenderID', sql.Int, userId);
+      messageRequest.input('Content', sql.NVarChar(sql.MAX), specialRequestText);
+
+      await messageRequest.query(`
+        INSERT INTO Messages (ConversationID, SenderID, Content, CreatedAt)
+        VALUES (@ConversationID, @SenderID, @Content, GETDATE())
+      `);
+    }
+
+    // Create notification for vendor
+    const vendorUserResult = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+
+    if (vendorUserResult.recordset.length > 0) {
+      const vendorUserId = vendorUserResult.recordset[0].UserID;
+      
+      const notificationRequest = pool.request();
+      notificationRequest.input('UserID', sql.Int, vendorUserId);
+      notificationRequest.input('Type', sql.NVarChar(50), 'new_request');
+      notificationRequest.input('Title', sql.NVarChar(255), 'New Booking Request');
+      notificationRequest.input('Message', sql.NVarChar(sql.MAX), 'You have received a new booking request. You have 24 hours to respond.');
+      notificationRequest.input('RelatedID', sql.Int, newRequest.RequestID);
+      notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
+
+      await notificationRequest.query(`
+        INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, RelatedType, CreatedAt)
+        VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
+      `);
+    }
+
+    res.json({
+      success: true,
+      requestId: newRequest.RequestID,
+      conversationId: conversationId,
+      expiresAt: newRequest.ExpiresAt,
+      message: 'Request sent successfully'
+    });
+
+  } catch (err) {
+    console.error('Create request error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to create request',
+      error: err.message 
+    });
+  }
+});
+
+// Vendor approves a request
+router.post('/requests/:requestId/approve', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { vendorProfileId, responseMessage } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Vendor Profile ID is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update request status
+    const updateResult = await pool.request()
+      .input('RequestID', sql.Int, requestId)
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('Status', sql.NVarChar(50), 'approved')
+      .input('ResponseMessage', sql.NVarChar(sql.MAX), responseMessage || null)
+      .input('RespondedAt', sql.DateTime, new Date())
+      .query(`
+        UPDATE BookingRequests 
+        SET Status = @Status, ResponseMessage = @ResponseMessage, RespondedAt = @RespondedAt
+        OUTPUT INSERTED.UserID, INSERTED.RequestID
+        WHERE RequestID = @RequestID AND VendorProfileID = @VendorProfileID AND Status = 'pending'
+      `);
+
+    if (updateResult.recordset.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Request not found or already responded to' 
+      });
+    }
+
+    const userId = updateResult.recordset[0].UserID;
+
+    // Create notification for user
+    const notificationRequest = pool.request();
+    notificationRequest.input('UserID', sql.Int, userId);
+    notificationRequest.input('Type', sql.NVarChar(50), 'request_approved');
+    notificationRequest.input('Title', sql.NVarChar(255), 'Request Approved!');
+    notificationRequest.input('Message', sql.NVarChar(sql.MAX), 'Your booking request has been approved. You can now proceed to payment.');
+    notificationRequest.input('RelatedID', sql.Int, requestId);
+    notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
+
+    await notificationRequest.query(`
+      INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, RelatedType, CreatedAt)
+      VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
+    `);
+
+    res.json({
+      success: true,
+      message: 'Request approved successfully'
+    });
+
+  } catch (err) {
+    console.error('Approve request error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to approve request',
+      error: err.message 
+    });
+  }
+});
+
+// Vendor declines a request
+router.post('/requests/:requestId/decline', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { vendorProfileId, responseMessage } = req.body;
+
+    if (!vendorProfileId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Vendor Profile ID is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update request status
+    const updateResult = await pool.request()
+      .input('RequestID', sql.Int, requestId)
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('Status', sql.NVarChar(50), 'declined')
+      .input('ResponseMessage', sql.NVarChar(sql.MAX), responseMessage || null)
+      .input('RespondedAt', sql.DateTime, new Date())
+      .query(`
+        UPDATE BookingRequests 
+        SET Status = @Status, ResponseMessage = @ResponseMessage, RespondedAt = @RespondedAt
+        OUTPUT INSERTED.UserID, INSERTED.RequestID
+        WHERE RequestID = @RequestID AND VendorProfileID = @VendorProfileID AND Status = 'pending'
+      `);
+
+    if (updateResult.recordset.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Request not found or already responded to' 
+      });
+    }
+
+    const userId = updateResult.recordset[0].UserID;
+
+    // Create notification for user
+    const notificationRequest = pool.request();
+    notificationRequest.input('UserID', sql.Int, userId);
+    notificationRequest.input('Type', sql.NVarChar(50), 'request_declined');
+    notificationRequest.input('Title', sql.NVarChar(255), 'Request Declined');
+    notificationRequest.input('Message', sql.NVarChar(sql.MAX), 'Your booking request was declined. You can select another vendor.');
+    notificationRequest.input('RelatedID', sql.Int, requestId);
+    notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
+
+    await notificationRequest.query(`
+      INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, RelatedType, CreatedAt)
+      VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
+    `);
+
+    res.json({
+      success: true,
+      message: 'Request declined successfully'
+    });
+
+  } catch (err) {
+    console.error('Decline request error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to decline request',
+      error: err.message 
+    });
+  }
+});
+
+// User cancels their own request
+router.post('/requests/:requestId/cancel', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'User ID is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update request status
+    const updateResult = await pool.request()
+      .input('RequestID', sql.Int, requestId)
+      .input('UserID', sql.Int, userId)
+      .input('Status', sql.NVarChar(50), 'cancelled')
+      .input('RespondedAt', sql.DateTime, new Date())
+      .query(`
+        UPDATE BookingRequests 
+        SET Status = @Status, RespondedAt = @RespondedAt
+        OUTPUT INSERTED.VendorProfileID
+        WHERE RequestID = @RequestID AND UserID = @UserID AND Status IN ('pending', 'approved')
+      `);
+
+    if (updateResult.recordset.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Request not found or cannot be cancelled' 
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Request cancelled successfully'
+    });
+
+  } catch (err) {
+    console.error('Cancel request error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to cancel request',
+      error: err.message 
+    });
+  }
+});
+
 module.exports = router;
