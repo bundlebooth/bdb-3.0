@@ -1162,117 +1162,246 @@ router.post('/setup/step3-gallery', async (req, res) => {
   }
 });
 
-// Search vendors by predefined services with enhanced criteria
-router.post('/search-by-services', async (req, res) => {
-    try {
-        const {
-            selectedServices,
-            eventDetails,
-            totalBudget
-        } = req.body;
-
-        if (!selectedServices || selectedServices.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'At least one service is required'
-            });
-        }
-
-        const pool = await poolPromise;
-        const request = new sql.Request(pool);
-
-        // Extract predefined service IDs from the request and validate
-        const predefinedServiceIds = selectedServices.map(s => s.predefinedServiceId).filter(id => !isNaN(id));
-
-        if (predefinedServiceIds.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Valid predefined service IDs are required'
-            });
-        }
-
-        // Build a dynamic WHERE clause
-        let whereClause = `WHERE vp.IsVerified = 1 AND vss.IsActive = 1 AND ps.IsActive = 1`;
-
-        // Add service ID filtering using STRING_SPLIT
-        request.input('ServiceIds', sql.NVarChar, predefinedServiceIds.join(','));
-
-        // Add budget filtering with dynamic parameters
-        selectedServices.forEach((service, index) => {
-            if (service.budget) {
-                whereClause += ` AND (vss.PredefinedServiceID = @PredefinedServiceID${index} AND vss.VendorPrice <= @Budget${index})`;
-                request.input(`PredefinedServiceID${index}`, sql.Int, service.predefinedServiceId);
-                request.input(`Budget${index}`, sql.Decimal(10, 2), service.budget);
-            }
-        });
-
-        // Add location filtering if provided
-        if (eventDetails && eventDetails.location) {
-            const locationParts = eventDetails.location.split(',').map(s => s.trim());
-            if (locationParts.length > 1) {
-                whereClause += ` AND vp.City LIKE @City AND vp.State LIKE @State`;
-                request.input('City', sql.NVarChar, `%${locationParts[0]}%`);
-                request.input('State', sql.NVarChar, `%${locationParts[1]}%`);
-            } else {
-                whereClause += ` AND (vp.City LIKE @Location OR vp.State LIKE @Location)`;
-                request.input('Location', sql.NVarChar, `%${eventDetails.location}%`);
-            }
-        }
-        
-        // Use a HAVING clause to ensure all selected services are matched
-        const havingClause = `HAVING COUNT(vss.PredefinedServiceID) = @MinMatchingServices`;
-        request.input('MinMatchingServices', sql.Int, predefinedServiceIds.length);
-
-        const query = `
-            SELECT
-                vp.VendorProfileID,
-                vp.BusinessName,
-                vp.BusinessDescription,
-                vp.City + ', ' + vp.State AS Location,
-                (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS TotalReviews,
-                vp.IsPremium,
-                vp.IsEcoFriendly,
-                vp.IsAwardWinning,
-                (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = vp.VendorProfileID AND vi.IsPrimary = 1) AS FeaturedImageURL,
-                COUNT(vss.PredefinedServiceID) AS MatchingServices,
-                STRING_AGG(ps.ServiceName, ', ') AS MatchingServiceNames
-            FROM VendorProfiles vp
-            JOIN Users u ON vp.UserID = u.UserID
-            JOIN VendorSelectedServices vss ON vp.VendorProfileID = vss.VendorProfileID
-            JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-            ${whereClause}
-            AND vss.PredefinedServiceID IN (SELECT value FROM STRING_SPLIT(@ServiceIds, ','))
-            GROUP BY
-                vp.VendorProfileID,
-                vp.BusinessName,
-                vp.BusinessDescription,
-                vp.City,
-                vp.State,
-                vp.IsPremium,
-                vp.IsEcoFriendly,
-                vp.IsAwardWinning
-            ${havingClause}
-            ORDER BY MatchingServices DESC, vp.IsPremium DESC;
-        `;
-
-        const result = await request.query(query);
-
-        return res.status(200).json({
-            success: true,
-            vendors: result.recordset
-        });
-
-    } catch (err) {
-        console.error('API Error:', err);
-        return res.status(500).json({
-            success: false,
-            message: 'Server error occurred during vendor search.',
-            error: err.message
-        });
-    }
+// Debug endpoint to get valid service IDs for troubleshooting
+router.get('/debug/service-ids', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    const result = await request.query(`
+      SELECT 
+        PredefinedServiceID,
+        ServiceName,
+        Category,
+        ServiceDescription
+      FROM PredefinedServices 
+      ORDER BY Category, DisplayOrder, ServiceName
+    `);
+    
+    res.json({
+      success: true,
+      services: result.recordset,
+      totalCount: result.recordset.length
+    });
+  } catch (error) {
+    console.error('Error fetching service IDs for debug:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch service IDs',
+      error: error.message
+    });
+  }
 });
 
-module.exports = router;
+// Get service ID by name for mapping hardcoded values
+router.get('/service-id-by-name/:serviceName', async (req, res) => {
+  try {
+    const { serviceName } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    request.input('ServiceName', sql.NVarChar, serviceName);
+    
+    const result = await request.query(`
+      SELECT 
+        PredefinedServiceID,
+        ServiceName,
+        Category,
+        ServiceDescription
+      FROM PredefinedServices 
+      WHERE ServiceName = @ServiceName
+    `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `Service '${serviceName}' not found`
+      });
+    }
+    
+    res.json({
+      success: true,
+      service: result.recordset[0]
+    });
+  } catch (error) {
+    console.error('Error fetching service by name:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch service by name',
+      error: error.message
+    });
+  }
+});
+
+// Search vendors by predefined services with enhanced criteria
+router.post('/search-by-services', async (req, res) => {
+  try {
+    const { 
+      selectedServices,
+      eventDetails,
+      totalBudget,
+      serviceIds
+    } = req.body;
+
+    if (!selectedServices || selectedServices.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one service is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+
+    // Extract service IDs for filtering
+    const predefinedServiceIds = selectedServices.map(s => s.serviceId).filter(id => !isNaN(id) && id > 0);
+    
+    console.log('Received selectedServices:', selectedServices);
+    console.log('Extracted predefinedServiceIds:', predefinedServiceIds);
+    
+    if (predefinedServiceIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid predefined service IDs are required. Received service IDs: ' + JSON.stringify(selectedServices.map(s => s.serviceId))
+      });
+    }
+
+    // Validate that the service IDs exist in PredefinedServices table
+    const serviceValidationRequest = new sql.Request(pool);
+    const serviceIdParams = predefinedServiceIds.map((id, index) => {
+      serviceValidationRequest.input(`ServiceID${index}`, sql.Int, id);
+      return `@ServiceID${index}`;
+    }).join(',');
+
+    const validationResult = await serviceValidationRequest.query(`
+      SELECT PredefinedServiceID, ServiceName, Category 
+      FROM PredefinedServices 
+      WHERE PredefinedServiceID IN (${serviceIdParams})
+    `);
+
+    const validServiceIds = validationResult.recordset.map(s => s.PredefinedServiceID);
+    const invalidServiceIds = predefinedServiceIds.filter(id => !validServiceIds.includes(id));
+
+    if (invalidServiceIds.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid service IDs found: ${invalidServiceIds.join(', ')}. These services do not exist in the database.`,
+        validServices: validationResult.recordset
+      });
+    }
+
+    // Build dynamic query to find vendors who offer the selected services
+    let whereClause = `WHERE vp.IsActive = 1 AND u.IsActive = 1`;
+    let joinClause = `
+      FROM VendorProfiles vp
+      INNER JOIN Users u ON vp.UserID = u.UserID
+      INNER JOIN VendorSelectedServices vss ON vp.VendorProfileID = vss.VendorProfileID
+      INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+    `;
+
+    // Add service ID filtering
+    whereClause += ` AND vss.PredefinedServiceID IN (${predefinedServiceIds.map((_, index) => `@ServiceID${index}`).join(', ')})`;
+    
+    predefinedServiceIds.forEach((serviceId, index) => {
+      request.input(`ServiceID${index}`, sql.Int, serviceId);
+    });
+
+    // Add budget filtering - vendors whose services fit within individual budgets
+    const budgetConditions = selectedServices.map((service, index) => {
+      request.input(`Budget${index}`, sql.Money, service.budget);
+      return `(vss.PredefinedServiceID = @ServiceID${index} AND vss.VendorPrice <= @Budget${index})`;
+    }).join(' OR ');
+    
+    if (budgetConditions) {
+      whereClause += ` AND (${budgetConditions})`;
+    }
+
+    // Add location filtering if provided
+    if (eventDetails && eventDetails.location) {
+      whereClause += ` AND (vp.ServiceArea LIKE @Location OR vp.BusinessAddress LIKE @Location)`;
+      request.input('Location', sql.NVarChar, `%${eventDetails.location}%`);
+    }
+
+    // Execute the query to find matching vendors
+    const query = `
+      SELECT
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.BusinessType,
+        vp.BusinessDescription,
+        vp.City + ', ' + vp.State as Location,
+        vp.TotalReviews,
+        vp.IsPremium,
+        vp.IsEcoFriendly,
+        vp.IsAwardWinning,
+        vp.ProfileImageURL,
+        COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices,
+        STRING_AGG(ps.ServiceName, ', ') as MatchingServiceNames
+      ${joinClause}
+      ${whereClause}
+      GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.BusinessDescription,
+               vp.City, vp.State, vp.TotalReviews, vp.IsPremium, 
+               vp.IsEcoFriendly, vp.IsAwardWinning, vp.ProfileImageURL
+      HAVING COUNT(DISTINCT vss.PredefinedServiceID) >= @MinMatchingServices
+      ORDER BY MatchingServices DESC, vp.IsPremium DESC
+    `;
+
+    // Require vendors to match at least 1 service (can be adjusted)
+    request.input('MinMatchingServices', sql.Int, 1);
+
+    const result = await request.query(query);
+
+    // Get detailed service information for each vendor
+    const vendorsWithServices = await Promise.all(result.recordset.map(async (vendor) => {
+      const serviceRequest = new sql.Request(pool);
+      serviceRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID);
+      
+      const serviceQuery = `
+        SELECT 
+          ps.ServiceName,
+          ps.Category,
+          vss.VendorPrice,
+          vss.VendorDescription,
+          vss.VendorDurationMinutes
+        FROM VendorSelectedServices vss
+        INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+        WHERE vss.VendorProfileID = @VendorProfileID
+          AND vss.PredefinedServiceID IN (${predefinedServiceIds.map((_, index) => `@ServiceID${index}`).join(', ')})
+      `;
+      
+      predefinedServiceIds.forEach((serviceId, index) => {
+        serviceRequest.input(`ServiceID${index}`, sql.Int, serviceId);
+      });
+
+      const servicesResult = await serviceRequest.query(serviceQuery);
+      
+      return {
+        ...vendor,
+        services: servicesResult.recordset,
+        totalEstimatedCost: servicesResult.recordset.reduce((sum, service) => sum + (service.VendorPrice || 0), 0)
+      };
+    }));
+
+    res.json({
+      success: true,
+      vendors: vendorsWithServices,
+      totalResults: vendorsWithServices.length,
+      searchCriteria: {
+        selectedServices: selectedServices.map(s => s.serviceName),
+        totalBudget,
+        location: eventDetails?.location
+      }
+    });
+
+  } catch (error) {
+    console.error('Error searching vendors by services:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to search vendors',
+      error: error.message
+    });
+  }
+});
 
 // Get vendor's selected predefined services
 router.get('/:id/selected-services', async (req, res) => {
