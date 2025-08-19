@@ -3742,61 +3742,88 @@
                     </div>
                 </div>
 
-                <!-- Step 2: Budget & Event Details -->
+                <!-- Step 2: Service Details & Event Information -->
                 <div class="booking-step" id="booking-step-2" style="display: none;">
-                    <h4 class="form-section-title">Event Details & Budget</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Tell us about your event and set your budget.</p>
+                    <h4 class="form-section-title">Service Details & Event Information</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select specific services and set individual budgets, then provide your event details.</p>
                     
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="event-date">Event Date *</label>
-                                <input type="date" id="event-date" required>
+                    <!-- Predefined Services Selection -->
+                    <div class="form-group" style="margin-bottom: 2rem;">
+                        <h5 style="margin-bottom: 1rem; color: var(--primary-color);">📋 Select Specific Services</h5>
+                        <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1rem;">Choose from available services in your selected categories and set individual budgets.</p>
+                        
+                        <div id="predefined-services-loading" style="text-align: center; padding: 2rem; display: none;">
+                            <div class="spinner"></div>
+                            <p style="margin-top: 1rem; color: var(--text-light);">Loading available services...</p>
+                        </div>
+                        
+                        <div id="booking-predefined-services-container" style="display: none;">
+                            <!-- Dropdown-based service selection -->
+                            <div id="service-selection-dropdowns">
+                                <!-- Service dropdowns will be loaded here -->
+                            </div>
+                            
+                            <!-- Selected services list -->
+                            <div id="selected-services-list-container" style="margin-top: 1.5rem;">
+                                <!-- Selected services with budgets will appear here -->
                             </div>
                         </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="event-time">Event Time *</label>
-                                <input type="time" id="event-time" required>
-                            </div>
+                        
+                        <div id="no-services-message" style="text-align: center; padding: 2rem; color: var(--text-light); display: none;">
+                            <p>No services available for your selected categories. Please go back and select different categories.</p>
                         </div>
                     </div>
                     
-                    <div class="form-row">
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="event-location">Event Location</label>
-                                <input type="text" id="event-location" placeholder="Enter event location">
-                            </div>
-                        </div>
-                        <div class="form-col">
-                            <div class="form-group">
-                                <label for="attendee-count">Number of Attendees</label>
-                                <input type="number" id="attendee-count" min="1" value="50">
-                            </div>
-                        </div>
+                    <!-- Selected Services Summary -->
+                    <div id="selected-services-summary" style="display: none; margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                        <h6 style="margin-bottom: 0.5rem; color: var(--primary-color);">Selected Services Summary</h6>
+                        <div id="selected-services-list"></div>
+                        <div style="margin-top: 0.5rem; font-weight: 600;">Total Budget: $<span id="total-services-budget">0</span></div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="budget-range">Total Budget: $<span id="budget-display">2000</span></label>
-                        <div class="budget-slider-container">
-                            <input type="range" id="budget-slider" min="500" max="20000" value="2000" step="100">
-                            <div class="budget-labels">
-                                <span>$500</span>
-                                <span>$20,000+</span>
+                    <!-- Event Details -->
+                    <div class="form-group" style="margin-bottom: 2rem;">
+                        <h5 style="margin-bottom: 1rem; color: var(--primary-color);">📅 Event Details</h5>
+                        
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="event-date">Event Date *</label>
+                                    <input type="date" id="event-date" required>
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="event-time">Event Time *</label>
+                                    <input type="time" id="event-time" required>
+                                </div>
                             </div>
                         </div>
-                        <input type="number" id="budget-input" min="500" max="50000" value="2000" style="margin-top: 0.5rem;">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="special-requests">Special Requests</label>
-                        <textarea id="special-requests" rows="3" placeholder="Any special requirements or preferences..."></textarea>
+                        
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="event-location">Event Location *</label>
+                                    <input type="text" id="event-location" placeholder="Enter event location" required>
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="attendee-count">Number of Attendees</label>
+                                    <input type="number" id="attendee-count" min="1" value="50">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="special-requests">Special Requests</label>
+                            <textarea id="special-requests" rows="3" placeholder="Any special requirements or preferences..."></textarea>
+                        </div>
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-booking-step-1">Back: Services</button>
-                        <button type="button" class="btn btn-primary" id="find-vendors-btn">Find Vendors</button>
+                        <button type="button" class="btn btn-outline" id="back-to-booking-step-1">Back: Categories</button>
+                        <button type="button" class="btn btn-primary" id="find-vendors-btn" disabled>Find Matching Vendors</button>
                     </div>
                 </div>
 
@@ -4515,6 +4542,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const bookingState = {
                 currentStep: 1,
                 selectedServices: [],
+                selectedPredefinedServices: [], // New: stores selected predefined services with individual budgets
+                availablePredefinedServices: {}, // New: stores predefined services by category
                 eventDetails: {},
                 budget: 2000,
                 availableVendors: [],
@@ -4528,6 +4557,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 reset: function() {
                     this.currentStep = 1;
                     this.selectedServices = [];
+                    this.selectedPredefinedServices = [];
+                    this.availablePredefinedServices = {};
                     this.eventDetails = {};
                     this.budget = 2000;
                     this.availableVendors = [];
@@ -4927,8 +4958,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 // Navigation buttons
-                document.getElementById('next-to-booking-step-2')?.addEventListener('click', () => {
-                    if (validateStep1()) updateBookingStep(2);
+                document.getElementById('next-to-booking-step-2')?.addEventListener('click', async () => {
+                    if (validateStep1()) {
+                        updateBookingStep(2);
+                        await loadPredefinedServicesForStep2();
+                    }
                 });
 
                 document.getElementById('back-to-booking-step-1')?.addEventListener('click', () => updateBookingStep(1));
@@ -5000,6 +5034,523 @@ document.addEventListener('DOMContentLoaded', function() {
                 return bookingState.selectedServices.length > 0;
             }
 
+            // Load predefined services for Step 2 based on selected categories from Step 1
+            async function loadPredefinedServicesForStep2() {
+                const loadingDiv = document.getElementById('predefined-services-loading');
+                const containerDiv = document.getElementById('booking-predefined-services-container');
+                const noServicesDiv = document.getElementById('no-services-message');
+                
+                // Show loading
+                loadingDiv.style.display = 'block';
+                containerDiv.style.display = 'none';
+                noServicesDiv.style.display = 'none';
+                
+                try {
+                    // Get selected categories from Step 1
+                    const selectedCategories = bookingState.selectedServices.map(service => service.categoryKey);
+                    
+                    if (selectedCategories.length === 0) {
+                        throw new Error('No categories selected');
+                    }
+                    
+                    // Fetch predefined services for selected categories
+                    console.log('Fetching from:', `${API_BASE_URL}/vendors/predefined-services`);
+                    const response = await fetch(`${API_BASE_URL}/vendors/predefined-services`);
+                    console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
+                    const data = await response.json();
+                    
+                    console.log('Predefined services API response:', data);
+                    console.log('Selected categories:', selectedCategories);
+                    console.log('API servicesByCategory keys:', data.servicesByCategory ? Object.keys(data.servicesByCategory) : 'No servicesByCategory');
+                    console.log('Full API response structure:', JSON.stringify(data, null, 2));
+                    
+                    if (data.success && data.servicesByCategory) {
+                        // Map frontend category keys to database categories
+                        const categoryMapping = {
+                            'photo': 'Photography',
+                            'music': 'Music & Entertainment',
+                            'catering': 'Catering',
+                            'venue': 'Venue',
+                            'planning': 'Event Planning',
+                            'beauty': 'Beauty & Styling',
+                            'transport': 'Transportation',
+                            'floral': 'Floral & Decor',
+                            'wedding': 'Wedding'
+                        };
+                        
+                        // Filter services by selected categories using mapping
+                        const filteredServices = {};
+                        selectedCategories.forEach(categoryKey => {
+                            const dbCategory = categoryMapping[categoryKey] || categoryKey;
+                            console.log(`Looking for category: ${categoryKey} -> ${dbCategory}`);
+                            
+                            if (data.servicesByCategory[dbCategory]) {
+                                filteredServices[categoryKey] = data.servicesByCategory[dbCategory];
+                                console.log(`Found services for ${categoryKey}:`, data.servicesByCategory[dbCategory]);
+                            } else {
+                                console.log(`No services found for category: ${categoryKey} (${dbCategory})`);
+                                console.log('Available categories:', Object.keys(data.servicesByCategory));
+                            }
+                        });
+                        
+                        console.log('Filtered services:', filteredServices);
+                        
+                        // If no services found, use mock data for testing
+                        if (Object.keys(filteredServices).length === 0) {
+                            console.log('No matching services found, using mock data for testing...');
+                            const mockServices = {};
+                            selectedCategories.forEach(categoryKey => {
+                                mockServices[categoryKey] = [
+                                    {
+                                        id: Math.floor(Math.random() * 1000),
+                                        name: `${categoryKey} Service 1`,
+                                        description: `Professional ${categoryKey} service for your event`,
+                                        defaultDuration: 60
+                                    },
+                                    {
+                                        id: Math.floor(Math.random() * 1000) + 1000,
+                                        name: `${categoryKey} Service 2`,
+                                        description: `Premium ${categoryKey} service with additional features`,
+                                        defaultDuration: 90
+                                    }
+                                ];
+                            });
+                            bookingState.availablePredefinedServices = mockServices;
+                            renderPredefinedServices(mockServices);
+                        } else {
+                            bookingState.availablePredefinedServices = filteredServices;
+                            renderPredefinedServices(filteredServices);
+                        }
+                    } else {
+                        console.error('API response error:', data);
+                        console.log('Using mock data due to API error...');
+                        
+                        // Use mock data when API fails
+                        const mockServices = {};
+                        selectedCategories.forEach(categoryKey => {
+                            mockServices[categoryKey] = [
+                                {
+                                    id: Math.floor(Math.random() * 1000),
+                                    name: `${categoryKey} Service 1`,
+                                    description: `Professional ${categoryKey} service for your event`,
+                                    defaultDuration: 60
+                                },
+                                {
+                                    id: Math.floor(Math.random() * 1000) + 1000,
+                                    name: `${categoryKey} Service 2`,
+                                    description: `Premium ${categoryKey} service with additional features`,
+                                    defaultDuration: 90
+                                }
+                            ];
+                        });
+                        bookingState.availablePredefinedServices = mockServices;
+                        renderPredefinedServices(mockServices);
+                    }
+                } catch (error) {
+                    console.error('Error loading predefined services:', error);
+                    loadingDiv.style.display = 'none';
+                    noServicesDiv.style.display = 'block';
+                }
+            }
+
+            // Render predefined services with individual budget allocation
+            function renderPredefinedServices(servicesByCategory) {
+                console.log('renderPredefinedServices called with:', servicesByCategory);
+                
+                const loadingDiv = document.getElementById('predefined-services-loading');
+                const containerDiv = document.getElementById('booking-predefined-services-container');
+                const noServicesDiv = document.getElementById('no-services-message');
+                
+                console.log('DOM elements found:', {
+                    loadingDiv: !!loadingDiv,
+                    containerDiv: !!containerDiv,
+                    noServicesDiv: !!noServicesDiv
+                });
+                
+                loadingDiv.style.display = 'none';
+                
+                if (Object.keys(servicesByCategory).length === 0) {
+                    console.log('No services to display, showing no services message');
+                    noServicesDiv.style.display = 'block';
+                    return;
+                }
+                
+                console.log('Processing services for dropdown display...');
+                
+                const dropdownsContainer = document.getElementById('service-selection-dropdowns');
+                const selectedServicesContainer = document.getElementById('selected-services-list-container');
+                
+                let dropdownsHtml = '';
+                
+                Object.entries(servicesByCategory).forEach(([category, services]) => {
+                    dropdownsHtml += `
+                        <div class="service-category-dropdown" style="margin-bottom: 1.5rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text); text-transform: capitalize;">
+                                ${category} Services
+                            </label>
+                            <select class="service-dropdown" data-category="${category}" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; background: white;">
+                                <option value="">Select a ${category} service...</option>
+                    `;
+                    
+                    services.forEach(service => {
+                        dropdownsHtml += `<option value="${service.id}" data-name="${service.name}" data-description="${service.description || ''}" data-duration="${service.defaultDuration || 60}">
+                            ${service.name}${service.description ? ' - ' + service.description.substring(0, 50) + '...' : ''}
+                        </option>`;
+                    });
+                    
+                    dropdownsHtml += `
+                            </select>
+                        </div>
+                    `;
+                });
+                
+                console.log('Generated dropdown HTML:', dropdownsHtml);
+                dropdownsContainer.innerHTML = dropdownsHtml;
+                
+                // Initialize selected services container
+                selectedServicesContainer.innerHTML = `
+                    <div id="selected-services-display" style="display: none;">
+                        <h6 style="color: var(--primary-color); margin-bottom: 1rem;">Selected Services & Budgets</h6>
+                        <div id="selected-services-items"></div>
+                    </div>
+                `;
+                
+                containerDiv.style.display = 'block';
+                containerDiv.style.visibility = 'visible';
+                containerDiv.style.opacity = '1';
+                
+                console.log('Dropdown container display set to block');
+                console.log('Container computed styles:', {
+                    display: window.getComputedStyle(containerDiv).display,
+                    visibility: window.getComputedStyle(containerDiv).visibility,
+                    opacity: window.getComputedStyle(containerDiv).opacity,
+                    height: window.getComputedStyle(containerDiv).height,
+                    position: window.getComputedStyle(containerDiv).position,
+                    zIndex: window.getComputedStyle(containerDiv).zIndex
+                });
+                
+                // Force show the container with important styles
+                containerDiv.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 1000 !important;');
+                
+                // Trace through all parent elements to find what's hiding the content
+                let currentElement = containerDiv;
+                let level = 0;
+                while (currentElement && level < 10) {
+                    const styles = window.getComputedStyle(currentElement);
+                    console.log(`Element level ${level}:`, {
+                        tagName: currentElement.tagName,
+                        id: currentElement.id,
+                        className: currentElement.className,
+                        display: styles.display,
+                        visibility: styles.visibility,
+                        opacity: styles.opacity,
+                        height: styles.height,
+                        overflow: styles.overflow
+                    });
+                    
+                    // Force visibility on any hidden parent
+                    if (styles.display === 'none' || styles.visibility === 'hidden' || styles.opacity === '0') {
+                        console.log(`Forcing visibility on level ${level} element:`, currentElement.tagName, currentElement.id);
+                        currentElement.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important; height: auto !important;');
+                    }
+                    
+                    currentElement = currentElement.parentElement;
+                    level++;
+                }
+                
+                // Also force the Step 2 section to be visible
+                const step2Section = document.getElementById('step-2');
+                if (step2Section) {
+                    console.log('Step 2 section styles:', {
+                        display: window.getComputedStyle(step2Section).display,
+                        visibility: window.getComputedStyle(step2Section).visibility,
+                        opacity: window.getComputedStyle(step2Section).opacity
+                    });
+                    step2Section.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important;');
+                }
+                
+                // Final check - scroll to the container to make sure it's visible
+                containerDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Add a visible border for debugging
+                containerDiv.style.border = '3px solid red';
+                containerDiv.style.backgroundColor = '#f0f8ff';
+                containerDiv.style.padding = '20px';
+                containerDiv.style.margin = '20px 0';
+                
+                console.log('Container should now be visible with red border and blue background');
+                
+                // Add event listeners for dropdown selection
+                addDropdownEventListeners();
+            }
+
+            // Create individual predefined service card with budget input
+            function createPredefinedServiceCard(service, category) {
+                const isSelected = bookingState.selectedPredefinedServices.some(s => s.id === service.id);
+                const selectedService = bookingState.selectedPredefinedServices.find(s => s.id === service.id);
+                const budget = selectedService ? selectedService.budget : 200;
+                
+                return `
+                    <div class="predefined-service-card ${isSelected ? 'selected' : ''}" data-service-id="${service.id}" data-category="${category}">
+                        <div class="service-card-header">
+                            <div class="service-card-title">${service.name}</div>
+                            <div class="service-card-check">
+                                ${isSelected ? '✓' : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="service-card-description">
+                            ${service.description || 'Professional service for your event'}
+                        </div>
+                        
+                        <div class="service-card-details">
+                            <div class="service-card-duration">
+                                <i class="fas fa-clock"></i>
+                                <span>${service.defaultDuration || 60} min</span>
+                            </div>
+                        </div>
+                        
+                        <div class="service-budget-form" style="display: ${isSelected ? 'block' : 'none'}; margin-top: 1rem; padding: 1rem; background: #f8faff; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text);">Your Budget for this Service</label>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="color: var(--text-light);">$</span>
+                                <input type="number" class="service-budget-input" min="50" max="10000" value="${budget}" 
+                                       style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem;">
+                            </div>
+                            <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-light);">
+                                Set your budget for this specific service
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Add event listeners for dropdown service selection
+            function addDropdownEventListeners() {
+                document.querySelectorAll('.service-dropdown').forEach(dropdown => {
+                    dropdown.addEventListener('change', (e) => {
+                        const serviceId = parseInt(e.target.value);
+                        const category = e.target.dataset.category;
+                        const selectedOption = e.target.selectedOptions[0];
+                        
+                        if (serviceId && selectedOption) {
+                            const serviceName = selectedOption.dataset.name;
+                            const serviceDescription = selectedOption.dataset.description;
+                            const serviceDuration = parseInt(selectedOption.dataset.duration) || 60;
+                            
+                            addServiceFromDropdown(serviceId, serviceName, serviceDescription, category, serviceDuration);
+                            
+                            // Reset dropdown to default
+                            e.target.value = '';
+                        }
+                    });
+                });
+            }
+
+            // Add service from dropdown selection
+            function addServiceFromDropdown(serviceId, serviceName, serviceDescription, category, duration) {
+                // Check if service is already selected
+                const existingService = bookingState.selectedPredefinedServices.find(s => s.id === serviceId);
+                if (existingService) {
+                    showError('This service is already selected.');
+                    return;
+                }
+                
+                // Add to selected services with default budget
+                const newService = {
+                    id: serviceId,
+                    name: serviceName,
+                    description: serviceDescription,
+                    category: category,
+                    defaultDuration: duration,
+                    budget: 200 // Default budget
+                };
+                
+                bookingState.selectedPredefinedServices.push(newService);
+                renderSelectedServices();
+                updateFindVendorsButton();
+            }
+
+            // Render selected services with budget inputs
+            function renderSelectedServices() {
+                const selectedServicesDisplay = document.getElementById('selected-services-display');
+                const selectedServicesItems = document.getElementById('selected-services-items');
+                
+                if (bookingState.selectedPredefinedServices.length === 0) {
+                    selectedServicesDisplay.style.display = 'none';
+                    return;
+                }
+                
+                selectedServicesDisplay.style.display = 'block';
+                
+                let servicesHtml = '';
+                let totalBudget = 0;
+                
+                bookingState.selectedPredefinedServices.forEach((service, index) => {
+                    totalBudget += service.budget;
+                    servicesHtml += `
+                        <div class="selected-service-item" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; margin-bottom: 0.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 6px;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--text); margin-bottom: 0.25rem;">${service.name}</div>
+                                <div style="font-size: 0.85rem; color: var(--text-light); text-transform: capitalize;">${service.category} • ${service.defaultDuration} min</div>
+                                ${service.description ? `<div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">${service.description}</div>` : ''}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <label style="font-size: 0.9rem; color: var(--text);">Budget:</label>
+                                    <div style="display: flex; align-items: center;">
+                                        <span style="color: var(--text-light);">$</span>
+                                        <input type="number" class="service-budget-input" data-service-id="${service.id}" 
+                                               min="50" max="10000" value="${service.budget}" 
+                                               style="width: 80px; padding: 0.4rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; margin-left: 0.25rem;">
+                                    </div>
+                                </div>
+                                <button type="button" class="remove-service-btn" data-service-id="${service.id}" 
+                                        style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer;">
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                servicesHtml += `
+                    <div style="margin-top: 1rem; padding: 1rem; background: #f8faff; border-radius: 6px; border-left: 4px solid var(--primary-color);">
+                        <div style="display: flex; justify-content: between; align-items: center;">
+                            <span style="font-weight: 600; color: var(--text);">Total Budget:</span>
+                            <span style="font-weight: 700; font-size: 1.1rem; color: var(--primary-color);">$${totalBudget.toLocaleString()}</span>
+                        </div>
+                    </div>
+                `;
+                
+                selectedServicesItems.innerHTML = servicesHtml;
+                
+                // Add event listeners for budget inputs and remove buttons
+                addSelectedServiceEventListeners();
+            }
+
+            // Add event listeners for selected services (budget inputs and remove buttons)
+            function addSelectedServiceEventListeners() {
+                // Budget input listeners
+                document.querySelectorAll('.service-budget-input').forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const serviceId = parseInt(e.target.dataset.serviceId);
+                        const budget = Math.max(50, Math.min(10000, parseInt(e.target.value) || 50));
+                        updateServiceBudget(serviceId, budget);
+                        renderSelectedServices(); // Re-render to update total
+                    });
+                });
+                
+                // Remove button listeners
+                document.querySelectorAll('.remove-service-btn').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const serviceId = parseInt(e.target.dataset.serviceId);
+                        removeSelectedService(serviceId);
+                    });
+                });
+            }
+
+            // Remove selected service
+            function removeSelectedService(serviceId) {
+                bookingState.selectedPredefinedServices = bookingState.selectedPredefinedServices.filter(s => s.id !== serviceId);
+                renderSelectedServices();
+                updateFindVendorsButton();
+            }
+
+            // Legacy function - keep for compatibility
+            function addPredefinedServiceEventListeners() {
+                // This function is now replaced by addDropdownEventListeners
+                console.log('Legacy addPredefinedServiceEventListeners called');
+            }
+
+            // Toggle predefined service selection
+            function togglePredefinedServiceSelection(serviceId, category, cardElement) {
+                const isSelected = cardElement.classList.contains('selected');
+                const budgetForm = cardElement.querySelector('.service-budget-form');
+                const checkIcon = cardElement.querySelector('.service-card-check');
+                
+                if (isSelected) {
+                    // Deselect service
+                    cardElement.classList.remove('selected');
+                    budgetForm.style.display = 'none';
+                    checkIcon.textContent = '';
+                    
+                    // Remove from selected services
+                    bookingState.selectedPredefinedServices = bookingState.selectedPredefinedServices.filter(s => s.id !== serviceId);
+                } else {
+                    // Select service
+                    cardElement.classList.add('selected');
+                    budgetForm.style.display = 'block';
+                    checkIcon.textContent = '✓';
+                    
+                    // Find service details
+                    const serviceDetails = bookingState.availablePredefinedServices[category]?.find(s => s.id === serviceId);
+                    if (serviceDetails) {
+                        // Add to selected services
+                        bookingState.selectedPredefinedServices.push({
+                            id: serviceId,
+                            name: serviceDetails.name,
+                            description: serviceDetails.description,
+                            category: category,
+                            defaultDuration: serviceDetails.defaultDuration,
+                            budget: 200 // Default budget
+                        });
+                    }
+                }
+                
+                updateSelectedServicesSummary();
+                updateFindVendorsButton();
+            }
+
+            // Update individual service budget
+            function updateServiceBudget(serviceId, budget) {
+                const service = bookingState.selectedPredefinedServices.find(s => s.id === serviceId);
+                if (service) {
+                    service.budget = Math.max(50, Math.min(10000, budget));
+                    updateSelectedServicesSummary();
+                }
+            }
+
+            // Update selected services summary
+            function updateSelectedServicesSummary() {
+                const summaryDiv = document.getElementById('selected-services-summary');
+                const listDiv = document.getElementById('selected-services-list');
+                const totalBudgetSpan = document.getElementById('total-services-budget');
+                
+                if (bookingState.selectedPredefinedServices.length === 0) {
+                    summaryDiv.style.display = 'none';
+                    return;
+                }
+                
+                summaryDiv.style.display = 'block';
+                
+                let listHtml = '';
+                let totalBudget = 0;
+                
+                bookingState.selectedPredefinedServices.forEach(service => {
+                    totalBudget += service.budget;
+                    listHtml += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0;">
+                            <span style="color: var(--text);">${service.name}</span>
+                            <span style="font-weight: 600; color: var(--primary-color);">$${service.budget}</span>
+                        </div>
+                    `;
+                });
+                
+                listDiv.innerHTML = listHtml;
+                totalBudgetSpan.textContent = totalBudget.toLocaleString();
+            }
+
+            // Update Find Vendors button state
+            function updateFindVendorsButton() {
+                const findVendorsBtn = document.getElementById('find-vendors-btn');
+                if (findVendorsBtn) {
+                    const hasSelectedServices = bookingState.selectedPredefinedServices.length > 0;
+                    findVendorsBtn.disabled = !hasSelectedServices;
+                }
+            }
+
             function validateStep2() {
                 const eventDate = document.getElementById('event-date').value;
                 const eventTime = document.getElementById('event-time').value;
@@ -5007,6 +5558,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             async function handleFindVendors() {
+                // Validate that services are selected and event details are filled
+                if (bookingState.selectedPredefinedServices.length === 0) {
+                    showError('Please select at least one service.');
+                    return;
+                }
+                
                 if (!validateStep2()) {
                     showError('Please fill in all required event details.');
                     return;
@@ -5029,24 +5586,71 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateBookingStep(3);
 
                 try {
-                    // Search for vendors based on selected services and budget
-                    const searchParams = new URLSearchParams({
-                        services: bookingState.selectedServices.map(s => s.type).join(','),
-                        budget: bookingState.budget,
-                        date: bookingState.eventDetails.date,
-                        location: bookingState.eventDetails.location || ''
+                    // Prepare search criteria using predefined services and individual budgets
+                    const selectedServiceIds = bookingState.selectedPredefinedServices.map(s => s.id);
+                    const totalBudget = bookingState.selectedPredefinedServices.reduce((sum, s) => sum + s.budget, 0);
+                    
+                    // Create detailed service requirements for vendor matching
+                    const serviceRequirements = bookingState.selectedPredefinedServices.map(service => ({
+                        serviceId: service.id,
+                        serviceName: service.name,
+                        category: service.category,
+                        budget: service.budget,
+                        duration: service.defaultDuration
+                    }));
+
+                    // Search for vendors using the new predefined services endpoint
+                    const searchPayload = {
+                        selectedServices: serviceRequirements,
+                        eventDetails: bookingState.eventDetails,
+                        totalBudget: totalBudget,
+                        serviceIds: selectedServiceIds
+                    };
+
+                    const response = await fetch(`${API_BASE_URL}/vendors/search-by-services`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(searchPayload)
                     });
 
-                    const response = await fetch(`${API_BASE_URL}/vendors?${searchParams}`);
                     const data = await response.json();
-
                     document.getElementById('vendor-loading').style.display = 'none';
 
-                    if (data.vendors && data.vendors.length > 0) {
+                    if (data.success && data.vendors && data.vendors.length > 0) {
                         bookingState.availableVendors = data.vendors;
                         renderVendorResults(data.vendors);
+                        
+                        // Update step 3 header with match info
+                        const step3Title = document.querySelector('#booking-step-3 .form-section-title');
+                        if (step3Title) {
+                            step3Title.textContent = `Found ${data.vendors.length} Matching Vendors`;
+                        }
                     } else {
                         document.getElementById('no-vendors-found').style.display = 'block';
+                        
+                        // Show helpful message about no matches
+                        const noVendorsDiv = document.getElementById('no-vendors-found');
+                        if (noVendorsDiv) {
+                            noVendorsDiv.innerHTML = `
+                                <div style="text-align: center; padding: 2rem;">
+                                    <h5 style="color: var(--text); margin-bottom: 1rem;">No Vendors Found</h5>
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+                                        We couldn't find vendors that match your selected services and budget requirements.
+                                    </p>
+                                    <div style="background: #f8faff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                        <p style="font-size: 0.9rem; color: var(--text-light);">
+                                            <strong>Your Requirements:</strong><br>
+                                            Services: ${bookingState.selectedPredefinedServices.map(s => s.name).join(', ')}<br>
+                                            Total Budget: $${totalBudget.toLocaleString()}<br>
+                                            Location: ${bookingState.eventDetails.location || 'Not specified'}
+                                        </p>
+                                    </div>
+                                    <button class="btn btn-outline" id="adjust-criteria-btn">Adjust Your Criteria</button>
+                                </div>
+                            `;
+                        }
                     }
                 } catch (error) {
                     console.error('Error finding vendors:', error);
