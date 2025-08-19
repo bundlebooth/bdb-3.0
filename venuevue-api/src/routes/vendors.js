@@ -1226,7 +1226,7 @@ router.post('/search-by-services', async (req, res) => {
 
     // Execute the query to find matching vendors
     const query = `
-      SELECT DISTINCT
+      SELECT
         vp.VendorProfileID,
         vp.BusinessName,
         vp.BusinessType,
