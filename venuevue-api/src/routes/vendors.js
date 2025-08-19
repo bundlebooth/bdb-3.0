@@ -1233,6 +1233,51 @@ router.get('/service-id-by-name/:serviceName', async (req, res) => {
   }
 });
 
+// Helper function to geocode location using Google Maps Geocoding API
+async function geocodeLocation(locationString) {
+  try {
+    const cleanLocation = locationString.trim();
+    
+    // Check if Google Maps API key is configured
+    if (!process.env.GOOGLE_MAPS_API_KEY) {
+      console.warn('Google Maps API key not configured, falling back to text search');
+      return null;
+    }
+    
+    // Use Google Maps Geocoding API
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleanLocation)}&key=${process.env.GOOGLE_MAPS_API_KEY}`
+    );
+    
+    if (!response.ok) {
+      console.error('Google Geocoding API request failed:', response.status);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
+      const formattedAddress = data.results[0].formatted_address;
+      
+      console.log(`Geocoded "${cleanLocation}" to: ${location.lat}, ${location.lng} (${formattedAddress})`);
+      
+      return { 
+        lat: location.lat, 
+        lng: location.lng,
+        formattedAddress: formattedAddress
+      };
+    } else {
+      console.warn(`Google Geocoding failed for "${cleanLocation}":`, data.status, data.error_message);
+      return null;
+    }
+    
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+}
+
 // Search vendors by predefined services with enhanced criteria
 router.post('/search-by-services', async (req, res) => {
   try {
@@ -1316,15 +1361,61 @@ router.post('/search-by-services', async (req, res) => {
       whereClause += ` AND (${budgetConditions})`;
     }
 
-    // Add location filtering if provided
+    // Add location filtering if provided - enhanced with geographic distance
+    let locationLatitude = null;
+    let locationLongitude = null;
+    let maxDistanceMiles = 50; // Default search radius
+    
     if (eventDetails && eventDetails.location) {
-      whereClause += ` AND (vp.ServiceArea LIKE @Location OR vp.BusinessAddress LIKE @Location)`;
-      request.input('Location', sql.NVarChar, `%${eventDetails.location}%`);
+      // Try to extract coordinates if provided in format "lat,lng"
+      const coordMatch = eventDetails.location.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
+      if (coordMatch) {
+        locationLatitude = parseFloat(coordMatch[1]);
+        locationLongitude = parseFloat(coordMatch[2]);
+      } else {
+        // Try to geocode the location string using Google Maps API
+        const geocoded = await geocodeLocation(eventDetails.location);
+        if (geocoded) {
+          locationLatitude = geocoded.lat;
+          locationLongitude = geocoded.lng;
+          console.log(`Geocoded "${eventDetails.location}" to coordinates: ${locationLatitude}, ${locationLongitude}`);
+        }
+      }
+      
+      // If coordinates available, use geographic distance calculation
+      if (locationLatitude && locationLongitude) {
+        whereClause += ` AND vp.Latitude IS NOT NULL AND vp.Longitude IS NOT NULL`;
+        request.input('EventLat', sql.Decimal(10, 8), locationLatitude);
+        request.input('EventLng', sql.Decimal(11, 8), locationLongitude);
+        request.input('MaxDistance', sql.Int, maxDistanceMiles);
+        console.log(`Using geographic search: ${locationLatitude}, ${locationLongitude} within ${maxDistanceMiles} miles`);
+      } else {
+        // Fallback to enhanced text-based location matching
+        console.log(`Using text-based location search for: ${eventDetails.location}`);
+        whereClause += ` AND (
+          vp.City LIKE @Location OR 
+          vp.State LIKE @Location OR 
+          vp.Address LIKE @Location OR
+          vp.PostalCode LIKE @Location OR
+          EXISTS (
+            SELECT 1 FROM VendorServiceAreas vsa 
+            WHERE vsa.VendorProfileID = vp.VendorProfileID 
+            AND vsa.IsActive = 1 
+            AND (
+              vsa.CityName LIKE @Location OR 
+              vsa.[State/Province] LIKE @Location OR
+              vsa.FormattedAddress LIKE @Location OR
+              vsa.PostalCode LIKE @Location
+            )
+          )
+        )`;
+        request.input('Location', sql.NVarChar, `%${eventDetails.location}%`);
+      }
     }
 
     // Execute the query to find matching vendors
-    const query = `
-    SELECT
+    let selectClause = `
+      SELECT
         vp.VendorProfileID,
         vp.BusinessName,
         vp.BusinessType,
@@ -1335,14 +1426,43 @@ router.post('/search-by-services', async (req, res) => {
         vp.IsAwardWinning,
         vp.FeaturedImageURL,
         COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices,
-        STRING_AGG(ps.ServiceName, ', ') as MatchingServiceNames
+        STRING_AGG(ps.ServiceName, ', ') as MatchingServiceNames`;
+    
+    let orderClause = `ORDER BY MatchingServices DESC, vp.IsPremium DESC`;
+    
+    // Add distance calculation if coordinates are provided
+    if (locationLatitude && locationLongitude) {
+      selectClause += `,
+        ROUND(
+          3959 * ACOS(
+            COS(RADIANS(@EventLat)) * COS(RADIANS(vp.Latitude)) * 
+            COS(RADIANS(vp.Longitude) - RADIANS(@EventLng)) + 
+            SIN(RADIANS(@EventLat)) * SIN(RADIANS(vp.Latitude))
+          ), 2
+        ) as DistanceMiles`;
+      
+      // Add distance filter to WHERE clause
+      whereClause += ` AND (
+        3959 * ACOS(
+          COS(RADIANS(@EventLat)) * COS(RADIANS(vp.Latitude)) * 
+          COS(RADIANS(vp.Longitude) - RADIANS(@EventLng)) + 
+          SIN(RADIANS(@EventLat)) * SIN(RADIANS(vp.Latitude))
+        )
+      ) <= @MaxDistance`;
+      
+      // Order by distance first, then by matching services
+      orderClause = `ORDER BY DistanceMiles ASC, MatchingServices DESC, vp.IsPremium DESC`;
+    }
+    
+    const query = `
+      ${selectClause}
       ${joinClause}
       ${whereClause}
       GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.BusinessDescription,
-               vp.City, vp.State, vp.IsPremium, 
-               vp.IsEcoFriendly, vp.IsAwardWinning, vp.FeaturedImageURL
+               vp.City, vp.State, vp.IsPremium, vp.IsEcoFriendly, vp.IsAwardWinning, 
+               vp.FeaturedImageURL, vp.Latitude, vp.Longitude
       HAVING COUNT(DISTINCT vss.PredefinedServiceID) >= @MinMatchingServices
-      ORDER BY MatchingServices DESC, vp.IsPremium DESC
+      ${orderClause}
     `;
 
     // Require vendors to match at least 1 service (can be adjusted)
