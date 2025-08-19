@@ -1232,7 +1232,6 @@ router.post('/search-by-services', async (req, res) => {
         vp.BusinessType,
         vp.BusinessDescription,
         vp.City + ', ' + vp.State as Location,
-        vp.AverageRating,
         vp.TotalReviews,
         vp.IsPremium,
         vp.IsEcoFriendly,
@@ -1245,10 +1244,10 @@ router.post('/search-by-services', async (req, res) => {
       ${joinClause}
       ${whereClause}
       GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.BusinessDescription,
-               vp.City, vp.State, vp.AverageRating, vp.TotalReviews, vp.IsPremium, 
+               vp.City, vp.State, vp.TotalReviews, vp.IsPremium, 
                vp.IsEcoFriendly, vp.IsAwardWinning, vp.ProfileImageURL, vp.ContactEmail, vp.ContactPhone
       HAVING COUNT(DISTINCT vss.PredefinedServiceID) >= @MinMatchingServices
-      ORDER BY MatchingServices DESC, vp.AverageRating DESC, vp.IsPremium DESC
+      ORDER BY MatchingServices DESC, vp.IsPremium DESC
     `;
 
     // Require vendors to match at least 1 service (can be adjusted)
