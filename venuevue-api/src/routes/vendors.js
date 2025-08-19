@@ -1324,17 +1324,16 @@ router.post('/search-by-services', async (req, res) => {
 
     // Execute the query to find matching vendors
     const query = `
-      SELECT
+    SELECT
         vp.VendorProfileID,
         vp.BusinessName,
         vp.BusinessType,
         vp.BusinessDescription,
         vp.City + ', ' + vp.State as Location,
-        vp.TotalReviews,
         vp.IsPremium,
         vp.IsEcoFriendly,
         vp.IsAwardWinning,
-        vp.ProfileImageURL,
+        vp.FeaturedImageURL,
         COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices,
         STRING_AGG(ps.ServiceName, ', ') as MatchingServiceNames
       ${joinClause}
