@@ -1339,8 +1339,8 @@ router.post('/search-by-services', async (req, res) => {
       ${joinClause}
       ${whereClause}
       GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.BusinessDescription,
-               vp.City, vp.State, vp.TotalReviews, vp.IsPremium, 
-               vp.IsEcoFriendly, vp.IsAwardWinning, vp.ProfileImageURL
+               vp.City, vp.State, vp.IsPremium, 
+               vp.IsEcoFriendly, vp.IsAwardWinning, vp.FeaturedImageURL
       HAVING COUNT(DISTINCT vss.PredefinedServiceID) >= @MinMatchingServices
       ORDER BY MatchingServices DESC, vp.IsPremium DESC
     `;
