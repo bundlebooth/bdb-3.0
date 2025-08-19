@@ -1238,14 +1238,13 @@ router.post('/search-by-services', async (req, res) => {
         vp.IsAwardWinning,
         vp.ProfileImageURL,
         vp.ContactEmail,
-        vp.ContactPhone,
         COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices,
         STRING_AGG(ps.ServiceName, ', ') as MatchingServiceNames
       ${joinClause}
       ${whereClause}
       GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.BusinessDescription,
                vp.City, vp.State, vp.TotalReviews, vp.IsPremium, 
-               vp.IsEcoFriendly, vp.IsAwardWinning, vp.ProfileImageURL, vp.ContactEmail, vp.ContactPhone
+               vp.IsEcoFriendly, vp.IsAwardWinning, vp.ProfileImageURL, vp.ContactEmail
       HAVING COUNT(DISTINCT vss.PredefinedServiceID) >= @MinMatchingServices
       ORDER BY MatchingServices DESC, vp.IsPremium DESC
     `;
