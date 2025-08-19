@@ -1399,6 +1399,79 @@
             padding: 0.75rem;
             border: 1px solid var(--border);
             border-radius: var(--radius);
+            position: relative;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        /* Location suggestions dropdown */
+        .location-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .location-suggestion-item {
+            padding: 0.75rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+        }
+
+        .location-suggestion-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .location-suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Fix predefined services styling */
+        .service-dropdown-container {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius) !important;
+            padding: 1rem !important;
+            margin-bottom: 1rem !important;
+        }
+
+        .service-dropdown-container select {
+            border: 1px solid var(--border) !important;
+            background: white !important;
+        }
+
+        .selected-service-item {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius) !important;
+            padding: 1rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+
+        .budget-range-container {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+
+        .budget-range-input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.9rem;
         }
 
         .card-element {
@@ -3794,8 +3867,8 @@
                             </div>
                             <div class="form-col">
                                 <div class="form-group">
-                                    <label for="event-time">Event Time *</label>
-                                    <input type="time" id="event-time" required>
+                                    <label for="event-start-time">Event Start Time *</label>
+                                    <input type="time" id="event-start-time" required>
                                 </div>
                             </div>
                         </div>
@@ -3803,8 +3876,8 @@
                         <div class="form-row">
                             <div class="form-col">
                                 <div class="form-group">
-                                    <label for="event-location">Event Location *</label>
-                                    <input type="text" id="event-location" placeholder="Enter event location" required>
+                                    <label for="event-end-time">Event End Time *</label>
+                                    <input type="time" id="event-end-time" required>
                                 </div>
                             </div>
                             <div class="form-col">
@@ -3816,9 +3889,11 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="special-requests">Special Requests</label>
-                            <textarea id="special-requests" rows="3" placeholder="Any special requirements or preferences..."></textarea>
+                            <label for="event-location">Event Location *</label>
+                            <input type="text" id="event-location" placeholder="Start typing to search for a location..." required autocomplete="off">
+                            <div id="location-suggestions" class="location-suggestions" style="display: none;"></div>
                         </div>
+                        
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
@@ -5277,16 +5352,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     step2Section.setAttribute('style', 'display: block !important; visibility: visible !important; opacity: 1 !important;');
                 }
                 
-                // Final check - scroll to the container to make sure it's visible
-                containerDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Remove debugging styles and apply proper styling
+                containerDiv.style.border = '';
+                containerDiv.style.backgroundColor = '';
+                containerDiv.style.padding = '';
+                containerDiv.style.margin = '';
                 
-                // Add a visible border for debugging
-                containerDiv.style.border = '3px solid red';
-                containerDiv.style.backgroundColor = '#f0f8ff';
-                containerDiv.style.padding = '20px';
-                containerDiv.style.margin = '20px 0';
-                
-                console.log('Container should now be visible with red border and blue background');
+                console.log('Container styling cleaned up');
                 
                 // Add event listeners for dropdown selection
                 addDropdownEventListeners();
@@ -5364,14 +5436,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // Add to selected services with default budget
+                // Add to selected services with default budget and duration
                 const newService = {
                     id: serviceId,
                     name: serviceName,
                     description: serviceDescription,
                     category: category,
                     defaultDuration: duration,
-                    budget: 200 // Default budget
+                    budget: 300, // Default budget
+                    duration: duration // User-specified duration
                 };
                 
                 bookingState.selectedPredefinedServices.push(newService);
@@ -5397,10 +5470,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 bookingState.selectedPredefinedServices.forEach((service, index) => {
                     totalBudget += service.budget;
                     servicesHtml += `
-                        <div class="selected-service-item" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; margin-bottom: 0.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        <div class="selected-service-item" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; margin-bottom: 0.5rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;">
                             <div style="flex: 1;">
                                 <div style="font-weight: 600; color: var(--text); margin-bottom: 0.25rem;">${service.name}</div>
-                                <div style="font-size: 0.85rem; color: var(--text-light); text-transform: capitalize;">${service.category} • ${service.defaultDuration} min</div>
+                                <div style="font-size: 0.85rem; color: var(--text-light); text-transform: capitalize;">${service.category} • Default: ${service.defaultDuration} min</div>
                                 ${service.description ? `<div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">${service.description}</div>` : ''}
                             </div>
                             <div style="display: flex; align-items: center; gap: 1rem;">
@@ -5410,7 +5483,16 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <span style="color: var(--text-light);">$</span>
                                         <input type="number" class="service-budget-input" data-service-id="${service.id}" 
                                                min="50" max="10000" value="${service.budget}" 
-                                               style="width: 80px; padding: 0.4rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; margin-left: 0.25rem;">
+                                               style="width: 80px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; margin-left: 0.25rem;">
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <label style="font-size: 0.9rem; color: var(--text);">Duration:</label>
+                                    <div style="display: flex; align-items: center;">
+                                        <input type="number" class="service-duration-input" data-service-id="${service.id}" 
+                                               min="15" max="480" value="${service.duration}" 
+                                               style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
+                                        <span style="color: var(--text-light); margin-left: 0.25rem;">min</span>
                                     </div>
                                 </div>
                                 <button type="button" class="remove-service-btn" data-service-id="${service.id}" 
@@ -5437,15 +5519,104 @@ document.addEventListener('DOMContentLoaded', function() {
                 addSelectedServiceEventListeners();
             }
 
-            // Add event listeners for selected services (budget inputs and remove buttons)
+            // Initialize Google Maps-like location autocomplete
+            function initializeLocationAutocomplete() {
+                const locationInput = document.getElementById('event-location');
+                const suggestionsDiv = document.getElementById('location-suggestions');
+                
+                if (!locationInput || !suggestionsDiv) return;
+                
+                let debounceTimer;
+                
+                locationInput.addEventListener('input', function(e) {
+                    const query = e.target.value.trim();
+                    
+                    clearTimeout(debounceTimer);
+                    
+                    if (query.length < 3) {
+                        suggestionsDiv.style.display = 'none';
+                        return;
+                    }
+                    
+                    debounceTimer = setTimeout(() => {
+                        searchLocations(query);
+                    }, 300);
+                });
+                
+                // Hide suggestions when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!locationInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+                        suggestionsDiv.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Search for locations using a geocoding service
+            async function searchLocations(query) {
+                const suggestionsDiv = document.getElementById('location-suggestions');
+                
+                try {
+                    // Using OpenStreetMap Nominatim API as a free alternative to Google Maps
+                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&q=${encodeURIComponent(query)}`);
+                    const locations = await response.json();
+                    
+                    if (locations.length === 0) {
+                        suggestionsDiv.style.display = 'none';
+                        return;
+                    }
+                    
+                    let suggestionsHtml = '';
+                    locations.forEach(location => {
+                        const displayName = location.display_name;
+                        suggestionsHtml += `
+                            <div class="location-suggestion-item" data-location="${displayName}" data-lat="${location.lat}" data-lon="${location.lon}">
+                                ${displayName}
+                            </div>
+                        `;
+                    });
+                    
+                    suggestionsDiv.innerHTML = suggestionsHtml;
+                    suggestionsDiv.style.display = 'block';
+                    
+                    // Add click event listeners to suggestions
+                    suggestionsDiv.querySelectorAll('.location-suggestion-item').forEach(item => {
+                        item.addEventListener('click', function() {
+                            const locationInput = document.getElementById('event-location');
+                            locationInput.value = this.dataset.location;
+                            suggestionsDiv.style.display = 'none';
+                            
+                            // Store coordinates for future use if needed
+                            locationInput.dataset.lat = this.dataset.lat;
+                            locationInput.dataset.lon = this.dataset.lon;
+                        });
+                    });
+                    
+                } catch (error) {
+                    console.error('Error searching locations:', error);
+                    suggestionsDiv.style.display = 'none';
+                }
+            }
+
+            // Add event listeners for selected services (budget and duration inputs, remove buttons)
             function addSelectedServiceEventListeners() {
                 // Budget input listeners
                 document.querySelectorAll('.service-budget-input').forEach(input => {
                     input.addEventListener('input', (e) => {
                         const serviceId = parseInt(e.target.dataset.serviceId);
-                        const budget = Math.max(50, Math.min(10000, parseInt(e.target.value) || 50));
-                        updateServiceBudget(serviceId, budget);
+                        const value = Math.max(50, Math.min(10000, parseInt(e.target.value) || 50));
+                        
+                        updateServiceBudget(serviceId, value);
                         renderSelectedServices(); // Re-render to update total
+                    });
+                });
+                
+                // Duration input listeners
+                document.querySelectorAll('.service-duration-input').forEach(input => {
+                    input.addEventListener('input', (e) => {
+                        const serviceId = parseInt(e.target.dataset.serviceId);
+                        const value = Math.max(15, Math.min(480, parseInt(e.target.value) || 60));
+                        
+                        updateServiceDuration(serviceId, value);
                     });
                 });
                 
@@ -5519,6 +5690,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
+            // Update service duration
+            function updateServiceDuration(serviceId, duration) {
+                const service = bookingState.selectedPredefinedServices.find(s => s.id === serviceId);
+                if (service) {
+                    service.duration = Math.max(15, Math.min(480, duration));
+                }
+            }
+
             // Update selected services summary
             function updateSelectedServicesSummary() {
                 const summaryDiv = document.getElementById('selected-services-summary');
@@ -5559,9 +5738,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             function validateStep2() {
-                const eventDate = document.getElementById('event-date').value;
-                const eventTime = document.getElementById('event-time').value;
-                return eventDate && eventTime;
+                const eventDate = document.getElementById('event-date');
+                const eventStartTime = document.getElementById('event-start-time');
+                const eventEndTime = document.getElementById('event-end-time');
+                const eventLocation = document.getElementById('event-location');
+                
+                // Check if all required fields exist and have values
+                return eventDate?.value && 
+                       eventStartTime?.value && 
+                       eventEndTime?.value && 
+                       eventLocation?.value;
             }
 
             async function handleFindVendors() {
@@ -5579,10 +5765,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Collect event details
                 bookingState.eventDetails = {
                     date: document.getElementById('event-date').value,
-                    time: document.getElementById('event-time').value,
+                    startTime: document.getElementById('event-start-time').value,
+                    endTime: document.getElementById('event-end-time').value,
                     location: document.getElementById('event-location').value,
-                    attendeeCount: parseInt(document.getElementById('attendee-count').value) || 50,
-                    specialRequests: document.getElementById('special-requests').value
+                    attendeeCount: parseInt(document.getElementById('attendee-count').value) || 50
                 };
 
                 // Show loading state
@@ -5618,7 +5804,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 serviceName: service.name,
                                 category: service.category,
                                 budget: service.budget,
-                                duration: service.defaultDuration
+                                duration: service.duration // Use user-specified duration instead of default
                             };
 
                             const searchPayload = {
@@ -14110,6 +14296,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             return;
                         }
                         updateBookingStep(2);
+                        // Initialize location autocomplete when entering Step 2
+                        initializeLocationAutocomplete();
                     });
                 }
                 
