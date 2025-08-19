@@ -1336,7 +1336,7 @@ router.post('/search-by-services', async (req, res) => {
     }
 
     // Build dynamic query to find vendors who offer the selected services
-    let whereClause = `WHERE vp.IsActive = 1 AND u.IsActive = 1`;
+    let whereClause = `WHERE vp.IsActive = 1`;
     let joinClause = `
       FROM VendorProfiles vp
       INNER JOIN Users u ON vp.UserID = u.UserID
