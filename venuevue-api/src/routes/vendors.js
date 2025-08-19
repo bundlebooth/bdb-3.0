@@ -1399,8 +1399,7 @@ router.post('/search-by-services', async (req, res) => {
           vp.PostalCode LIKE @Location OR
           EXISTS (
             SELECT 1 FROM VendorServiceAreas vsa 
-            WHERE vsa.VendorProfileID = vp.VendorProfileID 
-            AND vsa.IsActive = 1 
+            WHERE vsa.VendorProfileID = vp.VendorProfileID  
             AND (
               vsa.CityName LIKE @Location OR 
               vsa.[State/Province] LIKE @Location OR
