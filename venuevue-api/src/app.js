@@ -153,10 +153,6 @@ app.use((err, req, res, next) => {
 // Initialize Socket.IO handlers
 handleSocketIO(io);
 
-// Initialize Request Scheduler
-const RequestScheduler = require('./services/requestScheduler');
-const requestScheduler = new RequestScheduler(io);
-requestScheduler.start();
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
