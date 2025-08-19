@@ -764,7 +764,10 @@ router.post('/requests/:requestId/approve', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Request approved successfully'
+      message: 'Request approved successfully',
+      userId: userId,
+      requestId: requestId,
+      vendorProfileId: vendorProfileId
     });
 
   } catch (err) {
