@@ -6785,29 +6785,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     return `
                         <div class="vendor-card" data-vendor-id="${vendor.VendorProfileID || vendor.id}">
-                            <div class="vendor-card-header">
-                                <div class="vendor-avatar">
+                            <div class="vendor-image">
+                                <div style="width:100%;height:100%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;font-size:2rem;color:white;">
                                     ${(vendor.BusinessName || vendor.name || 'V').charAt(0).toUpperCase()}
                                 </div>
-                                <div class="vendor-info">
-                                    <h5>${vendor.BusinessName || vendor.name || 'Vendor'}</h5>
-                                    <div class="vendor-rating">
-                                        <span>⭐ ${vendor.rating || '4.5'}</span>
-                                        <span>(${vendor.reviewCount || '12'} reviews)</span>
+                            </div>
+                            <div class="vendor-details">
+                                <h3 class="vendor-name">${vendor.BusinessName || vendor.name || 'Vendor'}</h3>
+                                <div class="vendor-location">
+                                    ⭐ ${vendor.rating || '4.5'} (${vendor.reviewCount || '12'} reviews)
+                                </div>
+                                <div class="vendor-features">
+                                    <div class="feature">
+                                        <span class="feature-icon">💼</span>
+                                        <span>${services.map(s => s.type).join(', ') || 'Multiple services'}</span>
+                                    </div>
+                                    <div class="feature">
+                                        <span class="feature-icon">💰</span>
+                                        <span class="price-indicator">$${Math.round(estimatedPrice).toLocaleString()}</span>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="vendor-services">
-                                <h6>Services:</h6>
-                                <p>${services.map(s => s.type).join(', ') || 'Multiple services'}</p>
-                            </div>
-                            <div class="vendor-price">
-                                $${Math.round(estimatedPrice).toLocaleString()}
-                            </div>
-                            <div class="vendor-actions">
-                                <button class="btn-select-vendor" onclick="toggleVendorSelection(${vendor.VendorProfileID || vendor.id})">
-                                    Select Vendor
-                                </button>
+                                <div class="vendor-footer" style="margin-top: 1rem;">
+                                    <button class="btn btn-primary" onclick="toggleVendorSelection(${vendor.VendorProfileID || vendor.id})" style="width: 100%; padding: 0.75rem; border-radius: 12px; font-weight: 600;">
+                                        Select Vendor
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -6850,10 +6852,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                         `<img src="${featuredImage}" alt="${businessName}" style="width:100%;height:100%;object-fit:cover;">` : 
                                         `<div style="width:100%;height:100%;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:2rem;color:#666;">${businessName.charAt(0).toUpperCase()}</div>`
                                     }
-                                    <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
-                                        ${vendor.IsPremium ? '<span class="badge" style="background-color: #5e72e4; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Premium</span>' : ''}
-                                        ${vendor.IsEcoFriendly ? '<span class="badge" style="background-color: #38a169; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Eco-Friendly</span>' : ''}
-                                        ${vendor.IsAwardWinning ? '<span class="badge" style="background-color: #d69e2e; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Award Winning</span>' : ''}
+                                    <div class="vendor-badges" style="position: absolute; bottom: 12px; left: 12px; display: flex; gap: 6px;">
+                                        ${vendor.IsPremium ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #5e72e4; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Premium</span>' : ''}
+                                        ${vendor.IsEcoFriendly ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #38a169; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Eco-Friendly</span>' : ''}
+                                        ${vendor.IsAwardWinning ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #d69e2e; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Award Winning</span>' : ''}
                                     </div>
                                 </div>
                                 <div class="vendor-details">
@@ -6873,8 +6875,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                         ${vendorDescription.length > 100 ? vendorDescription.substring(0, 100) + '...' : vendorDescription}
                                     </div>
                                     <div class="vendor-footer">
-                                        <button class="btn btn-outline view-profile-btn" onclick="viewVendorProfile(${vendorId})">View Profile</button>
-                                        <button class="btn btn-primary btn-select-vendor" onclick="toggleVendorSelection(${vendorId}, '${service.name}', ${actualPrice})">
+                                        <button class="btn btn-outline view-profile-btn" onclick="viewVendorProfile(${vendorId})" style="border-radius: 12px; font-weight: 600;">View Profile</button>
+                                        <button class="btn btn-primary btn-select-vendor" onclick="toggleVendorSelection(${vendorId}, '${service.name}', ${actualPrice})" style="border-radius: 12px; font-weight: 600;">
                                             Select Vendor
                                         </button>
                                     </div>
@@ -7005,10 +7007,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     `<img src="${featuredImage}" alt="${businessName}" style="width:100%;height:100%;object-fit:cover;">` : 
                                     `<div style="width:100%;height:100%;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:2rem;color:#666;">${businessName.charAt(0).toUpperCase()}</div>`
                                 }
-                                <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
-                                    ${vendor.IsPremium ? '<span class="badge" style="background-color: #5e72e4; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Premium</span>' : ''}
-                                    ${vendor.IsEcoFriendly ? '<span class="badge" style="background-color: #38a169; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Eco-Friendly</span>' : ''}
-                                    ${vendor.IsAwardWinning ? '<span class="badge" style="background-color: #d69e2e; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Award Winning</span>' : ''}
+                                <div class="vendor-badges" style="position: absolute; bottom: 12px; left: 12px; display: flex; gap: 6px;">
+                                    ${vendor.IsPremium ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #5e72e4; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Premium</span>' : ''}
+                                    ${vendor.IsEcoFriendly ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #38a169; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Eco-Friendly</span>' : ''}
+                                    ${vendor.IsAwardWinning ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #d69e2e; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Award Winning</span>' : ''}
                                 </div>
                             </div>
                             <div class="vendor-details">
@@ -12290,10 +12292,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     <div class="vendor-image">
                         ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
                         <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
-                        <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
-                            ${vendor.isPremium ? '<span class="badge" style="background-color: #5e72e4; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Premium</span>' : ''}
-                            ${vendor.isEcoFriendly ? '<span class="badge" style="background-color: #38a169; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Eco-Friendly</span>' : ''}
-                            ${vendor.isAwardWinning ? '<span class="badge" style="background-color: #d69e2e; color: white; padding: 2px 6px; border-radius: 12px; font-size: 0.75rem;">Award Winning</span>' : ''}
+                        <div class="vendor-badges" style="position: absolute; bottom: 12px; left: 12px; display: flex; gap: 6px;">
+                            ${vendor.isPremium ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #5e72e4; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Premium</span>' : ''}
+                            ${vendor.isEcoFriendly ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #38a169; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Eco-Friendly</span>' : ''}
+                            ${vendor.isAwardWinning ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #d69e2e; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Award Winning</span>' : ''}
                         </div>
                     </div>
                     <div class="vendor-details">
@@ -13632,8 +13634,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <div class="vendor-location">
                                     📍 ${vendor.City}, ${vendor.State}
                                 </div>
-                                <div class="vendor-footer">
-                                    <button class="btn btn-primary" style="width: 100%;" data-id="${vendor.VendorProfileID}">View</button>
+                                <div class="vendor-features">
+                                    <div class="feature">
+                                        <span class="feature-icon">${getCategoryIcon(vendor.Categories?.split(',')[0] || 'all')}</span>
+                                        <span>${vendor.Categories?.split(',')[0] || 'Service'}</span>
+                                    </div>
+                                </div>
+                                <div class="vendor-footer" style="margin-top: 1rem;">
+                                    <button class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 12px; font-weight: 600;" data-id="${vendor.VendorProfileID}">View Profile</button>
                                 </div>
                             </div>
                         `;
@@ -13699,8 +13707,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <div class="vendor-location">
                                     📍 ${vendor.City}, ${vendor.State}
                                 </div>
-                                <div class="vendor-footer">
-                                    <button class="btn btn-primary" style="width: 100%;" data-id="${vendor.VendorProfileID}">View</button>
+                                <div class="vendor-features">
+                                    <div class="feature">
+                                        <span class="feature-icon">${getCategoryIcon(vendor.Categories?.split(',')[0] || 'all')}</span>
+                                        <span>${vendor.Categories?.split(',')[0] || 'Service'}</span>
+                                    </div>
+                                </div>
+                                <div class="vendor-footer" style="margin-top: 1rem;">
+                                    <button class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 12px; font-weight: 600;" data-id="${vendor.VendorProfileID}">View Profile</button>
                                 </div>
                             </div>
                         `;
