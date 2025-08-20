@@ -534,54 +534,76 @@
 
         .vendor-card {
             background-color: white;
-            border-radius: var(--radius);
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: var(--shadow);
-            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(0, 0, 0, 0.04);
         }
 
         .vendor-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+            border-color: rgba(94, 114, 228, 0.2);
         }
 
         .vendor-image {
-            height: 180px;
-            background-color: #f1f5f9;
+            height: 220px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--text-light);
+            color: white;
+            overflow: hidden;
+        }
+
+        .vendor-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .vendor-card:hover .vendor-image img {
+            transform: scale(1.05);
         }
 
         .vendor-badge {
             position: absolute;
-            top: 1rem;
-            left: 1rem;
-            background-color: var(--primary);
-            color: white;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
+            top: 12px;
+            left: 12px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #5e72e4;
+            padding: 0.4rem 0.8rem;
+            border-radius: 25px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 700;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .vendor-favorite {
             position: absolute;
-            top: 1rem;
-            right: 1rem;
-            width: 32px;
-            height: 32px;
-            background-color: white;
+            top: 12px;
+            right: 12px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            color: var(--text-light);
-            box-shadow: var(--shadow);
-            transition: all 0.2s;
+            color: #64748b;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        .vendor-favorite:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 1);
         }
 
         .vendor-favorite.active {
@@ -589,47 +611,59 @@
         }
 
         .vendor-details {
-            padding: 1.25rem;
+            padding: 1.5rem;
         }
 
         .vendor-name {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: #1a202c;
+            line-height: 1.3;
         }
 
         .vendor-location {
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            font-size: 0.9rem;
-            color: var(--text-light);
+            font-size: 0.95rem;
+            color: #64748b;
             margin-bottom: 1rem;
+            font-weight: 500;
         }
 
         .vendor-features {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1.25rem;
+            margin-bottom: 1.25rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 12px;
+            border-left: 4px solid #5e72e4;
         }
 
         .feature {
             display: flex;
             align-items: center;
-            gap: 0.25rem;
-            font-size: 0.8rem;
-            color: var(--text);
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: #475569;
+            font-weight: 500;
         }
 
         .feature-icon {
-            color: var(--primary);
+            color: #5e72e4;
+            font-size: 1rem;
         }
 
         .price-indicator {
             display: flex;
             align-items: center;
-            gap: 0.25rem;
-            font-size: 0.9rem;
+            gap: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #059669;
         }
 
         .price-dot {
@@ -2355,21 +2389,24 @@
 
         .vendor-card {
             background-color: white;
-            border: 2px solid var(--border);
-            border-radius: var(--radius);
-            padding: 1.5rem;
-            transition: all 0.2s ease;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         }
 
         .vendor-card:hover {
-            border-color: var(--primary);
-            box-shadow: var(--shadow);
+            border-color: rgba(94, 114, 228, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+            transform: translateY(-8px);
         }
 
         .vendor-card.selected {
-            border-color: var(--primary);
-            background-color: rgba(94, 114, 228, 0.05);
+            border-color: #5e72e4;
+            background-color: rgba(94, 114, 228, 0.02);
+            box-shadow: 0 8px 32px rgba(94, 114, 228, 0.15);
         }
 
         .vendor-card-header {
@@ -14990,7 +15027,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
                                     ${badges.join('')}
                                 </div>
-                                ${vendor.imageCount > 1 ? `<div class="image-count">+${vendor.imageCount - 1}</div>` : ''}
                             </div>
                             <div class="vendor-details">
                                 <h3 class="vendor-name">${vendor.BusinessName || vendor.name}</h3>
