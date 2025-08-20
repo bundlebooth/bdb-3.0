@@ -5,6 +5,186 @@ const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
 
+// Helper function to calculate unified pricing based on pricing model
+function calculateUnifiedPricing(service, searchCriteria) {
+  const { eventDurationMinutes, attendeeCount, maxBudget } = searchCriteria;
+  
+  console.log('🔍 DEBUG: calculateUnifiedPricing called with:', {
+    serviceName: service.ServiceName,
+    pricingModel: service.PricingModel,
+    baseRate: service.BaseRate,
+    baseDuration: service.BaseDurationMinutes,
+    eventDurationMinutes,
+    attendeeCount,
+    maxBudget
+  });
+  
+  try {
+    let finalCost = 0;
+    let breakdown = {};
+    let isAffordable = true;
+
+    if (service.PricingModel === 'time_based') {
+      // TIME_BASED: Base Duration + Base Rate + Overtime Rate + Minimum Fee
+      const baseDuration = service.BaseDurationMinutes || 60;
+      const baseRate = service.BaseRate || 0;
+      const overtimeRate = service.OvertimeRatePerHour || 0;
+      const minimumFee = service.MinimumBookingFee || 0;
+
+      // Check if vendor has set up pricing - if all are 0/null, use defaults
+      if (baseRate === 0 && overtimeRate === 0 && minimumFee === 0) {
+        // Default pricing for photography: $200 base rate for 1 hour
+        const defaultBaseRate = 200;
+        const defaultOvertimeRate = 100;
+        
+        let baseCost = defaultBaseRate;
+        let overtimeCost = 0;
+        
+        if (eventDurationMinutes > baseDuration) {
+          const overtimeMinutes = eventDurationMinutes - baseDuration;
+          const overtimeHours = Math.ceil(overtimeMinutes / 60);
+          overtimeCost = overtimeHours * defaultOvertimeRate;
+        }
+        
+        finalCost = baseCost + overtimeCost;
+        
+        breakdown = {
+          pricingModel: 'time_based_default',
+          baseDuration: baseDuration,
+          baseRate: defaultBaseRate,
+          baseCost: baseCost,
+          eventDuration: eventDurationMinutes,
+          overtimeMinutes: Math.max(0, eventDurationMinutes - baseDuration),
+          overtimeRate: defaultOvertimeRate,
+          overtimeCost: overtimeCost,
+          note: 'Default pricing - vendor has not set up unified pricing yet',
+          finalCost: finalCost
+        };
+      } else {
+        // Use vendor's actual pricing
+        let baseCost = baseRate;
+        let overtimeCost = 0;
+        
+        if (eventDurationMinutes > baseDuration) {
+          const overtimeMinutes = eventDurationMinutes - baseDuration;
+          const overtimeHours = Math.ceil(overtimeMinutes / 60);
+          overtimeCost = overtimeHours * overtimeRate;
+        }
+
+        finalCost = Math.max(baseCost + overtimeCost, minimumFee);
+        
+        breakdown = {
+          pricingModel: 'time_based',
+          baseDuration: baseDuration,
+          baseRate: baseRate,
+          baseCost: baseCost,
+          eventDuration: eventDurationMinutes,
+          overtimeMinutes: Math.max(0, eventDurationMinutes - baseDuration),
+          overtimeRate: overtimeRate,
+          overtimeCost: overtimeCost,
+          minimumFee: minimumFee,
+          finalCost: finalCost
+        };
+      }
+
+    } else if (service.PricingModel === 'fixed_based') {
+      // FIXED_BASED: Either Fixed Price OR Per Attendee pricing
+      if (service.FixedPricingType === 'fixed') {
+        finalCost = service.FixedPrice || 0;
+        breakdown = {
+          pricingModel: 'fixed_based',
+          pricingType: 'fixed',
+          fixedPrice: finalCost,
+          finalCost: finalCost
+        };
+      } else if (service.FixedPricingType === 'per_person') {
+        const pricePerPerson = service.PricePerPerson || 0;
+        const minAttendees = service.MinimumAttendees || 1;
+        const maxAttendees = service.MaximumAttendees || 1000;
+        
+        // Use actual attendee count, but respect min/max limits
+        const effectiveAttendees = Math.max(minAttendees, Math.min(attendeeCount || minAttendees, maxAttendees));
+        finalCost = effectiveAttendees * pricePerPerson;
+        
+        breakdown = {
+          pricingModel: 'fixed_based',
+          pricingType: 'per_person',
+          pricePerPerson: pricePerPerson,
+          requestedAttendees: attendeeCount,
+          effectiveAttendees: effectiveAttendees,
+          minimumAttendees: minAttendees,
+          maximumAttendees: maxAttendees,
+          finalCost: finalCost
+        };
+      }
+    } else {
+      // Fallback for services without pricing model - use legacy Price field or reasonable defaults
+      finalCost = service.Price || 0;
+      
+      // If no legacy price either, provide a reasonable default for time-based services
+      if (finalCost === 0 && service.PricingModel === 'time_based') {
+        // Default pricing for photography: $200 base rate for 1 hour
+        const defaultBaseRate = 200;
+        const baseDuration = 60; // 1 hour default
+        
+        if (eventDurationMinutes > baseDuration) {
+          const overtimeMinutes = eventDurationMinutes - baseDuration;
+          const overtimeHours = Math.ceil(overtimeMinutes / 60);
+          const defaultOvertimeRate = 100; // $100/hour overtime
+          finalCost = defaultBaseRate + (overtimeHours * defaultOvertimeRate);
+        } else {
+          finalCost = defaultBaseRate;
+        }
+        
+        breakdown = {
+          pricingModel: 'time_based_default',
+          baseDuration: baseDuration,
+          baseRate: defaultBaseRate,
+          baseCost: defaultBaseRate,
+          eventDuration: eventDurationMinutes,
+          overtimeMinutes: Math.max(0, eventDurationMinutes - baseDuration),
+          overtimeRate: 100,
+          overtimeCost: finalCost - defaultBaseRate,
+          note: 'Default pricing - vendor has not set up unified pricing yet',
+          finalCost: finalCost
+        };
+      } else {
+        breakdown = {
+          pricingModel: 'legacy',
+          price: finalCost,
+          finalCost: finalCost
+        };
+      }
+    }
+
+    // Check affordability
+    if (maxBudget && maxBudget > 0) {
+      isAffordable = finalCost <= maxBudget;
+    }
+
+    console.log('🔍 DEBUG: calculateUnifiedPricing result:', {
+      serviceName: service.ServiceName,
+      finalCost,
+      breakdown,
+      isAffordable
+    });
+
+    return {
+      finalCost: Math.round(finalCost * 100) / 100, // Round to 2 decimal places
+      breakdown,
+      isAffordable
+    };
+
+  } catch (error) {
+    console.error('Error calculating unified pricing:', error);
+    return {
+      finalCost: 0,
+      breakdown: { error: 'Pricing calculation failed' },
+      isAffordable: false
+    };
+  }
+}
+
 // Helper function to convert time string to 24-hour format for database comparison
 function convertTo24Hour(timeString) {
   if (!timeString) return null;
@@ -1730,7 +1910,7 @@ router.post('/search-by-services-unified', async (req, res) => {
 
     // Build main search query using Services table
     const request = new sql.Request(pool);
-    let whereClause = 'WHERE s.IsActive = 1 AND ps.IsActive = 1 AND s.PricingModel IS NOT NULL';
+    let whereClause = 'WHERE s.IsActive = 1 AND ps.IsActive = 1';
     let joinClause = `
       FROM Services s
       INNER JOIN VendorProfiles vp ON s.VendorProfileID = vp.VendorProfileID
@@ -1743,35 +1923,67 @@ router.post('/search-by-services-unified', async (req, res) => {
       request.input(`ServiceID${index}`, sql.Int, serviceId);
     });
 
-    // Add business hours filtering if event details provided
-    if (eventDetails?.date && eventDetails?.startTime && eventDetails?.endTime) {
-      const eventDate = new Date(eventDetails.date);
-      const dayOfWeek = eventDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      const eventStartTime = convertTo24Hour(eventDetails.startTime);
-      const eventEndTime = convertTo24Hour(eventDetails.endTime);
+        // Business hours filtering - make it truly optional for debugging
+        let businessHoursFiltered = false;
+        if (eventDetails?.date && eventDetails?.startTime && eventDetails?.endTime) {
+          const eventDate = new Date(eventDetails.date);
+          const dayOfWeek = eventDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+          const eventStartTime = convertTo24Hour(eventDetails.startTime);
+          const eventEndTime = convertTo24Hour(eventDetails.endTime);
 
-      if (eventStartTime && eventEndTime) {
-        joinClause += `
-          INNER JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
-        `;
-        whereClause += `
-          AND vbh.DayOfWeek = @DayOfWeek
-          AND vbh.IsAvailable = 1
-          AND vbh.OpenTime < CAST(@EventEndTime AS TIME)
-          AND vbh.CloseTime > CAST(@EventStartTime AS TIME)
-        `;
-        
-        request.input('DayOfWeek', sql.Int, dayOfWeek);
-        request.input('EventStartTime', sql.NVarChar, eventStartTime);
-        request.input('EventEndTime', sql.NVarChar, eventEndTime);
-        request.input('EventDurationMinutes', sql.Int, eventDurationMinutes || 0);
+          console.log('🔍 DEBUG: Business hours check:', {
+            dayOfWeek,
+            eventStartTime,
+            eventEndTime,
+            eventDate: eventDetails.date
+          });
+
+          // Only add business hours filtering if we have valid times
+          if (eventStartTime && eventEndTime) {
+            // Disable business hours filtering for now to allow more results
+            const enableBusinessHoursFiltering = false; // Set to true to enable business hours filtering
+            
+            if (enableBusinessHoursFiltering) {
+              joinClause += `
+                LEFT JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
+              `;
+              whereClause += `
+                AND (vbh.VendorBusinessHoursID IS NULL OR (
+                  vbh.DayOfWeek = @DayOfWeek
+                  AND vbh.IsAvailable = 1
+                  AND vbh.OpenTime < CAST(@EventEndTime AS TIME)
+                  AND vbh.CloseTime > CAST(@EventStartTime AS TIME)
+                ))
+              `;
+              businessHoursFiltered = true;
+            }
+            
+            request.input('DayOfWeek', sql.Int, dayOfWeek);
+            request.input('EventStartTime', sql.NVarChar, eventStartTime);
+            request.input('EventEndTime', sql.NVarChar, eventEndTime);
+            request.input('EventDurationMinutes', sql.Int, eventDurationMinutes || 0);
+          }
+        }
+
+    // Make location filtering more flexible - disable for debugging
+    const enableLocationFiltering = false; // Set to true to enable location filtering
+    if (enableLocationFiltering && eventDetails?.location) {
+      const location = eventDetails.location;
+      console.log('🔍 DEBUG: Location filtering for:', location);
+      
+      // Split location to handle "Toronto, ON" format
+      const locationParts = location.split(',').map(part => part.trim());
+      const city = locationParts[0];
+      const province = locationParts[1];
+      
+      if (province) {
+        whereClause += ` AND (vp.City LIKE @City OR vp.State LIKE @Province OR vp.State LIKE @City)`;
+        request.input('City', sql.NVarChar, `%${city}%`);
+        request.input('Province', sql.NVarChar, `%${province}%`);
+      } else {
+        whereClause += ` AND (vp.City LIKE @Location OR vp.State LIKE @Location)`;
+        request.input('Location', sql.NVarChar, `%${location}%`);
       }
-    }
-
-    // Add location filtering if provided
-    if (eventDetails?.location) {
-      whereClause += ` AND (vp.City LIKE @Location OR vp.State LIKE @Location)`;
-      request.input('Location', sql.NVarChar, `%${eventDetails.location}%`);
     }
 
     const query = `
@@ -1799,7 +2011,53 @@ router.post('/search-by-services-unified', async (req, res) => {
     `;
 
     request.input('MinMatchingServices', sql.Int, 1);
+    
+    // Debug: Log the query and parameters
+    console.log('🔍 DEBUG: Unified search query:', query);
+    console.log('🔍 DEBUG: Query parameters:', {
+      predefinedServiceIds,
+      eventDetails,
+      maxBudget,
+      eventDurationMinutes
+    });
+    
     const result = await request.query(query);
+    console.log('🔍 DEBUG: Initial query result count:', result.recordset.length);
+    
+    // If no results, let's check what data exists
+    if (result.recordset.length === 0) {
+      console.log('🔍 DEBUG: No vendors found, checking database data...');
+      
+      // Check if predefined services exist
+      const debugServiceRequest = new sql.Request(pool);
+      const debugServiceResult = await debugServiceRequest.query(`
+        SELECT PredefinedServiceID, ServiceName, Category, PricingModel, IsActive
+        FROM PredefinedServices 
+        WHERE ServiceName LIKE '%Portrait%' OR ServiceName LIKE '%Photography%'
+      `);
+      console.log('🔍 DEBUG: Available predefined services:', debugServiceResult.recordset);
+      
+      // Check if any services exist in Services table
+      const debugServicesRequest = new sql.Request(pool);
+      const debugServicesResult = await debugServicesRequest.query(`
+        SELECT TOP 10 
+          s.ServiceID, s.Name, s.VendorProfileID, s.LinkedPredefinedServiceID, s.IsActive,
+          ps.ServiceName as PredefinedServiceName
+        FROM Services s
+        LEFT JOIN PredefinedServices ps ON s.LinkedPredefinedServiceID = ps.PredefinedServiceID
+        WHERE s.IsActive = 1
+      `);
+      console.log('🔍 DEBUG: Available services in Services table:', debugServicesResult.recordset);
+      
+      // Check vendor profiles
+      const debugVendorRequest = new sql.Request(pool);
+      const debugVendorResult = await debugVendorRequest.query(`
+        SELECT TOP 10 VendorProfileID, BusinessName, City, State, IsActive
+        FROM VendorProfiles 
+        WHERE IsActive = 1
+      `);
+      console.log('🔍 DEBUG: Available vendor profiles:', debugVendorResult.recordset);
+    }
 
     // Get detailed pricing information for each vendor
     const vendorsWithPricing = await Promise.all(result.recordset.map(async (vendor) => {
@@ -1820,13 +2078,13 @@ router.post('/search-by-services-unified', async (req, res) => {
           s.FixedPrice,
           s.PricePerPerson,
           s.MinimumAttendees,
-          s.MaximumAttendees
+          s.MaximumAttendees,
+          s.Price AS LegacyPrice
         FROM Services s
         INNER JOIN PredefinedServices ps ON s.LinkedPredefinedServiceID = ps.PredefinedServiceID
         WHERE s.VendorProfileID = @VendorProfileID
           AND s.LinkedPredefinedServiceID IN (${predefinedServiceIds.map((_, index) => `@ServiceID${index}`).join(', ')})
           AND s.IsActive = 1
-          AND s.PricingModel IS NOT NULL
       `;
       
       predefinedServiceIds.forEach((serviceId, index) => {
@@ -1900,7 +2158,7 @@ router.post('/search-by-services-unified', async (req, res) => {
         eventDate: eventDetails?.date,
         eventStartTime: eventDetails?.startTime,
         eventEndTime: eventDetails?.endTime,
-        businessHoursFiltered: !!(eventDetails?.date && eventDetails?.startTime && eventDetails?.endTime)
+        businessHoursFiltered: businessHoursFiltered
       },
       pricingTransparency: {
         message: "All costs are calculated transparently based on your event details",
