@@ -9,6 +9,16 @@ const cloudinaryService = require('../services/cloudinaryService');
 function calculateUnifiedPricing(service, searchCriteria) {
   const { eventDurationMinutes, attendeeCount, maxBudget } = searchCriteria;
   
+  console.log('🔍 DEBUG: calculateUnifiedPricing called with:', {
+    serviceName: service.ServiceName,
+    pricingModel: service.PricingModel,
+    baseRate: service.BaseRate,
+    baseDuration: service.BaseDurationMinutes,
+    eventDurationMinutes,
+    attendeeCount,
+    maxBudget
+  });
+  
   try {
     let finalCost = 0;
     let breakdown = {};
@@ -121,6 +131,13 @@ function calculateUnifiedPricing(service, searchCriteria) {
     if (maxBudget && maxBudget > 0) {
       isAffordable = finalCost <= maxBudget;
     }
+
+    console.log('🔍 DEBUG: calculateUnifiedPricing result:', {
+      serviceName: service.ServiceName,
+      finalCost,
+      breakdown,
+      isAffordable
+    });
 
     return {
       finalCost: Math.round(finalCost * 100) / 100, // Round to 2 decimal places
