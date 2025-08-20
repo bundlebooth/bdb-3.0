@@ -1627,6 +1627,451 @@ router.post('/search-by-services', async (req, res) => {
   }
 });
 
+// Unified search endpoint with transparent pricing calculations
+router.post('/search-by-services-unified', async (req, res) => {
+  try {
+    const { selectedServices, eventDetails, maxBudget } = req.body;
+    
+    if (!selectedServices || !Array.isArray(selectedServices) || selectedServices.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected services are required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Get predefined service IDs and their pricing models
+    const serviceRequest = new sql.Request(pool);
+    const serviceNames = selectedServices.map(s => s.serviceName);
+    
+    const serviceQuery = `
+      SELECT PredefinedServiceID, ServiceName, Category, PricingModel
+      FROM PredefinedServices 
+      WHERE ServiceName IN (${serviceNames.map((_, index) => `@ServiceName${index}`).join(', ')})
+        AND IsActive = 1
+    `;
+    
+    serviceNames.forEach((serviceName, index) => {
+      serviceRequest.input(`ServiceName${index}`, sql.NVarChar, serviceName);
+    });
+
+    const serviceResult = await serviceRequest.query(serviceQuery);
+    const predefinedServices = serviceResult.recordset;
+    const predefinedServiceIds = predefinedServices.map(s => s.PredefinedServiceID);
+
+    if (predefinedServiceIds.length === 0) {
+      return res.json({
+        success: true,
+        vendors: [],
+        message: 'No matching services found'
+      });
+    }
+
+    // Calculate event duration for time-based pricing
+    let eventDurationMinutes = null;
+    if (eventDetails?.startTime && eventDetails?.endTime) {
+      const startTime = convertTo24Hour(eventDetails.startTime);
+      const endTime = convertTo24Hour(eventDetails.endTime);
+      
+      if (startTime && endTime) {
+        const [startHour, startMin] = startTime.split(':').map(Number);
+        const [endHour, endMin] = endTime.split(':').map(Number);
+        
+        let startMinutes = startHour * 60 + startMin;
+        let endMinutes = endHour * 60 + endMin;
+        
+        // Handle overnight events
+        if (endMinutes <= startMinutes) {
+          endMinutes += 24 * 60;
+        }
+        
+        eventDurationMinutes = endMinutes - startMinutes;
+      }
+    }
+
+    // Build main search query using Services table
+    const request = new sql.Request(pool);
+    let whereClause = 'WHERE s.IsActive = 1 AND ps.IsActive = 1 AND s.PricingModel IS NOT NULL';
+    let joinClause = `
+      FROM Services s
+      INNER JOIN VendorProfiles vp ON s.VendorProfileID = vp.VendorProfileID
+      INNER JOIN PredefinedServices ps ON s.LinkedPredefinedServiceID = ps.PredefinedServiceID
+    `;
+
+    // Add service filtering
+    whereClause += ` AND s.LinkedPredefinedServiceID IN (${predefinedServiceIds.map((_, index) => `@ServiceID${index}`).join(', ')})`;
+    predefinedServiceIds.forEach((serviceId, index) => {
+      request.input(`ServiceID${index}`, sql.Int, serviceId);
+    });
+
+    // Add business hours filtering if event details provided
+    if (eventDetails?.date && eventDetails?.startTime && eventDetails?.endTime) {
+      const eventDate = new Date(eventDetails.date);
+      const dayOfWeek = eventDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const eventStartTime = convertTo24Hour(eventDetails.startTime);
+      const eventEndTime = convertTo24Hour(eventDetails.endTime);
+
+      if (eventStartTime && eventEndTime) {
+        joinClause += `
+          INNER JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
+        `;
+        whereClause += `
+          AND vbh.DayOfWeek = @DayOfWeek
+          AND vbh.IsAvailable = 1
+          AND vbh.OpenTime < CAST(@EventEndTime AS TIME)
+          AND vbh.CloseTime > CAST(@EventStartTime AS TIME)
+        `;
+        
+        request.input('DayOfWeek', sql.Int, dayOfWeek);
+        request.input('EventStartTime', sql.NVarChar, eventStartTime);
+        request.input('EventEndTime', sql.NVarChar, eventEndTime);
+        request.input('EventDurationMinutes', sql.Int, eventDurationMinutes || 0);
+      }
+    }
+
+    // Add location filtering if provided
+    if (eventDetails?.location) {
+      whereClause += ` AND (vp.City LIKE @Location OR vp.State LIKE @Location)`;
+      request.input('Location', sql.NVarChar, `%${eventDetails.location}%`);
+    }
+
+    const query = `
+      SELECT DISTINCT
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.BusinessType,
+        vp.BusinessDescription,
+        vp.City,
+        vp.State,
+        vp.IsPremium,
+        vp.IsEcoFriendly,
+        vp.IsAwardWinning,
+        vp.FeaturedImageURL,
+        vp.Latitude,
+        vp.Longitude
+      ${joinClause}
+      ${whereClause}
+      GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.BusinessDescription,
+               vp.City, vp.State, vp.IsPremium, vp.IsEcoFriendly, vp.IsAwardWinning, 
+               vp.FeaturedImageURL, vp.Latitude, vp.Longitude
+      HAVING COUNT(DISTINCT s.LinkedPredefinedServiceID) >= @MinMatchingServices
+      ORDER BY vp.IsPremium DESC, COUNT(DISTINCT s.LinkedPredefinedServiceID) DESC
+    `;
+
+    request.input('MinMatchingServices', sql.Int, 1);
+    const result = await request.query(query);
+
+    // Get detailed pricing information for each vendor
+    const vendorsWithPricing = await Promise.all(result.recordset.map(async (vendor) => {
+      const pricingRequest = new sql.Request(pool);
+      pricingRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID);
+      
+      const pricingQuery = `
+        SELECT 
+          ps.ServiceName,
+          ps.Category,
+          ps.PricingModel,
+          s.Description AS ServiceDescription,
+          s.BaseDurationMinutes,
+          s.BaseRate,
+          s.OvertimeRatePerHour,
+          s.MinimumBookingFee,
+          s.FixedPricingType,
+          s.FixedPrice,
+          s.PricePerPerson,
+          s.MinimumAttendees,
+          s.MaximumAttendees
+        FROM Services s
+        INNER JOIN PredefinedServices ps ON s.LinkedPredefinedServiceID = ps.PredefinedServiceID
+        WHERE s.VendorProfileID = @VendorProfileID
+          AND s.LinkedPredefinedServiceID IN (${predefinedServiceIds.map((_, index) => `@ServiceID${index}`).join(', ')})
+          AND s.IsActive = 1
+          AND s.PricingModel IS NOT NULL
+      `;
+      
+      predefinedServiceIds.forEach((serviceId, index) => {
+        pricingRequest.input(`ServiceID${index}`, sql.Int, serviceId);
+      });
+
+      const pricingResult = await pricingRequest.query(pricingQuery);
+      
+      // Calculate unified pricing for each service
+      const servicesWithPricing = pricingResult.recordset.map(service => {
+        const searchCriteria = {
+          eventDurationMinutes: eventDurationMinutes || 0,
+          attendeeCount: eventDetails?.attendeeCount || 0,
+          maxBudget: maxBudget || 0
+        };
+
+        const pricingCalculation = calculateUnifiedPricing(service, searchCriteria);
+        
+        return {
+          ...service,
+          calculatedCost: pricingCalculation.finalCost,
+          costBreakdown: pricingCalculation.breakdown,
+          isAffordable: pricingCalculation.isAffordable
+        };
+      });
+
+      const totalEstimatedCost = servicesWithPricing.reduce((sum, service) => sum + service.calculatedCost, 0);
+      const isVendorAffordable = !maxBudget || totalEstimatedCost <= maxBudget;
+
+      return {
+        ...vendor,
+        services: servicesWithPricing,
+        totalEstimatedCost,
+        isAffordable: isVendorAffordable,
+        budgetComparison: maxBudget ? {
+          budget: maxBudget,
+          estimated: totalEstimatedCost,
+          difference: maxBudget - totalEstimatedCost,
+          withinBudget: isVendorAffordable
+        } : null
+      };
+    }));
+
+    // Filter by budget if specified
+    const filteredVendors = maxBudget 
+      ? vendorsWithPricing.filter(vendor => vendor.isAffordable)
+      : vendorsWithPricing;
+
+    // Sort by affordability and total cost
+    filteredVendors.sort((a, b) => {
+      if (maxBudget) {
+        // If budget specified, prioritize affordable vendors
+        if (a.isAffordable !== b.isAffordable) {
+          return b.isAffordable - a.isAffordable;
+        }
+      }
+      // Then sort by total cost (ascending)
+      return a.totalEstimatedCost - b.totalEstimatedCost;
+    });
+
+    res.json({
+      success: true,
+      vendors: filteredVendors,
+      totalResults: filteredVendors.length,
+      searchCriteria: {
+        selectedServices: serviceNames,
+        maxBudget,
+        eventDurationMinutes,
+        attendeeCount: eventDetails?.attendeeCount,
+        location: eventDetails?.location,
+        eventDate: eventDetails?.date,
+        eventStartTime: eventDetails?.startTime,
+        eventEndTime: eventDetails?.endTime,
+        businessHoursFiltered: !!(eventDetails?.date && eventDetails?.startTime && eventDetails?.endTime)
+      },
+      pricingTransparency: {
+        message: "All costs are calculated transparently based on your event details",
+        budgetFiltering: !!maxBudget,
+        timeBasedCalculation: !!eventDurationMinutes,
+        attendeeBasedCalculation: !!(eventDetails?.attendeeCount)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in unified vendor search:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to search vendors with unified pricing',
+      error: error.message
+    });
+  }
+});
+
+// New unified service pricing setup endpoint
+router.post('/setup/service-pricing-unified', async (req, res) => {
+  try {
+    const { 
+      vendorProfileId, 
+      predefinedServiceId, 
+      pricingModel,
+      serviceDescription,
+      
+      // Time-based pricing fields
+      baseDurationMinutes,
+      baseRate,
+      overtimeRatePerHour,
+      minimumBookingFee,
+      
+      // Fixed-based pricing fields
+      fixedPricingType,
+      fixedPrice,
+      pricePerPerson,
+      minimumAttendees,
+      maximumAttendees
+    } = req.body;
+
+    if (!vendorProfileId || !predefinedServiceId || !pricingModel) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile ID, predefined service ID, and pricing model are required'
+      });
+    }
+
+    // Validate pricing model
+    if (!['time_based', 'fixed_based'].includes(pricingModel)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pricing model must be either time_based or fixed_based'
+      });
+    }
+
+    // Validate required fields based on pricing model
+    if (pricingModel === 'time_based') {
+      if (!baseDurationMinutes || !baseRate) {
+        return res.status(400).json({
+          success: false,
+          message: 'Base duration and base rate are required for time-based pricing'
+        });
+      }
+    } else if (pricingModel === 'fixed_based') {
+      if (!fixedPricingType || (fixedPricingType === 'fixed_price' && !fixedPrice) || 
+          (fixedPricingType === 'per_attendee' && !pricePerPerson)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Fixed pricing type and corresponding price are required for fixed-based pricing'
+        });
+      }
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+
+    // Use MERGE to insert or update pricing information
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('PredefinedServiceID', sql.Int, predefinedServiceId);
+    request.input('PricingModel', sql.VarChar(20), pricingModel);
+    request.input('ServiceDescription', sql.NVarChar, serviceDescription || null);
+    
+    // Time-based fields
+    request.input('BaseDurationMinutes', sql.Int, baseDurationMinutes || null);
+    request.input('BaseRate', sql.Decimal(10, 2), baseRate || null);
+    request.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour || null);
+    request.input('MinimumBookingFee', sql.Decimal(10, 2), minimumBookingFee || null);
+    
+    // Fixed-based fields
+    request.input('FixedPricingType', sql.VarChar(20), fixedPricingType || null);
+    request.input('FixedPrice', sql.Decimal(10, 2), fixedPrice || null);
+    request.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson || null);
+    request.input('MinimumAttendees', sql.Int, minimumAttendees || null);
+    request.input('MaximumAttendees', sql.Int, maximumAttendees || null);
+
+    // First get the predefined service details
+    const serviceDetailsQuery = `
+      SELECT ServiceName, DefaultDurationMinutes 
+      FROM PredefinedServices 
+      WHERE PredefinedServiceID = @PredefinedServiceID
+    `;
+    
+    const serviceDetailsResult = await request.query(serviceDetailsQuery);
+    
+    if (serviceDetailsResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Predefined service not found'
+      });
+    }
+    
+    const serviceDetails = serviceDetailsResult.recordset[0];
+    const defaultPrice = baseRate || fixedPrice || pricePerPerson || 0;
+    
+    request.input('ServiceName', sql.NVarChar(100), serviceDetails.ServiceName);
+    request.input('DefaultPrice', sql.Decimal(10, 2), defaultPrice);
+    request.input('DefaultDuration', sql.Int, serviceDetails.DefaultDurationMinutes || 60);
+
+    const query = `
+      MERGE Services AS target
+      USING (SELECT @VendorProfileID AS VendorProfileID, @PredefinedServiceID AS LinkedPredefinedServiceID) AS source
+      ON target.VendorProfileID = source.VendorProfileID AND target.LinkedPredefinedServiceID = source.LinkedPredefinedServiceID
+      WHEN MATCHED THEN
+        UPDATE SET
+          PricingModel = @PricingModel,
+          Description = @ServiceDescription,
+          BaseDurationMinutes = @BaseDurationMinutes,
+          BaseRate = @BaseRate,
+          OvertimeRatePerHour = @OvertimeRatePerHour,
+          MinimumBookingFee = @MinimumBookingFee,
+          FixedPricingType = @FixedPricingType,
+          FixedPrice = @FixedPrice,
+          PricePerPerson = @PricePerPerson,
+          MinimumAttendees = @MinimumAttendees,
+          MaximumAttendees = @MaximumAttendees,
+          Price = @DefaultPrice,
+          UpdatedAt = GETDATE()
+      WHEN NOT MATCHED THEN
+        INSERT (VendorProfileID, LinkedPredefinedServiceID, Name, Description, Price, DurationMinutes,
+                PricingModel, BaseDurationMinutes, BaseRate, OvertimeRatePerHour, MinimumBookingFee,
+                FixedPricingType, FixedPrice, PricePerPerson, MinimumAttendees, MaximumAttendees,
+                IsActive, CreatedAt, UpdatedAt)
+        VALUES (@VendorProfileID, @PredefinedServiceID, @ServiceName, @ServiceDescription, @DefaultPrice, @DefaultDuration,
+                @PricingModel, @BaseDurationMinutes, @BaseRate, @OvertimeRatePerHour, @MinimumBookingFee,
+                @FixedPricingType, @FixedPrice, @PricePerPerson, @MinimumAttendees, @MaximumAttendees,
+                1, GETDATE(), GETDATE());
+    `;
+
+    await request.query(query);
+
+    res.json({
+      success: true,
+      message: 'Service pricing saved successfully',
+      data: {
+        vendorProfileId,
+        predefinedServiceId,
+        pricingModel
+      }
+    });
+
+  } catch (error) {
+    console.error('Error saving unified service pricing:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save service pricing',
+      error: error.message
+    });
+  }
+});
+
+// Get predefined services with pricing model information
+router.get('/predefined-services-with-pricing', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    const query = `
+      SELECT 
+        PredefinedServiceID,
+        Category,
+        ServiceName,
+        ServiceDescription,
+        DefaultDurationMinutes,
+        PricingModel,
+        DisplayOrder,
+        IsActive
+      FROM PredefinedServices
+      WHERE IsActive = 1
+      ORDER BY Category, DisplayOrder, ServiceName
+    `;
+    
+    const result = await request.query(query);
+    
+    res.json({
+      success: true,
+      services: result.recordset
+    });
+    
+  } catch (error) {
+    console.error('Error fetching predefined services with pricing:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch predefined services',
+      error: error.message
+    });
+  }
+});
+
 // Get vendor's selected predefined services
 router.get('/:id/selected-services', async (req, res) => {
   try {
