@@ -2607,7 +2607,7 @@
     <!-- Main App View -->
     <header class="header">
         <div class="logo" style="cursor: pointer;">
-            <span>🎉</span>
+            <i class="fas fa-star" style="color: var(--primary); margin-right: 0.5rem;"></i>
             VenueVue
         </div>
 
@@ -2622,14 +2622,14 @@
 
         <div class="user-nav">
             <button class="btn btn-primary" id="book-now-btn" onclick="openBookingModal()" style="margin-right: 1rem; padding: 0.75rem 1.5rem; font-weight: 600;">
-                📅 Book Now
+                <i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>Book Now
             </button>
             <div class="nav-icon" id="wishlist-btn">
-                ❤
+                <i class="fas fa-heart"></i>
                 <span class="badge" id="favorites-badge">0</span>
             </div>
             <div class="nav-icon" id="notifications-btn">
-                🔔
+                <i class="fas fa-bell"></i>
                 <span class="badge" id="notifications-badge">0</span>
             </div>
             <div class="nav-icon" id="profile-btn" style="background-color: var(--primary); color: white; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">S</div>
@@ -2752,8 +2752,8 @@
                         <option value="rating">Highest Rated</option>
                     </select>
                     <div class="view-toggle">
-                        <button class="view-btn active" id="list-view-btn">📋 List</button>
-                        <button class="view-btn" id="map-view-btn">🗺️ Map</button>
+                        <button class="view-btn active" id="list-view-btn"><i class="fas fa-list" style="margin-right: 0.5rem;"></i>List</button>
+                        <button class="view-btn" id="map-view-btn"><i class="fas fa-map" style="margin-right: 0.5rem;"></i>Map</button>
                     </div>
                 </div>
             </div>
@@ -2764,7 +2764,7 @@
                     <div class="map-controls">
                         <button class="map-btn" id="zoom-in">+</button>
                         <button class="map-btn" id="zoom-out">-</button>
-                        <button class="map-btn" id="locate-me">📍</button>
+                        <button class="map-btn" id="locate-me"><i class="fas fa-map-marker-alt"></i></button>
                     </div>
                 </div>
                 <div class="map-venue-list" id="map-venue-list"></div>
@@ -2810,14 +2810,14 @@
                             <h1 id="vendor-business-name" style="font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem;">Loading...</h1>
                             <p id="vendor-tagline" style="font-size: 1.1rem; color: var(--primary); margin-bottom: 1rem;">Loading tagline...</p>
                             <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-light); margin-bottom: 1rem; flex-wrap: wrap;">
-                                <span id="vendor-location">📍 Loading location...</span>
+                                <span id="vendor-location"><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>Loading location...</span>
                                 <span id="vendor-years-business" style="display: none;"></span>
                                 <span class="review-rating" style="color: #fbbf24;">★★★★★</span>
                                 <span>(5.0) | 1 Reviews</span>
                             </div>
                         </div>
                          <!-- Favorite Button -->
-                        <div id="vendor-favorite-btn" class="vendor-favorite" data-id="1" style="flex-shrink: 0; align-self: flex-start; margin-top: 1rem;">❤</div>
+                        <div id="vendor-favorite-btn" class="vendor-favorite" data-id="1" style="flex-shrink: 0; align-self: flex-start; margin-top: 1rem;"><i class="fas fa-heart"></i></div>
                     </div>
 
                     <!-- Vendor Content Sections -->
@@ -2965,7 +2965,7 @@
                             <h1 class="dashboard-title" id="dashboard-title">Dashboard</h1>
                             <div class="user-nav">
                                 <div class="nav-icon" id="dashboard-notifications-btn">
-                                    🔔
+                                    <i class="fas fa-bell"></i>
                                     <span class="badge" id="dashboard-notifications-badge">0</span>
                                 </div>
                             </div>
@@ -3070,7 +3070,7 @@
                             <h1 class="dashboard-title" id="vendor-dashboard-title">Vendor Dashboard</h1>
                             <div class="user-nav">
                                 <div class="nav-icon" id="vendor-notifications-btn">
-                                    🔔
+                                    <i class="fas fa-bell"></i>
                                     <span class="badge" id="vendor-notifications-badge">0</span>
                                 </div>
                             </div>
@@ -3720,13 +3720,13 @@
                     </div>
                     
                     <div style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem;">
-                        <p style="margin-bottom: 1rem;">🎉 <strong>Congratulations!</strong> You're about to complete your vendor profile setup.</p>
+                        <p style="margin-bottom: 1rem;"><i class="fas fa-star" style="color: var(--primary); margin-right: 0.5rem;"></i><strong>Congratulations!</strong> You're about to complete your vendor profile setup.</p>
                         <p><strong>Once completed, your profile will be live and visible to potential clients!</strong></p>
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
                         <button type="button" class="btn btn-outline" id="back-to-step-8">Back: FAQ</button>
-                        <button type="button" class="btn btn-primary" id="complete-setup-btn" style="background-color: #28a745; border-color: #28a745;">🚀 Complete Setup & Go Live!</button>
+                        <button type="button" class="btn btn-primary" id="complete-setup-btn" style="background-color: #28a745; border-color: #28a745;"><i class="fas fa-rocket" style="margin-right: 0.5rem;"></i>Complete Setup & Go Live!</button>
                     </div>
                 </div>
 
@@ -3758,10 +3758,10 @@
                     </div>
                     <div class="vendor-detail-info">
                         <h2 id="modal-vendor-name-full" class="vendor-detail-name">Vendor Name</h2>
-                        <div class="vendor-detail-location">📍 <span id="modal-vendor-location">Location</span></div>
+                        <div class="vendor-detail-location"><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i><span id="modal-vendor-location">Location</span></div>
                         <div class="vendor-detail-ratings">
                             <div class="review-rating" id="modal-vendor-rating">
-                                ⭐⭐⭐⭐⭐ <span>(0.0) | 0 Reviews</span>
+                                <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i> <span>(0.0) | 0 Reviews</span>
                             </div>
                         </div>
                         <div class="vendor-detail-features">
@@ -3770,7 +3770,7 @@
                                 <span id="modal-vendor-category-name"></span>
                             </div>
                             <div class="feature">
-                                <span class="feature-icon">🎉</span>
+                                <span class="feature-icon"><i class="fas fa-star"></i></span>
                                 <span id="modal-vendor-services-offered">Services</span>
                             </div>
                         </div>
@@ -3894,7 +3894,7 @@
     <!-- Booking Confirmation -->
     <div id="confirmation-modal" class="booking-confirmation" style="display: none;">
         <div class="confirmation-content">
-            <h3>🎉 Booking Confirmed!</h3>
+            <h3><i class="fas fa-check-circle" style="color: #28a745; margin-right: 0.5rem;"></i>Booking Confirmed!</h3>
             <p><strong>Vendor:</strong> <span id="conf-venue-name"></span></p>
             <p><strong>Services:</strong> <span id="conf-services"></span></p>
             <p><strong>Date:</strong> <span id="conf-date"></span></p>
@@ -4090,7 +4090,7 @@
                     
                     <!-- Event Details -->
                     <div class="form-group" style="margin-bottom: 2rem;">
-                        <h5 style="margin-bottom: 1rem; color: var(--primary-color);">📅 Event Details</h5>
+                        <h5 style="margin-bottom: 1rem; color: var(--primary-color);"><i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>Event Details</h5>
                         
                         <div class="form-row">
                             <div class="form-col">
@@ -5251,7 +5251,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += `
                         <div class="summary-section">
                             <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
-                                📍 Location Information
+                                <i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>Location Information
                             </h5>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
                                 <div><strong>Address:</strong> ${info.Address || 'Not provided'}</div>
@@ -5270,7 +5270,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += `
                         <div class="summary-section">
                             <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
-                                🏷️ Categories
+                                <i class="fas fa-tags" style="margin-right: 0.5rem;"></i>Categories
                             </h5>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                                 ${data.categories.map(cat => `<span style="background-color: var(--primary); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.9rem;">${cat.Category}</span>`).join('')}
@@ -5284,10 +5284,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += `
                         <div class="summary-section">
                             <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
-                                🖼️ Gallery
+                                <i class="fas fa-images" style="margin-right: 0.5rem;"></i>Gallery
                             </h5>
                             <div><strong>Images Uploaded:</strong> ${data.imageCount} images</div>
-                            ${data.basicInfo?.FeaturedImageURL ? '<div style="margin-top: 0.5rem;"><strong>Featured Image:</strong> ✅ Set</div>' : ''}
+                            ${data.basicInfo?.FeaturedImageURL ? '<div style="margin-top: 0.5rem;"><strong>Featured Image:</strong> <i class="fas fa-check" style="color: #28a745;"></i> Set</div>' : ''}
                         </div>
                     `;
                 }
@@ -5297,7 +5297,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += `
                         <div class="summary-section">
                             <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
-                                💼 Services & Packages
+                                <i class="fas fa-briefcase" style="margin-right: 0.5rem;"></i>Services & Packages
                             </h5>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                                 <div><strong>Services:</strong> ${data.serviceCount || 0} services</div>
@@ -6250,7 +6250,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="service-card-header">
                             <div class="service-card-title">${service.name}</div>
                             <div class="service-card-check">
-                                ${isSelected ? '✓' : ''}
+                                ${isSelected ? '<i class="fas fa-check" style="color: #28a745;"></i>' : ''}
                             </div>
                         </div>
                         
@@ -6535,7 +6535,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Select service
                     cardElement.classList.add('selected');
                     budgetForm.style.display = 'block';
-                    checkIcon.textContent = '✓';
+                    checkIcon.innerHTML = '<i class="fas fa-check" style="color: #28a745;"></i>';
                     
                     // Find service details
                     const serviceDetails = bookingState.availablePredefinedServices[category]?.find(s => s.id === serviceId);
@@ -6793,15 +6793,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="vendor-details">
                                 <h3 class="vendor-name">${vendor.BusinessName || vendor.name || 'Vendor'}</h3>
                                 <div class="vendor-location">
-                                    ⭐ ${vendor.rating || '4.5'} (${vendor.reviewCount || '12'} reviews)
+                                    <i class="fas fa-star" style="color: #fbbf24;"></i> ${vendor.rating || '4.5'} (${vendor.reviewCount || '12'} reviews)
                                 </div>
                                 <div class="vendor-features">
                                     <div class="feature">
-                                        <span class="feature-icon">💼</span>
+                                        <span class="feature-icon"><i class="fas fa-briefcase"></i></span>
                                         <span>${services.map(s => s.type).join(', ') || 'Multiple services'}</span>
                                     </div>
                                     <div class="feature">
-                                        <span class="feature-icon">💰</span>
+                                        <span class="feature-icon"><i class="fas fa-dollar-sign"></i></span>
                                         <span class="price-indicator">$${Math.round(estimatedPrice).toLocaleString()}</span>
                                     </div>
                                 </div>
@@ -7115,10 +7115,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div class="vendor-info">
                                         <h6 style="margin: 0 0 0.5rem 0; color: #2c3e50; font-weight: 600;">${vendor.name}</h6>
                                         <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">
-                                            <span style="color: #3498db; font-weight: 500;">🎯 ${vendor.serviceName}</span>
+                                            <span style="color: #3498db; font-weight: 500;"><i class="fas fa-bullseye" style="color: #3498db;"></i> ${vendor.serviceName}</span>
                                         </p>
                                         <p style="margin: 0.25rem 0 0 0; color: var(--text-light); font-size: 0.85rem;">
-                                            📍 ${vendor.vendorData?.BusinessAddress || vendor.vendorData?.location || 'Location not specified'}
+                                            <i class="fas fa-map-marker-alt"></i> ${vendor.vendorData?.BusinessAddress || vendor.vendorData?.location || 'Location not specified'}
                                         </p>
                                     </div>
                                     <div class="service-price" style="text-align: right;">
@@ -7271,7 +7271,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p><strong>Services:</strong> ${request.services.map(s => s.type).join(', ')}</p>
                         <p><strong>Event Date:</strong> ${request.eventDetails.date} at ${request.eventDetails.time}</p>
                         <div class="countdown-timer" id="timer-${request.id}">
-                            <span>⏰</span>
+                            <span><i class="fas fa-clock"></i></span>
                             <span>Expires in: <span class="time-remaining">24:00:00</span></span>
                         </div>
                     </div>
@@ -7408,9 +7408,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="request-header">
                                 <h5>${request.vendorName}</h5>
                                 <span class="request-status ${statusClass}">
-                                    ${request.status === 'approved' ? '✅ APPROVED' : 
-                                      request.status === 'declined' ? '❌ DECLINED' : 
-                                      '⏳ PENDING'}
+                                    ${request.status === 'approved' ? '<i class="fas fa-check-circle" style="color: #28a745;"></i> APPROVED' : 
+                                      request.status === 'declined' ? '<i class="fas fa-times-circle" style="color: #dc3545;"></i> DECLINED' : 
+                                      '<i class="fas fa-clock" style="color: #ffc107;"></i> PENDING'}
                                 </span>
                             </div>
                             <p><strong>Services:</strong> ${request.services.map(s => s.type).join(', ')}</p>
@@ -7418,7 +7418,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             ${request.responseMessage ? `<p><strong>Message:</strong> ${request.responseMessage}</p>` : ''}
                             ${timeRemaining ? `
                                 <div class="countdown-timer ${timeRemaining.urgent ? 'urgent' : ''}">
-                                    <span>⏰</span>
+                                    <span><i class="fas fa-clock"></i></span>
                                     <span>Expires in: ${timeRemaining.display}</span>
                                 </div>
                             ` : ''}
@@ -9752,7 +9752,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     html += `
                         <div class="summary-section">
                             <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
-                                📍 Location Information
+                                <i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>Location Information
                             </h5>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
                                 <div><strong>Address:</strong> ${info.Address || 'Not provided'}</div>
@@ -9771,7 +9771,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     html += `
                         <div class="summary-section">
                             <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
-                                🏷️ Categories
+                                <i class="fas fa-tags" style="margin-right: 0.5rem;"></i>Categories
                             </h5>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                                 ${data.categories.map(cat => `<span style="background-color: var(--primary); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.9rem;">${cat.Category}</span>`).join('')}
@@ -9785,10 +9785,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     html += `
                         <div class="summary-section">
                             <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
-                                🖼️ Gallery
+                                <i class="fas fa-images" style="margin-right: 0.5rem;"></i>Gallery
                             </h5>
                             <div><strong>Images Uploaded:</strong> ${data.imageCount} images</div>
-                            ${data.basicInfo?.FeaturedImageURL ? '<div style="margin-top: 0.5rem;"><strong>Featured Image:</strong> ✅ Set</div>' : ''}
+                            ${data.basicInfo?.FeaturedImageURL ? '<div style="margin-top: 0.5rem;"><strong>Featured Image:</strong> <i class="fas fa-check" style="color: #28a745;"></i> Set</div>' : ''}
                         </div>
                     `;
                 }
@@ -9798,7 +9798,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     html += `
                         <div class="summary-section">
                             <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
-                                💼 Services & Packages
+                                <i class="fas fa-briefcase" style="margin-right: 0.5rem;"></i>Services & Packages
                             </h5>
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                                 <div><strong>Services:</strong> ${data.serviceCount || 0} services</div>
@@ -10599,7 +10599,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Show success message
                 const successMsg = document.createElement('div');
                 successMsg.style.cssText = 'background-color: #d4edda; color: #155724; padding: 0.75rem; border-radius: var(--radius); margin-bottom: 1rem; border: 1px solid #c3e6cb;';
-                successMsg.textContent = `✅ Service "${name}" added successfully!`;
+                successMsg.innerHTML = `<i class="fas fa-check-circle" style="color: #28a745; margin-right: 0.5rem;"></i>Service "${name}" added successfully!`;
                 
                 const serviceForm = document.getElementById('service-form');
                 serviceForm.parentNode.insertBefore(successMsg, serviceForm);
@@ -10964,7 +10964,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Clear form
                 clearServiceForm();
 
-                console.log('✅ Service added:', service);
+                console.log('✓ Service added:', service);
             }
 
             function updateServicesDisplay() {
@@ -11028,11 +11028,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (typeof vendorSetupState !== 'undefined' && vendorSetupState.services && index >= 0 && index < vendorSetupState.services.length) {
                     vendorSetupState.services.splice(index, 1);
                     updateServicesDisplay();
-                    console.log('✅ Service removed at index:', index);
+                    console.log('✓ Service removed at index:', index);
                 } else if (window.tempServices && index >= 0 && index < window.tempServices.length) {
                     window.tempServices.splice(index, 1);
                     updateServicesDisplay();
-                    console.log('✅ Service removed at index:', index);
+                    console.log('✓ Service removed at index:', index);
                 }
             }
 
@@ -11080,7 +11080,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('faq-answer').value = '';
                 document.getElementById('faq-form').style.display = 'none';
 
-                console.log('✅ FAQ added:', faq);
+                console.log('✓ FAQ added:', faq);
             }
 
             function updateFaqsDisplay() {
@@ -11131,7 +11131,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (vendorSetupState.faqs && index >= 0 && index < vendorSetupState.faqs.length) {
                     vendorSetupState.faqs.splice(index, 1);
                     updateFaqsDisplay();
-                    console.log('✅ FAQ removed at index:', index);
+                    console.log('✓ FAQ removed at index:', index);
                 }
             }
 
@@ -11654,7 +11654,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 area.latitude = area.latitude || 0;
                                 area.longitude = area.longitude || 0;
                             }
-                            console.log(`✅ Service area ${index}: ${area.city} (${area.latitude}, ${area.longitude})`);
+                            console.log(`✓ Service area ${index}: ${area.city} (${area.latitude}, ${area.longitude})`);
                         });
                         
                         stepData = {
@@ -12291,7 +12291,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 vendorCard.innerHTML = `
                     <div class="vendor-image">
                         ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
-                        <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}">❤</div>
+                        <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}"><i class="fas fa-heart"></i></div>
                         <div class="vendor-badges" style="position: absolute; bottom: 12px; left: 12px; display: flex; gap: 6px;">
                             ${vendor.isPremium ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #5e72e4; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Premium</span>' : ''}
                             ${vendor.isEcoFriendly ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #38a169; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Eco-Friendly</span>' : ''}
@@ -12301,7 +12301,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     <div class="vendor-details">
                         <h3 class="vendor-name">${vendor.name}</h3>
                         <div class="vendor-location">
-                            📍 ${vendor.location}
+                            <i class="fas fa-map-marker-alt"></i> ${vendor.location}
                         </div>
                         <div class="vendor-features">
                             <div class="feature">
@@ -12309,7 +12309,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <span>${getCategoryName(vendor.category)}</span>
                             </div>
                             <div class="feature">
-                                <span class="feature-icon">⭐</span>
+                                <span class="feature-icon"><i class="fas fa-star"></i></span>
                                 <span>${vendor.rating} (${vendor.reviewCount})</span>
                             </div>
                             <div class="feature">
@@ -12348,22 +12348,22 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Helper function to get category icon
             function getCategoryIcon(category) {
                 const icons = {
-                    "all": "✨",
-                    "venue": "🏨",
-                    "photo": "📷",
-                    "music": "🎵",
-                    "catering": "🍽️",
-                    "entertainment": "🎭",
-                    "experiences": "🌟",
-                    "decor": "🎀",
-                    "beauty": "💄",
-                    "cake": "🎂",
-                    "transport": "🚗",
-                    "planner": "📋",
-                    "fashion": "👗",
-                    "stationery": "✉️"
+                    "all": "<i class='fas fa-sparkles'></i>",
+                    "venue": "<i class='fas fa-building'></i>",
+                    "photo": "<i class='fas fa-camera'></i>",
+                    "music": "<i class='fas fa-music'></i>",
+                    "catering": "<i class='fas fa-utensils'></i>",
+                    "entertainment": "<i class='fas fa-theater-masks'></i>",
+                    "experiences": "<i class='fas fa-star'></i>",
+                    "decor": "<i class='fas fa-palette'></i>",
+                    "beauty": "<i class='fas fa-spa'></i>",
+                    "cake": "<i class='fas fa-birthday-cake'></i>",
+                    "transport": "<i class='fas fa-car'></i>",
+                    "planner": "<i class='fas fa-clipboard-list'></i>",
+                    "fashion": "<i class='fas fa-tshirt'></i>",
+                    "stationery": "<i class='fas fa-envelope'></i>"
                 };
-                return icons[category] || "🎉";
+                return icons[category] || "<i class='fas fa-calendar-alt'></i>";
             }
 
             // Helper function to get category name
@@ -12839,8 +12839,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 
                                 <!-- Main Info Row -->
                                 <div style="display: flex; align-items: center; gap: 1.25rem; color: var(--text-light); margin-bottom: 0.75rem; flex-wrap: wrap; font-size: 0.9rem;">
-                                    <span>📍 Location</span>
-                                    ${profile.YearsInBusiness ? `<span>🏆 ${profile.YearsInBusiness} years in business</span>` : ''}
+                                    <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>Location</span>
+                                    ${profile.YearsInBusiness ? `<span><i class="fas fa-trophy" style="color: #fbbf24; margin-right: 0.5rem;"></i>${profile.YearsInBusiness} years in business</span>` : ''}
                                     <span style="color: #fbbf24;">★★★★★ (5.0) • 1 Reviews</span>
                                 </div>
                                 
@@ -12853,7 +12853,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </div>
                             
                             <!-- Favorite Button -->
-                            <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${profile.VendorProfileID}" style="flex-shrink: 0; font-size: 1.25rem; cursor: pointer; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">❤</div>
+                            <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${profile.VendorProfileID}" style="flex-shrink: 0; font-size: 1.25rem; cursor: pointer; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'"><i class="fas fa-heart"></i></div>
                         </div>
                     </div>
 
@@ -12986,7 +12986,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     featuredImage: details.images && details.images.length > 0 ? details.images.find(img => img.IsPrimary) || details.images[0] : null
                 };
                 
-                console.log('✅ Set window.currentVendor with images:', window.currentVendor.images);
+                console.log('<i class="fas fa-check" style="color: #28a745;"></i> Set window.currentVendor with images:', window.currentVendor.images);
 
                 // Add event listeners for the new elements on the profile page
                 vendorProfilePage.querySelector('.vendor-favorite').addEventListener('click', () => {
@@ -13627,12 +13627,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         vendorCard.innerHTML = `
                             <div class="vendor-image">
                                 ${vendor.PortfolioImage ? `<img src="${vendor.PortfolioImage}" alt="${vendor.VendorName}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.Categories?.split(',')[0] || 'all')}
-                                <div class="vendor-favorite active" data-id="${vendor.VendorProfileID}">❤</div>
+                                <div class="vendor-favorite active" data-id="${vendor.VendorProfileID}"><i class="fas fa-heart"></i></div>
                             </div>
                             <div class="vendor-details">
                                 <h3 class="vendor-name">${vendor.VendorName}</h3>
                                 <div class="vendor-location">
-                                    📍 ${vendor.City}, ${vendor.State}
+                                    <i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${vendor.City}, ${vendor.State}
                                 </div>
                                 <div class="vendor-features">
                                     <div class="feature">
@@ -13700,12 +13700,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         vendorCard.innerHTML = `
                             <div class="vendor-image">
                                 ${vendor.PortfolioImage ? `<img src="${vendor.PortfolioImage}" alt="${vendor.VendorName}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.Categories?.split(',')[0] || 'all')}
-                                <div class="vendor-favorite active" data-id="${vendor.VendorProfileID}">❤</div>
+                                <div class="vendor-favorite active" data-id="${vendor.VendorProfileID}"><i class="fas fa-heart"></i></div>
                             </div>
                             <div class="vendor-details">
                                 <h3 class="vendor-name">${vendor.VendorName}</h3>
                                 <div class="vendor-location">
-                                    📍 ${vendor.City}, ${vendor.State}
+                                    <i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${vendor.City}, ${vendor.State}
                                 </div>
                                 <div class="vendor-features">
                                     <div class="feature">
@@ -15037,7 +15037,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <img src="${imageUrl}" alt="${vendor.BusinessName || vendor.name}" 
                                      style="width:100%;height:100%;object-fit:cover;"
                                      onerror="this.src='https://placehold.co/800x600/e2e8f0/718096?text=No+Image'">
-                                <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.VendorProfileID || vendor.id}">❤</div>
+                                <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.VendorProfileID || vendor.id}"><i class="fas fa-heart"></i></div>
                                 <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
                                     ${badges.join('')}
                                 </div>
@@ -15045,7 +15045,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <div class="vendor-details">
                                 <h3 class="vendor-name">${vendor.BusinessName || vendor.name}</h3>
                                 <div class="vendor-location">
-                                    📍 ${vendor.City || vendor.city || ''}, ${vendor.State || vendor.state || ''}
+                                    <i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${vendor.City || vendor.city || ''}, ${vendor.State || vendor.state || ''}
                                 </div>
                                 <div class="vendor-features">
                                     <div class="feature">
@@ -15053,7 +15053,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                         <span>${vendor.type || vendor.category || 'Service'}</span>
                                     </div>
                                     <div class="feature">
-                                        <span class="feature-icon">⭐</span>
+                                        <span class="feature-icon"><i class="fas fa-star"></i></span>
                                         <span>${vendor.rating || '4.5'} (${vendor.reviewCount || 0})</span>
                                     </div>
                                     <div class="feature">
@@ -15496,7 +15496,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     
                     // Set main image
                     mainImageElement.src = knownImages[0];
-                    console.log('✅ Set main image to:', knownImages[0]);
+                    console.log('<i class="fas fa-check" style="color: #28a745;"></i> Set main image to:', knownImages[0]);
                     
                     // If we found a thumbnail container, add thumbnails
                     if (thumbnailContainer) {
@@ -15828,7 +15828,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 // Set main image src to first image (primary)
                 mainImageElement.src = imagesToUse[0];
-                console.log('✅ Set main venue image:', imagesToUse[0]);
+                console.log('<i class="fas fa-check" style="color: #28a745;"></i> Set main venue image:', imagesToUse[0]);
                 mainImageUpdated = true;
                 
                 // Add click event to main image to open lightbox
@@ -16672,7 +16672,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Categories
             summary.push('<div class="summary-section" style="margin-top: 2rem;">');
-            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;">🏷️ Categories</h5>');
+            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;"><i class="fas fa-tags" style="margin-right: 0.5rem;"></i>Categories</h5>');
             
             const primaryCategory = document.getElementById('primary-category')?.value || 'Not selected';
             const additionalCategories = Array.from(document.getElementById('additional-categories')?.selectedOptions || [])
@@ -16684,7 +16684,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Location Information
             summary.push('<div class="summary-section" style="margin-top: 2rem;">');
-            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;">📍 Location Information</h5>');
+            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;"><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>Location Information</h5>');
             
             const address = document.getElementById('business-address')?.value?.trim();
             const city = document.getElementById('business-city')?.value?.trim();
@@ -16711,7 +16711,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Services & Packages
             summary.push('<div class="summary-section" style="margin-top: 2rem;">');
-            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;">💼 Services & Packages</h5>');
+            summary.push('<h5 style="color: var(--primary); margin-bottom: 1rem;"><i class="fas fa-briefcase" style="margin-right: 0.5rem;"></i>Services & Packages</h5>');
             
             // Get services from the services list
             const servicesList = document.querySelectorAll('#services-list .service-item');
