@@ -1424,20 +1424,37 @@ router.post('/search-by-services', async (req, res) => {
         if (startTime && endTime) {
           console.log(`Filtering by business hours: Day ${dayOfWeek}, ${startTime} - ${endTime}`);
           
-          // Add business hours filter to ensure vendors are open during event time
-          // Use CAST to convert string to TIME for proper comparison
-          whereClause += ` AND EXISTS (
-            SELECT 1 FROM VendorBusinessHours vbh 
-            WHERE vbh.VendorProfileID = vp.VendorProfileID 
-            AND vbh.DayOfWeek = @EventDayOfWeek 
-            AND vbh.IsAvailable = 1
-            AND vbh.OpenTime <= CAST(@EventStartTime AS TIME) 
-            AND vbh.CloseTime >= CAST(@EventEndTime AS TIME)
-          )`;
+          // Check if the time range is unrealistically long (more than 16 hours)
+          const startHour = parseInt(startTime.split(':')[0]);
+          const endHour = parseInt(endTime.split(':')[0]);
+          const duration = endHour - startHour;
+          const isUnrealisticRange = duration > 16 || duration < 0;
+          
+          if (isUnrealisticRange) {
+            console.warn(`Unrealistic time range detected (${duration} hours). Using relaxed business hours filtering.`);
+            // Use relaxed filtering - just check if vendor is available on that day
+            whereClause += ` AND EXISTS (
+              SELECT 1 FROM VendorBusinessHours vbh 
+              WHERE vbh.VendorProfileID = vp.VendorProfileID 
+              AND vbh.DayOfWeek = @EventDayOfWeek 
+              AND vbh.IsAvailable = 1
+            )`;
+          } else {
+            // Use overlap logic - vendor hours should overlap with event time (not necessarily contain it)
+            whereClause += ` AND EXISTS (
+              SELECT 1 FROM VendorBusinessHours vbh 
+              WHERE vbh.VendorProfileID = vp.VendorProfileID 
+              AND vbh.DayOfWeek = @EventDayOfWeek 
+              AND vbh.IsAvailable = 1
+              AND vbh.OpenTime < CAST(@EventEndTime AS TIME) 
+              AND vbh.CloseTime > CAST(@EventStartTime AS TIME)
+            )`;
+            
+            request.input('EventStartTime', sql.NVarChar(8), startTime);
+            request.input('EventEndTime', sql.NVarChar(8), endTime);
+          }
           
           request.input('EventDayOfWeek', sql.TinyInt, dayOfWeek);
-          request.input('EventStartTime', sql.NVarChar(8), startTime);
-          request.input('EventEndTime', sql.NVarChar(8), endTime);
         } else {
           console.warn(`Failed to convert times - startTime: ${startTime}, endTime: ${endTime}`);
         }
