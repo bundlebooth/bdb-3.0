@@ -78,13 +78,43 @@ function calculateUnifiedPricing(service, searchCriteria) {
         };
       }
     } else {
-      // Fallback for services without pricing model
+      // Fallback for services without pricing model - use legacy Price field or reasonable defaults
       finalCost = service.Price || 0;
-      breakdown = {
-        pricingModel: 'legacy',
-        price: finalCost,
-        finalCost: finalCost
-      };
+      
+      // If no legacy price either, provide a reasonable default for time-based services
+      if (finalCost === 0 && service.PricingModel === 'time_based') {
+        // Default pricing for photography: $200 base rate for 1 hour
+        const defaultBaseRate = 200;
+        const baseDuration = 60; // 1 hour default
+        
+        if (eventDurationMinutes > baseDuration) {
+          const overtimeMinutes = eventDurationMinutes - baseDuration;
+          const overtimeHours = Math.ceil(overtimeMinutes / 60);
+          const defaultOvertimeRate = 100; // $100/hour overtime
+          finalCost = defaultBaseRate + (overtimeHours * defaultOvertimeRate);
+        } else {
+          finalCost = defaultBaseRate;
+        }
+        
+        breakdown = {
+          pricingModel: 'time_based_default',
+          baseDuration: baseDuration,
+          baseRate: defaultBaseRate,
+          baseCost: defaultBaseRate,
+          eventDuration: eventDurationMinutes,
+          overtimeMinutes: Math.max(0, eventDurationMinutes - baseDuration),
+          overtimeRate: 100,
+          overtimeCost: finalCost - defaultBaseRate,
+          note: 'Default pricing - vendor has not set up unified pricing yet',
+          finalCost: finalCost
+        };
+      } else {
+        breakdown = {
+          pricingModel: 'legacy',
+          price: finalCost,
+          finalCost: finalCost
+        };
+      }
     }
 
     // Check affordability
