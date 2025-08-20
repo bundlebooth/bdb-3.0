@@ -285,12 +285,36 @@ CREATE TABLE Services (
     DepositPercentage DECIMAL(5,2) DEFAULT 20.00,
     CancellationPolicy NVARCHAR(500),
     LinkedPredefinedServiceID INT NULL,
+    
+    -- Unified pricing system fields
+    PricingModel NVARCHAR(20) NULL,
+    
+    -- Time-based pricing fields
+    BaseDurationMinutes INT NULL,
+    BaseRate DECIMAL(10,2) NULL,
+    OvertimeRatePerHour DECIMAL(10,2) NULL,
+    MinimumBookingFee DECIMAL(10,2) NULL,
+    
+    -- Fixed-based pricing fields  
+    FixedPricingType NVARCHAR(20) NULL,
+    FixedPrice DECIMAL(10,2) NULL,
+    PricePerPerson DECIMAL(10,2) NULL,
+    MinimumAttendees INT NULL,
+    MaximumAttendees INT NULL,
+    
     IsActive BIT DEFAULT 1,
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE(),
+    
     FOREIGN KEY (VendorProfileID) REFERENCES VendorProfiles(VendorProfileID) ON DELETE CASCADE,
     FOREIGN KEY (CategoryID) REFERENCES ServiceCategories(CategoryID) ON DELETE CASCADE,
-    FOREIGN KEY (LinkedPredefinedServiceID) REFERENCES PredefinedServices(PredefinedServiceID) ON DELETE SET NULL
+    FOREIGN KEY (LinkedPredefinedServiceID) REFERENCES PredefinedServices(PredefinedServiceID) ON DELETE SET NULL,
+    
+    -- Check constraints for data integrity
+    CONSTRAINT CK_Services_PricingModel 
+        CHECK (PricingModel IS NULL OR PricingModel IN ('time_based', 'fixed_based')),
+    CONSTRAINT CK_Services_FixedPricingType 
+        CHECK (FixedPricingType IS NULL OR FixedPricingType IN ('fixed_price', 'per_attendee'))
 );
 GO
 
@@ -5416,6 +5440,7 @@ CREATE TABLE PredefinedServices (
     ServiceName NVARCHAR(100) NOT NULL,
     ServiceDescription NVARCHAR(MAX),
     DefaultDurationMinutes INT NULL,
+    PricingModel VARCHAR(20) DEFAULT 'time_based' CHECK (PricingModel IN ('time_based', 'fixed_based')),
     IsActive BIT DEFAULT 1,
     DisplayOrder INT DEFAULT 0,
     CreatedAt DATETIME DEFAULT GETDATE(),
@@ -5424,7 +5449,10 @@ CREATE TABLE PredefinedServices (
 );
 GO
 
--- Junction table for vendor-selected services with vendor-specific pricing
+-- Note: Unified pricing is now handled directly in the Services table above
+-- No separate VendorServicePricing table needed
+
+-- Legacy table for backward compatibility (will be migrated)
 CREATE TABLE VendorSelectedServices (
     VendorSelectedServiceID INT PRIMARY KEY IDENTITY(1,1),
     VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
@@ -5435,17 +5463,58 @@ CREATE TABLE VendorSelectedServices (
     IsActive BIT DEFAULT 1,
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE(),
-    CONSTRAINT UC_VendorService UNIQUE (VendorProfileID, PredefinedServiceID)
+    CONSTRAINT UC_VendorService_Legacy UNIQUE (VendorProfileID, PredefinedServiceID)
 );
 GO
 
 -- Create indexes for performance
 CREATE INDEX IX_PredefinedServices_Category ON PredefinedServices (Category);
+CREATE INDEX IX_PredefinedServices_PricingModel ON PredefinedServices (PricingModel);
+CREATE INDEX IX_Services_PricingModel ON Services (PricingModel);
+CREATE INDEX IX_Services_LinkedPredefinedServiceID ON Services (LinkedPredefinedServiceID);
 CREATE INDEX IX_VendorSelectedServices_VendorProfileID ON VendorSelectedServices (VendorProfileID);
 CREATE INDEX IX_VendorSelectedServices_PredefinedServiceID ON VendorSelectedServices (PredefinedServiceID);
 GO
 
--- Create view for easy querying of vendor services with predefined service details
+-- Create unified view for vendor pricing details using Services table
+CREATE OR ALTER VIEW vw_VendorPricingDetails AS
+SELECT 
+    s.ServiceID,
+    s.VendorProfileID,
+    vp.BusinessName AS VendorName,
+    s.LinkedPredefinedServiceID AS PredefinedServiceID,
+    ps.ServiceName,
+    ps.Category,
+    s.PricingModel,
+    s.Description AS ServiceDescription,
+    s.IsActive,
+    
+    -- Legacy pricing field
+    s.Price,
+    s.DurationMinutes,
+    
+    -- Time-based pricing fields
+    s.BaseDurationMinutes,
+    s.BaseRate,
+    s.OvertimeRatePerHour,
+    s.MinimumBookingFee,
+    
+    -- Fixed-based pricing fields
+    s.FixedPricingType,
+    s.FixedPrice,
+    s.PricePerPerson,
+    s.MinimumAttendees,
+    s.MaximumAttendees,
+    
+    s.CreatedAt,
+    s.UpdatedAt
+FROM Services s
+JOIN VendorProfiles vp ON s.VendorProfileID = vp.VendorProfileID
+LEFT JOIN PredefinedServices ps ON s.LinkedPredefinedServiceID = ps.PredefinedServiceID
+WHERE s.IsActive = 1;
+GO
+
+-- Create view for easy querying of vendor services with predefined service details (legacy)
 CREATE OR ALTER VIEW vw_VendorPredefinedServices AS
 SELECT 
     vss.VendorSelectedServiceID,
@@ -5575,49 +5644,49 @@ END
 GO
 
 -- Insert comprehensive predefined services for all categories (no default prices)
-INSERT INTO PredefinedServices (Category, ServiceName, ServiceDescription, DefaultDurationMinutes, DisplayOrder) VALUES
+INSERT INTO PredefinedServices (Category, ServiceName, ServiceDescription, DefaultDurationMinutes, PricingModel, DisplayOrder) VALUES
 
 -- Wedding Services (40+ services)
-('Wedding', 'Wedding Photography', 'Professional wedding photography coverage for ceremony and reception', 480, 1),
-('Wedding', 'Wedding Videography', 'Cinematic wedding video production with highlight reel', 480, 2),
-('Wedding', 'Bridal Makeup', 'Professional bridal makeup application and touch-ups', 120, 3),
-('Wedding', 'Bridal Hair Styling', 'Professional bridal hair styling and updo creation', 90, 4),
-('Wedding', 'Wedding Planning', 'Full-service wedding planning and day-of coordination', NULL, 5),
-('Wedding', 'Wedding Flowers', 'Bridal bouquet, boutonnieres, and ceremony arrangements', NULL, 6),
-('Wedding', 'Wedding Catering', 'Reception catering services with menu customization', NULL, 7),
-('Wedding', 'Wedding DJ', 'Music and entertainment for ceremony and reception', 360, 8),
-('Wedding', 'Wedding Venue', 'Ceremony and reception venue rental', NULL, 9),
-('Wedding', 'Wedding Transportation', 'Luxury transportation for wedding party', 240, 10),
-('Wedding', 'Wedding Cake', 'Custom wedding cake design and creation', NULL, 11),
-('Wedding', 'Wedding Officiant', 'Licensed officiant for wedding ceremony', 60, 12),
-('Wedding', 'Wedding Linens', 'Table linens, napkins, and fabric draping', NULL, 13),
-('Wedding', 'Wedding Lighting', 'Ambient and decorative lighting setup', NULL, 14),
-('Wedding', 'Wedding Security', 'Professional security services for wedding event', NULL, 15),
-('Wedding', 'Wedding Coordination', 'Day-of wedding coordination services', 720, 16),
-('Wedding', 'Rehearsal Dinner Planning', 'Planning and coordination for rehearsal dinner', NULL, 17),
-('Wedding', 'Bachelor Party Planning', 'Bachelor party event planning and coordination', NULL, 18),
-('Wedding', 'Bachelorette Party Planning', 'Bachelorette party event planning and coordination', NULL, 19),
-('Wedding', 'Wedding Invitations', 'Custom wedding invitation design and printing', NULL, 20),
-('Wedding', 'Wedding Favors', 'Personalized wedding favor creation and packaging', NULL, 21),
-('Wedding', 'Ceremony Music', 'Live music for wedding ceremony', 60, 22),
-('Wedding', 'Reception Band', 'Live band performance for wedding reception', 240, 23),
-('Wedding', 'Wedding Arch Rental', 'Decorative arch for wedding ceremony', NULL, 24),
-('Wedding', 'Photo Booth', 'Interactive photo booth with props and prints', 240, 25),
-('Wedding', 'Wedding Bartending', 'Professional bartending services', 360, 26),
-('Wedding', 'Wedding Cleanup', 'Post-wedding venue cleanup services', 180, 27),
-('Wedding', 'Bridal Party Makeup', 'Makeup services for bridesmaids and family', 180, 28),
-('Wedding', 'Groomsmen Services', 'Grooming and styling for groomsmen', 120, 29),
-('Wedding', 'Wedding Registry Setup', 'Wedding gift registry creation and management', NULL, 30),
-('Wedding', 'Honeymoon Planning', 'Honeymoon destination and travel planning', NULL, 31),
-('Wedding', 'Wedding Website', 'Custom wedding website creation', NULL, 32),
-('Wedding', 'Save the Date Cards', 'Save the date card design and mailing', NULL, 33),
-('Wedding', 'Wedding Programs', 'Ceremony program design and printing', NULL, 34),
-('Wedding', 'Wedding Menu Cards', 'Reception menu card design and printing', NULL, 35),
-('Wedding', 'Seating Chart Design', 'Wedding reception seating chart creation', NULL, 36),
-('Wedding', 'Wedding Signage', 'Custom wedding signage and directional signs', NULL, 37),
-('Wedding', 'Engagement Party Planning', 'Engagement celebration planning and coordination', NULL, 38),
-('Wedding', 'Wedding Shower Planning', 'Bridal shower event planning and coordination', NULL, 39),
-('Wedding', 'Wedding Insurance', 'Wedding event insurance consultation and setup', NULL, 40),
+('Wedding', 'Wedding Photography', 'Professional wedding photography coverage for ceremony and reception', 480, 'time_based', 1),
+('Wedding', 'Wedding Videography', 'Cinematic wedding video production with highlight reel', 480, 'time_based', 2),
+('Wedding', 'Bridal Makeup', 'Professional bridal makeup application and touch-ups', 120, 'time_based', 3),
+('Wedding', 'Bridal Hair Styling', 'Professional bridal hair styling and updo creation', 90, 'time_based', 4),
+('Wedding', 'Wedding Planning', 'Full-service wedding planning and day-of coordination', NULL, 'fixed_based', 5),
+('Wedding', 'Wedding Flowers', 'Bridal bouquet, boutonnieres, and ceremony arrangements', NULL, 'fixed_based', 6),
+('Wedding', 'Wedding Catering', 'Reception catering services with menu customization', NULL, 'fixed_based', 7),
+('Wedding', 'Wedding DJ', 'Music and entertainment for ceremony and reception', 360, 'time_based', 8),
+('Wedding', 'Wedding Venue', 'Ceremony and reception venue rental', NULL, 'fixed_based', 9),
+('Wedding', 'Wedding Transportation', 'Luxury transportation for wedding party', 240, 'time_based', 10),
+('Wedding', 'Wedding Cake', 'Custom wedding cake design and creation', NULL, 'fixed_based', 11),
+('Wedding', 'Wedding Officiant', 'Licensed officiant for wedding ceremony', 60, 'time_based', 12),
+('Wedding', 'Wedding Linens', 'Table linens, napkins, and fabric draping', NULL, 'fixed_based', 13),
+('Wedding', 'Wedding Lighting', 'Ambient and decorative lighting setup', NULL, 'fixed_based', 14),
+('Wedding', 'Wedding Security', 'Professional security services for wedding event', NULL, 'time_based', 15),
+('Wedding', 'Wedding Coordination', 'Day-of wedding coordination services', 720, 'time_based', 16),
+('Wedding', 'Rehearsal Dinner Planning', 'Planning and coordination for rehearsal dinner', NULL, 'fixed_based', 17),
+('Wedding', 'Bachelor Party Planning', 'Bachelor party event planning and coordination', NULL, 'fixed_based', 18),
+('Wedding', 'Bachelorette Party Planning', 'Bachelorette party event planning and coordination', NULL, 'fixed_based', 19),
+('Wedding', 'Wedding Invitations', 'Custom wedding invitation design and printing', NULL, 'fixed_based', 20),
+('Wedding', 'Wedding Favors', 'Personalized wedding favor creation and packaging', NULL, 'fixed_based', 21),
+('Wedding', 'Ceremony Music', 'Live music for wedding ceremony', 60, 'time_based', 22),
+('Wedding', 'Reception Band', 'Live band performance for wedding reception', 240, 'time_based', 23),
+('Wedding', 'Wedding Arch Rental', 'Decorative arch for wedding ceremony', NULL, 'fixed_based', 24),
+('Wedding', 'Photo Booth', 'Interactive photo booth with props and prints', 240, 'time_based', 25),
+('Wedding', 'Wedding Bartending', 'Professional bartending services', 360, 'time_based', 26),
+('Wedding', 'Wedding Cleanup', 'Post-wedding venue cleanup services', 180, 'time_based', 27),
+('Wedding', 'Bridal Party Makeup', 'Makeup services for bridesmaids and family', 180, 'time_based', 28),
+('Wedding', 'Groomsmen Services', 'Grooming and styling for groomsmen', 120, 'time_based', 29),
+('Wedding', 'Wedding Registry Setup', 'Wedding gift registry creation and management', NULL, 'fixed_based', 30),
+('Wedding', 'Honeymoon Planning', 'Honeymoon destination and travel planning', NULL, 'fixed_based', 31),
+('Wedding', 'Wedding Website', 'Custom wedding website creation', NULL, 'fixed_based', 32),
+('Wedding', 'Save the Date Cards', 'Save the date card design and mailing', NULL, 'fixed_based', 33),
+('Wedding', 'Wedding Programs', 'Ceremony program design and printing', NULL, 'fixed_based', 34),
+('Wedding', 'Wedding Menu Cards', 'Reception menu card design and printing', NULL, 'fixed_based', 35),
+('Wedding', 'Seating Chart Design', 'Wedding reception seating chart creation', NULL, 'fixed_based', 36),
+('Wedding', 'Wedding Signage', 'Custom wedding signage and directional signs', NULL, 'fixed_based', 37),
+('Wedding', 'Engagement Party Planning', 'Engagement celebration planning and coordination', NULL, 'fixed_based', 38),
+('Wedding', 'Wedding Shower Planning', 'Bridal shower event planning and coordination', NULL, 'fixed_based', 39),
+('Wedding', 'Wedding Insurance', 'Wedding event insurance consultation and setup', NULL, 'fixed_based', 40),
 
 -- Photography Services (30+ services)
 ('Photography', 'Portrait Photography', 'Individual and family portrait sessions', 90, 1),
