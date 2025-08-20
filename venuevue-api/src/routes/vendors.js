@@ -1419,22 +1419,27 @@ router.post('/search-by-services', async (req, res) => {
         const startTime = convertTo24Hour(eventDetails.startTime);
         const endTime = convertTo24Hour(eventDetails.endTime);
         
+        console.log(`Debug - Original times: ${eventDetails.startTime} -> ${startTime}, ${eventDetails.endTime} -> ${endTime}`);
+        
         if (startTime && endTime) {
           console.log(`Filtering by business hours: Day ${dayOfWeek}, ${startTime} - ${endTime}`);
           
           // Add business hours filter to ensure vendors are open during event time
+          // Use CAST to convert string to TIME for proper comparison
           whereClause += ` AND EXISTS (
             SELECT 1 FROM VendorBusinessHours vbh 
             WHERE vbh.VendorProfileID = vp.VendorProfileID 
             AND vbh.DayOfWeek = @EventDayOfWeek 
             AND vbh.IsAvailable = 1
-            AND vbh.OpenTime <= @EventStartTime 
-            AND vbh.CloseTime >= @EventEndTime
+            AND vbh.OpenTime <= CAST(@EventStartTime AS TIME) 
+            AND vbh.CloseTime >= CAST(@EventEndTime AS TIME)
           )`;
           
           request.input('EventDayOfWeek', sql.TinyInt, dayOfWeek);
-          request.input('EventStartTime', sql.Time, startTime);
-          request.input('EventEndTime', sql.Time, endTime);
+          request.input('EventStartTime', sql.NVarChar(8), startTime);
+          request.input('EventEndTime', sql.NVarChar(8), endTime);
+        } else {
+          console.warn(`Failed to convert times - startTime: ${startTime}, endTime: ${endTime}`);
         }
       } catch (dateError) {
         console.warn('Error parsing event date/time for business hours filtering:', dateError.message);
