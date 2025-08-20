@@ -1775,7 +1775,7 @@ router.post('/search-by-services-unified', async (req, res) => {
     }
 
     const query = `
-      SELECT DISTINCT
+      SELECT 
         vp.VendorProfileID,
         vp.BusinessName,
         vp.BusinessType,
@@ -1787,7 +1787,8 @@ router.post('/search-by-services-unified', async (req, res) => {
         vp.IsAwardWinning,
         vp.FeaturedImageURL,
         vp.Latitude,
-        vp.Longitude
+        vp.Longitude,
+        COUNT(DISTINCT s.LinkedPredefinedServiceID) as MatchingServicesCount
       ${joinClause}
       ${whereClause}
       GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.BusinessDescription,
