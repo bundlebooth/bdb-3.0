@@ -5,6 +5,109 @@ const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
 
+// Helper function to calculate unified pricing based on pricing model
+function calculateUnifiedPricing(service, searchCriteria) {
+  const { eventDurationMinutes, attendeeCount, maxBudget } = searchCriteria;
+  
+  try {
+    let finalCost = 0;
+    let breakdown = {};
+    let isAffordable = true;
+
+    if (service.PricingModel === 'time_based') {
+      // TIME_BASED: Base Duration + Base Rate + Overtime Rate + Minimum Fee
+      const baseDuration = service.BaseDurationMinutes || 60;
+      const baseRate = service.BaseRate || 0;
+      const overtimeRate = service.OvertimeRatePerHour || 0;
+      const minimumFee = service.MinimumBookingFee || 0;
+
+      // Calculate base cost
+      let baseCost = baseRate;
+      
+      // Calculate overtime if event duration exceeds base duration
+      let overtimeCost = 0;
+      if (eventDurationMinutes > baseDuration) {
+        const overtimeMinutes = eventDurationMinutes - baseDuration;
+        const overtimeHours = Math.ceil(overtimeMinutes / 60);
+        overtimeCost = overtimeHours * overtimeRate;
+      }
+
+      finalCost = Math.max(baseCost + overtimeCost, minimumFee);
+      
+      breakdown = {
+        pricingModel: 'time_based',
+        baseDuration: baseDuration,
+        baseRate: baseRate,
+        baseCost: baseCost,
+        eventDuration: eventDurationMinutes,
+        overtimeMinutes: Math.max(0, eventDurationMinutes - baseDuration),
+        overtimeRate: overtimeRate,
+        overtimeCost: overtimeCost,
+        minimumFee: minimumFee,
+        finalCost: finalCost
+      };
+
+    } else if (service.PricingModel === 'fixed_based') {
+      // FIXED_BASED: Either Fixed Price OR Per Attendee pricing
+      if (service.FixedPricingType === 'fixed') {
+        finalCost = service.FixedPrice || 0;
+        breakdown = {
+          pricingModel: 'fixed_based',
+          pricingType: 'fixed',
+          fixedPrice: finalCost,
+          finalCost: finalCost
+        };
+      } else if (service.FixedPricingType === 'per_person') {
+        const pricePerPerson = service.PricePerPerson || 0;
+        const minAttendees = service.MinimumAttendees || 1;
+        const maxAttendees = service.MaximumAttendees || 1000;
+        
+        // Use actual attendee count, but respect min/max limits
+        const effectiveAttendees = Math.max(minAttendees, Math.min(attendeeCount || minAttendees, maxAttendees));
+        finalCost = effectiveAttendees * pricePerPerson;
+        
+        breakdown = {
+          pricingModel: 'fixed_based',
+          pricingType: 'per_person',
+          pricePerPerson: pricePerPerson,
+          requestedAttendees: attendeeCount,
+          effectiveAttendees: effectiveAttendees,
+          minimumAttendees: minAttendees,
+          maximumAttendees: maxAttendees,
+          finalCost: finalCost
+        };
+      }
+    } else {
+      // Fallback for services without pricing model
+      finalCost = service.Price || 0;
+      breakdown = {
+        pricingModel: 'legacy',
+        price: finalCost,
+        finalCost: finalCost
+      };
+    }
+
+    // Check affordability
+    if (maxBudget && maxBudget > 0) {
+      isAffordable = finalCost <= maxBudget;
+    }
+
+    return {
+      finalCost: Math.round(finalCost * 100) / 100, // Round to 2 decimal places
+      breakdown,
+      isAffordable
+    };
+
+  } catch (error) {
+    console.error('Error calculating unified pricing:', error);
+    return {
+      finalCost: 0,
+      breakdown: { error: 'Pricing calculation failed' },
+      isAffordable: false
+    };
+  }
+}
+
 // Helper function to convert time string to 24-hour format for database comparison
 function convertTo24Hour(timeString) {
   if (!timeString) return null;
