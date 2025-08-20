@@ -4,6 +4,40 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
+const axios = require('axios');
+
+// Helper function to geocode location using Google Maps API
+async function geocodeLocation(locationString) {
+  try {
+    const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+    if (!GOOGLE_MAPS_API_KEY) {
+      console.warn('⚠️ Google Maps API key not found. Distance calculation disabled.');
+      return null;
+    }
+
+    const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+      params: {
+        address: locationString,
+        key: GOOGLE_MAPS_API_KEY
+      }
+    });
+
+    if (response.data.status === 'OK' && response.data.results.length > 0) {
+      const location = response.data.results[0].geometry.location;
+      return {
+        lat: location.lat,
+        lng: location.lng,
+        formatted_address: response.data.results[0].formatted_address
+      };
+    }
+
+    console.warn('⚠️ Geocoding failed:', response.data.status);
+    return null;
+  } catch (error) {
+    console.error('❌ Geocoding error:', error.message);
+    return null;
+  }
+}
 
 // Helper function to calculate unified pricing based on pricing model
 function calculateUnifiedPricing(service, searchCriteria) {
@@ -31,33 +65,15 @@ function calculateUnifiedPricing(service, searchCriteria) {
       const overtimeRate = service.OvertimeRatePerHour || 0;
       const minimumFee = service.MinimumBookingFee || 0;
 
-      // Check if vendor has set up pricing - if all are 0/null, use defaults
+      // Check if vendor has set up pricing - if all are 0/null, use legacy price
       if (baseRate === 0 && overtimeRate === 0 && minimumFee === 0) {
-        // Default pricing for photography: $200 base rate for 1 hour
-        const defaultBaseRate = 200;
-        const defaultOvertimeRate = 100;
-        
-        let baseCost = defaultBaseRate;
-        let overtimeCost = 0;
-        
-        if (eventDurationMinutes > baseDuration) {
-          const overtimeMinutes = eventDurationMinutes - baseDuration;
-          const overtimeHours = Math.ceil(overtimeMinutes / 60);
-          overtimeCost = overtimeHours * defaultOvertimeRate;
-        }
-        
-        finalCost = baseCost + overtimeCost;
+        // Use legacy price or reasonable default
+        finalCost = service.LegacyPrice || service.Price || 500;
         
         breakdown = {
-          pricingModel: 'time_based_default',
-          baseDuration: baseDuration,
-          baseRate: defaultBaseRate,
-          baseCost: baseCost,
-          eventDuration: eventDurationMinutes,
-          overtimeMinutes: Math.max(0, eventDurationMinutes - baseDuration),
-          overtimeRate: defaultOvertimeRate,
-          overtimeCost: overtimeCost,
-          note: 'Default pricing - vendor has not set up unified pricing yet',
+          pricingModel: 'time_based_fallback',
+          legacyPrice: finalCost,
+          note: 'Using legacy price - vendor has not set up unified pricing yet',
           finalCost: finalCost
         };
       } else {
@@ -118,34 +134,16 @@ function calculateUnifiedPricing(service, searchCriteria) {
         };
       }
     } else {
-      // Fallback for services without pricing model - use legacy Price field or reasonable defaults
-      finalCost = service.Price || 0;
+      // Fallback for services without pricing model - use legacy Price field
+      finalCost = service.LegacyPrice || service.Price || 0;
       
-      // If no legacy price either, provide a reasonable default for time-based services
-      if (finalCost === 0 && service.PricingModel === 'time_based') {
-        // Default pricing for photography: $200 base rate for 1 hour
-        const defaultBaseRate = 200;
-        const baseDuration = 60; // 1 hour default
-        
-        if (eventDurationMinutes > baseDuration) {
-          const overtimeMinutes = eventDurationMinutes - baseDuration;
-          const overtimeHours = Math.ceil(overtimeMinutes / 60);
-          const defaultOvertimeRate = 100; // $100/hour overtime
-          finalCost = defaultBaseRate + (overtimeHours * defaultOvertimeRate);
-        } else {
-          finalCost = defaultBaseRate;
-        }
-        
+      // If no legacy price, use a reasonable flat rate instead of time-based calculation
+      if (finalCost === 0) {
+        finalCost = 500; // Default flat rate for photography services
         breakdown = {
-          pricingModel: 'time_based_default',
-          baseDuration: baseDuration,
-          baseRate: defaultBaseRate,
-          baseCost: defaultBaseRate,
-          eventDuration: eventDurationMinutes,
-          overtimeMinutes: Math.max(0, eventDurationMinutes - baseDuration),
-          overtimeRate: 100,
-          overtimeCost: finalCost - defaultBaseRate,
-          note: 'Default pricing - vendor has not set up unified pricing yet',
+          pricingModel: 'legacy_default',
+          defaultPrice: finalCost,
+          note: 'Default flat rate - vendor has not set up pricing yet',
           finalCost: finalCost
         };
       } else {
@@ -1940,8 +1938,8 @@ router.post('/search-by-services-unified', async (req, res) => {
 
           // Only add business hours filtering if we have valid times
           if (eventStartTime && eventEndTime) {
-            // Disable business hours filtering for now to allow more results
-            const enableBusinessHoursFiltering = false; // Set to true to enable business hours filtering
+            // Enable business hours filtering to check vendor availability
+            const enableBusinessHoursFiltering = true;
             
             if (enableBusinessHoursFiltering) {
               joinClause += `
@@ -1965,13 +1963,14 @@ router.post('/search-by-services-unified', async (req, res) => {
           }
         }
 
-    // Make location filtering more flexible - disable for debugging
-    const enableLocationFiltering = false; // Set to true to enable location filtering
+    // Enable location filtering with distance calculation
+    const enableLocationFiltering = true;
     if (enableLocationFiltering && eventDetails?.location) {
       const location = eventDetails.location;
       console.log('🔍 DEBUG: Location filtering for:', location);
       
-      // Split location to handle "Toronto, ON" format
+      // For now, use basic location filtering until Google Maps integration is added
+      // TODO: Implement Google Maps geocoding to get lat/lng from location string
       const locationParts = location.split(',').map(part => part.trim());
       const city = locationParts[0];
       const province = locationParts[1];
@@ -1984,6 +1983,44 @@ router.post('/search-by-services-unified', async (req, res) => {
         whereClause += ` AND (vp.City LIKE @Location OR vp.State LIKE @Location)`;
         request.input('Location', sql.NVarChar, `%${location}%`);
       }
+      
+      // Add distance calculation to SELECT clause for future use
+      // Note: This requires lat/lng from the event location
+    }
+
+    // Add distance calculation if we have event coordinates (for future Google Maps integration)
+    let distanceCalculation = '';
+    let orderByClause = 'ORDER BY vp.IsPremium DESC, COUNT(DISTINCT s.LinkedPredefinedServiceID) DESC';
+    
+    // Get event coordinates using Google Maps geocoding
+    let eventLat = null;
+    let eventLng = null;
+    let geocodedAddress = null;
+    
+    if (eventDetails?.location) {
+      const geocodeResult = await geocodeLocation(eventDetails.location);
+      if (geocodeResult) {
+        eventLat = geocodeResult.lat;
+        eventLng = geocodeResult.lng;
+        geocodedAddress = geocodeResult.formatted_address;
+        console.log('🗺️ Geocoded location:', { eventLat, eventLng, geocodedAddress });
+      }
+    }
+    
+    if (eventLat && eventLng) {
+      // Haversine formula for distance calculation in SQL Server
+      distanceCalculation = `,
+        (
+          3959 * ACOS(
+            COS(RADIANS(@EventLat)) * COS(RADIANS(vp.Latitude)) * 
+            COS(RADIANS(vp.Longitude) - RADIANS(@EventLng)) + 
+            SIN(RADIANS(@EventLat)) * SIN(RADIANS(vp.Latitude))
+          )
+        ) AS DistanceMiles`;
+      
+      orderByClause = 'ORDER BY DistanceMiles ASC, vp.IsPremium DESC';
+      request.input('EventLat', sql.Decimal(10, 8), eventLat);
+      request.input('EventLng', sql.Decimal(11, 8), eventLng);
     }
 
     const query = `
@@ -2001,13 +2038,14 @@ router.post('/search-by-services-unified', async (req, res) => {
         vp.Latitude,
         vp.Longitude,
         COUNT(DISTINCT s.LinkedPredefinedServiceID) as MatchingServicesCount
+        ${distanceCalculation}
       ${joinClause}
       ${whereClause}
       GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.BusinessDescription,
                vp.City, vp.State, vp.IsPremium, vp.IsEcoFriendly, vp.IsAwardWinning, 
                vp.FeaturedImageURL, vp.Latitude, vp.Longitude
       HAVING COUNT(DISTINCT s.LinkedPredefinedServiceID) >= @MinMatchingServices
-      ORDER BY vp.IsPremium DESC, COUNT(DISTINCT s.LinkedPredefinedServiceID) DESC
+      ${orderByClause}
     `;
 
     request.input('MinMatchingServices', sql.Int, 1);
@@ -2158,7 +2196,9 @@ router.post('/search-by-services-unified', async (req, res) => {
         eventDate: eventDetails?.date,
         eventStartTime: eventDetails?.startTime,
         eventEndTime: eventDetails?.endTime,
-        businessHoursFiltered: businessHoursFiltered
+        businessHoursFiltered: businessHoursFiltered,
+        geocodedLocation: geocodedAddress,
+        distanceCalculated: !!(eventLat && eventLng)
       },
       pricingTransparency: {
         message: "All costs are calculated transparently based on your event details",
