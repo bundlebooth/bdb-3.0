@@ -5,6 +5,54 @@ const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
 
+// Helper function to convert time string to 24-hour format for database comparison
+function convertTo24Hour(timeString) {
+  if (!timeString) return null;
+  
+  try {
+    // Handle various time formats (12-hour with AM/PM, 24-hour, etc.)
+    const timeRegex = /^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i;
+    const match = timeString.trim().match(timeRegex);
+    
+    if (!match) {
+      // Try parsing as direct time input (HH:MM format)
+      const directMatch = timeString.match(/^(\d{1,2}):(\d{2})$/);
+      if (directMatch) {
+        const hours = parseInt(directMatch[1]);
+        const minutes = parseInt(directMatch[2]);
+        if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+          return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+        }
+      }
+      return null;
+    }
+    
+    let hours = parseInt(match[1]);
+    const minutes = parseInt(match[2]);
+    const period = match[3] ? match[3].toUpperCase() : null;
+    
+    // Convert 12-hour to 24-hour format
+    if (period) {
+      if (period === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hours = 0;
+      }
+    }
+    
+    // Validate hours and minutes
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+    
+    // Return in HH:MM:SS format for SQL TIME type
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+  } catch (error) {
+    console.warn('Error converting time string:', timeString, error.message);
+    return null;
+  }
+}
+
 // Helper function to resolve UserID to VendorProfileID
 async function resolveVendorProfileId(id, pool) {
   const idNum = parseInt(id);
@@ -1361,6 +1409,38 @@ router.post('/search-by-services', async (req, res) => {
       whereClause += ` AND (${budgetConditions})`;
     }
 
+    // Add business hours filtering if event date and time are provided
+    if (eventDetails && eventDetails.date && eventDetails.startTime && eventDetails.endTime) {
+      try {
+        const eventDate = new Date(eventDetails.date);
+        const dayOfWeek = eventDate.getDay(); // 0=Sunday, 1=Monday, etc.
+        
+        // Convert time strings to 24-hour format for comparison
+        const startTime = convertTo24Hour(eventDetails.startTime);
+        const endTime = convertTo24Hour(eventDetails.endTime);
+        
+        if (startTime && endTime) {
+          console.log(`Filtering by business hours: Day ${dayOfWeek}, ${startTime} - ${endTime}`);
+          
+          // Add business hours filter to ensure vendors are open during event time
+          whereClause += ` AND EXISTS (
+            SELECT 1 FROM VendorBusinessHours vbh 
+            WHERE vbh.VendorProfileID = vp.VendorProfileID 
+            AND vbh.DayOfWeek = @EventDayOfWeek 
+            AND vbh.IsAvailable = 1
+            AND vbh.OpenTime <= @EventStartTime 
+            AND vbh.CloseTime >= @EventEndTime
+          )`;
+          
+          request.input('EventDayOfWeek', sql.TinyInt, dayOfWeek);
+          request.input('EventStartTime', sql.Time, startTime);
+          request.input('EventEndTime', sql.Time, endTime);
+        }
+      } catch (dateError) {
+        console.warn('Error parsing event date/time for business hours filtering:', dateError.message);
+      }
+    }
+
     // Add location filtering if provided - enhanced with geographic distance
     let locationLatitude = null;
     let locationLongitude = null;
@@ -1507,7 +1587,11 @@ router.post('/search-by-services', async (req, res) => {
       searchCriteria: {
         selectedServices: selectedServices.map(s => s.serviceName),
         totalBudget,
-        location: eventDetails?.location
+        location: eventDetails?.location,
+        eventDate: eventDetails?.date,
+        eventStartTime: eventDetails?.startTime,
+        eventEndTime: eventDetails?.endTime,
+        businessHoursFiltered: !!(eventDetails?.date && eventDetails?.startTime && eventDetails?.endTime)
       }
     });
 
