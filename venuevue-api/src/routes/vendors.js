@@ -840,6 +840,44 @@ router.get('/profile', async (req, res) => {
   }
 });
 
+// Get predefined services with pricing model information
+router.get('/predefined-services-with-pricing', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    const query = `
+      SELECT 
+        PredefinedServiceID,
+        Category,
+        ServiceName,
+        ServiceDescription,
+        DefaultDurationMinutes,
+        PricingModel,
+        DisplayOrder,
+        IsActive
+      FROM PredefinedServices
+      WHERE IsActive = 1
+      ORDER BY Category, DisplayOrder, ServiceName
+    `;
+    
+    const result = await request.query(query);
+    
+    res.json({
+      success: true,
+      services: result.recordset
+    });
+    
+  } catch (error) {
+    console.error('Error fetching predefined services with pricing:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch predefined services',
+      error: error.message
+    });
+  }
+});
+
 // Get vendor details by ID
 // Get vendor details by ID
 router.get('/:id', async (req, res) => {
@@ -2029,44 +2067,6 @@ router.post('/setup/service-pricing-unified', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to save service pricing',
-      error: error.message
-    });
-  }
-});
-
-// Get predefined services with pricing model information
-router.get('/predefined-services-with-pricing', async (req, res) => {
-  try {
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    const query = `
-      SELECT 
-        PredefinedServiceID,
-        Category,
-        ServiceName,
-        ServiceDescription,
-        DefaultDurationMinutes,
-        PricingModel,
-        DisplayOrder,
-        IsActive
-      FROM PredefinedServices
-      WHERE IsActive = 1
-      ORDER BY Category, DisplayOrder, ServiceName
-    `;
-    
-    const result = await request.query(query);
-    
-    res.json({
-      success: true,
-      services: result.recordset
-    });
-    
-  } catch (error) {
-    console.error('Error fetching predefined services with pricing:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch predefined services',
       error: error.message
     });
   }
