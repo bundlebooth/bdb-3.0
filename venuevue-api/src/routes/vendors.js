@@ -1730,7 +1730,7 @@ router.post('/search-by-services-unified', async (req, res) => {
 
     // Build main search query using Services table
     const request = new sql.Request(pool);
-    let whereClause = 'WHERE s.IsActive = 1 AND ps.IsActive = 1 AND s.PricingModel IS NOT NULL';
+    let whereClause = 'WHERE s.IsActive = 1 AND ps.IsActive = 1';
     let joinClause = `
       FROM Services s
       INNER JOIN VendorProfiles vp ON s.VendorProfileID = vp.VendorProfileID
@@ -1743,23 +1743,40 @@ router.post('/search-by-services-unified', async (req, res) => {
       request.input(`ServiceID${index}`, sql.Int, serviceId);
     });
 
-    // Add business hours filtering if event details provided
+    // Test without business hours filtering first - this might be too restrictive
+    let businessHoursFiltered = false;
     if (eventDetails?.date && eventDetails?.startTime && eventDetails?.endTime) {
       const eventDate = new Date(eventDetails.date);
       const dayOfWeek = eventDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
       const eventStartTime = convertTo24Hour(eventDetails.startTime);
       const eventEndTime = convertTo24Hour(eventDetails.endTime);
 
+      console.log('🔍 DEBUG: Business hours check:', {
+        dayOfWeek,
+        eventStartTime,
+        eventEndTime,
+        eventDate: eventDetails.date
+      });
+
+      // Only add business hours filtering if we have valid times
       if (eventStartTime && eventEndTime) {
-        joinClause += `
-          INNER JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
-        `;
-        whereClause += `
-          AND vbh.DayOfWeek = @DayOfWeek
-          AND vbh.IsAvailable = 1
-          AND vbh.OpenTime < CAST(@EventEndTime AS TIME)
-          AND vbh.CloseTime > CAST(@EventStartTime AS TIME)
-        `;
+        // Make business hours filtering optional for debugging
+        const skipBusinessHours = true; // Set to false to enable business hours filtering
+        
+        if (!skipBusinessHours) {
+          joinClause += `
+            LEFT JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
+          `;
+          whereClause += `
+            AND (vbh.VendorBusinessHoursID IS NULL OR (
+              vbh.DayOfWeek = @DayOfWeek
+              AND vbh.IsAvailable = 1
+              AND vbh.OpenTime < CAST(@EventEndTime AS TIME)
+              AND vbh.CloseTime > CAST(@EventStartTime AS TIME)
+            ))
+          `;
+          businessHoursFiltered = true;
+        }
         
         request.input('DayOfWeek', sql.Int, dayOfWeek);
         request.input('EventStartTime', sql.NVarChar, eventStartTime);
@@ -1768,10 +1785,24 @@ router.post('/search-by-services-unified', async (req, res) => {
       }
     }
 
-    // Add location filtering if provided
+    // Make location filtering more flexible
     if (eventDetails?.location) {
-      whereClause += ` AND (vp.City LIKE @Location OR vp.State LIKE @Location)`;
-      request.input('Location', sql.NVarChar, `%${eventDetails.location}%`);
+      const location = eventDetails.location;
+      console.log('🔍 DEBUG: Location filtering for:', location);
+      
+      // Split location to handle "Toronto, ON" format
+      const locationParts = location.split(',').map(part => part.trim());
+      const city = locationParts[0];
+      const province = locationParts[1];
+      
+      if (province) {
+        whereClause += ` AND (vp.City LIKE @City OR vp.State LIKE @Province OR vp.State LIKE @City)`;
+        request.input('City', sql.NVarChar, `%${city}%`);
+        request.input('Province', sql.NVarChar, `%${province}%`);
+      } else {
+        whereClause += ` AND (vp.City LIKE @Location OR vp.State LIKE @Location)`;
+        request.input('Location', sql.NVarChar, `%${location}%`);
+      }
     }
 
     const query = `
@@ -1799,7 +1830,18 @@ router.post('/search-by-services-unified', async (req, res) => {
     `;
 
     request.input('MinMatchingServices', sql.Int, 1);
+    
+    // Debug: Log the query and parameters
+    console.log('🔍 DEBUG: Unified search query:', query);
+    console.log('🔍 DEBUG: Query parameters:', {
+      predefinedServiceIds,
+      eventDetails,
+      maxBudget,
+      eventDurationMinutes
+    });
+    
     const result = await request.query(query);
+    console.log('🔍 DEBUG: Initial query result count:', result.recordset.length);
 
     // Get detailed pricing information for each vendor
     const vendorsWithPricing = await Promise.all(result.recordset.map(async (vendor) => {
