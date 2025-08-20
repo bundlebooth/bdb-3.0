@@ -4228,7 +4228,7 @@
     </div>
 
     <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&amp;libraries=places&amp;v=weekly" defer=""></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places&callback=initGoogleMaps" async defer></script>
 
     <!-- Facebook SDK -->
     <script>
@@ -6063,13 +6063,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                         id: Math.floor(Math.random() * 1000),
                                         name: `${categoryKey} Service 1`,
                                         description: `Professional ${categoryKey} service for your event`,
-                                        defaultDuration: 60
                                     },
                                     {
                                         id: Math.floor(Math.random() * 1000) + 1000,
                                         name: `${categoryKey} Service 2`,
                                         description: `Premium ${categoryKey} service with additional features`,
-                                        defaultDuration: 90
                                     }
                                 ];
                             });
@@ -6146,12 +6144,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text); text-transform: capitalize;">
                                 ${category} Services
                             </label>
-                            <select class="service-dropdown" data-category="${category}" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; background: white;">
+                            <select class="service-dropdown" data-category="${category}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 1rem; background: var(--card-bg); color: var(--text); transition: border-color 0.3s ease;">
                                 <option value="">Select a ${category} service...</option>
                     `;
                     
                     services.forEach(service => {
-                        dropdownsHtml += `<option value="${service.id}" data-name="${service.name}" data-description="${service.description || ''}" data-duration="${service.defaultDuration || 60}">
+                        dropdownsHtml += `<option value="${service.id}" data-name="${service.name}" data-description="${service.description || ''}">
                             ${service.name}${service.description ? ' - ' + service.description.substring(0, 50) + '...' : ''}
                         </option>`;
                     });
@@ -6243,7 +6241,7 @@ document.addEventListener('DOMContentLoaded', function() {
             function createPredefinedServiceCard(service, category) {
                 const isSelected = bookingState.selectedPredefinedServices.some(s => s.id === service.id);
                 const selectedService = bookingState.selectedPredefinedServices.find(s => s.id === service.id);
-                const budget = selectedService ? selectedService.budget : 200;
+                const budget = selectedService ? selectedService.budget : 100;
                 
                 return `
                     <div class="predefined-service-card ${isSelected ? 'selected' : ''}" data-service-id="${service.id}" data-category="${category}">
@@ -6261,7 +6259,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="service-card-details">
                             <div class="service-card-duration">
                                 <i class="fas fa-clock"></i>
-                                <span>${service.defaultDuration || 60} min</span>
+                                <span>Custom Duration</span>
                             </div>
                         </div>
                         
@@ -6269,8 +6267,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text);">Your Budget for this Service</label>
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <span style="color: var(--text-light);">$</span>
-                                <input type="number" class="service-budget-input" min="50" max="10000" value="${budget}" 
-                                       style="flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem;">
+                                <input type="number" class="service-budget-input" min="1" max="10000" value="${budget}" 
+                                       style="flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; background: var(--card-bg); color: var(--text);">
                             </div>
                             <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-light);">
                                 Set your budget for this specific service
@@ -6311,15 +6309,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // Add to selected services with default budget and duration
+                // Add to selected services with default budget
                 const newService = {
                     id: serviceId,
                     name: serviceName,
                     description: serviceDescription,
                     category: category,
-                    defaultDuration: duration,
-                    budget: 300, // Default budget
-                    duration: duration // User-specified duration
+                    budget: 100 // Default budget
                 };
                 
                 bookingState.selectedPredefinedServices.push(newService);
@@ -6348,7 +6344,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="selected-service-item" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; margin-bottom: 0.5rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;">
                             <div style="flex: 1;">
                                 <div style="font-weight: 600; color: var(--text); margin-bottom: 0.25rem;">${service.name}</div>
-                                <div style="font-size: 0.85rem; color: var(--text-light); text-transform: capitalize;">${service.category} • Default: ${service.defaultDuration} min</div>
+                                <div style="font-size: 0.85rem; color: var(--text-light); text-transform: capitalize;">${service.category}</div>
                                 ${service.description ? `<div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">${service.description}</div>` : ''}
                             </div>
                             <div style="display: flex; align-items: center; gap: 1rem;">
@@ -6357,7 +6353,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <div style="display: flex; align-items: center;">
                                         <span style="color: var(--text-light);">$</span>
                                         <input type="number" class="service-budget-input" data-service-id="${service.id}" 
-                                               min="50" max="10000" value="${service.budget}" 
+                                               min="1" max="10000" value="${service.budget}" 
                                                style="width: 80px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; margin-left: 0.25rem;">
                                     </div>
                                 </div>
@@ -6394,12 +6390,74 @@ document.addEventListener('DOMContentLoaded', function() {
                 addSelectedServiceEventListeners();
             }
 
-            // Initialize Google Maps-like location autocomplete
+            // Global variable to store Google Maps initialization status
+            window.googleMapsLoaded = false;
+            
+            // Google Maps callback function
+            window.initGoogleMaps = function() {
+                console.log('Google Maps API loaded successfully');
+                window.googleMapsLoaded = true;
+                
+                // Initialize autocomplete if the input exists
+                const locationInput = document.getElementById('event-location');
+                if (locationInput) {
+                    initializeLocationAutocomplete();
+                }
+            };
+            
+            // Initialize Google Places autocomplete for Event Location
             function initializeLocationAutocomplete() {
                 const locationInput = document.getElementById('event-location');
                 const suggestionsDiv = document.getElementById('location-suggestions');
                 
-                if (!locationInput || !suggestionsDiv) return;
+                if (!locationInput) {
+                    console.log('Event location input not found');
+                    return;
+                }
+                
+                // Check if Google Places API is available
+                if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                    console.log('Initializing Google Places Autocomplete...');
+                    
+                    // Initialize Google Places Autocomplete
+                    const autocomplete = new google.maps.places.Autocomplete(locationInput, {
+                        types: ['geocode', 'establishment'],
+                        componentRestrictions: { country: ['us', 'ca'] } // Restrict to US and Canada
+                    });
+                    
+                    // Set fields to return
+                    autocomplete.setFields(['place_id', 'formatted_address', 'geometry', 'name']);
+                    
+                    // Listen for place selection
+                    autocomplete.addListener('place_changed', function() {
+                        const place = autocomplete.getPlace();
+                        console.log('Place selected:', place);
+                        
+                        if (place.geometry) {
+                            // Store the selected place data
+                            locationInput.setAttribute('data-lat', place.geometry.location.lat());
+                            locationInput.setAttribute('data-lng', place.geometry.location.lng());
+                            locationInput.setAttribute('data-place-id', place.place_id);
+                            
+                            console.log('Selected location:', {
+                                name: place.formatted_address,
+                                lat: place.geometry.location.lat(),
+                                lng: place.geometry.location.lng()
+                            });
+                        }
+                    });
+                    
+                    console.log('Google Places autocomplete initialized for event location');
+                } else {
+                    console.warn('Google Places API not available, using fallback autocomplete');
+                    // Fallback to OpenStreetMap implementation
+                    initializeFallbackAutocomplete(locationInput, suggestionsDiv);
+                }
+            }
+            
+            // Fallback autocomplete using OpenStreetMap
+            function initializeFallbackAutocomplete(locationInput, suggestionsDiv) {
+                if (!suggestionsDiv) return;
                 
                 let debounceTimer;
                 
@@ -6478,7 +6536,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.querySelectorAll('.service-budget-input').forEach(input => {
                     input.addEventListener('input', (e) => {
                         const serviceId = parseInt(e.target.dataset.serviceId);
-                        const value = Math.max(50, Math.min(10000, parseInt(e.target.value) || 50));
+                        const value = Math.max(Math.min(10000, parseInt(e.target.value) || 0));
                         
                         updateServiceBudget(serviceId, value);
                         renderSelectedServices(); // Re-render to update total
@@ -6546,8 +6604,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             name: serviceDetails.name,
                             description: serviceDetails.description,
                             category: category,
-                            defaultDuration: serviceDetails.defaultDuration,
-                            budget: 200 // Default budget
+                            budget: 100 // Default budget
                         });
                     }
                 }
@@ -6560,7 +6617,7 @@ document.addEventListener('DOMContentLoaded', function() {
             function updateServiceBudget(serviceId, budget) {
                 const service = bookingState.selectedPredefinedServices.find(s => s.id === serviceId);
                 if (service) {
-                    service.budget = Math.max(50, Math.min(10000, budget));
+                    service.budget = Math.max(1, Math.min(10000, budget));
                     updateSelectedServicesSummary();
                 }
             }
@@ -10251,7 +10308,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     <div class="service-card-details">
                         <div class="service-card-duration">
                             <i class="fas fa-clock"></i>
-                            <span>${service.defaultDuration || 60} min</span>
+                            <span>Custom Duration</span>
                         </div>
                         <div style="color: var(--primary); font-weight: 500;">
                             <i class="fas fa-tag"></i>
@@ -12111,11 +12168,47 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (state.filters.popular.includes('award-winning') && !vendor.isAwardWinning) return false;
                     }
 
-                    // Date availability filter
-                    if (startDate) {
-                        // In a real app, you would check vendor availability against the date
-                        // For demo, we'll just filter randomly
-                        if (Math.random() < 0.7) return false;
+                    // Date and time availability filter
+                    const eventDateInput = document.getElementById('event-date');
+                    const eventStartTimeInput = document.getElementById('event-start-time');
+                    const eventEndTimeInput = document.getElementById('event-end-time');
+                    
+                    if (eventDateInput && eventDateInput.value && eventStartTimeInput && eventEndTimeInput) {
+                        const eventDate = new Date(eventDateInput.value);
+                        const eventDayOfWeek = eventDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                        const eventStartTime = eventStartTimeInput.value;
+                        const eventEndTime = eventEndTimeInput.value;
+                        
+                        console.log('Filtering vendor:', vendor.name, 'for date:', eventDateInput.value, 'day:', eventDayOfWeek, 'time:', eventStartTime, '-', eventEndTime);
+                        
+                        // Check if vendor has business hours data
+                        if (vendor.businessHours && Array.isArray(vendor.businessHours)) {
+                            console.log('Vendor business hours:', vendor.businessHours);
+                            
+                            // Find schedule for the event day
+                            const daySchedule = vendor.businessHours.find(h => h.DayOfWeek === eventDayOfWeek);
+                            console.log('Day schedule for day', eventDayOfWeek, ':', daySchedule);
+                            
+                            if (!daySchedule || !daySchedule.IsAvailable) {
+                                console.log('Vendor', vendor.name, 'is closed on day', eventDayOfWeek);
+                                return false; // Vendor is closed on this day
+                            }
+                            
+                            // Check if event time falls within business hours
+                            if (eventStartTime && eventEndTime) {
+                                const businessStart = daySchedule.OpenTime;
+                                const businessEnd = daySchedule.CloseTime;
+                                
+                                console.log('Business hours:', businessStart, '-', businessEnd, 'vs Event time:', eventStartTime, '-', eventEndTime);
+                                
+                                if (eventStartTime < businessStart || eventEndTime > businessEnd) {
+                                    console.log('Vendor', vendor.name, 'event time is outside business hours');
+                                    return false; // Event time is outside business hours
+                                }
+                            }
+                        } else {
+                            console.log('Vendor', vendor.name, 'has no business hours data');
+                        }
                     }
 
                     // Region filter
@@ -16018,7 +16111,29 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                         updateBookingStep(2);
                         // Initialize location autocomplete when entering Step 2
-                        initializeLocationAutocomplete();
+                        setTimeout(() => {
+                            if (window.googleMapsLoaded || (typeof google !== 'undefined' && google.maps && google.maps.places)) {
+                                initializeLocationAutocomplete();
+                            } else {
+                                console.log('Waiting for Google Maps to load...');
+                                // Wait for Google Maps to load
+                                const checkGoogleMaps = setInterval(() => {
+                                    if (window.googleMapsLoaded || (typeof google !== 'undefined' && google.maps && google.maps.places)) {
+                                        clearInterval(checkGoogleMaps);
+                                        initializeLocationAutocomplete();
+                                    }
+                                }, 200);
+                                
+                                // Stop checking after 15 seconds and use fallback
+                                setTimeout(() => {
+                                    clearInterval(checkGoogleMaps);
+                                    if (!window.googleMapsLoaded && (typeof google === 'undefined' || !google.maps || !google.maps.places)) {
+                                        console.warn('Google Maps failed to load, using fallback');
+                                        initializeLocationAutocomplete(); // Will use fallback
+                                    }
+                                }, 15000);
+                            }
+                        }, 100);
                     });
                 }
                 
