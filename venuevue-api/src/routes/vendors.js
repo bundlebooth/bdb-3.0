@@ -5,156 +5,6 @@ const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
 
-// Helper function to calculate unified pricing based on pricing model
-function calculateUnifiedPricing(service, searchCriteria) {
-  const { eventDurationMinutes, attendeeCount, maxBudget } = searchCriteria;
-  
-  console.log('🔍 DEBUG: calculateUnifiedPricing called with:', {
-    serviceName: service.ServiceName,
-    pricingModel: service.PricingModel,
-    baseRate: service.BaseRate,
-    baseDuration: service.BaseDurationMinutes,
-    eventDurationMinutes,
-    attendeeCount,
-    maxBudget
-  });
-  
-  try {
-    let finalCost = 0;
-    let breakdown = {};
-    let isAffordable = true;
-
-    if (service.PricingModel === 'time_based') {
-      // TIME_BASED: Base Duration + Base Rate + Overtime Rate + Minimum Fee
-      const baseDuration = service.BaseDurationMinutes || 60;
-      const baseRate = service.BaseRate || 0;
-      const overtimeRate = service.OvertimeRatePerHour || 0;
-      const minimumFee = service.MinimumBookingFee || 0;
-
-      // Calculate base cost
-      let baseCost = baseRate;
-      
-      // Calculate overtime if event duration exceeds base duration
-      let overtimeCost = 0;
-      if (eventDurationMinutes > baseDuration) {
-        const overtimeMinutes = eventDurationMinutes - baseDuration;
-        const overtimeHours = Math.ceil(overtimeMinutes / 60);
-        overtimeCost = overtimeHours * overtimeRate;
-      }
-
-      finalCost = Math.max(baseCost + overtimeCost, minimumFee);
-      
-      breakdown = {
-        pricingModel: 'time_based',
-        baseDuration: baseDuration,
-        baseRate: baseRate,
-        baseCost: baseCost,
-        eventDuration: eventDurationMinutes,
-        overtimeMinutes: Math.max(0, eventDurationMinutes - baseDuration),
-        overtimeRate: overtimeRate,
-        overtimeCost: overtimeCost,
-        minimumFee: minimumFee,
-        finalCost: finalCost
-      };
-
-    } else if (service.PricingModel === 'fixed_based') {
-      // FIXED_BASED: Either Fixed Price OR Per Attendee pricing
-      if (service.FixedPricingType === 'fixed') {
-        finalCost = service.FixedPrice || 0;
-        breakdown = {
-          pricingModel: 'fixed_based',
-          pricingType: 'fixed',
-          fixedPrice: finalCost,
-          finalCost: finalCost
-        };
-      } else if (service.FixedPricingType === 'per_person') {
-        const pricePerPerson = service.PricePerPerson || 0;
-        const minAttendees = service.MinimumAttendees || 1;
-        const maxAttendees = service.MaximumAttendees || 1000;
-        
-        // Use actual attendee count, but respect min/max limits
-        const effectiveAttendees = Math.max(minAttendees, Math.min(attendeeCount || minAttendees, maxAttendees));
-        finalCost = effectiveAttendees * pricePerPerson;
-        
-        breakdown = {
-          pricingModel: 'fixed_based',
-          pricingType: 'per_person',
-          pricePerPerson: pricePerPerson,
-          requestedAttendees: attendeeCount,
-          effectiveAttendees: effectiveAttendees,
-          minimumAttendees: minAttendees,
-          maximumAttendees: maxAttendees,
-          finalCost: finalCost
-        };
-      }
-    } else {
-      // Fallback for services without pricing model - use legacy Price field or reasonable defaults
-      finalCost = service.Price || 0;
-      
-      // If no legacy price either, provide a reasonable default for time-based services
-      if (finalCost === 0 && service.PricingModel === 'time_based') {
-        // Default pricing for photography: $200 base rate for 1 hour
-        const defaultBaseRate = 200;
-        const baseDuration = 60; // 1 hour default
-        
-        if (eventDurationMinutes > baseDuration) {
-          const overtimeMinutes = eventDurationMinutes - baseDuration;
-          const overtimeHours = Math.ceil(overtimeMinutes / 60);
-          const defaultOvertimeRate = 100; // $100/hour overtime
-          finalCost = defaultBaseRate + (overtimeHours * defaultOvertimeRate);
-        } else {
-          finalCost = defaultBaseRate;
-        }
-        
-        breakdown = {
-          pricingModel: 'time_based_default',
-          baseDuration: baseDuration,
-          baseRate: defaultBaseRate,
-          baseCost: defaultBaseRate,
-          eventDuration: eventDurationMinutes,
-          overtimeMinutes: Math.max(0, eventDurationMinutes - baseDuration),
-          overtimeRate: 100,
-          overtimeCost: finalCost - defaultBaseRate,
-          note: 'Default pricing - vendor has not set up unified pricing yet',
-          finalCost: finalCost
-        };
-      } else {
-        breakdown = {
-          pricingModel: 'legacy',
-          price: finalCost,
-          finalCost: finalCost
-        };
-      }
-    }
-
-    // Check affordability
-    if (maxBudget && maxBudget > 0) {
-      isAffordable = finalCost <= maxBudget;
-    }
-
-    console.log('🔍 DEBUG: calculateUnifiedPricing result:', {
-      serviceName: service.ServiceName,
-      finalCost,
-      breakdown,
-      isAffordable
-    });
-
-    return {
-      finalCost: Math.round(finalCost * 100) / 100, // Round to 2 decimal places
-      breakdown,
-      isAffordable
-    };
-
-  } catch (error) {
-    console.error('Error calculating unified pricing:', error);
-    return {
-      finalCost: 0,
-      breakdown: { error: 'Pricing calculation failed' },
-      isAffordable: false
-    };
-  }
-}
-
 // Helper function to convert time string to 24-hour format for database comparison
 function convertTo24Hour(timeString) {
   if (!timeString) return null;
@@ -1880,7 +1730,7 @@ router.post('/search-by-services-unified', async (req, res) => {
 
     // Build main search query using Services table
     const request = new sql.Request(pool);
-    let whereClause = 'WHERE s.IsActive = 1 AND ps.IsActive = 1';
+    let whereClause = 'WHERE s.IsActive = 1 AND ps.IsActive = 1 AND s.PricingModel IS NOT NULL';
     let joinClause = `
       FROM Services s
       INNER JOIN VendorProfiles vp ON s.VendorProfileID = vp.VendorProfileID
@@ -1893,40 +1743,23 @@ router.post('/search-by-services-unified', async (req, res) => {
       request.input(`ServiceID${index}`, sql.Int, serviceId);
     });
 
-    // Test without business hours filtering first - this might be too restrictive
-    let businessHoursFiltered = false;
+    // Add business hours filtering if event details provided
     if (eventDetails?.date && eventDetails?.startTime && eventDetails?.endTime) {
       const eventDate = new Date(eventDetails.date);
       const dayOfWeek = eventDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
       const eventStartTime = convertTo24Hour(eventDetails.startTime);
       const eventEndTime = convertTo24Hour(eventDetails.endTime);
 
-      console.log('🔍 DEBUG: Business hours check:', {
-        dayOfWeek,
-        eventStartTime,
-        eventEndTime,
-        eventDate: eventDetails.date
-      });
-
-      // Only add business hours filtering if we have valid times
       if (eventStartTime && eventEndTime) {
-        // Make business hours filtering optional for debugging
-        const skipBusinessHours = true; // Set to false to enable business hours filtering
-        
-        if (!skipBusinessHours) {
-          joinClause += `
-            LEFT JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
-          `;
-          whereClause += `
-            AND (vbh.VendorBusinessHoursID IS NULL OR (
-              vbh.DayOfWeek = @DayOfWeek
-              AND vbh.IsAvailable = 1
-              AND vbh.OpenTime < CAST(@EventEndTime AS TIME)
-              AND vbh.CloseTime > CAST(@EventStartTime AS TIME)
-            ))
-          `;
-          businessHoursFiltered = true;
-        }
+        joinClause += `
+          INNER JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
+        `;
+        whereClause += `
+          AND vbh.DayOfWeek = @DayOfWeek
+          AND vbh.IsAvailable = 1
+          AND vbh.OpenTime < CAST(@EventEndTime AS TIME)
+          AND vbh.CloseTime > CAST(@EventStartTime AS TIME)
+        `;
         
         request.input('DayOfWeek', sql.Int, dayOfWeek);
         request.input('EventStartTime', sql.NVarChar, eventStartTime);
@@ -1935,24 +1768,10 @@ router.post('/search-by-services-unified', async (req, res) => {
       }
     }
 
-    // Make location filtering more flexible
+    // Add location filtering if provided
     if (eventDetails?.location) {
-      const location = eventDetails.location;
-      console.log('🔍 DEBUG: Location filtering for:', location);
-      
-      // Split location to handle "Toronto, ON" format
-      const locationParts = location.split(',').map(part => part.trim());
-      const city = locationParts[0];
-      const province = locationParts[1];
-      
-      if (province) {
-        whereClause += ` AND (vp.City LIKE @City OR vp.State LIKE @Province OR vp.State LIKE @City)`;
-        request.input('City', sql.NVarChar, `%${city}%`);
-        request.input('Province', sql.NVarChar, `%${province}%`);
-      } else {
-        whereClause += ` AND (vp.City LIKE @Location OR vp.State LIKE @Location)`;
-        request.input('Location', sql.NVarChar, `%${location}%`);
-      }
+      whereClause += ` AND (vp.City LIKE @Location OR vp.State LIKE @Location)`;
+      request.input('Location', sql.NVarChar, `%${eventDetails.location}%`);
     }
 
     const query = `
@@ -1980,18 +1799,7 @@ router.post('/search-by-services-unified', async (req, res) => {
     `;
 
     request.input('MinMatchingServices', sql.Int, 1);
-    
-    // Debug: Log the query and parameters
-    console.log('🔍 DEBUG: Unified search query:', query);
-    console.log('🔍 DEBUG: Query parameters:', {
-      predefinedServiceIds,
-      eventDetails,
-      maxBudget,
-      eventDurationMinutes
-    });
-    
     const result = await request.query(query);
-    console.log('🔍 DEBUG: Initial query result count:', result.recordset.length);
 
     // Get detailed pricing information for each vendor
     const vendorsWithPricing = await Promise.all(result.recordset.map(async (vendor) => {
