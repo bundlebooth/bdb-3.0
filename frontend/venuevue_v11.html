@@ -17386,8 +17386,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             console.log('Initializing location autocomplete...');
             
             locationAutocomplete = new google.maps.places.Autocomplete(locationInput, {
-                types: ['establishment', 'geocode'],
-                componentRestrictions: { country: 'ca' }
+                types: ['address'],
+                componentRestrictions: { country: 'ca' },
+                fields: ['place_id', 'geometry', 'name', 'formatted_address']
             });
             
             locationAutocomplete.addListener('place_changed', function() {
@@ -17399,6 +17400,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
                 
                 console.log('Place selected:', place.formatted_address);
+                
+                // Update the input field with the selected address
+                locationInput.value = place.formatted_address;
                 
                 // Store the selected location globally
                 window.selectedEventLocation = {
@@ -17868,30 +17872,80 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
         // Create horizontal vendor card HTML
         function createHorizontalVendorCard(vendor) {
+            console.log('Creating vendor card for:', vendor);
+            
+            // Use the correct property names from API response
+            const businessName = vendor.BusinessName || vendor.businessName || 'Unknown Business';
+            const location = vendor.Location || vendor.location || 'Location not specified';
+            const description = vendor.BusinessDescription || vendor.description || '';
+            const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
+            const featuredImage = vendor.FeaturedImageURL || vendor.profileImageUrl || null;
+            
+            // Get service details from the services array
+            let serviceDetails = '';
+            let totalCost = 0;
+            let priceRange = '$$$';
+            
+            if (vendor.services && vendor.services.length > 0) {
+                const service = vendor.services[0]; // Get first service for display
+                totalCost = service.VendorPrice || 0;
+                const duration = service.VendorDurationMinutes ? `${service.VendorDurationMinutes} min` : '';
+                const serviceDesc = service.VendorDescription || '';
+                
+                serviceDetails = `
+                    <div style="margin-bottom: 0.5rem;">
+                        <strong>${service.ServiceName}</strong> - $${service.VendorPrice || 0}
+                        ${duration ? `<span style="color: var(--text-light); margin-left: 0.5rem;">(${duration})</span>` : ''}
+                    </div>
+                    ${serviceDesc ? `<div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.5rem;">${serviceDesc}</div>` : ''}
+                `;
+                
+                // Calculate price range
+                if (totalCost < 500) priceRange = '$';
+                else if (totalCost < 1500) priceRange = '$$';
+                else if (totalCost < 3000) priceRange = '$$$';
+                else priceRange = '$$$$';
+            } else if (vendor.totalEstimatedCost) {
+                totalCost = vendor.totalEstimatedCost;
+                if (totalCost < 500) priceRange = '$';
+                else if (totalCost < 1500) priceRange = '$$';
+                else if (totalCost < 3000) priceRange = '$$$';
+                else priceRange = '$$$$';
+            }
+            
             const rating = vendor.averageRating || 4.5;
             const reviewCount = vendor.totalReviews || 0;
-            const priceRange = vendor.priceRange || '$$$';
             const distance = vendor.distance ? `${vendor.distance.toFixed(1)} km away` : 'Distance unknown';
             const isSelected = (typeof bookingState !== 'undefined' && bookingState.selectedVendors) ? 
-                bookingState.selectedVendors.some(v => v.vendorProfileId === vendor.vendorProfileId) : false;
+                bookingState.selectedVendors.some(v => v.vendorProfileId === vendorId) : false;
+
+            // Get service names
+            const serviceNames = vendor.MatchingServiceNames || 
+                                (vendor.services ? vendor.services.map(s => s.ServiceName).join(', ') : '') ||
+                                vendor.serviceName || 'Service';
 
             return `
                 <div class="vendor-horizontal-card ${isSelected ? 'selected' : ''}" 
-                     data-vendor-id="${vendor.vendorProfileId}" 
-                     onclick="toggleVendorSelection('${vendor.vendorProfileId}')">
-                    ${vendor.profileImageUrl ? `<img src="${vendor.profileImageUrl}" 
-                         alt="${vendor.businessName}" 
+                     data-vendor-id="${vendorId}" 
+                     onclick="toggleVendorSelection('${vendorId}')">
+                    ${featuredImage ? `<img src="${featuredImage}" 
+                         alt="${businessName}" 
                          class="vendor-card-image"
-                         onerror="this.style.display='none'">` : 
+                         onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                         <div class="vendor-card-image vendor-no-image" style="display: none;">
+                             <i class="fas fa-user-tie" style="font-size: 2rem; color: var(--primary);"></i>
+                         </div>` : 
                          `<div class="vendor-card-image vendor-no-image">
                              <i class="fas fa-user-tie" style="font-size: 2rem; color: var(--primary);"></i>
                          </div>`}
                     
                     <div class="vendor-card-content">
                         <div class="vendor-card-header">
-                            <h6 class="vendor-card-name">${vendor.businessName}</h6>
+                            <h6 class="vendor-card-name">${businessName}</h6>
                             <span class="vendor-card-distance">${distance}</span>
                         </div>
+                        
+                        ${description ? `<div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 0.5rem; line-height: 1.3;">${description}</div>` : ''}
                         
                         <div class="vendor-card-rating">
                             <div style="color: #f39c12;">
@@ -17902,17 +17956,19 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </span>
                         </div>
                         
+                        ${serviceDetails}
+                        
                         <div class="vendor-card-services">
-                            <span class="vendor-service-tag">${vendor.serviceName}</span>
-                            <span class="vendor-service-tag" style="background: var(--secondary); color: var(--text);">
-                                ${vendor.serviceCategory}
-                            </span>
+                            <span class="vendor-service-tag">${serviceNames}</span>
+                            ${location ? `<span class="vendor-service-tag" style="background: var(--secondary); color: var(--text);">
+                                ${location}
+                            </span>` : ''}
                         </div>
                         
                         <div class="vendor-card-pricing">
-                            <span class="vendor-price-range">${priceRange}</span>
+                            <span class="vendor-price-range">${priceRange} ${totalCost > 0 ? `($${totalCost})` : ''}</span>
                             <button class="vendor-select-btn ${isSelected ? 'selected' : ''}" 
-                                    onclick="event.stopPropagation(); toggleVendorSelection('${vendor.vendorProfileId}')">
+                                    onclick="event.stopPropagation(); toggleVendorSelection('${vendorId}')">
                                 ${isSelected ? 'Selected' : 'Select'}
                             </button>
                         </div>
