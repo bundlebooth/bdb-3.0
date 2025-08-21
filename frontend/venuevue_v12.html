@@ -4467,53 +4467,14 @@
         let currentUser = null;
         
         // Check for existing user session
-        async function checkAuthStatus() {
-            const token = localStorage.getItem('token');
-            if (!token) return;
 
-            try {
-                const response = await fetch(`${API_BASE_URL}/users/me`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (response.ok) {
-                    const userData = await response.json();
-                    simulateLogin({
-                        id: userData.userId,
-                        name: userData.name || userData.email.split('@')[0],
-                        email: userData.email,
-                        avatar: userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase(),
-                        isVendor: userData.isVendor || false
-                    });
-                }
-            } catch (error) {
-                console.error('Auth check failed:', error);
-                localStorage.removeItem('token');
-            }
-        }
-
-        // Simulate user login (for demo purposes)
-        function simulateLogin(user) {
-            currentUser = {
-                ...user,
-                userId: user.id, // Add userId for compatibility
-                isVendor: user.isVendor || false
-            };
-            
-            // Also store in localStorage for consistency with getCurrentUser function
-            localStorage.setItem('userSession', JSON.stringify(currentUser));
-            
-            console.log('✅ User logged in:', currentUser);
-        }
 
         // Create a test user session for development
         function createTestUser() {
-            // Set a test token
-            localStorage.setItem('token', 'test-token');
+            // Don't set a test token to avoid auth errors
+            // localStorage.setItem('token', 'test-token');
             
-            // Create test user
+            // Create test user without token
             simulateLogin({
                 id: 1,
                 name: 'Test User',
@@ -4521,6 +4482,8 @@
                 avatar: 'T',
                 isVendor: false
             });
+            
+            console.log('✅ Created test user for development (no token)');
         }
         
         // Global utility functions
@@ -5162,13 +5125,97 @@ document.addEventListener('DOMContentLoaded', async function() {
             // API base URL
             const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
             
+            // Chat state manager - moved here to ensure it's initialized before state object
+            const chatState = {
+                messages: [],
+                currentConversation: null,
+                currentChatVendorId: null,
+
+                init: function() {
+                    this.messages = [];
+                    this.currentConversation = null;
+                    this.currentChatVendorId = null;
+                    console.log('Chat state initialized.');
+                },
+
+                addMessage: function(message) {
+                    if (!this.messages) this.messages = [];
+                    const formattedMsg = this.formatMessage(message);
+                    this.messages.push(formattedMsg);
+                    console.log('Message added to chat state:', formattedMsg);
+                    return formattedMsg;
+                },
+
+                setMessages: function(messages) {
+                    this.messages = Array.isArray(messages) ? messages.map(msg => this.formatMessage(msg)) : [];
+                    console.log('Chat messages set:', this.messages);
+                },
+
+                getMessages: function() {
+                    return this.messages || [];
+                },
+
+                formatMessage: function(message) {
+                    console.log('Formatting message:', message);
+                    const content = message.Content || message.content || message.text || message.messageContent;
+                    if (content === undefined) {
+                        console.warn('Message content is undefined after formatting attempts for message:', message);
+                    }
+                    return {
+                        id: message.MessageID || message.id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        conversationId: message.ConversationID || message.conversationId || this.currentConversation,
+                        senderId: message.SenderID || message.senderId,
+                        senderName: message.SenderName || message.senderName || (message.SenderID === currentUser?.id ? currentUser.name : 'Vendor'),
+                        content: content,
+                        timestamp: message.CreatedAt || message.timestamp || new Date().toISOString(),
+                        isCurrentUser: message.SenderID === currentUser?.id || message.isCurrentUser,
+                        isRead: message.IsRead || message.isRead || false
+                    };
+                }
+            };
+            
+            // Global state - moved here to ensure it's initialized before checkAuthStatus
+            const state = {
+                vendors: [],
+                filteredVendors: [],
+                markers: [],
+                map: null,
+                userLocation: null,
+                currentPage: 1,
+                vendorsPerPage: 12,
+                currentView: 'list',
+                currentCategory: 'all',
+                filters: {
+                    location: '',
+                    types: ['independent', 'company'],
+                    price: 40,
+                    popular: [],
+                    startDate: null,
+                    endDate: null,
+                    region: ''
+                },
+                // New properties for dynamic map functionality
+                originalSearchResults: [],
+                isLoadingVendors: false,
+                mapMoveTimeout: null,
+                initialMapBounds: null,
+                lastMapBounds: null,
+                currentVendor: null,
+                selectedServices: [],
+                selectedDate: null,
+                selectedTime: null,
+                stripe: null,
+                elements: null,
+                paymentIntent: null,
+                socket: null,
+                chat: chatState
+            };
+            
             // Check for existing user session on page load
             await checkAuthStatus();
             
-            // If no user is logged in, create a test user for development
-            if (!currentUser) {
-                createTestUser();
-            }
+            // If no user is logged in, stay logged out (don't auto-create test user)
+            // This ensures logout state persists on page refresh
 
             // Initialize variables
             const mainAppView = document.getElementById('app-container');
@@ -5657,92 +5704,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
 
-            // Chat state manager
-            const chatState = {
-                messages: [],
-                currentConversation: null,
-                currentChatVendorId: null,
-
-                init: function() {
-                    this.messages = [];
-                    this.currentConversation = null;
-                    this.currentChatVendorId = null;
-                    console.log('Chat state initialized.');
-                },
-
-                addMessage: function(message) {
-                    if (!this.messages) this.messages = [];
-                    const formattedMsg = this.formatMessage(message);
-                    this.messages.push(formattedMsg);
-                    console.log('Message added to chat state:', formattedMsg);
-                    return formattedMsg;
-                },
-
-                setMessages: function(messages) {
-                    this.messages = Array.isArray(messages) ? messages.map(msg => this.formatMessage(msg)) : [];
-                    console.log('Chat messages set:', this.messages);
-                },
-
-                getMessages: function() {
-                    return this.messages || [];
-                },
-
-                formatMessage: function(message) {
-                    console.log('Formatting message:', message);
-                    const content = message.Content || message.content || message.text || message.messageContent;
-                    if (content === undefined) {
-                        console.warn('Message content is undefined after formatting attempts for message:', message);
-                    }
-                    return {
-                        id: message.MessageID || message.id || `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                        conversationId: message.ConversationID || message.conversationId || this.currentConversation,
-                        senderId: message.SenderID || message.senderId,
-                        senderName: message.SenderName || message.senderName || (message.SenderID === currentUser?.id ? currentUser.name : 'Vendor'),
-                        content: content,
-                        timestamp: message.CreatedAt || message.timestamp || new Date().toISOString(),
-                        isCurrentUser: message.SenderID === currentUser?.id || message.isCurrentUser,
-                        isRead: message.IsRead || message.isRead || false
-                    };
-                }
-            };
+            // Chat state manager moved to top of DOMContentLoaded to fix initialization order
 
 
-            // Global state
-            const state = {
-                vendors: [],
-                filteredVendors: [],
-                markers: [],
-                map: null,
-                userLocation: null,
-                currentPage: 1,
-                vendorsPerPage: 12,
-                currentView: 'list',
-                currentCategory: 'all',
-                filters: {
-                    location: '',
-                    types: ['independent', 'company'],
-                    price: 40,
-                    popular: [],
-                    startDate: null,
-                    endDate: null,
-                    region: ''
-                },
-                // New properties for dynamic map functionality
-                originalSearchResults: [],
-                isLoadingVendors: false,
-                mapMoveTimeout: null,
-                initialMapBounds: null,
-                lastMapBounds: null,
-                currentVendor: null,
-                selectedServices: [],
-                selectedDate: null,
-                selectedTime: null,
-                stripe: null,
-                elements: null,
-                paymentIntent: null,
-                socket: null,
-                chat: chatState
-            };
+            // Global state moved to top of DOMContentLoaded to fix initialization order
 
             // User state (now global)
             // let currentUser = null; // Moved to global scope
@@ -5753,29 +5718,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Lightbox state
             let lightboxImages = [];
-            async function openBookingModal() {
-                // Reset booking state
-                bookingState = {
-                    currentStep: 1,
-                    selectedServices: [],
-                    serviceCategories: [],
-                    eventDetails: {},
-                    selectedVendors: [],
-                    sentRequests: [],
-                    approvedVendors: [],
-                    totalCost: 0,
-                    countdownTimers: {},
-                    approvalPollingInterval: null
-                };
-
-                // Show modal
-                const modal = document.getElementById('booking-modal');
-                modal.style.display = 'flex';
-                
-                // Initialize first step and load service categories
-                updateBookingStep(1);
-                await loadServiceCategories();
-            }
+            // openBookingModal function removed - duplicate function, keeping the complete version below
 
             // Multi-Step Booking Modal State (Global)
             window.bookingState = {
@@ -8407,93 +8350,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         };
         return icons[category] || "<i class='fas fa-gem'></i>";
     }
-            async function loadVendors() {
-                try {
-                    console.log('Loading vendors from API:', `${API_BASE_URL}/vendors`);
-                    const response = await fetch(`${API_BASE_URL}/vendors`);
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
-                    console.log('API Response:', data);
-                    
-                    if (data && data.vendors && Array.isArray(data.vendors) && data.vendors.length > 0) {
-                        // Process vendor data from API with Cloudinary images
-                        state.vendors = data.vendors.map(vendor => {
-                            // Parse services if they come as JSON string
-                            let services = [];
-                            try {
-                                if (typeof vendor.services === 'string') {
-                                    services = JSON.parse(vendor.services);
-                                } else if (Array.isArray(vendor.services)) {
-                                    services = vendor.services;
-                                }
-                            } catch (e) {
-                                console.warn('Error parsing services for vendor:', vendor.name, e);
-                                services = [];
-                            }
-
-                            // Parse reviews if they come as JSON string
-                            let reviews = [];
-                            try {
-                                if (typeof vendor.reviews === 'string') {
-                                    reviews = JSON.parse(vendor.reviews);
-                                } else if (Array.isArray(vendor.reviews)) {
-                                    reviews = vendor.reviews;
-                                }
-                            } catch (e) {
-                                console.warn('Error parsing reviews for vendor:', vendor.name, e);
-                                reviews = [];
-                            }
-
-                            // Map type to category
-                            const category = mapTypeToCategory(vendor.type);
-
-                            // Process Cloudinary images
-                            const featuredImage = vendor.featuredImage || null;
-                            const images = vendor.images || [];
-                            const imageCount = vendor.imageCount || 0;
-
-                            return {
-                                ...vendor,
-                                services: services,
-                                reviews: reviews,
-                                category: category,
-                                featuredImage: featuredImage,
-                                images: images,
-                                imageCount: imageCount,
-                                coordinates: {
-                                    lat: vendor.latitude || getRandomLat(),
-                                    lng: vendor.longitude || getRandomLng()
-                                },
-                                priceLevel: vendor.priceLevel || getRandomPriceLevel(),
-                                isPremium: vendor.isPremium || false,
-                                isEcoFriendly: vendor.isEcoFriendly || false,
-                                isAwardWinning: vendor.isAwardWinning || false,
-                                rating: vendor.rating || '4.5',
-                                reviewCount: vendor.reviewCount || vendor.ReviewCount || 0
-                            };
-                        });
-
-                        state.filteredVendors = [...state.vendors];
-
-                        console.log('Processed vendors:', state.vendors.length);
-                        
-                        // Update UI
-                        updateMetadata({ total: data.totalCount || state.filteredVendors.length });
-                        renderVendors();
-
-                    } else {
-                        console.error('Invalid API response structure:', data);
-                        showError("No vendors found or invalid API response");
-                    }
-                } catch (error) {
-                    console.error('Error loading vendors from API:', error);
-                    showError(`Failed to load vendors: ${error.message}`);
-                }
-            }
 
             // Helper function to generate sample reviews
             function generateSampleReviews() {
@@ -10413,10 +10269,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 // Logout handler
                 logoutBtn.addEventListener('click', () => {
-                    // Clear the token from storage
+                    // Clear ALL authentication-related data from storage
                     localStorage.removeItem('token');
+                    localStorage.removeItem('userSession');
                     localStorage.removeItem('isVendorMode');
                     localStorage.removeItem('activeDashboardSection');
+                    sessionStorage.clear();
 
                     // Disconnect from chat
                     if (state.socket) {
@@ -13431,108 +13289,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 filterVendors();
             }
 
-            // Render vendor cards
-            function renderVendors() {
-                if (!state.filteredVendors || state.filteredVendors.length === 0) {
-                    vendorGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">No vendors match your filters</div>';
-                    updatePagination();
-                    return;
-                }
-
-                // Pagination
-                const startIndex = (state.currentPage - 1) * state.itemsPerPage;
-                const endIndex = startIndex + state.itemsPerPage;
-                const paginatedVendors = state.filteredVendors.slice(startIndex, endIndex);
-
-            vendorGrid.innerHTML = '';
-
-            // Show skeleton cards while loading
-            if (state.filteredVendors.length === 0) {
-                for (let i = 0; i < state.itemsPerPage; i++) {
-                    const skeletonCard = document.createElement('div');
-                    skeletonCard.className = 'vendor-card skeleton-card';
-                    skeletonCard.innerHTML = `
-                        <div class="vendor-image skeleton-box"></div>
-                        <div class="vendor-details">
-                            <h3 class="vendor-name skeleton-box" style="width: 60%; height: 1.2rem;"></h3>
-                            <div class="vendor-location skeleton-box" style="width: 40%; height: 1rem; margin: 0.5rem 0;"></div>
-                            <div class="vendor-features" style="display: flex; gap: 0.5rem;">
-                                <div class="feature skeleton-box" style="width: 30%; height: 1rem;"></div>
-                                <div class="feature skeleton-box" style="width: 20%; height: 1rem;"></div>
-                                <div class="feature skeleton-box" style="width: 25%; height: 1rem;"></div>
-                            </div>
-                            <div class="vendor-footer" style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                                <button class="btn btn-outline skeleton-box" style="width: 50%; height: 2rem;"></button>
-                                <button class="btn btn-primary skeleton-box" style="width: 50%; height: 2rem;"></button>
-                            </div>
-                        </div>
-                    `;
-                    vendorGrid.appendChild(skeletonCard);
-                }
-                return;
-            }
-
-            paginatedVendors.forEach(vendor => {
-                const isFavorite = state.favorites.includes(vendor.id);
-
-                const vendorCard = document.createElement('div');
-                vendorCard.className = 'vendor-card';
-                vendorCard.innerHTML = `
-                    <div class="vendor-image">
-                        ${vendor.image ? `<img src="${vendor.image}" alt="${vendor.name}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.category)}
-                        <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendor.id}"><i class="fas fa-heart"></i></div>
-                        <div class="vendor-badges" style="position: absolute; bottom: 12px; left: 12px; display: flex; gap: 6px;">
-                            ${vendor.isPremium ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #5e72e4; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Premium</span>' : ''}
-                            ${vendor.isEcoFriendly ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #38a169; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Eco-Friendly</span>' : ''}
-                            ${vendor.isAwardWinning ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #d69e2e; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Award Winning</span>' : ''}
-                        </div>
-                    </div>
-                    <div class="vendor-details">
-                        <h3 class="vendor-name">${vendor.name}</h3>
-                        <div class="vendor-location">
-                            <i class="fas fa-map-marker-alt"></i> ${vendor.location}
-                        </div>
-                        <div class="vendor-features">
-                            <div class="feature">
-                                <span class="feature-icon">${getCategoryIcon(vendor.category)}</span>
-                                <span>${getCategoryName(vendor.category)}</span>
-                            </div>
-                            <div class="feature">
-                                <span class="feature-icon"><i class="fas fa-star"></i></span>
-                                <span>${vendor.rating} (${vendor.reviewCount})</span>
-                            </div>
-                            <div class="feature">
-                                <div class="price-indicator">
-                                    ${renderPriceIndicator(vendor.priceLevel)}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="vendor-footer">
-                            <button class="btn btn-outline save-btn" data-id="${vendor.id}">Save</button>
-                            <button class="btn btn-primary view-btn" data-id="${vendor.id}">View</button>
-                        </div>
-                    </div>
-                `;
-                vendorGrid.appendChild(vendorCard);
-
-                // Add event listeners to buttons
-                vendorCard.querySelector('.view-btn').addEventListener('click', () => {
-                    window.location.hash = `/listings/${vendor.id}`;
-                });
-
-                vendorCard.querySelector('.save-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    toggleFavorite(vendor.id);
-                });
-
-                vendorCard.querySelector('.vendor-favorite').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    toggleFavorite(vendor.id);
-                });
-            });
-
-            updatePagination();
-            }
 
             // Helper function to get category icon
             function getCategoryIcon(category) {
@@ -14405,15 +14161,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Show logged in view in profile modal
             function showLoggedInView() {
-                loginForm.style.display = 'none';
-                signupForm.style.display = 'none';
-                loggedInView.style.display = 'block';
-                document.getElementById('profile-modal-title').textContent = 'My Account';
+                const loginFormEl = document.getElementById('login-form');
+                const signupFormEl = document.getElementById('signup-form');
+                const loggedInViewEl = document.getElementById('logged-in-view');
+                
+                if (loginFormEl) loginFormEl.style.display = 'none';
+                if (signupFormEl) signupFormEl.style.display = 'none';
+                if (loggedInViewEl) loggedInViewEl.style.display = 'block';
+                
+                const titleEl = document.getElementById('profile-modal-title');
+                if (titleEl) titleEl.textContent = 'My Account';
 
                 // Update user info
-                document.getElementById('profile-name').textContent = currentUser.name;
-                document.getElementById('profile-email').textContent = currentUser.email;
-                document.getElementById('profile-avatar').textContent = currentUser.avatar;
+                const nameEl = document.getElementById('profile-name');
+                const emailEl = document.getElementById('profile-email');
+                const avatarEl = document.getElementById('profile-avatar');
+                
+                if (nameEl && currentUser) nameEl.textContent = currentUser.name;
+                if (emailEl && currentUser) emailEl.textContent = currentUser.email;
+                if (avatarEl && currentUser) avatarEl.textContent = currentUser.avatar;
             }
 
             // Request management functions
@@ -15809,26 +15575,46 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function simulateLogin(user) {
                 currentUser = {
                     ...user,
+                    userId: user.id, // Add userId for compatibility
                     isVendor: user.isVendor || false
                 };
+                
+                // Also store in localStorage for consistency with getCurrentUser function
+                localStorage.setItem('userSession', JSON.stringify(currentUser));
 
                 showLoggedInView();
-                profileModal.style.display = 'none';
+                
+                // Close profile modal safely
+                const profileModalEl = document.getElementById('profile-modal');
+                if (profileModalEl) {
+                    profileModalEl.style.display = 'none';
+                }
+                
                 alert(`Welcome, ${user.name}! You are now logged in.`);
 
                 // Update profile button to show user is logged in
-                profileBtn.textContent = user.avatar;
-                profileBtn.style.backgroundColor = 'var(--primary)';
-                profileBtn.style.color = 'white';
-                profileBtn.style.borderRadius = '50%';
-                profileBtn.style.width = '36px';
-                profileBtn.style.height = '36px';
-                profileBtn.style.display = 'flex';
-                profileBtn.style.alignItems = 'center';
-                profileBtn.style.justifyContent = 'center';
+                const profileBtnEl = document.getElementById('profile-btn');
+                if (profileBtnEl) {
+                    profileBtnEl.textContent = user.avatar;
+                    profileBtnEl.style.backgroundColor = 'var(--primary)';
+                    profileBtnEl.style.color = 'white';
+                    profileBtnEl.style.borderRadius = '50%';
+                    profileBtnEl.style.width = '36px';
+                    profileBtnEl.style.height = '36px';
+                    profileBtnEl.style.display = 'flex';
+                    profileBtnEl.style.alignItems = 'center';
+                    profileBtnEl.style.justifyContent = 'center';
+                }
 
-                // Update favorites badge
-                document.querySelector('.badge').textContent = state.favorites.length;
+                // Update favorites badge safely
+                const badge = document.querySelector('.badge');
+                if (badge) {
+                    // Check if state exists and has favorites, otherwise default to 0
+                    const favoritesCount = (typeof state !== 'undefined' && state.favorites) ? state.favorites.length : 0;
+                    badge.textContent = favoritesCount;
+                }
+                
+                console.log('✅ User logged in:', currentUser);
             }
 
             // Toggle vendor favorite status
@@ -17504,8 +17290,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             console.log('🚀 Initializing Vendor Setup Improvements...');
             
             try {
-                // First, load configuration from backend
-                await loadAppConfiguration();
+                // Set fallback configuration directly
+                appConfig = {
+                    googleMapsApiKey: 'AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg',
+                    apiBaseUrl: 'http://localhost:3000/api'
+                };
+                console.log('✅ App configuration set:', appConfig);
                 
                 // Initialize Select2 for category dropdowns
                 initializeSelect2();
@@ -17537,29 +17327,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
         }
 
-        // Load application configuration from backend
-        async function loadAppConfiguration() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/config`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const result = await response.json();
-                if (result.status === 'success') {
-                    appConfig = result.data;
-                    console.log('✅ App configuration loaded:', appConfig);
-                } else {
-                    throw new Error('Failed to load configuration');
-                }
-            } catch (error) {
-                console.error('❌ Error loading app configuration:', error);
-                // Fallback configuration
-                appConfig = {
-                    googleMapsApiKey: 'AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg',
-                    apiBaseUrl: 'http://localhost:3000/api'
-                };
-            }
-        }
+        // Removed loadAppConfiguration function - no longer needed
 
         // Dynamically load Google Places API
         async function loadGooglePlacesAPI() {
