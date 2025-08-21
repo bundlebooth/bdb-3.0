@@ -4505,6 +4505,63 @@
         // Global variables
         let currentUser = null;
         
+        // Check for existing user session
+        async function checkAuthStatus() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const userData = await response.json();
+                    simulateLogin({
+                        id: userData.userId,
+                        name: userData.name || userData.email.split('@')[0],
+                        email: userData.email,
+                        avatar: userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase(),
+                        isVendor: userData.isVendor || false
+                    });
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                localStorage.removeItem('token');
+            }
+        }
+
+        // Simulate user login (for demo purposes)
+        function simulateLogin(user) {
+            currentUser = {
+                ...user,
+                userId: user.id, // Add userId for compatibility
+                isVendor: user.isVendor || false
+            };
+            
+            // Also store in localStorage for consistency with getCurrentUser function
+            localStorage.setItem('userSession', JSON.stringify(currentUser));
+            
+            console.log('✅ User logged in:', currentUser);
+        }
+
+        // Create a test user session for development
+        function createTestUser() {
+            // Set a test token
+            localStorage.setItem('token', 'test-token');
+            
+            // Create test user
+            simulateLogin({
+                id: 1,
+                name: 'Test User',
+                email: 'test@example.com',
+                avatar: 'T',
+                isVendor: false
+            });
+        }
+        
         // Global utility functions
         function showSuccess(message) {
             // Create or update success notification
@@ -5140,9 +5197,17 @@
             }
         }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
             // API base URL
             const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
+            
+            // Check for existing user session on page load
+            await checkAuthStatus();
+            
+            // If no user is logged in, create a test user for development
+            if (!currentUser) {
+                createTestUser();
+            }
 
             // Initialize variables
             const mainAppView = document.getElementById('app-container');
@@ -6879,6 +6944,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     attendeeCount: parseInt(document.getElementById('attendee-count').value) || 50
                 };
                 
+                // Also update the global bookingState to ensure consistency
+                if (window.bookingState) {
+                    window.bookingState.eventDetails = bookingState.eventDetails;
+                }
+                
                 console.log('Event details collected:', bookingState.eventDetails);
 
                 // Show loading state
@@ -7354,49 +7424,290 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                const totalCost = globalBookingState.selectedVendors.reduce((sum, v) => sum + (v.servicePrice || v.VendorPrice || 0), 0);
+                const totalCost = globalBookingState.selectedVendors.reduce((sum, v) => {
+                    const price = v.selectedService?.VendorPrice || v.VendorPrice || v.servicePrice || 0;
+                    return sum + price;
+                }, 0);
                 
-                const vendorSummaryHTML = `
-                    <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
-                        <h5 style="margin: 0 0 1rem 0; color: #2c3e50; font-weight: 600;">Selected Vendors & Services</h5>
-                        <div class="selected-vendors-list">
-                            ${globalBookingState.selectedVendors.map(vendor => {
+                const vendorCardsHTML = `
+                    <div style="margin-bottom: 2rem;">
+                        <h5 style="margin: 0 0 1.5rem 0; color: #2c3e50; font-weight: 600; font-size: 1.3rem;">Selected Vendors - Send Booking Requests</h5>
+                        
+                        <!-- Special Requests Section -->
+                        <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
+                            <h6 style="margin: 0 0 1rem 0; color: #2c3e50; font-weight: 600;">Special Requests</h6>
+                            <textarea id="special-requests" placeholder="Add any special requests or additional details for your vendors..." 
+                                style="width: 100%; min-height: 100px; padding: 0.75rem; border: 1px solid #e1e8f0; border-radius: 8px; font-family: inherit; font-size: 0.9rem; resize: vertical;"></textarea>
+                        </div>
+                        
+                        <!-- Vendor Cards -->
+                        <div class="vendor-request-cards">
+                            ${globalBookingState.selectedVendors.map((vendor, index) => {
                                 const businessName = vendor.BusinessName || vendor.name || 'Unknown Business';
-                                const serviceName = vendor.MatchingServiceNames || vendor.serviceName || 'Service';
+                                const serviceName = vendor.selectedService?.ServiceName || vendor.MatchingServiceNames || 'Service';
                                 const location = vendor.Location || vendor.location || 'Location not specified';
-                                const price = vendor.VendorPrice || vendor.servicePrice || 0;
+                                const price = vendor.selectedService?.VendorPrice || vendor.VendorPrice || vendor.servicePrice || 0;
+                                const description = vendor.BusinessDescription || 'No description available';
+                                const duration = vendor.selectedService?.VendorDurationMinutes ? `${vendor.selectedService.VendorDurationMinutes} min` : '';
+                                const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
                                 
                                 return `
-                                <div class="selected-vendor-item" style="background: white; border: 1px solid #e1e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                                    <div class="vendor-info">
-                                        <h6 style="margin: 0 0 0.5rem 0; color: #2c3e50; font-weight: 600;">${businessName}</h6>
-                                        <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">
-                                            <span style="color: #3498db; font-weight: 500;"><i class="fas fa-bullseye" style="color: #3498db;"></i> ${serviceName}</span>
-                                        </p>
-                                        <p style="margin: 0.25rem 0 0 0; color: var(--text-light); font-size: 0.85rem;">
-                                            <i class="fas fa-map-marker-alt"></i> ${location}
-                                        </p>
+                                <div class="vendor-request-card" style="background: white; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                        <div class="vendor-header" style="flex: 1;">
+                                            <h6 style="margin: 0 0 0.5rem 0; color: #2c3e50; font-weight: 600; font-size: 1.1rem;">${businessName}</h6>
+                                            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                                                <span style="background: #e0f2fe; color: #0277bd; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">
+                                                    ${serviceName}
+                                                </span>
+                                                <span style="color: #27ae60; font-weight: 600; font-size: 1.1rem;">$${price}</span>
+                                                ${duration ? `<span style="color: #6b7280; font-size: 0.85rem;">${duration}</span>` : ''}
+                                            </div>
+                                            <p style="margin: 0; color: #6b7280; font-size: 0.85rem;">
+                                                <i class="fas fa-map-marker-alt"></i> ${location}
+                                            </p>
+                                        </div>
+                                        <div class="vendor-actions" style="margin-left: 1rem;">
+                                            <button onclick="sendBookingRequest('${vendorId}', ${index})" 
+                                                class="btn-send-request" 
+                                                style="background: #3498db; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
+                                                <i class="fas fa-paper-plane" style="margin-right: 0.5rem;"></i>
+                                                Send Request
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="service-price" style="text-align: right;">
-                                        <div style="font-size: 1.1rem; font-weight: 700; color: #2c3e50;">$${Math.round(price).toLocaleString()}</div>
-                                        <div style="font-size: 0.8rem; color: var(--text-light);">for ${serviceName}</div>
+                                    
+                                    <div class="vendor-description" style="background: #f8faff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                                        <p style="margin: 0; color: #374151; font-size: 0.9rem; line-height: 1.5;">${description}</p>
+                                    </div>
+                                    
+                                    <div class="request-status" id="request-status-${index}" style="display: none; padding: 0.75rem; border-radius: 8px; margin-top: 1rem;">
+                                        <!-- Status will be updated dynamically -->
                                     </div>
                                 </div>
                                 `;
                             }).join('')}
                         </div>
-                        <div class="total-cost" style="border-top: 2px solid #e1e8f0; padding-top: 1rem; margin-top: 1rem; text-align: right;">
-                            <div style="font-size: 1.2rem; font-weight: 700; color: #2c3e50;">
+                        
+                        <!-- Summary Footer -->
+                        <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; text-align: center;">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: #2c3e50; margin-bottom: 0.5rem;">
                                 Total Estimated Cost: <span style="color: #27ae60;">$${Math.round(totalCost).toLocaleString()}</span>
                             </div>
-                            <div style="font-size: 0.9rem; color: var(--text-light); margin-top: 0.25rem;">
+                            <div style="font-size: 0.9rem; color: var(--text-light);">
                                 ${globalBookingState.selectedVendors.length} vendor${globalBookingState.selectedVendors.length !== 1 ? 's' : ''} selected
                             </div>
                         </div>
                     </div>
                 `;
                 
-                summaryContainer.innerHTML = vendorSummaryHTML;
+                summaryContainer.innerHTML = vendorCardsHTML;
+            };
+
+            // Function to send booking request to vendor
+            window.sendBookingRequest = function(vendorId, vendorIndex) {
+                console.log('📤 Sending booking request to vendor:', vendorId, 'at index:', vendorIndex);
+                
+                // Check if user is authenticated
+                console.log('🔐 Current user:', currentUser);
+                
+                if (!currentUser || !currentUser.userId) {
+                    console.log('❌ User not authenticated, showing auth modal');
+                    showAuthModal();
+                    return;
+                }
+                
+                console.log('✅ User authenticated, proceeding with request');
+                
+                const specialRequests = document.getElementById('special-requests')?.value || '';
+                const bookingState = window.bookingState;
+                const vendor = bookingState.selectedVendors[vendorIndex];
+                
+                if (!vendor) {
+                    console.error('❌ Vendor not found at index:', vendorIndex);
+                    return;
+                }
+                
+                // Update button state to loading
+                const button = document.querySelector(`button[onclick="sendBookingRequest('${vendorId}', ${vendorIndex})"]`);
+                if (button) {
+                    button.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Sending...';
+                    button.disabled = true;
+                    button.style.background = '#95a5a6';
+                }
+                
+                // Show status area
+                const statusDiv = document.getElementById(`request-status-${vendorIndex}`);
+                if (statusDiv) {
+                    statusDiv.style.display = 'block';
+                    statusDiv.innerHTML = '<div style="color: #3498db;"><i class="fas fa-clock" style="margin-right: 0.5rem;"></i>Sending request...</div>';
+                    statusDiv.style.background = '#e8f4fd';
+                    statusDiv.style.border = '1px solid #3498db';
+                }
+                
+                // Prepare booking request data
+                const requestData = {
+                    userId: currentUser.userId,
+                    vendorProfileId: parseInt(vendorId),
+                    specialRequestText: specialRequests,
+                    eventDate: bookingState.eventDetails?.date,
+                    eventTime: bookingState.eventDetails?.time,
+                    eventLocation: bookingState.eventDetails?.location,
+                    attendeeCount: bookingState.eventDetails?.attendeeCount,
+                    budget: vendor.selectedService?.VendorPrice || 0,
+                    services: vendor.selectedService ? [vendor.selectedService] : []
+                };
+                
+                console.log('📋 Request data:', requestData);
+                console.log('🌐 About to make API call to:', '/api/bookings/requests/send');
+                
+                // Make actual API call
+                fetch('/api/bookings/requests/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token || ''}`
+                    },
+                    body: JSON.stringify(requestData)
+                })
+                .then(response => {
+                    console.log('📡 API Response received:', response.status, response.statusText);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('📊 API Response data:', data);
+                    if (data.success) {
+                        // Success
+                        if (button) {
+                            button.innerHTML = '<i class="fas fa-check" style="margin-right: 0.5rem;"></i>Request Sent!';
+                            button.style.background = '#27ae60';
+                            button.disabled = true;
+                        }
+                        
+                        if (statusDiv) {
+                            statusDiv.innerHTML = `
+                                <div style="color: #27ae60;">
+                                    <i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>
+                                    Booking request sent successfully! Request ID: ${data.requestId}. The vendor will respond within 24 hours.
+                                </div>
+                            `;
+                            statusDiv.style.background = '#d5f4e6';
+                            statusDiv.style.border = '1px solid #27ae60';
+                        }
+                        
+                        // Mark vendor as requested in bookingState
+                        vendor.requestSent = true;
+                        vendor.requestTimestamp = new Date().toISOString();
+                        vendor.requestId = data.requestId;
+                        
+                    } else {
+                        throw new Error(data.message || 'Failed to send request');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error sending request:', error);
+                    
+                    // Error state
+                    if (button) {
+                        button.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>Try Again';
+                        button.style.background = '#e74c3c';
+                        button.disabled = false;
+                    }
+                    
+                    if (statusDiv) {
+                        statusDiv.innerHTML = `
+                            <div style="color: #e74c3c;">
+                                <i class="fas fa-exclamation-circle" style="margin-right: 0.5rem;"></i>
+                                Failed to send request: ${error.message}
+                            </div>
+                        `;
+                        statusDiv.style.background = '#fdf2f2';
+                        statusDiv.style.border = '1px solid #e74c3c';
+                    }
+                });
+            };
+
+            // Authentication helper functions
+            function getCurrentUser() {
+                // Check for user session in localStorage or sessionStorage
+                const userSession = localStorage.getItem('userSession') || sessionStorage.getItem('userSession');
+                console.log('🔍 Raw userSession from localStorage:', userSession);
+                console.log('🔍 localStorage.getItem("userSession"):', localStorage.getItem('userSession'));
+                
+                if (userSession) {
+                    try {
+                        const parsed = JSON.parse(userSession);
+                        console.log('✅ Parsed user session:', parsed);
+                        return parsed;
+                    } catch (e) {
+                        console.error('❌ Error parsing user session:', e);
+                        return null;
+                    }
+                }
+                console.log('❌ No user session found');
+                return null;
+            }
+
+            function showAuthModal() {
+                // Create authentication modal
+                const authModal = document.createElement('div');
+                authModal.id = 'auth-modal';
+                authModal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10000;
+                `;
+                
+                authModal.innerHTML = `
+                    <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; text-align: center;">
+                        <h3 style="margin: 0 0 1rem 0; color: #2c3e50;">Sign In Required</h3>
+                        <p style="margin: 0 0 1.5rem 0; color: #6b7280;">You need to sign in to send booking requests to vendors.</p>
+                        
+                        <div style="display: flex; gap: 1rem; justify-content: center;">
+                            <button onclick="showLoginForm()" style="background: #3498db; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                Sign In
+                            </button>
+                            <button onclick="showSignupForm()" style="background: #27ae60; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                Sign Up
+                            </button>
+                            <button onclick="closeAuthModal()" style="background: #95a5a6; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(authModal);
+            }
+
+            window.closeAuthModal = function() {
+                const authModal = document.getElementById('auth-modal');
+                if (authModal) {
+                    authModal.remove();
+                }
+            };
+
+            window.showLoginForm = function() {
+                closeAuthModal();
+                // Redirect to login page or show login form
+                alert('Please implement login functionality. For now, you can manually set user session in localStorage.');
+                console.log('To test booking requests, set user session in console:');
+                console.log('localStorage.setItem("userSession", JSON.stringify({userId: 1, token: "test-token", name: "Test User"}))');
+            };
+
+            window.showSignupForm = function() {
+                closeAuthModal();
+                // Redirect to signup page or show signup form
+                alert('Please implement signup functionality. For now, you can manually set user session in localStorage.');
+                console.log('To test booking requests, set user session in console:');
+                console.log('localStorage.setItem("userSession", JSON.stringify({userId: 1, token: "test-token", name: "Test User"}))');
             };
 
             // Helper function to format time to HH:MM:SS
@@ -7447,37 +7758,93 @@ document.addEventListener('DOMContentLoaded', function() {
             async function handleSendRequests() {
                 clearBookingError();
                 
-                if (bookingState.selectedVendors.length === 0) {
+                // Collect current event details from form before validation
+                const eventDetails = {
+                    date: document.getElementById('event-date')?.value,
+                    startTime: document.getElementById('event-start-time')?.value,
+                    endTime: document.getElementById('event-end-time')?.value,
+                    location: document.getElementById('event-location')?.value,
+                    attendeeCount: parseInt(document.getElementById('attendee-count')?.value) || 50
+                };
+                
+                // Use the global bookingState where vendors are actually stored
+                const globalBookingState = window.bookingState || bookingState;
+                
+                // Update event details in global state
+                if (!globalBookingState.eventDetails) {
+                    globalBookingState.eventDetails = {};
+                }
+                Object.assign(globalBookingState.eventDetails, eventDetails);
+                
+                console.log('🔍 Debug - globalBookingState:', globalBookingState);
+                console.log('🔍 Debug - selectedVendors:', globalBookingState.selectedVendors);
+                console.log('🔍 Debug - selectedVendors length:', globalBookingState.selectedVendors?.length);
+                console.log('🔍 Debug - eventDetails:', globalBookingState.eventDetails);
+                console.log('🔍 Debug - startTime:', globalBookingState.eventDetails?.startTime);
+                
+                // Debug each selected vendor structure
+                globalBookingState.selectedVendors?.forEach((vendor, index) => {
+                    console.log(`🔍 Debug - vendor[${index}]:`, vendor);
+                    console.log(`🔍 Debug - vendor[${index}].id:`, vendor.id);
+                    console.log(`🔍 Debug - vendor[${index}].vendorData:`, vendor.vendorData);
+                    console.log(`🔍 Debug - vendor[${index}].vendorData?.VendorProfileID:`, vendor.vendorData?.VendorProfileID);
+                });
+                
+                if (!globalBookingState.selectedVendors || globalBookingState.selectedVendors.length === 0) {
                     showBookingError('Please select at least one vendor.');
                     return;
                 }
 
-                if (!currentUser?.id) {
-                    showBookingError('Please log in to send booking requests.');
+                // Check if user is authenticated
+                if (!currentUser?.userId && !currentUser?.id) {
+                    showBookingError('Please log in to send booking requests. Run this in console: localStorage.setItem("token", "test-token")');
                     return;
                 }
 
                 // Validate and format time
-                if (!bookingState.eventDetails?.startTime) {
+                if (!globalBookingState.eventDetails?.startTime) {
+                    console.log('🚨 Event time validation failed - eventDetails:', globalBookingState.eventDetails);
+                    console.log('🚨 Start time value:', globalBookingState.eventDetails?.startTime);
                     showBookingError('Please select an event time.');
                     return;
                 }
 
-                const formattedTime = formatTimeForBackend(bookingState.eventDetails.startTime);
+                const formattedTime = formatTimeForBackend(globalBookingState.eventDetails.startTime);
 
                 try {
+                    // Prepare vendor IDs and services data
+                    const vendorIds = globalBookingState.selectedVendors
+                        .map(v => v.VendorProfileID || v.vendorProfileId || v.VendorProfileId || v.id || v.vendorId)
+                        .filter(id => id != null);
+                    
+                    const services = globalBookingState.selectedVendors.map(v => ({
+                        vendorId: v.VendorProfileID || v.vendorProfileId || v.VendorProfileId || v.id || v.vendorId,
+                        serviceName: v.selectedService?.ServiceName || v.serviceName || v.MatchingServiceNames || 'General Service',
+                        servicePrice: v.selectedService?.VendorPrice || v.servicePrice || v.VendorPrice || 0
+                    })).filter(s => s.vendorId != null);
+
+                    console.log('🔍 Debug - vendorIds:', vendorIds);
+                    console.log('🔍 Debug - services:', services);
+
+                    if (vendorIds.length === 0) {
+                        showBookingError('No valid vendor IDs found. Please reselect your vendors.');
+                        return;
+                    }
+
                     // Send booking requests to backend API
                     const requestData = {
-                        userId: currentUser.id,
-                        vendorIds: bookingState.selectedVendors.map(v => v.id),
-                        services: bookingState.selectedServices,
+                        userId: currentUser.userId || currentUser.id,
+                        vendorIds: vendorIds,
+                        services: services,
                         eventDetails: {
-                            ...bookingState.eventDetails,
+                            ...globalBookingState.eventDetails,
                             time: formattedTime
                         },
-                        budget: bookingState.budget
+                        budget: globalBookingState.budget
                     };
 
+                    console.log('📤 Sending bulk booking request:', requestData);
+                    
                     const response = await fetch(`${API_BASE_URL}/bookings/requests`, {
                         method: 'POST',
                         headers: {
@@ -7487,18 +7854,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
 
                     const data = await response.json();
+                    console.log('📊 API Response:', data);
 
                     if (data.success && data.requests) {
                         // Map API response to booking state format
-                        bookingState.sentRequests = data.requests.map(req => ({
+                        globalBookingState.sentRequests = data.requests.map(req => ({
                             id: req.requestId,
                             vendorId: req.vendorId,
-                            vendorName: bookingState.selectedVendors.find(v => v.id === req.vendorId)?.name || 'Vendor',
+                            vendorName: globalBookingState.selectedVendors.find(v => v.id === req.vendorId)?.name || 'Vendor',
                             status: req.status,
                             sentAt: new Date(req.createdAt),
                             expiresAt: new Date(req.expiresAt),
-                            services: bookingState.selectedServices,
-                            eventDetails: bookingState.eventDetails
+                            services: globalBookingState.selectedServices,
+                            eventDetails: globalBookingState.eventDetails
                         }));
 
                         renderRequestSummary();
@@ -7605,6 +7973,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     const response = await fetch(`${API_BASE_URL}/bookings/requests/${currentUser.id}`);
                     const data = await response.json();
+                    console.log('📊 API Response:', data);
 
                     if (data.success && data.requests) {
                         // Update request statuses
@@ -13624,28 +13993,41 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         throw new Error('User not logged in');
                     }
                     
+                    console.log('🔍 Debug - Loading vendor requests for user:', currentUser);
+                    
                     const vendorProfileResponse = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                     });
+                    
+                    console.log('🔍 Debug - Vendor profile response status:', vendorProfileResponse.status);
                     
                     if (!vendorProfileResponse.ok) {
                         throw new Error('Failed to fetch vendor profile');
                     }
                     
                     const vendorProfileData = await vendorProfileResponse.json();
+                    console.log('🔍 Debug - Vendor profile data:', vendorProfileData);
+                    
                     const vendorProfileId = vendorProfileData.vendorProfileId;
+                    console.log('🔍 Debug - Extracted vendor profile ID:', vendorProfileId);
                     
                     if (!vendorProfileId) {
                         throw new Error('Vendor profile not found');
                     }
                     
+                    console.log('🔍 Debug - Fetching requests for vendor ID:', vendorProfileId);
                     const response = await fetch(`${API_BASE_URL}/bookings/vendor/${vendorProfileId}/requests`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                     });
                     
+                    console.log('🔍 Debug - Vendor requests response status:', response.status);
+                    
                     if (!response.ok) throw new Error('Failed to fetch vendor requests');
                     const data = await response.json();
+                    console.log('🔍 Debug - Vendor requests data:', data);
+                    
                     const requests = data.requests || [];
+                    console.log('🔍 Debug - Parsed requests:', requests);
                     
                     // Update stats
                     const expiringSoon = requests.filter(req => req.HoursRemaining <= 6).length;
@@ -18120,9 +18502,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 bookingState.selectedVendors.splice(existingIndex, 1);
                 console.log('❌ Removed vendor from selection');
             } else if (vendor) {
-                // Add vendor
-                bookingState.selectedVendors.push(vendor);
-                console.log('✅ Added vendor to selection');
+                // Add vendor with service pricing info
+                const vendorWithPricing = {
+                    ...vendor,
+                    selectedService: vendor.services && vendor.services.length > 0 ? vendor.services[0] : null
+                };
+                bookingState.selectedVendors.push(vendorWithPricing);
+                console.log('✅ Added vendor to selection with pricing:', vendorWithPricing);
             } else {
                 console.log('⚠️ Vendor not found in currentVendorSections');
             }
