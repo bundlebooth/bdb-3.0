@@ -1861,19 +1861,26 @@
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.7);
             color: white;
             border: none;
+            border-radius: 50%;
             width: 32px;
             height: 32px;
-            border-radius: 50%;
-            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
             z-index: 2;
+        }
+
+        .carousel-nav:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.9);
+            transform: translateY(-50%) scale(1.1);
         }
 
         .vendor-card-image-container:hover .carousel-nav {
@@ -19322,6 +19329,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 } else {
                     cardsContainer.innerHTML = cardsHtml;
                     console.log('✅ Cards rendered to container successfully');
+                    
+                    // Initialize carousels for all vendor cards
+                    setTimeout(() => {
+                        allVendors.forEach(vendor => {
+                            const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id || 'unknown-' + Math.random();
+                            initializeVendorCarousel(vendorId);
+                        });
+                    }, 100);
                 }
 
                 // Setup sorting
@@ -19539,25 +19554,32 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 cardsContainer.innerHTML = sortedVendors.map(vendor => createHorizontalVendorCard(vendor)).join('');
                 
                 // Reinitialize carousel functionality for new cards
-                initializeCarousels();
+                setTimeout(() => {
+                    sortedVendors.forEach(vendor => {
+                        const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
+                        if (vendorId) initializeVendorCarousel(vendorId);
+                    });
+                }, 100);
             });
         }
 
         // Image carousel functionality
         const carouselStates = {};
 
-        function initializeCarousels() {
-            // Initialize carousel states for all vendor cards
-            document.querySelectorAll('.vendor-image-carousel').forEach(carousel => {
-                const vendorId = carousel.id.replace('carousel-', '');
-                const images = carousel.querySelectorAll('.vendor-card-image');
-                if (images.length > 1) {
-                    carouselStates[vendorId] = {
-                        currentIndex: 0,
-                        totalImages: images.length
-                    };
-                }
-            });
+        function initializeVendorCarousel(vendorId) {
+            const carousel = document.getElementById(`carousel-${vendorId}`);
+            if (!carousel) return;
+
+            const images = carousel.querySelectorAll('.vendor-card-image');
+            if (images.length <= 1) return; // No need for carousel with single image
+
+            // Initialize state
+            carouselStates[vendorId] = {
+                currentIndex: 0,
+                totalImages: images.length
+            };
+
+            console.log(`🎠 Initialized carousel for vendor ${vendorId} with ${images.length} images`);
         }
 
         function navigateCarousel(vendorId, direction) {
@@ -19634,7 +19656,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         );
                         
                         if (hasVendorCards) {
-                            setTimeout(initializeCarousels, 100);
+                            setTimeout(() => {
+                                // Initialize carousels for all vendor cards
+                                const vendorCards = document.querySelectorAll('.vendor-horizontal-card');
+                                vendorCards.forEach(card => {
+                                    const vendorId = card.getAttribute('data-vendor-id');
+                                    if (vendorId) {
+                                        initializeVendorCarousel(vendorId);
+                                    }
+                                });
+                            }, 100);
                         }
                     }
                 });
