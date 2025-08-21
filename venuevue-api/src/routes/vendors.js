@@ -1633,154 +1633,76 @@ router.post('/search-by-services', async (req, res) => {
       });
     }
 
-    // Build dynamic query to find vendors who offer the selected services
-    let whereClause = `WHERE 1 = 1`;
-    let joinClause = `
-      FROM VendorProfiles vp
-      INNER JOIN Users u ON vp.UserID = u.UserID
-      INNER JOIN VendorSelectedServices vss ON vp.VendorProfileID = vss.VendorProfileID
-      INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-    `;
-
-    // Add service ID filtering
-    whereClause += ` AND vss.PredefinedServiceID IN (${predefinedServiceIds.map((_, index) => `@ServiceID${index}`).join(', ')})`;
+    // Prepare parameters for stored procedure
+    const categories = [...new Set(selectedServices.map(s => s.category))].join(',');
+    const totalBudgetValue = totalBudget || selectedServices.reduce((sum, s) => sum + (s.budget || 0), 0);
     
-    predefinedServiceIds.forEach((serviceId, index) => {
-      request.input(`ServiceID${index}`, sql.Int, serviceId);
-    });
+    // Set up stored procedure call
+    request.input('Categories', sql.NVarChar(500), categories);
+    request.input('Budget', sql.Decimal(10, 2), totalBudgetValue);
+    request.input('EventDate', sql.Date, eventDetails?.date ? new Date(eventDetails.date) : null);
+    request.input('City', sql.NVarChar(100), null); // Let frontend handle location filtering
+    request.input('State', sql.NVarChar(50), null);
+    request.input('Latitude', sql.Decimal(10, 8), null);
+    request.input('Longitude', sql.Decimal(11, 8), null);
+    request.input('RadiusMiles', sql.Int, 50);
+    request.input('PageNumber', sql.Int, 1);
+    request.input('PageSize', sql.Int, 100);
+    request.input('SortBy', sql.NVarChar(20), 'relevance');
 
-    // Add budget filtering - vendors whose services fit within individual budgets
-    const budgetConditions = selectedServices.map((service, index) => {
-      request.input(`Budget${index}`, sql.Money, service.budget);
-      return `(vss.PredefinedServiceID = @ServiceID${index} AND vss.VendorPrice <= @Budget${index})`;
-    }).join(' OR ');
+    // Call the stored procedure
+    const result = await request.execute('sp_SearchVendorsMultiCategory');
     
-    if (budgetConditions) {
-      whereClause += ` AND (${budgetConditions})`;
-    }
-
-    // Add business hours filtering if event date and time are provided
-    if (eventDetails && eventDetails.date && eventDetails.startTime && eventDetails.endTime) {
-      try {
-        const eventDate = new Date(eventDetails.date);
-        const dayOfWeek = eventDate.getDay(); // 0=Sunday, 1=Monday, etc.
-        
-        // Convert time strings to 24-hour format for comparison
-        const startTime = convertTo24Hour(eventDetails.startTime);
-        const endTime = convertTo24Hour(eventDetails.endTime);
-        
-        console.log(`Debug - Original times: ${eventDetails.startTime} -> ${startTime}, ${eventDetails.endTime} -> ${endTime}`);
-        
-        if (startTime && endTime) {
-          console.log(`Filtering by business hours: Day ${dayOfWeek}, ${startTime} - ${endTime}`);
-          
-          // Check if the time range is unrealistically long (more than 16 hours)
-          const startHour = parseInt(startTime.split(':')[0]);
-          const endHour = parseInt(endTime.split(':')[0]);
-          const duration = endHour - startHour;
-          const isUnrealisticRange = duration > 16 || duration < 0;
-          
-          if (isUnrealisticRange) {
-            console.warn(`Unrealistic time range detected (${duration} hours). Using relaxed business hours filtering.`);
-            // Use relaxed filtering - just check if vendor is available on that day
-            whereClause += ` AND EXISTS (
-              SELECT 1 FROM VendorBusinessHours vbh 
-              WHERE vbh.VendorProfileID = vp.VendorProfileID 
-              AND vbh.DayOfWeek = @EventDayOfWeek 
-              AND vbh.IsAvailable = 1
-            )`;
-          } else {
-            // Use overlap logic - vendor hours should overlap with event time (not necessarily contain it)
-            whereClause += ` AND EXISTS (
-              SELECT 1 FROM VendorBusinessHours vbh 
-              WHERE vbh.VendorProfileID = vp.VendorProfileID 
-              AND vbh.DayOfWeek = @EventDayOfWeek 
-              AND vbh.IsAvailable = 1
-              AND vbh.OpenTime < CAST(@EventEndTime AS TIME) 
-              AND vbh.CloseTime > CAST(@EventStartTime AS TIME)
-            )`;
-            
-            request.input('EventStartTime', sql.NVarChar(8), startTime);
-            request.input('EventEndTime', sql.NVarChar(8), endTime);
-          }
-          
-          request.input('EventDayOfWeek', sql.TinyInt, dayOfWeek);
-        } else {
-          console.warn(`Failed to convert times - startTime: ${startTime}, endTime: ${endTime}`);
+    // Process results to match expected format
+    const vendorsWithServices = result.recordset.map(vendor => {
+      // Parse VendorImages JSON if it exists
+      let vendorImages = [];
+      if (vendor.VendorImages) {
+        try {
+          vendorImages = JSON.parse(vendor.VendorImages);
+        } catch (e) {
+          console.warn('Failed to parse VendorImages JSON for vendor:', vendor.id, e);
         }
-      } catch (dateError) {
-        console.warn('Error parsing event date/time for business hours filtering:', dateError.message);
       }
-    }
 
-    // Skip location filtering - let Google Maps handle proximity via pan/scroll
-    console.log('Skipping location filtering - Google Maps will handle proximity filtering');
+      // Parse services JSON if it exists
+      let services = [];
+      if (vendor.services) {
+        try {
+          const servicesData = JSON.parse(vendor.services);
+          services = servicesData.flatMap(category => 
+            category.services?.map(service => ({
+              ServiceName: service.name,
+              Category: category.category,
+              VendorPrice: service.Price,
+              VendorDescription: service.description,
+              VendorDurationMinutes: service.DurationMinutes
+            })) || []
+          );
+        } catch (e) {
+          console.warn('Failed to parse services JSON for vendor:', vendor.id, e);
+        }
+      }
 
-    // Execute the query to find matching vendors
-    let selectClause = `
-      SELECT
-        vp.VendorProfileID,
-        vp.BusinessName,
-        vp.BusinessType,
-        vp.BusinessDescription,
-        vp.City + ', ' + vp.State as Location,
-        vp.Latitude,
-        vp.Longitude,
-        vp.IsPremium,
-        vp.IsEcoFriendly,
-        vp.IsAwardWinning,
-        vp.FeaturedImageURL,
-        COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices,
-        STRING_AGG(ps.ServiceName, ', ') as MatchingServiceNames`;
-    
-    let orderClause = `ORDER BY MatchingServices DESC, vp.IsPremium DESC`;
-    
-    const query = `
-      ${selectClause}
-      ${joinClause}
-      ${whereClause}
-      GROUP BY vp.VendorProfileID, vp.BusinessName, vp.BusinessType, vp.BusinessDescription,
-               vp.City, vp.State, vp.IsPremium, vp.IsEcoFriendly, vp.IsAwardWinning, 
-               vp.FeaturedImageURL, vp.Latitude, vp.Longitude
-      HAVING COUNT(DISTINCT vss.PredefinedServiceID) >= @MinMatchingServices
-      ${orderClause}
-    `;
-
-    // Require vendors to match at least 1 service (can be adjusted)
-    request.input('MinMatchingServices', sql.Int, 1);
-
-    const result = await request.query(query);
-
-    // Get detailed service information for each vendor
-    const vendorsWithServices = await Promise.all(result.recordset.map(async (vendor) => {
-      const serviceRequest = new sql.Request(pool);
-      serviceRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID);
-      
-      const serviceQuery = `
-        SELECT 
-          ps.ServiceName,
-          ps.Category,
-          vss.VendorPrice,
-          vss.VendorDescription,
-          vss.VendorDurationMinutes
-        FROM VendorSelectedServices vss
-        INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-        WHERE vss.VendorProfileID = @VendorProfileID
-          AND vss.PredefinedServiceID IN (${predefinedServiceIds.map((_, index) => `@ServiceID${index}`).join(', ')})
-      `;
-      
-      predefinedServiceIds.forEach((serviceId, index) => {
-        serviceRequest.input(`ServiceID${index}`, sql.Int, serviceId);
-      });
-
-      const servicesResult = await serviceRequest.query(serviceQuery);
-      
       return {
-        ...vendor,
-        services: servicesResult.recordset,
-        totalEstimatedCost: servicesResult.recordset.reduce((sum, service) => sum + (service.VendorPrice || 0), 0)
+        VendorProfileID: vendor.id,
+        BusinessName: vendor.name,
+        BusinessType: vendor.type,
+        BusinessDescription: vendor.description,
+        Location: vendor.location,
+        Latitude: vendor.Latitude,
+        Longitude: vendor.Longitude,
+        IsPremium: vendor.IsPremium,
+        IsEcoFriendly: vendor.IsEcoFriendly,
+        IsAwardWinning: vendor.IsAwardWinning,
+        FeaturedImageURL: vendor.image,
+        MatchingServices: vendor.CategoryMatchCount || 1,
+        MatchingServiceNames: services.map(s => s.ServiceName).join(', '),
+        VendorImages: vendorImages, // Include parsed VendorImages
+        services: services,
+        totalEstimatedCost: vendor.TotalEstimatedPrice || services.reduce((sum, service) => sum + (service.VendorPrice || 0), 0)
       };
-    }));
+    });
 
     res.json({
       success: true,
