@@ -430,8 +430,6 @@ router.get('/map', async (req, res) => {
         vp.Latitude as latitude,
         vp.Longitude as longitude,
         vp.PriceLevel as priceLevel,
-        vp.Rating as rating,
-        vp.ReviewCount,
         vp.IsPremium,
         vp.IsEcoFriendly,
         vp.IsAwardWinning,
@@ -458,18 +456,9 @@ router.get('/map', async (req, res) => {
 
     query += `
       FROM VendorProfiles vp
-      LEFT JOIN VendorCategories vc ON vp.VendorProfileID = vc.VendorProfileID`;
-
-    // Add predefined services join if services are specified
-    if (predefinedServices) {
-      query += `
-      LEFT JOIN VendorPredefinedServices vps ON vp.VendorProfileID = vps.VendorProfileID
-      LEFT JOIN PredefinedServices ps ON vps.PredefinedServiceID = ps.PredefinedServiceID`;
-    }
-
-    query += `
+      LEFT JOIN VendorCategories vc ON vp.VendorProfileID = vc.VendorProfileID
+      LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = ps.PredefinedServiceID
       WHERE vp.IsCompleted = 1 
-        AND vp.IsActive = 1
         AND vp.Latitude IS NOT NULL 
         AND vp.Longitude IS NOT NULL`;
 
