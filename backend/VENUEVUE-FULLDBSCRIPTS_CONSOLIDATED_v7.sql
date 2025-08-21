@@ -1489,6 +1489,20 @@ BEGIN
         Categories,
         CategoryMatchCount,
         (SELECT COUNT(*) FROM FilteredVendors) AS TotalCount,
+        -- Include all vendor images for carousel
+        JSON_QUERY((
+            SELECT 
+                vi.ImageID,
+                vi.ImageURL,
+                vi.IsPrimary,
+                vi.DisplayOrder,
+                vi.ImageType,
+                vi.Caption
+            FROM VendorImages vi 
+            WHERE vi.VendorProfileID = v.VendorProfileID
+            ORDER BY vi.IsPrimary DESC, vi.DisplayOrder
+            FOR JSON PATH
+        )) AS VendorImages,
         JSON_QUERY((
             SELECT 
                 sc.CategoryID,
@@ -1527,6 +1541,183 @@ BEGIN
     BEGIN CATCH
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
         RAISERROR('Error searching vendors with multiple categories: %s', 16, 1, @ErrorMessage);
+    END CATCH
+END;
+GO
+
+-- ============================================
+-- PREDEFINED SERVICES SEARCH PROCEDURE
+-- ============================================
+
+CREATE OR ALTER PROCEDURE sp_SearchVendorsByPredefinedServices
+    @ServiceIds NVARCHAR(500), -- Comma-separated list of predefined service IDs
+    @Budget DECIMAL(10, 2) = NULL,
+    @EventDate DATE = NULL,
+    @City NVARCHAR(100) = NULL,
+    @State NVARCHAR(50) = NULL,
+    @Latitude DECIMAL(10, 8) = NULL,
+    @Longitude DECIMAL(11, 8) = NULL,
+    @RadiusMiles INT = 50,
+    @PageNumber INT = 1,
+    @PageSize INT = 100,
+    @SortBy NVARCHAR(20) = 'relevance'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Validate pagination parameters
+    IF @PageNumber < 1 SET @PageNumber = 1;
+    IF @PageSize < 1 SET @PageSize = 10;
+    IF @PageSize > 100 SET @PageSize = 100;
+    
+    -- Build sort expression
+    DECLARE @SortExpression NVARCHAR(100);
+    SET @SortExpression = CASE @SortBy
+        WHEN 'price-low' THEN 'TotalEstimatedPrice ASC'
+        WHEN 'price-high' THEN 'TotalEstimatedPrice DESC'
+        WHEN 'rating' THEN 'AverageRating DESC'
+        WHEN 'popular' THEN 'FavoriteCount DESC'
+        WHEN 'nearest' THEN 'DistanceMiles ASC'
+        ELSE 'MatchingServices DESC, IsPremium DESC'
+    END;
+    
+    -- Calculate distance if location provided
+    DECLARE @DistanceCalculation NVARCHAR(MAX) = '';
+    IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
+    BEGIN
+        SET @DistanceCalculation = ', 3959 * ACOS(
+            COS(RADIANS(' + CAST(@Latitude AS NVARCHAR(20)) + ')) * COS(RADIANS(v.Latitude)) * COS(RADIANS(v.Longitude) - RADIANS(' + CAST(@Longitude AS NVARCHAR(20)) + ')) + 
+            SIN(RADIANS(' + CAST(@Latitude AS NVARCHAR(20)) + ')) * SIN(RADIANS(v.Latitude))
+        ) AS DistanceMiles';
+    END
+    
+    -- Build dynamic SQL query
+    DECLARE @SQL NVARCHAR(MAX) = '
+    WITH VendorServiceMatches AS (
+        SELECT 
+            v.VendorProfileID,
+            v.BusinessName,
+            v.DisplayName,
+            v.BusinessDescription,
+            v.City,
+            v.State,
+            v.Country,
+            v.Latitude,
+            v.Longitude,
+            v.IsPremium,
+            v.IsEcoFriendly,
+            v.IsAwardWinning,
+            v.PriceLevel,
+            v.Capacity,
+            v.Rooms,
+            v.FeaturedImageURL,
+            COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices,
+            SUM(vss.VendorPrice) as TotalEstimatedPrice,
+            (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
+            (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
+            (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
+            (SELECT COUNT(*) FROM Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
+            (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS ImageURL,
+            STRING_AGG(ps.ServiceName, '', '') AS MatchingServiceNames'
+            + @DistanceCalculation + '
+        FROM VendorProfiles v
+        JOIN Users u ON v.UserID = u.UserID
+        JOIN VendorSelectedServices vss ON v.VendorProfileID = vss.VendorProfileID
+        JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+        WHERE u.IsActive = 1
+        AND v.IsVerified = 1
+        AND vss.PredefinedServiceID IN (' + @ServiceIds + ')
+        AND (@Budget IS NULL OR vss.VendorPrice <= @Budget)
+        AND (@City IS NULL OR v.City = @City)
+        AND (@State IS NULL OR v.State = @State)';
+    
+    IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + '
+        AND v.Latitude IS NOT NULL AND v.Longitude IS NOT NULL
+        AND 3959 * ACOS(
+            COS(RADIANS(' + CAST(@Latitude AS NVARCHAR(20)) + ')) * COS(RADIANS(v.Latitude)) * COS(RADIANS(v.Longitude) - RADIANS(' + CAST(@Longitude AS NVARCHAR(20)) + ')) + 
+            SIN(RADIANS(' + CAST(@Latitude AS NVARCHAR(20)) + ')) * SIN(RADIANS(v.Latitude))
+        ) <= @RadiusMiles';
+    END
+    
+    SET @SQL = @SQL + '
+        GROUP BY v.VendorProfileID, v.BusinessName, v.DisplayName, v.BusinessDescription,
+                 v.City, v.State, v.Country, v.Latitude, v.Longitude, v.IsPremium, 
+                 v.IsEcoFriendly, v.IsAwardWinning, v.PriceLevel, v.Capacity, v.Rooms, v.FeaturedImageURL
+        HAVING COUNT(DISTINCT vss.PredefinedServiceID) >= 1
+    )
+    SELECT 
+        VendorProfileID AS id,
+        BusinessName AS name,
+        DisplayName,
+        BusinessDescription AS description,
+        CONCAT(City, '', '', State) AS location,
+        Latitude,
+        Longitude,
+        IsPremium,
+        IsEcoFriendly,
+        IsAwardWinning,
+        PriceLevel,
+        Capacity,
+        Rooms,
+        ImageURL AS image,
+        FeaturedImageURL,
+        MatchingServices,
+        TotalEstimatedPrice,
+        AverageRating,
+        ReviewCount,
+        FavoriteCount,
+        BookingCount,
+        MatchingServiceNames,
+        JSON_QUERY((
+            SELECT 
+                vi.ImageID,
+                vi.ImageURL,
+                vi.IsPrimary,
+                vi.DisplayOrder,
+                vi.ImageType,
+                vi.Caption
+            FROM VendorImages vi 
+            WHERE vi.VendorProfileID = vsm.VendorProfileID
+            ORDER BY vi.IsPrimary DESC, vi.DisplayOrder
+            FOR JSON PATH
+        )) AS VendorImages,
+        JSON_QUERY((
+            SELECT 
+                ps.ServiceName AS name,
+                ps.Category,
+                vss.VendorPrice AS Price,
+                vss.VendorDescription AS description,
+                vss.VendorDurationMinutes AS DurationMinutes
+            FROM VendorSelectedServices vss
+            JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+            WHERE vss.VendorProfileID = vsm.VendorProfileID
+            AND vss.PredefinedServiceID IN (' + @ServiceIds + ')
+            FOR JSON PATH
+        )) AS services';
+        
+    IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + ', DistanceMiles';
+    END
+    
+    SET @SQL = @SQL + '
+    FROM VendorServiceMatches vsm
+    ORDER BY ' + @SortExpression + '
+    OFFSET (' + CAST((@PageNumber - 1) * @PageSize AS NVARCHAR(10)) + ') ROWS
+    FETCH NEXT ' + CAST(@PageSize AS NVARCHAR(10)) + ' ROWS ONLY';
+    
+    -- Execute the dynamic SQL
+    BEGIN TRY
+        EXEC sp_executesql @SQL, 
+            N'@Budget DECIMAL(10, 2), @City NVARCHAR(100), @State NVARCHAR(50), 
+              @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), @RadiusMiles INT',
+            @Budget, @City, @State, @Latitude, @Longitude, @RadiusMiles;
+    END TRY
+    BEGIN CATCH
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR('Error searching vendors by predefined services: %s', 16, 1, @ErrorMessage);
     END CATCH
 END;
 GO
