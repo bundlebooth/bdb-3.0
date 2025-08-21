@@ -10024,7 +10024,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 });
 
                 nextPageBtn.addEventListener('click', () => {
-                    const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
+                    const totalPages = Math.ceil(state.filteredVendors.length / state.vendorsPerPage);
                     if (state.currentPage < totalPages) {
                         state.currentPage++;
                         renderVendors();
@@ -13347,7 +13347,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Update pagination controls
             function updatePagination() {
-                const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
+                const totalPages = Math.ceil(state.filteredVendors.length / state.vendorsPerPage);
 
                 if (totalPages <= 1) {
                     pagination.style.display = 'none';
@@ -16051,8 +16051,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (!vendorGrid) return;
                 
                 const vendorsToShow = state.filteredVendors.slice(
-                    (state.currentPage - 1) * state.itemsPerPage,
-                    state.currentPage * state.itemsPerPage
+                    (state.currentPage - 1) * state.vendorsPerPage,
+                    state.currentPage * state.vendorsPerPage
                 );
 
                 if (vendorsToShow.length === 0) {
@@ -16179,12 +16179,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Update pagination
             function updatePagination() {
-                const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
+                const totalPages = Math.ceil(state.filteredVendors.length / state.vendorsPerPage);
                 
                 // Debug logging
                 console.log('Pagination Debug:', {
                     filteredVendorsCount: state.filteredVendors.length,
-                    itemsPerPage: state.itemsPerPage,
+                    vendorsPerPage: state.vendorsPerPage,
                     totalPages: totalPages,
                     currentPage: state.currentPage
                 });
@@ -16323,7 +16323,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             if (nextPageBtn) {
                 nextPageBtn.addEventListener('click', () => {
-                    const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
+                    const totalPages = Math.ceil(state.filteredVendors.length / state.vendorsPerPage);
                     if (state.currentPage < totalPages) {
                         state.currentPage++;
                         renderVendors();
@@ -16336,7 +16336,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             document.querySelectorAll('.page-btn:not(#prev-page):not(#next-page)').forEach((btn, index) => {
                 btn.addEventListener('click', () => {
                     const pageNum = index + 1;
-                    const totalPages = Math.ceil(state.filteredVendors.length / state.itemsPerPage);
+                    const totalPages = Math.ceil(state.filteredVendors.length / state.vendorsPerPage);
                     if (pageNum <= totalPages) {
                         state.currentPage = pageNum;
                         renderVendors();
@@ -19036,17 +19036,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 retryCount: retryCount
             });
             
-            // Wait for DOM to be ready and step to be correct
-            if (window.bookingState?.currentStep !== 3) {
-                if (retryCount < maxRetries) {
-                    if (retryCount === 0) console.warn('⚠️ Not in booking step 3, waiting...');
-                    setTimeout(() => renderHorizontalVendorCards(vendorSections, retryCount + 1), 200);
-                } else {
-                    console.error('❌ Max retries reached waiting for booking step 3');
-                }
-                isRenderingVendorCards = false;
-                return;
-            }
+            // Wait for DOM to be ready - removed step restriction to allow cards to display
+            // The step check was preventing vendor cards from showing when vendors are found
+            console.log('🎯 Current booking step:', window.bookingState?.currentStep, '- proceeding with render');
             
             // Use a more robust approach to find elements
             let container = document.getElementById('vendor-cards-container');
