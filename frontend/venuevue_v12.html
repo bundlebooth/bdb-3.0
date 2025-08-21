@@ -6972,14 +6972,29 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                                 const data = await response.json();
                                 
+                                console.log(`API Response for ${category} - ${service.name}:`, data);
+                                
                                 if (data.success && data.vendors && data.vendors.length > 0) {
+                                    // Add coordinates to vendors for map display
+                                    const vendorsWithCoords = data.vendors.map(vendor => {
+                                        const vendorWithCoords = {
+                                            ...vendor,
+                                            coordinates: {
+                                                lat: vendor.Latitude || vendor.latitude || 43.6532, // Default to Toronto
+                                                lng: vendor.Longitude || vendor.longitude || -79.3832
+                                            }
+                                        };
+                                        console.log(`Vendor ${vendor.BusinessName || vendor.name} coordinates:`, vendorWithCoords.coordinates);
+                                        return vendorWithCoords;
+                                    });
+                                    
                                     vendorSections.push({
                                         category: category,
                                         service: service,
-                                        vendors: data.vendors
+                                        vendors: vendorsWithCoords
                                     });
-                                    totalVendorsFound += data.vendors.length;
-                                    console.log(`Found ${data.vendors.length} vendors for ${category} - ${service.name}`);
+                                    totalVendorsFound += vendorsWithCoords.length;
+                                    console.log(`Found ${vendorsWithCoords.length} vendors for ${category} - ${service.name}`);
                                 } else {
                                     console.log(`No vendors found for ${category} - ${service.name}`);
                                 }
@@ -7007,27 +7022,40 @@ document.addEventListener('DOMContentLoaded', async function() {
                             step3Title.textContent = `Found ${totalVendorsFound} Matching Vendors across ${vendorSections.length} Services`;
                         }
                     } else {
-                        document.getElementById('no-vendors-found').style.display = 'block';
+                        // Even with no vendors found, show the map with event location
+                        console.log('No vendors found initially, but showing map with event location for exploration');
                         
-                        // Show helpful message about no matches
-                        const totalBudget = bookingState.selectedPredefinedServices.reduce((sum, s) => sum + s.budget, 0);
-                        const noVendorsDiv = document.getElementById('no-vendors-found');
-                        if (noVendorsDiv) {
-                            noVendorsDiv.innerHTML = `
-                                <div style="text-align: center; padding: 2rem;">
-                                    <h5 style="color: var(--text); margin-bottom: 1rem;">No Vendors Found</h5>
-                                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">
-                                        We couldn't find vendors that match your selected services and budget requirements.
+                        // Initialize empty vendor sections but still show the map
+                        window.bookingState.availableVendors = [];
+                        window.bookingState.originalVendorSections = [];
+                        
+                        // Initialize map with just the event location
+                        await initializeVendorMap([]);
+                        
+                        // Show empty vendor cards container
+                        const container = document.getElementById('vendor-cards-container');
+                        if (container) {
+                            container.style.display = 'block';
+                        }
+                        
+                        // Update step 3 header
+                        const step3Title = document.querySelector('#booking-step-3 .form-section-title');
+                        if (step3Title) {
+                            step3Title.textContent = 'Explore Map to Find Vendors';
+                        }
+                        
+                        // Show message in vendor cards area
+                        const cardsContainer = document.getElementById('vendor-horizontal-cards');
+                        if (cardsContainer) {
+                            cardsContainer.innerHTML = `
+                                <div style="text-align: center; padding: 2rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd;">
+                                    <h5 style="color: var(--text); margin-bottom: 1rem;">🗺️ Explore the Map</h5>
+                                    <p style="color: var(--text-light); margin-bottom: 1rem;">
+                                        No vendors found in your immediate area, but you can pan and zoom the map to discover vendors nearby.
                                     </p>
-                                    <div style="background: #f8faff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                                        <p style="font-size: 0.9rem; color: var(--text-light);">
-                                            <strong>Your Requirements:</strong><br>
-                                            Services: ${bookingState.selectedPredefinedServices.map(s => s.name).join(', ')}<br>
-                                            Total Budget: $${totalBudget.toLocaleString()}<br>
-                                            Location: ${bookingState.eventDetails.location || 'Not specified'}
-                                        </p>
-                                    </div>
-                                    <button class="btn btn-outline" id="adjust-criteria-btn">Adjust Your Criteria</button>
+                                    <p style="font-size: 0.9rem; color: var(--text-light);">
+                                        Move the map around your event location to find available vendors. They'll appear here as you explore!
+                                    </p>
                                 </div>
                             `;
                         }
@@ -9462,7 +9490,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
-            // Enhanced Google Maps initialization with dynamic features
+            // Enhanced Google Maps initialization with dynamic features and event location prioritization
             function initLegacyMap() {
                 if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
                     console.error('Google Maps API not loaded.');
@@ -9475,8 +9503,40 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Store original search results for reset functionality
                 state.originalSearchResults = [...state.filteredVendors];
 
+                // Sort vendors by distance from event location if available
+                if (window.selectedEventLocation) {
+                    console.log('📍 Prioritizing vendors by distance from event location');
+                    state.filteredVendors.sort((a, b) => {
+                        const distA = calculateDistance(
+                            window.selectedEventLocation.lat, 
+                            window.selectedEventLocation.lng,
+                            a.coordinates.lat, 
+                            a.coordinates.lng
+                        );
+                        const distB = calculateDistance(
+                            window.selectedEventLocation.lat, 
+                            window.selectedEventLocation.lng,
+                            b.coordinates.lat, 
+                            b.coordinates.lng
+                        );
+                        return distA - distB;
+                    });
+                    
+                    // Update the original search results with sorted order
+                    state.originalSearchResults = [...state.filteredVendors];
+                }
+
                 // Calculate center and bounds for initial search results (AC1)
                 const bounds = new google.maps.LatLngBounds();
+                
+                // Include event location in bounds if available
+                if (window.selectedEventLocation) {
+                    bounds.extend(new google.maps.LatLng(
+                        window.selectedEventLocation.lat, 
+                        window.selectedEventLocation.lng
+                    ));
+                }
+                
                 state.filteredVendors.forEach(vendor => {
                     bounds.extend(new google.maps.LatLng(vendor.coordinates.lat, vendor.coordinates.lng));
                 });
@@ -9493,8 +9553,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     ]
                 });
 
-                // AC1: Center map on search results with proper zoom
-                if (state.filteredVendors.length === 1) {
+                // AC1: Center map prioritizing event location if available
+                if (window.selectedEventLocation) {
+                    // Center on event location with vendors in view
+                    state.map.fitBounds(bounds);
+                    google.maps.event.addListenerOnce(state.map, 'bounds_changed', () => {
+                        if (state.map.getZoom() > 13) {
+                            state.map.setZoom(13);
+                        }
+                    });
+                } else if (state.filteredVendors.length === 1) {
                     state.map.setCenter({
                         lat: state.filteredVendors[0].coordinates.lat,
                         lng: state.filteredVendors[0].coordinates.lng
@@ -9513,11 +9581,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Store initial bounds for reset functionality
                 state.initialMapBounds = bounds;
 
-                // Add markers
-                updateMapMarkers();
+                // Add event location marker if available
+                if (window.selectedEventLocation) {
+                    addEventLocationMarker();
+                }
 
-                // AC2 & AC4: Add debounced map movement listeners
-                addMapMovementListeners();
+                // Add vendor markers - CREATE ONCE AND NEVER RECREATE
+                createMarkersOnce();
+
+                // AC2 & AC4: Add debounced map movement listeners - DISABLED
+                // addMapMovementListeners(); // Causing marker bouncing issue
 
                 // Add loading indicator to map
                 addMapLoadingIndicator();
@@ -9526,29 +9599,80 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 addResetSearchButton();
             }
 
+            // Helper function to calculate distance between two points (Haversine formula)
+            function calculateDistance(lat1, lng1, lat2, lng2) {
+                const R = 6371; // Radius of the Earth in kilometers
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLng = (lng2 - lng1) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                         Math.sin(dLng/2) * Math.sin(dLng/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c; // Distance in kilometers
+            }
+
+            // Add event location marker to the map
+            function addEventLocationMarker() {
+                if (!state.map || !window.selectedEventLocation) return;
+
+                // Remove existing event marker if it exists
+                if (state.eventLocationMarker) {
+                    state.eventLocationMarker.setMap(null);
+                }
+
+                // Create custom event location marker
+                state.eventLocationMarker = new google.maps.Marker({
+                    position: {
+                        lat: window.selectedEventLocation.lat,
+                        lng: window.selectedEventLocation.lng
+                    },
+                    map: state.map,
+                    title: 'Event Location',
+                    icon: {
+                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                            <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="16" cy="16" r="12" fill="#FF6B6B" stroke="#fff" stroke-width="3"/>
+                                <circle cx="16" cy="16" r="4" fill="#fff"/>
+                            </svg>
+                        `),
+                        scaledSize: new google.maps.Size(32, 32),
+                        anchor: new google.maps.Point(16, 16)
+                    },
+                    zIndex: 1000
+                });
+
+                // Add info window for event location
+                const eventInfoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div style="padding: 8px; font-family: Arial, sans-serif;">
+                            <h4 style="margin: 0 0 8px 0; color: #333;">🎉 Event Location</h4>
+                            <p style="margin: 0; color: #666; font-size: 14px;">
+                                ${window.selectedEventLocation.address || 'Your event location'}
+                            </p>
+                        </div>
+                    `
+                });
+
+                state.eventLocationMarker.addListener('click', () => {
+                    // Close any open vendor info windows
+                    if (state.activeInfoWindow) {
+                        state.activeInfoWindow.close();
+                    }
+                    eventInfoWindow.open(state.map, state.eventLocationMarker);
+                    state.activeInfoWindow = eventInfoWindow;
+                });
+            }
+
             // AC2 & AC4: Add debounced map movement listeners
             function addMapMovementListeners() {
                 if (!state.map) return;
 
-                // AC4: Debounced function for map movement (300ms)
-                const debouncedMapMove = debounce(() => {
-                    if (state.isLoadingVendors) return;
-                    
-                    const currentBounds = state.map.getBounds();
-                    if (!currentBounds) return;
-
-                    // Check if bounds have significantly changed
-                    if (state.lastMapBounds && boundsEqual(currentBounds, state.lastMapBounds)) {
-                        return;
-                    }
-
-                    state.lastMapBounds = currentBounds;
-                    loadVendorsInMapBounds(currentBounds);
-                }, 300);
-
-                // Add listeners for map movement
-                state.map.addListener('bounds_changed', debouncedMapMove);
-                state.map.addListener('zoom_changed', debouncedMapMove);
+                // DISABLED: Map movement listeners are causing markers to constantly bounce
+                // The issue is that bounds_changed fires constantly and recreates markers
+                // For now, we'll show all vendors from search results without dynamic filtering
+                console.log('🚫 Map movement listeners disabled to prevent marker bouncing');
+                
+                // TODO: Implement proper marker management that doesn't recreate markers on every bounds change
             }
 
             // AC3: Add loading indicator to map
@@ -9638,7 +9762,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 mapContainer.appendChild(resetButton);
             }
 
-            // AC2: Load vendors within map bounds
+            // AC2: Load vendors within map bounds - filter existing search results by bounds
             async function loadVendorsInMapBounds(bounds) {
                 if (state.isLoadingVendors) return;
 
@@ -9651,31 +9775,74 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const ne = bounds.getNorthEast();
                     const sw = bounds.getSouthWest();
 
-                    // For demo purposes, filter existing vendors by bounds
-                    // In a real app, this would be an API call to get vendors in the area
+                    // Instead of calling /vendors/map API, filter existing search results by bounds
+                    const allVendors = state.originalSearchResults || [];
+                    
+                    // Filter vendors that are within the current map bounds
+                    const vendorsInBounds = allVendors.filter(vendor => {
+                        if (!vendor.Latitude || !vendor.Longitude) return false;
+                        
+                        const lat = parseFloat(vendor.Latitude);
+                        const lng = parseFloat(vendor.Longitude);
+                        
+                        return lat >= sw.lat() && lat <= ne.lat() && 
+                               lng >= sw.lng() && lng <= ne.lng();
+                    });
+
+                    console.log(`🗺️ Filtered ${vendorsInBounds.length} vendors from ${allVendors.length} search results within map bounds`);
+
+                    console.log(`🎯 Found ${vendorsInBounds.length} vendors in map bounds`);
+
+                    // AC5: Update sidebar list with contextual results
+                    state.filteredVendors = vendorsInBounds;
+                    
+                    // If we have event location, sort vendors by distance from event first
+                    if (window.selectedEventLocation && vendorsInBounds.some(v => v.distanceFromEvent)) {
+                        state.filteredVendors.sort((a, b) => {
+                            const distA = parseFloat(a.distanceFromEvent) || 999;
+                            const distB = parseFloat(b.distanceFromEvent) || 999;
+                            return distA - distB;
+                        });
+                        console.log('📍 Sorted vendors by distance from event location');
+                    }
+
+                    updateVendorListForMapBounds();
+                    updateMapMarkers();
+
+                    // Update results count with distance info
+                    const resultsCount = document.getElementById('results-count');
+                    if (resultsCount) {
+                        let countText = `${vendorsInBounds.length} vendors in this area`;
+                        if (window.selectedEventLocation && vendorsInBounds.length > 0) {
+                            countText += ' (sorted by distance from event)';
+                        }
+                        resultsCount.textContent = countText;
+                    }
+
+                } catch (error) {
+                    console.error('Error loading vendors in bounds:', error);
+                    
+                    // Fallback to existing vendor filtering if API fails
+                    console.log('🔄 Falling back to local vendor filtering');
+                    const ne = bounds.getNorthEast();
+                    const sw = bounds.getSouthWest();
+                    
                     const vendorsInBounds = state.vendors.filter(vendor => {
+                        if (!vendor.coordinates) return false;
                         const lat = vendor.coordinates.lat;
                         const lng = vendor.coordinates.lng;
                         return lat >= sw.lat() && lat <= ne.lat() && 
                                lng >= sw.lng() && lng <= ne.lng();
                     });
 
-                    // Simulate API delay
-                    await new Promise(resolve => setTimeout(resolve, 500));
-
-                    // AC5: Update sidebar list with contextual results
                     state.filteredVendors = vendorsInBounds;
                     updateVendorListForMapBounds();
-                    updateMapMarkers();
+                    // updateMapMarkers(); // DISABLED - causing marker bouncing
 
-                    // Update results count
                     const resultsCount = document.getElementById('results-count');
                     if (resultsCount) {
-                        resultsCount.textContent = `${vendorsInBounds.length} vendors in this area`;
+                        resultsCount.textContent = `${vendorsInBounds.length} vendors in this area (cached)`;
                     }
-
-                } catch (error) {
-                    console.error('Error loading vendors in bounds:', error);
                 } finally {
                     state.isLoadingVendors = false;
                     hideMapLoadingIndicator();
@@ -9694,7 +9861,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 state.map.fitBounds(state.initialMapBounds);
                 
                 // Update UI
-                updateMapMarkers();
+                // updateMapMarkers(); // DISABLED - causing marker bouncing
                 renderVendors();
                 
                 // Update results count
@@ -13133,7 +13300,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 // Update map if in map view
                 if (state.map) {
-                    updateMapMarkers();
+                    // updateMapMarkers(); // DISABLED - causing marker bouncing
                 }
             }
 
@@ -13184,7 +13351,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (shouldRender) {
                     renderVendors();
                     if (state.map) {
-                        updateMapMarkers();
+                        // updateMapMarkers(); // DISABLED - causing marker bouncing
                     }
                 }
             }
@@ -15675,27 +15842,95 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
-            // Update map markers
-            function updateMapMarkers() {
-                // Clear existing markers
-                state.markers.forEach(marker => marker.setMap(null));
+            // Create markers ONCE from search-by-services API response - NEVER recreate them
+            function createMarkersOnce() {
+                console.log('🎯 Creating markers from search-by-services API response');
+                
+                // Clear any existing markers first
+                if (state.markers && state.markers.length > 0) {
+                    state.markers.forEach(marker => marker.setMap(null));
+                }
                 state.markers = [];
 
-                // Add new markers
-                state.filteredVendors.forEach(vendor => {
+                // Get vendors from the booking state where they are actually stored
+                const vendorsToShow = window.bookingState?.availableVendors || 
+                                   state.originalSearchResults || 
+                                   state.filteredVendors || [];
+                
+                console.log('📊 Available vendors from bookingState:', window.bookingState?.availableVendors);
+                console.log('📊 Vendors to show on map:', vendorsToShow);
+                
+                if (vendorsToShow.length === 0) {
+                    console.warn('⚠️ No vendors found to display on map');
+                    console.log('🔍 Checking all possible vendor sources:');
+                    console.log('  - window.bookingState.availableVendors:', window.bookingState?.availableVendors);
+                    console.log('  - state.originalSearchResults:', state.originalSearchResults);
+                    console.log('  - state.filteredVendors:', state.filteredVendors);
+                    return;
+                }
+                
+                vendorsToShow.forEach(vendor => {
+                    // Get coordinates directly from search-by-services API response
+                    const lat = parseFloat(vendor.Latitude);
+                    const lng = parseFloat(vendor.Longitude);
+
+                    console.log(`🔍 Processing vendor: ${vendor.BusinessName}, Lat: ${lat}, Lng: ${lng}`);
+
+                    // Skip vendors without valid coordinates
+                    if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                        console.warn('❌ Skipping vendor with invalid coordinates:', vendor.BusinessName, { lat, lng });
+                        return;
+                    }
+
+                    console.log(`📍 Creating marker for ${vendor.BusinessName} at ${lat}, ${lng}`);
+
                     const marker = new google.maps.Marker({
-                        position: { lat: vendor.coordinates.lat, lng: vendor.coordinates.lng },
+                        position: { lat: lat, lng: lng },
                         map: state.map,
-                        title: vendor.name
+                        title: vendor.BusinessName,
+                        animation: google.maps.Animation.DROP,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 10,
+                            fillColor: '#3498db',
+                            fillOpacity: 1,
+                            strokeColor: '#ffffff',
+                            strokeWeight: 2
+                        }
                     });
 
                     state.markers.push(marker);
 
                     // Add click event to show vendor info
                     marker.addListener('click', () => {
-                        window.location.hash = `/listings/${vendor.id}`;
+                        console.log(`🖱️ Clicked on vendor: ${vendor.BusinessName} (ID: ${vendor.VendorProfileID})`);
+                        window.location.hash = `/listings/${vendor.VendorProfileID}`;
                     });
                 });
+
+                console.log(`✅ Created ${state.markers.length} markers from search-by-services API`);
+                
+                // Center map on markers if they exist
+                if (state.markers.length > 0) {
+                    const bounds = new google.maps.LatLngBounds();
+                    state.markers.forEach(marker => {
+                        bounds.extend(marker.getPosition());
+                    });
+                    state.map.fitBounds(bounds);
+                    
+                    // Set reasonable zoom level
+                    google.maps.event.addListenerOnce(state.map, 'bounds_changed', () => {
+                        if (state.map.getZoom() > 15) {
+                            state.map.setZoom(15);
+                        }
+                    });
+                }
+            }
+
+            // DISABLED: Old updateMapMarkers function that was causing bouncing
+            function updateMapMarkers() {
+                console.log('🚫 updateMapMarkers() disabled - use createMarkersOnce() instead');
+                return;
             }
 
             // --- IMAGE GALLERY AND LIGHTBOX FUNCTIONS ---
@@ -18658,8 +18893,58 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     eventInfoWindow.open(vendorMap, eventLocationMarker);
                 });
 
-                // Add vendor markers with distance calculation
-                await addVendorMarkers(vendorSections, eventCoords);
+                // DISABLED: Add vendor markers with distance calculation - CAUSING MARKER BOUNCING
+                // await addVendorMarkers(vendorSections, eventCoords);
+                
+                // ADD VENDOR MARKERS FROM SEARCH-BY-SERVICES API
+                console.log('🎯 Adding vendor markers after map initialization');
+                if (allVendors.length > 0) {
+                    // Create vendor markers directly here since state is not available in this context
+                    vendorMarkers = []; // Clear existing markers
+                    
+                    allVendors.forEach(vendor => {
+                        // Get coordinates directly from vendor data
+                        const lat = parseFloat(vendor.Latitude);
+                        const lng = parseFloat(vendor.Longitude);
+
+                        console.log(`🔍 Processing vendor: ${vendor.BusinessName}, Lat: ${lat}, Lng: ${lng}`);
+
+                        // Skip vendors without valid coordinates
+                        if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+                            console.warn('❌ Skipping vendor with invalid coordinates:', vendor.BusinessName, { lat, lng });
+                            return;
+                        }
+
+                        console.log(`📍 Creating marker for ${vendor.BusinessName} at ${lat}, ${lng}`);
+
+                        const marker = new google.maps.Marker({
+                            position: { lat: lat, lng: lng },
+                            map: vendorMap,
+                            title: vendor.BusinessName,
+                            animation: google.maps.Animation.DROP,
+                            icon: {
+                                path: google.maps.SymbolPath.CIRCLE,
+                                scale: 10,
+                                fillColor: '#3498db',
+                                fillOpacity: 1,
+                                strokeColor: '#ffffff',
+                                strokeWeight: 2
+                            }
+                        });
+
+                        // Store vendor data with marker for selection tracking
+                        marker.vendorData = vendor;
+                        vendorMarkers.push(marker);
+
+                        // Add click event to show vendor info
+                        marker.addListener('click', () => {
+                            console.log(`🖱️ Clicked on vendor: ${vendor.BusinessName} (ID: ${vendor.VendorProfileID})`);
+                            // You can add vendor selection logic here
+                        });
+                    });
+
+                    console.log(`✅ Created ${vendorMarkers.length} vendor markers from search-by-services API`);
+                }
 
                 // AC1: Fit map to show all vendors and event location
                 if (allVendors.length > 0) {
@@ -18675,14 +18960,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Set up map controls
                 setupMapControls(eventCoords);
 
-                // AC2 & AC4: Add dynamic map functionality
-                addBookingMapMovementListeners();
+                // DISABLED: AC2 & AC4: Add dynamic map functionality - CAUSING MARKER BOUNCING
+                // addBookingMapMovementListeners();
 
-                // AC3: Add loading indicator
-                addBookingMapLoadingIndicator();
+                // DISABLED: AC3: Add loading indicator - NOT NEEDED
+                // addBookingMapLoadingIndicator();
 
-                // AC6: Add reset button
-                addBookingResetSearchButton();
+                // DISABLED: AC6: Add reset button - NOT NEEDED
+                // addBookingResetSearchButton();
 
             } catch (error) {
                 console.error('❌ Error initializing vendor map:', error);
@@ -18902,12 +19187,65 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
         }
 
-        // Render horizontal vendor cards
-        function renderHorizontalVendorCards(vendorSections) {
-            const container = document.getElementById('vendor-cards-container');
-            const cardsContainer = document.getElementById('vendor-horizontal-cards');
+        // Debounce mechanism for renderHorizontalVendorCards
+        let renderVendorCardsTimeout = null;
+        let isRenderingVendorCards = false;
+
+        // Render horizontal vendor cards with retry limit and debouncing
+        function renderHorizontalVendorCards(vendorSections, retryCount = 0) {
+            const maxRetries = 10; // Limit retries to prevent infinite loops
             
-            if (!container || !cardsContainer) return;
+            // Debounce multiple calls
+            if (retryCount === 0) {
+                if (renderVendorCardsTimeout) {
+                    clearTimeout(renderVendorCardsTimeout);
+                }
+                
+                if (isRenderingVendorCards) {
+                    console.log('🔄 Already rendering vendor cards, skipping...');
+                    return;
+                }
+                
+                renderVendorCardsTimeout = setTimeout(() => {
+                    renderHorizontalVendorCards(vendorSections, 0);
+                }, 100);
+                return;
+            }
+            
+            isRenderingVendorCards = true;
+            
+            // Prevent excessive logging and retries
+            if (retryCount === 1) {
+                console.log('🎯 renderHorizontalVendorCards executing with:', vendorSections?.length || 0, 'sections');
+            }
+            
+            // Wait for DOM to be ready and step to be correct
+            if (window.bookingState?.currentStep !== 3) {
+                if (retryCount < maxRetries) {
+                    if (retryCount === 0) console.warn('⚠️ Not in booking step 3, waiting...');
+                    setTimeout(() => renderHorizontalVendorCards(vendorSections, retryCount + 1), 200);
+                } else {
+                    console.error('❌ Max retries reached waiting for booking step 3');
+                }
+                isRenderingVendorCards = false;
+                return;
+            }
+            
+            // Use a more robust approach to find elements
+            let container = document.getElementById('vendor-cards-container');
+            let cardsContainer = document.getElementById('vendor-horizontal-cards');
+            
+            // If elements not found, wait a bit and try again (with retry limit)
+            if (!container || !cardsContainer) {
+                if (retryCount < maxRetries) {
+                    if (retryCount === 1) console.log('🔄 Elements not ready, waiting for DOM...');
+                    setTimeout(() => renderHorizontalVendorCards(vendorSections, retryCount + 1), 300);
+                } else {
+                    console.error('❌ Max retries reached waiting for DOM elements');
+                    isRenderingVendorCards = false;
+                }
+                return;
+            }
 
             // Show cards container
             container.style.display = 'block';
@@ -18922,14 +19260,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }))
             );
 
+            console.log(`📋 Flattened ${allVendors.length} vendors:`, allVendors);
+
             // Sort by distance (closest first)
             allVendors.sort((a, b) => (a.distance || 999) - (b.distance || 999));
 
             // Render cards
-            cardsContainer.innerHTML = allVendors.map(vendor => createHorizontalVendorCard(vendor)).join('');
+            const cardsHtml = allVendors.map(vendor => createHorizontalVendorCard(vendor)).join('');
+            console.log('🏗️ Generated cards HTML length:', cardsHtml.length);
+            
+            cardsContainer.innerHTML = cardsHtml;
+            console.log('✅ Cards rendered to container');
 
             // Setup sorting
             setupVendorSorting(allVendors);
+            
+            // Reset rendering flag
+            isRenderingVendorCards = false;
         }
 
         // Create horizontal vendor card HTML
@@ -19333,7 +19680,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             mapContainer.appendChild(resetButton);
         }
 
-        // AC2: Load vendors within booking map bounds
+        // AC2: Load vendors within booking map bounds - Enhanced for dynamic discovery
         async function loadVendorsInBookingMapBounds(bounds) {
             if (window.bookingState.isLoadingVendors) return;
 
@@ -19346,7 +19693,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const ne = bounds.getNorthEast();
                 const sw = bounds.getSouthWest();
 
-                // Filter vendors within bounds from all available vendors
+                // First, filter vendors within bounds from existing data
                 const vendorsInBounds = [];
                 
                 if (bookingState.originalVendorSections) {
@@ -19368,14 +19715,51 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                 }
 
-                // Simulate API delay
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // If no vendors in current bounds, search for new vendors in this area
+                if (vendorsInBounds.length === 0) {
+                    console.log('🔍 No existing vendors in bounds, searching for new vendors...');
+                    
+                    // Calculate center point for search
+                    const centerLat = (ne.lat() + sw.lat()) / 2;
+                    const centerLng = (ne.lng() + sw.lng()) / 2;
+                    
+                    // Search for vendors in this geographic area
+                    const newVendorSections = await searchVendorsInArea(centerLat, centerLng, bounds);
+                    
+                    if (newVendorSections.length > 0) {
+                        // Add newly found vendors to our original sections
+                        newVendorSections.forEach(newSection => {
+                            const existingSection = window.bookingState.originalVendorSections.find(
+                                section => section.category === newSection.category && 
+                                          section.service.name === newSection.service.name
+                            );
+                            
+                            if (existingSection) {
+                                // Merge vendors, avoiding duplicates
+                                newSection.vendors.forEach(newVendor => {
+                                    if (!existingSection.vendors.find(v => v.id === newVendor.id)) {
+                                        existingSection.vendors.push(newVendor);
+                                    }
+                                });
+                            } else {
+                                // Add new section
+                                window.bookingState.originalVendorSections.push(newSection);
+                            }
+                        });
+                        
+                        // Update vendors in bounds with newly discovered ones
+                        vendorsInBounds.push(...newVendorSections);
+                        console.log(`✅ Found ${newVendorSections.reduce((sum, s) => sum + s.vendors.length, 0)} new vendors in area`);
+                    }
+                }
 
-                // AC5: Update sidebar list with contextual results
+                console.log(`Found ${vendorsInBounds.reduce((sum, section) => sum + section.vendors.length, 0)} vendors in current map area`);
+
+                // Update sidebar list with contextual results
                 currentVendorSections = vendorsInBounds;
                 renderHorizontalVendorCards(vendorsInBounds);
-                
-                // Update vendor markers
+
+                // Update vendor markers on map
                 vendorMarkers.forEach(marker => marker.setMap(null));
                 vendorMarkers = [];
                 await addVendorMarkers(vendorsInBounds, {
@@ -19383,9 +19767,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     lng: window.selectedEventLocation?.lng || -79.3832
                 });
 
-                // Update results count
+                // Update results count display
                 const totalVendors = vendorsInBounds.reduce((sum, section) => sum + section.vendors.length, 0);
-                console.log(`Found ${totalVendors} vendors in current map area`);
+                console.log(`Updated sidebar with ${totalVendors} vendors in current map area`);
 
             } catch (error) {
                 console.error('Error loading vendors in booking map bounds:', error);
@@ -19393,6 +19777,124 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 window.bookingState.isLoadingVendors = false;
                 hideBookingMapLoadingIndicator();
                 hideBookingSidebarSkeletonLoader();
+            }
+        }
+
+        // Function to search for vendors in a specific geographic area
+        async function searchVendorsInArea(centerLat, centerLng, bounds) {
+            try {
+                console.log(`🔍 Searching for vendors in area: ${centerLat}, ${centerLng}`);
+                
+                // Get the selected services from booking state
+                const selectedServices = window.bookingState?.selectedPredefinedServices || [];
+                if (selectedServices.length === 0) {
+                    console.log('No services selected for vendor search');
+                    return [];
+                }
+
+                // Prepare the search request
+                const searchRequest = {
+                    selectedServices: selectedServices.map(service => ({
+                        category: service.category,
+                        name: service.name,
+                        budget: service.budget,
+                        serviceId: service.serviceId || service.id // Include serviceId for backend processing
+                    })),
+                    location: {
+                        lat: centerLat,
+                        lng: centerLng,
+                        radius: 25 // 25km radius from center point
+                    },
+                    eventDetails: window.bookingState?.eventDetails || {}
+                };
+
+                console.log('🌐 Sending vendor search request:', searchRequest);
+
+                // Make API call to search for vendors
+                const response = await fetch(`${API_BASE_URL}/vendors/search-by-services`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(searchRequest)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Vendor search failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('📦 Vendor search response:', data);
+
+                const vendorSections = [];
+
+                // Process each service category
+                for (const [category, services] of Object.entries(data)) {
+                    if (category === 'message') continue; // Skip message field
+                    
+                    for (const [serviceName, vendors] of Object.entries(services)) {
+                        if (!Array.isArray(vendors) || vendors.length === 0) continue;
+
+                        // Find the corresponding service from our selected services
+                        const service = selectedServices.find(s => 
+                            s.category === category && s.name === serviceName
+                        );
+                        
+                        if (!service) continue;
+
+                        // Process vendors and add coordinates
+                        const vendorsWithCoords = vendors.map(vendor => {
+                            // Extract coordinates with fallback
+                            let coordinates = null;
+                            if (vendor.latitude && vendor.longitude) {
+                                coordinates = {
+                                    lat: parseFloat(vendor.latitude),
+                                    lng: parseFloat(vendor.longitude)
+                                };
+                            } else if (vendor.lat && vendor.lng) {
+                                coordinates = {
+                                    lat: parseFloat(vendor.lat),
+                                    lng: parseFloat(vendor.lng)
+                                };
+                            } else {
+                                // Use search center as fallback
+                                coordinates = {
+                                    lat: centerLat,
+                                    lng: centerLng
+                                };
+                            }
+
+                            return {
+                                ...vendor,
+                                coordinates: coordinates
+                            };
+                        }).filter(vendor => {
+                            // Only include vendors within the map bounds
+                            if (!vendor.coordinates) return false;
+                            const ne = bounds.getNorthEast();
+                            const sw = bounds.getSouthWest();
+                            const lat = vendor.coordinates.lat;
+                            const lng = vendor.coordinates.lng;
+                            return lat >= sw.lat() && lat <= ne.lat() && 
+                                   lng >= sw.lng() && lng <= ne.lng();
+                        });
+
+                        if (vendorsWithCoords.length > 0) {
+                            vendorSections.push({
+                                category: category,
+                                service: service,
+                                vendors: vendorsWithCoords
+                            });
+                            console.log(`✅ Found ${vendorsWithCoords.length} vendors for ${category} - ${serviceName} in area`);
+                        }
+                    }
+                }
+
+                return vendorSections;
+
+            } catch (error) {
+                console.error('❌ Error searching vendors in area:', error);
+                return [];
             }
         }
 
