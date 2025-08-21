@@ -4360,7 +4360,7 @@
                     <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                         <!-- LEFT: Vendor Cards -->
                         <div style="flex: 1; min-width: 0;">
-                            <div id="vendor-cards-container" style="display: none;">
+                            <div id="vendor-cards-container" style="display: block;">
                                 <div class="vendor-cards-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                     <h5 style="margin: 0; color: var(--text);">Vendor Options</h5>
                                     <div class="vendor-filters">
@@ -4373,13 +4373,17 @@
                                 </div>
                                 <div id="vendor-horizontal-cards" class="vendor-horizontal-container">
                                     <!-- Horizontal vendor cards will be populated here -->
+                                    <div style="padding: 1rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd; text-align: center;">
+                                        <i class="fas fa-search" style="font-size: 2rem; color: #ccc; margin-bottom: 0.5rem;"></i>
+                                        <p style="color: #666; margin: 0;">Search for vendors to see options here</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- RIGHT: Google Maps Container -->
                         <div style="flex: 1; min-width: 0;">
-                            <div id="vendor-map-container" style="display: none;">
+                            <div id="vendor-map-container" style="display: block;">
                                 <div class="map-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                     <h5 style="margin: 0; color: var(--text);">Vendors Near Your Event Location</h5>
                                     <div class="map-controls">
@@ -6988,13 +6992,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                                         return vendorWithCoords;
                                     });
                                     
-                                    vendorSections.push({
+                                    const vendorSection = {
                                         category: category,
                                         service: service,
                                         vendors: vendorsWithCoords
-                                    });
+                                    };
+                                    
+                                    vendorSections.push(vendorSection);
                                     totalVendorsFound += vendorsWithCoords.length;
-                                    console.log(`Found ${vendorsWithCoords.length} vendors for ${category} - ${service.name}`);
+                                    console.log(`✅ Added section for ${category} - ${service.name} with ${vendorsWithCoords.length} vendors:`, vendorSection);
                                 } else {
                                     console.log(`No vendors found for ${category} - ${service.name}`);
                                 }
@@ -7006,15 +7012,55 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                     document.getElementById('vendor-loading').style.display = 'none';
 
-                    if (vendorSections.length > 0) {
+                    console.log('🎯 Final vendor sections before rendering:', vendorSections);
+                    console.log('🎯 vendorSections.length:', vendorSections.length);
+                    console.log('🎯 totalVendorsFound:', totalVendorsFound);
+                    
+                    if (vendorSections.length > 0 && totalVendorsFound > 0) {
                         // Store all vendors for selection tracking
                         window.bookingState.availableVendors = vendorSections.flatMap(section => section.vendors);
+                        console.log('📦 Stored available vendors:', window.bookingState.availableVendors.length);
                         
                         // Initialize Google Maps and render map-based vendor results
                         await initializeVendorMap(vendorSections);
                         
-                        // Render horizontal vendor cards
-                        renderHorizontalVendorCards(vendorSections);
+                        // Add a small delay to ensure DOM is ready
+                        setTimeout(() => {
+                            console.log('🎨 About to render vendor cards...');
+                            console.log('Current booking step:', window.bookingState?.currentStep);
+                            console.log('Vendor sections to render:', JSON.stringify(vendorSections, null, 2));
+                            
+                            // Force show container first
+                            const container = document.getElementById('vendor-cards-container');
+                            if (container) {
+                                container.style.display = 'block';
+                                console.log('✅ Forced container to be visible');
+                            }
+                            
+                            // Add immediate test to bypass any issues
+                            console.log('🧪 Testing direct card insertion...');
+                            const cardsContainer = document.getElementById('vendor-horizontal-cards');
+                            if (cardsContainer) {
+                                cardsContainer.innerHTML = `
+                                    <div style="padding: 1rem; background: #e8f5e8; border: 2px solid #4caf50; border-radius: 8px; margin: 1rem 0;">
+                                        <h4 style="color: #2e7d32; margin: 0 0 0.5rem 0;">✅ Vendors Found!</h4>
+                                        <p style="color: #2e7d32; margin: 0;">Found ${totalVendorsFound} vendors. Rendering cards now...</p>
+                                    </div>
+                                `;
+                                console.log('✅ Test message inserted directly');
+                                
+                                // Wait a moment then try to render actual cards
+                                setTimeout(() => {
+                                    console.log('🎨 Now calling renderHorizontalVendorCards...');
+                                    
+                                    // Bypass the debouncing and call directly with retryCount = 1
+                                    isRenderingVendorCards = false; // Reset the flag
+                                    renderHorizontalVendorCards(vendorSections, 1);
+                                }, 500);
+                            } else {
+                                console.error('❌ vendor-horizontal-cards container not found');
+                            }
+                        }, 100);
                         
                         // Update step 3 header with match info
                         const step3Title = document.querySelector('#booking-step-3 .form-section-title');
@@ -19214,10 +19260,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             
             isRenderingVendorCards = true;
             
-            // Prevent excessive logging and retries
-            if (retryCount === 1) {
-                console.log('🎯 renderHorizontalVendorCards executing with:', vendorSections?.length || 0, 'sections');
-            }
+            // Enhanced debugging
+            console.log('🎯 renderHorizontalVendorCards called with:', {
+                sectionsCount: vendorSections?.length || 0,
+                sections: vendorSections,
+                currentStep: window.bookingState?.currentStep,
+                retryCount: retryCount
+            });
             
             // Wait for DOM to be ready and step to be correct
             if (window.bookingState?.currentStep !== 3) {
@@ -19250,30 +19299,96 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Show cards container
             container.style.display = 'block';
 
-            // Flatten and sort vendors by distance
-            const allVendors = vendorSections.flatMap(section => 
-                section.vendors.map(vendor => ({
-                    ...vendor,
-                    serviceCategory: section.category,
-                    serviceName: section.service.name,
-                    serviceBudget: section.service.budget
-                }))
-            );
+            // Check if vendorSections is valid and has data
+            if (!vendorSections || !Array.isArray(vendorSections) || vendorSections.length === 0) {
+                console.warn('⚠️ No vendor sections provided or empty array');
+                cardsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd;">
+                        <i class="fas fa-search" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
+                        <h4 style="color: #666; margin-bottom: 0.5rem;">No vendors found</h4>
+                        <p style="color: #999; margin: 0;">Try adjusting your search criteria or explore the map to find vendors in different areas.</p>
+                    </div>
+                `;
+                isRenderingVendorCards = false;
+                return;
+            }
 
-            console.log(`📋 Flattened ${allVendors.length} vendors:`, allVendors);
+            // Flatten and sort vendors by distance
+            const allVendors = [];
+            vendorSections.forEach(section => {
+                console.log('Processing section:', section);
+                if (section.vendors && Array.isArray(section.vendors)) {
+                    section.vendors.forEach(vendor => {
+                        allVendors.push({
+                            ...vendor,
+                            serviceCategory: section.category,
+                            serviceName: section.service?.name || 'Unknown Service',
+                            serviceBudget: section.service?.budget || 0
+                        });
+                    });
+                } else {
+                    console.warn('Section has no vendors or vendors is not an array:', section);
+                }
+            });
+
+            console.log(`📋 Flattened ${allVendors.length} vendors from ${vendorSections.length} sections`);
+
+            if (allVendors.length === 0) {
+                console.warn('⚠️ No vendors found after flattening sections');
+                cardsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd;">
+                        <i class="fas fa-search" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
+                        <h4 style="color: #666; margin-bottom: 0.5rem;">No vendors available</h4>
+                        <p style="color: #999; margin: 0;">No vendors match your selected services. Try selecting different services or explore the map.</p>
+                    </div>
+                `;
+                isRenderingVendorCards = false;
+                return;
+            }
 
             // Sort by distance (closest first)
             allVendors.sort((a, b) => (a.distance || 999) - (b.distance || 999));
 
             // Render cards
-            const cardsHtml = allVendors.map(vendor => createHorizontalVendorCard(vendor)).join('');
-            console.log('🏗️ Generated cards HTML length:', cardsHtml.length);
-            
-            cardsContainer.innerHTML = cardsHtml;
-            console.log('✅ Cards rendered to container');
+            try {
+                const cardsHtml = allVendors.map(vendor => {
+                    try {
+                        return createHorizontalVendorCard(vendor);
+                    } catch (cardError) {
+                        console.error('Error creating card for vendor:', vendor, cardError);
+                        return ''; // Return empty string for failed cards
+                    }
+                }).filter(html => html.length > 0).join('');
+                
+                console.log('🏗️ Generated cards HTML length:', cardsHtml.length);
+                
+                if (cardsHtml.length === 0) {
+                    console.error('❌ No valid HTML generated for vendor cards');
+                    cardsContainer.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; background: #fff3cd; border-radius: 12px; border: 2px dashed #ffc107;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #856404; margin-bottom: 1rem;"></i>
+                            <h4 style="color: #856404; margin-bottom: 0.5rem;">Error displaying vendors</h4>
+                            <p style="color: #856404; margin: 0;">There was an issue displaying the vendor cards. Please try refreshing or contact support.</p>
+                        </div>
+                    `;
+                } else {
+                    cardsContainer.innerHTML = cardsHtml;
+                    console.log('✅ Cards rendered to container successfully');
+                }
 
-            // Setup sorting
-            setupVendorSorting(allVendors);
+                // Setup sorting
+                setupVendorSorting(allVendors);
+                
+            } catch (renderError) {
+                console.error('❌ Error rendering vendor cards:', renderError);
+                cardsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; background: #f8d7da; border-radius: 12px; border: 2px dashed #dc3545;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #721c24; margin-bottom: 1rem;"></i>
+                        <h4 style="color: #721c24; margin-bottom: 0.5rem;">Rendering Error</h4>
+                        <p style="color: #721c24; margin: 0;">Failed to render vendor cards. Please try again.</p>
+                    </div>
+                `;
+            }
             
             // Reset rendering flag
             isRenderingVendorCards = false;
@@ -19283,12 +19398,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         function createHorizontalVendorCard(vendor) {
             console.log('Creating vendor card for:', vendor);
             
+            // Validate vendor object
+            if (!vendor || typeof vendor !== 'object') {
+                console.error('Invalid vendor object:', vendor);
+                return '';
+            }
+            
             // Use the correct property names from API response
-            const businessName = vendor.BusinessName || vendor.businessName || 'Unknown Business';
-            const location = vendor.Location || vendor.location || 'Location not specified';
-            const description = vendor.BusinessDescription || vendor.description || '';
-            const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
-            const featuredImage = vendor.FeaturedImageURL || vendor.profileImageUrl || null;
+            const businessName = vendor.BusinessName || vendor.businessName || vendor.name || 'Unknown Business';
+            const location = vendor.Location || vendor.location || vendor.address || 'Location not specified';
+            const description = vendor.BusinessDescription || vendor.description || vendor.businessDescription || '';
+            const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id || 'unknown-' + Math.random();
+            const featuredImage = vendor.FeaturedImageURL || vendor.profileImageUrl || vendor.featuredImageUrl || null;
             
             // Get service details from the services array
             let serviceDetails = '';
@@ -19998,6 +20119,67 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Don't restore original content, let the normal render function handle it
             // The renderHorizontalVendorCards() function will be called after this
         }
+
+        // TEST FUNCTION: Force display sample vendor cards for debugging
+        function testVendorCardsDisplay() {
+            console.log('🧪 Testing vendor cards display with sample data...');
+            
+            const sampleVendorSections = [{
+                category: "Photography",
+                service: { name: "Wedding Photography", budget: 2000 },
+                vendors: [{
+                    VendorProfileID: "test-1",
+                    BusinessName: "Test Photography Studio",
+                    BusinessDescription: "Professional wedding photography services",
+                    Location: "Toronto, ON",
+                    Latitude: 43.6532,
+                    Longitude: -79.3832,
+                    averageRating: 4.8,
+                    totalReviews: 25,
+                    services: [{
+                        ServiceName: "Wedding Photography",
+                        VendorPrice: 1800,
+                        VendorDurationMinutes: 480
+                    }]
+                }]
+            }];
+            
+            console.log('🧪 Sample data created:', sampleVendorSections);
+            
+            // Force render with sample data
+            renderHorizontalVendorCards(sampleVendorSections);
+        }
+        
+        // Add test function to window for console access
+        window.testVendorCardsDisplay = testVendorCardsDisplay;
+        
+        // Force show vendor cards container for debugging
+        function forceShowVendorCards() {
+            console.log('🔧 Force showing vendor cards container...');
+            const container = document.getElementById('vendor-cards-container');
+            const cardsContainer = document.getElementById('vendor-horizontal-cards');
+            
+            if (container) {
+                container.style.display = 'block';
+                console.log('✅ Container display set to block');
+            } else {
+                console.error('❌ vendor-cards-container not found');
+            }
+            
+            if (cardsContainer) {
+                cardsContainer.innerHTML = `
+                    <div style="padding: 1rem; background: #e3f2fd; border: 2px solid #2196f3; border-radius: 8px; margin: 1rem 0;">
+                        <h4 style="color: #1976d2; margin: 0 0 0.5rem 0;">🔧 Debug Message</h4>
+                        <p style="color: #1976d2; margin: 0;">Vendor cards container is now visible. If you can see this message, the DOM elements are working correctly.</p>
+                    </div>
+                `;
+                console.log('✅ Debug message added to cards container');
+            } else {
+                console.error('❌ vendor-horizontal-cards not found');
+            }
+        }
+        
+        window.forceShowVendorCards = forceShowVendorCards;
 
         // Highlight vendor card when marker is clicked
         function highlightVendorCard(vendorProfileId) {
