@@ -1779,55 +1779,243 @@
         .vendor-horizontal-card {
             display: flex;
             background: white;
-            border-radius: 8px;
-            padding: 0;
-            margin-bottom: 0.75rem;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            border-radius: 16px;
             border: 1px solid #e5e7eb;
-            transition: all 0.2s ease;
+            margin-bottom: 1.5rem;
             cursor: pointer;
-            min-height: 120px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             overflow: hidden;
             position: relative;
+            min-height: 200px;
         }
 
         .vendor-horizontal-card:hover {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+            transform: translateY(-3px);
             border-color: #3b82f6;
         }
 
         .vendor-horizontal-card.selected {
             border-color: var(--primary);
             background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+        }
+
+        .vendor-card-image-container {
+            width: 280px;
+            height: 200px;
+            position: relative;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .vendor-image-carousel {
+            display: flex;
+            transition: transform 0.3s ease;
+            height: 100%;
         }
 
         .vendor-card-image {
-            width: 120px;
-            height: 120px;
+            width: 280px;
+            height: 200px;
             object-fit: cover;
-            border-radius: 0;
             flex-shrink: 0;
         }
-        
+
         .vendor-no-image {
-            width: 120px;
-            height: 120px;
-            background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%);
-            border: none;
-            border-radius: 0;
+            width: 280px;
+            height: 200px;
+            background: #f3f4f6;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
 
+        .carousel-dots {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 2;
+        }
+
+        .carousel-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .carousel-dot.active {
+            background: white;
+            transform: scale(1.2);
+        }
+
+        .carousel-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 2;
+        }
+
+        .vendor-card-image-container:hover .carousel-nav {
+            opacity: 1;
+        }
+
+        .carousel-nav.prev {
+            left: 8px;
+        }
+
+        .carousel-nav.next {
+            right: 8px;
+        }
+
         .vendor-card-content {
             flex: 1;
+            padding: 1.5rem;
             display: flex;
             flex-direction: column;
-            padding: 1rem;
+            justify-content: space-between;
             position: relative;
+        }
+
+        .vendor-response-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .vendor-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #111827;
+            margin: 0 0 8px 0;
+            line-height: 1.3;
+        }
+
+        .vendor-rating {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .vendor-stars {
+            color: #f59e0b;
+            font-size: 0.875rem;
+        }
+
+        .vendor-rating-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .vendor-location {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 12px;
+        }
+
+        .vendor-description {
+            font-size: 0.875rem;
+            color: #4b5563;
+            line-height: 1.4;
+            margin-bottom: 16px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .vendor-service-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .vendor-service-tag {
+            background: #e0f2fe;
+            color: #0277bd;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .vendor-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+        }
+
+        .vendor-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .vendor-btn-outline {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .vendor-btn-outline:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+        .vendor-btn-primary {
+            background: #10b981;
+            color: white;
+            border: 1px solid #10b981;
+        }
+
+        .vendor-btn-primary:hover {
+            background: #059669;
+            border-color: #059669;
+        }
+
+        .vendor-btn-primary.selected {
+            background: #059669;
+            border-color: #059669;
         }
 
         .vendor-card-header {
@@ -19169,9 +19357,85 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             const location = vendor.Location || vendor.location || vendor.address || 'Location not specified';
             const description = vendor.BusinessDescription || vendor.description || vendor.businessDescription || '';
             const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id || 'unknown-' + Math.random();
-            const featuredImage = vendor.FeaturedImageURL || vendor.profileImageUrl || vendor.featuredImageUrl || null;
+            
+            // Get vendor images - support multiple images for carousel
+            const vendorImages = [];
+            if (vendor.FeaturedImageURL || vendor.profileImageUrl || vendor.featuredImageUrl) {
+                vendorImages.push(vendor.FeaturedImageURL || vendor.profileImageUrl || vendor.featuredImageUrl);
+            }
+            if (vendor.images && Array.isArray(vendor.images)) {
+                vendorImages.push(...vendor.images);
+            }
+            if (vendor.VendorImages && Array.isArray(vendor.VendorImages)) {
+                vendorImages.push(...vendor.VendorImages.map(img => img.ImageURL || img.url || img));
+            }
+            
+            // Remove duplicates and filter out empty values
+            const uniqueImages = [...new Set(vendorImages.filter(img => img && img.trim()))];
             
             // Get service details from the services array
+            let serviceTags = [];
+            
+            if (vendor.services && vendor.services.length > 0) {
+                vendor.services.forEach(service => {
+                    serviceTags.push({
+                        name: service.ServiceName,
+                        price: service.VendorPrice || 0
+                    });
+                });
+            }
+            
+            // Get service names for tags - ensure it's always an array
+            let serviceNames = [];
+            if (vendor.MatchingServiceNames && Array.isArray(vendor.MatchingServiceNames)) {
+                serviceNames = vendor.MatchingServiceNames;
+            } else if (vendor.MatchingServiceNames && typeof vendor.MatchingServiceNames === 'string') {
+                serviceNames = vendor.MatchingServiceNames.split(',').map(s => s.trim());
+            } else if (vendor.services && Array.isArray(vendor.services)) {
+                serviceNames = vendor.services.map(s => s.ServiceName).filter(name => name);
+            } else if (vendor.serviceName) {
+                serviceNames = [vendor.serviceName];
+            } else {
+                serviceNames = ['Service'];
+            }
+            
+            const rating = vendor.averageRating || 4.5;
+            const reviewCount = vendor.totalReviews || 0;
+            const distance = vendor.distance ? `${vendor.distance.toFixed(1)} km away` : 'Distance unknown';
+            const isSelected = (typeof bookingState !== 'undefined' && bookingState.selectedVendors) ? 
+                window.bookingState.selectedVendors.some(v => v.vendorProfileId === vendorId) : false;
+
+            // Create image carousel HTML
+            const imageCarouselHtml = uniqueImages.length > 0 ? `
+                <div class="vendor-card-image-container">
+                    <div class="vendor-image-carousel" id="carousel-${vendorId}">
+                        ${uniqueImages.map(img => `
+                            <img src="${img}" alt="${businessName}" class="vendor-card-image" 
+                                 onerror="this.style.display='none';">
+                        `).join('')}
+                    </div>
+                    ${uniqueImages.length > 1 ? `
+                        <button class="carousel-nav prev" onclick="event.stopPropagation(); navigateCarousel('${vendorId}', -1)">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="carousel-nav next" onclick="event.stopPropagation(); navigateCarousel('${vendorId}', 1)">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <div class="carousel-dots">
+                            ${uniqueImages.map((_, index) => `
+                                <div class="carousel-dot ${index === 0 ? 'active' : ''}" 
+                                     onclick="event.stopPropagation(); goToCarouselSlide('${vendorId}', ${index})"></div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            ` : `
+                <div class="vendor-no-image">
+                    <i class="fas fa-user-tie" style="font-size: 2rem; color: var(--primary);"></i>
+                </div>
+            `;
+
+            // Get service details from the services array for display
             let serviceDetails = '';
             let totalCost = 0;
             let priceRange = '$$$';
@@ -19180,7 +19444,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const service = vendor.services[0]; // Get first service for display
                 totalCost = service.VendorPrice || 0;
                 const duration = service.VendorDurationMinutes ? `${service.VendorDurationMinutes} min` : '';
-                const serviceDesc = service.VendorDescription || '';
                 
                 serviceDetails = `
                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
@@ -19204,32 +19467,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 else if (totalCost < 3000) priceRange = '$$$';
                 else priceRange = '$$$$';
             }
-            
-            const rating = vendor.averageRating || 4.5;
-            const reviewCount = vendor.totalReviews || 0;
-            const distance = vendor.distance ? `${vendor.distance.toFixed(1)} km away` : 'Distance unknown';
-            const isSelected = (typeof bookingState !== 'undefined' && bookingState.selectedVendors) ? 
-                window.bookingState.selectedVendors.some(v => v.vendorProfileId === vendorId) : false;
-
-            // Get service names
-            const serviceNames = vendor.MatchingServiceNames || 
-                                (vendor.services ? vendor.services.map(s => s.ServiceName).join(', ') : '') ||
-                                vendor.serviceName || 'Service';
 
             return `
                 <div class="vendor-horizontal-card ${isSelected ? 'selected' : ''}" 
                      data-vendor-id="${vendorId}" 
                      onclick="console.log('Card clicked!'); console.log('About to call toggleVendorSelection with:', '${vendorId}'); window.toggleVendorSelection('${vendorId}'); console.log('toggleVendorSelection call completed');">
-                    ${featuredImage ? `<img src="${featuredImage}" 
-                         alt="${businessName}" 
-                         class="vendor-card-image"
-                         onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                         <div class="vendor-card-image vendor-no-image" style="display: none;">
-                             <i class="fas fa-user-tie" style="font-size: 2rem; color: var(--primary);"></i>
-                         </div>` : 
-                         `<div class="vendor-card-image vendor-no-image">
-                             <i class="fas fa-user-tie" style="font-size: 2rem; color: var(--primary);"></i>
-                         </div>`}
+                    ${imageCarouselHtml}
                     
                     <div class="vendor-card-content">
                         <div style="margin-bottom: 0.5rem;">
@@ -19294,8 +19537,117 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Re-render cards
                 const cardsContainer = document.getElementById('vendor-horizontal-cards');
                 cardsContainer.innerHTML = sortedVendors.map(vendor => createHorizontalVendorCard(vendor)).join('');
+                
+                // Reinitialize carousel functionality for new cards
+                initializeCarousels();
             });
         }
+
+        // Image carousel functionality
+        const carouselStates = {};
+
+        function initializeCarousels() {
+            // Initialize carousel states for all vendor cards
+            document.querySelectorAll('.vendor-image-carousel').forEach(carousel => {
+                const vendorId = carousel.id.replace('carousel-', '');
+                const images = carousel.querySelectorAll('.vendor-card-image');
+                if (images.length > 1) {
+                    carouselStates[vendorId] = {
+                        currentIndex: 0,
+                        totalImages: images.length
+                    };
+                }
+            });
+        }
+
+        function navigateCarousel(vendorId, direction) {
+            const state = carouselStates[vendorId];
+            if (!state) return;
+
+            const carousel = document.getElementById(`carousel-${vendorId}`);
+            if (!carousel) return;
+
+            // Update current index
+            state.currentIndex += direction;
+            
+            // Handle wrapping
+            if (state.currentIndex >= state.totalImages) {
+                state.currentIndex = 0;
+            } else if (state.currentIndex < 0) {
+                state.currentIndex = state.totalImages - 1;
+            }
+
+            // Apply transform
+            const translateX = -state.currentIndex * 280; // 280px is the image width
+            carousel.style.transform = `translateX(${translateX}px)`;
+
+            // Update dots
+            updateCarouselDots(vendorId);
+        }
+
+        function goToCarouselSlide(vendorId, index) {
+            const state = carouselStates[vendorId];
+            if (!state || index < 0 || index >= state.totalImages) return;
+
+            const carousel = document.getElementById(`carousel-${vendorId}`);
+            if (!carousel) return;
+
+            // Update current index
+            state.currentIndex = index;
+
+            // Apply transform
+            const translateX = -state.currentIndex * 280;
+            carousel.style.transform = `translateX(${translateX}px)`;
+
+            // Update dots
+            updateCarouselDots(vendorId);
+        }
+
+        function updateCarouselDots(vendorId) {
+            const state = carouselStates[vendorId];
+            if (!state) return;
+
+            const card = document.querySelector(`[data-vendor-id="${vendorId}"]`);
+            if (!card) return;
+
+            const dots = card.querySelectorAll('.carousel-dot');
+            dots.forEach((dot, index) => {
+                if (index === state.currentIndex) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+        }
+
+        // Initialize carousels when cards are rendered
+        document.addEventListener('DOMContentLoaded', () => {
+            // Use MutationObserver to detect when vendor cards are added
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                        // Check if vendor cards were added
+                        const hasVendorCards = Array.from(mutation.addedNodes).some(node => 
+                            node.nodeType === Node.ELEMENT_NODE && 
+                            (node.classList?.contains('vendor-horizontal-card') || 
+                             node.querySelector?.('.vendor-horizontal-card'))
+                        );
+                        
+                        if (hasVendorCards) {
+                            setTimeout(initializeCarousels, 100);
+                        }
+                    }
+                });
+            });
+
+            const cardsContainer = document.getElementById('vendor-horizontal-cards');
+            if (cardsContainer) {
+                observer.observe(cardsContainer, { 
+                    childList: true, 
+                    subtree: true 
+                });
+            }
+        });
 
         // Helper function to get numeric price value
         function getPriceValue(priceRange) {
