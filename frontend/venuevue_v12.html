@@ -4581,16 +4581,21 @@
                             <div id="vendor-map-container" style="display: block;">
                                 <div class="map-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                     <h5 style="margin: 0; color: var(--text);">Vendors Near Your Event Location</h5>
-                                    <div class="map-controls">
-                                        <button type="button" class="btn btn-sm btn-outline" id="focus-event-location">
-                                            <i class="fas fa-crosshairs"></i> Focus Event Location
+                                </div>
+                                <div style="position: relative;">
+                                    <div id="vendor-map" style="height: 600px; width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+                                    <!-- Floating map controls positioned on top of the map -->
+                                    <div class="map-controls-overlay" style="position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 1000;">
+                                        <button type="button" class="btn btn-sm" id="focus-event-location" 
+                                                style="background: white; border: 1px solid #ddd; color: #333; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-crosshairs"></i> Focus Event
                                         </button>
-                                        <button type="button" class="btn btn-sm btn-outline" id="show-all-vendors">
-                                            <i class="fas fa-expand"></i> Show All Vendors
+                                        <button type="button" class="btn btn-sm" id="show-all-vendors"
+                                                style="background: white; border: 1px solid #ddd; color: #333; padding: 8px 12px; border-radius: 6px; font-size: 0.8rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15); cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-expand"></i> Show All
                                         </button>
                                     </div>
                                 </div>
-                                <div id="vendor-map" style="height: 600px; width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
                                 <div class="map-legend" style="display: flex; gap: 1rem; margin-top: 1rem; font-size: 0.9rem; color: var(--text-light);">
                                     <div><i class="fas fa-map-marker-alt" style="color: #e74c3c;"></i> Event Location</div>
                                     <div><i class="fas fa-store" style="color: #3498db;"></i> Available Vendors</div>
@@ -19036,7 +19041,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const marker = new google.maps.Marker({
                         position: vendorCoords,
                         map: vendorMap,
-                        title: vendor.businessName,
+                        title: `${vendor.businessName || vendor.BusinessName} - ${distance.toFixed(1)}km away`,
                         icon: {
                             path: google.maps.SymbolPath.CIRCLE,
                             scale: 10,
@@ -19047,23 +19052,48 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                     });
 
-                    // Create info window
-                    const infoWindow = new google.maps.InfoWindow({
+                    // Create info window for hover
+                    const hoverInfoWindow = new google.maps.InfoWindow({
+                        content: createVendorHoverContent(vendor, distance)
+                    });
+
+                    // Create detailed info window for click
+                    const clickInfoWindow = new google.maps.InfoWindow({
                         content: createVendorInfoWindowContent(vendor)
                     });
 
-                    marker.addListener('click', () => {
-                        // Close other info windows
+                    // Add hover listeners
+                    marker.addListener('mouseover', () => {
+                        // Close any open click info windows
                         vendorMarkers.forEach(m => {
-                            if (m.infoWindow) m.infoWindow.close();
+                            if (m.clickInfoWindow) m.clickInfoWindow.close();
                         });
-                        infoWindow.open(vendorMap, marker);
-                        
-                        // Highlight corresponding card
-                        highlightVendorCard(vendor.vendorProfileId);
+                        hoverInfoWindow.open(vendorMap, marker);
                     });
 
-                    marker.infoWindow = infoWindow;
+                    marker.addListener('mouseout', () => {
+                        hoverInfoWindow.close();
+                    });
+
+                    // Add click listener
+                    marker.addListener('click', () => {
+                        // Close hover info window
+                        hoverInfoWindow.close();
+                        
+                        // Close other click info windows
+                        vendorMarkers.forEach(m => {
+                            if (m.clickInfoWindow) m.clickInfoWindow.close();
+                        });
+                        
+                        // Open click info window
+                        clickInfoWindow.open(vendorMap, marker);
+                        
+                        // Scroll to and highlight corresponding card
+                        scrollToVendorCard(vendor.VendorProfileID || vendor.vendorProfileId || vendor.id);
+                    });
+
+                    marker.hoverInfoWindow = hoverInfoWindow;
+                    marker.clickInfoWindow = clickInfoWindow;
                     marker.vendorData = vendor;
                     vendorMarkers.push(marker);
 
@@ -19114,37 +19144,85 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             return R * c;
         }
 
-        // Create info window content for vendor
+        // Create hover tooltip content for vendor markers
+        function createVendorHoverContent(vendor, distance) {
+            const businessName = vendor.BusinessName || vendor.businessName || 'Unknown Business';
+            const serviceName = vendor.serviceName || (vendor.services && vendor.services[0]?.ServiceName) || 'Service Available';
+            const price = vendor.services && vendor.services[0]?.VendorPrice ? `$${vendor.services[0].VendorPrice}` : 'Price on request';
+            
+            return `
+                <div style="padding: 0.5rem; max-width: 200px; font-size: 0.85rem;">
+                    <div style="font-weight: 600; color: #1f2937; margin-bottom: 0.25rem;">
+                        ${businessName}
+                    </div>
+                    <div style="color: #10b981; font-weight: 500; margin-bottom: 0.25rem;">
+                        ${serviceName} • ${price}
+                    </div>
+                    <div style="color: #6b7280; font-size: 0.8rem;">
+                        <i class="fas fa-map-marker-alt"></i> ${distance.toFixed(1)} km from event
+                    </div>
+                </div>
+            `;
+        }
+
+        // Create detailed info window content for vendor
         function createVendorInfoWindowContent(vendor) {
             const rating = vendor.averageRating || 4.5;
             const reviewCount = vendor.totalReviews || 0;
-            const priceRange = vendor.priceRange || '$$$';
+            const businessName = vendor.BusinessName || vendor.businessName || 'Unknown Business';
+            const serviceName = vendor.serviceName || (vendor.services && vendor.services[0]?.ServiceName) || 'Service Available';
+            const price = vendor.services && vendor.services[0]?.VendorPrice ? `$${vendor.services[0].VendorPrice}` : 'Price on request';
+            const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
             
             return `
-                <div style="padding: 1rem; max-width: 250px;">
-                    <h6 style="margin: 0 0 0.5rem 0; color: var(--text);">
-                        <i class="fas fa-store"></i> ${vendor.businessName}
+                <div style="padding: 1rem; max-width: 280px;">
+                    <h6 style="margin: 0 0 0.5rem 0; color: #1f2937; font-size: 1rem;">
+                        <i class="fas fa-store"></i> ${businessName}
                     </h6>
                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <div style="color: #f39c12;">
+                        <div style="color: #f59e0b; font-size: 0.85rem;">
                             ${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5-Math.floor(rating))}
                         </div>
-                        <span style="font-size: 0.8rem; color: var(--text-light);">
+                        <span style="font-size: 0.8rem; color: #6b7280;">
                             ${rating.toFixed(1)} (${reviewCount} reviews)
                         </span>
                     </div>
-                    <p style="margin: 0.5rem 0; font-size: 0.9rem; color: var(--text-light);">
-                        ${vendor.serviceName} • ${priceRange}
+                    <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 6px; padding: 0.5rem; margin: 0.5rem 0;">
+                        <div style="color: #10b981; font-weight: 600; font-size: 0.9rem;">${serviceName}</div>
+                        <div style="color: #059669; font-weight: 700; font-size: 1rem;">${price}</div>
+                    </div>
+                    <p style="margin: 0.5rem 0; font-size: 0.8rem; color: #6b7280;">
+                        <i class="fas fa-map-marker-alt"></i> ${vendor.distance ? vendor.distance.toFixed(1) + ' km from event location' : 'Distance unknown'}
                     </p>
-                    <p style="margin: 0.5rem 0; font-size: 0.8rem; color: var(--text-light);">
-                        <i class="fas fa-map-marker-alt"></i> ${vendor.distance ? vendor.distance.toFixed(1) + ' km away' : 'Distance unknown'}
-                    </p>
-                    <button onclick="selectVendorFromMap('${vendor.vendorProfileId}')" 
-                            class="btn btn-sm btn-primary" style="width: 100%; margin-top: 0.5rem;">
+                    <button onclick="selectVendorFromMap('${vendorId}')" 
+                            style="width: 100%; margin-top: 0.5rem; padding: 0.5rem; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         Select Vendor
                     </button>
                 </div>
             `;
+        }
+
+        // Scroll to and highlight vendor card when marker is clicked
+        function scrollToVendorCard(vendorId) {
+            const card = document.querySelector(`[data-vendor-id="${vendorId}"]`);
+            if (card) {
+                // Scroll to the card
+                card.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                
+                // Add highlight animation
+                card.style.transform = 'scale(1.02)';
+                card.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.3)';
+                card.style.transition = 'all 0.3s ease';
+                
+                // Remove highlight after animation
+                setTimeout(() => {
+                    card.style.transform = '';
+                    card.style.boxShadow = '';
+                }, 2000);
+            }
         }
 
         // Setup map controls
@@ -19461,12 +19539,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const duration = service.VendorDurationMinutes ? `${service.VendorDurationMinutes} min` : '';
                 
                 serviceDetails = `
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <span style="background: #e0f2fe; color: #0277bd; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 500;">
-                            ${service.ServiceName}
-                        </span>
-                        <span style="color: #374151; font-weight: 600;">$${service.VendorPrice || 0}</span>
-                        ${duration ? `<span style="color: #6b7280; font-size: 0.85rem;">${duration}</span>` : ''}
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; font-size: 0.85rem;">
+                        <span style="color: #10b981; font-weight: 600;">${service.ServiceName}</span>
+                        <span style="color: #6b7280;">•</span>
+                        <span style="color: #059669; font-weight: 600;">$${service.VendorPrice || 0}</span>
+                        ${duration ? `<span style="color: #6b7280;">• ${duration}</span>` : ''}
                     </div>
                 `;
                 
@@ -19477,6 +19554,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 else priceRange = '$$$$';
             } else if (vendor.totalEstimatedCost) {
                 totalCost = vendor.totalEstimatedCost;
+                serviceDetails = `
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; font-size: 0.85rem;">
+                        <span style="color: #10b981; font-weight: 600;">Service Available</span>
+                        <span style="color: #6b7280;">•</span>
+                        <span style="color: #059669; font-weight: 600;">$${totalCost}</span>
+                    </div>
+                `;
                 if (totalCost < 500) priceRange = '$';
                 else if (totalCost < 1500) priceRange = '$$';
                 else if (totalCost < 3000) priceRange = '$$$';
@@ -19789,41 +19873,36 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
         // Update vendor selection UI
         function updateVendorSelectionUI(vendorProfileId) {
-            console.log('🎨 Updating vendor selection UI...');
+            console.log('🎨 Updating vendor selection UI for:', vendorProfileId);
             
-            // Update the card's selected state
-            const card = document.querySelector(`[data-vendor-id="${vendorProfileId}"]`);
-            if (card) {
-                // Check selection using multiple possible ID fields
-                const isNowSelected = bookingState.selectedVendors.some(v => 
-                    v.vendorProfileId === vendorProfileId || 
-                    v.VendorProfileID === vendorProfileId ||
-                    v.VendorProfileId === vendorProfileId ||
-                    String(v.vendorProfileId) === String(vendorProfileId) ||
-                    String(v.VendorProfileID) === String(vendorProfileId) ||
-                    String(v.VendorProfileId) === String(vendorProfileId)
-                );
-                console.log(`Card ${vendorProfileId}: selected = ${isNowSelected}`);
-                console.log('🔍 Selected vendors for comparison:', bookingState.selectedVendors.map(v => ({
-                    vendorProfileId: v.vendorProfileId,
-                    VendorProfileID: v.VendorProfileID,
-                    VendorProfileId: v.VendorProfileId
-                })));
+            // Update all vendor cards to reflect current selection state
+            const allCards = document.querySelectorAll('.vendor-horizontal-card');
+            allCards.forEach(card => {
+                const cardVendorId = card.getAttribute('data-vendor-id');
                 
+                // Check if this specific card's vendor is selected
+                const isNowSelected = bookingState.selectedVendors.some(v => {
+                    const vId = v.vendorProfileId || v.VendorProfileID || v.VendorProfileId || v.id;
+                    return String(vId) === String(cardVendorId);
+                });
+                
+                console.log(`Card ${cardVendorId}: selected = ${isNowSelected}`);
+                
+                // Update card visual state
                 if (isNowSelected) {
                     card.classList.add('selected');
                 } else {
                     card.classList.remove('selected');
                 }
                 
-                // Update button text
-                const button = card.querySelector('button');
-                if (button) {
-                    button.textContent = isNowSelected ? 'Selected' : 'Select';
-                    button.style.background = isNowSelected ? '#059669' : '#10b981';
-                    console.log(`Updated button text to: ${button.textContent}`);
+                // Update the select button (last button in the card)
+                const buttons = card.querySelectorAll('button');
+                const selectButton = buttons[buttons.length - 1]; // Get the last button (Select/Selected)
+                if (selectButton) {
+                    selectButton.textContent = isNowSelected ? 'Selected' : 'Select';
+                    selectButton.style.background = isNowSelected ? '#059669' : '#10b981';
                 }
-            }
+            });
         }
 
         // Update map markers based on selection
