@@ -1713,56 +1713,8 @@ router.post('/search-by-services', async (req, res) => {
       }
     }
 
-    // Add location filtering if provided - enhanced with geographic distance
-    let locationLatitude = null;
-    let locationLongitude = null;
-    let maxDistanceMiles = 50; // Default search radius
-    
-    if (eventDetails && eventDetails.location) {
-      // Try to extract coordinates if provided in format "lat,lng"
-      const coordMatch = eventDetails.location.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
-      if (coordMatch) {
-        locationLatitude = parseFloat(coordMatch[1]);
-        locationLongitude = parseFloat(coordMatch[2]);
-      } else {
-        // Try to geocode the location string using Google Maps API
-        const geocoded = await geocodeLocation(eventDetails.location);
-        if (geocoded) {
-          locationLatitude = geocoded.lat;
-          locationLongitude = geocoded.lng;
-          console.log(`Geocoded "${eventDetails.location}" to coordinates: ${locationLatitude}, ${locationLongitude}`);
-        }
-      }
-      
-      // If coordinates available, use geographic distance calculation
-      if (locationLatitude && locationLongitude) {
-        whereClause += ` AND vp.Latitude IS NOT NULL AND vp.Longitude IS NOT NULL`;
-        request.input('EventLat', sql.Decimal(10, 8), locationLatitude);
-        request.input('EventLng', sql.Decimal(11, 8), locationLongitude);
-        request.input('MaxDistance', sql.Int, maxDistanceMiles);
-        console.log(`Using geographic search: ${locationLatitude}, ${locationLongitude} within ${maxDistanceMiles} miles`);
-      } else {
-        // Fallback to enhanced text-based location matching
-        console.log(`Using text-based location search for: ${eventDetails.location}`);
-        whereClause += ` AND (
-          vp.City LIKE @Location OR 
-          vp.State LIKE @Location OR 
-          vp.Address LIKE @Location OR
-          vp.PostalCode LIKE @Location OR
-          EXISTS (
-            SELECT 1 FROM VendorServiceAreas vsa 
-            WHERE vsa.VendorProfileID = vp.VendorProfileID  
-            AND (
-              vsa.CityName LIKE @Location OR 
-              vsa.[State/Province] LIKE @Location OR
-              vsa.FormattedAddress LIKE @Location OR
-              vsa.PostalCode LIKE @Location
-            )
-          )
-        )`;
-        request.input('Location', sql.NVarChar, `%${eventDetails.location}%`);
-      }
-    }
+    // Skip location filtering - let Google Maps handle proximity via pan/scroll
+    console.log('Skipping location filtering - Google Maps will handle proximity filtering');
 
     // Execute the query to find matching vendors
     let selectClause = `
