@@ -4546,6 +4546,19 @@
                     <h4 class="form-section-title">Available Vendors</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select vendors that match your requirements. View nearby vendors on the map and browse detailed options below.</p>
                     
+                    <!-- Search Criteria Summary -->
+                    <div id="search-criteria-summary" class="search-criteria-summary" style="background: #f8faff; border: 1px solid #e3f2fd; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; display: none;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                            <h6 style="margin: 0; color: var(--text); font-weight: 600;">Search Criteria</h6>
+                            <button type="button" class="btn btn-sm btn-outline" id="adjust-filters-btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px;">
+                                <i class="fas fa-edit" style="margin-right: 0.3rem;"></i>Adjust Filters
+                            </button>
+                        </div>
+                        <div id="criteria-details" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.9rem;">
+                            <!-- Criteria details will be populated here -->
+                        </div>
+                    </div>
+                    
                     <div id="vendor-loading" style="display: none; text-align: center; padding: 2rem;">
                         <div class="loading-spinner"></div>
                         <p>Finding matching vendors for each service...</p>
@@ -6319,6 +6332,59 @@ document.addEventListener('DOMContentLoaded', async function() {
                     6: 'Payment & Confirmation'
                 };
                 if (modalTitle) modalTitle.textContent = stepTitles[step] || 'Book Your Event';
+                
+                // Show search criteria summary when entering step 3
+                if (step === 3) {
+                    updateSearchCriteriaSummary();
+                }
+            }
+            
+            // Function to update search criteria summary
+            function updateSearchCriteriaSummary() {
+                const summaryContainer = document.getElementById('search-criteria-summary');
+                const criteriaDetails = document.getElementById('criteria-details');
+                
+                if (!summaryContainer || !criteriaDetails) return;
+                
+                // Get current booking state data
+                const selectedServices = window.bookingState?.selectedServices || [];
+                const eventLocation = window.selectedEventLocation?.address || 'Not specified';
+                const eventDate = document.getElementById('event-date')?.value || 'Not specified';
+                const eventTime = document.getElementById('event-time')?.value || 'Not specified';
+                const guestCount = document.getElementById('guest-count')?.value || 'Not specified';
+                const totalBudget = document.getElementById('total-budget')?.value || 'Not specified';
+                
+                // Build criteria HTML
+                let criteriaHtml = '';
+                
+                if (selectedServices.length > 0) {
+                    criteriaHtml += `
+                        <div style="color: var(--text);">
+                            <strong>Services:</strong> ${selectedServices.join(', ')}
+                        </div>
+                    `;
+                }
+                
+                criteriaHtml += `
+                    <div style="color: var(--text);">
+                        <strong>Location:</strong> ${eventLocation}
+                    </div>
+                    <div style="color: var(--text);">
+                        <strong>Date:</strong> ${eventDate}
+                    </div>
+                    <div style="color: var(--text);">
+                        <strong>Time:</strong> ${eventTime}
+                    </div>
+                    <div style="color: var(--text);">
+                        <strong>Guests:</strong> ${guestCount}
+                    </div>
+                    <div style="color: var(--text);">
+                        <strong>Budget:</strong> $${totalBudget}
+                    </div>
+                `;
+                
+                criteriaDetails.innerHTML = criteriaHtml;
+                summaryContainer.style.display = 'block';
             }
 
             function setupBookingModalEventListeners() {
@@ -6366,8 +6432,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 });
                 document.getElementById('back-to-booking-step-3')?.addEventListener('click', () => updateBookingStep(3));
 
-                // Adjust criteria button
+                // Adjust criteria button (existing)
                 document.getElementById('adjust-criteria-btn')?.addEventListener('click', () => updateBookingStep(2));
+                
+                // New adjust filters button in search criteria summary
+                document.getElementById('adjust-filters-btn')?.addEventListener('click', () => updateBookingStep(2));
 
                 // Modal close functionality
                 document.querySelector('#booking-modal .close-modal')?.addEventListener('click', closeBookingModal);
@@ -19037,20 +19106,26 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     vendor.distance = distance;
                     vendor.coordinates = vendorCoords;
 
-                    // Create vendor marker
+                    // Get category-specific icon
+                    const categoryIcon = getCategoryIcon(vendor.serviceCategory || vendor.category);
+                    
+                    // Create vendor marker with category-specific icon
                     const marker = new google.maps.Marker({
                         position: vendorCoords,
                         map: vendorMap,
                         title: `${vendor.businessName || vendor.BusinessName} - ${distance.toFixed(1)}km away`,
                         icon: {
-                            path: google.maps.SymbolPath.CIRCLE,
-                            scale: 10,
-                            fillColor: '#3498db',
+                            path: categoryIcon.path,
+                            scale: categoryIcon.scale,
+                            fillColor: categoryIcon.fillColor,
                             fillOpacity: 1,
                             strokeColor: '#ffffff',
                             strokeWeight: 2
                         }
                     });
+                    
+                    // Store vendor data on marker for later reference
+                    marker.vendorData = vendor;
 
                     // Create info window for hover
                     const hoverInfoWindow = new google.maps.InfoWindow({
@@ -19062,21 +19137,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         content: createVendorInfoWindowContent(vendor)
                     });
 
-                    // Add hover listeners
-                    marker.addListener('mouseover', () => {
-                        // Close any open click info windows
-                        vendorMarkers.forEach(m => {
-                            if (m.clickInfoWindow) m.clickInfoWindow.close();
-                        });
+                    // Add marker hover events
+                    marker.addListener('mouseover', function() {
                         hoverInfoWindow.open(vendorMap, marker);
+                        const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
+                        highlightVendorCard(vendorId, true);
                     });
-
-                    marker.addListener('mouseout', () => {
+                    
+                    marker.addListener('mouseout', function() {
                         hoverInfoWindow.close();
+                        const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
+                        highlightVendorCard(vendorId, false);
                     });
-
-                    // Add click listener
-                    marker.addListener('click', () => {
+                    
+                    marker.addListener('click', function() {
                         // Close hover info window
                         hoverInfoWindow.close();
                         
@@ -19106,6 +19180,110 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             allVendors.sort((a, b) => (a.distance || 999) - (b.distance || 999));
         }
 
+        // Function to highlight vendor card on marker hover
+        function highlightVendorCard(vendorId, highlight) {
+            const vendorCard = document.querySelector(`[data-vendor-id="${vendorId}"]`);
+            if (vendorCard) {
+                if (highlight) {
+                    vendorCard.style.transform = 'scale(1.02)';
+                    vendorCard.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.3)';
+                    vendorCard.style.border = '2px solid #10b981';
+                    vendorCard.style.transition = 'all 0.2s ease';
+                    
+                    // Scroll card into view if not visible
+                    vendorCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    vendorCard.style.transform = '';
+                    vendorCard.style.boxShadow = '';
+                    vendorCard.style.border = '';
+                }
+            }
+        }
+        
+        // Function to highlight map marker on vendor card hover
+        function highlightMapMarker(vendorId, highlight) {
+            if (!vendorMarkers || vendorMarkers.length === 0) return;
+            
+            const marker = vendorMarkers.find(m => {
+                const markerId = m.vendorData?.VendorProfileID || m.vendorData?.vendorProfileId || m.vendorData?.id;
+                return markerId === vendorId || String(markerId) === String(vendorId);
+            });
+            
+            if (marker) {
+                const categoryIcon = getCategoryIcon(marker.vendorData?.serviceCategory || marker.vendorData?.category);
+                const isSelected = window.bookingState?.selectedVendors?.some(v => v.vendorId === vendorId) || false;
+                
+                if (highlight) {
+                    // Highlight marker with pulsing effect
+                    marker.setIcon({
+                        path: categoryIcon.path,
+                        scale: categoryIcon.scale * 1.3, // Make it bigger
+                        fillColor: '#10b981', // Green highlight
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 3
+                    });
+                    
+                    // Add animation by changing the marker slightly
+                    marker.setAnimation(google.maps.Animation.BOUNCE);
+                    setTimeout(() => {
+                        if (marker.getAnimation() !== null) {
+                            marker.setAnimation(null);
+                        }
+                    }, 1000);
+                } else {
+                    // Reset to original state
+                    marker.setIcon({
+                        path: categoryIcon.path,
+                        scale: categoryIcon.scale,
+                        fillColor: isSelected ? '#10b981' : categoryIcon.fillColor,
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: isSelected ? 3 : 2
+                    });
+                    marker.setAnimation(null);
+                }
+            }
+        }
+        
+        // Function to get category-specific icon
+        function getCategoryIcon(category) {
+            const categoryIcons = {
+                'Photography': {
+                    path: 'M12 2C13.1 2 14 2.9 14 4V6H17C18.1 6 19 6.9 19 8V18C19 19.1 18.1 20 17 20H7C5.9 20 5 19.1 5 18V8C5 6.9 5.9 6 7 6H10V4C10 2.9 10.9 2 12 2M12 7C9.24 7 7 9.24 7 12S9.24 17 12 17 17 14.76 17 12 14.76 7 12 7M12 9C13.66 9 15 10.34 15 12S13.66 15 12 15 9 13.66 9 12 10.34 9 12 9Z',
+                    fillColor: '#e74c3c',
+                    scale: 0.8
+                },
+                'Catering': {
+                    path: 'M12,2A2,2 0 0,1 14,4V8H22V10H14.82L14,22H10L9.18,10H2V8H10V4A2,2 0 0,1 12,2M11,4V8H13V4H11Z',
+                    fillColor: '#f39c12',
+                    scale: 0.8
+                },
+                'Music': {
+                    path: 'M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z',
+                    fillColor: '#9b59b6',
+                    scale: 0.8
+                },
+                'Decoration': {
+                    path: 'M12,2C13.1,2 14,2.9 14,4C14,5.1 13.1,6 12,6C10.9,6 10,5.1 10,4C10,2.9 10.9,2 12,2M21,9V7L15,1H5C3.89,1 3,1.89 3,3V19A2,2 0 0,0 5,21H11V19H5V3H13V9H21Z',
+                    fillColor: '#e91e63',
+                    scale: 0.8
+                },
+                'Venue': {
+                    path: 'M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z',
+                    fillColor: '#3498db',
+                    scale: 0.8
+                },
+                'default': {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    fillColor: '#3498db',
+                    scale: 10
+                }
+            };
+            
+            return categoryIcons[category] || categoryIcons['default'];
+        }
+        
         // Generate nearby coordinates for demo purposes
         function generateNearbyCoordinates(center, radiusKm) {
             const earthRadius = 6371; // Earth's radius in km
@@ -19610,6 +19788,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             return `
                 <div class="vendor-horizontal-card ${isSelected ? 'selected' : ''}" 
                      data-vendor-id="${vendorId}" 
+                     onmouseover="highlightMapMarker('${vendorId}', true)" 
+                     onmouseout="highlightMapMarker('${vendorId}', false)" 
                      onclick="console.log('Card clicked!'); console.log('About to call toggleVendorSelection with:', '${vendorId}'); window.toggleVendorSelection('${vendorId}'); console.log('toggleVendorSelection call completed');">
                     ${imageCarouselHtml}
                     
@@ -19817,93 +19997,66 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             
             // Use existing bookingState or initialize selectedVendors array
             if (!window.bookingState) {
-                console.log('🔧 Creating bookingState...');
-                window.bookingState = {
-                    selectedVendors: [],
-                    eventDetails: {},
-                    currentStep: 1,
-                    approvedVendors: [],
-                    totalCost: 0,
-                    paymentIntent: null,
-                    countdownTimers: {}
-                };
-            } else if (!window.bookingState.selectedVendors) {
-                console.log('🔧 Adding selectedVendors to existing bookingState...');
+                window.bookingState = {};
+            }
+            if (!window.bookingState.selectedVendors) {
                 window.bookingState.selectedVendors = [];
             }
             
-            const bookingState = window.bookingState;
+            const selectedVendors = window.bookingState.selectedVendors;
+            const existingIndex = selectedVendors.findIndex(v => v.vendorId === vendorProfileId);
             
-            if (!bookingState.selectedVendors) {
-                window.bookingState.selectedVendors = [];
+            if (existingIndex > -1) {
+                // Remove vendor from selection
+                selectedVendors.splice(existingIndex, 1);
+                console.log('🔘 Vendor removed from selection');
+            } else {
+                // Add vendor to selection
+                selectedVendors.push({
+                    vendorId: vendorProfileId,
+                    serviceName: 'Selected Service',
+                    price: 0
+                });
+                console.log('🔘 Vendor added to selection');
             }
+            
+            console.log('🔘 Current selected vendors:', selectedVendors);
 
-            const existingIndex = bookingState.selectedVendors.findIndex(v => v.vendorProfileId === vendorProfileId);
-            console.log('🔍 currentVendorSections:', currentVendorSections);
+            // Update UI and markers
+            updateVendorSelectionUI();
+            updateMarkerColors();
             
-            // Debug vendor IDs to see what's available
-            const allVendors = currentVendorSections.flatMap(s => s.vendors);
-            console.log('🔍 Total vendors found:', allVendors.length);
-            allVendors.forEach((v, index) => {
-                console.log(`🔍 Vendor ${index}:`, {
-                    vendorProfileId: v.vendorProfileId,
-                    VendorProfileId: v.VendorProfileId,
-                    VendorProfileID: v.VendorProfileID,
-                    id: v.id,
-                    vendorId: v.vendorId,
-                    businessName: v.businessName || v.BusinessName,
-                    fullObject: v
+            // Enable/disable send requests button
+            const sendRequestsBtn = document.getElementById('send-requests-btn');
+            if (sendRequestsBtn) {
+                sendRequestsBtn.disabled = selectedVendors.length === 0;
+                console.log('🔘 Send requests button disabled:', sendRequestsBtn.disabled);
+            }
+        }
+        
+        // Function to update marker colors based on selection state
+        function updateMarkerColors() {
+            if (!vendorMarkers || vendorMarkers.length === 0) return;
+            
+            const selectedVendorIds = window.bookingState?.selectedVendors?.map(v => v.vendorId) || [];
+            
+            vendorMarkers.forEach(marker => {
+                const vendorId = marker.vendorData?.VendorProfileID || marker.vendorData?.vendorProfileId || marker.vendorData?.id;
+                const isSelected = selectedVendorIds.includes(vendorId);
+                
+                // Get the original category icon
+                const categoryIcon = getCategoryIcon(marker.vendorData?.serviceCategory || marker.vendorData?.category);
+                
+                // Update marker icon based on selection state
+                marker.setIcon({
+                    path: categoryIcon.path,
+                    scale: categoryIcon.scale,
+                    fillColor: isSelected ? '#10b981' : categoryIcon.fillColor, // Green if selected, original color if not
+                    fillOpacity: 1,
+                    strokeColor: '#ffffff',
+                    strokeWeight: isSelected ? 3 : 2 // Thicker stroke if selected
                 });
             });
-            console.log('🔍 Looking for vendor with ID:', vendorProfileId, '(type:', typeof vendorProfileId, ')');
-            
-            // Try multiple ID fields to find the vendor
-            let vendor = allVendors.find(v => v.vendorProfileId === vendorProfileId) ||
-                        allVendors.find(v => v.VendorProfileId === vendorProfileId) ||
-                        allVendors.find(v => v.VendorProfileID === vendorProfileId) ||
-                        allVendors.find(v => v.id === vendorProfileId) ||
-                        allVendors.find(v => v.vendorId === vendorProfileId) ||
-                        allVendors.find(v => String(v.vendorProfileId) === String(vendorProfileId)) ||
-                        allVendors.find(v => String(v.VendorProfileId) === String(vendorProfileId)) ||
-                        allVendors.find(v => String(v.VendorProfileID) === String(vendorProfileId)) ||
-                        allVendors.find(v => parseInt(v.vendorProfileId) === parseInt(vendorProfileId)) ||
-                        allVendors.find(v => parseInt(v.VendorProfileId) === parseInt(vendorProfileId)) ||
-                        allVendors.find(v => parseInt(v.VendorProfileID) === parseInt(vendorProfileId));
-            
-            // If still not found, try to match by business name as fallback
-            if (!vendor && allVendors.length > 0) {
-                console.log('🔍 Trying to match by index or business name...');
-                // Since we only have 1 vendor and the ID is "115", let's just use the first vendor
-                vendor = allVendors[0];
-                console.log('🔍 Using first vendor as fallback:', vendor);
-            }
-            
-            console.log('🔍 Found vendor:', vendor);
-            console.log('📋 Current selected vendors:', bookingState.selectedVendors);
-
-            if (existingIndex >= 0) {
-                // Remove vendor
-                window.bookingState.selectedVendors.splice(existingIndex, 1);
-                console.log('❌ Removed vendor from selection');
-            } else if (vendor) {
-                // Add vendor with service pricing info
-                const vendorWithPricing = {
-                    ...vendor,
-                    selectedService: vendor.services && vendor.services.length > 0 ? vendor.services[0] : null
-                };
-                window.bookingState.selectedVendors.push(vendorWithPricing);
-                console.log('✅ Added vendor to selection with pricing:', vendorWithPricing);
-            } else {
-                console.log('⚠️ Vendor not found in currentVendorSections');
-            }
-
-            // Update UI
-            updateVendorSelectionUI(vendorProfileId);
-            updateMapMarkers();
-            updateSendRequestsButton();
-            updateSelectedVendorsSummary();
-            
-            console.log('🔄 Updated UI, new selection count:', bookingState.selectedVendors.length);
         }
 
         // Select vendor from map info window
