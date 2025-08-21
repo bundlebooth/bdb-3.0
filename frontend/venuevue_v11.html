@@ -4233,11 +4233,9 @@
                         <span class="step-indicator" id="booking-step-indicator-2">2: Details</span>
                         <span class="step-indicator" id="booking-step-indicator-3">3: Vendors</span>
                         <span class="step-indicator" id="booking-step-indicator-4">4: Requests</span>
-                        <span class="step-indicator" id="booking-step-indicator-5">5: Approval</span>
-                        <span class="step-indicator" id="booking-step-indicator-6">6: Payment</span>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill" id="booking-progress-fill" style="width: 16.67%;"></div>
+                        <div class="progress-fill" id="booking-progress-fill" style="width: 25%;"></div>
                     </div>
                 </div>
 
@@ -4430,54 +4428,11 @@
                         <!-- Request summary will be populated here -->
                     </div>
                     
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
+                    <div style="display: flex; justify-content: flex-start; gap: 1rem; margin-top: 2rem;">
                         <button type="button" class="btn btn-outline" id="back-to-booking-step-3">Back: Vendors</button>
-                        <button type="button" class="btn btn-primary" id="continue-to-approval">Continue</button>
                     </div>
                 </div>
 
-                <!-- Step 5: Approval Handling -->
-                <div class="booking-step" id="booking-step-5" style="display: none;">
-                    <h4 class="form-section-title">Vendor Approvals</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Waiting for vendor responses. You'll be notified when vendors approve or decline.</p>
-                    
-                    <div class="approval-status" id="approval-status">
-                        <!-- Approval status will be populated here -->
-                    </div>
-                    
-                    <div class="approval-actions" style="margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="add-backup-vendors">Add Backup Vendors</button>
-                        <button type="button" class="btn btn-outline" id="cancel-requests">Cancel All Requests</button>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-booking-step-4">Back: Requests</button>
-                        <button type="button" class="btn btn-primary" id="proceed-to-payment" disabled>Proceed to Payment</button>
-                    </div>
-                </div>
-
-                <!-- Step 6: Payment & Confirmation -->
-                <div class="booking-step" id="booking-step-6" style="display: none;">
-                    <h4 class="form-section-title">Payment & Confirmation</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Review your booking details and complete payment.</p>
-                    
-                    <div class="booking-summary" id="booking-summary">
-                        <!-- Booking summary will be populated here -->
-                    </div>
-                    
-                    <div class="payment-section" id="payment-section">
-                        <h5 style="margin-bottom: 1rem; color: var(--primary);">Payment Details</h5>
-                        <div id="card-element" style="padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;">
-                            <!-- Stripe Elements will create form elements here -->
-                        </div>
-                        <div id="card-errors" role="alert" style="color: var(--accent); margin-bottom: 1rem;"></div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-booking-step-5">Back: Approvals</button>
-                        <button type="button" class="btn btn-primary" id="complete-booking">Complete Booking</button>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -6165,7 +6120,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             function updateBookingStep(step) {
                 // Hide all steps
-                for (let i = 1; i <= 6; i++) {
+                for (let i = 1; i <= 4; i++) {
                     const stepElement = document.getElementById(`booking-step-${i}`);
                     const indicatorElement = document.getElementById(`booking-step-indicator-${i}`);
                     
@@ -6183,7 +6138,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Update progress bar
                 const progressFill = document.getElementById('booking-progress-fill');
                 if (progressFill) {
-                    const progressPercentage = (step / 6) * 100;
+                    const progressPercentage = (step / 4) * 100;
                     progressFill.style.width = `${progressPercentage}%`;
                 }
                 
@@ -6246,11 +6201,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     updateBookingStep(4);
                 });
                 document.getElementById('back-to-booking-step-3')?.addEventListener('click', () => updateBookingStep(3));
-                document.getElementById('continue-to-approval')?.addEventListener('click', handleSendRequests);
-                document.getElementById('back-to-booking-step-4')?.addEventListener('click', () => updateBookingStep(4));
-                document.getElementById('proceed-to-payment')?.addEventListener('click', () => updateBookingStep(6));
-                document.getElementById('back-to-booking-step-5')?.addEventListener('click', () => updateBookingStep(5));
-                document.getElementById('complete-booking')?.addEventListener('click', handleCompleteBooking);
 
                 // Adjust criteria button
                 document.getElementById('adjust-criteria-btn')?.addEventListener('click', () => updateBookingStep(2));
@@ -7545,24 +7495,40 @@ document.addEventListener('DOMContentLoaded', async function() {
                     statusDiv.style.border = '1px solid #3498db';
                 }
                 
+                // Collect current event details from form (mimicking handleSendRequests)
+                const eventDetails = {
+                    date: document.getElementById('event-date')?.value,
+                    startTime: document.getElementById('event-start-time')?.value,
+                    endTime: document.getElementById('event-end-time')?.value,
+                    location: document.getElementById('event-location')?.value,
+                    attendeeCount: parseInt(document.getElementById('attendee-count')?.value) || 50
+                };
+
+                // Format time for backend (mimicking handleSendRequests)
+                const formattedTime = formatTimeForBackend(eventDetails.startTime);
+
                 // Prepare booking request data
                 const requestData = {
-                    userId: currentUser.userId,
-                    vendorProfileId: parseInt(vendorId),
-                    specialRequestText: specialRequests,
-                    eventDate: bookingState.eventDetails?.date,
-                    eventTime: bookingState.eventDetails?.time,
-                    eventLocation: bookingState.eventDetails?.location,
-                    attendeeCount: bookingState.eventDetails?.attendeeCount,
-                    budget: vendor.selectedService?.VendorPrice || 0,
-                    services: vendor.selectedService ? [vendor.selectedService] : []
+                    userId: currentUser.userId || currentUser.id,
+                    vendorIds: [parseInt(vendorId)],
+                    services: vendor.selectedService ? [{
+                        vendorId: parseInt(vendorId),
+                        serviceName: vendor.selectedService.ServiceName || 'General Service',
+                        servicePrice: vendor.selectedService.VendorPrice || 0
+                    }] : [],
+                    eventDetails: {
+                        ...eventDetails,
+                        time: formattedTime,
+                        specialRequests: specialRequests
+                    },
+                    budget: vendor.selectedService?.VendorPrice || 0
                 };
                 
                 console.log('📋 Request data:', requestData);
-                console.log('🌐 About to make API call to:', '/api/bookings/requests/send');
+                console.log('🌐 About to make API call to:', 'https://bdb-3-0-venuevue-api.onrender.com/api/bookings/requests');
                 
                 // Make actual API call
-                fetch('/api/bookings/requests/send', {
+                fetch('https://bdb-3-0-venuevue-api.onrender.com/api/bookings/requests', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -14028,6 +13994,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     
                     const requests = data.requests || [];
                     console.log('🔍 Debug - Parsed requests:', requests);
+                    console.log('🔍 Debug - Number of requests found:', requests.length);
+                    
+                    if (requests.length === 0) {
+                        console.log('🔍 Debug - No requests found. Checking if booking requests exist in database for vendor ID:', vendorProfileId);
+                        console.log('🔍 Debug - API URL called:', `${API_BASE_URL}/bookings/vendor/${vendorProfileId}/requests`);
+                    }
                     
                     // Update stats
                     const expiringSoon = requests.filter(req => req.HoursRemaining <= 6).length;
@@ -16743,39 +16715,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 // Step 4 navigation
                 const backToStep3Btn = document.getElementById('back-to-booking-step-3');
-                const continueToApprovalBtn = document.getElementById('continue-to-approval');
                 
                 if (backToStep3Btn) {
                     backToStep3Btn.addEventListener('click', () => updateBookingStep(3));
                 }
                 
-                if (continueToApprovalBtn) {
-                    continueToApprovalBtn.addEventListener('click', () => updateBookingStep(5));
-                }
                 
-                // Step 5 navigation
-                const backToStep4Btn = document.getElementById('back-to-booking-step-4');
-                const proceedToPaymentBtn = document.getElementById('proceed-to-payment');
                 
-                if (backToStep4Btn) {
-                    backToStep4Btn.addEventListener('click', () => updateBookingStep(4));
-                }
-                
-                if (proceedToPaymentBtn) {
-                    proceedToPaymentBtn.addEventListener('click', () => updateBookingStep(6));
-                }
-                
-                // Step 6 navigation
-                const backToStep5Btn = document.getElementById('back-to-booking-step-5');
-                const confirmBookingBtn = document.getElementById('confirm-booking');
-                
-                if (backToStep5Btn) {
-                    backToStep5Btn.addEventListener('click', () => updateBookingStep(5));
-                }
-                
-                if (confirmBookingBtn) {
-                    confirmBookingBtn.addEventListener('click', handleConfirmBooking);
-                }
             }
 
             // Step Navigation Event Handlers
