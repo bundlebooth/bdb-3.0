@@ -19147,7 +19147,19 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         // Create hover tooltip content for vendor markers
         function createVendorHoverContent(vendor, distance) {
             const businessName = vendor.BusinessName || vendor.businessName || 'Unknown Business';
-            const serviceName = vendor.serviceName || (vendor.services && vendor.services[0]?.ServiceName) || 'Service Available';
+            
+            // Get service name from multiple possible sources
+            let serviceName = 'Service Available';
+            if (vendor.services && vendor.services[0]?.ServiceName) {
+                serviceName = vendor.services[0].ServiceName;
+            } else if (vendor.MatchingServiceNames && Array.isArray(vendor.MatchingServiceNames)) {
+                serviceName = vendor.MatchingServiceNames[0];
+            } else if (vendor.MatchingServiceNames && typeof vendor.MatchingServiceNames === 'string') {
+                serviceName = vendor.MatchingServiceNames.split(',')[0].trim();
+            } else if (vendor.serviceName) {
+                serviceName = vendor.serviceName;
+            }
+            
             const price = vendor.services && vendor.services[0]?.VendorPrice ? `$${vendor.services[0].VendorPrice}` : 'Price on request';
             
             return `
@@ -19170,7 +19182,19 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             const rating = vendor.averageRating || 4.5;
             const reviewCount = vendor.totalReviews || 0;
             const businessName = vendor.BusinessName || vendor.businessName || 'Unknown Business';
-            const serviceName = vendor.serviceName || (vendor.services && vendor.services[0]?.ServiceName) || 'Service Available';
+            
+            // Get service name from multiple possible sources
+            let serviceName = 'Service Available';
+            if (vendor.services && vendor.services[0]?.ServiceName) {
+                serviceName = vendor.services[0].ServiceName;
+            } else if (vendor.MatchingServiceNames && Array.isArray(vendor.MatchingServiceNames)) {
+                serviceName = vendor.MatchingServiceNames[0];
+            } else if (vendor.MatchingServiceNames && typeof vendor.MatchingServiceNames === 'string') {
+                serviceName = vendor.MatchingServiceNames.split(',')[0].trim();
+            } else if (vendor.serviceName) {
+                serviceName = vendor.serviceName;
+            }
+            
             const price = vendor.services && vendor.services[0]?.VendorPrice ? `$${vendor.services[0].VendorPrice}` : 'Price on request';
             const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
             
@@ -19480,17 +19504,31 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             
             // Get service names for tags - ensure it's always an array
             let serviceNames = [];
-            if (vendor.MatchingServiceNames && Array.isArray(vendor.MatchingServiceNames)) {
+            
+            // Debug: Log vendor data to see structure
+            console.log('🔍 Vendor data structure:', {
+                vendor: vendor,
+                MatchingServiceNames: vendor.MatchingServiceNames,
+                services: vendor.services,
+                serviceName: vendor.serviceName,
+                serviceCategory: vendor.serviceCategory
+            });
+            
+            if (vendor.MatchingServiceNames && Array.isArray(vendor.MatchingServiceNames) && vendor.MatchingServiceNames.length > 0) {
                 serviceNames = vendor.MatchingServiceNames;
-            } else if (vendor.MatchingServiceNames && typeof vendor.MatchingServiceNames === 'string') {
+            } else if (vendor.MatchingServiceNames && typeof vendor.MatchingServiceNames === 'string' && vendor.MatchingServiceNames.trim()) {
                 serviceNames = vendor.MatchingServiceNames.split(',').map(s => s.trim());
-            } else if (vendor.services && Array.isArray(vendor.services)) {
-                serviceNames = vendor.services.map(s => s.ServiceName).filter(name => name);
             } else if (vendor.serviceName) {
                 serviceNames = [vendor.serviceName];
+            } else if (vendor.services && Array.isArray(vendor.services) && vendor.services.length > 0) {
+                serviceNames = vendor.services.map(s => s.ServiceName).filter(name => name);
+            } else if (vendor.serviceCategory) {
+                serviceNames = [vendor.serviceCategory];
             } else {
                 serviceNames = ['Service'];
             }
+            
+            console.log('🎯 Extracted service names:', serviceNames);
             
             const rating = vendor.averageRating || 4.5;
             const reviewCount = vendor.totalReviews || 0;
@@ -19552,13 +19590,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 else if (totalCost < 1500) priceRange = '$$';
                 else if (totalCost < 3000) priceRange = '$$$';
                 else priceRange = '$$$$';
-            } else if (vendor.totalEstimatedCost) {
-                totalCost = vendor.totalEstimatedCost;
+            } else if (vendor.totalEstimatedCost || serviceNames.length > 0) {
+                totalCost = vendor.totalEstimatedCost || 0;
+                // Use the first available service name instead of generic "Service Available"
+                const displayServiceName = serviceNames.length > 0 ? serviceNames[0] : 'Service Available';
                 serviceDetails = `
                     <div style="display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; font-size: 0.85rem;">
-                        <span style="color: #10b981; font-weight: 600;">Service Available</span>
+                        <span style="color: #10b981; font-weight: 600;">${displayServiceName}</span>
                         <span style="color: #6b7280;">•</span>
-                        <span style="color: #059669; font-weight: 600;">$${totalCost}</span>
+                        <span style="color: #059669; font-weight: 600;">${totalCost > 0 ? `$${totalCost}` : 'Price on request'}</span>
                     </div>
                 `;
                 if (totalCost < 500) priceRange = '$';
