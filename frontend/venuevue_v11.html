@@ -16979,8 +16979,58 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         // Initialize Google Places Autocomplete
         function initializeGooglePlaces() {
             if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-                // Business address autocomplete is handled in DOMContentLoaded event
-                console.log('✅ Business address autocomplete will be initialized on DOMContentLoaded');
+                console.log('✅ Initializing Google Places autocomplete services...');
+                
+                // Initialize business address autocomplete using Places API (New)
+                const businessAddressField = document.getElementById('business-address');
+                if (businessAddressField) {
+                    console.log('Setting up business address autocomplete...');
+                    const businessAutocompleteService = new google.maps.places.AutocompleteService();
+                    const businessPlacesService = new google.maps.places.PlacesService(document.createElement('div'));
+                    
+                    let currentBusinessRequest;
+                    businessAddressField.addEventListener('input', function() {
+                        const query = this.value;
+                        console.log('Business address input changed:', query);
+                        
+                        // Clear suggestions if query is too short
+                        if (query.length < 3) {
+                            clearSuggestions(businessAddressField);
+                            return;
+                        }
+                        
+                        if (currentBusinessRequest) {
+                            currentBusinessRequest.abort();
+                        }
+                        
+                        console.log('Making business address autocomplete request for:', query);
+                        businessAutocompleteService.getPlacePredictions({
+                            input: query,
+                            componentRestrictions: { country: 'ca' },
+                            types: ['address']
+                        }, (predictions, status) => {
+                            console.log('Business address autocomplete response:', status, predictions);
+                            if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+                                showBusinessAddressSuggestions(predictions, businessAddressField, businessPlacesService);
+                            } else {
+                                console.error('Business address autocomplete failed:', status);
+                            }
+                        });
+                    });
+                    
+                    // Clear suggestions when clicking outside
+                    document.addEventListener('click', function(e) {
+                        const suggestionsContainer = businessAddressField.parentNode.querySelector('.suggestions-container');
+                        const isClickInsideInput = businessAddressField.contains(e.target);
+                        const isClickInsideSuggestions = suggestionsContainer && suggestionsContainer.contains(e.target);
+                        
+                        if (!isClickInsideInput && !isClickInsideSuggestions) {
+                            clearSuggestions(businessAddressField);
+                        }
+                    });
+                } else {
+                    console.warn('Business address field not found');
+                }
 
                 // Initialize vendor address autocomplete using Places API (New)
                 const vendorAddressField = document.getElementById('vendor-address');
@@ -17711,7 +17761,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             };
         }
 
-        // Initialize Google Places API for Canadian addresses only
+        // Initialize country selection for Canadian addresses only
         document.addEventListener('DOMContentLoaded', function() {
             const businessCountrySelect = document.getElementById('business-country');
             
@@ -17719,53 +17769,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             if (businessCountrySelect) {
                 businessCountrySelect.value = 'Canada';
                 businessCountrySelect.readOnly = true; // Prevent changing
-            }
-            
-            // Initialize Google Places autocomplete for Canadian addresses only using Places API (New)
-            const businessAddressField = document.getElementById('business-address');
-            if (businessAddressField && typeof google !== 'undefined' && google.maps && google.maps.places) {
-                console.log('Setting up business address autocomplete...');
-                const businessAutocompleteService = new google.maps.places.AutocompleteService();
-                const businessPlacesService = new google.maps.places.PlacesService(document.createElement('div'));
-                
-                let currentBusinessRequest;
-                businessAddressField.addEventListener('input', function() {
-                    const query = this.value;
-                    console.log('Address input changed:', query);
-                    
-                    // Clear suggestions if query is too short
-                    if (query.length < 3) {
-                        clearSuggestions(businessAddressField);
-                        return;
-                    }
-                    
-                    if (currentBusinessRequest) {
-                        currentBusinessRequest.abort();
-                    }
-                    
-                    console.log('Making autocomplete request for:', query);
-                    businessAutocompleteService.getPlacePredictions({
-                        input: query,
-                        componentRestrictions: { country: 'ca' },
-                        types: ['address']
-                    }, (predictions, status) => {
-                        console.log('Autocomplete response:', status, predictions);
-                        if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
-                            showBusinessAddressSuggestions(predictions, businessAddressField, businessPlacesService);
-                        } else {
-                            console.error('Autocomplete failed:', status);
-                        }
-                    });
-                });
-                
-                // Clear suggestions when clicking outside
-                document.addEventListener('click', function(e) {
-                    if (!businessAddressField.contains(e.target)) {
-                        clearSuggestions(businessAddressField);
-                    }
-                });
-            } else {
-                console.error('Google Maps API not available for business address autocomplete');
             }
         });
         
