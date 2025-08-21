@@ -7338,47 +7338,66 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Function to render selected vendors summary on Step 4
-            function updateSelectedVendorsSummary() {
+            window.updateSelectedVendorsSummary = function updateSelectedVendorsSummary() {
                 const summaryContainer = document.getElementById('selected-vendors-summary');
-                if (!summaryContainer || bookingState.selectedVendors.length === 0) return;
+                if (!summaryContainer) return;
                 
-                const totalCost = bookingState.selectedVendors.reduce((sum, v) => sum + (v.servicePrice || 0), 0);
+                // Always use the global bookingState
+                const globalBookingState = window.bookingState || { selectedVendors: [] };
+                
+                console.log('🔄 Updating selected vendors summary, count:', globalBookingState.selectedVendors?.length || 0);
+                console.log('🔄 globalBookingState:', globalBookingState);
+                console.log('🔄 selectedVendors array:', globalBookingState.selectedVendors);
+                
+                if (!globalBookingState.selectedVendors || globalBookingState.selectedVendors.length === 0) {
+                    summaryContainer.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No vendors selected yet.</p>';
+                    return;
+                }
+                
+                const totalCost = globalBookingState.selectedVendors.reduce((sum, v) => sum + (v.servicePrice || v.VendorPrice || 0), 0);
                 
                 const vendorSummaryHTML = `
                     <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
                         <h5 style="margin: 0 0 1rem 0; color: #2c3e50; font-weight: 600;">Selected Vendors & Services</h5>
                         <div class="selected-vendors-list">
-                            ${bookingState.selectedVendors.map(vendor => `
+                            ${globalBookingState.selectedVendors.map(vendor => {
+                                const businessName = vendor.BusinessName || vendor.name || 'Unknown Business';
+                                const serviceName = vendor.MatchingServiceNames || vendor.serviceName || 'Service';
+                                const location = vendor.Location || vendor.location || 'Location not specified';
+                                const price = vendor.VendorPrice || vendor.servicePrice || 0;
+                                
+                                return `
                                 <div class="selected-vendor-item" style="background: white; border: 1px solid #e1e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
                                     <div class="vendor-info">
-                                        <h6 style="margin: 0 0 0.5rem 0; color: #2c3e50; font-weight: 600;">${vendor.name}</h6>
+                                        <h6 style="margin: 0 0 0.5rem 0; color: #2c3e50; font-weight: 600;">${businessName}</h6>
                                         <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">
-                                            <span style="color: #3498db; font-weight: 500;"><i class="fas fa-bullseye" style="color: #3498db;"></i> ${vendor.serviceName}</span>
+                                            <span style="color: #3498db; font-weight: 500;"><i class="fas fa-bullseye" style="color: #3498db;"></i> ${serviceName}</span>
                                         </p>
                                         <p style="margin: 0.25rem 0 0 0; color: var(--text-light); font-size: 0.85rem;">
-                                            <i class="fas fa-map-marker-alt"></i> ${vendor.vendorData?.BusinessAddress || vendor.vendorData?.location || 'Location not specified'}
+                                            <i class="fas fa-map-marker-alt"></i> ${location}
                                         </p>
                                     </div>
                                     <div class="service-price" style="text-align: right;">
-                                        <div style="font-size: 1.1rem; font-weight: 700; color: #2c3e50;">$${Math.round(vendor.servicePrice || 0).toLocaleString()}</div>
-                                        <div style="font-size: 0.8rem; color: var(--text-light);">for ${vendor.serviceName}</div>
+                                        <div style="font-size: 1.1rem; font-weight: 700; color: #2c3e50;">$${Math.round(price).toLocaleString()}</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-light);">for ${serviceName}</div>
                                     </div>
                                 </div>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </div>
                         <div class="total-cost" style="border-top: 2px solid #e1e8f0; padding-top: 1rem; margin-top: 1rem; text-align: right;">
                             <div style="font-size: 1.2rem; font-weight: 700; color: #2c3e50;">
                                 Total Estimated Cost: <span style="color: #27ae60;">$${Math.round(totalCost).toLocaleString()}</span>
                             </div>
                             <div style="font-size: 0.9rem; color: var(--text-light); margin-top: 0.25rem;">
-                                ${bookingState.selectedVendors.length} vendor${bookingState.selectedVendors.length !== 1 ? 's' : ''} selected
+                                ${globalBookingState.selectedVendors.length} vendor${globalBookingState.selectedVendors.length !== 1 ? 's' : ''} selected
                             </div>
                         </div>
                     </div>
                 `;
                 
                 summaryContainer.innerHTML = vendorSummaryHTML;
-            }
+            };
 
             // Helper function to format time to HH:MM:SS
             function formatTimeForBackend(timeStr) {
@@ -18030,24 +18049,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             console.log('🔘 toggleVendorSelection called with:', vendorProfileId);
             console.log('🔘 Function is running!');
             
-            // Ensure bookingState exists and has selectedVendors array
-            if (typeof window.bookingState === 'undefined') {
+            // Use existing bookingState or initialize selectedVendors array
+            if (!window.bookingState) {
                 console.log('🔧 Creating bookingState...');
                 window.bookingState = {
-                    currentStep: 1,
-                    selectedServices: [],
-                    selectedPredefinedServices: [],
-                    availablePredefinedServices: {},
-                    eventDetails: {},
-                    budget: 2000,
-                    availableVendors: [],
                     selectedVendors: [],
-                    sentRequests: [],
+                    eventDetails: {},
+                    currentStep: 1,
                     approvedVendors: [],
                     totalCost: 0,
                     paymentIntent: null,
                     countdownTimers: {}
                 };
+            } else if (!window.bookingState.selectedVendors) {
+                console.log('🔧 Adding selectedVendors to existing bookingState...');
+                window.bookingState.selectedVendors = [];
             }
             
             const bookingState = window.bookingState;
@@ -18115,6 +18131,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             updateVendorSelectionUI(vendorProfileId);
             updateMapMarkers();
             updateSendRequestsButton();
+            updateSelectedVendorsSummary();
             
             console.log('🔄 Updated UI, new selection count:', bookingState.selectedVendors.length);
         }
