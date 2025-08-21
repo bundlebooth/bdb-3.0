@@ -1633,12 +1633,12 @@ router.post('/search-by-services', async (req, res) => {
       });
     }
 
-    // Prepare parameters for stored procedure
-    const categories = [...new Set(selectedServices.map(s => s.category))].join(',');
+    // Prepare parameters for stored procedure - use service IDs instead of categories
+    const serviceIdsString = predefinedServiceIds.join(',');
     const totalBudgetValue = totalBudget || selectedServices.reduce((sum, s) => sum + (s.budget || 0), 0);
     
     // Set up stored procedure call
-    request.input('Categories', sql.NVarChar(500), categories);
+    request.input('ServiceIds', sql.NVarChar(500), serviceIdsString);
     request.input('Budget', sql.Decimal(10, 2), totalBudgetValue);
     request.input('EventDate', sql.Date, eventDetails?.date ? new Date(eventDetails.date) : null);
     request.input('City', sql.NVarChar(100), null); // Let frontend handle location filtering
@@ -1650,8 +1650,8 @@ router.post('/search-by-services', async (req, res) => {
     request.input('PageSize', sql.Int, 100);
     request.input('SortBy', sql.NVarChar(20), 'relevance');
 
-    // Call the stored procedure
-    const result = await request.execute('sp_SearchVendorsMultiCategory');
+    // Call the new stored procedure for predefined services
+    const result = await request.execute('sp_SearchVendorsByPredefinedServices');
     
     // Process results to match expected format
     const vendorsWithServices = result.recordset.map(vendor => {
