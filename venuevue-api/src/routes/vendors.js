@@ -252,7 +252,7 @@ async function enhanceVendorWithImages(vendor, pool) {
   }
 }
 
-// Search vendors using sp_SearchVendors
+// Search vendors using sp_SearchVendors with enhanced location support
 router.get('/', async (req, res) => {
   try {
     const { 
@@ -270,7 +270,9 @@ router.get('/', async (req, res) => {
       pageSize,
       sortBy,
       includeImages,
-      predefinedServices
+      predefinedServices,
+      eventLocation,
+      mapBounds
     } = req.query;
 
     const pool = await poolPromise;
@@ -320,7 +322,15 @@ router.get('/', async (req, res) => {
       distanceMiles: vendor.DistanceMiles,
       categories: vendor.Categories || '',
       services: vendor.services ? JSON.parse(vendor.services) : [],
-      reviews: vendor.reviews ? JSON.parse(vendor.reviews) : []
+      reviews: vendor.reviews ? JSON.parse(vendor.reviews) : [],
+      // Add location data for map display
+      address: vendor.Address || '',
+      city: vendor.City || '',
+      state: vendor.State || '',
+      country: vendor.Country || '',
+      postalCode: vendor.PostalCode || '',
+      latitude: vendor.Latitude || null,
+      longitude: vendor.Longitude || null
     }));
 
     // Enhance with Cloudinary images if requested (default: true for better UX)
@@ -355,6 +365,257 @@ router.get('/', async (req, res) => {
     console.error('Database error:', err);
     res.status(500).json({ 
       message: 'Database operation failed',
+      error: err.message 
+    });
+  }
+});
+
+// Enhanced map-based vendor search endpoint with dynamic discovery
+router.get('/map', async (req, res) => {
+  try {
+    const { 
+      eventLocation,
+      eventLat,
+      eventLng,
+      category,
+      services,
+      minPrice,
+      maxPrice,
+      bounds,
+      zoom,
+      predefinedServices,
+      eventDate,
+      eventStartTime,
+      eventEndTime,
+      prioritizeEventLocation
+    } = req.query;
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    // Parse event location coordinates
+    let eventLatitude = null;
+    let eventLongitude = null;
+    
+    if (eventLat && eventLng) {
+      eventLatitude = parseFloat(eventLat);
+      eventLongitude = parseFloat(eventLng);
+    } else if (eventLocation) {
+      try {
+        const eventLocationObj = JSON.parse(eventLocation);
+        if (eventLocationObj.lat && eventLocationObj.lng) {
+          eventLatitude = parseFloat(eventLocationObj.lat);
+          eventLongitude = parseFloat(eventLocationObj.lng);
+        }
+      } catch (e) {
+        console.warn('Could not parse event location:', eventLocation);
+      }
+    }
+
+    // Build dynamic query with distance calculation from event location
+    let query = `
+      SELECT DISTINCT
+        vp.VendorProfileID as id,
+        vp.VendorProfileID,
+        vp.BusinessName as name,
+        vp.BusinessDescription as description,
+        vp.Address as address,
+        vp.City as city,
+        vp.State as state,
+        vp.Country as country,
+        vp.PostalCode as postalCode,
+        vp.Latitude as latitude,
+        vp.Longitude as longitude,
+        vp.PriceLevel as priceLevel,
+        vp.Rating as rating,
+        vp.ReviewCount,
+        vp.IsPremium,
+        vp.IsEcoFriendly,
+        vp.IsAwardWinning,
+        vc.Category as categories,
+        CASE 
+          WHEN vp.PriceLevel = '$' THEN 250
+          WHEN vp.PriceLevel = '$$' THEN 750
+          WHEN vp.PriceLevel = '$$$' THEN 1500
+          WHEN vp.PriceLevel = '$$$$' THEN 3000
+          ELSE 500
+        END as price`;
+
+    // Add distance calculation if event location is provided
+    if (eventLatitude && eventLongitude) {
+      query += `,
+        (6371 * acos(
+          cos(radians(@EventLat)) * cos(radians(vp.Latitude)) * 
+          cos(radians(vp.Longitude) - radians(@EventLng)) + 
+          sin(radians(@EventLat)) * sin(radians(vp.Latitude))
+        )) as distanceFromEvent`;
+    } else {
+      query += `, NULL as distanceFromEvent`;
+    }
+
+    query += `
+      FROM VendorProfiles vp
+      LEFT JOIN VendorCategories vc ON vp.VendorProfileID = vc.VendorProfileID`;
+
+    // Add predefined services join if services are specified
+    if (predefinedServices) {
+      query += `
+      LEFT JOIN VendorPredefinedServices vps ON vp.VendorProfileID = vps.VendorProfileID
+      LEFT JOIN PredefinedServices ps ON vps.PredefinedServiceID = ps.PredefinedServiceID`;
+    }
+
+    query += `
+      WHERE vp.IsCompleted = 1 
+        AND vp.IsActive = 1
+        AND vp.Latitude IS NOT NULL 
+        AND vp.Longitude IS NOT NULL`;
+
+    const request = new sql.Request(pool);
+    let paramCount = 0;
+
+    // Add event location parameters
+    if (eventLatitude && eventLongitude) {
+      request.input('EventLat', sql.Decimal(10, 8), eventLatitude);
+      request.input('EventLng', sql.Decimal(11, 8), eventLongitude);
+    }
+
+    // Add category filter
+    if (category) {
+      query += ` AND vc.Category LIKE @Category${paramCount}`;
+      request.input(`Category${paramCount}`, sql.NVarChar(50), `%${category}%`);
+      paramCount++;
+    }
+
+    // Add predefined services filter
+    if (predefinedServices) {
+      try {
+        const servicesArray = JSON.parse(predefinedServices);
+        if (servicesArray.length > 0) {
+          const serviceNames = servicesArray.map(s => s.name || s).join("','");
+          query += ` AND ps.ServiceName IN ('${serviceNames}')`;
+        }
+      } catch (e) {
+        console.warn('Invalid predefined services parameter:', predefinedServices);
+      }
+    }
+
+    // Add price range filter
+    if (minPrice) {
+      query += ` AND CASE 
+        WHEN vp.PriceLevel = '$' THEN 250
+        WHEN vp.PriceLevel = '$$' THEN 750
+        WHEN vp.PriceLevel = '$$$' THEN 1500
+        WHEN vp.PriceLevel = '$$$$' THEN 3000
+        ELSE 500
+      END >= @MinPrice${paramCount}`;
+      request.input(`MinPrice${paramCount}`, sql.Decimal(10, 2), parseFloat(minPrice));
+      paramCount++;
+    }
+
+    if (maxPrice) {
+      query += ` AND CASE 
+        WHEN vp.PriceLevel = '$' THEN 250
+        WHEN vp.PriceLevel = '$$' THEN 750
+        WHEN vp.PriceLevel = '$$$' THEN 1500
+        WHEN vp.PriceLevel = '$$$$' THEN 3000
+        ELSE 500
+      END <= @MaxPrice${paramCount}`;
+      request.input(`MaxPrice${paramCount}`, sql.Decimal(10, 2), parseFloat(maxPrice));
+      paramCount++;
+    }
+
+    // Add map bounds filter if provided
+    if (bounds) {
+      try {
+        const boundsObj = JSON.parse(bounds);
+        if (boundsObj.north && boundsObj.south && boundsObj.east && boundsObj.west) {
+          query += ` AND vp.Latitude BETWEEN @SouthBound${paramCount} AND @NorthBound${paramCount}`;
+          query += ` AND vp.Longitude BETWEEN @WestBound${paramCount} AND @EastBound${paramCount}`;
+          
+          request.input(`SouthBound${paramCount}`, sql.Decimal(10, 8), boundsObj.south);
+          request.input(`NorthBound${paramCount}`, sql.Decimal(10, 8), boundsObj.north);
+          request.input(`WestBound${paramCount}`, sql.Decimal(11, 8), boundsObj.west);
+          request.input(`EastBound${paramCount}`, sql.Decimal(11, 8), boundsObj.east);
+          paramCount++;
+        }
+      } catch (e) {
+        console.warn('Invalid bounds parameter:', bounds);
+      }
+    }
+
+    // Order by: prioritize event location proximity if specified, then rating
+    if (eventLatitude && eventLongitude && prioritizeEventLocation === 'true') {
+      query += ` ORDER BY distanceFromEvent ASC, vp.Rating DESC, vp.ReviewCount DESC`;
+    } else {
+      query += ` ORDER BY vp.Rating DESC, vp.ReviewCount DESC`;
+    }
+
+    // Add limit for performance
+    query += ` OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY`;
+
+    console.log('🗺️ Map search query:', query);
+    const result = await request.query(query);
+    
+    const vendors = result.recordset.map(vendor => ({
+      id: vendor.id,
+      vendorProfileId: vendor.VendorProfileID,
+      name: vendor.name || '',
+      description: vendor.description || '',
+      address: vendor.address || '',
+      city: vendor.city || '',
+      state: vendor.state || '',
+      country: vendor.country || '',
+      postalCode: vendor.postalCode || '',
+      latitude: parseFloat(vendor.latitude) || null,
+      longitude: parseFloat(vendor.longitude) || null,
+      price: vendor.price,
+      priceLevel: vendor.priceLevel,
+      rating: vendor.rating || 0,
+      reviewCount: vendor.ReviewCount || 0,
+      isPremium: vendor.IsPremium || false,
+      isEcoFriendly: vendor.IsEcoFriendly || false,
+      isAwardWinning: vendor.IsAwardWinning || false,
+      categories: vendor.categories || '',
+      distanceFromEvent: vendor.distanceFromEvent ? parseFloat(vendor.distanceFromEvent).toFixed(2) : null,
+      fullAddress: `${vendor.address || ''}, ${vendor.city || ''}, ${vendor.state || ''} ${vendor.postalCode || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',')
+    }));
+
+    // Enhance with images if needed (limit to first 20 for performance)
+    const vendorsToEnhance = vendors.slice(0, 20);
+    const enhancedVendors = await Promise.all(
+      vendorsToEnhance.map(vendor => enhanceVendorWithImages(vendor, pool))
+    );
+    
+    // Combine enhanced and non-enhanced vendors
+    const finalVendors = [
+      ...enhancedVendors,
+      ...vendors.slice(20)
+    ];
+
+    res.json({
+      success: true,
+      vendors: finalVendors,
+      totalCount: vendors.length,
+      eventLocation: eventLocation || null,
+      eventCoordinates: eventLatitude && eventLongitude ? { lat: eventLatitude, lng: eventLongitude } : null,
+      searchCriteria: {
+        category,
+        services,
+        minPrice,
+        maxPrice,
+        bounds: bounds ? JSON.parse(bounds) : null,
+        prioritizeEventLocation: prioritizeEventLocation === 'true'
+      }
+    });
+
+  } catch (err) {
+    console.error('Map search error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to search vendors for map',
       error: err.message 
     });
   }
