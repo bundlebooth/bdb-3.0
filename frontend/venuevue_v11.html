@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>VenueVue - Event Booking Platform</title>
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎪</text></svg>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Google Maps API -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo&libraries=places,geometry&callback=initMap"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <title>VenueVue | Event Vendor Marketplace</title>
     <!-- Add Stripe.js for payment processing -->
     <script src="https://js.stripe.com/v3/"></script>
     <!-- Add FullCalendar for booking dates -->
@@ -1759,6 +1762,208 @@
             padding: 1.5rem;
             margin-bottom: 1.5rem;
             box-shadow: var(--shadow);
+        }
+
+        /* Vendor Map and Horizontal Cards Styles */
+        .vendor-horizontal-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .vendor-horizontal-card {
+            display: flex;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            gap: 1.5rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+
+        .vendor-horizontal-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        .vendor-horizontal-card.selected {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%);
+        }
+
+        .vendor-card-image {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        
+        .vendor-no-image {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%);
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .vendor-card-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .vendor-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .vendor-card-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .vendor-card-distance {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            background: var(--secondary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .vendor-card-rating {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .vendor-card-services {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .vendor-service-tag {
+            background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .vendor-card-pricing {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+        }
+
+        .vendor-price-range {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .vendor-select-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--primary);
+            background: white;
+            color: var(--primary);
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .vendor-select-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .vendor-select-btn.selected {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Map marker styles */
+        .vendor-map-marker {
+            background: #3498db;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .vendor-map-marker.selected {
+            background: #27ae60;
+        }
+
+        .event-location-marker {
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            border: 3px solid white;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+        }
+
+        /* Responsive design for vendor cards */
+        @media (max-width: 768px) {
+            .vendor-horizontal-card {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .vendor-card-image {
+                width: 100%;
+                height: 200px;
+            }
+            
+            .map-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start !important;
+            }
+            
+            .map-controls {
+                display: flex;
+                gap: 0.5rem;
+                width: 100%;
+            }
+            
+            .map-controls button {
+                flex: 1;
+            }
         }
 
         .vendor-stats {
@@ -4139,15 +4344,53 @@
                 <!-- Step 3: Vendor Matching -->
                 <div class="booking-step" id="booking-step-3" style="display: none;">
                     <h4 class="form-section-title">Available Vendors</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select vendors that match your requirements. Vendors are grouped by category and service for easy browsing.</p>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select vendors that match your requirements. View nearby vendors on the map and browse detailed options below.</p>
                     
                     <div id="vendor-loading" style="display: none; text-align: center; padding: 2rem;">
                         <div class="loading-spinner"></div>
                         <p>Finding matching vendors for each service...</p>
                     </div>
                     
-                    <div id="vendor-results" class="vendor-sections-container">
-                        <!-- Vendor sections will be populated here -->
+                    <!-- Google Maps Container -->
+                    <div id="vendor-map-container" style="display: none; margin-bottom: 2rem;">
+                        <div class="map-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h5 style="margin: 0; color: var(--text);">Vendors Near Your Event Location</h5>
+                            <div class="map-controls">
+                                <button type="button" class="btn btn-sm btn-outline" id="focus-event-location">
+                                    <i class="fas fa-crosshairs"></i> Focus Event Location
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline" id="show-all-vendors">
+                                    <i class="fas fa-expand"></i> Show All Vendors
+                                </button>
+                            </div>
+                        </div>
+                        <div id="vendor-map" style="height: 400px; width: 100%; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);"></div>
+                        <div class="map-legend" style="display: flex; gap: 1rem; margin-top: 1rem; font-size: 0.9rem; color: var(--text-light);">
+                            <div><i class="fas fa-map-marker-alt" style="color: #e74c3c;"></i> Event Location</div>
+                            <div><i class="fas fa-store" style="color: #3498db;"></i> Available Vendors</div>
+                            <div><i class="fas fa-check-circle" style="color: #27ae60;"></i> Selected Vendors</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Horizontal Vendor Cards -->
+                    <div id="vendor-cards-container" style="display: none;">
+                        <div class="vendor-cards-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h5 style="margin: 0; color: var(--text);">Vendor Options</h5>
+                            <div class="vendor-filters">
+                                <select id="vendor-sort" class="form-control" style="width: auto; display: inline-block;">
+                                    <option value="distance">Sort by Distance</option>
+                                    <option value="price">Sort by Price</option>
+                                    <option value="rating">Sort by Rating</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="vendor-horizontal-cards" class="vendor-horizontal-container">
+                            <!-- Horizontal vendor cards will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div id="vendor-results" class="vendor-sections-container" style="display: none;">
+                        <!-- Legacy vendor sections will be populated here -->
                     </div>
                     
                     <div id="no-vendors-found" style="display: none; text-align: center; padding: 2rem;">
@@ -4227,8 +4470,7 @@
         </div>
     </div>
 
-    <!-- Google Maps API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places&callback=initGoogleMaps" async defer></script>
+    <!-- Duplicate Google Maps API script removed - using the one in head -->
 
     <!-- Facebook SDK -->
     <script>
@@ -5196,13 +5438,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!container) return;
 
                 try {
-                    // Ensure vendor profile ID is available
-                    if (!vendorSetupState.vendorProfileId) {
-                        console.log('Vendor profile ID not available for summary, skipping...');
-                        container.innerHTML = '<p>Vendor profile not yet created. Complete the setup to see summary.</p>';
-                        return;
-                    }
-
                     const response = await fetch(`${API_BASE_URL}/vendors/summary/${vendorSetupState.vendorProfileId}`, {
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -6307,8 +6542,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
-            // Add service from dropdown selection with pricing model awareness
-            async function addServiceFromDropdown(serviceId, serviceName, serviceDescription, category, duration) {
+            // Add service from dropdown selection
+            function addServiceFromDropdown(serviceId, serviceName, serviceDescription, category, duration) {
                 // Check if service is already selected
                 const existingService = bookingState.selectedPredefinedServices.find(s => s.id === serviceId);
                 if (existingService) {
@@ -6316,30 +6551,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // Fetch pricing model for this service
-                let pricingModel = 'time_based'; // default
-                try {
-                    const response = await fetch(`${API_BASE_URL}/vendors/predefined-services-with-pricing`);
-                    const data = await response.json();
-                    if (data.success) {
-                        const serviceInfo = data.services.find(s => s.PredefinedServiceID === serviceId);
-                        if (serviceInfo) {
-                            pricingModel = serviceInfo.PricingModel;
-                        }
-                    }
-                } catch (error) {
-                    console.warn('Could not fetch pricing model, using default:', error);
-                }
-                
-                // Add to selected services with pricing model info
+                // Add to selected services with default budget
                 const newService = {
                     id: serviceId,
                     name: serviceName,
                     description: serviceDescription,
                     category: category,
-                    pricingModel: pricingModel,
-                    budget: 100, // Default budget
-                    duration: duration || 60 // Default duration for time-based services
+                    budget: 100 // Default budget
                 };
                 
                 bookingState.selectedPredefinedServices.push(newService);
@@ -6364,50 +6582,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 bookingState.selectedPredefinedServices.forEach((service, index) => {
                     totalBudget += service.budget;
-                    
-                    // Dynamic form fields based on pricing model
-                    const pricingModel = service.pricingModel || 'time_based';
-                    const pricingBadge = pricingModel === 'time_based' 
-                        ? '<span style="background: #3b82f6; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem; margin-left: 0.5rem;">Time-based</span>'
-                        : '<span style="background: #10b981; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem; margin-left: 0.5rem;">Fixed-based</span>';
-                    
-                    let contextualFields = '';
-                    if (pricingModel === 'time_based') {
-                        // Show duration field for time-based services
-                        contextualFields = `
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <label style="font-size: 0.9rem; color: var(--text);">Duration:</label>
-                                <div style="display: flex; align-items: center;">
-                                    <input type="number" class="service-duration-input" data-service-id="${service.id}" 
-                                           min="15" max="480" value="${service.duration || 60}" 
-                                           style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
-                                    <span style="color: var(--text-light); margin-left: 0.25rem;">min</span>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        // Show attendee count hint for fixed-based services
-                        contextualFields = `
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <label style="font-size: 0.9rem; color: var(--text-light);">Pricing based on:</label>
-                                <span style="font-size: 0.8rem; color: var(--text-light); font-style: italic;">Event attendees</span>
-                            </div>
-                        `;
-                    }
-                    
                     servicesHtml += `
                         <div class="selected-service-item" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; margin-bottom: 0.5rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px;">
                             <div style="flex: 1;">
-                                <div style="display: flex; align-items: center;">
-                                    <span style="font-weight: 600; color: var(--text); margin-bottom: 0.25rem;">${service.name}</span>
-                                    ${pricingBadge}
-                                </div>
+                                <div style="font-weight: 600; color: var(--text); margin-bottom: 0.25rem;">${service.name}</div>
                                 <div style="font-size: 0.85rem; color: var(--text-light); text-transform: capitalize;">${service.category}</div>
                                 ${service.description ? `<div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">${service.description}</div>` : ''}
                             </div>
                             <div style="display: flex; align-items: center; gap: 1rem;">
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <label style="font-size: 0.9rem; color: var(--text);">Max Budget:</label>
+                                    <label style="font-size: 0.9rem; color: var(--text);">Budget:</label>
                                     <div style="display: flex; align-items: center;">
                                         <span style="color: var(--text-light);">$</span>
                                         <input type="number" class="service-budget-input" data-service-id="${service.id}" 
@@ -6415,7 +6599,15 @@ document.addEventListener('DOMContentLoaded', function() {
                                                style="width: 80px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; margin-left: 0.25rem;">
                                     </div>
                                 </div>
-                                ${contextualFields}
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <label style="font-size: 0.9rem; color: var(--text);">Duration:</label>
+                                    <div style="display: flex; align-items: center;">
+                                        <input type="number" class="service-duration-input" data-service-id="${service.id}" 
+                                               min="15" max="480" value="${service.duration}" 
+                                               style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
+                                        <span style="color: var(--text-light); margin-left: 0.25rem;">min</span>
+                                    </div>
+                                </div>
                                 <button type="button" class="remove-service-btn" data-service-id="${service.id}" 
                                         style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer;">
                                     Remove
@@ -6443,95 +6635,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Global variable to store Google Maps initialization status
             window.googleMapsLoaded = false;
             
-            // Google Maps callback function
-            window.initGoogleMaps = function() {
-                console.log('Google Maps API loaded successfully');
-                window.googleMapsLoaded = true;
-                
-                // Initialize autocomplete if the input exists
-                const locationInput = document.getElementById('event-location');
-                if (locationInput) {
-                    initializeLocationAutocomplete();
-                }
-            };
-            
-            // Initialize Google Places autocomplete for Event Location
+            // Legacy function - now redirects to consolidated implementation
             function initializeLocationAutocomplete() {
-                const locationInput = document.getElementById('event-location');
-                const suggestionsDiv = document.getElementById('location-suggestions');
-                
-                if (!locationInput) {
-                    console.log('Event location input not found');
-                    return;
-                }
-                
-                // Check if Google Places API is available
-                if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-                    console.log('Initializing Google Places Autocomplete...');
-                    
-                    // Initialize Google Places Autocomplete
-                    const autocomplete = new google.maps.places.Autocomplete(locationInput, {
-                        types: ['geocode', 'establishment'],
-                        componentRestrictions: { country: ['us', 'ca'] } // Restrict to US and Canada
-                    });
-                    
-                    // Set fields to return
-                    autocomplete.setFields(['place_id', 'formatted_address', 'geometry', 'name']);
-                    
-                    // Listen for place selection
-                    autocomplete.addListener('place_changed', function() {
-                        const place = autocomplete.getPlace();
-                        console.log('Place selected:', place);
-                        
-                        if (place.geometry) {
-                            // Store the selected place data
-                            locationInput.setAttribute('data-lat', place.geometry.location.lat());
-                            locationInput.setAttribute('data-lng', place.geometry.location.lng());
-                            locationInput.setAttribute('data-place-id', place.place_id);
-                            
-                            console.log('Selected location:', {
-                                name: place.formatted_address,
-                                lat: place.geometry.location.lat(),
-                                lng: place.geometry.location.lng()
-                            });
-                        }
-                    });
-                    
-                    console.log('Google Places autocomplete initialized for event location');
-                } else {
-                    console.warn('Google Places API not available, using fallback autocomplete');
-                    // Fallback to OpenStreetMap implementation
-                    initializeFallbackAutocomplete(locationInput, suggestionsDiv);
-                }
-            }
-            
-            // Fallback autocomplete using OpenStreetMap
-            function initializeFallbackAutocomplete(locationInput, suggestionsDiv) {
-                if (!suggestionsDiv) return;
-                
-                let debounceTimer;
-                
-                locationInput.addEventListener('input', function(e) {
-                    const query = e.target.value.trim();
-                    
-                    clearTimeout(debounceTimer);
-                    
-                    if (query.length < 3) {
-                        suggestionsDiv.style.display = 'none';
-                        return;
-                    }
-                    
-                    debounceTimer = setTimeout(() => {
-                        searchLocations(query);
-                    }, 300);
-                });
-                
-                // Hide suggestions when clicking outside
-                document.addEventListener('click', function(e) {
-                    if (!locationInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
-                        suggestionsDiv.style.display = 'none';
-                    }
-                });
+                console.log('Legacy initializeLocationAutocomplete called - redirecting to new implementation');
+                initializeLocationAutocompleteNow();
             }
             
             // Search for locations using a geocoding service
@@ -6744,14 +6851,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                // Collect event details
+                // Collect event details - use stored location data if available
+                const locationInput = document.getElementById('event-location');
+                const eventLocationData = window.selectedEventLocation || {};
+                
                 bookingState.eventDetails = {
                     date: document.getElementById('event-date').value,
                     startTime: document.getElementById('event-start-time').value,
                     endTime: document.getElementById('event-end-time').value,
-                    location: document.getElementById('event-location').value,
+                    location: locationInput.value,
+                    locationCoords: eventLocationData.lat && eventLocationData.lng ? {
+                        lat: eventLocationData.lat,
+                        lng: eventLocationData.lng
+                    } : null,
                     attendeeCount: parseInt(document.getElementById('attendee-count').value) || 50
                 };
+                
+                console.log('Event details collected:', bookingState.eventDetails);
 
                 // Show loading state
                 document.getElementById('vendor-loading').style.display = 'block';
@@ -6792,11 +6908,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             const searchPayload = {
                                 selectedServices: [serviceRequirement],
                                 eventDetails: bookingState.eventDetails,
-                                maxBudget: service.budget
+                                totalBudget: service.budget,
+                                serviceIds: [service.id]
                             };
 
                             try {
-                                const response = await fetch(`${API_BASE_URL}/vendors/search-by-services-unified`, {
+                                const response = await fetch(`${API_BASE_URL}/vendors/search-by-services`, {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json'
@@ -6829,8 +6946,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Store all vendors for selection tracking
                         bookingState.availableVendors = vendorSections.flatMap(section => section.vendors);
                         
-                        // Render sectioned vendor results
-                        renderSectionedVendorResults(vendorSections);
+                        // Initialize Google Maps and render map-based vendor results
+                        await initializeVendorMap(vendorSections);
+                        
+                        // Render horizontal vendor cards
+                        renderHorizontalVendorCards(vendorSections);
                         
                         // Update step 3 header with match info
                         const step3Title = document.querySelector('#booking-step-3 .form-section-title');
@@ -8959,8 +9079,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
-            // Google Maps initialization
-            function initMap() {
+            // Legacy Google Maps initialization - renamed to avoid conflict
+            function initLegacyMap() {
                 if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
                     console.error('Google Maps API not loaded.');
                     document.getElementById('map').innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--accent);">Map could not be loaded. Please check your connection and API key.</p>';
@@ -9027,7 +9147,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     
                     // Initialize map if it hasn't been already
                     if (!state.map) {
-                        initMap();
+                        initLegacyMap();
                     }
                 });
 
@@ -9803,13 +9923,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (!container) return;
 
                 try {
-                    // Ensure vendor profile ID is available
-                    if (!vendorSetupState.vendorProfileId) {
-                        console.log('Vendor profile ID not available for summary, skipping...');
-                        container.innerHTML = '<p>Vendor profile not yet created. Complete the setup to see summary.</p>';
-                        return;
-                    }
-
                     const response = await fetch(`${API_BASE_URL}/vendors/summary/${vendorSetupState.vendorProfileId}`, {
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -10052,21 +10165,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                         
                         // Validate that all selected services have pricing
-                        const invalidServices = selectedServices.filter(service => {
-                            if (service.pricingModel === 'time_based') {
-                                // For time-based services, check if baseRate and minimumBookingFee are provided
-                                return (!service.baseRate || service.baseRate <= 0) || (!service.minimumBookingFee || service.minimumBookingFee <= 0);
-                            } else if (service.pricingModel === 'fixed_based') {
-                                // For fixed-based services, check based on pricing type
-                                if (service.fixedPricingType === 'fixed') {
-                                    return !service.fixedPrice || service.fixedPrice <= 0;
-                                } else if (service.fixedPricingType === 'per_person') {
-                                    return !service.pricePerPerson || service.pricePerPerson <= 0;
-                                }
-                            }
-                            // Fallback for legacy pricing
-                            return (!service.vendorPrice || service.vendorPrice <= 0) && (!service.price || service.price <= 0);
-                        });
+                        const invalidServices = selectedServices.filter(service => (!service.vendorPrice || service.vendorPrice <= 0) && (!service.price || service.price <= 0));
                         if (invalidServices.length > 0) {
                             alert('Please provide pricing for all selected services.');
                             return false;
@@ -10229,41 +10328,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('no-services-message').style.display = 'none';
                 
                 try {
-                    // Ensure vendor ID is properly set
-                    if (!vendorSetupState.vendorId) {
-                        console.log('Vendor ID not set, using currentUser.id:', currentUser?.id);
-                        if (currentUser?.id) {
-                            vendorSetupState.vendorId = currentUser.id;
-                        } else {
-                            throw new Error('No vendor ID available. Please ensure you are logged in.');
-                        }
-                    }
-                    
-                    console.log('Current vendorSetupState:', {
-                        vendorId: vendorSetupState.vendorId,
-                        vendorProfileId: vendorSetupState.vendorProfileId
-                    });
-                    
-                    // Ensure vendor profile ID is set before loading services
-                    if (!vendorSetupState.vendorProfileId && vendorSetupState.vendorId) {
-                        console.log('Getting vendor profile ID for userId:', vendorSetupState.vendorId);
-                        const vendorProfileResponse = await fetch(`${API_BASE_URL}/vendors/profile?userId=${vendorSetupState.vendorId}`, {
-                            headers: {
-                                'Authorization': `Bearer ${localStorage.getItem('token')}`
-                            }
-                        });
-
-                        if (!vendorProfileResponse.ok) {
-                            const errorData = await vendorProfileResponse.json();
-                            console.error('Vendor profile response error:', errorData);
-                            throw new Error(`Failed to get vendor profile: ${errorData.message || vendorProfileResponse.status}`);
-                        }
-
-                        const vendorProfileData = await vendorProfileResponse.json();
-                        vendorSetupState.vendorProfileId = vendorProfileData.vendorProfileId;
-                        console.log('Vendor profile ID set:', vendorSetupState.vendorProfileId);
-                    }
-                    
                     // Get selected categories from Step 1
                     const primaryCategory = document.getElementById('primary-category')?.value;
                     const additionalCategories = Array.from(document.getElementById('additional-categories')?.selectedOptions || [])
@@ -10278,8 +10342,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         return;
                     }
                     
-                    // Fetch all predefined services with pricing model information
-                    const response = await fetch(`${API_BASE_URL}/vendors/predefined-services-with-pricing`, {
+                    // Fetch all predefined services
+                    const response = await fetch(`${API_BASE_URL}/vendors/predefined-services`, {
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('token')}`
                         }
@@ -10292,16 +10356,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const data = await response.json();
                     console.log('Predefined services response:', data);
                     
-                    if (!data.success || !data.services) {
+                    if (!data.success || !data.servicesByCategory) {
                         throw new Error('Invalid response format');
                     }
                     
                     // Filter services by selected categories
-                    const relevantServices = data.services.filter(service => 
-                        selectedCategories.some(category => 
-                            category.toLowerCase() === service.Category.toLowerCase()
-                        )
-                    );
+                    const relevantServices = [];
+                    selectedCategories.forEach(category => {
+                        const categoryKey = findMatchingCategoryKey(category, data.servicesByCategory);
+                        if (categoryKey && data.servicesByCategory[categoryKey]) {
+                            data.servicesByCategory[categoryKey].forEach(service => {
+                                relevantServices.push({
+                                    ...service,
+                                    category: categoryKey
+                                });
+                            });
+                        }
+                    });
                     
                     console.log('Relevant services found:', relevantServices);
                     
@@ -10387,141 +10458,56 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function createPredefinedServiceCard(service) {
                 const card = document.createElement('div');
                 card.className = 'predefined-service-card';
-                card.dataset.serviceId = service.PredefinedServiceID;
-                card.dataset.serviceName = service.ServiceName;
-                card.dataset.serviceCategory = service.Category;
-                card.dataset.pricingModel = service.PricingModel;
-                
-                // Pricing model badge
-                const pricingBadge = service.PricingModel === 'time_based' 
-                    ? '<span style="background: #3b82f6; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem; margin-left: 0.5rem;">Time-based</span>'
-                    : '<span style="background: #10b981; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem; margin-left: 0.5rem;">Fixed-based</span>';
-                
-                // Dynamic pricing form based on pricing model
-                let pricingForm = '';
-                if (service.PricingModel === 'time_based') {
-                    pricingForm = `
-                        <div class="form-row-inline">
-                            <div class="form-group-inline">
-                                <label>Base Duration (min) *</label>
-                                <input type="number" 
-                                       class="base-duration-input" 
-                                       min="15" 
-                                       step="15" 
-                                       value="${service.DefaultDurationMinutes || 60}"
-                                       placeholder="60" 
-                                       required>
-                            </div>
-                            <div class="form-group-inline">
-                                <label>Base Rate ($) *</label>
-                                <input type="number" 
-                                       class="base-rate-input" 
-                                       min="0" 
-                                       step="0.01" 
-                                       placeholder="0.00" 
-                                       required>
-                            </div>
-                        </div>
-                        <div class="form-row-inline">
-                            <div class="form-group-inline">
-                                <label>Overtime Rate ($/hour)</label>
-                                <input type="number" 
-                                       class="overtime-rate-input" 
-                                       min="0" 
-                                       step="0.01" 
-                                       placeholder="0.00">
-                            </div>
-                            <div class="form-group-inline">
-                                <label>Minimum Fee ($)</label>
-                                <input type="number" 
-                                       class="minimum-fee-input" 
-                                       min="0" 
-                                       step="0.01" 
-                                       placeholder="0.00">
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    pricingForm = `
-                        <div class="form-group-inline">
-                            <label>Pricing Type *</label>
-                            <select class="fixed-pricing-type-select" required>
-                                <option value="">Select pricing type...</option>
-                                <option value="fixed_price">Fixed Price</option>
-                                <option value="per_attendee">Per Attendee</option>
-                            </select>
-                        </div>
-                        <div class="fixed-price-fields" style="display: none;">
-                            <div class="form-group-inline">
-                                <label>Fixed Price ($) *</label>
-                                <input type="number" 
-                                       class="fixed-price-input" 
-                                       min="0" 
-                                       step="0.01" 
-                                       placeholder="0.00">
-                            </div>
-                        </div>
-                        <div class="per-attendee-fields" style="display: none;">
-                            <div class="form-row-inline">
-                                <div class="form-group-inline">
-                                    <label>Price per Person ($) *</label>
-                                    <input type="number" 
-                                           class="price-per-person-input" 
-                                           min="0" 
-                                           step="0.01" 
-                                           placeholder="0.00">
-                                </div>
-                            </div>
-                            <div class="form-row-inline">
-                                <div class="form-group-inline">
-                                    <label>Min Attendees</label>
-                                    <input type="number" 
-                                           class="min-attendees-input" 
-                                           min="1" 
-                                           placeholder="1">
-                                </div>
-                                <div class="form-group-inline">
-                                    <label>Max Attendees</label>
-                                    <input type="number" 
-                                           class="max-attendees-input" 
-                                           min="1" 
-                                           placeholder="100">
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
+                card.dataset.serviceId = service.id;
+                card.dataset.serviceName = service.name;
+                card.dataset.serviceCategory = service.category;
                 
                 card.innerHTML = `
                     <div class="service-card-header">
-                        <div>
-                            <h6 class="service-card-title">${service.ServiceName}</h6>
-                            ${pricingBadge}
-                        </div>
+                        <h6 class="service-card-title">${service.name}</h6>
                         <div class="service-card-check">
                             <i class="fas fa-check" style="font-size: 0.8rem;"></i>
                         </div>
                     </div>
                     
                     <div class="service-card-description">
-                        ${service.ServiceDescription || 'Professional service offering'}
+                        ${service.description || 'Professional service offering'}
                     </div>
                     
                     <div class="service-card-details">
                         <div class="service-card-duration">
                             <i class="fas fa-clock"></i>
-                            <span>${service.PricingModel === 'time_based' ? 'Time-based pricing' : 'Fixed pricing'}</span>
+                            <span>Custom Duration</span>
                         </div>
                         <div style="color: var(--primary); font-weight: 500;">
                             <i class="fas fa-tag"></i>
-                            <span>${service.Category}</span>
+                            <span>${service.category}</span>
                         </div>
                     </div>
                     
                     <div class="vendor-customization-form">
-                        <h6 style="margin: 0 0 1rem 0; color: var(--primary); font-size: 0.9rem;">Set Your Pricing</h6>
+                        <h6 style="margin: 0 0 1rem 0; color: var(--primary); font-size: 0.9rem;">Customize Your Service</h6>
                         
-                        ${pricingForm}
+                        <div class="form-row-inline">
+                            <div class="form-group-inline">
+                                <label>Your Price ($) *</label>
+                                <input type="number" 
+                                       class="vendor-price-input" 
+                                       min="0" 
+                                       step="0.01" 
+                                       placeholder="0.00" 
+                                       required>
+                            </div>
+                            <div class="form-group-inline">
+                                <label>Duration (minutes)</label>
+                                <input type="number" 
+                                       class="vendor-duration-input" 
+                                       min="15" 
+                                       step="15" 
+                                       value="${service.defaultDuration || 60}"
+                                       placeholder="60">
+                            </div>
+                        </div>
                         
                         <div class="form-group-inline">
                             <label>Your Description (optional)</label>
@@ -10535,33 +10521,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Add click handler for service selection
                 card.addEventListener('click', (e) => {
                     // Don't toggle if clicking on form inputs
-                    if (e.target.closest('.vendor-customization-form input, .vendor-customization-form textarea, .vendor-customization-form select')) {
+                    if (e.target.closest('.vendor-customization-form input, .vendor-customization-form textarea')) {
                         return;
                     }
                     toggleServiceSelection(card, service);
                 });
-                
-                // Add event listener for fixed pricing type selection
-                if (service.PricingModel === 'fixed_based') {
-                    const pricingTypeSelect = card.querySelector('.fixed-pricing-type-select');
-                    const fixedPriceFields = card.querySelector('.fixed-price-fields');
-                    const perAttendeeFields = card.querySelector('.per-attendee-fields');
-                    
-                    pricingTypeSelect.addEventListener('change', (e) => {
-                        const selectedType = e.target.value;
-                        
-                        if (selectedType === 'fixed_price') {
-                            fixedPriceFields.style.display = 'block';
-                            perAttendeeFields.style.display = 'none';
-                        } else if (selectedType === 'per_attendee') {
-                            fixedPriceFields.style.display = 'none';
-                            perAttendeeFields.style.display = 'block';
-                        } else {
-                            fixedPriceFields.style.display = 'none';
-                            perAttendeeFields.style.display = 'none';
-                        }
-                    });
-                }
                 
                 return card;
             }
@@ -10585,146 +10549,52 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             
             function addSelectedService(card, service) {
                 // Remove if already exists
-                removeSelectedService(service.PredefinedServiceID);
+                removeSelectedService(service.id);
                 
                 const selectedService = {
-                    id: service.PredefinedServiceID,
-                    predefinedServiceId: service.PredefinedServiceID,
-                    name: service.ServiceName,
-                    description: service.ServiceDescription,
-                    category: service.Category,
-                    pricingModel: service.PricingModel,
-                    defaultDuration: service.DefaultDurationMinutes,
+                    id: service.id,
+                    predefinedServiceId: service.id,
+                    name: service.name,
+                    description: service.description,
+                    category: service.category,
+                    defaultDuration: service.defaultDuration,
                     price: 0,
-                    durationMinutes: service.DefaultDurationMinutes || 60,
+                    durationMinutes: service.defaultDuration || 60,
                     vendorPrice: 0,
-                    vendorDuration: service.DefaultDurationMinutes || 60,
+                    vendorDuration: service.defaultDuration || 60,
                     vendorDescription: ''
                 };
                 
                 vendorSetupState.selectedPredefinedServices.push(selectedService);
                 
-                // Add event listeners to unified pricing form inputs
-                addUnifiedPricingEventListeners(card, selectedService);
-            }
-            
-            function addUnifiedPricingEventListeners(card, selectedService) {
+                // Add event listeners to form inputs
+                const priceInput = card.querySelector('.vendor-price-input');
+                const durationInput = card.querySelector('.vendor-duration-input');
                 const descriptionInput = card.querySelector('.vendor-description-input');
                 
-                if (selectedService.pricingModel === 'time_based') {
-                    const baseDurationInput = card.querySelector('.base-duration-input');
-                    const baseRateInput = card.querySelector('.base-rate-input');
-                    const overtimeRateInput = card.querySelector('.overtime-rate-input');
-                    const minimumFeeInput = card.querySelector('.minimum-fee-input');
-                    
-                    const updateTimeBasedData = () => {
-                        const serviceIndex = vendorSetupState.selectedPredefinedServices.findIndex(s => s.id === selectedService.id);
-                        if (serviceIndex !== -1) {
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].baseDurationMinutes = parseInt(baseDurationInput.value) || 60;
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].baseRate = parseFloat(baseRateInput.value) || 0;
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].overtimeRatePerHour = parseFloat(overtimeRateInput.value) || 0;
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].minimumBookingFee = parseFloat(minimumFeeInput.value) || 0;
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].vendorDescription = descriptionInput.value.trim();
-                            updateSelectedServicesSummary();
-                        }
-                    };
-                    
-                    baseDurationInput?.addEventListener('input', updateTimeBasedData);
-                    baseRateInput?.addEventListener('input', updateTimeBasedData);
-                    overtimeRateInput?.addEventListener('input', updateTimeBasedData);
-                    minimumFeeInput?.addEventListener('input', updateTimeBasedData);
-                    descriptionInput?.addEventListener('input', updateTimeBasedData);
-                    
-                } else if (selectedService.pricingModel === 'fixed_based') {
-                    const pricingTypeSelect = card.querySelector('.fixed-pricing-type-select');
-                    const fixedPriceInput = card.querySelector('.fixed-price-input');
-                    const pricePerPersonInput = card.querySelector('.price-per-person-input');
-                    const minAttendeesInput = card.querySelector('.min-attendees-input');
-                    const maxAttendeesInput = card.querySelector('.max-attendees-input');
-                    
-                    const updateFixedBasedData = () => {
-                        const serviceIndex = vendorSetupState.selectedPredefinedServices.findIndex(s => s.id === selectedService.id);
-                        if (serviceIndex !== -1) {
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].fixedPricingType = pricingTypeSelect.value;
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].fixedPrice = parseFloat(fixedPriceInput.value) || 0;
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].pricePerPerson = parseFloat(pricePerPersonInput.value) || 0;
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].minimumAttendees = parseInt(minAttendeesInput.value) || 0;
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].maximumAttendees = parseInt(maxAttendeesInput.value) || 0;
-                            vendorSetupState.selectedPredefinedServices[serviceIndex].vendorDescription = descriptionInput.value.trim();
-                            updateSelectedServicesSummary();
-                        }
-                    };
-                    
-                    pricingTypeSelect?.addEventListener('change', updateFixedBasedData);
-                    fixedPriceInput?.addEventListener('input', updateFixedBasedData);
-                    pricePerPersonInput?.addEventListener('input', updateFixedBasedData);
-                    minAttendeesInput?.addEventListener('input', updateFixedBasedData);
-                    maxAttendeesInput?.addEventListener('input', updateFixedBasedData);
-                    descriptionInput?.addEventListener('input', updateFixedBasedData);
-                }
-            }
-            
-            async function saveUnifiedServicePricing() {
-                try {
-                    const token = localStorage.getItem('token');
-                    if (!token) {
-                        throw new Error('No authentication token found');
+                const updateServiceData = () => {
+                    const serviceIndex = vendorSetupState.selectedPredefinedServices.findIndex(s => s.id === service.id);
+                    if (serviceIndex !== -1) {
+                        const priceValue = parseFloat(priceInput.value) || 0;
+                        const durationValue = parseInt(durationInput.value) || service.defaultDuration || 60;
+                        const descriptionValue = descriptionInput.value.trim();
+                        
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].vendorPrice = priceValue;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].vendorDuration = durationValue;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].vendorDescription = descriptionValue;
+                        
+                        // Update API-compatible fields
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].price = priceValue;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].durationMinutes = durationValue;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].description = descriptionValue;
+                        
+                        updateSelectedServicesSummary();
                     }
-                    
-                    console.log('Saving unified service pricing to Services table:', vendorSetupState.selectedPredefinedServices);
-                    
-                    // Save each service individually to the Services table
-                    for (const service of vendorSetupState.selectedPredefinedServices) {
-                        const serviceData = {
-                            vendorProfileId: vendorSetupState.vendorProfileId,
-                            predefinedServiceId: service.predefinedServiceId,
-                            pricingModel: service.pricingModel,
-                            serviceDescription: service.vendorDescription || ''
-                        };
-                        
-                        // Add pricing fields based on model
-                        if (service.pricingModel === 'time_based') {
-                            serviceData.baseDurationMinutes = service.baseDurationMinutes || 60;
-                            serviceData.baseRate = service.baseRate || 0;
-                            serviceData.overtimeRatePerHour = service.overtimeRatePerHour || 0;
-                            serviceData.minimumBookingFee = service.minimumBookingFee || 0;
-                        } else if (service.pricingModel === 'fixed_based') {
-                            serviceData.fixedPricingType = service.fixedPricingType || 'fixed_price';
-                            
-                            if (service.fixedPricingType === 'fixed_price') {
-                                serviceData.fixedPrice = service.fixedPrice || 0;
-                            } else if (service.fixedPricingType === 'per_attendee') {
-                                serviceData.pricePerPerson = service.pricePerPerson || 0;
-                                serviceData.minimumAttendees = service.minimumAttendees || 1;
-                                serviceData.maximumAttendees = service.maximumAttendees || 100;
-                            }
-                        }
-                        
-                        const response = await fetch(`${API_BASE_URL}/vendors/setup/service-pricing-unified`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${token}`
-                            },
-                            body: JSON.stringify(serviceData)
-                        });
-                        
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-                        }
-                        
-                        const result = await response.json();
-                        console.log(`Service ${service.name} saved successfully:`, result);
-                    }
-                    
-                    console.log('All unified service pricing saved successfully to Services table');
-                    return { success: true, message: 'All services saved successfully' };
-                    
-                } catch (error) {
-                    console.error('Error saving unified service pricing:', error);
-                    throw error;
-                }
+                };
+                
+                priceInput.addEventListener('input', updateServiceData);
+                durationInput.addEventListener('input', updateServiceData);
+                descriptionInput.addEventListener('input', updateServiceData);
             }
             
             function removeSelectedService(serviceId) {
@@ -12028,13 +11898,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         endpoint = '/vendors/setup/step2-location';
                         break;
 
-                    case 3: // Services & Packages - Use unified pricing API
-                        // Save unified pricing data for selected services
-                        if (vendorSetupState.selectedPredefinedServices && vendorSetupState.selectedPredefinedServices.length > 0) {
-                            await saveUnifiedServicePricing();
-                        }
-                        
-                        // Continue with legacy data for backward compatibility
+                    case 3: // Services & Packages
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
                             serviceCategories: vendorSetupState.serviceCategories || [],
@@ -12850,13 +12714,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Show dedicated vendor profile page
             async function showVendorProfilePage(vendorId) {
-                // Validate vendor ID
-                if (!vendorId || isNaN(parseInt(vendorId)) || parseInt(vendorId) <= 0) {
-                    console.error('Invalid vendor ID:', vendorId);
-                    showMainApp(); // Redirect back to main app
-                    return;
-                }
-
                 mainAppView.style.display = 'none';
                 clientDashboardContainer.style.display = 'none';
                 vendorDashboardContainer.style.display = 'none';
@@ -16424,26 +16281,24 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         updateBookingStep(2);
                         // Initialize location autocomplete when entering Step 2
                         setTimeout(() => {
+                            console.log('Entering Step 2 - initializing location autocomplete');
                             if (window.googleMapsLoaded || (typeof google !== 'undefined' && google.maps && google.maps.places)) {
-                                initializeLocationAutocomplete();
+                                initializeLocationAutocompleteNow();
                             } else {
                                 console.log('Waiting for Google Maps to load...');
                                 // Wait for Google Maps to load
                                 const checkGoogleMaps = setInterval(() => {
                                     if (window.googleMapsLoaded || (typeof google !== 'undefined' && google.maps && google.maps.places)) {
                                         clearInterval(checkGoogleMaps);
-                                        initializeLocationAutocomplete();
+                                        initializeLocationAutocompleteNow();
                                     }
                                 }, 200);
                                 
-                                // Stop checking after 15 seconds and use fallback
+                                // Stop checking after 10 seconds
                                 setTimeout(() => {
                                     clearInterval(checkGoogleMaps);
-                                    if (!window.googleMapsLoaded && (typeof google === 'undefined' || !google.maps || !google.maps.places)) {
-                                        console.warn('Google Maps failed to load, using fallback');
-                                        initializeLocationAutocomplete(); // Will use fallback
-                                    }
-                                }, 15000);
+                                    console.warn('Google Maps loading timeout - autocomplete may not work');
+                                }, 10000);
                             }
                         }, 100);
                     });
@@ -16735,27 +16590,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return;
                 }
 
-                // Create script element to load Google Maps API
-                const script = document.createElement('script');
-                script.src = `https://maps.googleapis.com/maps/api/js?key=${appConfig.googleMapsApiKey}&libraries=places`;
-                script.async = true;
-                script.defer = true;
+                // Google Maps API already loaded in head - just initialize
+                console.log('✅ Google Maps API loaded successfully');
+                setTimeout(() => {
+                    initializeGooglePlaces();
+                    resolve();
+                }, 100);
                 
-                script.onload = () => {
-                    console.log('✅ Google Maps API loaded successfully');
-                    // Initialize Google Places after API is loaded
-                    setTimeout(() => {
-                        initializeGooglePlaces();
-                        resolve();
-                    }, 100);
-                };
-                
-                script.onerror = (error) => {
-                    console.error('❌ Error loading Google Maps API:', error);
-                    reject(error);
-                };
-                
-                document.head.appendChild(script);
+                // No need to append script since it's already in head
             });
         }
 
@@ -17484,6 +17326,731 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             if (durationField) durationField.value = '';
 
             console.log('✅ Service added successfully!');
+        }
+
+        console.log('🎉 All Vendor Setup Improvements JavaScript Loaded Successfully!');
+
+        // Google Maps and Vendor Location Functionality
+        let vendorMap = null;
+        let eventLocationMarker = null;
+        let vendorMarkers = [];
+        let geocoder = null;
+        let currentVendorSections = [];
+
+        // Global flag to track Google Maps availability
+        let googleMapsLoaded = false;
+        let locationAutocomplete = null;
+
+        // Initialize Google Maps callback - matching the test file
+        window.initMap = function() {
+            console.log('🚀 Google Maps API callback triggered');
+            
+            try {
+                if (typeof google === 'undefined' || !google.maps) {
+                    console.error('❌ Google object not available in initMap callback');
+                    return;
+                }
+                
+                console.log('✅ Google Maps API loaded successfully');
+                googleMapsLoaded = true;
+                window.googleMapsLoaded = true;
+                geocoder = new google.maps.Geocoder();
+                
+                // Initialize location autocomplete if input exists
+                initializeLocationAutocompleteNow();
+                
+                console.log('✅ Google Maps API fully initialized');
+            } catch (error) {
+                console.error('❌ Error in initMap callback:', error);
+            }
+        };
+        
+        // Consolidated location autocomplete initialization
+        function initializeLocationAutocompleteNow() {
+            const locationInput = document.getElementById('event-location');
+            if (!locationInput) {
+                console.log('Event location input not found');
+                return;
+            }
+            
+            if (!window.google || !window.google.maps || !window.google.maps.places) {
+                console.log('Google Places API not available yet');
+                return;
+            }
+            
+            // Clear any existing autocomplete
+            if (locationAutocomplete) {
+                google.maps.event.clearInstanceListeners(locationAutocomplete);
+            }
+            
+            console.log('Initializing location autocomplete...');
+            
+            locationAutocomplete = new google.maps.places.Autocomplete(locationInput, {
+                types: ['establishment', 'geocode'],
+                componentRestrictions: { country: 'ca' }
+            });
+            
+            locationAutocomplete.addListener('place_changed', function() {
+                const place = locationAutocomplete.getPlace();
+                
+                if (!place.geometry) {
+                    console.log('No geometry found for place');
+                    return;
+                }
+                
+                console.log('Place selected:', place.formatted_address);
+                
+                // Store the selected location globally
+                window.selectedEventLocation = {
+                    address: place.formatted_address,
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng(),
+                    place: place
+                };
+                
+                console.log('✅ Event location stored:', window.selectedEventLocation);
+                
+                // Update the input field display value if needed
+                if (place.formatted_address && locationInput.value !== place.formatted_address) {
+                    locationInput.value = place.formatted_address;
+                }
+            });
+            
+            console.log('✅ Location autocomplete initialized successfully');
+        }
+
+        // Show map fallback when Maps API fails
+        function showMapFallback() {
+            console.log('🔍 Showing map fallback - checking Google Maps status');
+            console.log('Google object available:', typeof google !== 'undefined');
+            console.log('Google Maps available:', typeof google !== 'undefined' && google.maps);
+            console.log('GoogleMapsLoaded flag:', googleMapsLoaded);
+            
+            const mapContainer = document.getElementById('vendor-map-container');
+            const mapElement = document.getElementById('vendor-map');
+            
+            if (mapContainer && mapElement) {
+                mapContainer.style.display = 'block';
+                mapElement.innerHTML = `
+                    <div style="
+                        height: 400px; 
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center; 
+                        background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%);
+                        border-radius: 12px;
+                        border: 2px dashed #3498db;
+                        flex-direction: column;
+                        gap: 1rem;
+                        text-align: center;
+                        padding: 2rem;
+                    ">
+                        <div style="font-size: 3rem; color: #3498db;">
+                            <i class="fas fa-map-marked-alt"></i>
+                        </div>
+                        <div>
+                            <h5 style="margin: 0 0 0.5rem 0; color: var(--text);">Map View Unavailable</h5>
+                            <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">
+                                Debugging Google Maps API loading...<br>
+                                Check browser console for detailed error messages.
+                            </p>
+                        </div>
+                        <div style="background: #fff3cd; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.8rem; color: #856404;">
+                            Google: ${typeof google !== 'undefined' ? '✅' : '❌'} | 
+                            Maps: ${typeof google !== 'undefined' && google.maps ? '✅' : '❌'} | 
+                            Loaded: ${googleMapsLoaded ? '✅' : '❌'}
+                        </div>
+                    </div>
+                `;
+                
+                // Hide map controls since map is not functional
+                const mapControls = mapContainer.querySelector('.map-controls');
+                if (mapControls) {
+                    mapControls.style.display = 'none';
+                }
+            }
+        }
+
+        // Initialize vendor map with event location and vendors
+        async function initializeVendorMap(vendorSections) {
+            console.log('🗺️ Initializing vendor map...');
+            console.log('Google available:', typeof google !== 'undefined');
+            console.log('Google Maps available:', typeof google !== 'undefined' && google.maps);
+            console.log('GoogleMapsLoaded flag:', googleMapsLoaded);
+            
+            try {
+                currentVendorSections = vendorSections;
+                const mapContainer = document.getElementById('vendor-map-container');
+                const mapElement = document.getElementById('vendor-map');
+                
+                if (!mapElement) {
+                    console.warn('❌ Map element not found');
+                    showMapFallback();
+                    return;
+                }
+
+                // Check if Google Maps is available - but don't fail immediately
+                if (typeof google === 'undefined' || !google.maps) {
+                    console.log('⚠️ Google Maps not immediately available, checking if initMap was called...');
+                    console.log('GoogleMapsLoaded flag:', googleMapsLoaded);
+                    
+                    // If Google Maps hasn't loaded yet, show the map anyway and let it load
+                    if (!googleMapsLoaded) {
+                        console.log('📍 Showing map container and waiting for Google Maps to load...');
+                        mapContainer.style.display = 'block';
+                        mapElement.innerHTML = `
+                            <div style="
+                                height: 400px; 
+                                display: flex; 
+                                align-items: center; 
+                                justify-content: center; 
+                                background: #f8f9fa;
+                                border-radius: 12px;
+                                flex-direction: column;
+                                gap: 1rem;
+                            ">
+                                <div style="font-size: 2rem;">🗺️</div>
+                                <div style="color: #666;">Loading map...</div>
+                            </div>
+                        `;
+                        
+                        // Try again in 2 seconds
+                        setTimeout(() => {
+                            if (typeof google !== 'undefined' && google.maps) {
+                                console.log('✅ Google Maps loaded, reinitializing...');
+                                initializeVendorMap(vendorSections);
+                            } else {
+                                console.warn('❌ Google Maps still not available after timeout');
+                                showMapFallback();
+                            }
+                        }, 2000);
+                        return;
+                    } else {
+                        showMapFallback();
+                        return;
+                    }
+                }
+
+                // Show map container
+                mapContainer.style.display = 'block';
+                console.log('📍 Map container shown, initializing map...');
+
+                // Get event location coordinates - prioritize stored coordinates from autocomplete
+                let eventCoords = null;
+                
+                if (window.selectedEventLocation && window.selectedEventLocation.lat && window.selectedEventLocation.lng) {
+                    // Use coordinates from autocomplete selection
+                    eventCoords = {
+                        lat: window.selectedEventLocation.lat,
+                        lng: window.selectedEventLocation.lng
+                    };
+                    console.log('Using stored event location coordinates:', eventCoords);
+                } else if (window.selectedEventLocation?.address && geocoder) {
+                    // Fallback to geocoding if no stored coordinates
+                    try {
+                        console.log('Geocoding event location:', window.selectedEventLocation.address);
+                        const geocodeResult = await geocodeAddress(window.selectedEventLocation.address);
+                        eventCoords = geocodeResult;
+                    } catch (error) {
+                        console.warn('Could not geocode event location:', error);
+                        // Default to Toronto if geocoding fails
+                        eventCoords = { lat: 43.6532, lng: -79.3832 };
+                    }
+                } else {
+                    // Default to Toronto
+                    console.log('Using default Toronto coordinates');
+                    eventCoords = { lat: 43.6532, lng: -79.3832 };
+                }
+
+                // Initialize map centered on event location
+                console.log('🗺️ Creating Google Map with center:', eventCoords);
+                vendorMap = new google.maps.Map(mapElement, {
+                    center: eventCoords,
+                    zoom: 12,
+                    styles: [
+                        {
+                            featureType: 'poi',
+                            elementType: 'labels',
+                            stylers: [{ visibility: 'off' }]
+                        }
+                    ],
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: true
+                });
+                console.log('✅ Google Map created successfully');
+
+                // Add event location marker with custom icon
+                eventLocationMarker = new google.maps.Marker({
+                    position: eventCoords,
+                    map: vendorMap,
+                    title: `Event Location: ${window.selectedEventLocation?.address || 'Your Event'}`,
+                    icon: {
+                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="#e74c3c">
+                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                            </svg>
+                        `),
+                        scaledSize: new google.maps.Size(40, 40),
+                        anchor: new google.maps.Point(20, 40)
+                    }
+                });
+
+                // Add event location info window
+                const eventInfoWindow = new google.maps.InfoWindow({
+                    content: `
+                        <div style="padding: 0.5rem;">
+                            <h6 style="margin: 0 0 0.5rem 0; color: #e74c3c;">
+                                <i class="fas fa-map-marker-alt"></i> Event Location
+                            </h6>
+                            <p style="margin: 0; font-size: 0.9rem;">${window.selectedEventLocation?.address || 'Event Location'}</p>
+                        </div>
+                    `
+                });
+
+                eventLocationMarker.addListener('click', () => {
+                    eventInfoWindow.open(vendorMap, eventLocationMarker);
+                });
+
+                // Add vendor markers with distance calculation
+                await addVendorMarkers(vendorSections, eventCoords);
+
+                // Set up map controls
+                setupMapControls(eventCoords);
+
+            } catch (error) {
+                console.error('❌ Error initializing vendor map:', error);
+                console.error('Error details:', error.message, error.stack);
+                showMapFallback();
+            }
+        }
+
+        // Geocode address to coordinates
+        function geocodeAddress(address) {
+            return new Promise((resolve, reject) => {
+                if (!geocoder) {
+                    reject(new Error('Geocoder not available'));
+                    return;
+                }
+
+                geocoder.geocode({ address: address }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        const location = results[0].geometry.location;
+                        resolve({
+                            lat: location.lat(),
+                            lng: location.lng()
+                        });
+                    } else {
+                        reject(new Error(`Geocoding failed: ${status}`));
+                    }
+                });
+            });
+        }
+
+        // Add vendor markers to map
+        async function addVendorMarkers(vendorSections, eventCoords) {
+            // Clear existing markers
+            vendorMarkers.forEach(marker => marker.setMap(null));
+            vendorMarkers = [];
+
+            const allVendors = vendorSections.flatMap(section => 
+                section.vendors.map(vendor => ({
+                    ...vendor,
+                    serviceCategory: section.category,
+                    serviceName: section.service.name
+                }))
+            );
+
+            for (const vendor of allVendors) {
+                try {
+                    // Generate random coordinates near the event location for demo
+                    // In production, you'd use actual vendor addresses
+                    const vendorCoords = generateNearbyCoordinates(eventCoords, Math.random() * 10 + 1);
+                    
+                    // Calculate distance
+                    const distance = calculateDistance(eventCoords, vendorCoords);
+                    vendor.distance = distance;
+                    vendor.coordinates = vendorCoords;
+
+                    // Create vendor marker
+                    const marker = new google.maps.Marker({
+                        position: vendorCoords,
+                        map: vendorMap,
+                        title: vendor.businessName,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 10,
+                            fillColor: '#3498db',
+                            fillOpacity: 1,
+                            strokeColor: '#ffffff',
+                            strokeWeight: 2
+                        }
+                    });
+
+                    // Create info window
+                    const infoWindow = new google.maps.InfoWindow({
+                        content: createVendorInfoWindowContent(vendor)
+                    });
+
+                    marker.addListener('click', () => {
+                        // Close other info windows
+                        vendorMarkers.forEach(m => {
+                            if (m.infoWindow) m.infoWindow.close();
+                        });
+                        infoWindow.open(vendorMap, marker);
+                        
+                        // Highlight corresponding card
+                        highlightVendorCard(vendor.vendorProfileId);
+                    });
+
+                    marker.infoWindow = infoWindow;
+                    marker.vendorData = vendor;
+                    vendorMarkers.push(marker);
+
+                } catch (error) {
+                    console.warn(`Could not add marker for vendor ${vendor.businessName}:`, error);
+                }
+            }
+
+            // Sort vendors by distance for the cards
+            allVendors.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+        }
+
+        // Generate nearby coordinates for demo purposes
+        function generateNearbyCoordinates(center, radiusKm) {
+            const earthRadius = 6371; // Earth's radius in km
+            const lat1 = center.lat * Math.PI / 180;
+            const lng1 = center.lng * Math.PI / 180;
+            
+            const bearing = Math.random() * 2 * Math.PI;
+            const distance = Math.random() * radiusKm;
+            
+            const lat2 = Math.asin(
+                Math.sin(lat1) * Math.cos(distance / earthRadius) +
+                Math.cos(lat1) * Math.sin(distance / earthRadius) * Math.cos(bearing)
+            );
+            
+            const lng2 = lng1 + Math.atan2(
+                Math.sin(bearing) * Math.sin(distance / earthRadius) * Math.cos(lat1),
+                Math.cos(distance / earthRadius) - Math.sin(lat1) * Math.sin(lat2)
+            );
+            
+            return {
+                lat: lat2 * 180 / Math.PI,
+                lng: lng2 * 180 / Math.PI
+            };
+        }
+
+        // Calculate distance between two coordinates
+        function calculateDistance(coord1, coord2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (coord2.lat - coord1.lat) * Math.PI / 180;
+            const dLng = (coord2.lng - coord1.lng) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(coord1.lat * Math.PI / 180) * Math.cos(coord2.lat * Math.PI / 180) *
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        // Create info window content for vendor
+        function createVendorInfoWindowContent(vendor) {
+            const rating = vendor.averageRating || 4.5;
+            const reviewCount = vendor.totalReviews || 0;
+            const priceRange = vendor.priceRange || '$$$';
+            
+            return `
+                <div style="padding: 1rem; max-width: 250px;">
+                    <h6 style="margin: 0 0 0.5rem 0; color: var(--text);">
+                        <i class="fas fa-store"></i> ${vendor.businessName}
+                    </h6>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <div style="color: #f39c12;">
+                            ${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5-Math.floor(rating))}
+                        </div>
+                        <span style="font-size: 0.8rem; color: var(--text-light);">
+                            ${rating.toFixed(1)} (${reviewCount} reviews)
+                        </span>
+                    </div>
+                    <p style="margin: 0.5rem 0; font-size: 0.9rem; color: var(--text-light);">
+                        ${vendor.serviceName} • ${priceRange}
+                    </p>
+                    <p style="margin: 0.5rem 0; font-size: 0.8rem; color: var(--text-light);">
+                        <i class="fas fa-map-marker-alt"></i> ${vendor.distance ? vendor.distance.toFixed(1) + ' km away' : 'Distance unknown'}
+                    </p>
+                    <button onclick="selectVendorFromMap('${vendor.vendorProfileId}')" 
+                            class="btn btn-sm btn-primary" style="width: 100%; margin-top: 0.5rem;">
+                        Select Vendor
+                    </button>
+                </div>
+            `;
+        }
+
+        // Setup map controls
+        function setupMapControls(eventCoords) {
+            // Focus event location button
+            const focusBtn = document.getElementById('focus-event-location');
+            if (focusBtn) {
+                focusBtn.addEventListener('click', () => {
+                    if (vendorMap && eventLocationMarker) {
+                        vendorMap.setCenter(eventLocationMarker.getPosition());
+                        vendorMap.setZoom(15);
+                        
+                        // Bounce the marker to highlight it
+                        eventLocationMarker.setAnimation(google.maps.Animation.BOUNCE);
+                        setTimeout(() => {
+                            eventLocationMarker.setAnimation(null);
+                        }, 2000);
+                    }
+                });
+            }
+            
+            // Show all vendors button
+            const showAllBtn = document.getElementById('show-all-vendors');
+            if (showAllBtn) {
+                showAllBtn.addEventListener('click', () => {
+                    if (vendorMap && vendorMarkers.length > 0) {
+                        const bounds = new google.maps.LatLngBounds();
+                        
+                        // Include event location in bounds
+                        if (eventLocationMarker) {
+                            bounds.extend(eventLocationMarker.getPosition());
+                        }
+                        
+                        // Include all vendor markers
+                        vendorMarkers.forEach(marker => {
+                            bounds.extend(marker.getPosition());
+                        });
+                        
+                        vendorMap.fitBounds(bounds);
+                        
+                        // Ensure minimum zoom level
+                        google.maps.event.addListenerOnce(vendorMap, 'bounds_changed', () => {
+                            if (vendorMap.getZoom() > 15) {
+                                vendorMap.setZoom(15);
+                            }
+                        });
+                    }
+                });
+            }
+        }
+
+        // Render horizontal vendor cards
+        function renderHorizontalVendorCards(vendorSections) {
+            const container = document.getElementById('vendor-cards-container');
+            const cardsContainer = document.getElementById('vendor-horizontal-cards');
+            
+            if (!container || !cardsContainer) return;
+
+            // Show cards container
+            container.style.display = 'block';
+
+            // Flatten and sort vendors by distance
+            const allVendors = vendorSections.flatMap(section => 
+                section.vendors.map(vendor => ({
+                    ...vendor,
+                    serviceCategory: section.category,
+                    serviceName: section.service.name,
+                    serviceBudget: section.service.budget
+                }))
+            );
+
+            // Sort by distance (closest first)
+            allVendors.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+
+            // Render cards
+            cardsContainer.innerHTML = allVendors.map(vendor => createHorizontalVendorCard(vendor)).join('');
+
+            // Setup sorting
+            setupVendorSorting(allVendors);
+        }
+
+        // Create horizontal vendor card HTML
+        function createHorizontalVendorCard(vendor) {
+            const rating = vendor.averageRating || 4.5;
+            const reviewCount = vendor.totalReviews || 0;
+            const priceRange = vendor.priceRange || '$$$';
+            const distance = vendor.distance ? `${vendor.distance.toFixed(1)} km away` : 'Distance unknown';
+            const isSelected = (typeof bookingState !== 'undefined' && bookingState.selectedVendors) ? 
+                bookingState.selectedVendors.some(v => v.vendorProfileId === vendor.vendorProfileId) : false;
+
+            return `
+                <div class="vendor-horizontal-card ${isSelected ? 'selected' : ''}" 
+                     data-vendor-id="${vendor.vendorProfileId}" 
+                     onclick="toggleVendorSelection('${vendor.vendorProfileId}')">
+                    ${vendor.profileImageUrl ? `<img src="${vendor.profileImageUrl}" 
+                         alt="${vendor.businessName}" 
+                         class="vendor-card-image"
+                         onerror="this.style.display='none'">` : 
+                         `<div class="vendor-card-image vendor-no-image">
+                             <i class="fas fa-user-tie" style="font-size: 2rem; color: var(--primary);"></i>
+                         </div>`}
+                    
+                    <div class="vendor-card-content">
+                        <div class="vendor-card-header">
+                            <h6 class="vendor-card-name">${vendor.businessName}</h6>
+                            <span class="vendor-card-distance">${distance}</span>
+                        </div>
+                        
+                        <div class="vendor-card-rating">
+                            <div style="color: #f39c12;">
+                                ${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5-Math.floor(rating))}
+                            </div>
+                            <span style="font-size: 0.9rem; color: var(--text-light);">
+                                ${rating.toFixed(1)} (${reviewCount} reviews)
+                            </span>
+                        </div>
+                        
+                        <div class="vendor-card-services">
+                            <span class="vendor-service-tag">${vendor.serviceName}</span>
+                            <span class="vendor-service-tag" style="background: var(--secondary); color: var(--text);">
+                                ${vendor.serviceCategory}
+                            </span>
+                        </div>
+                        
+                        <div class="vendor-card-pricing">
+                            <span class="vendor-price-range">${priceRange}</span>
+                            <button class="vendor-select-btn ${isSelected ? 'selected' : ''}" 
+                                    onclick="event.stopPropagation(); toggleVendorSelection('${vendor.vendorProfileId}')">
+                                ${isSelected ? 'Selected' : 'Select'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Setup vendor sorting functionality
+        function setupVendorSorting(vendors) {
+            const sortSelect = document.getElementById('vendor-sort');
+            if (!sortSelect) return;
+
+            sortSelect.addEventListener('change', (e) => {
+                const sortBy = e.target.value;
+                let sortedVendors = [...vendors];
+
+                switch (sortBy) {
+                    case 'distance':
+                        sortedVendors.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+                        break;
+                    case 'price':
+                        sortedVendors.sort((a, b) => {
+                            const priceA = getPriceValue(a.priceRange || '$$$');
+                            const priceB = getPriceValue(b.priceRange || '$$$');
+                            return priceA - priceB;
+                        });
+                        break;
+                    case 'rating':
+                        sortedVendors.sort((a, b) => (b.averageRating || 4.5) - (a.averageRating || 4.5));
+                        break;
+                }
+
+                // Re-render cards
+                const cardsContainer = document.getElementById('vendor-horizontal-cards');
+                cardsContainer.innerHTML = sortedVendors.map(vendor => createHorizontalVendorCard(vendor)).join('');
+            });
+        }
+
+        // Helper function to get numeric price value
+        function getPriceValue(priceRange) {
+            const priceMap = { '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
+            return priceMap[priceRange] || 3;
+        }
+
+        // Toggle vendor selection
+        function toggleVendorSelection(vendorProfileId) {
+            if (!bookingState.selectedVendors) {
+                bookingState.selectedVendors = [];
+            }
+
+            const existingIndex = bookingState.selectedVendors.findIndex(v => v.vendorProfileId === vendorProfileId);
+            const vendor = currentVendorSections.flatMap(s => s.vendors).find(v => v.vendorProfileId === vendorProfileId);
+
+            if (existingIndex >= 0) {
+                // Remove vendor
+                bookingState.selectedVendors.splice(existingIndex, 1);
+            } else if (vendor) {
+                // Add vendor
+                bookingState.selectedVendors.push(vendor);
+            }
+
+            // Update UI
+            updateVendorSelectionUI();
+            updateMapMarkers();
+            updateSendRequestsButton();
+        }
+
+        // Select vendor from map info window
+        window.selectVendorFromMap = function(vendorProfileId) {
+            toggleVendorSelection(vendorProfileId);
+        };
+
+        // Update vendor selection UI
+        function updateVendorSelectionUI() {
+            // Update cards
+            document.querySelectorAll('.vendor-horizontal-card').forEach(card => {
+                const vendorId = card.dataset.vendorId;
+                const isSelected = bookingState.selectedVendors?.some(v => v.vendorProfileId === vendorId);
+                
+                card.classList.toggle('selected', isSelected);
+                
+                const button = card.querySelector('.vendor-select-btn');
+                if (button) {
+                    button.classList.toggle('selected', isSelected);
+                    button.textContent = isSelected ? 'Selected' : 'Select';
+                }
+            });
+        }
+
+        // Update map markers based on selection
+        function updateMapMarkers() {
+            vendorMarkers.forEach(marker => {
+                const isSelected = bookingState.selectedVendors?.some(v => 
+                    v.vendorProfileId === marker.vendorData.vendorProfileId
+                );
+                
+                marker.setIcon({
+                    path: google.maps.SymbolPath.CIRCLE,
+                    scale: 10,
+                    fillColor: isSelected ? '#27ae60' : '#3498db',
+                    fillOpacity: 1,
+                    strokeColor: '#ffffff',
+                    strokeWeight: 2
+                });
+            });
+        }
+
+        // Highlight vendor card when marker is clicked
+        function highlightVendorCard(vendorProfileId) {
+            // Remove previous highlights
+            document.querySelectorAll('.vendor-horizontal-card').forEach(card => {
+                card.style.boxShadow = '';
+            });
+
+            // Highlight the corresponding card
+            const card = document.querySelector(`[data-vendor-id="${vendorProfileId}"]`);
+            if (card) {
+                card.style.boxShadow = '0 0 0 3px var(--primary)';
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Remove highlight after 3 seconds
+                setTimeout(() => {
+                    card.style.boxShadow = '';
+                }, 3000);
+            }
+        }
+
+        // Update send requests button
+        function updateSendRequestsButton() {
+            const button = document.getElementById('send-requests-btn');
+            if (button) {
+                const hasSelections = bookingState.selectedVendors && bookingState.selectedVendors.length > 0;
+                button.disabled = !hasSelections;
+                button.textContent = hasSelections ? 
+                    `Send Requests (${bookingState.selectedVendors.length})` : 
+                    'Send Requests';
+            }
         }
 
         console.log('🎉 All Vendor Setup Improvements JavaScript Loaded Successfully!');
