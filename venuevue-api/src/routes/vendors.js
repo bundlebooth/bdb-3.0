@@ -1724,6 +1724,8 @@ router.post('/search-by-services', async (req, res) => {
         vp.BusinessType,
         vp.BusinessDescription,
         vp.City + ', ' + vp.State as Location,
+        vp.Latitude,
+        vp.Longitude,
         vp.IsPremium,
         vp.IsEcoFriendly,
         vp.IsAwardWinning,
@@ -1732,30 +1734,6 @@ router.post('/search-by-services', async (req, res) => {
         STRING_AGG(ps.ServiceName, ', ') as MatchingServiceNames`;
     
     let orderClause = `ORDER BY MatchingServices DESC, vp.IsPremium DESC`;
-    
-    // Add distance calculation if coordinates are provided
-    if (locationLatitude && locationLongitude) {
-      selectClause += `,
-        ROUND(
-          3959 * ACOS(
-            COS(RADIANS(@EventLat)) * COS(RADIANS(vp.Latitude)) * 
-            COS(RADIANS(vp.Longitude) - RADIANS(@EventLng)) + 
-            SIN(RADIANS(@EventLat)) * SIN(RADIANS(vp.Latitude))
-          ), 2
-        ) as DistanceMiles`;
-      
-      // Add distance filter to WHERE clause
-      whereClause += ` AND (
-        3959 * ACOS(
-          COS(RADIANS(@EventLat)) * COS(RADIANS(vp.Latitude)) * 
-          COS(RADIANS(vp.Longitude) - RADIANS(@EventLng)) + 
-          SIN(RADIANS(@EventLat)) * SIN(RADIANS(vp.Latitude))
-        )
-      ) <= @MaxDistance`;
-      
-      // Order by distance first, then by matching services
-      orderClause = `ORDER BY DistanceMiles ASC, MatchingServices DESC, vp.IsPremium DESC`;
-    }
     
     const query = `
       ${selectClause}
