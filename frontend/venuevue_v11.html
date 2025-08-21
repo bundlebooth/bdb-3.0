@@ -5,8 +5,8 @@
     <title>VenueVue - Event Booking Platform</title>
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎪</text></svg>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Google Maps API -->
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo&libraries=places,geometry&callback=initMap"></script>
+    <!-- Google Maps API with Places API (New) -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo&libraries=places,geometry,marker&callback=initMap&v=weekly"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Add Stripe.js for payment processing -->
     <script src="https://js.stripe.com/v3/"></script>
@@ -1459,18 +1459,20 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        .location-suggestion-item {
+        .location-suggestion-item, .suggestion-item {
             padding: 0.75rem;
             cursor: pointer;
             border-bottom: 1px solid #f0f0f0;
             transition: background-color 0.2s;
+            font-size: 14px;
+            color: #333;
         }
 
-        .location-suggestion-item:hover {
+        .location-suggestion-item:hover, .suggestion-item:hover {
             background-color: #f8f9fa;
         }
 
-        .location-suggestion-item:last-child {
+        .location-suggestion-item:last-child, .suggestion-item:last-child {
             border-bottom: none;
         }
 
@@ -16977,31 +16979,240 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         // Initialize Google Places Autocomplete
         function initializeGooglePlaces() {
             if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-                // Main address autocomplete
-                const addressInput = document.getElementById('business-address');
-                if (addressInput) {
-                    const autocomplete = new google.maps.places.Autocomplete(addressInput);
-                    autocomplete.addListener('place_changed', function() {
-                        const place = autocomplete.getPlace();
-                        fillAddressFields(place);
+                // Business address autocomplete is handled in DOMContentLoaded event
+                console.log('✅ Business address autocomplete will be initialized on DOMContentLoaded');
+
+                // Initialize vendor address autocomplete using Places API (New)
+                const vendorAddressField = document.getElementById('vendor-address');
+                if (vendorAddressField) {
+                    console.log('Setting up vendor address autocomplete...');
+                    const vendorAutocompleteService = new google.maps.places.AutocompleteService();
+                    const vendorPlacesService = new google.maps.places.PlacesService(document.createElement('div'));
+                    
+                    let currentVendorRequest;
+                    vendorAddressField.addEventListener('input', function() {
+                        const query = this.value;
+                        console.log('Vendor address input changed:', query);
+                        
+                        // Clear suggestions if query is too short
+                        if (query.length < 3) {
+                            clearSuggestions(vendorAddressField);
+                            return;
+                        }
+                        
+                        if (currentVendorRequest) {
+                            currentVendorRequest.abort();
+                        }
+                        
+                        console.log('Making vendor address autocomplete request for:', query);
+                        vendorAutocompleteService.getPlacePredictions({
+                            input: query,
+                            componentRestrictions: { country: 'ca' },
+                            types: ['address']
+                        }, (predictions, status) => {
+                            console.log('Vendor address autocomplete response:', status, predictions);
+                            if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+                                showVendorAddressSuggestions(predictions, vendorAddressField, vendorPlacesService);
+                            } else {
+                                console.error('Vendor address autocomplete failed:', status);
+                            }
+                        });
+                    });
+                    
+                    // Clear suggestions when clicking outside
+                    document.addEventListener('click', function(e) {
+                        if (!vendorAddressField.contains(e.target)) {
+                            clearSuggestions(vendorAddressField);
+                        }
                     });
                 }
 
-                // Additional cities autocomplete
+                // Additional cities autocomplete using Places API (New)
                 const citiesInput = document.getElementById('additional-cities-input');
-                if (citiesInput) {
-                    const citiesAutocomplete = new google.maps.places.Autocomplete(citiesInput, {
-                        types: ['(cities)']
-                    });
-                    citiesAutocomplete.addListener('place_changed', function() {
-                        const place = citiesAutocomplete.getPlace();
-                        addCityTag(place.name);
-                        citiesInput.value = '';
+                if (citiesInput && google.maps.places) {
+                    const citiesAutocompleteService = new google.maps.places.AutocompleteService();
+                    const citiesPlacesService = new google.maps.places.PlacesService(document.createElement('div'));
+                    
+                    let currentCityRequest;
+                    citiesInput.addEventListener('input', function() {
+                        const query = this.value;
+                        if (query.length < 2) return;
+                        
+                        if (currentCityRequest) {
+                            currentCityRequest.abort();
+                        }
+                        
+                        citiesAutocompleteService.getPlacePredictions({
+                            input: query,
+                            componentRestrictions: { country: 'ca' },
+                            types: ['(cities)']
+                        }, (predictions, status) => {
+                            if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+                                showCitySuggestions(predictions, citiesInput, citiesPlacesService);
+                            }
+                        });
                     });
                 }
                 console.log('✅ Google Places Autocomplete initialized');
             } else {
                 console.warn('⚠️ Google Places API not available');
+            }
+        }
+
+        // Helper functions for Places API (New) suggestions
+        function showAddressSuggestions(predictions, inputElement, placesService) {
+            clearSuggestions(inputElement);
+            const suggestionsContainer = createSuggestionsContainer(inputElement);
+            
+            predictions.forEach(prediction => {
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'suggestion-item';
+                suggestionItem.textContent = prediction.description;
+                suggestionItem.addEventListener('click', () => {
+                    inputElement.value = prediction.description;
+                    placesService.getDetails({
+                        placeId: prediction.place_id,
+                        fields: ['address_components', 'formatted_address', 'geometry']
+                    }, (place, status) => {
+                        if (status === google.maps.places.PlacesServiceStatus.OK) {
+                            fillAddressFields(place);
+                        }
+                    });
+                    clearSuggestions(inputElement);
+                });
+                suggestionsContainer.appendChild(suggestionItem);
+            });
+        }
+
+        function showCitySuggestions(predictions, inputElement, placesService) {
+            clearSuggestions(inputElement);
+            const suggestionsContainer = createSuggestionsContainer(inputElement);
+            
+            predictions.forEach(prediction => {
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'suggestion-item';
+                suggestionItem.textContent = prediction.description;
+                suggestionItem.addEventListener('click', () => {
+                    addCityTag(prediction.structured_formatting.main_text);
+                    inputElement.value = '';
+                    clearSuggestions(inputElement);
+                });
+                suggestionsContainer.appendChild(suggestionItem);
+            });
+        }
+
+        function showVendorAddressSuggestions(predictions, inputElement, placesService) {
+            clearSuggestions(inputElement);
+            const suggestionsContainer = createSuggestionsContainer(inputElement);
+            
+            predictions.forEach(prediction => {
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'suggestion-item';
+                suggestionItem.textContent = prediction.description;
+                suggestionItem.addEventListener('click', () => {
+                    inputElement.value = prediction.description;
+                    placesService.getDetails({
+                        placeId: prediction.place_id,
+                        fields: ['address_components', 'formatted_address', 'geometry']
+                    }, (place, status) => {
+                        if (status === google.maps.places.PlacesServiceStatus.OK) {
+                            fillVendorAddressFields(place);
+                        }
+                    });
+                    clearSuggestions(inputElement);
+                });
+                suggestionsContainer.appendChild(suggestionItem);
+            });
+        }
+
+        function showBusinessAddressSuggestions(predictions, inputElement, placesService) {
+            clearSuggestions(inputElement);
+            const suggestionsContainer = createSuggestionsContainer(inputElement);
+            
+            predictions.forEach(prediction => {
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'suggestion-item';
+                suggestionItem.textContent = prediction.description;
+                suggestionItem.addEventListener('click', () => {
+                    inputElement.value = prediction.description;
+                    placesService.getDetails({
+                        placeId: prediction.place_id,
+                        fields: ['address_components', 'formatted_address', 'geometry']
+                    }, (place, status) => {
+                        if (status === google.maps.places.PlacesServiceStatus.OK) {
+                            fillCanadianAddressFields(place);
+                        }
+                    });
+                    clearSuggestions(inputElement);
+                });
+                suggestionsContainer.appendChild(suggestionItem);
+            });
+        }
+
+        function showLocationSuggestions(predictions, inputElement, placesService) {
+            clearSuggestions(inputElement);
+            const suggestionsContainer = createSuggestionsContainer(inputElement);
+            
+            predictions.forEach(prediction => {
+                const suggestionItem = document.createElement('div');
+                suggestionItem.className = 'suggestion-item';
+                suggestionItem.textContent = prediction.description;
+                suggestionItem.addEventListener('click', () => {
+                    inputElement.value = prediction.description;
+                    placesService.getDetails({
+                        placeId: prediction.place_id,
+                        fields: ['place_id', 'geometry', 'name', 'formatted_address']
+                    }, (place, status) => {
+                        if (status === google.maps.places.PlacesServiceStatus.OK) {
+                            handleLocationSelection(place);
+                        }
+                    });
+                    clearSuggestions(inputElement);
+                });
+                suggestionsContainer.appendChild(suggestionItem);
+            });
+        }
+
+        function createSuggestionsContainer(inputElement) {
+            let container = inputElement.parentNode.querySelector('.suggestions-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'suggestions-container';
+                container.style.cssText = `
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border: 1px solid #ccc;
+                    border-top: none;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    z-index: 1000;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                `;
+                inputElement.parentNode.style.position = 'relative';
+                inputElement.parentNode.appendChild(container);
+            }
+            return container;
+        }
+
+        function clearSuggestions(inputElement) {
+            const container = inputElement.parentNode.querySelector('.suggestions-container');
+            if (container) {
+                container.innerHTML = '';
+            }
+        }
+
+        function handleLocationSelection(place) {
+            if (place.geometry && place.geometry.location) {
+                window.selectedEventLocation = {
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng(),
+                    name: place.name || place.formatted_address,
+                    formatted_address: place.formatted_address
+                };
+                console.log('Event location selected:', window.selectedEventLocation);
             }
         }
 
@@ -17510,21 +17721,51 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 businessCountrySelect.readOnly = true; // Prevent changing
             }
             
-            // Initialize Google Places autocomplete for Canadian addresses only
+            // Initialize Google Places autocomplete for Canadian addresses only using Places API (New)
             const businessAddressField = document.getElementById('business-address');
             if (businessAddressField && typeof google !== 'undefined' && google.maps && google.maps.places) {
-                const autocomplete = new google.maps.places.Autocomplete(businessAddressField, {
-                    componentRestrictions: { country: 'ca' }, // Restrict to Canada only
-                    fields: ['address_components', 'formatted_address', 'geometry'],
-                    types: ['address']
+                console.log('Setting up business address autocomplete...');
+                const businessAutocompleteService = new google.maps.places.AutocompleteService();
+                const businessPlacesService = new google.maps.places.PlacesService(document.createElement('div'));
+                
+                let currentBusinessRequest;
+                businessAddressField.addEventListener('input', function() {
+                    const query = this.value;
+                    console.log('Address input changed:', query);
+                    
+                    // Clear suggestions if query is too short
+                    if (query.length < 3) {
+                        clearSuggestions(businessAddressField);
+                        return;
+                    }
+                    
+                    if (currentBusinessRequest) {
+                        currentBusinessRequest.abort();
+                    }
+                    
+                    console.log('Making autocomplete request for:', query);
+                    businessAutocompleteService.getPlacePredictions({
+                        input: query,
+                        componentRestrictions: { country: 'ca' },
+                        types: ['address']
+                    }, (predictions, status) => {
+                        console.log('Autocomplete response:', status, predictions);
+                        if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+                            showBusinessAddressSuggestions(predictions, businessAddressField, businessPlacesService);
+                        } else {
+                            console.error('Autocomplete failed:', status);
+                        }
+                    });
                 });
                 
-                autocomplete.addListener('place_changed', function() {
-                    const place = autocomplete.getPlace();
-                    if (place.address_components) {
-                        fillCanadianAddressFields(place);
+                // Clear suggestions when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!businessAddressField.contains(e.target)) {
+                        clearSuggestions(businessAddressField);
                     }
                 });
+            } else {
+                console.error('Google Maps API not available for business address autocomplete');
             }
         });
         
@@ -17577,15 +17818,72 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.getElementById('business-postal').value = postalCode;
             }
             
-            // Ensure country remains Canada (auto-populated from Google Places)
-            const countryInput = document.getElementById('business-country');
-            if (countryInput) {
-                countryInput.value = 'Canada';
+            console.log('✅ Canadian address fields filled:', {
+                address: fullAddress,
+                city: city,
+                province: province,
+                postalCode: postalCode
+            });
+        }
+
+        // Fill vendor address fields from Google Places result (Canadian format)
+        function fillVendorAddressFields(place) {
+            const addressComponents = place.address_components;
+            let streetNumber = '';
+            let route = '';
+            let city = '';
+            let province = '';
+            let postalCode = '';
+            
+            addressComponents.forEach(component => {
+                const types = component.types;
                 
-                // Trigger change event to ensure the value is captured for database storage
-                const changeEvent = new Event('change', { bubbles: true });
-                countryInput.dispatchEvent(changeEvent);
+                if (types.includes('street_number')) {
+                    streetNumber = component.long_name;
+                } else if (types.includes('route')) {
+                    route = component.long_name;
+                } else if (types.includes('locality')) {
+                    city = component.long_name;
+                } else if (types.includes('administrative_area_level_1')) {
+                    province = component.short_name; // Use short name for provinces (ON, BC, etc.)
+                } else if (types.includes('postal_code')) {
+                    postalCode = component.long_name;
+                } else if (types.includes('country')) {
+                    // Auto-populate country from Google Places (should always be Canada)
+                    const countryInput = document.getElementById('vendor-country');
+                    if (countryInput && component.long_name === 'Canada') {
+                        countryInput.value = 'Canada';
+                    }
+                }
+            });
+            
+            // Fill the vendor form fields
+            const fullAddress = `${streetNumber} ${route}`.trim();
+            if (fullAddress) {
+                document.getElementById('vendor-address').value = fullAddress;
             }
+            
+            if (city) {
+                document.getElementById('vendor-city').value = city;
+            }
+            
+            if (province) {
+                document.getElementById('vendor-state').value = province;
+            }
+            
+            if (postalCode) {
+                const postalInput = document.getElementById('vendor-postalCode');
+                if (postalInput) {
+                    postalInput.value = postalCode;
+                }
+            }
+            
+            console.log('✅ Vendor address fields filled:', {
+                address: fullAddress,
+                city: city,
+                province: province,
+                postalCode: postalCode
+            });
         }
 
         // SIMPLE SERVICE PREVIEW FUNCTION - GUARANTEED TO WORK
@@ -17744,10 +18042,28 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             
             console.log('Initializing location autocomplete...');
             
-            locationAutocomplete = new google.maps.places.Autocomplete(locationInput, {
-                types: ['address'],
-                componentRestrictions: { country: 'ca' },
-                fields: ['place_id', 'geometry', 'name', 'formatted_address']
+            // Use Places API (New) for location autocomplete
+            const locationAutocompleteService = new google.maps.places.AutocompleteService();
+            const locationPlacesService = new google.maps.places.PlacesService(document.createElement('div'));
+            
+            let currentLocationRequest;
+            locationInput.addEventListener('input', function() {
+                const query = this.value;
+                if (query.length < 3) return;
+                
+                if (currentLocationRequest) {
+                    currentLocationRequest.abort();
+                }
+                
+                locationAutocompleteService.getPlacePredictions({
+                    input: query,
+                    componentRestrictions: { country: 'ca' },
+                    types: ['address']
+                }, (predictions, status) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+                        showLocationSuggestions(predictions, locationInput, locationPlacesService);
+                    }
+                });
             });
             
             locationAutocomplete.addListener('place_changed', function() {
