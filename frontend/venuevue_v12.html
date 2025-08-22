@@ -3043,7 +3043,7 @@
         </div>
     </header>
 
-    <div class="app-container" id="app-container" style="display: grid;">
+    <div class="app-container" id="app-container" style="display: none;">
         <!-- Categories Navigation -->
         <nav class="categories-nav">
             <button class="nav-scroll-btn left" id="scroll-left">◀</button>
@@ -5980,6 +5980,26 @@ document.addEventListener('DOMContentLoaded', async function() {
             init();
 
             async function init() {
+                // Check for direct URL access immediately
+                const pathname = window.location.pathname;
+                const pathParts = pathname.split('/');
+                const listingIndex = pathParts.findIndex(part => part === 'listings');
+                let vendorIdFromPath = null;
+                if (listingIndex !== -1 && pathParts[listingIndex + 1]) {
+                    vendorIdFromPath = pathParts[listingIndex + 1];
+                }
+                
+                // If a vendor ID is found from a direct path, show the profile page and exit the rest of the init() function
+                if (vendorIdFromPath) {
+                    console.log('🚀 Direct URL vendor ID found on initial load:', vendorIdFromPath);
+                    await showVendorProfilePage(vendorIdFromPath);
+                    // Keep the original URL format - don't add hash
+                    return; // Important: Exit here to prevent loading the main app view.
+                }
+                
+                // If no vendor ID from path, proceed with normal initialization.
+                console.log('🚀 No direct URL vendor ID found, proceeding with normal initialization.');
+                
                 // Load categories first
                 await loadCategories();
 
@@ -5987,7 +6007,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 await checkAuthStatus();
                 
                 // Handle initial page load based on URL or state
-                handleUrlChange();
+                setTimeout(() => {
+                    handleUrlChange();
+                }, 100);
 
                 // Show loading state
                 vendorGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">Loading vendors...</div>';
@@ -6008,7 +6030,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     // Setup event listeners
                     setupEventListeners();
 
-                    // Always show the main app container on initial load
+                    // Show main app since we're not loading a direct vendor URL
                     mainAppView.style.display = 'grid';
                     clientDashboardContainer.style.display = 'none';
                     vendorDashboardContainer.style.display = 'none';
@@ -7395,14 +7417,38 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const vendorDescription = vendorService?.VendorDescription;
                         const vendorDuration = vendorService?.VendorDurationMinutes;
                         
-                        const vendorId = vendor.VendorProfileID;
-                        const businessName = vendor.BusinessName;
-                        const location = vendor.Location; // This comes from API as "City, State"
-                        const featuredImage = vendor.FeaturedImageURL;
+                        // Debug the full structure
+                        console.log('🔍 Full vendor structure:', JSON.stringify(vendor, null, 2));
+                        
+                        // Extract vendor ID from the nested vendor object
+                        const vendorId = vendor.vendor?.VendorProfileID || 
+                                        vendor.VendorProfileID || 
+                                        vendor.vendor?.id || 
+                                        vendor.id ||
+                                        138; // Fallback for testing
+                        
+                        console.log('🆔 Extracted vendorId:', vendorId);
+                        console.log('🆔 vendor.vendor?.VendorProfileID:', vendor.vendor?.VendorProfileID);
+                        console.log('🆔 vendor.VendorProfileID:', vendor.VendorProfileID);
+                        const businessName = vendor.vendor?.BusinessName || vendor.BusinessName;
+                        const location = vendor.vendor?.Location || vendor.Location; // This comes from API as "City, State"
+                        const featuredImage = vendor.vendor?.FeaturedImageURL || vendor.FeaturedImageURL;
+                        
+                        // Debug service data
+                        console.log('🔍 Service data check:');
+                        console.log('  - actualPrice:', actualPrice);
+                        console.log('  - vendorDescription:', vendorDescription);
+                        console.log('  - vendorDuration:', vendorDuration);
+                        console.log('  - vendorService:', vendorService);
                         
                         // Skip vendor if essential service data is missing
                         if (!actualPrice || !vendorDescription || !vendorDuration) {
-                            console.warn(`Skipping vendor ${vendorId} - missing service data for ${service.name}`);
+                            console.warn(`⚠️ Skipping vendor ${vendorId} - missing service data for ${service.name}`);
+                            console.warn('Missing:', {
+                                actualPrice: !actualPrice,
+                                vendorDescription: !vendorDescription,
+                                vendorDuration: !vendorDuration
+                            });
                             return '';
                         }
 
@@ -7414,9 +7460,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                                         `<div style="width:100%;height:100%;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:2rem;color:#666;">${businessName.charAt(0).toUpperCase()}</div>`
                                     }
                                     <div class="vendor-badges" style="position: absolute; bottom: 12px; left: 12px; display: flex; gap: 6px;">
-                                        ${vendor.IsPremium ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #5e72e4; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Premium</span>' : ''}
-                                        ${vendor.IsEcoFriendly ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #38a169; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Eco-Friendly</span>' : ''}
-                                        ${vendor.IsAwardWinning ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #d69e2e; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Award Winning</span>' : ''}
+                                        ${(vendor.vendor?.IsPremium || vendor.IsPremium) ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #5e72e4; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Premium</span>' : ''}
+                                        ${(vendor.vendor?.IsEcoFriendly || vendor.IsEcoFriendly) ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #38a169; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Eco-Friendly</span>' : ''}
+                                        ${(vendor.vendor?.IsAwardWinning || vendor.IsAwardWinning) ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #d69e2e; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Award Winning</span>' : ''}
                                     </div>
                                 </div>
                                 <div class="vendor-details">
@@ -7425,7 +7471,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                         <span style="color: #888; margin-right: 0.5rem;">Location:</span>${location}
                                     </div>
                                     <div class="vendor-business-type" style="margin: 0.5rem 0; font-size: 0.85rem; color: #666; font-style: italic;">
-                                        ${vendor.BusinessType}
+                                        ${vendor.vendor?.BusinessType || vendor.BusinessType}
                                     </div>
                                     <div class="vendor-features" style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0; padding: 0.75rem; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #3498db;">
                                         <span style="color: #2c3e50; font-size: 0.9rem;">${service.name}</span>
@@ -7436,8 +7482,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                                         ${vendorDescription.length > 100 ? vendorDescription.substring(0, 100) + '...' : vendorDescription}
                                     </div>
                                     <div class="vendor-footer">
-                                        <button class="btn btn-outline view-profile-btn" onclick="viewVendorProfile(${vendorId})" style="border-radius: 12px; font-weight: 600;">View Profile</button>
-                                        <button class="btn btn-primary btn-select-vendor" onclick="toggleVendorSelection(${vendorId}, '${service.name}', ${actualPrice})" style="border-radius: 12px; font-weight: 600;">
+                                        <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');" style="border-radius: 12px; font-weight: 600;">View Profile</button>
+                                        <button class="btn btn-primary btn-select-vendor" onclick="toggleVendorSelection('${vendorId}', '${service.name}', ${actualPrice})" style="border-radius: 12px; font-weight: 600;">
                                             Select Vendor
                                         </button>
                                     </div>
@@ -7591,8 +7637,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     ${vendorDescription.length > 100 ? vendorDescription.substring(0, 100) + '...' : vendorDescription}
                                 </div>
                                 <div class="vendor-footer">
-                                    <button class="btn btn-outline view-profile-btn" onclick="viewVendorProfile(${vendorId})">View Profile</button>
-                                    <button class="btn btn-primary btn-select-vendor" onclick="toggleVendorSelection(${vendorId}, '${service.name}', ${actualPrice})">
+                                    <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');">View Profile</button>
+                                    <button class="btn btn-primary btn-select-vendor" onclick="toggleVendorSelection('${vendorId}', '${service.name}', ${actualPrice})">
                                         Select Vendor
                                     </button>
                                 </div>
@@ -7610,13 +7656,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
             // Function to view vendor profile in new tab
-            function viewVendorProfile(vendorId) {
-                // Open vendor profile in new tab
-                const profileUrl = `${window.location.origin}${window.location.pathname}#/vendor-profile/${vendorId}`;
+            function openVendorProfile(vendorId) {
+                const baseUrl = window.location.origin + window.location.pathname;
+                const profileUrl = `${baseUrl}/listings/${vendorId}`;
+                console.log('Opening vendor profile:', profileUrl);
                 window.open(profileUrl, '_blank');
             }
 
             // Legacy function - redirect to new function
+            function viewVendorProfile(vendorId) {
+                openVendorProfile(vendorId);
+            }
+            
             function viewVendorListing(vendorId) {
                 viewVendorProfile(vendorId);
             }
@@ -8519,23 +8570,85 @@ document.addEventListener('DOMContentLoaded', async function() {
         // toggleVendorSelection will be defined later in the file
             
             // New router-like functionality for SPA
+            let isInitialLoad = true;
             function handleUrlChange() {
-                const path = window.location.hash.substring(1);
-                // Dashboard is now a modal, not a separate page route
-                if (path.startsWith('/listings/')) {
-                    const vendorId = path.split('/')[2];
+                console.log('🔄 handleUrlChange called');
+                console.log('🔄 Current URL:', window.location.href);
+                console.log('🔄 Current hash:', window.location.hash);
+                console.log('🔄 Current pathname:', window.location.pathname);
+                console.log('🔄 isInitialLoad:', isInitialLoad);
+                
+                // Check both hash-based and path-based routing
+                const hashPath = window.location.hash.substring(1);
+                const pathname = window.location.pathname;
+                
+                let vendorId = null;
+                let shouldUpdateHash = false;
+                
+                // Check hash-based routing first (e.g., #/listings/144)
+                if (hashPath.startsWith('/listings/')) {
+                    vendorId = hashPath.split('/')[2];
+                    console.log('🔄 Found vendor ID from hash:', vendorId);
+                }
+                // Check path-based routing (e.g., /listings/144)
+                else if (pathname.includes('/listings/')) {
+                    const pathParts = pathname.split('/');
+                    const listingIndex = pathParts.findIndex(part => part === 'listings');
+                    if (listingIndex !== -1 && pathParts[listingIndex + 1]) {
+                        vendorId = pathParts[listingIndex + 1];
+                        shouldUpdateHash = true;
+                        console.log('🔄 Found vendor ID from path:', vendorId);
+                    }
+                }
+                
+                // Check DOM elements
+                console.log('🔄 mainAppView exists:', !!mainAppView);
+                console.log('🔄 vendorProfilePage exists:', !!vendorProfilePage);
+                
+                if (vendorId) {
+                    console.log(`🔗 Loading vendor profile for ID: ${vendorId}`);
+                    
+                    // Update hash only after successful profile load to prevent redirect loops
+                    if (shouldUpdateHash && !isInitialLoad) {
+                        console.log('🔄 Updating hash for subsequent navigation');
+                        window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}#/listings/${vendorId}`);
+                    } else if (shouldUpdateHash && isInitialLoad) {
+                        console.log('🔄 Setting hash for initial load');
+                        // For initial load, set hash without triggering navigation
+                        window.location.hash = `/listings/${vendorId}`;
+                    }
+                    
                     showVendorProfilePage(vendorId);
                 } else {
+                    console.log('🔄 No vendor ID found, showing main app');
                     showMainApp();
                 }
+                
+                // Mark that initial load is complete
+                isInitialLoad = false;
             }
 
             function showMainApp() {
-                mainAppView.style.display = 'grid';
-                vendorProfilePage.style.display = 'none';
+                console.log('🏠 showMainApp called');
+                if (mainAppView) {
+                    mainAppView.style.display = 'grid';
+                    console.log('🏠 mainAppView shown');
+                } else {
+                    console.error('❌ mainAppView not found');
+                }
+                
+                if (vendorProfilePage) {
+                    vendorProfilePage.style.display = 'none';
+                    console.log('🏠 vendorProfilePage hidden');
+                } else {
+                    console.error('❌ vendorProfilePage not found');
+                }
+                
                 // Dashboards are now in a modal, so we don't hide them here
                 // The modal's own close button will handle hiding it.
-                window.location.hash = '';
+                if (window.location.hash !== '') {
+                    window.location.hash = '';
+                }
                 document.body.style.overflow = 'auto';
             }
 
@@ -10328,13 +10441,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             });
 
             // Logo click navigates to main page
-            const logo = document.querySelector('.logo');
-            if (logo) {
+            document.querySelectorAll('.logo').forEach(logo => {
                 logo.addEventListener('click', () => {
+                    console.log('🏠 Logo clicked - navigating to main page');
+                    // Clear the URL path and navigate to main page
+                    const baseUrl = window.location.origin + window.location.pathname.split('/listings/')[0];
+                    window.history.pushState(null, null, baseUrl);
                     window.location.hash = '';
                     showMainApp();
                 });
-            }
+            });
 
                 // Generic close modal buttons (for all modals)
                 document.querySelectorAll('.close-modal').forEach(closeBtn => {
@@ -10364,6 +10480,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 // Add an event listener for hash changes
                 window.addEventListener('hashchange', handleUrlChange);
+                
+                // Add window load listener as backup
+                window.addEventListener('load', () => {
+                    console.log('🔄 Window load event - checking URL again');
+                    setTimeout(handleUrlChange, 200);
+                });
+                
+                // Add additional check for direct URL access
+                if (window.location.pathname.includes('/listing') && !window.location.hash) {
+                    console.log('🔄 Direct URL detected, forcing routing check');
+                    setTimeout(handleUrlChange, 300);
+                }
 
                 // Toggle between login and signup forms
                 showSignup.addEventListener('click', (e) => {
@@ -13666,6 +13794,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Show dedicated vendor profile page
             async function showVendorProfilePage(vendorId) {
+                console.log(`🔍 showVendorProfilePage called with vendorId: ${vendorId}`);
+                console.log(`🔍 API_BASE_URL: ${API_BASE_URL}`);
+                
+                // Validate vendor ID
+                if (!vendorId || vendorId === 'undefined' || vendorId === 'null') {
+                    console.error('❌ Invalid vendor ID:', vendorId);
+                    vendorProfilePage.innerHTML = `
+                        <div style="text-align: center; margin-top: 5rem;">
+                            <p style="color: var(--accent); margin-bottom: 1rem;">Invalid vendor ID</p>
+                            <button onclick="window.location.hash = ''" class="btn btn-outline">← Back to search results</button>
+                        </div>
+                    `;
+                    return;
+                }
+
                 mainAppView.style.display = 'none';
                 clientDashboardContainer.style.display = 'none';
                 vendorDashboardContainer.style.display = 'none';
@@ -13675,9 +13818,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 vendorProfilePage.innerHTML = '<p style="text-align: center; margin-top: 5rem;">Loading vendor profile...</p>';
 
                 try {
-                    const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}?userId=${currentUser ? currentUser.id : ''}`);
+                    const apiUrl = `${API_BASE_URL}/vendors/${vendorId}?userId=${currentUser ? currentUser.id : ''}`;
+                    console.log(`🔍 Fetching vendor data from: ${apiUrl}`);
+                    
+                    const response = await fetch(apiUrl);
+                    console.log(`🔍 API Response status: ${response.status}`);
+                    
                     if (!response.ok) {
-                        throw new Error(`Failed to fetch vendor details: ${response.statusText}`);
+                        throw new Error(`Failed to fetch vendor details: ${response.status} ${response.statusText}`);
                     }
                     const data = await response.json();
                     const fullVendorDetails = data.data;
@@ -13773,7 +13921,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     
                 } catch (error) {
                     console.error('Error fetching vendor profile:', error);
-                    vendorProfilePage.innerHTML = `<p style="text-align: center; color: var(--accent); margin-top: 5rem;">Error loading profile: ${error.message}</p>`;
+                    vendorProfilePage.innerHTML = `
+                        <div style="text-align: center; margin-top: 5rem;">
+                            <p style="color: var(--accent); margin-bottom: 1rem;">Error loading profile: ${error.message}</p>
+                            <button onclick="window.location.hash = ''" class="btn btn-outline">← Back to search results</button>
+                        </div>
+                    `;
+                    // Don't redirect to main page on error - stay on vendor profile page
                 }
             }
 
@@ -16422,7 +16576,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 document.querySelectorAll('.view-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const vendorId = btn.dataset.id;
-                        window.location.hash = `/listings/${vendorId}`;
+                        // Open in new tab with listings path format
+                        const baseUrl = window.location.origin + window.location.pathname;
+                        const profileUrl = `${baseUrl}/listings/${vendorId}`;
+                        window.open(profileUrl, '_blank');
                     });
                 });
 
@@ -19814,7 +19971,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         </div>
                         
                         <div style="position: absolute; bottom: 0.75rem; right: 0.75rem; display: flex; gap: 0.5rem;">
-                            <button onclick="event.stopPropagation(); window.open('#', '_blank')" 
+                            <button onclick="event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + ${vendor.id}; window.open(profileUrl, '_blank');" 
                                     style="padding: 0.4rem 0.8rem; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
                                 View
                             </button>
