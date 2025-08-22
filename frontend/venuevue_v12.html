@@ -7733,69 +7733,124 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const price = v.selectedService?.VendorPrice || v.VendorPrice || v.servicePrice || 0;
                     return sum + price;
                 }, 0);
-                
+
+                // Build Step 3-style horizontal cards for selected vendors
                 const vendorCardsHTML = `
                     <div style="margin-bottom: 2rem;">
                         <h5 style="margin: 0 0 1.5rem 0; color: #2c3e50; font-weight: 600; font-size: 1.3rem;">Selected Vendors - Send Booking Requests</h5>
-                        
+
                         <!-- Special Requests Section -->
                         <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
                             <h6 style="margin: 0 0 1rem 0; color: #2c3e50; font-weight: 600;">Special Requests</h6>
-                            <textarea id="special-requests" placeholder="Add any special requests or additional details for your vendors..." 
+                            <textarea id="special-requests" placeholder="Add any special requests or additional details for your vendors..."
                                 style="width: 100%; min-height: 100px; padding: 0.75rem; border: 1px solid #e1e8f0; border-radius: 8px; font-family: inherit; font-size: 0.9rem; resize: vertical;"></textarea>
                         </div>
-                        
-                        <!-- Vendor Cards -->
-                        <div class="vendor-request-cards">
-                            ${globalBookingState.selectedVendors.map((vendor, index) => {
-                                const businessName = vendor.BusinessName || vendor.name || 'Unknown Business';
-                                const serviceName = vendor.selectedService?.ServiceName || vendor.MatchingServiceNames || 'Service';
-                                const location = vendor.Location || vendor.location || 'Location not specified';
-                                const price = vendor.selectedService?.VendorPrice || vendor.VendorPrice || vendor.servicePrice || 0;
-                                const description = vendor.BusinessDescription || 'No description available';
-                                const duration = vendor.selectedService?.VendorDurationMinutes ? `${vendor.selectedService.VendorDurationMinutes} min` : '';
-                                const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
-                                
+
+                        <!-- Horizontal vendor cards (same style as Step 3) -->
+                        <div id="selected-vendor-horizontal-cards" class="vendor-horizontal-container">
+                            ${globalBookingState.selectedVendors.map((entry, index) => {
+                                // Prefer full vendor object if stored; otherwise resolve from availableVendors
+                                const av = (window.bookingState && Array.isArray(window.bookingState.availableVendors)) ? window.bookingState.availableVendors : [];
+                                const entryId = entry.VendorProfileID || entry.vendorProfileId || entry.vendorId || entry.id;
+                                const resolved = av.find(v => {
+                                    const vId = v.VendorProfileID || v.vendorProfileId || v.id;
+                                    return String(vId) === String(entryId);
+                                });
+                                // Merge precedence: resolved vendor data > entry.vendorData > entry (to keep selection fields too)
+                                const base = { ...(entry || {}), ...(entry.vendorData || {}), ...(resolved || {}) };
+
+                                // Resolve vendor id consistently
+                                const vendorId = base.VendorProfileID || base.vendorProfileId || base.id || entry.vendorId || entry.id || '';
+
+                                // Normalize core fields for the card
+                                const normalized = {
+                                    ...base,
+                                    // IDs for createHorizontalVendorCard and data-vendor-id
+                                    id: base.id || entry.id || entry.vendorId || vendorId,
+                                    vendorProfileId: base.vendorProfileId || base.VendorProfileID || entry.vendorId || vendorId,
+                                    VendorProfileID: base.VendorProfileID || base.vendorProfileId || entry.vendorId || vendorId,
+                                    // Core display fields
+                                    BusinessName: base.BusinessName || base.businessName || base.name || entry.name || 'Unknown Business',
+                                    Location: base.Location || base.location || entry.location || '',
+                                    BusinessDescription: base.BusinessDescription || base.description || entry.description || '',
+                                };
+
+                                // Normalize images so carousel can render
+                                const images = [];
+                                if (base.FeaturedImageURL) images.push(base.FeaturedImageURL);
+                                if (Array.isArray(base.images)) images.push(...base.images);
+                                if (Array.isArray(base.VendorImages)) images.push(...base.VendorImages.map(img => img.ImageURL || img.url || img));
+                                // De-duplicate
+                                normalized.images = [...new Set(images.filter(Boolean))];
+                                if (!normalized.FeaturedImageURL && normalized.images.length > 0) {
+                                    normalized.FeaturedImageURL = normalized.images[0];
+                                }
+
+                                // Ensure services include the selected service and price (robust inference)
+                                let inferredService = null;
+                                // 1) Direct selectedService from selection flow
+                                if (entry.selectedService && (entry.selectedService.ServiceName || entry.selectedService.ServiceID)) {
+                                    inferredService = {
+                                        ServiceName: entry.selectedService.ServiceName || entry.serviceName,
+                                        VendorPrice: entry.selectedService.VendorPrice ?? entry.selectedService.Price ?? entry.servicePrice ?? entry.price ?? 0,
+                                        VendorDurationMinutes: entry.selectedService.VendorDurationMinutes
+                                    };
+                                } else {
+                                    // 2) From flat fields captured during selection
+                                    const selName = entry.serviceName || (Array.isArray(entry.MatchingServiceNames) ? entry.MatchingServiceNames[0] : (typeof entry.MatchingServiceNames === 'string' ? entry.MatchingServiceNames.split(',')[0]?.trim() : undefined)) || (Array.isArray(base.MatchingServiceNames) ? base.MatchingServiceNames[0] : undefined);
+                                    // Try to find matching service in base.services by name
+                                    let matchFromBase = null;
+                                    if (Array.isArray(base.services) && base.services.length > 0) {
+                                        if (selName) {
+                                            matchFromBase = base.services.find(s => (s.ServiceName || '').toLowerCase() === selName.toLowerCase());
+                                        }
+                                        // If not found, fallback to first service
+                                        if (!matchFromBase) matchFromBase = base.services[0];
+                                    }
+                                    const selPrice = entry.servicePrice ?? entry.price ?? matchFromBase?.VendorPrice ?? base.totalEstimatedCost ?? 0;
+                                    const selDuration = matchFromBase?.VendorDurationMinutes;
+                                    const finalName = selName || matchFromBase?.ServiceName || 'Selected Service';
+                                    inferredService = { ServiceName: finalName, VendorPrice: selPrice, VendorDurationMinutes: selDuration };
+                                }
+
+                                // Prepend inferred service to services array
+                                if (inferredService) {
+                                    const existing = Array.isArray(base.services) ? base.services : [];
+                                    normalized.services = [inferredService, ...existing];
+                                } else if (Array.isArray(base.services)) {
+                                    normalized.services = base.services;
+                                }
+
+                                // Provide service names for tags if missing
+                                if (!normalized.MatchingServiceNames) {
+                                    const names = [];
+                                    if (normalized.services && normalized.services.length > 0) {
+                                        normalized.services.forEach(s => s?.ServiceName && names.push(s.ServiceName));
+                                    } else if (entry.serviceName) {
+                                        names.push(entry.serviceName);
+                                    }
+                                    if (names.length > 0) normalized.MatchingServiceNames = names;
+                                }
+
+                                const card = (typeof createHorizontalVendorCard === 'function') ? createHorizontalVendorCard(normalized) : '';
                                 return `
-                                <div class="vendor-request-card" style="background: white; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-                                        <div class="vendor-header" style="flex: 1;">
-                                            <h6 style="margin: 0 0 0.5rem 0; color: #2c3e50; font-weight: 600; font-size: 1.1rem;">${businessName}</h6>
-                                            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                                                <span style="background: #e0f2fe; color: #0277bd; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500;">
-                                                    ${serviceName}
-                                                </span>
-                                                <span style="color: #27ae60; font-weight: 600; font-size: 1.1rem;">$${price}</span>
-                                                ${duration ? `<span style="color: #6b7280; font-size: 0.85rem;">${duration}</span>` : ''}
-                                            </div>
-                                            <p style="margin: 0; color: #6b7280; font-size: 0.85rem;">
-                                                <i class="fas fa-map-marker-alt"></i> ${location}
-                                            </p>
-                                        </div>
-                                        <div class="vendor-actions" style="margin-left: 1rem;">
-                                            <button onclick="sendBookingRequest('${vendorId}', ${index})" 
-                                                class="btn-send-request" 
-                                                style="background: #3498db; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
-                                                <i class="fas fa-paper-plane" style="margin-right: 0.5rem;"></i>
-                                                Send Request
+                                    <div class="selected-vendor-card-wrapper" data-selected-index="${index}">
+                                        ${card}
+                                        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
+                                            <button onclick="sendBookingRequest('${vendorId}', ${index})"
+                                                class="btn-send-request"
+                                                style="background: #3498db; color: white; border: none; padding: 0.6rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                                                <i class="fas fa-paper-plane" style="margin-right: 0.4rem;"></i>Send Request
                                             </button>
                                         </div>
+                                        <div class="request-status" id="request-status-${index}" style="display:none; padding:0.6rem; border-radius:8px; margin-top:0.5rem;"></div>
                                     </div>
-                                    
-                                    <div class="vendor-description" style="background: #f8faff; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                                        <p style="margin: 0; color: #374151; font-size: 0.9rem; line-height: 1.5;">${description}</p>
-                                    </div>
-                                    
-                                    <div class="request-status" id="request-status-${index}" style="display: none; padding: 0.75rem; border-radius: 8px; margin-top: 1rem;">
-                                        <!-- Status will be updated dynamically -->
-                                    </div>
-                                </div>
                                 `;
                             }).join('')}
                         </div>
-                        
+
                         <!-- Summary Footer -->
-                        <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; text-align: center;">
+                        <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; margin-top:1rem;">
                             <div style="font-size: 1.2rem; font-weight: 700; color: #2c3e50; margin-bottom: 0.5rem;">
                                 Total Estimated Cost: <span style="color: #27ae60;">$${Math.round(totalCost).toLocaleString()}</span>
                             </div>
@@ -7805,8 +7860,23 @@ document.addEventListener('DOMContentLoaded', async function() {
                         </div>
                     </div>
                 `;
-                
+
                 summaryContainer.innerHTML = vendorCardsHTML;
+
+                // Initialize carousels for the newly injected cards in Step 4
+                setTimeout(() => {
+                    try {
+                        const vendorCards = document.querySelectorAll('#selected-vendor-horizontal-cards .vendor-horizontal-card');
+                        vendorCards.forEach(card => {
+                            const vendorId = card.getAttribute('data-vendor-id');
+                            if (vendorId && typeof initializeVendorCarousel === 'function') {
+                                initializeVendorCarousel(vendorId);
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('Carousel init for Step 4 failed:', e);
+                    }
+                }, 100);
             };
 
             // Function to send booking request to vendor
@@ -20169,11 +20239,33 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 selectedVendors.splice(existingIndex, 1);
                 console.log('🔘 Vendor removed from selection');
             } else {
-                // Add vendor to selection
+                // Add vendor to selection with inferred service details
+                const vendor = (window.bookingState?.availableVendors || []).find(v => {
+                    const vId = v.VendorProfileID || v.vendorProfileId || v.id;
+                    return String(vId) === String(vendorProfileId);
+                }) || {};
+
+                // Infer selected service from vendor.services or fallbacks
+                let selService = null;
+                if (Array.isArray(vendor.services) && vendor.services.length > 0) {
+                    selService = vendor.services[0];
+                } else if (vendor.serviceName) {
+                    selService = {
+                        ServiceName: vendor.serviceName,
+                        VendorPrice: vendor.servicePrice || vendor.totalEstimatedCost || 0
+                    };
+                }
+
+                const serviceName = selService?.ServiceName || 'Selected Service';
+                const servicePrice = selService?.VendorPrice ?? vendor.totalEstimatedCost ?? 0;
+
                 selectedVendors.push({
                     vendorId: vendorProfileId,
-                    serviceName: 'Selected Service',
-                    price: 0
+                    id: vendorProfileId,
+                    serviceName: serviceName,
+                    servicePrice: servicePrice,
+                    selectedService: selService || undefined,
+                    vendorData: vendor
                 });
                 console.log('🔘 Vendor added to selection');
             }
