@@ -6366,29 +6366,40 @@ document.addEventListener('DOMContentLoaded', async function() {
             function updateSearchCriteriaSummary() {
                 const summaryContainer = document.getElementById('search-criteria-summary');
                 const criteriaDetails = document.getElementById('criteria-details');
-                
                 if (!summaryContainer || !criteriaDetails) return;
-                
-                // Get current booking state data
-                const selectedServices = window.bookingState?.selectedServices || [];
-                const eventLocation = window.selectedEventLocation?.address || 'Not specified';
-                const eventDate = document.getElementById('event-date')?.value || 'Not specified';
-                const eventTime = document.getElementById('event-time')?.value || 'Not specified';
-                const guestCount = document.getElementById('guest-count')?.value || 'Not specified';
-                const totalBudget = document.getElementById('total-budget')?.value || 'Not specified';
-                
-                // Build criteria HTML
-                let criteriaHtml = '';
-                
-                if (selectedServices.length > 0) {
-                    criteriaHtml += `
-                        <div style="color: var(--text);">
-                            <strong>Services:</strong> ${selectedServices.join(', ')}
-                        </div>
-                    `;
+
+                // Prefer Step 2 selected predefined services; fallback to Step 1 categories
+                const selectedPredefined = window.bookingState?.selectedPredefinedServices || [];
+                const selectedStep1 = window.bookingState?.selectedServices || [];
+                let servicesText = 'Not specified';
+                if (Array.isArray(selectedPredefined) && selectedPredefined.length > 0) {
+                    servicesText = selectedPredefined.map(s => s.name).filter(Boolean).join(', ');
+                } else if (Array.isArray(selectedStep1) && selectedStep1.length > 0) {
+                    servicesText = selectedStep1.map(s => {
+                        const t = (s && s.type) ? String(s.type) : '';
+                        return t.charAt(0).toUpperCase() + t.slice(1);
+                    }).filter(Boolean).join(', ');
                 }
-                
-                criteriaHtml += `
+
+                // Event fields from Step 2 inputs
+                const locationInput = document.getElementById('event-location');
+                const eventLocation = (locationInput?.value && locationInput.value.trim()) ? locationInput.value.trim() : 'Not specified';
+                const eventDate = document.getElementById('event-date')?.value || 'Not specified';
+                const startTime = document.getElementById('event-start-time')?.value || '';
+                const endTime = document.getElementById('event-end-time')?.value || '';
+                const timeText = (startTime && endTime) ? `${startTime} - ${endTime}` : (startTime || endTime || 'Not specified');
+
+                // Budget from global bookingState (total event budget)
+                const totalBudgetVal = window.bookingState?.budget;
+                const budgetText = (typeof totalBudgetVal === 'number' && !isNaN(totalBudgetVal) && totalBudgetVal > 0)
+                    ? `$${Number(totalBudgetVal).toLocaleString()}`
+                    : 'Not specified';
+
+                // Build criteria HTML (Guests removed)
+                const criteriaHtml = `
+                    <div style="color: var(--text);">
+                        <strong>Services:</strong> ${servicesText}
+                    </div>
                     <div style="color: var(--text);">
                         <strong>Location:</strong> ${eventLocation}
                     </div>
@@ -6396,16 +6407,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <strong>Date:</strong> ${eventDate}
                     </div>
                     <div style="color: var(--text);">
-                        <strong>Time:</strong> ${eventTime}
+                        <strong>Time:</strong> ${timeText}
                     </div>
                     <div style="color: var(--text);">
-                        <strong>Guests:</strong> ${guestCount}
-                    </div>
-                    <div style="color: var(--text);">
-                        <strong>Budget:</strong> $${totalBudget}
+                        <strong>Budget:</strong> ${budgetText}
                     </div>
                 `;
-                
+
                 criteriaDetails.innerHTML = criteriaHtml;
                 summaryContainer.style.display = 'block';
             }
