@@ -4457,43 +4457,9 @@
                 <!-- Step 2: Service Details & Event Information -->
                 <div class="booking-step" id="booking-step-2" style="display: none;">
                     <h4 class="form-section-title">Service Details & Event Information</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select specific services and set individual budgets, then provide your event details.</p>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Provide your event details, then select specific services and budgets.</p>
                     
-                    <!-- Predefined Services Selection -->
-                    <div class="form-group" style="margin-bottom: 2rem;">
-                        <h5 style="margin-bottom: 1rem; color: var(--primary-color);">📋 Select Specific Services</h5>
-                        <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1rem;">Choose from available services in your selected categories and set individual budgets.</p>
-                        
-                        <div id="predefined-services-loading" style="text-align: center; padding: 2rem; display: none;">
-                            <div class="spinner"></div>
-                            <p style="margin-top: 1rem; color: var(--text-light);">Loading available services...</p>
-                        </div>
-                        
-                        <div id="booking-predefined-services-container" style="display: none;">
-                            <!-- Dropdown-based service selection -->
-                            <div id="service-selection-dropdowns">
-                                <!-- Service dropdowns will be loaded here -->
-                            </div>
-                            
-                            <!-- Selected services list -->
-                            <div id="selected-services-list-container" style="margin-top: 1.5rem;">
-                                <!-- Selected services with budgets will appear here -->
-                            </div>
-                        </div>
-                        
-                        <div id="no-services-message" style="text-align: center; padding: 2rem; color: var(--text-light); display: none;">
-                            <p>No services available for your selected categories. Please go back and select different categories.</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Selected Services Summary -->
-                    <div id="selected-services-summary" style="display: none; margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border-radius: 8px; border-left: 4px solid var(--primary-color);">
-                        <h6 style="margin-bottom: 0.5rem; color: var(--primary-color);">Selected Services Summary</h6>
-                        <div id="selected-services-list"></div>
-                        <div style="margin-top: 0.5rem; font-weight: 600;">Total Budget: $<span id="total-services-budget">0</span></div>
-                    </div>
-                    
-                    <!-- Event Details -->
+                    <!-- Event Details (moved to top) -->
                     <div class="form-group" style="margin-bottom: 2rem;">
                         <h5 style="margin-bottom: 1rem; color: var(--primary-color);"><i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>Event Details</h5>
                         
@@ -4533,6 +4499,40 @@
                             <div id="location-suggestions" class="location-suggestions" style="display: none;"></div>
                         </div>
                         
+                    </div>
+                    
+                    <!-- Predefined Services Selection (moved below) -->
+                    <div class="form-group" style="margin-bottom: 2rem;">
+                        <h5 style="margin-bottom: 1rem; color: var(--primary-color);">📋 Select Specific Services</h5>
+                        <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1rem;">Choose from available services in your selected categories and set individual budgets.</p>
+                        
+                        <div id="predefined-services-loading" style="text-align: center; padding: 2rem; display: none;">
+                            <div class="spinner"></div>
+                            <p style="margin-top: 1rem; color: var(--text-light);">Loading available services...</p>
+                        </div>
+                        
+                        <div id="booking-predefined-services-container" style="display: none;">
+                            <!-- Dropdown-based service selection -->
+                            <div id="service-selection-dropdowns">
+                                <!-- Service dropdowns will be loaded here -->
+                            </div>
+                            
+                            <!-- Selected services list -->
+                            <div id="selected-services-list-container" style="margin-top: 1.5rem;">
+                                <!-- Selected services with budgets will appear here -->
+                            </div>
+                        </div>
+                        
+                        <div id="no-services-message" style="text-align: center; padding: 2rem; color: var(--text-light); display: none;">
+                            <p>No services available for your selected categories. Please go back and select different categories.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Selected Services Summary (stays below services) -->
+                    <div id="selected-services-summary" style="display: none; margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border-radius: 8px; border-left: 4px solid var(--primary-color);">
+                        <h6 style="margin-bottom: 0.5rem; color: var(--primary-color);">Selected Services Summary</h6>
+                        <div id="selected-services-list"></div>
+                        <div style="margin-top: 0.5rem; font-weight: 600;">Total Budget: $<span id="total-services-budget">0</span></div>
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
@@ -7754,16 +7754,21 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 // Merge precedence: resolved vendor data > entry.vendorData > entry (to keep selection fields too)
                                 const base = { ...(entry || {}), ...(entry.vendorData || {}), ...(resolved || {}) };
 
-                                // Resolve vendor id consistently
-                                const vendorId = base.VendorProfileID || base.vendorProfileId || base.id || entry.vendorId || entry.id || '';
+                                // Resolve vendor id consistently and ensure not empty (needed for carousel ids)
+                                let vendorId = base.VendorProfileID || base.vendorProfileId || base.id || entry.vendorId || entry.id;
+                                if (!vendorId) {
+                                    vendorId = `selected-${index}`;
+                                }
 
                                 // Normalize core fields for the card
                                 const normalized = {
                                     ...base,
                                     // IDs for createHorizontalVendorCard and data-vendor-id
+                                    // Use unique VendorProfileID for Step 4 to avoid ID collisions with Step 3 carousels
                                     id: base.id || entry.id || entry.vendorId || vendorId,
-                                    vendorProfileId: base.vendorProfileId || base.VendorProfileID || entry.vendorId || vendorId,
-                                    VendorProfileID: base.VendorProfileID || base.vendorProfileId || entry.vendorId || vendorId,
+                                    vendorProfileId: (base.vendorProfileId || base.VendorProfileID || entry.vendorId || vendorId) + '-s4',
+                                    VendorProfileID: (base.VendorProfileID || base.vendorProfileId || entry.vendorId || vendorId) + '-s4',
+                                    __realVendorId: vendorId,
                                     // Core display fields
                                     BusinessName: base.BusinessName || base.businessName || base.name || entry.name || 'Unknown Business',
                                     Location: base.Location || base.location || entry.location || '',
@@ -7772,14 +7777,20 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                                 // Normalize images so carousel can render (gather from many possible fields)
                                 const images = [];
-                                const pushIf = (val) => { if (val) images.push(val); };
+                                const pushIf = (val) => { if (val && typeof val === 'string') images.push(val.trim()); };
+                                const urlFrom = (obj) => {
+                                    if (!obj) return null;
+                                    if (typeof obj === 'string') return obj;
+                                    const cand = obj.ImageURL || obj.ImageUrl || obj.URL || obj.Url || obj.url || obj.src || obj.image || obj.Path || obj.ImagePath || obj.path;
+                                    return typeof cand === 'string' ? cand : null;
+                                };
                                 // Common fields
                                 pushIf(base.FeaturedImageURL || base.featuredImageUrl || base.profileImageUrl || base.ProfileImageUrl || base.ProfileImageURL);
-                                if (Array.isArray(base.images)) images.push(...base.images);
-                                if (Array.isArray(base.Images)) images.push(...base.Images);
-                                if (Array.isArray(base.VendorImages)) images.push(...base.VendorImages.map(img => img.ImageURL || img.url || img));
-                                if (Array.isArray(base.GalleryImages)) images.push(...base.GalleryImages.map(img => img.ImageURL || img.url || img));
-                                if (Array.isArray(base.Photos)) images.push(...base.Photos.map(img => img.ImageURL || img.url || img));
+                                if (Array.isArray(base.images)) images.push(...base.images.map(i => urlFrom(i) || (typeof i === 'string' ? i : null)).filter(Boolean));
+                                if (Array.isArray(base.Images)) images.push(...base.Images.map(i => urlFrom(i) || (typeof i === 'string' ? i : null)).filter(Boolean));
+                                if (Array.isArray(base.VendorImages)) images.push(...base.VendorImages.map(img => urlFrom(img)).filter(Boolean));
+                                if (Array.isArray(base.GalleryImages)) images.push(...base.GalleryImages.map(img => urlFrom(img)).filter(Boolean));
+                                if (Array.isArray(base.Photos)) images.push(...base.Photos.map(img => urlFrom(img)).filter(Boolean));
                                 if (Array.isArray(base.photoUrls)) images.push(...base.photoUrls);
                                 // Comma-separated string of URLs
                                 if (typeof base.ImageURLs === 'string') {
@@ -7794,6 +7805,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 });
                                 // De-duplicate
                                 normalized.images = [...new Set(images.filter(Boolean))];
+                                console.log('🖼️ Step 4 images collected for vendor', vendorId, normalized.images);
                                 if (!normalized.FeaturedImageURL && normalized.images.length > 0) {
                                     normalized.FeaturedImageURL = normalized.images[0];
                                 }
@@ -7885,15 +7897,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const vendorCards = document.querySelectorAll('#selected-vendor-horizontal-cards .vendor-horizontal-card');
                         vendorCards.forEach(card => {
                             const vendorId = card.getAttribute('data-vendor-id');
-                            // Disable selection toggle in Step 4
-                            card.onclick = (e) => { e.stopPropagation(); };
-                            // Remove the Select button inside the card (last button in bottom-right group)
-                            const buttons = card.querySelectorAll('button');
-                            if (buttons.length > 0) {
-                                const selectBtn = buttons[buttons.length - 1];
-                                if (selectBtn && /Select/i.test(selectBtn.textContent)) {
-                                    selectBtn.parentElement?.removeChild(selectBtn);
-                                }
+                            // Remove only the Select/Selected button that toggles vendor selection
+                            const toggleBtn = card.querySelector('button[onclick*="toggleVendorSelection"]');
+                            if (toggleBtn) {
+                                toggleBtn.parentElement?.removeChild(toggleBtn);
                             }
                             // Initialize carousel
                             if (vendorId && typeof initializeVendorCarousel === 'function') {
@@ -19910,20 +19917,31 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             const description = vendor.BusinessDescription || vendor.description || vendor.businessDescription || '';
             const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id || 'unknown-' + Math.random();
             
-            // Get vendor images - support multiple images for carousel
+            // Get vendor images - support multiple images for carousel (robust like Step 4)
             const vendorImages = [];
+            const urlFrom = (obj) => {
+                if (!obj) return null;
+                if (typeof obj === 'string') return obj;
+                const cand = obj.ImageURL || obj.ImageUrl || obj.URL || obj.Url || obj.url || obj.src || obj.image || obj.Path || obj.ImagePath || obj.path;
+                return typeof cand === 'string' ? cand : null;
+            };
             if (vendor.FeaturedImageURL || vendor.profileImageUrl || vendor.featuredImageUrl) {
                 vendorImages.push(vendor.FeaturedImageURL || vendor.profileImageUrl || vendor.featuredImageUrl);
             }
-            if (vendor.images && Array.isArray(vendor.images)) {
-                vendorImages.push(...vendor.images);
-            }
-            if (vendor.VendorImages && Array.isArray(vendor.VendorImages)) {
-                vendorImages.push(...vendor.VendorImages.map(img => img.ImageURL || img.url || img));
-            }
+            if (Array.isArray(vendor.images)) vendorImages.push(...vendor.images.map(i => urlFrom(i) || (typeof i === 'string' ? i : null)).filter(Boolean));
+            if (Array.isArray(vendor.Images)) vendorImages.push(...vendor.Images.map(i => urlFrom(i) || (typeof i === 'string' ? i : null)).filter(Boolean));
+            if (Array.isArray(vendor.VendorImages)) vendorImages.push(...vendor.VendorImages.map(img => urlFrom(img)).filter(Boolean));
+            if (Array.isArray(vendor.GalleryImages)) vendorImages.push(...vendor.GalleryImages.map(img => urlFrom(img)).filter(Boolean));
+            if (Array.isArray(vendor.Photos)) vendorImages.push(...vendor.Photos.map(img => urlFrom(img)).filter(Boolean));
+            if (Array.isArray(vendor.photoUrls)) vendorImages.push(...vendor.photoUrls);
+            if (typeof vendor.ImageURLs === 'string') vendorImages.push(...vendor.ImageURLs.split(',').map(s => s.trim()));
+            if (typeof vendor.imageUrls === 'string') vendorImages.push(...vendor.imageUrls.split(',').map(s => s.trim()));
+            ['image1','image2','image3','image4','image5','Image1','Image2','Image3','Image4','Image5'].forEach(k => {
+                if (vendor[k]) vendorImages.push(vendor[k]);
+            });
             
             // Remove duplicates and filter out empty values
-            const uniqueImages = [...new Set(vendorImages.filter(img => img && img.trim()))];
+            const uniqueImages = [...new Set(vendorImages.filter(img => img && typeof img === 'string' && img.trim()))];
             
             // Get service details from the services array
             let serviceTags = [];
