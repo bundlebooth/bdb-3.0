@@ -7739,12 +7739,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <div style="margin-bottom: 2rem;">
                         <h5 style="margin: 0 0 1.5rem 0; color: #2c3e50; font-weight: 600; font-size: 1.3rem;">Selected Vendors - Send Booking Requests</h5>
 
-                        <!-- Special Requests Section -->
-                        <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;">
-                            <h6 style="margin: 0 0 1rem 0; color: #2c3e50; font-weight: 600;">Special Requests</h6>
-                            <textarea id="special-requests" placeholder="Add any special requests or additional details for your vendors..."
-                                style="width: 100%; min-height: 100px; padding: 0.75rem; border: 1px solid #e1e8f0; border-radius: 8px; font-family: inherit; font-size: 0.9rem; resize: vertical;"></textarea>
-                        </div>
+                        <!-- Per-vendor special requests are now in each card's right panel -->
 
                         <!-- Horizontal vendor cards (same style as Step 3) -->
                         <div id="selected-vendor-horizontal-cards" class="vendor-horizontal-container">
@@ -7775,11 +7770,28 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     BusinessDescription: base.BusinessDescription || base.description || entry.description || '',
                                 };
 
-                                // Normalize images so carousel can render
+                                // Normalize images so carousel can render (gather from many possible fields)
                                 const images = [];
-                                if (base.FeaturedImageURL) images.push(base.FeaturedImageURL);
+                                const pushIf = (val) => { if (val) images.push(val); };
+                                // Common fields
+                                pushIf(base.FeaturedImageURL || base.featuredImageUrl || base.profileImageUrl || base.ProfileImageUrl || base.ProfileImageURL);
                                 if (Array.isArray(base.images)) images.push(...base.images);
+                                if (Array.isArray(base.Images)) images.push(...base.Images);
                                 if (Array.isArray(base.VendorImages)) images.push(...base.VendorImages.map(img => img.ImageURL || img.url || img));
+                                if (Array.isArray(base.GalleryImages)) images.push(...base.GalleryImages.map(img => img.ImageURL || img.url || img));
+                                if (Array.isArray(base.Photos)) images.push(...base.Photos.map(img => img.ImageURL || img.url || img));
+                                if (Array.isArray(base.photoUrls)) images.push(...base.photoUrls);
+                                // Comma-separated string of URLs
+                                if (typeof base.ImageURLs === 'string') {
+                                    images.push(...base.ImageURLs.split(',').map(s => s.trim()));
+                                }
+                                if (typeof base.imageUrls === 'string') {
+                                    images.push(...base.imageUrls.split(',').map(s => s.trim()));
+                                }
+                                // Individual fields image1..image5
+                                ['image1','image2','image3','image4','image5','Image1','Image2','Image3','Image4','Image5'].forEach(k => {
+                                    if (base[k]) images.push(base[k]);
+                                });
                                 // De-duplicate
                                 normalized.images = [...new Set(images.filter(Boolean))];
                                 if (!normalized.FeaturedImageURL && normalized.images.length > 0) {
@@ -7834,16 +7846,20 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                                 const card = (typeof createHorizontalVendorCard === 'function') ? createHorizontalVendorCard(normalized) : '';
                                 return `
-                                    <div class="selected-vendor-card-wrapper" data-selected-index="${index}">
-                                        ${card}
-                                        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
+                                    <div class="selected-vendor-card-wrapper" data-selected-index="${index}" style="display:flex; gap:1rem; align-items:stretch;">
+                                        <div class="selected-vendor-card-left" style="flex:1; position:relative;">
+                                            ${card}
+                                        </div>
+                                        <div class="selected-vendor-actions-right" style="width:320px; min-width:300px; background:#f8faff; border:1px solid #e1e8f0; border-radius:12px; padding:1rem; display:flex; flex-direction:column; gap:0.75rem;">
+                                            <h6 style="margin:0; color:#2c3e50; font-weight:600;">Special Request</h6>
+                                            <textarea id="special-requests-${index}" placeholder="Write a message to this vendor..." style="flex:1; min-height:120px; padding:0.75rem; border:1px solid #e1e8f0; border-radius:8px; font-family:inherit; font-size:0.9rem; resize:vertical;"></textarea>
                                             <button onclick="sendBookingRequest('${vendorId}', ${index})"
                                                 class="btn-send-request"
-                                                style="background: #3498db; color: white; border: none; padding: 0.6rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                                                <i class="fas fa-paper-plane" style="margin-right: 0.4rem;"></i>Send Request
+                                                style="background:#3498db; color:white; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; cursor:pointer;">
+                                                <i class="fas fa-paper-plane" style="margin-right:0.4rem;"></i>Send Request
                                             </button>
+                                            <div class="request-status" id="request-status-${index}" style="display:none; padding:0.6rem; border-radius:8px;"></div>
                                         </div>
-                                        <div class="request-status" id="request-status-${index}" style="display:none; padding:0.6rem; border-radius:8px; margin-top:0.5rem;"></div>
                                     </div>
                                 `;
                             }).join('')}
@@ -7869,12 +7885,23 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const vendorCards = document.querySelectorAll('#selected-vendor-horizontal-cards .vendor-horizontal-card');
                         vendorCards.forEach(card => {
                             const vendorId = card.getAttribute('data-vendor-id');
+                            // Disable selection toggle in Step 4
+                            card.onclick = (e) => { e.stopPropagation(); };
+                            // Remove the Select button inside the card (last button in bottom-right group)
+                            const buttons = card.querySelectorAll('button');
+                            if (buttons.length > 0) {
+                                const selectBtn = buttons[buttons.length - 1];
+                                if (selectBtn && /Select/i.test(selectBtn.textContent)) {
+                                    selectBtn.parentElement?.removeChild(selectBtn);
+                                }
+                            }
+                            // Initialize carousel
                             if (vendorId && typeof initializeVendorCarousel === 'function') {
                                 initializeVendorCarousel(vendorId);
                             }
                         });
                     } catch (e) {
-                        console.warn('Carousel init for Step 4 failed:', e);
+                        console.warn('Step 4 post-processing failed:', e);
                     }
                 }, 100);
             };
@@ -7894,7 +7921,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 console.log('✅ User authenticated, proceeding with request');
                 
-                const specialRequests = document.getElementById('special-requests')?.value || '';
+                // Read per-vendor special requests textarea, fallback to global if present (legacy)
+                const perVendorTextarea = document.getElementById(`special-requests-${vendorIndex}`);
+                const specialRequests = perVendorTextarea?.value || document.getElementById('special-requests')?.value || '';
                 const bookingState = window.bookingState;
                 const vendor = bookingState.selectedVendors[vendorIndex];
                 
