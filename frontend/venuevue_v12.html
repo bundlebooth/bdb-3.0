@@ -4541,13 +4541,9 @@
                     <div id="timeline-section" style="margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;">
                         <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 0.75rem;">
                             <h5 style="margin: 0; color: var(--primary-color);"><i class="fas fa-stream" style="margin-right:0.5rem;"></i>Timeline</h5>
-                            <div style="display:flex; gap:0.5rem;">
-                                <button type="button" id="auto-pack-services" class="btn btn-sm btn-outline">Auto-Pack</button>
-                                <button type="button" id="clear-service-times" class="btn btn-sm btn-outline">Clear Times</button>
-                            </div>
                         </div>
                         <div style="font-size:0.85rem; color: var(--text-light); margin-bottom:0.5rem;">
-                            Set event start/end, then assign start/end for each selected service. Duration is auto-calculated. Auto-Pack arranges services sequentially.
+                            Set event start/end, then assign start/end for each selected service. Duration is auto-calculated.
                         </div>
                         <div id="timeline-container" style="position: relative; height: 180px; background: #fafbff; border: 1px dashed #e2e8f0; border-radius: 8px; overflow: hidden;">
                             <div id="timeline-axis" style="position:absolute; left:0; right:0; top:8px; height:20px; font-size: 11px; color:#64748b;"></div>
@@ -7369,38 +7365,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 });
             }
 
-            // Auto-pack services sequentially within event/vendor window
-            function autoPackServices() {
-                const eStart = parseTimeToMinutes(document.getElementById('event-start-time')?.value || '');
-                const eEnd = parseTimeToMinutes(document.getElementById('event-end-time')?.value || '');
-                let windowStart = eStart;
-                let windowEnd = eEnd;
-                if (!(Number.isFinite(windowStart) && Number.isFinite(windowEnd) && windowEnd > windowStart)) {
-                    showGlobalError('Set valid event start and end times before auto-pack.');
-                    return;
-                }
-                let cursor = windowStart;
-                (bookingState.selectedPredefinedServices || []).forEach(s => {
-                    const dur = Math.max(15, Math.min(480, s.duration || 60));
-                    const start = cursor;
-                    const end = Math.min(cursor + dur, windowEnd);
-                    s.startTime = `${String(Math.floor(start/60)).padStart(2,'0')}:${String(start%60).padStart(2,'0')}`;
-                    s.endTime = `${String(Math.floor(end/60)).padStart(2,'0')}:${String(end%60).padStart(2,'0')}`;
-                    s.duration = end - start;
-                    cursor = end;
-                });
-                renderSelectedServices();
-                drawTimeline();
-            }
-
-            function clearServiceTimes() {
-                (bookingState.selectedPredefinedServices || []).forEach(s => {
-                    s.startTime = '';
-                    s.endTime = '';
-                });
-                renderSelectedServices();
-                drawTimeline();
-            }
+            // (Auto-Pack and Clear Times removed by request)
 
             // Wire up timeline controls and inputs
             document.addEventListener('DOMContentLoaded', () => {
@@ -7409,10 +7374,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const el = document.getElementById(id);
                     if (el) el.addEventListener('change', () => drawTimeline());
                 });
-                const ap = document.getElementById('auto-pack-services');
-                if (ap) ap.addEventListener('click', autoPackServices);
-                const clr = document.getElementById('clear-service-times');
-                if (clr) clr.addEventListener('click', clearServiceTimes);
                 // Initial draw
                 setTimeout(drawTimeline, 0);
             });
