@@ -6678,7 +6678,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 ${category} Services
                             </label>
                             <select class="service-dropdown" data-category="${category}" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); font-size: 1rem; background: var(--card-bg); color: var(--text); transition: border-color 0.3s ease;">
-                                <option value="">Select a ${category} service...</option>
+                                <option value="" data-placeholder="Select a ${category} service...">
+                                    Select a ${category} service...
+                                </option>
                     `;
                     
                     services.forEach(service => {
@@ -6696,10 +6698,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                 console.log('Generated dropdown HTML:', dropdownsHtml);
                 dropdownsContainer.innerHTML = dropdownsHtml;
                 
-                // Initialize selected services container
+                // Initialize selected services container with a live count badge
                 selectedServicesContainer.innerHTML = `
                     <div id="selected-services-display" style="display: none;">
-                        <h6 style="color: var(--primary-color); margin-bottom: 1rem;">Selected Services & Budgets</h6>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                            <h6 style="color: var(--primary-color); margin: 0;">Selected Services & Budgets</h6>
+                            <span id="selected-services-count" style="font-size: 0.85rem; color: var(--text-light); background: #eef2ff; padding: 0.25rem 0.5rem; border-radius: 999px;">
+                                0 selected
+                            </span>
+                        </div>
                         <div id="selected-services-items"></div>
                     </div>
                 `;
@@ -6768,6 +6775,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 // Add event listeners for dropdown selection
                 addDropdownEventListeners();
+
+                // Update dropdown placeholders with current selection counts
+                updateDropdownCounts();
             }
 
             // Create individual predefined service card with budget input
@@ -6848,25 +6858,30 @@ document.addEventListener('DOMContentLoaded', async function() {
                     name: serviceName,
                     description: serviceDescription,
                     category: category,
-                    budget: 100 // Default budget
+                    budget: 100, // Default budget
+                    duration: Math.max(15, Math.min(480, parseInt(duration) || 60))
                 };
                 
                 window.bookingState.selectedPredefinedServices.push(newService);
                 renderSelectedServices();
                 updateFindVendorsButton();
+                updateDropdownCounts();
             }
 
             // Render selected services with budget inputs
             function renderSelectedServices() {
                 const selectedServicesDisplay = document.getElementById('selected-services-display');
                 const selectedServicesItems = document.getElementById('selected-services-items');
+                const selectedServicesCount = document.getElementById('selected-services-count');
                 
                 if (bookingState.selectedPredefinedServices.length === 0) {
                     selectedServicesDisplay.style.display = 'none';
+                    if (selectedServicesCount) selectedServicesCount.textContent = '0 selected';
                     return;
                 }
                 
                 selectedServicesDisplay.style.display = 'block';
+                if (selectedServicesCount) selectedServicesCount.textContent = `${bookingState.selectedPredefinedServices.length} selected`;
                 
                 let servicesHtml = '';
                 let totalBudget = 0;
@@ -6921,6 +6936,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 // Add event listeners for budget inputs and remove buttons
                 addSelectedServiceEventListeners();
+                // Keep dropdown counts in sync on re-render
+                updateDropdownCounts();
             }
 
             // Global variable to store Google Maps initialization status
@@ -7015,6 +7032,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 window.bookingState.selectedPredefinedServices = bookingState.selectedPredefinedServices.filter(s => s.id !== serviceId);
                 renderSelectedServices();
                 updateFindVendorsButton();
+                updateDropdownCounts();
             }
 
             // Legacy function - keep for compatibility
@@ -7037,6 +7055,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     
                     // Remove from selected services
                     window.bookingState.selectedPredefinedServices = bookingState.selectedPredefinedServices.filter(s => s.id !== serviceId);
+                    renderSelectedServices();
+                    updateDropdownCounts();
                 } else {
                     // Select service
                     cardElement.classList.add('selected');
@@ -7052,13 +7072,34 @@ document.addEventListener('DOMContentLoaded', async function() {
                             name: serviceDetails.name,
                             description: serviceDetails.description,
                             category: category,
-                            budget: 100 // Default budget
+                            budget: 100, // Default budget
+                            duration: 60
                         });
+                        renderSelectedServices();
+                        updateDropdownCounts();
                     }
                 }
                 
                 updateSelectedServicesSummary();
                 updateFindVendorsButton();
+            }
+
+            // Update the placeholder of each dropdown with count of selected services in that category
+            function updateDropdownCounts() {
+                const selected = Array.isArray(window.bookingState?.selectedPredefinedServices)
+                    ? window.bookingState.selectedPredefinedServices
+                    : [];
+                document.querySelectorAll('.service-dropdown').forEach(selectEl => {
+                    const cat = selectEl.dataset.category;
+                    const count = selected.filter(s => s.category === cat).length;
+                    const firstOpt = selectEl.querySelector('option[value=""]');
+                    if (firstOpt) {
+                        const base = firstOpt.dataset.placeholder || `Select a ${cat} service...`;
+                        firstOpt.textContent = count > 0
+                            ? `${count} service${count > 1 ? 's' : ''} selected`
+                            : base;
+                    }
+                });
             }
 
             // Update individual service budget
