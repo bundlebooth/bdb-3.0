@@ -4473,7 +4473,7 @@
                             <div class="form-col">
                                 <div class="form-group">
                                     <label for="event-start-time">Event Start Time *</label>
-                                    <input type="time" id="event-start-time" required>
+                                    <input type="time" id="event-start-time" required step="900">
                                 </div>
                             </div>
                         </div>
@@ -4482,7 +4482,7 @@
                             <div class="form-col">
                                 <div class="form-group">
                                     <label for="event-end-time">Event End Time *</label>
-                                    <input type="time" id="event-end-time" required>
+                                    <input type="time" id="event-end-time" required step="900">
                                 </div>
                             </div>
                             <div class="form-col">
@@ -4493,6 +4493,7 @@
                             </div>
                         </div>
                         
+                        
                         <div class="form-group">
                             <label for="event-location">Event Location *</label>
                             <input type="text" id="event-location" placeholder="Start typing to search for a location..." required autocomplete="off">
@@ -4500,6 +4501,7 @@
                         </div>
                         
                     </div>
+                    
                     
                     <!-- Predefined Services Selection (moved below) -->
                     <div class="form-group" style="margin-bottom: 2rem;">
@@ -4533,6 +4535,31 @@
                         <h6 style="margin-bottom: 0.5rem; color: var(--primary-color);">Selected Services Summary</h6>
                         <div id="selected-services-list"></div>
                         <div style="margin-top: 0.5rem; font-weight: 600;">Total Budget: $<span id="total-services-budget">0</span></div>
+                    </div>
+
+                    <!-- Timeline & Scheduling (moved below Selected Services Summary) -->
+                    <div id="timeline-section" style="margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;">
+                        <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 0.75rem;">
+                            <h5 style="margin: 0; color: var(--primary-color);"><i class="fas fa-stream" style="margin-right:0.5rem;"></i>Timeline</h5>
+                            <div style="display:flex; gap:0.5rem;">
+                                <button type="button" id="auto-pack-services" class="btn btn-sm btn-outline">Auto-Pack</button>
+                                <button type="button" id="clear-service-times" class="btn btn-sm btn-outline">Clear Times</button>
+                            </div>
+                        </div>
+                        <div style="font-size:0.85rem; color: var(--text-light); margin-bottom:0.5rem;">
+                            Set event start/end, then assign start/end for each selected service. Duration is auto-calculated. Auto-Pack arranges services sequentially.
+                        </div>
+                        <div id="timeline-container" style="position: relative; height: 180px; background: #fafbff; border: 1px dashed #e2e8f0; border-radius: 8px; overflow: hidden;">
+                            <div id="timeline-axis" style="position:absolute; left:0; right:0; top:8px; height:20px; font-size: 11px; color:#64748b;"></div>
+                            <div id="timeline-layers" style="position:absolute; left:0; right:0; top:32px; bottom:8px;"></div>
+                        </div>
+                        <div id="timeline-warning" style="display:none; margin-top:0.5rem; padding:0.5rem; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; border-radius:6px; font-size:0.85rem;"></div>
+                        <div style="display:flex; gap:1rem; margin-top:0.5rem; font-size:0.85rem; color:#64748b;">
+                            <span><span style="display:inline-block; width:10px; height:10px; background:#c7d2fe; border-radius:2px; margin-right:6px;"></span>Event Window</span>
+                            <span><span style="display:inline-block; width:10px; height:10px; background:#bbf7d0; border-radius:2px; margin-right:6px;"></span>Vendor Hours</span>
+                            <span><span style="display:inline-block; width:10px; height:10px; background:#fcd34d; border-radius:2px; margin-right:6px;"></span>Service</span>
+                            <span><span style="display:inline-block; width:10px; height:10px; background:#fecaca; border-radius:2px; margin-right:6px;"></span>Outside Event</span>
+                        </div>
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
@@ -4568,7 +4595,7 @@
                     <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                         <!-- LEFT: Vendor Cards -->
                         <div style="flex: 1; min-width: 0;">
-                            <div id="vendor-cards-container" style="display: block;">
+                            <div id="vendor-cards-container" style="overflow: visible;">
                                 <div class="vendor-cards-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                     <h5 style="margin: 0; color: var(--text);">Vendor Options</h5>
                                     <div class="vendor-filters">
@@ -4579,7 +4606,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div id="vendor-horizontal-cards" class="vendor-horizontal-container">
+                                <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box;">
                                     <!-- Horizontal vendor cards will be populated here -->
                                     <div style="padding: 1rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd; text-align: center;">
                                         <i class="fas fa-search" style="font-size: 2rem; color: #ccc; margin-bottom: 0.5rem;"></i>
@@ -4678,6 +4705,61 @@
         
         // Global variables
         let currentUser = null;
+        
+        // Ensure Step 3 vendor list matches the map height exactly
+        function syncVendorPanelHeight() {
+            const map = document.getElementById('vendor-map');
+            const panel = document.getElementById('vendor-cards-container');
+            const list = document.getElementById('vendor-horizontal-cards');
+            if (!map || !panel || !list) return;
+            const mapH = Math.round(map.getBoundingClientRect().height);
+            if (mapH <= 0) return;
+            const EXTRA_PX = 36; // make the list a tad bit longer than the map
+            const header = panel.querySelector('.vendor-cards-header');
+            let headerH = 0;
+            if (header) {
+                const cs = getComputedStyle(header);
+                headerH = Math.round(header.getBoundingClientRect().height + parseFloat(cs.marginBottom || '0'));
+            }
+            // subtract panel vertical padding to ensure total matches map height
+            const pcs = getComputedStyle(panel);
+            const panelVPad = (parseFloat(pcs.paddingTop || '0') + parseFloat(pcs.paddingBottom || '0')) || 0;
+            // include list borders when using border-box
+            const lcs = getComputedStyle(list);
+            const listBorders = (parseFloat(lcs.borderTopWidth || '0') + parseFloat(lcs.borderBottomWidth || '0')) || 0;
+            const listH = Math.max(0, mapH - headerH - panelVPad - listBorders + EXTRA_PX);
+            const hpx = listH + 'px';
+            // lock panel to map height to avoid overflow rounding mismatches
+            panel.style.height = (mapH + EXTRA_PX) + 'px';
+            list.style.height = hpx;
+            list.style.maxHeight = hpx;
+            list.style.minHeight = hpx;
+        }
+        window.addEventListener('load', () => {
+            syncVendorPanelHeight();
+            // Retry a few times to catch late map initialization
+            [100, 300, 800].forEach(t => setTimeout(syncVendorPanelHeight, t));
+            // Observe map size changes if supported
+            const mapEl = document.getElementById('vendor-map');
+            if (window.ResizeObserver && mapEl) {
+                const ro = new ResizeObserver(() => syncVendorPanelHeight());
+                ro.observe(mapEl);
+            }
+        });
+        window.addEventListener('resize', () => setTimeout(syncVendorPanelHeight, 50));
+        // Recalculate when Step 3 visibility changes
+        (function observeStep3Visibility(){
+            const step3 = document.getElementById('booking-step-3');
+            if (!step3) return;
+            const isVisible = (el) => {
+                const style = getComputedStyle(el);
+                return style.display !== 'none' && style.visibility !== 'hidden';
+            };
+            const mo = new MutationObserver(() => {
+                if (isVisible(step3)) setTimeout(syncVendorPanelHeight, 0);
+            });
+            mo.observe(step3, { attributes: true, attributeFilter: ['style','class'] });
+        })();
         
         // Check for existing user session
 
@@ -6859,13 +6941,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                     description: serviceDescription,
                     category: category,
                     budget: 100, // Default budget
-                    duration: Math.max(15, Math.min(480, parseInt(duration) || 60))
+                    duration: Math.max(15, Math.min(480, parseInt(duration) || 60)),
+                    startTime: '',
+                    endTime: ''
                 };
                 
                 window.bookingState.selectedPredefinedServices.push(newService);
                 renderSelectedServices();
                 updateFindVendorsButton();
                 updateDropdownCounts();
+                drawTimeline();
             }
 
             // Render selected services with budget inputs
@@ -6906,13 +6991,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     </div>
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <label style="font-size: 0.9rem; color: var(--text);">Duration:</label>
-                                    <div style="display: flex; align-items: center;">
-                                        <input type="number" class="service-duration-input" data-service-id="${service.id}" 
-                                               min="15" max="480" value="${service.duration}" 
-                                               style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
-                                        <span style="color: var(--text-light); margin-left: 0.25rem;">min</span>
-                                    </div>
+                                    <label style="font-size: 0.9rem; color: var(--text);">Start:</label>
+                                    <input type="time" class="service-start-time" data-service-id="${service.id}" value="${service.startTime || ''}" step="900" style="width: 120px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <label style="font-size: 0.9rem; color: var(--text);">End:</label>
+                                    <input type="time" class="service-end-time" data-service-id="${service.id}" value="${service.endTime || ''}" step="900" style="width: 120px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.25rem; color: var(--text-light); font-size: 0.9rem;">
+                                    <i class="fas fa-clock"></i>
+                                    <span id="service-duration-display-${service.id}">${(service.duration || 0)} min</span>
                                 </div>
                                 <button type="button" class="remove-service-btn" data-service-id="${service.id}" 
                                         style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer;">
@@ -6938,6 +7026,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 addSelectedServiceEventListeners();
                 // Keep dropdown counts in sync on re-render
                 updateDropdownCounts();
+                // Keep timeline in sync after re-render
+                drawTimeline();
             }
 
             // Global variable to store Google Maps initialization status
@@ -7008,13 +7098,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                     });
                 });
                 
-                // Duration input listeners
-                document.querySelectorAll('.service-duration-input').forEach(input => {
-                    input.addEventListener('input', (e) => {
+                // Start/End time listeners
+                document.querySelectorAll('.service-start-time').forEach(input => {
+                    input.addEventListener('change', (e) => {
                         const serviceId = parseInt(e.target.dataset.serviceId);
-                        const value = Math.max(15, Math.min(480, parseInt(e.target.value) || 60));
-                        
-                        updateServiceDuration(serviceId, value);
+                        updateServiceTime(serviceId, 'startTime', e.target.value);
+                    });
+                });
+                document.querySelectorAll('.service-end-time').forEach(input => {
+                    input.addEventListener('change', (e) => {
+                        const serviceId = parseInt(e.target.dataset.serviceId);
+                        updateServiceTime(serviceId, 'endTime', e.target.value);
                     });
                 });
                 
@@ -7033,6 +7127,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 renderSelectedServices();
                 updateFindVendorsButton();
                 updateDropdownCounts();
+                drawTimeline();
             }
 
             // Legacy function - keep for compatibility
@@ -7119,6 +7214,209 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             }
 
+            // Update service start/end time and recompute duration
+            function updateServiceTime(serviceId, field, value) {
+                const service = bookingState.selectedPredefinedServices.find(s => s.id === serviceId);
+                if (!service) return;
+                service[field] = value;
+                // If both times present, compute duration
+                const startMin = parseTimeToMinutes(service.startTime);
+                const endMin = parseTimeToMinutes(service.endTime);
+                if (Number.isFinite(startMin) && Number.isFinite(endMin) && endMin >= startMin) {
+                    service.duration = endMin - startMin;
+                    const disp = document.getElementById(`service-duration-display-${service.id}`);
+                    if (disp) disp.textContent = `${service.duration} min`;
+                }
+                drawTimeline();
+            }
+
+            // Parse HH:MM to minutes from midnight
+            function parseTimeToMinutes(t) {
+                if (!t || typeof t !== 'string' || !t.includes(':')) return NaN;
+                const [h, m] = t.split(':').map(v => parseInt(v, 10));
+                if (Number.isNaN(h) || Number.isNaN(m)) return NaN;
+                return h * 60 + m;
+            }
+
+            function formatMinutes(min) {
+                const h = Math.floor(min / 60);
+                const m = min % 60;
+                return `${h}h ${m}m`;
+            }
+            // Format minutes from midnight to h:mm AM/PM
+            function formatTimeLabel(mins) {
+                const h24 = Math.floor(mins / 60);
+                const m = mins % 60;
+                const ampm = h24 < 12 ? 'AM' : 'PM';
+                const h12 = ((h24 + 11) % 12) + 1;
+                return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
+            }
+
+            // Compute timeline range
+            function getTimelineRange() {
+                const eStart = parseTimeToMinutes(document.getElementById('event-start-time')?.value || '');
+                const eEnd = parseTimeToMinutes(document.getElementById('event-end-time')?.value || '');
+                const services = bookingState.selectedPredefinedServices || [];
+                const sStarts = services.map(s => parseTimeToMinutes(s.startTime)).filter(Number.isFinite);
+                const sEnds = services.map(s => parseTimeToMinutes(s.endTime)).filter(Number.isFinite);
+                const mins = [eStart, ...sStarts].filter(Number.isFinite);
+                const maxs = [eEnd, ...sEnds].filter(Number.isFinite);
+                let minT = mins.length ? Math.min(...mins) : 8 * 60;
+                let maxT = maxs.length ? Math.max(...maxs) : 20 * 60;
+                if (Number.isFinite(eStart) && Number.isFinite(eEnd)) {
+                    minT = Math.min(minT, eStart);
+                    maxT = Math.max(maxT, eEnd);
+                }
+                if (maxT <= minT) maxT = minT + 60;
+                return { minT, maxT };
+            }
+
+            // Detect conflicts and overlaps
+            function computeConflicts() {
+                const eStart = parseTimeToMinutes(document.getElementById('event-start-time')?.value || '');
+                const eEnd = parseTimeToMinutes(document.getElementById('event-end-time')?.value || '');
+                const services = bookingState.selectedPredefinedServices || [];
+                const conflicts = new Map();
+                services.forEach(s => {
+                    const sStart = parseTimeToMinutes(s.startTime);
+                    const sEnd = parseTimeToMinutes(s.endTime);
+                    let has = false;
+                    if (!(Number.isFinite(sStart) && Number.isFinite(sEnd) && sEnd >= sStart)) return; // incomplete
+                    // outside event
+                    if (Number.isFinite(eStart) && sStart < eStart) has = true;
+                    if (Number.isFinite(eEnd) && sEnd > eEnd) has = true;
+                    conflicts.set(s.id, has);
+                });
+                return conflicts;
+            }
+
+            // Draw timeline with axis and bars
+            function drawTimeline() {
+                const container = document.getElementById('timeline-container');
+                if (!container) return;
+                const axis = document.getElementById('timeline-axis');
+                const layers = document.getElementById('timeline-layers');
+                const { minT, maxT } = getTimelineRange();
+                const range = maxT - minT;
+                function pct(mins) { return (mins / range) * 100; }
+                // Axis (hour ticks)
+                axis.innerHTML = '';
+                const startHour = Math.floor(minT / 60);
+                const endHour = Math.ceil(maxT / 60);
+                let axisHtml = '';
+                for (let h = startHour; h <= endHour; h++) {
+                    const x = pct((h * 60) - minT);
+                    const label = `${((h + 11) % 12) + 1}${h < 12 ? ' AM' : ' PM'}`;
+                    axisHtml += `<div style="position:absolute; left:${x}%; top:0; transform: translateX(-50%); white-space:nowrap;">${label}</div>`;
+                }
+                axis.innerHTML = axisHtml;
+                // Layers
+                layers.innerHTML = '';
+                function addBar(start, end, color, top, height, opacity=1, border='', label='') {
+                    const left = pct(start - minT);
+                    const width = pct(end - start);
+                    const div = document.createElement('div');
+                    div.style.cssText = `position:absolute; left:${left}%; width:${width}%; top:${top}px; height:${height}px; background:${color}; opacity:${opacity}; border:${border}; border-radius:6px; display:flex; align-items:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;`;
+                    // Tooltip
+                    const dur = Math.max(0, end - start);
+                    const base = `${formatTimeLabel(start)}–${formatTimeLabel(end)}${dur>0?` • ${formatMinutes(dur)}`:''}`;
+                    div.title = label ? `${label} • ${base}` : base;
+                    if (label) {
+                        const span = document.createElement('span');
+                        span.textContent = label;
+                        span.style.cssText = 'font-size:11px; color:#111827; padding:0 6px; opacity:0.95;';
+                        div.appendChild(span);
+                    }
+                    layers.appendChild(div);
+                }
+                // Event window
+                const eStart = parseTimeToMinutes(document.getElementById('event-start-time')?.value || '');
+                const eEnd = parseTimeToMinutes(document.getElementById('event-end-time')?.value || '');
+                if (Number.isFinite(eStart) && Number.isFinite(eEnd) && eEnd > eStart) {
+                    addBar(eStart, eEnd, '#c7d2fe', 10, 24, 0.8, '1px solid #a5b4fc', 'Event');
+                }
+                // Vendor engagement window derived from services
+                const services = bookingState.selectedPredefinedServices || [];
+                const sStarts = services.map(s => parseTimeToMinutes(s.startTime)).filter(Number.isFinite);
+                const sEnds = services.map(s => parseTimeToMinutes(s.endTime)).filter(Number.isFinite);
+                if (sStarts.length && sEnds.length) {
+                    const vStart = Math.min(...sStarts);
+                    const vEnd = Math.max(...sEnds);
+                    if (vEnd > vStart) addBar(vStart, vEnd, '#bbf7d0', 44, 20, 0.9, '1px solid #86efac', 'Vendors');
+                }
+                // Services
+                const conflicts = computeConflicts();
+                const warn = document.getElementById('timeline-warning');
+                if (warn) {
+                    const count = Array.from(conflicts.values()).filter(Boolean).length;
+                    if (count > 0) {
+                        warn.textContent = `${count} service${count>1?'s':''} are outside the event window.`;
+                        warn.style.display = 'block';
+                    } else {
+                        warn.style.display = 'none';
+                        warn.textContent = '';
+                    }
+                }
+                let row = 0;
+                services.forEach(s => {
+                    const sS = parseTimeToMinutes(s.startTime);
+                    const sE = parseTimeToMinutes(s.endTime);
+                    if (!(Number.isFinite(sS) && Number.isFinite(sE) && sE > sS)) return;
+                    const top = 72 + (row * 28);
+                    const color = conflicts.get(s.id) ? '#fecaca' : '#fcd34d';
+                    addBar(sS, sE, color, top, 20, 1, '1px solid rgba(0,0,0,0.05)', s.name || 'Service');
+                    row++;
+                });
+            }
+
+            // Auto-pack services sequentially within event/vendor window
+            function autoPackServices() {
+                const eStart = parseTimeToMinutes(document.getElementById('event-start-time')?.value || '');
+                const eEnd = parseTimeToMinutes(document.getElementById('event-end-time')?.value || '');
+                let windowStart = eStart;
+                let windowEnd = eEnd;
+                if (!(Number.isFinite(windowStart) && Number.isFinite(windowEnd) && windowEnd > windowStart)) {
+                    showGlobalError('Set valid event start and end times before auto-pack.');
+                    return;
+                }
+                let cursor = windowStart;
+                (bookingState.selectedPredefinedServices || []).forEach(s => {
+                    const dur = Math.max(15, Math.min(480, s.duration || 60));
+                    const start = cursor;
+                    const end = Math.min(cursor + dur, windowEnd);
+                    s.startTime = `${String(Math.floor(start/60)).padStart(2,'0')}:${String(start%60).padStart(2,'0')}`;
+                    s.endTime = `${String(Math.floor(end/60)).padStart(2,'0')}:${String(end%60).padStart(2,'0')}`;
+                    s.duration = end - start;
+                    cursor = end;
+                });
+                renderSelectedServices();
+                drawTimeline();
+            }
+
+            function clearServiceTimes() {
+                (bookingState.selectedPredefinedServices || []).forEach(s => {
+                    s.startTime = '';
+                    s.endTime = '';
+                });
+                renderSelectedServices();
+                drawTimeline();
+            }
+
+            // Wire up timeline controls and inputs
+            document.addEventListener('DOMContentLoaded', () => {
+                const ids = ['event-start-time','event-end-time'];
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.addEventListener('change', () => drawTimeline());
+                });
+                const ap = document.getElementById('auto-pack-services');
+                if (ap) ap.addEventListener('click', autoPackServices);
+                const clr = document.getElementById('clear-service-times');
+                if (clr) clr.addEventListener('click', clearServiceTimes);
+                // Initial draw
+                setTimeout(drawTimeline, 0);
+            });
+
             // Update selected services summary
             function updateSelectedServicesSummary() {
                 const summaryDiv = document.getElementById('selected-services-summary');
@@ -7134,16 +7432,31 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 let listHtml = '';
                 let totalBudget = 0;
+                let totalMinutes = 0;
                 
                 window.bookingState.selectedPredefinedServices.forEach(service => {
+                    const durMin = Math.max(0, parseInt(service.duration) || 0);
+                    const durTxt = durMin > 0 ? formatMinutes(durMin) : '—';
+                    const hourly = durMin > 0 ? (service.budget / (durMin/60)) : 0;
                     totalBudget += service.budget;
+                    totalMinutes += durMin;
                     listHtml += `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0;">
-                            <span style="color: var(--text);">${service.name}</span>
-                            <span style="font-weight: 600; color: var(--primary-color);">$${service.budget}</span>
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; padding: 0.25rem 0; align-items: center;">
+                            <div>
+                                <div style="color: var(--text); font-weight:600;">${service.name}</div>
+                                <div style="color: var(--text-light); font-size:0.85rem;">Duration: ${durTxt}${durMin>0?` • ~$${Math.round(hourly).toLocaleString()}/hr`:''}</div>
+                            </div>
+                            <div style="font-weight: 700; color: var(--primary-color);">$${Number(service.budget||0).toLocaleString()}</div>
                         </div>
                     `;
                 });
+                
+                const blendedHourly = totalMinutes>0 ? (totalBudget / (totalMinutes/60)) : 0;
+                listHtml += `
+                    <div style="margin-top: 0.5rem; padding-top:0.5rem; border-top:1px dashed var(--border); color: var(--text-light); font-size:0.9rem;">
+                        <div>Total duration: ${formatMinutes(totalMinutes)}${totalMinutes>0?` • Blended ~$${Math.round(blendedHourly).toLocaleString()}/hr`:''}</div>
+                    </div>
+                `;
                 
                 listDiv.innerHTML = listHtml;
                 totalBudgetSpan.textContent = totalBudget.toLocaleString();
