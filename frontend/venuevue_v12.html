@@ -544,8 +544,15 @@
 
         .vendor-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 2rem;
+            grid-template-columns: repeat(auto-fit, minmax(clamp(260px, 28vw, 380px), 1fr));
+            gap: 1.5rem;
+            align-items: stretch;
+        }
+        @media (max-width: 640px) {
+            .vendor-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
         }
 
         .vendor-card {
@@ -553,18 +560,22 @@
             border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform .35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow .35s cubic-bezier(0.22, 1, 0.36, 1), border-color .35s ease;
             border: 1px solid rgba(0, 0, 0, 0.04);
+            transform: translateY(0) scale(1);
+            will-change: transform, box-shadow;
         }
 
         .vendor-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+            transform: translateY(-6px) scale(1.015);
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
             border-color: rgba(94, 114, 228, 0.2);
         }
 
         .vendor-image {
-            height: 340px;
+            /* Maintain consistent visual proportions across grid sizes */
+            aspect-ratio: 4 / 3;
+            height: auto;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             position: relative;
             display: flex;
@@ -572,6 +583,30 @@
             justify-content: center;
             color: white;
             overflow: hidden;
+        }
+
+        /* Smooth image zoom on hover */
+        .vendor-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scale(1);
+            transition: transform .6s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+        }
+        .vendor-card:hover .vendor-image img {
+            transform: scale(1.06);
+        }
+
+        /* Respect reduced motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+            .vendor-card,
+            .vendor-card:hover,
+            .vendor-image img,
+            .vendor-card:hover .vendor-image img {
+                transition: none !important;
+                transform: none !important;
+            }
         }
 
         .vendor-image img {
