@@ -6090,12 +6090,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                     handleUrlChange();
                 }, 100);
 
-                // Show loading state
-                vendorGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;">Loading vendors...</div>';
+                // Show skeleton loader while vendors load
+                showSidebarSkeletonLoader();
 
                 try {
                     // Load vendors data from API
                     await loadVendors();
+
+                    // Hide skeletons once loaded
+                    hideSidebarSkeletonLoader();
 
                     // Initialize Stripe
                     initializeStripe();
@@ -16978,8 +16981,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     </div>
                                 </div>
                                 <div class="vendor-footer">
-                                    <button class="btn btn-outline save-btn" data-id="${vendor.VendorProfileID || vendor.id}">Save</button>
-                                    <button class="btn btn-primary view-btn" data-id="${vendor.VendorProfileID || vendor.id}">View</button>
+                                    <div class="vendor-price">${vendor.price ? `<span>From</span> ${vendor.price}` : ''}</div>
+                                    <div class="vendor-actions">
+                                        <button class="btn btn-outline save-btn" data-id="${vendor.VendorProfileID || vendor.id}">Save</button>
+                                        <button class="btn btn-primary view-btn" data-id="${vendor.VendorProfileID || vendor.id}">View</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
