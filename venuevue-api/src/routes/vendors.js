@@ -307,9 +307,15 @@ router.get('/', async (req, res) => {
       location: vendor.location || '',
       description: vendor.description || '',
       price: vendor.price,
+      // New starting price fields from sp_SearchVendors
+      startingPrice: vendor.MinPriceNumeric ?? vendor.MinPrice,
+      startingServiceName: vendor.StartingServiceName || vendor.MinServiceName || null,
       priceLevel: vendor.priceLevel,
       rating: vendor.rating,
       reviewCount: vendor.ReviewCount,
+      // Normalized fields for frontend cards
+      averageRating: vendor.rating ? parseFloat(vendor.rating) : null,
+      totalReviews: vendor.ReviewCount ?? 0,
       favoriteCount: vendor.FavoriteCount,
       bookingCount: vendor.BookingCount,
       image: vendor.image || '', // Legacy image field
