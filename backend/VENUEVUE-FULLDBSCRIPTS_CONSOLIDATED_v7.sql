@@ -1201,7 +1201,9 @@ BEGIN
             v.Capacity,
             v.Rooms,
             v.FeaturedImageURL,
-            (SELECT MIN(s.Price) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID = v.VendorProfileID) AS MinPrice,
+            -- Use OUTER APPLY to get both the numeric min price and its service name
+            MinSvc.MinPrice AS MinPrice,
+            MinSvc.MinServiceName AS MinServiceName,
             (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
             (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
             (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
@@ -1218,6 +1220,15 @@ BEGIN
             END AS Region'
             + @DistanceCalculation + '
         FROM VendorProfiles v
+        OUTER APPLY (
+            SELECT TOP 1 
+                s.Price AS MinPrice,
+                s.Name AS MinServiceName
+            FROM Services s 
+            JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID 
+            WHERE sc.VendorProfileID = v.VendorProfileID AND s.IsActive = 1
+            ORDER BY s.Price ASC
+        ) AS MinSvc
         JOIN Users u ON v.UserID = u.UserID
         WHERE u.IsActive = 1
         AND v.IsVerified = 1
@@ -1251,6 +1262,8 @@ BEGIN
         CONCAT(City, '', '', State) AS location,
         BusinessDescription AS description,
         ''$'' + CAST(MinPrice AS NVARCHAR(20)) AS price,
+        MinPrice AS MinPriceNumeric,
+        MinServiceName AS StartingServiceName,
         PriceLevel AS priceLevel,
         CAST(AverageRating AS NVARCHAR(10)) AS rating,
         ReviewCount,
