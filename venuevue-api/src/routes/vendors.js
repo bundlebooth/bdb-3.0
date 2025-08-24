@@ -1656,9 +1656,25 @@ router.post('/search-by-services', async (req, res) => {
     request.input('PageSize', sql.Int, 100);
     request.input('SortBy', sql.NVarChar(20), 'relevance');
 
+    // New: pass event start/end times to stored procedure (stored proc handles filtering)
+    const startTimeParam = eventDetails?.startTime ? convertTo24Hour(eventDetails.startTime) : null;
+    const endTimeParam = eventDetails?.endTime ? convertTo24Hour(eventDetails.endTime) : null;
+    if (startTimeParam) {
+      request.input('EventStartTime', sql.Time, startTimeParam);
+    } else {
+      request.input('EventStartTime', sql.Time, null);
+    }
+    if (endTimeParam) {
+      request.input('EventEndTime', sql.Time, endTimeParam);
+    } else {
+      request.input('EventEndTime', sql.Time, null);
+    }
+
     // Call the new stored procedure for predefined services
     const result = await request.execute('sp_SearchVendorsByPredefinedServices');
     
+    // Business hours filtering now handled inside stored procedure
+
     // Process results to match expected format
     const vendorsWithServices = result.recordset.map(vendor => {
       // Parse VendorImages JSON if it exists
