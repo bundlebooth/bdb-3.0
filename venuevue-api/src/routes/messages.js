@@ -253,18 +253,22 @@ router.post('/conversation', async (req, res) => {
     request.input('RequestID', sql.Int, requestId || null);
     request.input('Subject', sql.NVarChar(255), requestId ? 'Booking Request Discussion' : 'New Conversation');
     
-    // Check if conversation already exists for this request
-    if (requestId) {
-      const existingConv = await pool.request()
-        .input('RequestID', sql.Int, requestId)
-        .query('SELECT ConversationID FROM Conversations WHERE RequestID = @RequestID');
-      
-      if (existingConv.recordset.length > 0) {
-        return res.json({ 
-          success: true,
-          conversation: { ConversationID: existingConv.recordset[0].ConversationID }
-        });
-      }
+    // Check if a conversation already exists for this user/vendor pair
+    const existingConv = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query(`
+        SELECT TOP 1 ConversationID 
+        FROM Conversations 
+        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+        ORDER BY CreatedAt DESC
+      `);
+
+    if (existingConv.recordset.length > 0) {
+      return res.json({ 
+        success: true,
+        conversation: { ConversationID: existingConv.recordset[0].ConversationID }
+      });
     }
     
     const result = await request.execute('sp_CreateConversation');
