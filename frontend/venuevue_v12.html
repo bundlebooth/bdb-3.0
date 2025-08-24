@@ -5054,6 +5054,14 @@
             updateFavoritesBadge();
             updateMessagesBadge();
 
+            // Ensure API_BASE_URL fallback if not set
+            if (!window.API_BASE_URL) {
+                try {
+                    const loc = window.location;
+                    window.API_BASE_URL = `${loc.protocol}//${loc.host}/api`;
+                } catch (_) { /* ignore */ }
+            }
+
             // If a prior navigation set this flag, open dashboard messages immediately
             try {
                 if (localStorage.getItem('openMessagesOnLoad') === '1') {
@@ -5067,17 +5075,60 @@
             } catch (e) { /* ignore */ }
 
             // Periodically refresh unread messages from API as fallback
+            let badgePollInterval = null;
             if (typeof fetchAndUpdateMessagesBadge === 'function') {
                 fetchAndUpdateMessagesBadge();
-                setInterval(fetchAndUpdateMessagesBadge, 30000); // every 30s
+                // Poll faster (5s) until socket confirms connection
+                badgePollInterval = setInterval(fetchAndUpdateMessagesBadge, 5000);
             }
 
             // Optional Socket.IO real-time updates if client is available
             try {
                 if (window.io && typeof window.io === 'function') {
-                    const socket = window.io(window.API_BASE_URL || '/', { withCredentials: true });
-                    socket.on('new-message', () => {
-                        updateMessagesBadge();
+                    // Derive socket base URL (strip /api if present)
+                    let socketBase = '/';
+                    try {
+                        if (window.API_BASE_URL) {
+                            const u = new URL(window.API_BASE_URL, window.location.origin);
+                            socketBase = `${u.protocol}//${u.host}`;
+                        }
+                    } catch (_) { /* ignore */ }
+
+                    const socket = window.io(socketBase, {
+                        withCredentials: true,
+                        auth: { token: localStorage.getItem('token') }
+                    });
+                    // expose globally for other code paths that use state.socket
+                    window.state = window.state || {};
+                    window.state.socket = socket;
+
+                    socket.on('connect', () => {
+                        console.log('[socket] connected', socket.id);
+                        if (typeof fetchAndUpdateMessagesBadge === 'function') {
+                            fetchAndUpdateMessagesBadge();
+                        }
+                        if (badgePollInterval) {
+                            clearInterval(badgePollInterval);
+                            badgePollInterval = setInterval(fetchAndUpdateMessagesBadge, 30000);
+                        }
+                    });
+                    socket.on('connect_error', (err) => console.warn('[socket] connect_error', err?.message || err));
+                    socket.on('error', (err) => console.warn('[socket] error', err));
+                    socket.on('disconnect', (reason) => console.log('[socket] disconnected', reason));
+
+                    socket.on('new-message', (payload) => {
+                        try {
+                            const badge = document.getElementById('messages-badge');
+                            if (badge) {
+                                const current = parseInt(badge.textContent || '0', 10) || 0;
+                                const myId = window.currentUser?.id;
+                                if (!myId || (payload && payload.senderId !== myId)) {
+                                    const next = current + 1;
+                                    badge.textContent = next;
+                                    badge.style.display = next > 0 ? 'block' : 'none';
+                                }
+                            }
+                        } catch (_) { /* ignore */ }
                         if (typeof fetchAndUpdateMessagesBadge === 'function') {
                             fetchAndUpdateMessagesBadge();
                         }
@@ -5131,8 +5182,20 @@
         // Fetch unread counts from API and update badge
         async function fetchAndUpdateMessagesBadge() {
             try {
-                if (!currentUser || !window.API_BASE_URL) return;
-                const res = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
+                if (!window.API_BASE_URL) return;
+                let userId = currentUser?.id;
+                if (!userId) {
+                    // Derive userId from JWT if possible
+                    const token = localStorage.getItem('token');
+                    if (token && token.split('.').length === 3 && window.atob) {
+                        try {
+                            const payload = JSON.parse(atob(token.split('.')[1]));
+                            userId = payload.userId || payload.id;
+                        } catch (_) { /* ignore */ }
+                    }
+                }
+                if (!userId) return;
+                const res = await fetch(`${API_BASE_URL}/messages/conversations/user/${userId}`, {
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`
                     }
@@ -9895,7 +9958,7 @@ async function sendChatMessage() {
                     } else {
                         console.log('Socket not connected, falling back to HTTP POST...');
 
-                        const response = await fetch(`${API_BASE_URL}/messages`, {
+                        const response = await fetch(`${API_BASE_URL || process.env.API_BASE_URL}/messages`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
