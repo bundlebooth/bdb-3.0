@@ -557,15 +557,32 @@
         }
 
         /* Map view container and toggle */
+        /* Map + list two-column layout (mirrors booking vendors step) */
+        .results-two-col {
+            display: flex;
+            gap: 2rem;
+            align-items: stretch;
+            flex-direction: column; /* default: list view keeps one column */
+        }
+        .results-two-col .results-left { flex: 1; min-width: 0; }
+        .results-two-col .results-right { flex: 1; min-width: 0; position: relative; }
+        /* When map is active, switch to two columns */
+        body.map-active .results-two-col { flex-direction: row; }
+        @media (max-width: 900px) {
+            body.map-active .results-two-col { flex-direction: column; }
+        }
+
+        /* Map view container */
         #map-view {
-            display: none;
+            display: none; /* hidden by default in list view */
             width: 100%;
-            height: 420px;
+            height: 600px;
             border-radius: 12px;
             overflow: hidden;
             border: 1px solid var(--border);
-            margin: 0 0 1rem 0;
         }
+        /* Show map only in map view */
+        body.map-active #map-view { display: block; }
         /* Removed legacy .map-toolbar and .btn-map-toggle styles */
 
         .vendor-badge {
@@ -3203,9 +3220,16 @@
             </div>
 
             
-            <div id="map-view"></div>
-
-            <div class="vendor-grid" id="vendor-grid"></div>
+            <div class="results-two-col">
+                <div class="results-left">
+                    <div class="vendor-grid" id="vendor-grid"></div>
+                    <!-- Horizontal cards container (used only in Map view) -->
+                    <div id="main-horizontal-cards" class="vendor-horizontal-container" style="display:none;"></div>
+                </div>
+                <div class="results-right">
+                    <div id="map-view"></div>
+                </div>
+            </div>
 
             <div class="pagination" id="pagination" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin: 2rem 0;">
                 <div class="page-btn" id="prev-page">«</div>
@@ -11206,12 +11230,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const mapEl = document.getElementById('map-view');
                 const gridEl = document.getElementById('vendor-grid');
                 const paginationEl = document.getElementById('pagination');
+                const horizEl = document.getElementById('main-horizontal-cards');
 
                 if (listBtnNew && mapBtnNew && mapEl && gridEl) {
                     listBtnNew.addEventListener('click', () => {
                         state.currentView = 'list';
+                        document.body.classList.remove('map-active');
                         mapEl.style.display = 'none';
                         gridEl.style.display = 'grid';
+                        if (horizEl) horizEl.style.display = 'none';
                         if (paginationEl) paginationEl.style.display = '';
                         listBtnNew.classList.add('active');
                         mapBtnNew.classList.remove('active');
@@ -11219,8 +11246,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                     mapBtnNew.addEventListener('click', () => {
                         state.currentView = 'map';
+                        document.body.classList.add('map-active');
                         mapEl.style.display = 'block';
                         gridEl.style.display = 'none';
+                        if (horizEl) {
+                            horizEl.style.display = 'flex';
+                            try { renderMainHorizontalCards(); } catch (e) { console.warn('horizontal cards render failed', e); }
+                        }
                         if (paginationEl) paginationEl.style.display = 'none';
                         mapBtnNew.classList.add('active');
                         listBtnNew.classList.remove('active');
@@ -17507,6 +17539,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
+            // Render main-page horizontal cards (used in Map view)
+            function renderMainHorizontalCards() {
+                const container = document.getElementById('main-horizontal-cards');
+                if (!container) return;
+                // Compute page slice consistent with grid
+                const start = (state.currentPage - 1) * state.vendorsPerPage;
+                const end = start + state.vendorsPerPage;
+                const vendors = state.filteredVendors.slice(start, end);
+                container.innerHTML = vendors.map(v => createHorizontalVendorCard(v)).join('');
+            }
+
             // Setup event listeners for vendor cards
             function setupVendorCardEventListeners() {
                 // Favorite buttons
@@ -17756,18 +17799,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const mapEl = document.getElementById('map-view');
                     const gridEl = document.getElementById('vendor-grid');
                     const paginationEl = document.getElementById('pagination');
+                    const horizEl = document.getElementById('main-horizontal-cards');
                     if (!mapEl) return;
                     if (view === 'map') {
+                        document.body.classList.add('map-active');
                         mapEl.style.display = 'block';
                         if (gridEl) gridEl.style.display = 'none';
+                        if (horizEl) { horizEl.style.display = 'flex'; try { renderMainHorizontalCards(); } catch {} }
                         if (paginationEl) paginationEl.style.display = 'none';
                         listBtn.classList.remove('active');
                         mapBtn.classList.add('active');
                         try { localStorage.setItem('vv_view', 'map'); } catch {}
                         initMapIfNeeded().then(updateMapMarkers).catch(() => {});
                     } else {
+                        document.body.classList.remove('map-active');
                         mapEl.style.display = 'none';
                         if (gridEl) gridEl.style.display = '';
+                        if (horizEl) horizEl.style.display = 'none';
                         if (paginationEl) paginationEl.style.display = '';
                         mapBtn.classList.remove('active');
                         listBtn.classList.add('active');
