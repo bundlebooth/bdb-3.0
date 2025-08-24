@@ -2975,6 +2975,46 @@
             margin-top: 1rem;
         }
 
+        /* Pagination styles */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 2rem 0;
+            user-select: none;
+        }
+        .page-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text);
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.05s;
+        }
+        .page-btn:hover {
+            background: var(--secondary);
+        }
+        .page-btn:active {
+            transform: translateY(1px);
+        }
+        .page-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+            font-weight: 600;
+        }
+        .page-btn.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
         @media (max-width: 768px) {
             .service-categories {
                 grid-template-columns: 1fr;
@@ -7690,12 +7730,20 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 serviceName: service.name,
                                 category: service.category,
                                 budget: service.budget,
-                                duration: service.duration // Use user-specified duration instead of default
+                                duration: service.duration, // Use user-specified duration instead of default
+                                // NEW: include service-specific times for backend filtering
+                                startTime: service.startTime || service.serviceStartTime || null,
+                                endTime: service.endTime || service.serviceEndTime || null
                             };
 
                             const searchPayload = {
                                 selectedServices: [serviceRequirement],
-                                eventDetails: bookingState.eventDetails,
+                                // Ensure EventDate is passed (backend uses date + service times)
+                                eventDetails: {
+                                    ...bookingState.eventDetails,
+                                    // Pass only date/time fields the API expects; boundary times remain for UI validation
+                                    date: bookingState?.eventDetails?.date || bookingState?.eventDetails?.EventDate || null
+                                },
                                 totalBudget: service.budget,
                                 serviceIds: [service.id]
                             };
@@ -14409,17 +14457,33 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const pageBtn = document.createElement('div');
                     pageBtn.className = `page-btn ${i === state.currentPage ? 'active' : ''}`;
                     pageBtn.textContent = i;
+                    pageBtn.setAttribute('role', 'button');
+                    pageBtn.tabIndex = 0;
                     pageBtn.addEventListener('click', () => {
                         state.currentPage = i;
                         renderVendors();
+                    });
+                    pageBtn.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            state.currentPage = i;
+                            renderVendors();
+                        }
                     });
 
                     pagination.insertBefore(pageBtn, nextPageBtn);
                 }
 
                 // Update prev/next button states
-                prevPageBtn.classList.toggle('disabled', state.currentPage === 1);
-                nextPageBtn.classList.toggle('disabled', state.currentPage === totalPages);
+                const isPrevDisabled = state.currentPage === 1;
+                const isNextDisabled = state.currentPage === totalPages;
+                prevPageBtn.classList.toggle('disabled', isPrevDisabled);
+                nextPageBtn.classList.toggle('disabled', isNextDisabled);
+                // Apply inline styles to make disabled state obvious and unclickable
+                prevPageBtn.style.opacity = isPrevDisabled ? '0.5' : '1';
+                prevPageBtn.style.pointerEvents = isPrevDisabled ? 'none' : 'auto';
+                nextPageBtn.style.opacity = isNextDisabled ? '0.5' : '1';
+                nextPageBtn.style.pointerEvents = isNextDisabled ? 'none' : 'auto';
             }
 
             // Update metadata in header
