@@ -1656,9 +1656,30 @@ router.post('/search-by-services', async (req, res) => {
     request.input('PageSize', sql.Int, 100);
     request.input('SortBy', sql.NVarChar(20), 'relevance');
 
-    // New: pass event start/end times to stored procedure (stored proc handles filtering)
-    const startTimeParam = eventDetails?.startTime ? convertTo24Hour(eventDetails.startTime) : null;
-    const endTimeParam = eventDetails?.endTime ? convertTo24Hour(eventDetails.endTime) : null;
+    // New: pass service start/end times to stored procedure (SP filters by business hours)
+    // Prefer per-service times from selectedServices; fallback to eventDetails times
+    const serviceTimes = Array.isArray(selectedServices)
+      ? selectedServices
+          .map(s => ({
+            start: s.startTime || s.serviceStartTime || s.start || null,
+            end: s.endTime || s.serviceEndTime || s.end || null
+          }))
+          .filter(t => t.start && t.end)
+      : [];
+
+    let derivedStart = null;
+    let derivedEnd = null;
+    if (serviceTimes.length > 0) {
+      // Use earliest start and latest end across selected services
+      const starts = serviceTimes.map(t => convertTo24Hour(t.start)).filter(Boolean);
+      const ends = serviceTimes.map(t => convertTo24Hour(t.end)).filter(Boolean);
+      if (starts.length > 0) derivedStart = starts.sort()[0];
+      if (ends.length > 0) derivedEnd = ends.sort().slice(-1)[0];
+    }
+
+    // Important: Only use service times; event times are UI boundaries and not used for backend filtering
+    const startTimeParam = derivedStart || null;
+    const endTimeParam = derivedEnd || null;
     if (startTimeParam) {
       request.input('EventStartTime', sql.VarChar(8), startTimeParam);
     } else {
