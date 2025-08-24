@@ -1660,14 +1660,14 @@ router.post('/search-by-services', async (req, res) => {
     const startTimeParam = eventDetails?.startTime ? convertTo24Hour(eventDetails.startTime) : null;
     const endTimeParam = eventDetails?.endTime ? convertTo24Hour(eventDetails.endTime) : null;
     if (startTimeParam) {
-      request.input('EventStartTime', sql.Time, startTimeParam);
+      request.input('EventStartTime', sql.VarChar(8), startTimeParam);
     } else {
-      request.input('EventStartTime', sql.Time, null);
+      request.input('EventStartTime', sql.VarChar(8), null);
     }
     if (endTimeParam) {
-      request.input('EventEndTime', sql.Time, endTimeParam);
+      request.input('EventEndTime', sql.VarChar(8), endTimeParam);
     } else {
-      request.input('EventEndTime', sql.Time, null);
+      request.input('EventEndTime', sql.VarChar(8), null);
     }
 
     // Call the new stored procedure for predefined services
