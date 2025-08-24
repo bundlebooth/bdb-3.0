@@ -136,7 +136,7 @@
             border-radius: 50%;
             width: 1.25rem;
             height: 1.25rem;
-            display: flex;
+            display: none; /* hidden by default; JS will show when count > 0 */
             align-items: center;
             justify-content: center;
             font-size: 0.7rem;
@@ -3060,6 +3060,10 @@
                 <i class="fas fa-heart"></i>
                 <span class="badge" id="favorites-badge">0</span>
             </div>
+            <div class="nav-icon" id="chat-btn" title="Chat">
+                <i class="fas fa-comments"></i>
+                <span class="badge" id="messages-badge">0</span>
+            </div>
             <div class="nav-icon" id="notifications-btn">
                 <i class="fas fa-bell"></i>
                 <span class="badge" id="notifications-badge">0</span>
@@ -5018,6 +5022,134 @@
                 badge.textContent = unreadCount;
                 badge.style.display = unreadCount > 0 ? 'block' : 'none';
             });
+        }
+
+        // Update favorites badge
+        function updateFavoritesBadge() {
+            const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+            const count = Array.isArray(favorites) ? favorites.length : 0;
+            const badge = document.getElementById('favorites-badge');
+            if (badge) {
+                badge.textContent = count;
+                badge.style.display = count > 0 ? 'block' : 'none';
+            }
+        }
+
+        // Update messages badge (unread messages for current user)
+        function updateMessagesBadge() {
+            if (!currentUser) return;
+            const messages = JSON.parse(localStorage.getItem('messages') || '[]');
+            // Expect each message to have recipientId and read flag
+            const unread = messages.filter(m => (m.recipientId === currentUser.id || m.recipientId === currentUser.vendorProfileId) && !m.read).length;
+            const badge = document.getElementById('messages-badge');
+            if (badge) {
+                badge.textContent = unread;
+                badge.style.display = unread > 0 ? 'block' : 'none';
+            }
+        }
+
+        // Initialize header badges on load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateNotificationBadges();
+            updateFavoritesBadge();
+            updateMessagesBadge();
+
+            // If a prior navigation set this flag, open dashboard messages immediately
+            try {
+                if (localStorage.getItem('openMessagesOnLoad') === '1') {
+                    localStorage.removeItem('openMessagesOnLoad');
+                    if (typeof displayUserDashboard === 'function') {
+                        const mode = (window.currentUser && window.currentUser.isVendor) ? 'vendor' : 'client';
+                        const section = (mode === 'vendor') ? 'vendor-messages' : 'messages';
+                        displayUserDashboard(mode, section);
+                    }
+                }
+            } catch (e) { /* ignore */ }
+
+            // Periodically refresh unread messages from API as fallback
+            if (typeof fetchAndUpdateMessagesBadge === 'function') {
+                fetchAndUpdateMessagesBadge();
+                setInterval(fetchAndUpdateMessagesBadge, 30000); // every 30s
+            }
+
+            // Optional Socket.IO real-time updates if client is available
+            try {
+                if (window.io && typeof window.io === 'function') {
+                    const socket = window.io(window.API_BASE_URL || '/', { withCredentials: true });
+                    socket.on('new-message', () => {
+                        updateMessagesBadge();
+                        if (typeof fetchAndUpdateMessagesBadge === 'function') {
+                            fetchAndUpdateMessagesBadge();
+                        }
+                    });
+                }
+            } catch (e) { /* ignore */ }
+
+            const chatBtn = document.getElementById('chat-btn');
+            if (chatBtn) {
+                chatBtn.addEventListener('click', () => {
+                    // Preferred: open in-page dashboard modal directly to Messages
+                    if (typeof displayUserDashboard === 'function') {
+                        const mode = (window.currentUser && window.currentUser.isVendor) ? 'vendor' : 'client';
+                        const section = (mode === 'vendor') ? 'vendor-messages' : 'messages';
+                        displayUserDashboard(mode, section);
+                        return;
+                    }
+                    // Try to open existing chat UI if present
+                    if (typeof openChat === 'function') {
+                        return openChat();
+                    }
+                    if (typeof openMessages === 'function') {
+                        return openMessages();
+                    }
+                    if (typeof showSection === 'function') {
+                        try { showSection('messages'); return; } catch (e) {}
+                    }
+                    // Scroll to a likely chat/messages container if it exists
+                    const target = document.querySelector('#messages-section, #chat, .messages-panel, #inbox, #conversation-list');
+                    if (target && target.scrollIntoView) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        return;
+                    }
+                    // Fallback: navigate to dashboard messages route (robust)
+                    try { localStorage.setItem('openMessagesOnLoad', '1'); } catch (e) {}
+                    const candidates = [
+                        window.DASHBOARD_MESSAGES_URL,
+                        '/dashboard#messages',
+                        '/dashboard/messages',
+                        '/messages',
+                        '/inbox',
+                        '/vendor-dashboard#messages',
+                        '/user-dashboard#messages'
+                    ].filter(Boolean);
+                    // Try the first candidate; if it 404s, the user can use back and try another
+                    window.location.href = candidates[0];
+                });
+            }
+        });
+
+        // Fetch unread counts from API and update badge
+        async function fetchAndUpdateMessagesBadge() {
+            try {
+                if (!currentUser || !window.API_BASE_URL) return;
+                const res = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const unreadTotal = Array.isArray(data.conversations)
+                    ? data.conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0)
+                    : 0;
+                const badge = document.getElementById('messages-badge');
+                if (badge) {
+                    badge.textContent = unreadTotal;
+                    badge.style.display = unreadTotal > 0 ? 'block' : 'none';
+                }
+            } catch (e) {
+                // ignore network errors, badge will still be maintained by local storage fallback
+            }
         }
         
         // Show toast notification
