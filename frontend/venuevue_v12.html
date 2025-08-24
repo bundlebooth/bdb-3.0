@@ -470,77 +470,7 @@
             color: var(--text);
         }
 
-        .view-toggle {
-            display: flex;
-            background-color: var(--secondary);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-
-        .view-btn {
-            padding: 0.5rem 1rem;
-            border: none;
-            background-color: transparent;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .view-btn.active {
-            background-color: white;
-            color: var(--primary);
-            font-weight: 500;
-            box-shadow: var(--shadow);
-        }
-
-        .map-view-container {
-            display: none;
-            flex-direction: column;
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .map-container {
-            height: 400px;
-            background-color: white;
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            position: relative;
-            overflow: hidden;
-        }
-
-        #map {
-            width: 100%;
-            height: 100%;
-        }
-
-        .map-controls {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            z-index: 100;
-        }
-
-        .map-btn {
-            width: 32px;
-            height: 32px;
-            background-color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--shadow);
-            cursor: pointer;
-            border: 1px solid var(--border);
-        }
-
-        .map-venue-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
+        /* Removed legacy List/Map toggle and legacy map UI styles (replaced by new FA segmented toggle and #map-view) */
 
         .vendor-grid {
             display: grid;
@@ -618,6 +548,18 @@
         .vendor-card:hover .vendor-image img {
             transform: scale(1.05);
         }
+
+        /* Map view container and toggle */
+        #map-view {
+            display: none;
+            width: 100%;
+            height: 420px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            margin: 0 0 1rem 0;
+        }
+        /* Removed legacy .map-toolbar and .btn-map-toggle styles */
 
         .vendor-badge {
             position: absolute;
@@ -3135,11 +3077,11 @@
                 </h3>
                 <div class="filter-group">
                     <div class="filter-option">
-                        <input type="checkbox" id="independent" checked="">
+                        <input type="checkbox" id="independent">
                         <label for="independent">Independent</label>
                     </div>
                     <div class="filter-option">
-                        <input type="checkbox" id="company" checked="">
+                        <input type="checkbox" id="company">
                         <label for="company">Company</label>
                     </div>
                 </div>
@@ -3205,24 +3147,12 @@
                         <option value="nearest">Nearest to Me</option>
                         <option value="rating">Highest Rated</option>
                     </select>
-                    <div class="view-toggle">
-                        <button class="view-btn active" id="list-view-btn"><i class="fas fa-list" style="margin-right: 0.5rem;"></i>List</button>
-                        <button class="view-btn" id="map-view-btn"><i class="fas fa-map" style="margin-right: 0.5rem;"></i>Map</button>
-                    </div>
+                    <div class="view-toggle" id="legacy-view-toggle"></div>
                 </div>
             </div>
 
-            <div class="map-view-container" id="map-view-container">
-                <div class="map-container">
-                    <div id="map"></div>
-                    <div class="map-controls">
-                        <button class="map-btn" id="zoom-in">+</button>
-                        <button class="map-btn" id="zoom-out">-</button>
-                        <button class="map-btn" id="locate-me"><i class="fas fa-map-marker-alt"></i></button>
-                    </div>
-                </div>
-                <div class="map-venue-list" id="map-venue-list"></div>
-            </div>
+            
+            <div id="map-view"></div>
 
             <div class="vendor-grid" id="vendor-grid"></div>
 
@@ -5811,6 +5741,53 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             }
 
+            // Geolocation: try to detect user location and update filters
+            async function tryInitGeolocation() {
+                if (!('geolocation' in navigator)) return;
+                if (state.userLocationInitialized) return;
+                state.userLocationInitialized = true;
+                // Respect stored permission: skip calling geolocation if denied
+                const stored = getStoredGeoPermission();
+                if (stored === 'denied') {
+                    console.log('Geolocation previously denied; skipping auto request.');
+                    return;
+                }
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    setStoredGeoPermission('granted');
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    state.userCoords = { lat, lon };
+                    try {
+                        const label = await reverseGeocodeOSM(lat, lon);
+                        state.userLocationLabel = label;
+                        // If user hasn't manually set a location filter, use detected city/region
+                        if (!state.filters || !state.filters.location) {
+                            state.filters = state.filters || {};
+                            state.filters.location = label;
+                            filterVendors();
+                            updateMetadata({});
+                        }
+                    } catch (e) {
+                        console.warn('Reverse geocode failed:', e);
+                    }
+                }, (err) => {
+                    console.warn('Geolocation blocked/unavailable:', err?.message || err);
+                    if (err && err.code === err.PERMISSION_DENIED) setStoredGeoPermission('denied');
+                }, { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 });
+            }
+
+            // Reverse geocode using OpenStreetMap Nominatim (no API key)
+            async function reverseGeocodeOSM(lat, lon) {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}`;
+                const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+                if (!res.ok) throw new Error(`OSM reverse geocode failed: ${res.status}`);
+                const data = await res.json();
+                const city = data.address?.city || data.address?.town || data.address?.village || data.address?.hamlet || '';
+                const state = data.address?.state || data.address?.region || data.address?.county || '';
+                const label = [city, state].filter(Boolean).join(', ');
+                return label || (data.display_name?.split(',').slice(0,2).join(', ') || 'your area');
+            }
+
             // Render category-specific questions
             function renderCategoryQuestions(questions) {
                 const container = document.getElementById('category-questions-container');
@@ -6112,6 +6089,129 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             };
 
+            // Inject skeleton styles once for vendor cards
+            (function ensureVendorSkeletonStyles() {
+                if (document.getElementById('vendor-skeleton-styles')) return;
+                const style = document.createElement('style');
+                style.id = 'vendor-skeleton-styles';
+                style.textContent = `
+                    /* Vendor card skeletons */
+                    .vendor-grid.skeleton-active {
+                        /* mirror main vendor-grid columns and spacing */
+                        display: grid;
+                        grid-template-columns: repeat(auto-fit, minmax(clamp(260px, 28vw, 380px), 1fr));
+                        gap: 1.5rem;
+                        align-items: stretch;
+                    }
+                    @media (max-width: 640px) {
+                        .vendor-grid.skeleton-active {
+                            grid-template-columns: 1fr;
+                            gap: 1rem;
+                        }
+                    }
+                    .skeleton-card {
+                        display: flex;
+                        flex-direction: column;
+                        background: #fff;
+                        border: 1px solid rgba(0, 0, 0, 0.04);
+                        border-radius: 16px;
+                        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+                        overflow: hidden;
+                    }
+                    .skeleton-thumb {
+                        width: 100%;
+                        aspect-ratio: 4 / 3; /* match .vendor-image */
+                        background: var(--skeleton-base, #f0f2f5);
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    .skeleton-content {
+                        display: grid;
+                        gap: 10px;
+                        padding: 12px 14px 14px;
+                        align-content: start;
+                    }
+                    .skeleton-line { height: 12px; border-radius: 6px; background: var(--skeleton-base, #f0f2f5); position: relative; overflow: hidden; }
+                    .skeleton-line.sm { height: 10px; width: 55%; }
+                    .skeleton-line.md { height: 12px; width: 75%; }
+                    .skeleton-line.lg { height: 14px; width: 40%; }
+                    .skeleton-pill { height: 40px; width: 160px; border-radius: 12px; background: var(--skeleton-base, #f0f2f5); position: relative; overflow: hidden; }
+                    .skeleton-featurebar {
+                        margin: 6px 0 6px;
+                        height: 44px;
+                        border-radius: 8px;
+                        background: #f8f9fa;
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    .skeleton-featurebar::before {
+                        content: "";
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        bottom: 0;
+                        width: 3px;
+                        background: #3498db;
+                        opacity: .9;
+                    }
+                    .skeleton-button-row {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 10px;
+                        margin-top: 8px;
+                    }
+                    .skeleton-btn {
+                        height: 40px;
+                        border-radius: 12px;
+                        background: var(--skeleton-base, #f0f2f5);
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    /* Shimmer */
+                    .skeleton-thumb::after, .skeleton-line::after, .skeleton-pill::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.6) 50%, rgba(255,255,255,0) 100%); transform: translateX(-100%); animation: vv-shimmer 1.2s infinite; }
+                    @keyframes vv-shimmer { 100% { transform: translateX(100%); } }
+                `;
+                document.head.appendChild(style);
+            })();
+
+            // Show skeletons in the vendor grid while loading
+            function showVendorSkeletons(count = 8) {
+                const grid = document.getElementById('vendor-grid');
+                if (!grid) return;
+                grid.classList.add('skeleton-active');
+                grid.setAttribute('data-skeleton', '1');
+                let html = '';
+                for (let i = 0; i < count; i++) {
+                    html += `
+                        <div class="skeleton-card" aria-hidden="true">
+                            <div class="skeleton-thumb"></div>
+                            <div class="skeleton-content">
+                                <div class="skeleton-line md"></div>
+                                <div class="skeleton-line sm"></div>
+                                <div class="skeleton-line md"></div>
+                                <div class="skeleton-featurebar"></div>
+                                <div class="skeleton-line lg" style="margin-top:4px;"></div>
+                                <div class="skeleton-button-row">
+                                    <div class="skeleton-btn"></div>
+                                    <div class="skeleton-btn"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                grid.innerHTML = html;
+            }
+
+            function hideVendorSkeletons() {
+                const grid = document.getElementById('vendor-grid');
+                if (!grid) return;
+                if (grid.getAttribute('data-skeleton') === '1') {
+                    // Do not clear innerHTML here, vendors may have been rendered already
+                    grid.removeAttribute('data-skeleton');
+                    grid.classList.remove('skeleton-active');
+                }
+            }
+
             // Initialize the app
             init();
 
@@ -6142,6 +6242,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Check for existing user session
                 await checkAuthStatus();
                 
+                // Initialize geolocation permission observer (keeps localStorage in sync)
+                initGeoPermissionObserver();
+                
                 // Handle initial page load based on URL or state
                 setTimeout(() => {
                     handleUrlChange();
@@ -6160,14 +6263,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
 
                 // Show skeleton loader while vendors load
-                showSidebarSkeletonLoader();
+                showSidebarSkeletonLoader?.();
+                showVendorSkeletons(8);
 
                 try {
                     // Load vendors data from API
                     await loadVendors();
 
                     // Hide skeletons once loaded
-                    hideSidebarSkeletonLoader();
+                    hideSidebarSkeletonLoader?.();
+                    hideVendorSkeletons();
 
                     // Initialize Stripe
                     initializeStripe();
@@ -10220,11 +10325,48 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
             
+            // Geolocation permission persistence helpers
+            const GEO_PERMISSION_KEY = 'geo_permission_state';
+            const GEO_PERMISSION_TS_KEY = 'geo_permission_ts';
+            function getStoredGeoPermission() {
+                try { return localStorage.getItem(GEO_PERMISSION_KEY) || null; } catch (e) { return null; }
+            }
+            function setStoredGeoPermission(state) {
+                try {
+                    if (state) {
+                        localStorage.setItem(GEO_PERMISSION_KEY, state);
+                        localStorage.setItem(GEO_PERMISSION_TS_KEY, String(Date.now()));
+                    } else {
+                        localStorage.removeItem(GEO_PERMISSION_KEY);
+                        localStorage.removeItem(GEO_PERMISSION_TS_KEY);
+                    }
+                } catch (e) {}
+            }
+            function initGeoPermissionObserver() {
+                if (navigator.permissions && navigator.permissions.query) {
+                    try {
+                        navigator.permissions.query({ name: 'geolocation' }).then((p) => {
+                            setStoredGeoPermission(p.state);
+                            p.onchange = () => setStoredGeoPermission(p.state);
+                        }).catch(() => {});
+                    } catch (e) {}
+                }
+            }
+
             // New improved location request function
             function requestLocationWithFeedback() {
                 console.log("Attempting to get location...");
                 if (!navigator.geolocation) {
                     console.log("Geolocation not supported by this browser");
+                    return;
+                }
+
+                // Respect stored permission decision
+                const stored = getStoredGeoPermission();
+                if (stored === 'denied') {
+                    // Do not re-prompt; keep UI neutral
+                    currentLocationCheckbox.checked = false;
+                    locationInput.placeholder = "City or ZIP code";
                     return;
                 }
 
@@ -10234,6 +10376,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         console.log("Location obtained:", position);
+                        setStoredGeoPermission('granted');
                         handleLocationSuccess(position);
                     },
                     (error) => {
@@ -10241,6 +10384,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         locationInput.placeholder = "City or ZIP code";
 
                         if (error.code === error.PERMISSION_DENIED) {
+                            setStoredGeoPermission('denied');
                             // Only show modal if this is a fresh page load
                             if (!sessionStorage.getItem('locationRequested')) {
                                 locationPermissionModal.style.display = 'flex';
@@ -10796,27 +10940,34 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Setup all event listeners
             function setupEventListeners() {
-                // View toggle buttons
-                document.getElementById('list-view-btn').addEventListener('click', () => {
-                    state.currentView = 'list';
-                    mapViewContainer.style.display = 'none';
-                    vendorGrid.style.display = 'grid';
-                    document.getElementById('list-view-btn').classList.add('active');
-                    document.getElementById('map-view-btn').classList.remove('active');
-                });
+                // View toggle buttons (new segmented control)
+                const listBtnNew = document.getElementById('btn-view-list');
+                const mapBtnNew = document.getElementById('btn-view-map');
+                const mapEl = document.getElementById('map-view');
+                const gridEl = document.getElementById('vendor-grid');
+                const paginationEl = document.getElementById('pagination');
 
-                document.getElementById('map-view-btn').addEventListener('click', () => {
-                    state.currentView = 'map';
-                    mapViewContainer.style.display = 'flex';
-                    vendorGrid.style.display = 'none';
-                    document.getElementById('map-view-btn').classList.add('active');
-                    document.getElementById('list-view-btn').classList.remove('active');
-                    
-                    // Initialize map if it hasn't been already
-                    if (!state.map) {
-                        initLegacyMap();
-                    }
-                });
+                if (listBtnNew && mapBtnNew && mapEl && gridEl) {
+                    listBtnNew.addEventListener('click', () => {
+                        state.currentView = 'list';
+                        mapEl.style.display = 'none';
+                        gridEl.style.display = 'grid';
+                        if (paginationEl) paginationEl.style.display = '';
+                        listBtnNew.classList.add('active');
+                        mapBtnNew.classList.remove('active');
+                    });
+
+                    mapBtnNew.addEventListener('click', () => {
+                        state.currentView = 'map';
+                        mapEl.style.display = 'block';
+                        gridEl.style.display = 'none';
+                        if (paginationEl) paginationEl.style.display = 'none';
+                        mapBtnNew.classList.add('active');
+                        listBtnNew.classList.remove('active');
+                        // Initialize Google Map if needed and refresh markers
+                        initMapIfNeeded().then(() => updateMapMarkers());
+                    });
+                }
 
             // Search
             searchInput.addEventListener('input', filterVendors);
@@ -14165,23 +14316,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     case 'location':
                         document.getElementById('location-input').value = '';
                         document.getElementById('current-location').checked = false;
-                        document.getElementById('within50').checked = false;
-                        state.userLocation = null;
                         break;
                     case 'type':
-                        document.querySelectorAll('.filter-section input[type="checkbox"]').forEach(checkbox => {
-                            checkbox.checked = ['independent', 'company'].includes(checkbox.id);
-                        });
-                        break;
-                    case 'price':
-                        document.getElementById('price-slider').value = 40;
-                        break;
-                    case 'advanced':
-                        document.getElementById('start-date').value = '';
-                        document.getElementById('end-date').value = '';
-                        state.filters.startDate = null;
-                        state.filters.endDate = null;
-                        state.filters.region = '';
+                        const ind = document.getElementById('independent');
+                        const comp = document.getElementById('company');
+                        if (ind) ind.checked = false;
+                        if (comp) comp.checked = false;
+                        if (state.filters) {
+                            // Clear any stored type fields if present
+                            if (state.filters.type) delete state.filters.type;
+                            if (state.filters.vendorType) delete state.filters.vendorType;
+                        }
                         break;
                 }
 
@@ -17079,6 +17224,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Add event listeners for the new vendor cards
                 setupVendorCardEventListeners();
                 updatePagination();
+                // If map is visible, refresh markers for current page
+                const mapEl = document.getElementById('map-view');
+                if (mapEl && mapEl.style.display === 'block') {
+                    updateMapMarkers();
+                }
             }
 
             // Setup event listeners for vendor cards
@@ -17116,12 +17266,251 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Update metadata display
             function updateMetadata(data) {
                 if (resultsTitle) {
-                    resultsTitle.textContent = `Vendors in ${state.filters.location || 'Los Angeles'}`;
+                    const label = (state.filters && state.filters.location) || state.userLocationLabel || 'Near you';
+                    resultsTitle.textContent = `Vendors in ${label}`;
                 }
                 if (resultsCount) {
                     resultsCount.textContent = `${data.total || state.filteredVendors.length} vendors available`;
                 }
             }
+
+            // =============== Map (Google Maps) Integration ===============
+            // Attempt to retrieve the Google Maps API key similar to booking process
+            function getGoogleMapsApiKey() {
+                // Try common globals used elsewhere in the app
+                const fromBookingState = (window.bookingState && window.bookingState.googleMapsApiKey) || null;
+                const fromBookingConfig = (window.bookingConfig && window.bookingConfig.googleMapsApiKey) || null;
+                const fromAppConfig = (window.APP_CONFIG && window.APP_CONFIG.googleMapsApiKey) || null;
+                const fromMeta = (() => {
+                    const tag = document.querySelector('meta[name="google-maps-api-key"]');
+                    return tag ? tag.getAttribute('content') : null;
+                })();
+                const fromStorage = localStorage.getItem('googleMapsApiKey');
+                return fromBookingState || fromBookingConfig || fromAppConfig || fromMeta || fromStorage || null;
+            }
+
+            let googleMapsLoadingPromise = null;
+            function loadGoogleMaps() {
+                if (window.google && window.google.maps) return Promise.resolve();
+                if (googleMapsLoadingPromise) return googleMapsLoadingPromise;
+                const apiKey = getGoogleMapsApiKey();
+                googleMapsLoadingPromise = new Promise((resolve, reject) => {
+                    if (!apiKey) {
+                        return reject(new Error('Google Maps API key not found. Provide it via booking config or a meta tag.'));
+                    }
+                    const cbName = 'initGMap_' + Math.random().toString(36).slice(2);
+                    window[cbName] = () => { resolve(); delete window[cbName]; };
+                    const script = document.createElement('script');
+                    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${cbName}`;
+                    script.async = true;
+                    script.onerror = () => reject(new Error('Failed to load Google Maps JS API'));
+                    document.body.appendChild(script);
+                });
+                return googleMapsLoadingPromise;
+            }
+
+            // Initialize map state
+            function ensureMapState() {
+                state.map = state.map || {
+                    initialized: false,
+                    map: null,
+                    markers: [],
+                    geoCache: {},
+                    geocoder: null,
+                };
+                // Load cached geocodes
+                try {
+                    const cached = localStorage.getItem('geoCacheV1');
+                    if (cached) state.map.geoCache = JSON.parse(cached);
+                } catch (e) { console.warn('Geo cache load failed', e); }
+            }
+
+            function saveGeoCache() {
+                try { localStorage.setItem('geoCacheV1', JSON.stringify(state.map.geoCache || {})); } catch {}
+            }
+
+            async function initMapIfNeeded() {
+                ensureMapState();
+                if (state.map.initialized) return;
+                await loadGoogleMaps();
+                const mapEl = document.getElementById('map-view');
+                if (!mapEl) return;
+                state.map.map = new google.maps.Map(mapEl, {
+                    center: { lat: 34.0522, lng: -118.2437 }, // Default LA center
+                    zoom: 10,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    fullscreenControl: false,
+                });
+                state.map.geocoder = new google.maps.Geocoder();
+                state.map.initialized = true;
+                // Center on user if we have coords
+                if (state.userCoords) {
+                    state.map.map.setCenter({ lat: state.userCoords.lat, lng: state.userCoords.lon });
+                    state.map.map.setZoom(11);
+                }
+            }
+
+            // Geocode a location string via Google Geocoder, with cache
+            async function geocodeLocation(query) {
+                ensureMapState();
+                if (!query) return null;
+                const key = query.trim().toLowerCase();
+                if (state.map.geoCache[key]) return state.map.geoCache[key];
+                await initMapIfNeeded();
+                if (!state.map.geocoder) return null;
+                return new Promise((resolve) => {
+                    state.map.geocoder.geocode({ address: query }, (results, status) => {
+                        if (status === 'OK' && results && results[0]) {
+                            const loc = results[0].geometry.location;
+                            const result = { lat: loc.lat(), lon: loc.lng(), label: results[0].formatted_address };
+                            state.map.geoCache[key] = result;
+                            saveGeoCache();
+                            resolve(result);
+                        } else {
+                            resolve(null);
+                        }
+                    });
+                });
+            }
+
+            function clearMapMarkers() {
+                if (!state.map || !state.map.markers) return;
+                state.map.markers.forEach(m => { try { m.setMap(null); } catch {} });
+                state.map.markers = [];
+            }
+
+            async function updateMapMarkers() {
+                const mapEl = document.getElementById('map-view');
+                if (!mapEl || mapEl.style.display === 'none') return; // Map hidden
+                await initMapIfNeeded();
+                if (!(window.google && state.map.map)) return;
+
+                clearMapMarkers();
+                const vendors = state.filteredVendors.slice(0, 25); // Limit to avoid quota issues
+                const bounds = new google.maps.LatLngBounds();
+                let added = 0;
+                for (const vendor of vendors) {
+                    const q = (vendor.location && vendor.location.trim()) || [vendor.City, vendor.State].filter(Boolean).join(', ');
+                    if (!q) continue;
+                    try {
+                        const geo = await geocodeLocation(q);
+                        if (!geo) continue;
+                        const position = { lat: geo.lat, lng: geo.lon };
+                        const marker = new google.maps.Marker({ position, map: state.map.map, title: (vendor.BusinessName || vendor.name || 'Vendor') });
+                        const name = vendor.BusinessName || vendor.name || 'Vendor';
+                        const price = vendor.startingPrice ?? vendor.MinPriceNumeric ?? vendor.MinPrice ?? vendor.price ?? '';
+                        const priceDisplay = (typeof price === 'number') ? `$${Math.round(price)}` : (typeof price === 'string' ? price : '');
+                        const info = new google.maps.InfoWindow({ content: `<strong>${name}</strong><br>${q}${priceDisplay ? `<br>Starting from ${priceDisplay}` : ''}` });
+                        marker.addListener('click', () => info.open({ map: state.map.map, anchor: marker }));
+                        state.map.markers.push(marker);
+                        bounds.extend(position);
+                        added++;
+                    } catch (e) { console.warn('Geocode failed for', q, e); }
+                }
+                if (added > 0) {
+                    try { state.map.map.fitBounds(bounds, { padding: 30 }); } catch {}
+                } else if (state.userCoords) {
+                    state.map.map.setCenter({ lat: state.userCoords.lat, lng: state.userCoords.lon });
+                    state.map.map.setZoom(11);
+                }
+            }
+
+            // View toggle (List | Map) — insert segmented control in header location
+            (function setupViewToggle() {
+                const targetSlot = document.getElementById('legacy-view-toggle');
+                if (!targetSlot) return;
+
+                // Inject minimal CSS once
+                if (!document.getElementById('view-toggle-styles')) {
+                    const style = document.createElement('style');
+                    style.id = 'view-toggle-styles';
+                    style.textContent = `
+                        .view-toggle { display:inline-flex; align-items:center; height:36px; margin-left:8px; background:#fff; border:1px solid var(--border); box-shadow:none !important; border-radius: var(--radius); overflow:hidden; }
+                        /* Full-bleed fill without seams using container gradient depending on which button is active */
+                        .view-toggle:has(.toggle-btn:first-child.active) { background: linear-gradient(90deg, #f6f8ff 0%, #f6f8ff 50%, #ffffff 50%, #ffffff 100%); }
+                        .view-toggle:has(.toggle-btn:last-child.active) { background: linear-gradient(90deg, #ffffff 0%, #ffffff 50%, #f6f8ff 50%, #f6f8ff 100%); }
+                        .view-toggle .toggle-btn { display:flex; align-items:center; gap:6px; height:100%; padding:0 12px; font-weight:400; font-size:13px; color:#475569; background:transparent; border:0 !important; cursor:pointer; outline:none !important; box-shadow:none !important; }
+                        /* Remove inner border to avoid visible seam; container gradient provides the split */
+                        .view-toggle .toggle-btn + .toggle-btn { border-left:0; }
+                        /* Prevent seam/gap next to the active segment */
+                        .view-toggle .toggle-btn.active + .toggle-btn { border-left-color: transparent; }
+                        .view-toggle .toggle-btn:last-child.active { box-shadow: none; }
+                        .view-toggle .toggle-btn + .toggle-btn::before { display:none; content:""; }
+                        .view-toggle .toggle-btn .icon i { font-size:13px; opacity:0.7; }
+                        /* Active relies on container background for fill; keep button background transparent */
+                        .view-toggle .toggle-btn.active { color:#2563eb; background:transparent; }
+                        .view-toggle .toggle-btn:first-child.active { border-top-left-radius: var(--radius); border-bottom-left-radius: var(--radius); }
+                        .view-toggle .toggle-btn:last-child.active { border-top-right-radius: var(--radius); border-bottom-right-radius: var(--radius); }
+                        .view-toggle .toggle-btn.active::after { content:none; }
+                        .view-toggle .toggle-btn.active + .toggle-btn::before { background:var(--border); }
+                        .view-toggle .toggle-btn:not(.active):hover { color:#1f2937; background:#f8fafc; }
+                        .view-toggle .toggle-btn:focus, .view-toggle .toggle-btn:focus-visible { outline: none !important; box-shadow: none !important; }
+                        .view-toggle .icon { display:inline-flex; width:14px; height:14px; justify-content:center; align-items:center; }
+                        .view-toggle .icon i { font-size:13px; line-height:1; }
+                    `;
+                    document.head.appendChild(style);
+                }
+
+                // Ensure Font Awesome is available (load if missing)
+                const hasFA = !!document.querySelector('link[href*="fontawesome"], link[href*="font-awesome"], link[href*="cdnjs.cloudflare.com/ajax/libs/font-awesome"]');
+                if (!hasFA) {
+                    const fa = document.createElement('link');
+                    fa.rel = 'stylesheet';
+                    fa.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css';
+                    fa.crossOrigin = 'anonymous';
+                    fa.referrerPolicy = 'no-referrer';
+                    document.head.appendChild(fa);
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.id = 'view-toggle';
+                wrapper.className = 'view-toggle';
+                wrapper.innerHTML = `
+                    <button type="button" id="btn-view-list" class="toggle-btn active"><span class="icon"><i class="fa-solid fa-list-ul"></i></span><span>List</span></button>
+                    <button type="button" id="btn-view-map" class="toggle-btn"><span class="icon"><i class="fa-solid fa-map"></i></span><span>Map</span></button>
+                `;
+                targetSlot.innerHTML = '';
+                targetSlot.appendChild(wrapper);
+
+                const listBtn = document.getElementById('btn-view-list');
+                const mapBtn = document.getElementById('btn-view-map');
+
+                function setActive(view) {
+                    const mapEl = document.getElementById('map-view');
+                    const gridEl = document.getElementById('vendor-grid');
+                    const paginationEl = document.getElementById('pagination');
+                    if (!mapEl) return;
+                    if (view === 'map') {
+                        mapEl.style.display = 'block';
+                        if (gridEl) gridEl.style.display = 'none';
+                        if (paginationEl) paginationEl.style.display = 'none';
+                        listBtn.classList.remove('active');
+                        mapBtn.classList.add('active');
+                        try { localStorage.setItem('vv_view', 'map'); } catch {}
+                        initMapIfNeeded().then(updateMapMarkers).catch(() => {});
+                    } else {
+                        mapEl.style.display = 'none';
+                        if (gridEl) gridEl.style.display = '';
+                        if (paginationEl) paginationEl.style.display = '';
+                        mapBtn.classList.remove('active');
+                        listBtn.classList.add('active');
+                        try { localStorage.setItem('vv_view', 'list'); } catch {}
+                    }
+                }
+
+                listBtn.addEventListener('click', () => setActive('list'));
+                mapBtn.addEventListener('click', () => setActive('map'));
+
+                // Initialize based on current visibility
+                const mapEl = document.getElementById('map-view');
+                let initial = 'list';
+                try {
+                    const saved = localStorage.getItem('vv_view');
+                    if (saved === 'map' || saved === 'list') initial = saved;
+                } catch {}
+                setActive(initial);
+            })();
 
             // Update pagination
             function updatePagination() {
@@ -17218,6 +17607,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     
                     updatePagination();
                     updateMetadata({ total: totalCount });
+                    // Attempt geolocation after initial render to personalize results
+                    tryInitGeolocation();
                     
                     console.log(`Successfully loaded and rendered ${vendors.length} vendors`);
                     
@@ -17263,6 +17654,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         state.currentPage--;
                         renderVendors();
                         updatePagination();
+                        const mapEl = document.getElementById('map-view');
+                        if (mapEl && mapEl.style.display === 'block') updateMapMarkers();
                     }
                 });
             }
@@ -17274,6 +17667,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         state.currentPage++;
                         renderVendors();
                         updatePagination();
+                        const mapEl = document.getElementById('map-view');
+                        if (mapEl && mapEl.style.display === 'block') updateMapMarkers();
                     }
                 });
             }
@@ -17287,6 +17682,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         state.currentPage = pageNum;
                         renderVendors();
                         updatePagination();
+                        const mapEl = document.getElementById('map-view');
+                        if (mapEl && mapEl.style.display === 'block') updateMapMarkers();
                         
                         // Update active page button
                         document.querySelectorAll('.page-btn').forEach(b => b.classList.remove('active'));
