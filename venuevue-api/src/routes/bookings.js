@@ -1022,18 +1022,7 @@ router.post('/confirmed', async (req, res) => {
       conversationId = convCreate2.recordset[0].ConversationID;
     }
 
-    // Insert an initial system message into the conversation
-    if (conversationId) {
-      const confirmationText = `Your booking has been confirmed. Booking #${bookingId || ''}`.trim();
-      await pool.request()
-        .input('ConversationID', sql.Int, conversationId)
-        .input('SenderID', sql.Int, userId) // if you have a system user, replace with that ID
-        .input('Content', sql.NVarChar(sql.MAX), confirmationText)
-        .query(`
-          INSERT INTO Messages (ConversationID, SenderID, Content, CreatedAt)
-          VALUES (@ConversationID, @SenderID, @Content, GETDATE())
-        `);
-    }
+    // (Removed) Do not auto-insert a system message on booking confirmation
 
     // Find vendor's actual UserID from VendorProfiles
     let vendorUserId = null;
