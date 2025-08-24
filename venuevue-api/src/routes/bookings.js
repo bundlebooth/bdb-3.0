@@ -646,13 +646,12 @@ router.post('/requests/send', async (req, res) => {
     const conversationRequest = pool.request();
     conversationRequest.input('UserID', sql.Int, userId);
     conversationRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    conversationRequest.input('RequestID', sql.Int, newRequest.RequestID);
     conversationRequest.input('Subject', sql.NVarChar(255), 'New Booking Request');
 
     const conversationResult = await conversationRequest.query(`
-      INSERT INTO Conversations (UserID, VendorProfileID, RequestID, Subject, CreatedAt)
+      INSERT INTO Conversations (UserID, VendorProfileID, Subject, CreatedAt)
       OUTPUT INSERTED.ConversationID
-      VALUES (@UserID, @VendorProfileID, @RequestID, @Subject, GETDATE())
+      VALUES (@UserID, @VendorProfileID, @Subject, GETDATE())
     `);
 
     const conversationId = conversationResult.recordset[0].ConversationID;
@@ -763,15 +762,14 @@ router.post('/requests/:requestId/approve', async (req, res) => {
     `);
 
     // Ensure conversation exists and send auto-approval message
-    // 1) Find/Create conversation for this request
+    // 1) Find/Create conversation for this user/vendor pair
     let conversationId = null;
     const convLookup = await pool.request()
       .input('UserID', sql.Int, userId)
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .input('RequestID', sql.Int, requestId)
       .query(`
         SELECT TOP 1 ConversationID FROM Conversations 
-        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID AND RequestID = @RequestID
+        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
         ORDER BY CreatedAt DESC
       `);
 
@@ -781,12 +779,11 @@ router.post('/requests/:requestId/approve', async (req, res) => {
       const convCreate = await pool.request()
         .input('UserID', sql.Int, userId)
         .input('VendorProfileID', sql.Int, vendorProfileId)
-        .input('RequestID', sql.Int, requestId)
         .input('Subject', sql.NVarChar(255), 'Request Approved')
         .query(`
-          INSERT INTO Conversations (UserID, VendorProfileID, RequestID, Subject, CreatedAt)
+          INSERT INTO Conversations (UserID, VendorProfileID, Subject, CreatedAt)
           OUTPUT INSERTED.ConversationID
-          VALUES (@UserID, @VendorProfileID, @RequestID, @Subject, GETDATE())
+          VALUES (@UserID, @VendorProfileID, @Subject, GETDATE())
         `);
       conversationId = convCreate.recordset[0].ConversationID;
     }
@@ -1001,30 +998,28 @@ router.post('/confirmed', async (req, res) => {
 
     // Ensure a conversation exists for this request/user/vendor
     let conversationId = null;
-    const convLookup = await pool.request()
+    const convLookup2 = await pool.request()
       .input('UserID', sql.Int, userId)
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .input('RequestID', sql.Int, requestId)
       .query(`
         SELECT TOP 1 ConversationID FROM Conversations 
-        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID AND RequestID = @RequestID
+        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
         ORDER BY CreatedAt DESC
       `);
 
-    if (convLookup.recordset.length > 0) {
-      conversationId = convLookup.recordset[0].ConversationID;
+    if (convLookup2.recordset.length > 0) {
+      conversationId = convLookup2.recordset[0].ConversationID;
     } else {
-      const convCreate = await pool.request()
+      const convCreate2 = await pool.request()
         .input('UserID', sql.Int, userId)
         .input('VendorProfileID', sql.Int, vendorProfileId)
-        .input('RequestID', sql.Int, requestId)
         .input('Subject', sql.NVarChar(255), 'Booking Confirmed')
         .query(`
-          INSERT INTO Conversations (UserID, VendorProfileID, RequestID, Subject, CreatedAt)
+          INSERT INTO Conversations (UserID, VendorProfileID, Subject, CreatedAt)
           OUTPUT INSERTED.ConversationID
-          VALUES (@UserID, @VendorProfileID, @RequestID, @Subject, GETDATE())
+          VALUES (@UserID, @VendorProfileID, @Subject, GETDATE())
         `);
-      conversationId = convCreate.recordset[0].ConversationID;
+      conversationId = convCreate2.recordset[0].ConversationID;
     }
 
     // Insert an initial system message into the conversation
