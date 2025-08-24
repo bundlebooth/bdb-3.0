@@ -762,12 +762,63 @@ router.post('/requests/:requestId/approve', async (req, res) => {
       VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
     `);
 
+    // Ensure conversation exists and send auto-approval message
+    // 1) Find/Create conversation for this request
+    let conversationId = null;
+    const convLookup = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('RequestID', sql.Int, requestId)
+      .query(`
+        SELECT TOP 1 ConversationID FROM Conversations 
+        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID AND RequestID = @RequestID
+        ORDER BY CreatedAt DESC
+      `);
+
+    if (convLookup.recordset.length > 0) {
+      conversationId = convLookup.recordset[0].ConversationID;
+    } else {
+      const convCreate = await pool.request()
+        .input('UserID', sql.Int, userId)
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .input('RequestID', sql.Int, requestId)
+        .input('Subject', sql.NVarChar(255), 'Request Approved')
+        .query(`
+          INSERT INTO Conversations (UserID, VendorProfileID, RequestID, Subject, CreatedAt)
+          OUTPUT INSERTED.ConversationID
+          VALUES (@UserID, @VendorProfileID, @RequestID, @Subject, GETDATE())
+        `);
+      conversationId = convCreate.recordset[0].ConversationID;
+    }
+
+    // 2) Find vendor's UserID (sender)
+    let vendorUserId = null;
+    const vendorUserRes = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+    if (vendorUserRes.recordset.length > 0) {
+      vendorUserId = vendorUserRes.recordset[0].UserID;
+    }
+
+    // 3) Insert the auto-approval message
+    if (conversationId && vendorUserId) {
+      await pool.request()
+        .input('ConversationID', sql.Int, conversationId)
+        .input('SenderID', sql.Int, vendorUserId)
+        .input('Content', sql.NVarChar(sql.MAX), 'Hello! Your booking request has been approved. Feel free to ask any questions about your upcoming event.')
+        .query(`
+          INSERT INTO Messages (ConversationID, SenderID, Content, CreatedAt)
+          VALUES (@ConversationID, @SenderID, @Content, GETDATE())
+        `);
+    }
+
     res.json({
       success: true,
       message: 'Request approved successfully',
       userId: userId,
       requestId: requestId,
-      vendorProfileId: vendorProfileId
+      vendorProfileId: vendorProfileId,
+      conversationId: conversationId || null
     });
 
   } catch (err) {
@@ -942,12 +993,98 @@ router.post('/confirmed', async (req, res) => {
 
     const result = await request.query(`
       INSERT INTO Bookings (UserID, VendorProfileID, ServiceID, EventDate, Status, AttendeeCount, SpecialRequests, TotalAmount)
+      OUTPUT INSERTED.BookingID
       VALUES (@UserID, @VendorProfileID, @ServiceID, @EventDate, @Status, @AttendeeCount, @SpecialRequests, @TotalAmount)
     `);
 
+    const bookingId = result.recordset && result.recordset[0] ? result.recordset[0].BookingID : null;
+
+    // Ensure a conversation exists for this request/user/vendor
+    let conversationId = null;
+    const convLookup = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('RequestID', sql.Int, requestId)
+      .query(`
+        SELECT TOP 1 ConversationID FROM Conversations 
+        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID AND RequestID = @RequestID
+        ORDER BY CreatedAt DESC
+      `);
+
+    if (convLookup.recordset.length > 0) {
+      conversationId = convLookup.recordset[0].ConversationID;
+    } else {
+      const convCreate = await pool.request()
+        .input('UserID', sql.Int, userId)
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .input('RequestID', sql.Int, requestId)
+        .input('Subject', sql.NVarChar(255), 'Booking Confirmed')
+        .query(`
+          INSERT INTO Conversations (UserID, VendorProfileID, RequestID, Subject, CreatedAt)
+          OUTPUT INSERTED.ConversationID
+          VALUES (@UserID, @VendorProfileID, @RequestID, @Subject, GETDATE())
+        `);
+      conversationId = convCreate.recordset[0].ConversationID;
+    }
+
+    // Insert an initial system message into the conversation
+    if (conversationId) {
+      const confirmationText = `Your booking has been confirmed. Booking #${bookingId || ''}`.trim();
+      await pool.request()
+        .input('ConversationID', sql.Int, conversationId)
+        .input('SenderID', sql.Int, userId) // if you have a system user, replace with that ID
+        .input('Content', sql.NVarChar(sql.MAX), confirmationText)
+        .query(`
+          INSERT INTO Messages (ConversationID, SenderID, Content, CreatedAt)
+          VALUES (@ConversationID, @SenderID, @Content, GETDATE())
+        `);
+    }
+
+    // Find vendor's actual UserID from VendorProfiles
+    let vendorUserId = null;
+    const vendorUserRes = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+    if (vendorUserRes.recordset.length > 0) {
+      vendorUserId = vendorUserRes.recordset[0].UserID;
+    }
+
+    // Create notifications for both parties
+    if (bookingId) {
+      // Notify user
+      await pool.request()
+        .input('UserID', sql.Int, userId)
+        .input('Type', sql.NVarChar(50), 'booking_confirmed')
+        .input('Title', sql.NVarChar(255), 'Booking Confirmed')
+        .input('Message', sql.NVarChar(sql.MAX), 'Your booking has been confirmed.')
+        .input('RelatedID', sql.Int, bookingId)
+        .input('RelatedType', sql.NVarChar(50), 'booking')
+        .query(`
+          INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, RelatedType, CreatedAt)
+          VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
+        `);
+
+      // Notify vendor
+      if (vendorUserId) {
+        await pool.request()
+          .input('UserID', sql.Int, vendorUserId)
+          .input('Type', sql.NVarChar(50), 'booking_confirmed')
+          .input('Title', sql.NVarChar(255), 'New Confirmed Booking')
+          .input('Message', sql.NVarChar(sql.MAX), 'A user has confirmed a booking with you.')
+          .input('RelatedID', sql.Int, bookingId)
+          .input('RelatedType', sql.NVarChar(50), 'booking')
+          .query(`
+            INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, RelatedType, CreatedAt)
+            VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
+          `);
+      }
+    }
+
     res.json({
       success: true,
-      message: 'Confirmed booking created successfully'
+      message: 'Confirmed booking created successfully',
+      bookingId: bookingId || null,
+      conversationId: conversationId || null
     });
 
   } catch (err) {
