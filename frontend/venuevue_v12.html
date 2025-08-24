@@ -129,24 +129,25 @@
 
         .nav-icon .badge {
             position: absolute;
-            top: -6px;
-            right: -6px;
+            top: -4px;
+            right: -4px;
             background-color: var(--accent);
             color: #fff;
-            border-radius: 999px; /* pill for 2+ digits, circular for 1 digit */
-            min-width: 16px;
+            border-radius: 50%;
+            width: 16px;
             height: 16px;
-            padding: 0 4px;
+            padding: 0;
             display: none; /* hidden by default; JS will show when count > 0 */
-            align-items: center;
-            justify-content: center;
+            place-items: center; /* grid centering (when shown) */
             font-size: 10px;
             font-weight: 700;
-            line-height: 1;
+            line-height: 1; /* rely on grid centering */
             box-sizing: border-box;
-            border: 2px solid #fff; /* ring to separate from icon */
+            border: 1px solid #fff; /* thinner ring */
             box-shadow: 0 1px 2px rgba(0,0,0,0.12);
-            transform: translate(0, 0);
+            transform: translate(0, 0.5px); /* slight optical nudge */
+            text-align: center;
+            font-variant-numeric: tabular-nums; /* more even digit centering */
         }
 
         /* Categories Navigation */
@@ -5025,9 +5026,21 @@
             ).length;
             
             document.querySelectorAll('[id$="-notifications-badge"]').forEach(badge => {
-                badge.textContent = unreadCount;
-                badge.style.display = unreadCount > 0 ? 'block' : 'none';
+                setCircularBadge(badge, unreadCount);
             });
+        }
+
+        // Helper: set badge as circular with 9+ cap and proper display
+        function setCircularBadge(badgeEl, count) {
+            if (!badgeEl) return;
+            const n = Number(count) || 0;
+            if (n > 0) {
+                badgeEl.textContent = n > 9 ? '9+' : String(n);
+                badgeEl.style.display = 'grid';
+            } else {
+                badgeEl.textContent = '0';
+                badgeEl.style.display = 'none';
+            }
         }
 
         // Update favorites badge
@@ -5036,8 +5049,7 @@
             const count = Array.isArray(favorites) ? favorites.length : 0;
             const badge = document.getElementById('favorites-badge');
             if (badge) {
-                badge.textContent = count;
-                badge.style.display = count > 0 ? 'flex' : 'none';
+                setCircularBadge(badge, count);
             }
         }
 
@@ -5049,8 +5061,7 @@
             const unread = messages.filter(m => (m.recipientId === currentUser.id || m.recipientId === currentUser.vendorProfileId) && !m.read).length;
             const badge = document.getElementById('messages-badge');
             if (badge) {
-                badge.textContent = unread;
-                badge.style.display = unread > 0 ? 'flex' : 'none';
+                setCircularBadge(badge, unread);
             }
         }
 
