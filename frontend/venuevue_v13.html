@@ -568,15 +568,20 @@
         .results-two-col .results-right { flex: 1; min-width: 0; position: relative; }
         /* When map is active, switch to two columns */
         body.map-active .results-two-col { flex-direction: row; }
+        /* Make map larger than cards in map view */
+        body.map-active .results-two-col .results-left { flex: 0 0 30%; }
+        body.map-active .results-two-col .results-right { flex: 1 0 70%; }
         @media (max-width: 900px) {
             body.map-active .results-two-col { flex-direction: column; }
+            body.map-active .results-two-col .results-left,
+            body.map-active .results-two-col .results-right { flex: 1 0 auto; }
         }
 
         /* Map view container */
         #map-view {
             display: none; /* hidden by default in list view */
             width: 100%;
-            height: 600px;
+            height: 720px;
             border-radius: 12px;
             overflow: hidden;
             border: 1px solid var(--border);
@@ -587,9 +592,21 @@
 
         /* Map-active: make left panel scrollable to align with map height */
         body.map-active .results-left {
-            max-height: 600px;
+            max-height: 720px;
             overflow-y: auto;
         }
+
+        /* Compact horizontal cards specifically in Map view */
+        body.map-active .vendor-horizontal-container { gap: 0.75rem; }
+        body.map-active .vendor-horizontal-card { min-height: 200px; border-radius: 12px; }
+        body.map-active .vendor-card-image-container { width: 300px; height: 200px; }
+        body.map-active .vendor-card-image { width: 300px; height: 200px; }
+        body.map-active .vendor-no-image { width: 300px; height: 200px; }
+        body.map-active .vendor-card-content { padding: 1rem; }
+        body.map-active .vendor-card-name { font-size: 1rem; }
+        body.map-active .vendor-card-distance { font-size: 0.8rem; }
+        body.map-active .vendor-card-services .service-badge { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+        body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         /* Card highlight states for map/list sync */
         .vendor-card.map-hover,
         .vendor-card.map-active {
