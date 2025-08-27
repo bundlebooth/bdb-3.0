@@ -6046,6 +6046,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const lat = pos.coords.latitude;
                     const lon = pos.coords.longitude;
                     state.userCoords = { lat, lon };
+                    // Persist for future sessions
+                    try { localStorage.setItem('userCoordsV1', JSON.stringify(state.userCoords)); } catch {}
+                    // If map initialized, recenter and refresh markers/list
+                    try { if (state.map && state.map.map) setMapToUser(lat, lon); } catch {}
+                    try { updateMapMarkers(); } catch {}
                     try {
                         const label = await reverseGeocodeOSM(lat, lon);
                         state.userLocationLabel = label;
@@ -17721,6 +17726,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 try { localStorage.setItem('geoCacheV1', JSON.stringify(state.map.geoCache || {})); } catch {}
             }
 
+            // Helpers to store/retrieve user coordinates and recenter map
+            function getStoredUserCoords() {
+                try {
+                    const raw = localStorage.getItem('userCoordsV1');
+                    if (!raw) return null;
+                    const obj = JSON.parse(raw);
+                    if (obj && typeof obj.lat === 'number' && typeof obj.lon === 'number') return obj;
+                } catch {}
+                return null;
+            }
+
+            function setMapToUser(lat, lon) {
+                if (!(state.map && state.map.map)) return;
+                try {
+                    state.map.map.setCenter({ lat, lng: lon });
+                    state.map.map.setZoom(Math.max(11, state.map.map.getZoom() || 10));
+                } catch {}
+            }
+
             // Load Google MarkerClusterer dynamically when needed
             let markerClustererLoading = null;
             async function loadMarkerClusterer() {
@@ -17743,9 +17767,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 await loadGoogleMaps();
                 const mapEl = document.getElementById('map-view');
                 if (!mapEl) return;
+                // Choose best available initial center
+                const stored = getStoredUserCoords();
+                if (stored) state.userCoords = stored;
+                const initialCenter = (state.userCoords)
+                    ? { lat: state.userCoords.lat, lng: state.userCoords.lon }
+                    : { lat: 20, lng: 0 }; // neutral world view (no LA fallback)
+                const initialZoom = state.userCoords ? 11 : 2;
                 state.map.map = new google.maps.Map(mapEl, {
-                    center: { lat: 34.0522, lng: -118.2437 }, // Default LA center
-                    zoom: 10,
+                    center: initialCenter,
+                    zoom: initialZoom,
                     mapTypeControl: false,
                     streetViewControl: false,
                     fullscreenControl: false,
@@ -17754,8 +17785,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 state.map.initialized = true;
                 // Center on user if we have coords
                 if (state.userCoords) {
-                    state.map.map.setCenter({ lat: state.userCoords.lat, lng: state.userCoords.lon });
-                    state.map.map.setZoom(11);
+                    setMapToUser(state.userCoords.lat, state.userCoords.lon);
                 }
 
                 // Refresh data when map viewport changes
@@ -17766,27 +17796,54 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 });
             }
 
-            // Geocode a location string via Google Geocoder, with cache
+            // Geocode a location string via Google Geocoder, with cache; fallback to OSM
             async function geocodeLocation(query) {
                 ensureMapState();
                 if (!query) return null;
                 const key = query.trim().toLowerCase();
                 if (state.map.geoCache[key]) return state.map.geoCache[key];
                 await initMapIfNeeded();
-                if (!state.map.geocoder) return null;
-                return new Promise((resolve) => {
-                    state.map.geocoder.geocode({ address: query }, (results, status) => {
-                        if (status === 'OK' && results && results[0]) {
-                            const loc = results[0].geometry.location;
-                            const result = { lat: loc.lat(), lon: loc.lng(), label: results[0].formatted_address };
-                            state.map.geoCache[key] = result;
-                            saveGeoCache();
-                            resolve(result);
-                        } else {
-                            resolve(null);
-                        }
+                // Try Google Geocoder first if available
+                if (state.map.geocoder) {
+                    const googleResult = await new Promise((resolve) => {
+                        try {
+                            state.map.geocoder.geocode({ address: query }, (results, status) => {
+                                if (status === 'OK' && results && results[0]) {
+                                    const loc = results[0].geometry.location;
+                                    resolve({ lat: loc.lat(), lon: loc.lng(), label: results[0].formatted_address });
+                                } else {
+                                    resolve(null);
+                                }
+                            });
+                        } catch { resolve(null); }
                     });
-                });
+                    if (googleResult) {
+                        state.map.geoCache[key] = googleResult;
+                        saveGeoCache();
+                        return googleResult;
+                    }
+                }
+                // Fallback to OpenStreetMap Nominatim forward geocoder
+                try {
+                    const osm = await forwardGeocodeOSM(query);
+                    if (osm) {
+                        state.map.geoCache[key] = osm;
+                        saveGeoCache();
+                        return osm;
+                    }
+                } catch {}
+                return null;
+            }
+
+            // Forward geocode using OSM Nominatim (no API key)
+            async function forwardGeocodeOSM(query) {
+                const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}`;
+                const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+                if (!res.ok) return null;
+                const data = await res.json();
+                if (!Array.isArray(data) || data.length === 0) return null;
+                const best = data[0];
+                return { lat: parseFloat(best.lat), lon: parseFloat(best.lon), label: best.display_name };
             }
 
             function clearMapMarkers() {
@@ -17895,12 +17952,30 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     console.warn('Viewport vendor fetch failed', e);
                 }
 
-                // Sync listings panel with viewport results or fallback
                 const hasViewportResults = Array.isArray(vendorsInBounds) && vendorsInBounds.length > 0;
+                // Safety: if no viewport results and filtered list empty, fetch a baseline list
+                if (!hasViewportResults && (!Array.isArray(state.filteredVendors) || state.filteredVendors.length === 0)) {
+                    try {
+                        const url = `${API_BASE_URL}/vendors?pageNumber=1&pageSize=50&includeImages=false`;
+                        const res = await fetch(url);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (Array.isArray(data.vendors)) {
+                                state.filteredVendors = data.vendors;
+                            }
+                        }
+                    } catch (e) { console.warn('Baseline vendors fetch failed', e); }
+                }
                 state.map.vendorsInViewport = hasViewportResults
                     ? vendorsInBounds
-                    : state.filteredVendors.slice(0, Math.min(50, state.filteredVendors.length));
+                    : (state.filteredVendors || []).slice(0, Math.min(50, (state.filteredVendors || []).length));
                 state.map.viewportRenderCount = Math.max(state.map.viewportRenderCount || 20, 20);
+                console.log('Map Debug:', {
+                    viewportCount: vendorsInBounds.length || 0,
+                    usingViewport: hasViewportResults,
+                    filteredCount: (state.filteredVendors || []).length,
+                    renderCount: state.map.viewportRenderCount
+                });
                 renderMainHorizontalCards();
 
                 // Build markers and cluster
@@ -17924,10 +17999,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                 } else {
                     // Fallback: geocode vendors from filtered list to place markers
-                    const fallback = state.map.vendorsInViewport;
+                    const fallback = state.map.vendorsInViewport.slice(0, 25); // cap to avoid rate limits
                     for (const vendor of fallback) {
-                        const q = (vendor.Location && vendor.Location.trim())
+                        const q = (vendor.fullAddress && vendor.fullAddress.trim())
+                            || (vendor.address && vendor.city && vendor.state && `${vendor.address}, ${vendor.city}, ${vendor.state} ${vendor.postalCode || ''}`.trim())
+                            || (vendor.address && vendor.address.trim())
                             || (vendor.location && vendor.location.trim())
+                            || (vendor.Location && vendor.Location.trim())
+                            || [vendor.city, vendor.state].filter(Boolean).join(', ')
                             || [vendor.City, vendor.State].filter(Boolean).join(', ');
                         if (!q) continue;
                         try {
@@ -17935,7 +18014,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             if (!geo) continue;
                             const position = { lat: geo.lat, lng: geo.lon };
                             const m = new google.maps.Marker({ position, title: vendor.BusinessName || vendor.name || 'Vendor' });
-                            const vid = String(vendor.VendorProfileID || vendor.vendorProfileId || vendor.id || q);
+                            const vid = String(vendor.vendorProfileId || vendor.VendorProfileID || vendor.id || q);
                             state.map.vendorMarkers[vid] = m;
                             m.addListener('mouseover', () => applyHighlight(vid, true));
                             m.addListener('mouseout', () => applyHighlight(vid, false));
@@ -17954,6 +18033,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 } else {
                     // Fallback: add markers directly if clusterer not available
                     markers.forEach(m => m.setMap(state.map.map));
+                }
+                // Fit map to markers if any
+                if (markers.length > 0) {
+                    try {
+                        const bounds = new google.maps.LatLngBounds();
+                        markers.forEach(m => bounds.extend(m.getPosition()));
+                        state.map.map.fitBounds(bounds, { padding: 30 });
+                    } catch {}
+                }
+                else {
+                    console.log('Map markers: none produced for current filters/viewport.');
                 }
             }
 
