@@ -17783,6 +17783,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 });
                 state.map.geocoder = new google.maps.Geocoder();
                 state.map.initialized = true;
+                // Track user interactions to avoid auto-fit fighting user
+                state.map.userInteractedAt = 0;
+                state.map.lastFitCount = 0;
+                state.map.map.addListener('dragstart', () => { state.map.userInteractedAt = Date.now(); });
+                state.map.map.addListener('zoom_changed', () => { state.map.userInteractedAt = Date.now(); });
                 // Center on user if we have coords
                 if (state.userCoords) {
                     setMapToUser(state.userCoords.lat, state.userCoords.lon);
@@ -18034,12 +18039,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     // Fallback: add markers directly if clusterer not available
                     markers.forEach(m => m.setMap(state.map.map));
                 }
-                // Fit map to markers if any
-                if (markers.length > 0) {
+                // Fit map to markers if any and not during active user interaction
+                const canAutoFit = (!state.map.userInteractedAt) || (Date.now() - state.map.userInteractedAt > 800);
+                if (markers.length > 0 && canAutoFit && state.map.lastFitCount !== markers.length) {
                     try {
                         const bounds = new google.maps.LatLngBounds();
                         markers.forEach(m => bounds.extend(m.getPosition()));
                         state.map.map.fitBounds(bounds, { padding: 30 });
+                        state.map.lastFitCount = markers.length;
                     } catch {}
                 }
                 else {
