@@ -1102,6 +1102,35 @@
             cursor: pointer;
             position: relative;
             overflow: hidden;
+            /* Default flexible sizing */
+            box-sizing: border-box;
+            align-self: flex-start;
+        }
+
+        /* Ensure 2-per-row grid layout for vendor selected services */
+        #vendor-services-grid {
+            display: grid;
+            /* Wider, comfortable cards in two columns */
+            grid-template-columns: repeat(2, minmax(380px, 1fr));
+            gap: 1rem;
+            align-items: start;
+            /* Make sure this child of #predefined-services-grid spans full width */
+            grid-column: 1 / -1;
+            justify-self: stretch;
+            width: 100%;
+        }
+        #vendor-services-grid .predefined-service-card,
+        #vendor-services-grid .add-service-card {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+        }
+
+        /* Responsive: fall back to single column on narrow viewports */
+        @media (max-width: 840px) {
+            #vendor-services-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .predefined-service-card:hover {
@@ -8016,7 +8045,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     date: bookingState?.eventDetails?.date || bookingState?.eventDetails?.EventDate || null
                                 },
                                 totalBudget: service.budget,
-                                serviceIds: [service.id]
+                                serviceIds: [service.id],
+                                // Unified pricing filters
+                                budgetType: 'total',
+                                pricingModel: service.pricingModel || null,
+                                fixedPricingType: service.fixedPricingType || null
                             };
 
                             try {
@@ -8221,6 +8254,45 @@ document.addEventListener('DOMContentLoaded', async function() {
                 vendorResults.innerHTML = vendorCards;
             }
 
+            // Unified pricing formatter for services coming from API
+            function formatUnifiedServicePrice(service) {
+                if (!service || typeof service !== 'object') return { label: '', value: null };
+                const toNum = (v) => {
+                    const n = parseFloat(v);
+                    return Number.isFinite(n) ? n : null;
+                };
+                const pm = (service.PricingModel || service.pricingModel || '').toLowerCase();
+                const fixedType = (service.FixedPricingType || service.fixedPricingType || '').toLowerCase();
+                const baseRate = toNum(service.BaseRate ?? service.baseRate ?? service.VendorPrice ?? service.Price);
+                const baseDuration = parseInt(service.BaseDurationMinutes ?? service.baseDurationMinutes ?? service.VendorDurationMinutes ?? service.durationMinutes);
+                const fixedPrice = toNum(service.FixedPrice ?? service.fixedPrice);
+                const ppp = toNum(service.PricePerPerson ?? service.pricePerPerson);
+                // Prefer unified fields
+                if (pm === 'fixed_based') {
+                    if (fixedType === 'per_attendee' && ppp != null) {
+                        return { label: `$${Math.round(ppp).toLocaleString()}/person`, value: ppp };
+                    }
+                    if (fixedPrice != null) {
+                        return { label: `$${Math.round(fixedPrice).toLocaleString()} fixed`, value: fixedPrice };
+                    }
+                }
+                if (pm === 'time_based' || pm === '') {
+                    if (baseRate != null && baseDuration != null) {
+                        return { label: `$${Math.round(baseRate).toLocaleString()} for ${baseDuration} min`, value: baseRate };
+                    }
+                }
+                // Fallback to legacy vendor price/duration if provided
+                const legacyPrice = toNum(service.VendorPrice ?? service.MinPrice ?? service.Price);
+                const legacyDuration = parseInt(service.VendorDurationMinutes ?? service.DurationMinutes ?? service.durationMinutes);
+                if (legacyPrice != null && legacyDuration != null) {
+                    return { label: `$${Math.round(legacyPrice).toLocaleString()} for ${legacyDuration} min`, value: legacyPrice };
+                }
+                if (legacyPrice != null) {
+                    return { label: `$${Math.round(legacyPrice).toLocaleString()}`, value: legacyPrice };
+                }
+                return { label: '', value: null };
+            }
+
             // New function to render vendors grouped by category and service
             function renderSectionedVendorResults(vendorSections) {
                 const vendorResults = document.getElementById('vendor-results');
@@ -8232,10 +8304,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                         // Get actual vendor service details from the services array returned by API
                         const vendorService = vendor.services?.find(vs => vs.ServiceName === service.name);
                         
-                        // Only use database values - no hardcoded fallbacks
-                        const actualPrice = vendorService?.VendorPrice;
-                        const vendorDescription = vendorService?.VendorDescription;
-                        const vendorDuration = vendorService?.VendorDurationMinutes;
+                        // Unified price label/value resolution
+                        const priceInfo = formatUnifiedServicePrice(vendorService || {});
+                        const vendorDescription = vendorService?.VendorDescription ?? vendorService?.Description ?? '';
+                        const vendorDuration = vendorService?.VendorDurationMinutes ?? vendorService?.BaseDurationMinutes;
                         
                         // Debug the full structure
                         console.log('🔍 Full vendor structure:', JSON.stringify(vendor, null, 2));
@@ -8256,18 +8328,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                         
                         // Debug service data
                         console.log('🔍 Service data check:');
-                        console.log('  - actualPrice:', actualPrice);
+                        console.log('  - actualPrice:', priceInfo.value);
                         console.log('  - vendorDescription:', vendorDescription);
                         console.log('  - vendorDuration:', vendorDuration);
                         console.log('  - vendorService:', vendorService);
                         
-                        // Skip vendor if essential service data is missing
-                        if (!actualPrice || !vendorDescription || !vendorDuration) {
+                        // Skip vendor if no price info at all
+                        if (!priceInfo.label) {
                             console.warn(`⚠️ Skipping vendor ${vendorId} - missing service data for ${service.name}`);
                             console.warn('Missing:', {
-                                actualPrice: !actualPrice,
-                                vendorDescription: !vendorDescription,
-                                vendorDuration: !vendorDuration
+                                priceInfo: !priceInfo.label
                             });
                             return '';
                         }
@@ -8295,15 +8365,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     </div>
                                     <div class="vendor-features" style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0; padding: 0.75rem; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #3498db;">
                                         <span style="color: #2c3e50; font-size: 0.9rem;">${service.name}</span>
-                                        <span style="color: #2c3e50; font-size: 0.9rem;">${Math.round(vendorDuration / 60)} hour${Math.round(vendorDuration / 60) !== 1 ? 's' : ''}</span>
-                                        <span style="font-weight: 600; color: #27ae60; font-size: 0.95rem;">$${Math.round(actualPrice).toLocaleString()}</span>
+                                        <span style="color: #2c3e50; font-size: 0.9rem;">${vendorDuration ? `${Math.round(vendorDuration / 60)} hour${Math.round(vendorDuration / 60) !== 1 ? 's' : ''}` : ''}</span>
+                                        <span style="font-weight: 600; color: #27ae60; font-size: 0.95rem;">${priceInfo.label}</span>
                                     </div>
                                     <div class="vendor-description" style="margin: 0.75rem 0; font-size: 0.9rem; color: var(--text-light); line-height: 1.4;">
-                                        ${vendorDescription.length > 100 ? vendorDescription.substring(0, 100) + '...' : vendorDescription}
+                                        ${vendorDescription && vendorDescription.length > 100 ? vendorDescription.substring(0, 100) + '...' : (vendorDescription || '')}
                                     </div>
                                     <div class="vendor-footer">
                                         <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');" style="border-radius: 12px; font-weight: 600;">View Profile</button>
-                                        <button class="btn btn-primary btn-select-vendor" onclick="toggleVendorSelection('${vendorId}', '${service.name}', ${actualPrice})" style="border-radius: 12px; font-weight: 600;">
+                                        <button class="btn btn-primary btn-select-vendor" onclick="toggleVendorSelection('${vendorId}', '${service.name}', ${priceInfo.value ?? 0})" style="border-radius: 12px; font-weight: 600;">
                                             Select Vendor
                                         </button>
                                     </div>
@@ -8361,22 +8431,23 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                 const vendors = section.vendors.filter(vendor => {
                     const vendorService = vendor.services?.find(vs => vs.ServiceName === serviceName);
-                    return vendorService?.VendorPrice && vendorService?.VendorDescription && vendorService?.VendorDurationMinutes;
+                    const priceInfo = formatUnifiedServicePrice(vendorService || {});
+                    return !!priceInfo.label;
                 });
 
                 switch(sortValue) {
                     case 'price-low':
                         vendors.sort((a, b) => {
-                            const priceA = a.services.find(vs => vs.ServiceName === serviceName)?.VendorPrice || 0;
-                            const priceB = b.services.find(vs => vs.ServiceName === serviceName)?.VendorPrice || 0;
-                            return priceA - priceB;
+                            const aInfo = formatUnifiedServicePrice(a.services.find(vs => vs.ServiceName === serviceName) || {});
+                            const bInfo = formatUnifiedServicePrice(b.services.find(vs => vs.ServiceName === serviceName) || {});
+                            return (aInfo.value ?? Number.POSITIVE_INFINITY) - (bInfo.value ?? Number.POSITIVE_INFINITY);
                         });
                         break;
                     case 'price-high':
                         vendors.sort((a, b) => {
-                            const priceA = a.services.find(vs => vs.ServiceName === serviceName)?.VendorPrice || 0;
-                            const priceB = b.services.find(vs => vs.ServiceName === serviceName)?.VendorPrice || 0;
-                            return priceB - priceA;
+                            const aInfo = formatUnifiedServicePrice(a.services.find(vs => vs.ServiceName === serviceName) || {});
+                            const bInfo = formatUnifiedServicePrice(b.services.find(vs => vs.ServiceName === serviceName) || {});
+                            return (bInfo.value ?? Number.NEGATIVE_INFINITY) - (aInfo.value ?? Number.NEGATIVE_INFINITY);
                         });
                         break;
                     case 'rating':
@@ -12597,8 +12668,93 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 return null;
             }
             
+            // Add Service skeleton card and popover picker (restored inside script)
+            function createAddServiceCard() {
+                const add = document.createElement('div');
+                add.className = 'add-service-card';
+                add.style.cssText = 'width:100%; border:2px dashed var(--border); border-radius:12px; height: fit-content; background:#f8fafc; display:flex; align-items:center; justify-content:center; padding:16px; cursor:pointer; position:relative;';
+                add.innerHTML = `
+                    <div style="text-align:center; color:#64748b;">
+                        <div style="font-size:28px; line-height:1; margin-bottom:8px;"><i class=\"fas fa-plus-circle\"></i></div>
+                        <div style="font-weight:600;">Add a service</div>
+                        <div style="font-size:0.85rem;">Click to choose from the list</div>
+                    </div>
+                `;
+                add.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showServicePickerPopover(add);
+                });
+                return add;
+            }
+
+            function showServicePickerPopover(anchorEl) {
+                // remove any existing popover
+                const existing = document.getElementById('service-picker-popover');
+                if (existing) existing.remove();
+                
+                const pop = document.createElement('div');
+                pop.id = 'service-picker-popover';
+                pop.style.cssText = 'position:absolute; z-index:1000; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,0.12); width:320px; max-height:320px; overflow:auto; padding:8px;';
+                
+                // Position relative to anchor
+                const rect = anchorEl.getBoundingClientRect();
+                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+                pop.style.top = (rect.top + scrollTop + anchorEl.offsetHeight + 8) + 'px';
+                pop.style.left = (rect.left + scrollLeft) + 'px';
+                
+                // Build list with simple filter
+                pop.innerHTML = `
+                    <div style=\"position:sticky; top:0; background:#fff; padding:6px 6px 8px;\">
+                        <input id=\"service-picker-filter\" type=\"text\" placeholder=\"Search services...\" style=\"width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px;\">
+                    </div>
+                    <div id=\"service-picker-list\"></div>
+                `;
+                document.body.appendChild(pop);
+                
+                const listEl = pop.querySelector('#service-picker-list');
+                function renderList(query = '') {
+                    const q = query.trim().toLowerCase();
+                    const options = (window.vendorAvailableServices || []).filter(s =>
+                        !q || s.name.toLowerCase().includes(q) || (s.category||'').toLowerCase().includes(q)
+                    );
+                    listEl.innerHTML = options.map(s => `
+                        <button data-id=\"${s.id}\" style=\"width:100%; text-align:left; padding:10px; border:none; background:#fff; border-radius:8px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;\">\n                            <span>${s.name}</span>\n                            <span style=\"font-size:0.75rem; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:999px;\">${s.category||''}</span>\n                        </button>
+                    `).join('');
+                }
+                renderList();
+                
+                pop.querySelector('#service-picker-filter').addEventListener('input', (e) => renderList(e.target.value));
+                listEl.addEventListener('click', (e) => {
+                    const btn = e.target.closest('button[data-id]');
+                    if (!btn) return;
+                    const id = btn.getAttribute('data-id');
+                    addVendorServiceById(id);
+                    pop.remove();
+                });
+                
+                // Close on outside click or ESC
+                const onDocClick = (e) => {
+                    if (!pop.contains(e.target) && e.target !== anchorEl) {
+                        pop.remove();
+                        document.removeEventListener('mousedown', onDocClick);
+                        document.removeEventListener('keydown', onKey);
+                    }
+                };
+                const onKey = (e) => {
+                    if (e.key === 'Escape') {
+                        pop.remove();
+                        document.removeEventListener('mousedown', onDocClick);
+                        document.removeEventListener('keydown', onKey);
+                    }
+                };
+                document.addEventListener('mousedown', onDocClick);
+                document.addEventListener('keydown', onKey);
+            }
+
             function displayPredefinedServices(services) {
-                const container = document.getElementById('predefined-services-grid');
+                const grid = document.getElementById('predefined-services-grid');
                 const loadingEl = document.getElementById('predefined-services-loading');
                 const containerEl = document.getElementById('predefined-services-container');
                 
@@ -12606,15 +12762,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 loadingEl.style.display = 'none';
                 containerEl.style.display = 'block';
                 
-                // Clear existing content
-                container.innerHTML = '';
+                // Save services globally for picker access
+                window.vendorAvailableServices = Array.isArray(services) ? services.slice() : [];
                 
-                services.forEach(service => {
-                    const serviceCard = createPredefinedServiceCard(service);
-                    container.appendChild(serviceCard);
+                // Build horizontal row with Add Service skeleton
+                const rowHtml = `
+                    <div id="vendor-services-grid"></div>
+                `;
+                grid.innerHTML = rowHtml;
+                
+                // Insert initial Add Service card
+                const gridEl = document.getElementById('vendor-services-grid');
+                gridEl.appendChild(createAddServiceCard());
+                
+                // Preload already selected services if any
+                (vendorSetupState.selectedPredefinedServices || []).forEach(sel => {
+                    addVendorServiceById(sel.id, true);
                 });
-                
-                updateSelectedServicesCount();
             }
             
             function createPredefinedServiceCard(service) {
@@ -12626,10 +12790,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 card.innerHTML = `
                     <div class="service-card-header">
-                        <h6 class="service-card-title">${service.name}</h6>
-                        <div class="service-card-check">
+                        <h6 class="service-card-title" style="display:flex; align-items:center; gap:0.5rem;">
+                            ${service.name}
+                            <span style="font-size:0.7rem; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:999px; font-weight:600;">${service.category}</span>
+                        </h6>
+                        <div class="service-card-check" style="margin-left:auto;">
                             <i class="fas fa-check" style="font-size: 0.8rem;"></i>
                         </div>
+                        <button type="button" class="remove-service-btn" aria-label="Remove" title="Remove" style="margin-left:0.5rem; background:none; border:none; color:#94a3b8; cursor:pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                     
                     <div class="service-card-description">
@@ -12649,8 +12819,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     
                     <div class="vendor-customization-form">
                         <h6 style="margin: 0 0 1rem 0; color: var(--primary); font-size: 0.9rem;">Customize Your Service</h6>
-                        
                         <div class="form-row-inline">
+                            <div class="form-group-inline" style="min-width: 200px;">
+                                <label>Pricing Model *</label>
+                                <select class="vendor-pricing-model">
+                                    <option value="time_based" selected>Time-based</option>
+                                    <option value="fixed_based">Fixed-based</option>
+                                </select>
+                            </div>
                             <div class="form-group-inline">
                                 <label>Your Price ($) *</label>
                                 <input type="number" 
@@ -12660,14 +12836,56 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                        placeholder="0.00" 
                                        required>
                             </div>
-                            <div class="form-group-inline">
-                                <label>Duration (minutes)</label>
-                                <input type="number" 
-                                       class="vendor-duration-input" 
-                                       min="15" 
-                                       step="15" 
-                                       value="${service.defaultDuration || 60}"
-                                       placeholder="60">
+                        </div>
+                        
+                        <!-- Time-based fields -->
+                        <div class="vendor-time-based" style="margin-top: 0.5rem;">
+                            <div class="form-row-inline">
+                                <div class="form-group-inline">
+                                    <label>Base Duration (min)</label>
+                                    <input type="number" class="vendor-duration-input" min="15" step="15" value="${service.defaultDuration || 60}" placeholder="60">
+                                </div>
+                                <div class="form-group-inline">
+                                    <label>Base Rate ($)</label>
+                                    <input type="number" class="vendor-base-rate" min="0" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group-inline">
+                                    <label>Overtime ($/hr)</label>
+                                    <input type="number" class="vendor-overtime-rate" min="0" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group-inline">
+                                    <label>Minimum Fee ($)</label>
+                                    <input type="number" class="vendor-min-fee" min="0" step="0.01" placeholder="0.00">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Fixed-based fields -->
+                        <div class="vendor-fixed-based" style="margin-top: 0.5rem; display: none;">
+                            <div class="form-row-inline">
+                                <div class="form-group-inline">
+                                    <label>Fixed Pricing Type</label>
+                                    <select class="vendor-fixed-pricing-type">
+                                        <option value="fixed_price" selected>Fixed Price</option>
+                                        <option value="per_attendee">Per Attendee</option>
+                                    </select>
+                                </div>
+                                <div class="form-group-inline">
+                                    <label>Fixed Price ($)</label>
+                                    <input type="number" class="vendor-fixed-price" min="0" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group-inline">
+                                    <label>Price Per Person ($)</label>
+                                    <input type="number" class="vendor-price-per-person" min="0" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group-inline">
+                                    <label>Min Attendees</label>
+                                    <input type="number" class="vendor-min-attendees" min="0" step="1" placeholder="0">
+                                </div>
+                                <div class="form-group-inline">
+                                    <label>Max Attendees</label>
+                                    <input type="number" class="vendor-max-attendees" min="0" step="1" placeholder="0">
+                                </div>
                             </div>
                         </div>
                         
@@ -12680,16 +12898,81 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     </div>
                 `;
                 
-                // Add click handler for service selection
+                // Add click handler for service selection (ignore when clicking inputs or remove)
                 card.addEventListener('click', (e) => {
                     // Don't toggle if clicking on form inputs
-                    if (e.target.closest('.vendor-customization-form input, .vendor-customization-form textarea')) {
+                    if (e.target.closest('.vendor-customization-form input, .vendor-customization-form textarea, .vendor-customization-form select, .remove-service-btn')) {
                         return;
                     }
                     toggleServiceSelection(card, service);
                 });
                 
+                // Remove handler
+                const removeBtn = card.querySelector('.remove-service-btn');
+                removeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeSelectedService(service.id);
+                    card.remove();
+                    updateSelectedServicesCount();
+                    updateSelectedServicesSummary();
+                    const countEl = document.getElementById('vendor-added-count');
+                    const gridEl = document.getElementById('vendor-services-grid');
+                    if (countEl && gridEl) {
+                        const count = gridEl.querySelectorAll('.predefined-service-card').length;
+                        countEl.textContent = `${count} added`;
+                    }
+                });
+
                 return card;
+            }
+
+            // Add a vendor service card by its ID from the picker
+            function addVendorServiceById(serviceId, isPreload = false) {
+                const svc = (window.vendorAvailableServices || []).find(s => String(s.id) === String(serviceId));
+                if (!svc) return;
+                const gridEl = document.getElementById('vendor-services-grid');
+                if (!gridEl) return;
+                // Prevent duplicates in DOM
+                if (gridEl.querySelector(`.predefined-service-card[data-service-id="${svc.id}"]`)) {
+                    return;
+                }
+                const card = createPredefinedServiceCard(svc);
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(6px)';
+                card.style.transition = 'opacity 160ms ease, transform 180ms ease';
+                
+                // Insert before the Add card (which should be last)
+                const addCard = gridEl.querySelector('.add-service-card');
+                if (addCard) {
+                    gridEl.insertBefore(card, addCard);
+                } else {
+                    gridEl.appendChild(card);
+                }
+                
+                requestAnimationFrame(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                });
+                // Mark as selected and push to state if not already there
+                card.classList.add('selected');
+                if (!vendorSetupState.selectedPredefinedServices?.some(s => s.id === svc.id)) {
+                    addSelectedService(card, svc);
+                }
+                // Update counts and empty state msg
+                const countEl = document.getElementById('vendor-added-count');
+                const gridEl2 = document.getElementById('vendor-services-grid');
+                const count = gridEl2 ? gridEl2.querySelectorAll('.predefined-service-card').length : 0;
+                if (countEl) countEl.textContent = `${count} added`;
+                
+                // Focus first relevant input in the card and scroll into view
+                if (!isPreload) {
+                    card.scrollIntoView({ behavior: 'smooth', inline: 'end', block: 'nearest' });
+                    const firstInput = card.querySelector('.vendor-customization-form select, .vendor-customization-form input');
+                    if (firstInput) {
+                        setTimeout(() => { try { firstInput.focus(); } catch(_){} }, 200);
+                    }
+                }
             }
             
             function toggleServiceSelection(card, service) {
@@ -12724,7 +13007,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     durationMinutes: service.defaultDuration || 60,
                     vendorPrice: 0,
                     vendorDuration: service.defaultDuration || 60,
-                    vendorDescription: ''
+                    vendorDescription: '',
+                    // Unified pricing fields
+                    pricingModel: 'time_based',
+                    baseDurationMinutes: service.defaultDuration || 60,
+                    baseRate: null,
+                    overtimeRatePerHour: null,
+                    minimumBookingFee: null,
+                    fixedPricingType: 'fixed_price',
+                    fixedPrice: null,
+                    pricePerPerson: null,
+                    minimumAttendees: null,
+                    maximumAttendees: null
                 };
                 
                 vendorSetupState.selectedPredefinedServices.push(selectedService);
@@ -12733,6 +13027,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const priceInput = card.querySelector('.vendor-price-input');
                 const durationInput = card.querySelector('.vendor-duration-input');
                 const descriptionInput = card.querySelector('.vendor-description-input');
+                const pricingModelSelect = card.querySelector('.vendor-pricing-model');
+                const timeBasedSection = card.querySelector('.vendor-time-based');
+                const fixedBasedSection = card.querySelector('.vendor-fixed-based');
+                const baseRateInput = card.querySelector('.vendor-base-rate');
+                const overtimeRateInput = card.querySelector('.vendor-overtime-rate');
+                const minFeeInput = card.querySelector('.vendor-min-fee');
+                const fixedTypeSelect = card.querySelector('.vendor-fixed-pricing-type');
+                const fixedPriceInput = card.querySelector('.vendor-fixed-price');
+                const pppInput = card.querySelector('.vendor-price-per-person');
+                const minAttInput = card.querySelector('.vendor-min-attendees');
+                const maxAttInput = card.querySelector('.vendor-max-attendees');
                 
                 const updateServiceData = () => {
                     const serviceIndex = vendorSetupState.selectedPredefinedServices.findIndex(s => s.id === service.id);
@@ -12740,6 +13045,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const priceValue = parseFloat(priceInput.value) || 0;
                         const durationValue = parseInt(durationInput.value) || service.defaultDuration || 60;
                         const descriptionValue = descriptionInput.value.trim();
+                        const pricingModelVal = pricingModelSelect?.value || 'time_based';
+                        const baseRateVal = baseRateInput ? parseFloat(baseRateInput.value) : null;
+                        const overtimeRateVal = overtimeRateInput ? parseFloat(overtimeRateInput.value) : null;
+                        const minFeeVal = minFeeInput ? parseFloat(minFeeInput.value) : null;
+                        const fixedTypeVal = fixedTypeSelect?.value || 'fixed_price';
+                        const fixedPriceVal = fixedPriceInput ? parseFloat(fixedPriceInput.value) : null;
+                        const pppVal = pppInput ? parseFloat(pppInput.value) : null;
+                        const minAttVal = minAttInput ? parseInt(minAttInput.value) : null;
+                        const maxAttVal = maxAttInput ? parseInt(maxAttInput.value) : null;
                         
                         vendorSetupState.selectedPredefinedServices[serviceIndex].vendorPrice = priceValue;
                         vendorSetupState.selectedPredefinedServices[serviceIndex].vendorDuration = durationValue;
@@ -12749,6 +13063,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         vendorSetupState.selectedPredefinedServices[serviceIndex].price = priceValue;
                         vendorSetupState.selectedPredefinedServices[serviceIndex].durationMinutes = durationValue;
                         vendorSetupState.selectedPredefinedServices[serviceIndex].description = descriptionValue;
+                        // Unified pricing fields
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].pricingModel = pricingModelVal;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].baseDurationMinutes = durationValue;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].baseRate = Number.isFinite(baseRateVal) ? baseRateVal : null;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].overtimeRatePerHour = Number.isFinite(overtimeRateVal) ? overtimeRateVal : null;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].minimumBookingFee = Number.isFinite(minFeeVal) ? minFeeVal : null;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].fixedPricingType = fixedTypeVal;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].fixedPrice = Number.isFinite(fixedPriceVal) ? fixedPriceVal : null;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].pricePerPerson = Number.isFinite(pppVal) ? pppVal : null;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].minimumAttendees = Number.isFinite(minAttVal) ? minAttVal : null;
+                        vendorSetupState.selectedPredefinedServices[serviceIndex].maximumAttendees = Number.isFinite(maxAttVal) ? maxAttVal : null;
                         
                         updateSelectedServicesSummary();
                     }
@@ -12757,6 +13082,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 priceInput.addEventListener('input', updateServiceData);
                 durationInput.addEventListener('input', updateServiceData);
                 descriptionInput.addEventListener('input', updateServiceData);
+                baseRateInput?.addEventListener('input', updateServiceData);
+                overtimeRateInput?.addEventListener('input', updateServiceData);
+                minFeeInput?.addEventListener('input', updateServiceData);
+                fixedTypeSelect?.addEventListener('change', updateServiceData);
+                fixedPriceInput?.addEventListener('input', updateServiceData);
+                pppInput?.addEventListener('input', updateServiceData);
+                minAttInput?.addEventListener('input', updateServiceData);
+                maxAttInput?.addEventListener('input', updateServiceData);
+                pricingModelSelect?.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    if (val === 'time_based') {
+                        timeBasedSection.style.display = '';
+                        fixedBasedSection.style.display = 'none';
+                    } else {
+                        timeBasedSection.style.display = 'none';
+                        fixedBasedSection.style.display = '';
+                    }
+                    updateServiceData();
+                });
             }
             
             function removeSelectedService(serviceId) {
@@ -12788,7 +13132,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         <div>
                             <div style="font-weight: 500; margin-bottom: 0.25rem;">${service.name}</div>
                             <div style="font-size: 0.85rem; color: var(--text-light);">
-                                $${service.vendorPrice || 0} • ${service.vendorDuration || service.defaultDuration || 60} min
+                                ${service.pricingModel === 'fixed_based' 
+                                    ? (service.fixedPricingType === 'per_attendee' 
+                                        ? `$${service.pricePerPerson || 0}/person` 
+                                        : `$${service.fixedPrice || service.vendorPrice || 0} fixed`) 
+                                    : `$${service.baseRate || service.vendorPrice || 0} for ${service.vendorDuration || service.baseDurationMinutes || service.defaultDuration || 60} min`}
                                 ${service.vendorDescription ? ` • ${service.vendorDescription}` : ''}
                             </div>
                         </div>
@@ -15274,7 +15622,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 </div>
                             </div>
                             ` : ''}
-{{ ... }}
 
                             <!-- Reviews Section -->
                             <div style="margin-bottom: 2rem;">
@@ -22126,7 +22473,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(searchRequest)
+                    body: JSON.stringify({
+                        ...searchRequest,
+                        // Unified pricing filters
+                        budgetType: 'total',
+                        pricingModel: null,
+                        fixedPricingType: null
+                    })
                 });
 
                 if (!response.ok) {
