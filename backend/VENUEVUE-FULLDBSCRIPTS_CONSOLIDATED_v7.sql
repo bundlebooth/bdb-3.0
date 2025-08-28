@@ -1423,7 +1423,7 @@ BEGIN
         BusinessName AS name,
         DisplayName,
         PrimaryCategory AS type,
-        CONCAT(City, ' ', State) AS location,
+        CONCAT(City, '' '', State) AS location,
         BusinessDescription AS description,
         ''$'' + CAST(MinPrice AS NVARCHAR(20)) AS price,
         MinPrice AS MinPriceNumeric,
