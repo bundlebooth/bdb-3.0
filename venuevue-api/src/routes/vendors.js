@@ -272,7 +272,11 @@ router.get('/', async (req, res) => {
       includeImages,
       predefinedServices,
       eventLocation,
-      mapBounds
+      mapBounds,
+      // unified pricing-aware search params
+      budgetType, // 'total' | 'per_person'
+      pricingModel, // 'time_based' | 'fixed_based'
+      fixedPricingType // 'fixed_price' | 'per_attendee'
     } = req.query;
 
     const pool = await poolPromise;
@@ -296,6 +300,10 @@ router.get('/', async (req, res) => {
     request.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
     request.input('PageSize', sql.Int, pageSize ? parseInt(pageSize) : 10);
     request.input('SortBy', sql.NVarChar(50), sortBy || 'recommended');
+    // unified pricing-aware filters
+    request.input('BudgetType', sql.NVarChar(20), budgetType || null);
+    request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
+    request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
 
     const result = await request.execute('sp_SearchVendors');
     
@@ -1589,7 +1597,10 @@ router.post('/search-by-services', async (req, res) => {
       selectedServices,
       eventDetails,
       totalBudget,
-      serviceIds
+      serviceIds,
+      budgetType,            // 'total' | 'per_person'
+      pricingModel,          // 'time_based' | 'fixed_based'
+      fixedPricingType       // 'fixed_price' | 'per_attendee'
     } = req.body;
 
     if (!selectedServices || selectedServices.length === 0) {
@@ -1655,6 +1666,10 @@ router.post('/search-by-services', async (req, res) => {
     request.input('PageNumber', sql.Int, 1);
     request.input('PageSize', sql.Int, 100);
     request.input('SortBy', sql.NVarChar(20), 'relevance');
+    // Unified pricing filters
+    request.input('BudgetType', sql.NVarChar(20), budgetType || null);
+    request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
+    request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
 
     // New: pass service start/end times to stored procedure (SP filters by business hours)
     // Prefer per-service times from selectedServices; fallback to eventDetails times
@@ -1885,20 +1900,45 @@ router.post('/setup/step4-services', async (req, res) => {
         const serviceRequest = new sql.Request(pool);
         serviceRequest.input('CategoryID', sql.Int, categoryId);
         serviceRequest.input('Name', sql.NVarChar, service.name);
-        serviceRequest.input('Description', sql.NVarChar, service.description);
-        serviceRequest.input('Price', sql.Decimal(10, 2), service.price);
-        serviceRequest.input('DurationMinutes', sql.Int, service.durationMinutes || null);
-        serviceRequest.input('MaxAttendees', sql.Int, service.maxAttendees || null);
-        serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), service.depositPercentage || 20);
+        serviceRequest.input('Description', sql.NVarChar, service.description || null);
+        // Unified pricing model inputs
+        const pricingModel = service.pricingModel || null; // 'time_based' | 'fixed_based'
+        const fixedPricingType = service.fixedPricingType || null; // 'fixed_price' | 'per_attendee'
+        const baseRate = service.baseRate != null ? parseFloat(service.baseRate) : null;
+        const baseDurationMinutes = service.baseDurationMinutes != null ? parseInt(service.baseDurationMinutes) : (service.durationMinutes || null);
+        const overtimeRatePerHour = service.overtimeRatePerHour != null ? parseFloat(service.overtimeRatePerHour) : null;
+        const minimumBookingFee = service.minimumBookingFee != null ? parseFloat(service.minimumBookingFee) : null;
+        const fixedPrice = service.fixedPrice != null ? parseFloat(service.fixedPrice) : null;
+        const pricePerPerson = service.pricePerPerson != null ? parseFloat(service.pricePerPerson) : null;
+        const minimumAttendees = service.minimumAttendees != null ? parseInt(service.minimumAttendees) : null;
+        const maximumAttendees = service.maximumAttendees != null ? parseInt(service.maximumAttendees) : null;
+
+        // Backward compatible legacy fields
+        const legacyPrice = service.price != null ? parseFloat(service.price) : null;
+        const derivedPrice = (fixedPrice != null) ? fixedPrice : (baseRate != null ? baseRate : (pricePerPerson != null ? pricePerPerson : legacyPrice));
+
+        // Common fields
+        serviceRequest.input('Price', sql.Decimal(10, 2), derivedPrice);
+        serviceRequest.input('DurationMinutes', sql.Int, baseDurationMinutes || null);
+        serviceRequest.input('MaxAttendees', sql.Int, service.maxAttendees || maximumAttendees || null);
+        serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), service.depositPercentage != null ? parseFloat(service.depositPercentage) : 20);
         serviceRequest.input('CancellationPolicy', sql.NVarChar, service.cancellationPolicy || null);
         serviceRequest.input('LinkedPredefinedServiceID', sql.Int, service.linkedPredefinedServiceId || null);
-        
         serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        
-        await serviceRequest.query(`
-          INSERT INTO Services (VendorProfileID, CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID) 
-          VALUES (@VendorProfileID, @CategoryID, @Name, @Description, @Price, @DurationMinutes, @MaxAttendees, @DepositPercentage, @CancellationPolicy, @LinkedPredefinedServiceID)
-        `);
+        // Unified pricing fields
+        serviceRequest.input('PricingModel', sql.NVarChar, pricingModel);
+        serviceRequest.input('BaseDurationMinutes', sql.Int, baseDurationMinutes || null);
+        serviceRequest.input('BaseRate', sql.Decimal(10, 2), baseRate);
+        serviceRequest.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour);
+        serviceRequest.input('MinimumBookingFee', sql.Decimal(10, 2), minimumBookingFee);
+        serviceRequest.input('FixedPricingType', sql.NVarChar, fixedPricingType);
+        serviceRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice);
+        serviceRequest.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson);
+        serviceRequest.input('MinimumAttendees', sql.Int, minimumAttendees);
+        serviceRequest.input('MaximumAttendees', sql.Int, maximumAttendees);
+
+        // Use unified upsert stored procedure
+        await serviceRequest.execute('dbo.sp_UpsertVendorService');
       }
     }
     
@@ -2667,7 +2707,13 @@ router.post('/:id/packages', async (req, res) => {
 router.post('/:id/services', async (req, res) => {
   try {
     const { id } = req.params;
-    const { serviceName, description, price, duration, category } = req.body;
+    const { 
+      serviceName, description, price, duration, category,
+      // unified pricing fields
+      pricingModel, // 'time_based' | 'fixed_based'
+      baseDurationMinutes, baseRate, overtimeRatePerHour, minimumBookingFee,
+      fixedPricingType, fixedPrice, pricePerPerson, minimumAttendees, maximumAttendees
+    } = req.body;
 
     const pool = await poolPromise;
     
@@ -2675,19 +2721,38 @@ router.post('/:id/services', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
+    // Use unified upsert SP for insertion
     const request = new sql.Request(pool);
+    request.input('ServiceID', sql.Int, null);
     request.input('VendorProfileID', sql.Int, id);
-    request.input('ServiceName', sql.NVarChar(255), serviceName);
-    request.input('Description', sql.NVarChar(sql.MAX), description);
-    request.input('Price', sql.Decimal(10, 2), price);
-    request.input('Duration', sql.NVarChar(50), duration);
-    request.input('Category', sql.NVarChar(100), category || 'General Services');
+    request.input('CategoryID', sql.Int, null);
+    request.input('Name', sql.NVarChar(255), serviceName);
+    request.input('Description', sql.NVarChar(sql.MAX), description || null);
+    // derive a legacy price for compatibility
+    const legacyPrice = price != null ? parseFloat(price) : null;
+    const derivedPrice = (fixedPrice != null ? parseFloat(fixedPrice) : (baseRate != null ? parseFloat(baseRate) : (pricePerPerson != null ? parseFloat(pricePerPerson) : legacyPrice)));
+    request.input('Price', sql.Decimal(10, 2), derivedPrice);
+    request.input('DurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : (duration ? parseInt(duration) : null));
+    request.input('MaxAttendees', sql.Int, maximumAttendees != null ? parseInt(maximumAttendees) : null);
+    request.input('DepositPercentage', sql.Decimal(5, 2), 20);
+    request.input('CancellationPolicy', sql.NVarChar, null);
+    request.input('LinkedPredefinedServiceID', sql.Int, null);
+    request.input('PricingModel', sql.NVarChar(20), pricingModel || null);
+    request.input('BaseDurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : null);
+    request.input('BaseRate', sql.Decimal(10, 2), baseRate != null ? parseFloat(baseRate) : null);
+    request.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour != null ? parseFloat(overtimeRatePerHour) : null);
+    request.input('MinimumBookingFee', sql.Decimal(10, 2), minimumBookingFee != null ? parseFloat(minimumBookingFee) : null);
+    request.input('FixedPricingType', sql.NVarChar(20), pricingModel === 'fixed_based' ? (fixedPricingType || null) : null);
+    request.input('FixedPrice', sql.Decimal(10, 2), pricingModel === 'fixed_based' && fixedPricingType === 'fixed_price' && fixedPrice != null ? parseFloat(fixedPrice) : null);
+    request.input('PricePerPerson', sql.Decimal(10, 2), pricingModel === 'fixed_based' && fixedPricingType === 'per_attendee' && pricePerPerson != null ? parseFloat(pricePerPerson) : null);
+    request.input('MinimumAttendees', sql.Int, pricingModel === 'fixed_based' && fixedPricingType === 'per_attendee' && minimumAttendees != null ? parseInt(minimumAttendees) : null);
+    request.input('MaximumAttendees', sql.Int, pricingModel === 'fixed_based' && fixedPricingType === 'per_attendee' && maximumAttendees != null ? parseInt(maximumAttendees) : null);
 
-    const result = await request.execute('sp_AddVendorService');
-    
+    const insertResult = await request.execute('dbo.sp_UpsertVendorService');
+    const newServiceId = insertResult.recordset && insertResult.recordset[0] ? insertResult.recordset[0].ServiceID : null;
     res.json({
       success: true,
-      serviceId: result.recordset[0].ServiceID
+      serviceId: newServiceId
     });
 
   } catch (err) {
