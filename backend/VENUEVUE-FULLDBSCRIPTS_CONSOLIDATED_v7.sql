@@ -1401,38 +1401,8 @@ BEGIN
         AND (@IsPremium IS NULL OR v.IsPremium = @IsPremium)
         AND (@IsEcoFriendly IS NULL OR v.IsEcoFriendly = @IsEcoFriendly)
         AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
-        AND (
-            @MinPrice IS NULL OR (
-                SELECT MIN(CASE 
-                    WHEN s.PricingModel = ''time_based'' THEN ISNULL(NULLIF(s.MinimumBookingFee, 0), s.BaseRate)
-                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
-                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN CASE WHEN @BudgetType = ''per_person'' THEN s.PricePerPerson ELSE s.Price END
-                    ELSE s.Price
-                END)
-                FROM Services s 
-                JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID 
-                WHERE sc.VendorProfileID = v.VendorProfileID
-                    AND s.IsActive = 1
-                    AND (@PricingModelFilter IS NULL OR s.PricingModel = @PricingModelFilter)
-                    AND (@FixedPricingTypeFilter IS NULL OR s.FixedPricingType = @FixedPricingTypeFilter)
-            ) >= @MinPrice
-        )
-        AND (
-            @MaxPrice IS NULL OR (
-                SELECT MIN(CASE 
-                    WHEN s.PricingModel = ''time_based'' THEN ISNULL(NULLIF(s.MinimumBookingFee, 0), s.BaseRate)
-                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
-                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN CASE WHEN @BudgetType = ''per_person'' THEN s.PricePerPerson ELSE s.Price END
-                    ELSE s.Price
-                END)
-                FROM Services s 
-                JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID 
-                WHERE sc.VendorProfileID = v.VendorProfileID
-                    AND s.IsActive = 1
-                    AND (@PricingModelFilter IS NULL OR s.PricingModel = @PricingModelFilter)
-                    AND (@FixedPricingTypeFilter IS NULL OR s.FixedPricingType = @FixedPricingTypeFilter)
-            ) <= @MaxPrice
-        )'
+        AND (@MinPrice IS NULL OR MinSvc.MinPrice >= @MinPrice)
+        AND (@MaxPrice IS NULL OR MinSvc.MinPrice <= @MaxPrice)'
     
     -- Add distance filter if location provided
     IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
@@ -1453,7 +1423,7 @@ BEGIN
         BusinessName AS name,
         DisplayName,
         PrimaryCategory AS type,
-        CONCAT(City, '', '', State) AS location,
+        CONCAT(City, ' ', State) AS location,
         BusinessDescription AS description,
         ''$'' + CAST(MinPrice AS NVARCHAR(20)) AS price,
         MinPrice AS MinPriceNumeric,
