@@ -32,6 +32,153 @@ CREATE TABLE Users (
 );
 GO
 
+-- ============================================
+-- UPSERT SERVICE WITH UNIFIED PRICING
+-- ============================================
+CREATE OR ALTER PROCEDURE dbo.sp_UpsertVendorService
+    @ServiceID INT = NULL,
+    @VendorProfileID INT,
+    @CategoryID INT = NULL,
+    @Name NVARCHAR(255),
+    @Description NVARCHAR(MAX) = NULL,
+    -- legacy/compat fields
+    @Price DECIMAL(10,2) = NULL,
+    @DurationMinutes INT = NULL,
+    @MaxAttendees INT = NULL,
+    @DepositPercentage DECIMAL(5,2) = NULL,
+    @CancellationPolicy NVARCHAR(MAX) = NULL,
+    @LinkedPredefinedServiceID INT = NULL,
+    -- unified pricing
+    @PricingModel NVARCHAR(20) = NULL, -- 'time_based' | 'fixed_based'
+    @BaseDurationMinutes INT = NULL,
+    @BaseRate DECIMAL(10,2) = NULL,
+    @OvertimeRatePerHour DECIMAL(10,2) = NULL,
+    @MinimumBookingFee DECIMAL(10,2) = NULL,
+    @FixedPricingType NVARCHAR(20) = NULL, -- 'fixed_price' | 'per_attendee'
+    @FixedPrice DECIMAL(10,2) = NULL,
+    @PricePerPerson DECIMAL(10,2) = NULL,
+    @MinimumAttendees INT = NULL,
+    @MaximumAttendees INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Normalize pricing based on model: clear non-applicable fields
+    DECLARE 
+        @NormPricingModel NVARCHAR(20) = @PricingModel,
+        @NormBaseDurationMinutes INT = NULL,
+        @NormBaseRate DECIMAL(10,2) = NULL,
+        @NormOvertimeRatePerHour DECIMAL(10,2) = NULL,
+        @NormMinimumBookingFee DECIMAL(10,2) = NULL,
+        @NormFixedPricingType NVARCHAR(20) = NULL,
+        @NormFixedPrice DECIMAL(10,2) = NULL,
+        @NormPricePerPerson DECIMAL(10,2) = NULL,
+        @NormMinimumAttendees INT = NULL,
+        @NormMaximumAttendees INT = NULL;
+
+    IF @NormPricingModel = 'time_based'
+    BEGIN
+        SET @NormBaseDurationMinutes = @BaseDurationMinutes;
+        SET @NormBaseRate = @BaseRate;
+        SET @NormOvertimeRatePerHour = @OvertimeRatePerHour;
+        SET @NormMinimumBookingFee = @MinimumBookingFee;
+        -- clear fixed-based
+        SET @NormFixedPricingType = NULL;
+        SET @NormFixedPrice = NULL;
+        SET @NormPricePerPerson = NULL;
+        SET @NormMinimumAttendees = NULL;
+        SET @NormMaximumAttendees = NULL;
+    END
+    ELSE IF @NormPricingModel = 'fixed_based'
+    BEGIN
+        SET @NormFixedPricingType = @FixedPricingType;
+        IF @NormFixedPricingType = 'fixed_price'
+        BEGIN
+            SET @NormFixedPrice = @FixedPrice;
+            SET @NormPricePerPerson = NULL;
+            SET @NormMinimumAttendees = NULL;
+            SET @NormMaximumAttendees = NULL;
+        END
+        ELSE IF @NormFixedPricingType = 'per_attendee'
+        BEGIN
+            SET @NormFixedPrice = NULL;
+            SET @NormPricePerPerson = @PricePerPerson;
+            SET @NormMinimumAttendees = @MinimumAttendees;
+            SET @NormMaximumAttendees = @MaximumAttendees;
+        END
+        -- clear time-based
+        SET @NormBaseDurationMinutes = NULL;
+        SET @NormBaseRate = NULL;
+        SET @NormOvertimeRatePerHour = NULL;
+        SET @NormMinimumBookingFee = NULL;
+    END
+    ELSE
+    BEGIN
+        -- Unknown/legacy: clear all unified fields
+        SET @NormPricingModel = NULL;
+    END
+
+    -- Compute compatibility Price if not provided
+    IF @Price IS NULL
+    BEGIN
+        SET @Price = COALESCE(@NormFixedPrice, @NormBaseRate, @NormPricePerPerson, @MinimumBookingFee, 0);
+    END
+
+    BEGIN TRY
+        IF @ServiceID IS NULL
+        BEGIN
+            INSERT INTO Services (
+                VendorProfileID, CategoryID, Name, Description,
+                Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID,
+                PricingModel, BaseDurationMinutes, BaseRate, OvertimeRatePerHour, MinimumBookingFee,
+                FixedPricingType, FixedPrice, PricePerPerson, MinimumAttendees, MaximumAttendees,
+                IsActive, CreatedAt
+            ) VALUES (
+                @VendorProfileID, @CategoryID, @Name, @Description,
+                @Price, @DurationMinutes, @MaxAttendees, @DepositPercentage, @CancellationPolicy, @LinkedPredefinedServiceID,
+                @NormPricingModel, @NormBaseDurationMinutes, @NormBaseRate, @NormOvertimeRatePerHour, @NormMinimumBookingFee,
+                @NormFixedPricingType, @NormFixedPrice, @NormPricePerPerson, @NormMinimumAttendees, @NormMaximumAttendees,
+                1, GETDATE()
+            );
+
+            SELECT SCOPE_IDENTITY() AS ServiceID;
+        END
+        ELSE
+        BEGIN
+            UPDATE Services
+            SET 
+                CategoryID = @CategoryID,
+                Name = @Name,
+                Description = @Description,
+                Price = @Price,
+                DurationMinutes = @DurationMinutes,
+                MaxAttendees = @MaxAttendees,
+                DepositPercentage = @DepositPercentage,
+                CancellationPolicy = @CancellationPolicy,
+                LinkedPredefinedServiceID = @LinkedPredefinedServiceID,
+                PricingModel = @NormPricingModel,
+                BaseDurationMinutes = @NormBaseDurationMinutes,
+                BaseRate = @NormBaseRate,
+                OvertimeRatePerHour = @NormOvertimeRatePerHour,
+                MinimumBookingFee = @NormMinimumBookingFee,
+                FixedPricingType = @NormFixedPricingType,
+                FixedPrice = @NormFixedPrice,
+                PricePerPerson = @NormPricePerPerson,
+                MinimumAttendees = @NormMinimumAttendees,
+                MaximumAttendees = @NormMaximumAttendees,
+                UpdatedAt = GETDATE()
+            WHERE ServiceID = @ServiceID AND VendorProfileID = @VendorProfileID;
+
+            SELECT @ServiceID AS ServiceID;
+        END
+    END TRY
+    BEGIN CATCH
+        DECLARE @ErrMsg NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR('Failed to upsert service: %s', 16, 1, @ErrMsg);
+    END CATCH
+END
+GO
+
 -- Vendor-specific information (separate from user profile)
 -- This table stores all the multi-step registration data.
 CREATE TABLE VendorProfiles (
@@ -1150,7 +1297,10 @@ CREATE   PROCEDURE [dbo].[sp_SearchVendors]
     @RadiusMiles INT = 25,
     @PageNumber INT = 1,
     @PageSize INT = 10,
-    @SortBy NVARCHAR(50) = 'recommended'
+    @SortBy NVARCHAR(50) = 'recommended',
+    @BudgetType NVARCHAR(20) = NULL, -- 'total' | 'per_person'
+    @PricingModelFilter NVARCHAR(20) = NULL, -- 'time_based' | 'fixed_based'
+    @FixedPricingTypeFilter NVARCHAR(20) = NULL -- 'fixed_price' | 'per_attendee'
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1222,12 +1372,26 @@ BEGIN
         FROM VendorProfiles v
         OUTER APPLY (
             SELECT TOP 1 
-                s.Price AS MinPrice,
+                -- Effective price based on pricing model
+                CASE 
+                    WHEN s.PricingModel = ''time_based'' THEN ISNULL(NULLIF(s.MinimumBookingFee, 0), s.BaseRate)
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN s.PricePerPerson
+                    ELSE s.Price
+                END AS MinPrice,
                 s.Name AS MinServiceName
             FROM Services s 
             JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID 
             WHERE sc.VendorProfileID = v.VendorProfileID AND s.IsActive = 1
-            ORDER BY s.Price ASC
+                AND (@PricingModelFilter IS NULL OR s.PricingModel = @PricingModelFilter)
+                AND (@FixedPricingTypeFilter IS NULL OR s.FixedPricingType = @FixedPricingTypeFilter)
+            ORDER BY 
+                CASE 
+                    WHEN s.PricingModel = ''time_based'' THEN ISNULL(NULLIF(s.MinimumBookingFee, 0), s.BaseRate)
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN s.PricePerPerson
+                    ELSE s.Price
+                END ASC
         ) AS MinSvc
         JOIN Users u ON v.UserID = u.UserID
         WHERE u.IsActive = 1
@@ -1237,8 +1401,38 @@ BEGIN
         AND (@IsPremium IS NULL OR v.IsPremium = @IsPremium)
         AND (@IsEcoFriendly IS NULL OR v.IsEcoFriendly = @IsEcoFriendly)
         AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
-        AND (@MinPrice IS NULL OR (SELECT MIN(s.Price) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID = v.VendorProfileID) >= @MinPrice)
-        AND (@MaxPrice IS NULL OR (SELECT MIN(s.Price) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID = v.VendorProfileID) <= @MaxPrice)'
+        AND (
+            @MinPrice IS NULL OR (
+                SELECT MIN(CASE 
+                    WHEN s.PricingModel = ''time_based'' THEN ISNULL(NULLIF(s.MinimumBookingFee, 0), s.BaseRate)
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN CASE WHEN @BudgetType = ''per_person'' THEN s.PricePerPerson ELSE s.Price END
+                    ELSE s.Price
+                END)
+                FROM Services s 
+                JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID 
+                WHERE sc.VendorProfileID = v.VendorProfileID
+                    AND s.IsActive = 1
+                    AND (@PricingModelFilter IS NULL OR s.PricingModel = @PricingModelFilter)
+                    AND (@FixedPricingTypeFilter IS NULL OR s.FixedPricingType = @FixedPricingTypeFilter)
+            ) >= @MinPrice
+        )
+        AND (
+            @MaxPrice IS NULL OR (
+                SELECT MIN(CASE 
+                    WHEN s.PricingModel = ''time_based'' THEN ISNULL(NULLIF(s.MinimumBookingFee, 0), s.BaseRate)
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN CASE WHEN @BudgetType = ''per_person'' THEN s.PricePerPerson ELSE s.Price END
+                    ELSE s.Price
+                END)
+                FROM Services s 
+                JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID 
+                WHERE sc.VendorProfileID = v.VendorProfileID
+                    AND s.IsActive = 1
+                    AND (@PricingModelFilter IS NULL OR s.PricingModel = @PricingModelFilter)
+                    AND (@FixedPricingTypeFilter IS NULL OR s.FixedPricingType = @FixedPricingTypeFilter)
+            ) <= @MaxPrice
+        )'
     
     -- Add distance filter if location provided
     IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
@@ -1329,9 +1523,9 @@ BEGIN
         EXEC sp_executesql @SQL, 
             N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), 
               @IsPremium BIT, @IsEcoFriendly BIT, @IsAwardWinning BIT, @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), 
-              @RadiusMiles INT',
+              @RadiusMiles INT, @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20)',
             @SearchTerm, @Category, @MinPrice, @MaxPrice, @IsPremium, @IsEcoFriendly, @IsAwardWinning, 
-            @Latitude, @Longitude, @RadiusMiles
+            @Latitude, @Longitude, @RadiusMiles, @BudgetType, @PricingModelFilter, @FixedPricingTypeFilter
     END TRY
     BEGIN CATCH
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
@@ -1573,7 +1767,10 @@ CREATE OR ALTER PROCEDURE sp_SearchVendorsByPredefinedServices
     @RadiusMiles INT = 50,
     @PageNumber INT = 1,
     @PageSize INT = 100,
-    @SortBy NVARCHAR(20) = 'relevance'
+    @SortBy NVARCHAR(20) = 'relevance',
+    @BudgetType NVARCHAR(20) = NULL,              -- 'total' | 'per_person'
+    @PricingModelFilter NVARCHAR(20) = NULL,      -- 'time_based' | 'fixed_based'
+    @FixedPricingTypeFilter NVARCHAR(20) = NULL   -- 'fixed_price' | 'per_attendee'
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1625,7 +1822,21 @@ BEGIN
             v.Rooms,
             v.FeaturedImageURL,
             COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices,
-            SUM(vss.VendorPrice) as TotalEstimatedPrice,
+            SUM(
+                COALESCE(
+                    CASE 
+                        WHEN s.PricingModel = ''time_based'' THEN NULLIF(ISNULL(s.MinimumBookingFee, 0), 0)
+                            ELSE NULL
+                    END,
+                    CASE 
+                        WHEN s.PricingModel = ''time_based'' THEN s.BaseRate
+                        WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
+                        WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN CASE WHEN @BudgetType = ''per_person'' THEN s.PricePerPerson ELSE s.Price END
+                        ELSE s.Price
+                    END,
+                    vss.VendorPrice
+                )
+            ) as TotalEstimatedPrice,
             (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
             (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
             (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
@@ -1637,10 +1848,28 @@ BEGIN
         JOIN Users u ON v.UserID = u.UserID
         JOIN VendorSelectedServices vss ON v.VendorProfileID = vss.VendorProfileID
         JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+        LEFT JOIN Services s ON s.VendorProfileID = v.VendorProfileID AND s.LinkedPredefinedServiceID = vss.PredefinedServiceID AND s.IsActive = 1
         WHERE u.IsActive = 1
         AND v.IsVerified = 1
         AND vss.PredefinedServiceID IN (' + @ServiceIds + ')
-        AND (@Budget IS NULL OR vss.VendorPrice <= @Budget)
+        AND (
+            @Budget IS NULL OR 
+            COALESCE(
+                CASE 
+                    WHEN s.PricingModel = ''time_based'' THEN NULLIF(ISNULL(s.MinimumBookingFee, 0), 0)
+                        ELSE NULL
+                END,
+                CASE 
+                    WHEN s.PricingModel = ''time_based'' THEN s.BaseRate
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN CASE WHEN @BudgetType = ''per_person'' THEN s.PricePerPerson ELSE s.Price END
+                    ELSE s.Price
+                END,
+                vss.VendorPrice
+            ) <= @Budget
+        )
+        AND (@PricingModelFilter IS NULL OR s.PricingModel = @PricingModelFilter)
+        AND (@FixedPricingTypeFilter IS NULL OR s.FixedPricingType = @FixedPricingTypeFilter)
         AND (@City IS NULL OR v.City = @City)
         AND (@State IS NULL OR v.State = @State)';
     
@@ -1700,11 +1929,34 @@ BEGIN
             SELECT 
                 ps.ServiceName AS name,
                 ps.Category,
-                vss.VendorPrice AS Price,
+                COALESCE(
+                    CASE 
+                        WHEN s.PricingModel = ''time_based'' THEN NULLIF(ISNULL(s.MinimumBookingFee, 0), 0)
+                            ELSE NULL
+                    END,
+                    CASE 
+                        WHEN s.PricingModel = ''time_based'' THEN s.BaseRate
+                        WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
+                        WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN CASE WHEN @BudgetType = ''per_person'' THEN s.PricePerPerson ELSE s.Price END
+                        ELSE s.Price
+                    END,
+                    vss.VendorPrice
+                ) AS Price,
                 vss.VendorDescription AS description,
-                vss.VendorDurationMinutes AS DurationMinutes
+                vss.VendorDurationMinutes AS DurationMinutes,
+                s.PricingModel,
+                s.BaseDurationMinutes,
+                s.BaseRate,
+                s.OvertimeRatePerHour,
+                s.MinimumBookingFee,
+                s.FixedPricingType,
+                s.FixedPrice,
+                s.PricePerPerson,
+                s.MinimumAttendees,
+                s.MaximumAttendees
             FROM VendorSelectedServices vss
             JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+            LEFT JOIN Services s ON s.VendorProfileID = vsm.VendorProfileID AND s.LinkedPredefinedServiceID = vss.PredefinedServiceID AND s.IsActive = 1
             WHERE vss.VendorProfileID = vsm.VendorProfileID
             AND vss.PredefinedServiceID IN (' + @ServiceIds + ')
             FOR JSON PATH
@@ -1725,8 +1977,10 @@ BEGIN
     BEGIN TRY
         EXEC sp_executesql @SQL, 
             N'@Budget DECIMAL(10, 2), @City NVARCHAR(100), @State NVARCHAR(50), 
-              @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), @RadiusMiles INT',
-            @Budget, @City, @State, @Latitude, @Longitude, @RadiusMiles;
+              @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), @RadiusMiles INT,
+              @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20)',
+            @Budget, @City, @State, @Latitude, @Longitude, @RadiusMiles,
+            @BudgetType, @PricingModelFilter, @FixedPricingTypeFilter;
     END TRY
     BEGIN CATCH
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
