@@ -14493,8 +14493,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             packages: vendorSetupState.packages || [],
                             selectedPredefinedServices: selected
                         };
-                        // Post to step4-services backend which contains pricing model validation and persistence
-                        endpoint = '/vendors/setup/step4-services';
+                        // Post to step3-services (backend 307-forwards to step4-services logic)
+                        endpoint = '/vendors/setup/step3-services';
                         break;
 
                     case 4: // Additional Details - Category Questions
