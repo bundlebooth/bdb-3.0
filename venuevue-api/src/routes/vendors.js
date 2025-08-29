@@ -1692,18 +1692,10 @@ router.post('/search-by-services', async (req, res) => {
     }
 
     // Important: Only use service times; event times are UI boundaries and not used for backend filtering
-    const startTimeParam = derivedStart || null;
-    const endTimeParam = derivedEnd || null;
-    if (startTimeParam) {
-      request.input('EventStartTime', sql.VarChar(8), startTimeParam);
-    } else {
-      request.input('EventStartTime', sql.VarChar(8), null);
-    }
-    if (endTimeParam) {
-      request.input('EventEndTime', sql.VarChar(8), endTimeParam);
-    } else {
-      request.input('EventEndTime', sql.VarChar(8), null);
-    }
+    // Note: The stored procedure sp_SearchVendorsByPredefinedServices does not accept
+    // EventStartTime/EventEndTime parameters. Do not pass them to avoid
+    // "too many arguments specified" errors. If time-based filtering is needed,
+    // extend the procedure signature first, then add inputs here.
 
     // Call the new stored procedure for predefined services
     const result = await request.execute('sp_SearchVendorsByPredefinedServices');
