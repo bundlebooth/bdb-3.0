@@ -3190,11 +3190,9 @@ router.post('/setup/step2-location', async (req, res) => {
 // Step 3: Services & Packages
 router.post('/setup/step3-services', async (req, res) => {
   try {
-    // Deprecate this endpoint in favor of step4-services which contains pricing model validation and SP upsert
-    return res.status(410).json({
-      success: false,
-      message: 'This endpoint is deprecated. Please POST to /vendors/setup/step4-services for Services & Packages with pricing models.'
-    });
+    // Forward Step 3 to Step 4 implementation to keep URL consistent with UI while reusing logic
+    // 307 preserves the HTTP method and body for POST
+    return res.redirect(307, '/vendors/setup/step4-services');
   } catch (error) {
     console.error('Error in step3-services (deprecated):', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
