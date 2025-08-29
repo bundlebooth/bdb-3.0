@@ -12397,10 +12397,22 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             return false;
                         }
                         
-                        // Validate that all selected services have pricing
-                        const invalidServices = selectedServices.filter(service => (!service.vendorPrice || service.vendorPrice <= 0) && (!service.price || service.price <= 0));
+                        // Validate that all selected services have pricing based on selected pricing model
+                        const invalidServices = selectedServices.filter(svc => {
+                            const model = svc.pricingModel; // 'time_based' | 'fixed_price' | 'per_attendee'
+                            if (model === 'time_based') {
+                                return !(svc.baseRate > 0 && (svc.baseDurationMinutes > 0 || svc.durationMinutes > 0));
+                            } else if (model === 'fixed_price') {
+                                return !(svc.fixedPrice > 0);
+                            } else if (model === 'per_attendee') {
+                                return !(svc.pricePerPerson > 0);
+                            }
+                            // Fallback to legacy checks if model missing
+                            return !((svc.vendorPrice && svc.vendorPrice > 0) || (svc.price && svc.price > 0));
+                        });
                         if (invalidServices.length > 0) {
-                            alert('Please provide pricing for all selected services.');
+                            const names = invalidServices.map(s => s.name || s.serviceName || 'Unnamed Service').join(', ');
+                            alert('Please provide pricing for all selected services. Missing: ' + names);
                             return false;
                         }
                         break;
@@ -14442,14 +14454,47 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         break;
 
                     case 3: // Services & Packages
+                        // Build services array from selectedPredefinedServices with unified pricing fields
+                        const selected = vendorSetupState.selectedPredefinedServices || [];
+                        const servicesMapped = selected.map(s => {
+                            const toNum = v => (v === '' || v === undefined || v === null) ? null : Number(v);
+                            const toInt = v => (v === '' || v === undefined || v === null) ? null : parseInt(v);
+                            const inferredModel = s.pricingModel || (
+                                toNum(s.fixedPrice) > 0 ? 'fixed_price' :
+                                toNum(s.pricePerPerson) > 0 ? 'per_attendee' :
+                                toNum(s.baseRate) > 0 ? 'time_based' : null
+                            );
+                            const baseDuration = toInt(s.baseDurationMinutes) ?? toInt(s.durationMinutes);
+                            const fixedPrice = toNum(s.fixedPrice) ?? toNum(s.price); // map legacy price => fixedPrice when applicable
+                            return {
+                                name: s.name,
+                                description: s.description || s.vendorDescription || null,
+                                categoryName: s.categoryName || s.category || null,
+                                linkedPredefinedServiceId: s.predefinedServiceId || s.id || null,
+                                pricingModel: inferredModel,
+                                baseRate: toNum(s.baseRate),
+                                baseDurationMinutes: baseDuration,
+                                overtimeRatePerHour: toNum(s.overtimeRatePerHour),
+                                minimumBookingFee: toNum(s.minimumBookingFee),
+                                fixedPrice: inferredModel === 'fixed_price' ? fixedPrice : null,
+                                pricePerPerson: inferredModel === 'per_attendee' ? toNum(s.pricePerPerson) : null,
+                                minimumAttendees: toInt(s.minimumAttendees),
+                                maximumAttendees: toInt(s.maximumAttendees),
+                                maxAttendees: toInt(s.maxAttendees),
+                                depositPercentage: toNum(s.depositPercentage) ?? 20,
+                                cancellationPolicy: s.cancellationPolicy || null
+                            };
+                        });
+
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
                             serviceCategories: vendorSetupState.serviceCategories || [],
-                            services: vendorSetupState.services || [],
+                            services: servicesMapped,
                             packages: vendorSetupState.packages || [],
-                            selectedPredefinedServices: vendorSetupState.selectedPredefinedServices || []
+                            selectedPredefinedServices: selected
                         };
-                        endpoint = '/vendors/setup/step3-services';
+                        // Post to step4-services backend which contains pricing model validation and persistence
+                        endpoint = '/vendors/setup/step4-services';
                         break;
 
                     case 4: // Additional Details - Category Questions
