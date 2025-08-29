@@ -12824,76 +12824,60 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <label>Pricing Model *</label>
                                 <select class="vendor-pricing-model">
                                     <option value="time_based" selected>Time-based</option>
-                                    <option value="fixed_based">Fixed-based</option>
+                                    <option value="fixed_price">Fixed Price</option>
+                                    <option value="per_attendee">Per Attendee</option>
                                 </select>
                             </div>
-                            <div class="form-group-inline">
-                                <label>Your Price ($) *</label>
-                                <input type="number" 
-                                       class="vendor-price-input" 
-                                       min="0" 
-                                       step="0.01" 
-                                       placeholder="0.00" 
-                                       required>
-                            </div>
                         </div>
-                        
-                        <!-- Time-based fields -->
+
                         <div class="vendor-time-based" style="margin-top: 0.5rem;">
                             <div class="form-row-inline">
                                 <div class="form-group-inline">
-                                    <label>Base Duration (min)</label>
-                                    <input type="number" class="vendor-duration-input" min="15" step="15" value="${service.defaultDuration || 60}" placeholder="60">
+                                    <label>Base Duration (min) *</label>
+                                    <input type="number" class="vendor-duration-input" min="15" step="15" value="${service.defaultDuration || 60}" placeholder="60" required>
                                 </div>
                                 <div class="form-group-inline">
-                                    <label>Base Rate ($)</label>
-                                    <input type="number" class="vendor-base-rate" min="0" step="0.01" placeholder="0.00">
+                                    <label>Base Rate ($) *</label>
+                                    <input type="number" class="vendor-base-rate" min="0" step="0.01" placeholder="0.00" required>
                                 </div>
                                 <div class="form-group-inline">
-                                    <label>Overtime ($/hr)</label>
-                                    <input type="number" class="vendor-overtime-rate" min="0" step="0.01" placeholder="0.00">
-                                </div>
-                                <div class="form-group-inline">
-                                    <label>Minimum Fee ($)</label>
-                                    <input type="number" class="vendor-min-fee" min="0" step="0.01" placeholder="0.00">
+                                    <label>Overtime ($/hr) *</label>
+                                    <input type="number" class="vendor-overtime-rate" min="0" step="0.01" placeholder="0.00" required>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Fixed-based fields -->
-                        <div class="vendor-fixed-based" style="margin-top: 0.5rem; display: none;">
+
+                        <div class="vendor-fixed-price-section" style="margin-top: 0.5rem; display: none;">
                             <div class="form-row-inline">
                                 <div class="form-group-inline">
-                                    <label>Fixed Pricing Type</label>
-                                    <select class="vendor-fixed-pricing-type">
-                                        <option value="fixed_price" selected>Fixed Price</option>
-                                        <option value="per_attendee">Per Attendee</option>
-                                    </select>
+                                    <label>Price ($) *</label>
+                                    <input type="number" class="vendor-fixed-price-input" min="0" step="0.01" placeholder="0.00" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="vendor-per-attendee-section" style="margin-top: 0.5rem; display: none;">
+                            <div class="form-row-inline">
+                                <div class="form-group-inline">
+                                    <label>Price Per Person ($) *</label>
+                                    <input type="number" class="vendor-price-per-person" min="0" step="0.01" placeholder="0.00" required>
                                 </div>
                                 <div class="form-group-inline">
-                                    <label>Fixed Price ($)</label>
-                                    <input type="number" class="vendor-fixed-price" min="0" step="0.01" placeholder="0.00">
+                                    <label>Min Attendees *</label>
+                                    <input type="number" class="vendor-min-attendees" min="1" step="1" placeholder="1" required>
                                 </div>
                                 <div class="form-group-inline">
-                                    <label>Price Per Person ($)</label>
-                                    <input type="number" class="vendor-price-per-person" min="0" step="0.01" placeholder="0.00">
-                                </div>
-                                <div class="form-group-inline">
-                                    <label>Min Attendees</label>
-                                    <input type="number" class="vendor-min-attendees" min="0" step="1" placeholder="0">
-                                </div>
-                                <div class="form-group-inline">
-                                    <label>Max Attendees</label>
-                                    <input type="number" class="vendor-max-attendees" min="0" step="1" placeholder="0">
+                                    <label>Max Attendees *</label>
+                                    <input type="number" class="vendor-max-attendees" min="1" step="1" placeholder="10" required>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="form-group-inline">
-                            <label>Your Description (optional)</label>
+                            <label>Your Description *</label>
                             <textarea class="vendor-description-input" 
                                       placeholder="Add any specific details about how you provide this service..."
-                                      rows="2"></textarea>
+                                      rows="2" required></textarea>
                         </div>
                     </div>
                 `;
@@ -13024,17 +13008,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 vendorSetupState.selectedPredefinedServices.push(selectedService);
                 
                 // Add event listeners to form inputs
-                const priceInput = card.querySelector('.vendor-price-input');
                 const durationInput = card.querySelector('.vendor-duration-input');
                 const descriptionInput = card.querySelector('.vendor-description-input');
                 const pricingModelSelect = card.querySelector('.vendor-pricing-model');
                 const timeBasedSection = card.querySelector('.vendor-time-based');
-                const fixedBasedSection = card.querySelector('.vendor-fixed-based');
+                // distinct sections for fixed price and per attendee
+                const fixedPriceSection = card.querySelector('.vendor-fixed-price-section');
+                const perAttendeeSection = card.querySelector('.vendor-per-attendee-section');
                 const baseRateInput = card.querySelector('.vendor-base-rate');
                 const overtimeRateInput = card.querySelector('.vendor-overtime-rate');
                 const minFeeInput = card.querySelector('.vendor-min-fee');
-                const fixedTypeSelect = card.querySelector('.vendor-fixed-pricing-type');
-                const fixedPriceInput = card.querySelector('.vendor-fixed-price');
+                // pricing type is determined by pricingModelSelect; there's no separate selector
+                const fixedPriceInput = card.querySelector('.vendor-fixed-price-input');
                 const pppInput = card.querySelector('.vendor-price-per-person');
                 const minAttInput = card.querySelector('.vendor-min-attendees');
                 const maxAttInput = card.querySelector('.vendor-max-attendees');
@@ -13042,14 +13027,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const updateServiceData = () => {
                     const serviceIndex = vendorSetupState.selectedPredefinedServices.findIndex(s => s.id === service.id);
                     if (serviceIndex !== -1) {
-                        const priceValue = parseFloat(priceInput.value) || 0;
+                        // no generic price input in the card; derive price per model
+                        const priceValue = 0;
                         const durationValue = parseInt(durationInput.value) || service.defaultDuration || 60;
                         const descriptionValue = descriptionInput.value.trim();
                         const pricingModelVal = pricingModelSelect?.value || 'time_based';
                         const baseRateVal = baseRateInput ? parseFloat(baseRateInput.value) : null;
                         const overtimeRateVal = overtimeRateInput ? parseFloat(overtimeRateInput.value) : null;
                         const minFeeVal = minFeeInput ? parseFloat(minFeeInput.value) : null;
-                        const fixedTypeVal = fixedTypeSelect?.value || 'fixed_price';
+                        // derive fixedPricingType from pricingModel
+                        const fixedTypeVal = pricingModelVal === 'per_attendee' ? 'per_attendee' : (pricingModelVal === 'fixed_price' ? 'fixed_price' : null);
                         const fixedPriceVal = fixedPriceInput ? parseFloat(fixedPriceInput.value) : null;
                         const pppVal = pppInput ? parseFloat(pppInput.value) : null;
                         const minAttVal = minAttInput ? parseInt(minAttInput.value) : null;
@@ -13074,31 +13061,77 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         vendorSetupState.selectedPredefinedServices[serviceIndex].pricePerPerson = Number.isFinite(pppVal) ? pppVal : null;
                         vendorSetupState.selectedPredefinedServices[serviceIndex].minimumAttendees = Number.isFinite(minAttVal) ? minAttVal : null;
                         vendorSetupState.selectedPredefinedServices[serviceIndex].maximumAttendees = Number.isFinite(maxAttVal) ? maxAttVal : null;
+
+                        // Clear out non-applicable values based on selected pricing model
+                        if (pricingModelVal === 'time_based') {
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].fixedPricingType = null;
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].fixedPrice = null;
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].pricePerPerson = null;
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].minimumAttendees = null;
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].maximumAttendees = null;
+                        } else if (pricingModelVal === 'fixed_price') {
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].pricePerPerson = null;
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].minimumAttendees = null;
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].maximumAttendees = null;
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].baseRate = null;
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].overtimeRatePerHour = null;
+                        } else if (pricingModelVal === 'per_attendee') {
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].fixedPrice = null;
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].baseRate = null;
+                            vendorSetupState.selectedPredefinedServices[serviceIndex].overtimeRatePerHour = null;
+                        }
                         
                         updateSelectedServicesSummary();
                     }
                 };
                 
-                priceInput.addEventListener('input', updateServiceData);
+                // no generic price input to listen to
                 durationInput.addEventListener('input', updateServiceData);
                 descriptionInput.addEventListener('input', updateServiceData);
                 baseRateInput?.addEventListener('input', updateServiceData);
                 overtimeRateInput?.addEventListener('input', updateServiceData);
                 minFeeInput?.addEventListener('input', updateServiceData);
-                fixedTypeSelect?.addEventListener('change', updateServiceData);
                 fixedPriceInput?.addEventListener('input', updateServiceData);
                 pppInput?.addEventListener('input', updateServiceData);
                 minAttInput?.addEventListener('input', updateServiceData);
                 maxAttInput?.addEventListener('input', updateServiceData);
+                const setRequired = (el, req) => { if (el) el.required = !!req; };
+                const togglePricingSections = (val) => {
+                    // Show/hide containers
+                    if (timeBasedSection) timeBasedSection.style.display = (val === 'time_based') ? '' : 'none';
+                    if (fixedPriceSection) fixedPriceSection.style.display = (val === 'fixed_price') ? '' : 'none';
+                    if (perAttendeeSection) perAttendeeSection.style.display = (val === 'per_attendee') ? '' : 'none';
+                    // Toggle required attributes
+                    setRequired(baseRateInput, val === 'time_based');
+                    setRequired(overtimeRateInput, val === 'time_based');
+                    setRequired(durationInput, val === 'time_based');
+                    setRequired(fixedPriceInput, val === 'fixed_price');
+                    setRequired(pppInput, val === 'per_attendee');
+                    setRequired(minAttInput, val === 'per_attendee');
+                    setRequired(maxAttInput, val === 'per_attendee');
+                    // Clear values for now-hidden sections to avoid shared/lingering values
+                    if (val === 'time_based') {
+                        if (fixedPriceInput) fixedPriceInput.value = '';
+                        if (pppInput) pppInput.value = '';
+                        if (minAttInput) minAttInput.value = '';
+                        if (maxAttInput) maxAttInput.value = '';
+                    } else if (val === 'fixed_price') {
+                        if (baseRateInput) baseRateInput.value = '';
+                        if (overtimeRateInput) overtimeRateInput.value = '';
+                        if (pppInput) pppInput.value = '';
+                        if (minAttInput) minAttInput.value = '';
+                        if (maxAttInput) maxAttInput.value = '';
+                    } else if (val === 'per_attendee') {
+                        if (baseRateInput) baseRateInput.value = '';
+                        if (overtimeRateInput) overtimeRateInput.value = '';
+                        if (fixedPriceInput) fixedPriceInput.value = '';
+                    }
+                };
+                // initialize state
+                togglePricingSections(pricingModelSelect?.value || 'time_based');
                 pricingModelSelect?.addEventListener('change', (e) => {
                     const val = e.target.value;
-                    if (val === 'time_based') {
-                        timeBasedSection.style.display = '';
-                        fixedBasedSection.style.display = 'none';
-                    } else {
-                        timeBasedSection.style.display = 'none';
-                        fixedBasedSection.style.display = '';
-                    }
+                    togglePricingSections(val);
                     updateServiceData();
                 });
             }
@@ -13132,10 +13165,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         <div>
                             <div style="font-weight: 500; margin-bottom: 0.25rem;">${service.name}</div>
                             <div style="font-size: 0.85rem; color: var(--text-light);">
-                                ${service.pricingModel === 'fixed_based' 
-                                    ? (service.fixedPricingType === 'per_attendee' 
-                                        ? `$${service.pricePerPerson || 0}/person` 
-                                        : `$${service.fixedPrice || service.vendorPrice || 0} fixed`) 
+                                ${service.pricingModel === 'fixed_price' || service.pricingModel === 'per_attendee'
+                                    ? (service.pricingModel === 'per_attendee'
+                                        ? `$${service.pricePerPerson || 0}/person`
+                                        : `$${service.fixedPrice || service.vendorPrice || 0} fixed`)
                                     : `$${service.baseRate || service.vendorPrice || 0} for ${service.vendorDuration || service.baseDurationMinutes || service.defaultDuration || 60} min`}
                                 ${service.vendorDescription ? ` • ${service.vendorDescription}` : ''}
                             </div>
