@@ -98,7 +98,6 @@ async function resolveVendorProfileId(id, pool) {
 router.get('/predefined-services', async (req, res) => {
   try {
     const pool = await poolPromise;
-    
     // First check if table exists
     const checkTableRequest = new sql.Request(pool);
     const tableCheckResult = await checkTableRequest.query(`
@@ -1901,9 +1900,22 @@ router.post('/setup/step4-services', async (req, res) => {
         serviceRequest.input('CategoryID', sql.Int, categoryId);
         serviceRequest.input('Name', sql.NVarChar, service.name);
         serviceRequest.input('Description', sql.NVarChar, service.description || null);
-        // Unified pricing model inputs
-        const pricingModel = service.pricingModel || null; // 'time_based' | 'fixed_based'
-        const fixedPricingType = service.fixedPricingType || null; // 'fixed_price' | 'per_attendee'
+        // Normalize and map pricing model from UI to stored procedure expectations
+        const rawModel = service.pricingModel; // 'time_based' | 'fixed_price' | 'per_attendee' from UI
+        let pricingModel = null; // 'time_based' | 'fixed_based'
+        let fixedPricingType = null; // 'fixed_price' | 'per_attendee'
+        if (rawModel === 'time_based') {
+          pricingModel = 'time_based';
+        } else if (rawModel === 'fixed_price') {
+          pricingModel = 'fixed_based';
+          fixedPricingType = 'fixed_price';
+        } else if (rawModel === 'per_attendee') {
+          pricingModel = 'fixed_based';
+          fixedPricingType = 'per_attendee';
+        } else {
+          pricingModel = service.pricingModel || null;
+          fixedPricingType = service.fixedPricingType || null;
+        }
         const baseRate = service.baseRate != null ? parseFloat(service.baseRate) : null;
         const baseDurationMinutes = service.baseDurationMinutes != null ? parseInt(service.baseDurationMinutes) : (service.durationMinutes || null);
         const overtimeRatePerHour = service.overtimeRatePerHour != null ? parseFloat(service.overtimeRatePerHour) : null;
@@ -1912,6 +1924,58 @@ router.post('/setup/step4-services', async (req, res) => {
         const pricePerPerson = service.pricePerPerson != null ? parseFloat(service.pricePerPerson) : null;
         const minimumAttendees = service.minimumAttendees != null ? parseInt(service.minimumAttendees) : null;
         const maximumAttendees = service.maximumAttendees != null ? parseInt(service.maximumAttendees) : null;
+
+        // Validation: ensure required pricing fields are provided per pricing model
+        if (!pricingModel) {
+          return res.status(400).json({
+            success: false,
+            message: `Service validation failed: pricingModel is required for service '${service.name || ''}'.`
+          });
+        }
+        if (pricingModel === 'time_based') {
+          if (baseRate == null || baseDurationMinutes == null) {
+            return res.status(400).json({
+              success: false,
+              message: `Time-based service '${service.name || ''}' requires baseRate and baseDurationMinutes.`
+            });
+          }
+        } else if (pricingModel === 'fixed_based') {
+          if (fixedPricingType === 'fixed_price') {
+            if (fixedPrice == null) {
+              return res.status(400).json({
+                success: false,
+                message: `Fixed-price service '${service.name || ''}' requires fixedPrice.`
+              });
+            }
+          } else if (fixedPricingType === 'per_attendee') {
+            if (pricePerPerson == null) {
+              return res.status(400).json({
+                success: false,
+                message: `Per-attendee service '${service.name || ''}' requires pricePerPerson.`
+              });
+            }
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: `Fixed-based service '${service.name || ''}' requires fixedPricingType of 'fixed_price' or 'per_attendee'.`
+            });
+          }
+        }
+
+        console.log('Upserting service', {
+          vendorProfileId,
+          name: service.name,
+          pricingModel,
+          fixedPricingType,
+          baseRate,
+          baseDurationMinutes,
+          overtimeRatePerHour,
+          minimumBookingFee,
+          fixedPrice,
+          pricePerPerson,
+          minimumAttendees,
+          maximumAttendees
+        });
 
         // Backward compatible legacy fields
         const legacyPrice = service.price != null ? parseFloat(service.price) : null;
@@ -1938,7 +2002,15 @@ router.post('/setup/step4-services', async (req, res) => {
         serviceRequest.input('MaximumAttendees', sql.Int, maximumAttendees);
 
         // Use unified upsert stored procedure
-        await serviceRequest.execute('dbo.sp_UpsertVendorService');
+        try {
+          await serviceRequest.execute('dbo.sp_UpsertVendorService');
+        } catch (spErr) {
+          console.error('sp_UpsertVendorService error:', spErr);
+          return res.status(400).json({
+            success: false,
+            message: `Failed to save service '${service.name || ''}': ${spErr.message}`
+          });
+        }
       }
     }
     
@@ -3118,154 +3190,13 @@ router.post('/setup/step2-location', async (req, res) => {
 // Step 3: Services & Packages
 router.post('/setup/step3-services', async (req, res) => {
   try {
-    const { vendorProfileId, serviceCategories, services, packages, selectedPredefinedServices } = req.body;
-
-    if (!vendorProfileId) {
-      return res.status(400).json({ success: false, message: 'Vendor profile ID is required' });
-    }
-
-    const pool = await poolPromise;
-    
-    // Handle services if provided
-    if (services && services.length > 0) {
-      for (const service of services) {
-        const request = new sql.Request(pool);
-        request.input('VendorProfileID', sql.Int, vendorProfileId);
-        request.input('Name', sql.NVarChar(255), service.name);
-        request.input('Description', sql.NVarChar(sql.MAX), service.description);
-        request.input('Price', sql.Decimal(10, 2), service.price);
-        request.input('DurationMinutes', sql.Int, service.duration || 60);
-        
-        // Handle CategoryID - use first available category or create default
-        let categoryId = null;
-        if (service.categoryName) {
-          const categoryRequest = new sql.Request(pool);
-          categoryRequest.input('CategoryName', sql.NVarChar(255), service.categoryName);
-          const categoryResult = await categoryRequest.query(`
-            SELECT CategoryID FROM ServiceCategories WHERE CategoryName = @CategoryName
-          `);
-          if (categoryResult.recordset.length > 0) {
-            categoryId = categoryResult.recordset[0].CategoryID;
-          }
-        }
-        
-        // If no categoryId found, use first available or create default
-        if (!categoryId) {
-          const defaultCategoryRequest = new sql.Request(pool);
-          const defaultCategoryResult = await defaultCategoryRequest.query(`
-            SELECT TOP 1 CategoryID FROM ServiceCategories ORDER BY CategoryID
-          `);
-          if (defaultCategoryResult.recordset.length > 0) {
-            categoryId = defaultCategoryResult.recordset[0].CategoryID;
-          } else {
-            // Create default category
-            const createCategoryRequest = new sql.Request(pool);
-            createCategoryRequest.input('CategoryName', sql.NVarChar(255), 'General Services');
-            createCategoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-            await createCategoryRequest.query(`
-              INSERT INTO ServiceCategories (VendorProfileID, Name, Description, DisplayOrder, CreatedAt, UpdatedAt)
-              VALUES (@VendorProfileID, @CategoryName, 'General services category', 0, GETUTCDATE(), GETUTCDATE())
-            `);
-            const newCategoryResult = await createCategoryRequest.query(`
-              SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID AND Name = @CategoryName
-            `);
-            categoryId = newCategoryResult.recordset[0].CategoryID;
-          }
-        }
-        
-        request.input('CategoryID', sql.Int, categoryId);
-        
-        await request.query(`
-          INSERT INTO Services (VendorProfileID, CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID, IsActive, CreatedAt, UpdatedAt)
-          VALUES (@VendorProfileID, @CategoryID, @Name, @Description, @Price, @DurationMinutes, NULL, 20.00, NULL, NULL, 1, GETUTCDATE(), GETUTCDATE())
-        `);
-      }
-    }
-    
-    // Handle selected predefined services
-    if (selectedPredefinedServices && selectedPredefinedServices.length > 0) {
-      // First, delete existing selected predefined services for this vendor
-      const deleteSelectedRequest = new sql.Request(pool);
-      deleteSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteSelectedRequest.query(`
-        DELETE FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID
-      `);
-
-      // Insert new selected predefined services
-      for (const selectedService of selectedPredefinedServices) {
-        // First, get the predefined service details
-        const predefinedServiceRequest = new sql.Request(pool);
-        predefinedServiceRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
-        const predefinedServiceResult = await predefinedServiceRequest.query(`
-          SELECT ServiceName, ServiceDescription FROM PredefinedServices WHERE PredefinedServiceID = @PredefinedServiceID
-        `);
-        
-        if (predefinedServiceResult.recordset.length > 0) {
-          const predefinedService = predefinedServiceResult.recordset[0];
-          
-          // Insert into VendorSelectedServices table
-          const insertSelectedRequest = new sql.Request(pool);
-          insertSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          insertSelectedRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
-          insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
-          insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
-          insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
-          
-          await insertSelectedRequest.query(`
-            INSERT INTO VendorSelectedServices 
-            (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, CreatedAt)
-            VALUES 
-            (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, GETDATE())
-          `);
-          
-          // ALSO INSERT INTO SERVICES TABLE
-          // Get or create a category for predefined services
-          let predefinedCategoryId = null;
-          const categoryCheckRequest = new sql.Request(pool);
-          categoryCheckRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          categoryCheckRequest.input('CategoryName', sql.NVarChar(255), 'Predefined Services');
-          
-          const categoryCheckResult = await categoryCheckRequest.query(`
-            SELECT CategoryID FROM ServiceCategories 
-            WHERE VendorProfileID = @VendorProfileID AND Name = @CategoryName
-          `);
-          
-          if (categoryCheckResult.recordset.length > 0) {
-            predefinedCategoryId = categoryCheckResult.recordset[0].CategoryID;
-          } else {
-            // Create predefined services category
-            await categoryCheckRequest.query(`
-              INSERT INTO ServiceCategories (VendorProfileID, Name, Description, DisplayOrder, CreatedAt, UpdatedAt)
-              VALUES (@VendorProfileID, @CategoryName, 'Services selected from predefined options', 1, GETUTCDATE(), GETUTCDATE())
-            `);
-            
-            const newCategoryResult = await categoryCheckRequest.query(`
-              SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID AND Name = @CategoryName
-            `);
-            predefinedCategoryId = newCategoryResult.recordset[0].CategoryID;
-          }
-          
-          // Insert into Services table
-          const serviceInsertRequest = new sql.Request(pool);
-          serviceInsertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          serviceInsertRequest.input('CategoryID', sql.Int, predefinedCategoryId);
-          serviceInsertRequest.input('Name', sql.NVarChar(100), predefinedService.ServiceName);
-          serviceInsertRequest.input('Description', sql.NVarChar(500), selectedService.description || predefinedService.ServiceDescription);
-          serviceInsertRequest.input('Price', sql.Decimal(10, 2), selectedService.price);
-          serviceInsertRequest.input('DurationMinutes', sql.Int, selectedService.durationMinutes || 60);
-          serviceInsertRequest.input('LinkedPredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
-          
-          await serviceInsertRequest.query(`
-            INSERT INTO Services (VendorProfileID, CategoryID, Name, Description, Price, DurationMinutes, MaxAttendees, DepositPercentage, CancellationPolicy, LinkedPredefinedServiceID, IsActive, CreatedAt, UpdatedAt)
-            VALUES (@VendorProfileID, @CategoryID, @Name, @Description, @Price, @DurationMinutes, NULL, 20.00, NULL, @LinkedPredefinedServiceID, 1, GETUTCDATE(), GETUTCDATE())
-          `);
-        }
-      }
-    }
-
-    res.json({ success: true, message: 'Services and packages saved successfully' });
+    // Deprecate this endpoint in favor of step4-services which contains pricing model validation and SP upsert
+    return res.status(410).json({
+      success: false,
+      message: 'This endpoint is deprecated. Please POST to /vendors/setup/step4-services for Services & Packages with pricing models.'
+    });
   } catch (error) {
-    console.error('Error in step4-services:', error);
+    console.error('Error in step3-services (deprecated):', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
