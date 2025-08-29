@@ -3187,17 +3187,6 @@ router.post('/setup/step2-location', async (req, res) => {
   }
 });
 
-// Step 4: Services & Packages (alias for backward compatibility)
-router.post('/setup/step4-services', async (req, res) => {
-  try {
-    // 307 preserves method and body; forward old Step 4 callers to Step 3
-    return res.redirect(307, '/vendors/setup/step3-services');
-  } catch (error) {
-    console.error('Error in step4-services alias:', error);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-});
-
 // Step 4: Additional Details
 router.post('/setup/step4-additional-details', async (req, res) => {
   try {
