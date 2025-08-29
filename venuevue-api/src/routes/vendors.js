@@ -1714,40 +1714,75 @@ router.post('/search-by-services', async (req, res) => {
         }
       }
 
-      // Parse services JSON if it exists
+      // Parse services JSON if it exists (support multiple possible column aliases)
       let services = [];
-      if (vendor.services) {
+      const rawServicesJson = vendor.services || vendor.Services || vendor.ServicesJson || vendor.ServiceJson || vendor.ServiceJSON || vendor.ServiceDetails || vendor.ServiceDetailsJson || vendor.ServiceDetailsJSON;
+      if (rawServicesJson) {
         try {
-          const servicesData = JSON.parse(vendor.services);
-          // Flatten category -> services while enriching with unified pricing fields
-          services = servicesData.flatMap(category =>
-            (category.services || []).map(service => ({
-              // Legacy fields for backward compatibility
-              ServiceName: service.name,
-              Category: category.category,
-              VendorPrice: service.Price,
-              VendorDescription: service.description,
-              VendorDurationMinutes: service.DurationMinutes,
+          const parsed = typeof rawServicesJson === 'string' ? JSON.parse(rawServicesJson) : rawServicesJson;
+          const servicesData = (parsed && parsed.services && Array.isArray(parsed.services)) ? parsed.services : parsed;
 
-              // Unified pricing fields from Services table (if present in SP JSON)
-              pricingModel: service.PricingModel || null,                 // 'time_based' | 'fixed_based'
-              fixedPricingType: service.FixedPricingType || null,         // 'fixed_price' | 'per_attendee'
-              baseRate: service.BaseRate != null ? Number(service.BaseRate) : null,
-              baseDurationMinutes: service.BaseDurationMinutes != null ? Number(service.BaseDurationMinutes) : null,
-              overtimeRatePerHour: service.OvertimeRatePerHour != null ? Number(service.OvertimeRatePerHour) : null,
-              minimumBookingFee: service.MinimumBookingFee != null ? Number(service.MinimumBookingFee) : null,
-              fixedPrice: service.FixedPrice != null ? Number(service.FixedPrice) : null,
-              pricePerPerson: service.PricePerPerson != null ? Number(service.PricePerPerson) : null,
-              minimumAttendees: service.MinimumAttendees != null ? Number(service.MinimumAttendees) : null,
-              maximumAttendees: service.MaximumAttendees != null ? Number(service.MaximumAttendees) : null,
+          if (Array.isArray(servicesData) && servicesData.length > 0) {
+            // Case A: flat array of service objects (returned by sp_SearchVendorsByPredefinedServices)
+            if (!servicesData[0].services) {
+              services = servicesData.map(service => ({
+                // Legacy fields for backward compatibility
+                ServiceName: service.name || service.ServiceName,
+                Category: service.Category,
+                VendorPrice: service.Price,
+                VendorDescription: service.description || service.VendorDescription,
+                VendorDurationMinutes: service.DurationMinutes || service.VendorDurationMinutes,
 
-              // Also expose generic names used by some frontend code paths
-              name: service.name,
-              Price: service.Price,
-              description: service.description,
-              DurationMinutes: service.DurationMinutes
-            }))
-          );
+                // Unified pricing fields
+                pricingModel: service.PricingModel || service.pricingModel || null,
+                fixedPricingType: service.FixedPricingType || service.fixedPricingType || null,
+                baseRate: service.BaseRate != null ? Number(service.BaseRate) : (service.baseRate != null ? Number(service.baseRate) : null),
+                baseDurationMinutes: service.BaseDurationMinutes != null ? Number(service.BaseDurationMinutes) : (service.baseDurationMinutes != null ? Number(service.baseDurationMinutes) : null),
+                overtimeRatePerHour: service.OvertimeRatePerHour != null ? Number(service.OvertimeRatePerHour) : (service.overtimeRatePerHour != null ? Number(service.overtimeRatePerHour) : null),
+                minimumBookingFee: service.MinimumBookingFee != null ? Number(service.MinimumBookingFee) : (service.minimumBookingFee != null ? Number(service.minimumBookingFee) : null),
+                fixedPrice: service.FixedPrice != null ? Number(service.FixedPrice) : (service.fixedPrice != null ? Number(service.fixedPrice) : null),
+                pricePerPerson: service.PricePerPerson != null ? Number(service.PricePerPerson) : (service.pricePerPerson != null ? Number(service.pricePerPerson) : null),
+                minimumAttendees: service.MinimumAttendees != null ? Number(service.MinimumAttendees) : (service.minimumAttendees != null ? Number(service.minimumAttendees) : null),
+                maximumAttendees: service.MaximumAttendees != null ? Number(service.MaximumAttendees) : (service.maximumAttendees != null ? Number(service.maximumAttendees) : null),
+
+                // Also expose generic names used by some frontend code paths
+                name: service.name || service.ServiceName,
+                Price: service.Price,
+                description: service.description || service.VendorDescription,
+                DurationMinutes: service.DurationMinutes || service.VendorDurationMinutes
+              }));
+            } else {
+              // Case B: array of categories with nested services
+              services = servicesData.flatMap(category =>
+                (category.services || []).map(service => ({
+                  // Legacy fields for backward compatibility
+                  ServiceName: service.name,
+                  Category: category.category,
+                  VendorPrice: service.Price,
+                  VendorDescription: service.description,
+                  VendorDurationMinutes: service.DurationMinutes,
+
+                  // Unified pricing fields from Services table (if present in SP JSON)
+                  pricingModel: service.PricingModel || null,                 // 'time_based' | 'fixed_based'
+                  fixedPricingType: service.FixedPricingType || null,         // 'fixed_price' | 'per_attendee'
+                  baseRate: service.BaseRate != null ? Number(service.BaseRate) : null,
+                  baseDurationMinutes: service.BaseDurationMinutes != null ? Number(service.BaseDurationMinutes) : null,
+                  overtimeRatePerHour: service.OvertimeRatePerHour != null ? Number(service.OvertimeRatePerHour) : null,
+                  minimumBookingFee: service.MinimumBookingFee != null ? Number(service.MinimumBookingFee) : null,
+                  fixedPrice: service.FixedPrice != null ? Number(service.FixedPrice) : null,
+                  pricePerPerson: service.PricePerPerson != null ? Number(service.PricePerPerson) : null,
+                  minimumAttendees: service.MinimumAttendees != null ? Number(service.MinimumAttendees) : null,
+                  maximumAttendees: service.MaximumAttendees != null ? Number(service.MaximumAttendees) : null,
+
+                  // Also expose generic names used by some frontend code paths
+                  name: service.name,
+                  Price: service.Price,
+                  description: service.description,
+                  DurationMinutes: service.DurationMinutes
+                }))
+              );
+            }
+          }
         } catch (e) {
           console.warn('Failed to parse services JSON for vendor:', vendor.id, e);
         }
@@ -1766,7 +1801,7 @@ router.post('/search-by-services', async (req, res) => {
         IsAwardWinning: vendor.IsAwardWinning,
         FeaturedImageURL: vendor.image,
         MatchingServices: vendor.CategoryMatchCount || 1,
-        MatchingServiceNames: services.map(s => s.ServiceName).join(', '),
+        MatchingServiceNames: vendor.MatchingServiceNames || services.map(s => s.ServiceName).join(', '),
         VendorImages: vendorImages, // Include parsed VendorImages
         services: services,
         totalEstimatedCost: vendor.TotalEstimatedPrice || services.reduce((sum, service) => sum + (service.VendorPrice || 0), 0)
