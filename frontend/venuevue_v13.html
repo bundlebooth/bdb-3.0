@@ -21813,6 +21813,48 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             isRenderingVendorCards = false;
         }
 
+        // Helper: format unified pricing label for a service
+        function formatUnifiedServicePrice(service) {
+            if (!service) return '';
+            const pm = service.pricingModel || service.PricingModel;
+            const fpt = service.fixedPricingType || service.FixedPricingType;
+            const baseRate = service.baseRate ?? service.BaseRate;
+            const baseDur = service.baseDurationMinutes ?? service.BaseDurationMinutes;
+            const ot = service.overtimeRatePerHour ?? service.OvertimeRatePerHour;
+            const minFee = service.minimumBookingFee ?? service.MinimumBookingFee;
+            const fixedPrice = service.fixedPrice ?? service.FixedPrice;
+            const ppp = service.pricePerPerson ?? service.PricePerPerson;
+            const minA = service.minimumAttendees ?? service.MinimumAttendees;
+            const maxA = service.maximumAttendees ?? service.MaximumAttendees;
+
+            const fmtMoney = (v) => (v == null || isNaN(v)) ? '' : `$${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+            const minsToH = (m) => (m && !isNaN(m)) ? `${m} min` : '';
+
+            if (pm === 'time_based') {
+                let parts = [];
+                if (baseRate != null && baseDur != null) parts.push(`${fmtMoney(baseRate)} • ${minsToH(baseDur)}`);
+                if (ot != null) parts.push(`OT ${fmtMoney(ot)}/hr`);
+                if (minFee != null && Number(minFee) > 0) parts.push(`Min ${fmtMoney(minFee)}`);
+                return parts.join(' · ');
+            }
+
+            if (pm === 'fixed_based') {
+                if (fpt === 'fixed_price') {
+                    return fixedPrice != null ? `${fmtMoney(fixedPrice)} fixed` : '';
+                }
+                if (fpt === 'per_attendee') {
+                    let label = ppp != null ? `${fmtMoney(ppp)}/person` : '';
+                    const range = [minA, maxA].filter(v => v != null).map(v => Number(v)).join('-');
+                    if (range) label += ` • ${range} ppl`;
+                    return label;
+                }
+            }
+
+            // Fallback to legacy VendorPrice/Price
+            const legacy = service.VendorPrice ?? service.Price;
+            return legacy != null ? fmtMoney(legacy) : '';
+        }
+
         // Create horizontal vendor card HTML
         function createHorizontalVendorCard(vendor) {
             console.log('Creating vendor card for:', vendor);
@@ -21950,19 +21992,40 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 </div>
             `;
 
-            // Build service details chip row from available service names
+            // Build detailed service chips with pricing and attributes (show up to 3)
             let serviceDetails = '';
-            let totalCost = 0;
-            let priceRange = '$$$';
-            const displayServiceName = Array.isArray(serviceNames) && serviceNames.length > 0 ? serviceNames[0] : '';
-            const secondaryServices = Array.isArray(serviceNames) && serviceNames.length > 1 ? serviceNames.slice(1, 3).join(' • ') : '';
-            if (displayServiceName) {
-                serviceDetails = `
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; font-size: 0.85rem;">
-                        <span style="color: #10b981; font-weight: 600;">${displayServiceName}</span>
-                        ${secondaryServices ? `<span style=\"color: #6b7280;\">•</span><span style=\"color: #6b7280;\">${secondaryServices}</span>` : ''}
-                    </div>
-                `;
+            const svcArray = Array.isArray(vendor.services) ? vendor.services : [];
+            if (svcArray.length > 0) {
+                const chips = svcArray.slice(0, 3).map(svc => {
+                    const name = svc.ServiceName || svc.name || 'Service';
+                    const priceLabel = formatUnifiedServicePrice(svc);
+                    const dur = svc.baseDurationMinutes ?? svc.BaseDurationMinutes ?? svc.VendorDurationMinutes ?? svc.DurationMinutes;
+                    const minA = svc.minimumAttendees ?? svc.MinimumAttendees;
+                    const maxA = svc.maximumAttendees ?? svc.MaximumAttendees;
+                    const attendance = (minA != null || maxA != null) ? `${minA ?? ''}${(minA!=null&&maxA!=null)?'-':''}${maxA ?? ''} ppl` : '';
+                    const meta = [dur ? `${dur} min` : '', attendance].filter(Boolean).join(' · ');
+                    return `
+                        <div style="display:flex; flex-direction:column; gap:2px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:8px; background:#fafafa;">
+                            <div style="display:flex; gap:6px; align-items:center; font-size:0.85rem;">
+                                <span style="color:#10b981; font-weight:600;">${name}</span>
+                                ${priceLabel ? `<span style=\"color:#111827; font-weight:600;\">${priceLabel}</span>` : ''}
+                            </div>
+                            ${meta ? `<div style=\"font-size:0.75rem; color:#6b7280;\">${meta}</div>` : ''}
+                        </div>`;
+                }).join('');
+                serviceDetails = `<div style="display:grid; grid-template-columns:repeat(1, minmax(0,1fr)); gap:6px;">${chips}</div>`;
+            } else {
+                // Fallback to names if no detailed services present
+                const displayServiceName = Array.isArray(serviceNames) && serviceNames.length > 0 ? serviceNames[0] : '';
+                const secondaryServices = Array.isArray(serviceNames) && serviceNames.length > 1 ? serviceNames.slice(1, 3).join(' • ') : '';
+                if (displayServiceName) {
+                    serviceDetails = `
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; font-size: 0.85rem;">
+                            <span style="color: #10b981; font-weight: 600;">${displayServiceName}</span>
+                            ${secondaryServices ? `<span style=\"color: #6b7280;\">•</span><span style=\"color: #6b7280;\">${secondaryServices}</span>` : ''}
+                        </div>
+                    `;
+                }
             }
             
 
@@ -22213,8 +22276,26 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     };
                 }
 
-                const serviceName = selService?.ServiceName || 'Selected Service';
-                const servicePrice = selService?.VendorPrice ?? vendor.totalEstimatedCost ?? 0;
+                const serviceName = selService?.ServiceName || selService?.name || 'Selected Service';
+                const servicePrice = selService?.VendorPrice ?? selService?.Price ?? vendor.totalEstimatedCost ?? 0;
+
+                // Build detailed service payload for booking
+                const detailed = selService ? {
+                    serviceName: selService.ServiceName || selService.name,
+                    category: selService.Category || selService.category,
+                    pricingModel: selService.pricingModel || selService.PricingModel || null,
+                    fixedPricingType: selService.fixedPricingType || selService.FixedPricingType || null,
+                    baseRate: selService.baseRate ?? selService.BaseRate ?? null,
+                    baseDurationMinutes: selService.baseDurationMinutes ?? selService.BaseDurationMinutes ?? selService.VendorDurationMinutes ?? selService.DurationMinutes ?? null,
+                    overtimeRatePerHour: selService.overtimeRatePerHour ?? selService.OvertimeRatePerHour ?? null,
+                    minimumBookingFee: selService.minimumBookingFee ?? selService.MinimumBookingFee ?? null,
+                    fixedPrice: selService.fixedPrice ?? selService.FixedPrice ?? null,
+                    pricePerPerson: selService.pricePerPerson ?? selService.PricePerPerson ?? null,
+                    minimumAttendees: selService.minimumAttendees ?? selService.MinimumAttendees ?? null,
+                    maximumAttendees: selService.maximumAttendees ?? selService.MaximumAttendees ?? null,
+                    description: selService.VendorDescription || selService.description || null,
+                    vendorPrice: servicePrice
+                } : undefined;
 
                 selectedVendors.push({
                     vendorId: vendorProfileId,
@@ -22222,6 +22303,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     serviceName: serviceName,
                     servicePrice: servicePrice,
                     selectedService: selService || undefined,
+                    selectedServiceDetailed: detailed,
+                    availableServices: Array.isArray(vendor.services) ? vendor.services : undefined,
                     vendorData: vendor
                 });
                 console.log('🔘 Vendor added to selection');
