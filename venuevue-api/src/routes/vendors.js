@@ -1719,14 +1719,34 @@ router.post('/search-by-services', async (req, res) => {
       if (vendor.services) {
         try {
           const servicesData = JSON.parse(vendor.services);
-          services = servicesData.flatMap(category => 
-            category.services?.map(service => ({
+          // Flatten category -> services while enriching with unified pricing fields
+          services = servicesData.flatMap(category =>
+            (category.services || []).map(service => ({
+              // Legacy fields for backward compatibility
               ServiceName: service.name,
               Category: category.category,
               VendorPrice: service.Price,
               VendorDescription: service.description,
-              VendorDurationMinutes: service.DurationMinutes
-            })) || []
+              VendorDurationMinutes: service.DurationMinutes,
+
+              // Unified pricing fields from Services table (if present in SP JSON)
+              pricingModel: service.PricingModel || null,                 // 'time_based' | 'fixed_based'
+              fixedPricingType: service.FixedPricingType || null,         // 'fixed_price' | 'per_attendee'
+              baseRate: service.BaseRate != null ? Number(service.BaseRate) : null,
+              baseDurationMinutes: service.BaseDurationMinutes != null ? Number(service.BaseDurationMinutes) : null,
+              overtimeRatePerHour: service.OvertimeRatePerHour != null ? Number(service.OvertimeRatePerHour) : null,
+              minimumBookingFee: service.MinimumBookingFee != null ? Number(service.MinimumBookingFee) : null,
+              fixedPrice: service.FixedPrice != null ? Number(service.FixedPrice) : null,
+              pricePerPerson: service.PricePerPerson != null ? Number(service.PricePerPerson) : null,
+              minimumAttendees: service.MinimumAttendees != null ? Number(service.MinimumAttendees) : null,
+              maximumAttendees: service.MaximumAttendees != null ? Number(service.MaximumAttendees) : null,
+
+              // Also expose generic names used by some frontend code paths
+              name: service.name,
+              Price: service.Price,
+              description: service.description,
+              DurationMinutes: service.DurationMinutes
+            }))
           );
         } catch (e) {
           console.warn('Failed to parse services JSON for vendor:', vendor.id, e);
