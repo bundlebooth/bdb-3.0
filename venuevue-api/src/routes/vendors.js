@@ -1834,8 +1834,8 @@ router.get('/:id/selected-services', async (req, res) => {
   }
 });
 
-// Step 4: Services & Packages
-router.post('/setup/step4-services', async (req, res) => {
+// Step 3: Services & Packages
+router.post('/setup/step3-services', async (req, res) => {
   try {
     const {
       vendorProfileId,
@@ -2063,12 +2063,12 @@ router.post('/setup/step4-services', async (req, res) => {
     res.json({
       success: true,
       message: 'Services and packages saved successfully',
-      step: 4,
-      nextStep: 5
+      step: 3,
+      nextStep: 4
     });
     
   } catch (err) {
-    console.error('Step 4 setup error:', err);
+    console.error('Step 3 setup error:', err);
     res.status(500).json({
       success: false,
       message: 'Failed to save services and packages',
@@ -3187,14 +3187,13 @@ router.post('/setup/step2-location', async (req, res) => {
   }
 });
 
-// Step 3: Services & Packages
-router.post('/setup/step3-services', async (req, res) => {
+// Step 4: Services & Packages (alias for backward compatibility)
+router.post('/setup/step4-services', async (req, res) => {
   try {
-    // Forward Step 3 to Step 4 implementation to keep URL consistent with UI while reusing logic
-    // 307 preserves the HTTP method and body for POST
-    return res.redirect(307, '/vendors/setup/step4-services');
+    // 307 preserves method and body; forward old Step 4 callers to Step 3
+    return res.redirect(307, '/vendors/setup/step3-services');
   } catch (error) {
-    console.error('Error in step3-services (deprecated):', error);
+    console.error('Error in step4-services alias:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
