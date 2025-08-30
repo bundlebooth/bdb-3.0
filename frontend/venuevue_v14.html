@@ -13,6 +13,9 @@
     <!-- Add FullCalendar for booking dates -->
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+    <!-- Flatpickr for modern date picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <!-- Add Socket.IO for chat functionality -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <!-- Add Chart.js for analytics graphs -->
@@ -4550,13 +4553,12 @@
                 <div class="booking-progress" style="margin-bottom: 2rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
                         <span class="step-indicator active" id="booking-step-indicator-1">1: Services</span>
-                        <span class="step-indicator" id="booking-step-indicator-2">2: Event Details</span>
-                        <span class="step-indicator" id="booking-step-indicator-3">3: Services</span>
-                        <span class="step-indicator" id="booking-step-indicator-4">4: Vendors</span>
-                        <span class="step-indicator" id="booking-step-indicator-5">5: Requests</span>
+                        <span class="step-indicator" id="booking-step-indicator-2">2: Details</span>
+                        <span class="step-indicator" id="booking-step-indicator-3">3: Vendors</span>
+                        <span class="step-indicator" id="booking-step-indicator-4">4: Requests</span>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill" id="booking-progress-fill" style="width: 20%;"></div>
+                        <div class="progress-fill" id="booking-progress-fill" style="width: 25%;"></div>
                     </div>
                 </div>
 
@@ -4581,55 +4583,61 @@
                 <!-- Step 2: Event Details -->
                 <div class="booking-step" id="booking-step-2" style="display: none;">
                     <h4 class="form-section-title">Event Details</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Enter your event details. You can select services in the next step.</p>
-                    
-                    <!-- Event Details -->
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Enter your event information. You will select services in the next step.</p>
+
                     <div class="form-group" style="margin-bottom: 2rem;">
                         <h5 style="margin-bottom: 1rem; color: var(--primary-color);"><i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>Event Details</h5>
-                        
-                        <div class="form-row" style="align-items: flex-start; gap: 1.5rem;">
-                            <!-- Left: Inline calendar (date only) -->
-                            <div class="form-col" style="flex: 1 1 55%; min-width: 280px;">
+
+                        <div class="form-row">
+                            <div class="form-col">
                                 <div class="form-group">
                                     <label for="event-date">Event Date *</label>
-                                    <input type="text" id="event-date" required>
+                                    <input type="text" id="event-date" placeholder="Select date" required>
                                 </div>
                             </div>
-                            <!-- Right: Times stacked vertically -->
-                            <div class="form-col" style="flex: 1 1 45%; min-width: 220px; display: flex; flex-direction: column; gap: 1rem;">
+                            <div class="form-col">
                                 <div class="form-group">
                                     <label for="event-start-time">Event Start Time *</label>
                                     <input type="time" id="event-start-time" required step="900">
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-col">
                                 <div class="form-group">
                                     <label for="event-end-time">Event End Time *</label>
                                     <input type="time" id="event-end-time" required step="900">
                                 </div>
                             </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="attendee-count">Number of Attendees</label>
+                                    <input type="number" id="attendee-count" min="1" value="50">
+                                </div>
+                            </div>
                         </div>
-                        
-                        
+
                         <div class="form-group">
                             <label for="event-location">Event Location *</label>
                             <input type="text" id="event-location" placeholder="Start typing to search for a location..." required autocomplete="off">
                             <div id="location-suggestions" class="location-suggestions" style="display: none;"></div>
                         </div>
-                        
                     </div>
 
-                    <!-- Timeline & Scheduling (Step 2) -->
-                    <div id="timeline-section-2" style="margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;">
+                    <!-- Timeline (visible in Step 2) -->
+                    <div class="timeline-section" data-timeline="section" style="margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;">
                         <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 0.75rem;">
                             <h5 style="margin: 0; color: var(--primary-color);"><i class="fas fa-stream" style="margin-right:0.5rem;"></i>Timeline</h5>
                         </div>
                         <div style="font-size:0.85rem; color: var(--text-light); margin-bottom:0.5rem;">
-                            Set event start/end, then assign start/end for each selected service. Duration is auto-calculated.
+                            Set event start/end. Timeline auto-updates as you add services in the next step.
                         </div>
-                        <div id="timeline-container-2" style="position: relative; height: 180px; background: #fafbff; border: 1px dashed #e2e8f0; border-radius: 8px; overflow: hidden;">
-                            <div id="timeline-axis-2" style="position:absolute; left:0; right:0; top:8px; height:20px; font-size: 11px; color:#64748b;"></div>
-                            <div id="timeline-layers-2" style="position:absolute; left:0; right:0; top:32px; bottom:8px;"></div>
+                        <div class="timeline-container" data-timeline="container" style="position: relative; height: 180px; background: #fafbff; border: 1px dashed #e2e8f0; border-radius: 8px; overflow: hidden;">
+                            <div class="timeline-axis" data-timeline="axis" style="position:absolute; left:0; right:0; top:8px; height:20px; font-size: 11px; color:#64748b;"></div>
+                            <div class="timeline-layers" data-timeline="layers" style="position:absolute; left:0; right:0; top:32px; bottom:8px;"></div>
                         </div>
-                        <div id="timeline-warning-2" style="display:none; margin-top:0.5rem; padding:0.5rem; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; border-radius:6px; font-size:0.85rem;"></div>
+                        <div class="timeline-warning" data-timeline="warning" style="display:none; margin-top:0.5rem; padding:0.5rem; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; border-radius:6px; font-size:0.85rem;"></div>
                         <div style="display:flex; gap:1rem; margin-top:0.5rem; font-size:0.85rem; color:#64748b;">
                             <span><span style="display:inline-block; width:10px; height:10px; background:#c7d2fe; border-radius:2px; margin-right:6px;"></span>Event Window</span>
                             <span><span style="display:inline-block; width:10px; height:10px; background:#bbf7d0; border-radius:2px; margin-right:6px;"></span>Vendor Hours</span>
@@ -4637,65 +4645,56 @@
                             <span><span style="display:inline-block; width:10px; height:10px; background:#fecaca; border-radius:2px; margin-right:6px;"></span>Outside Event</span>
                         </div>
                     </div>
-                    
+
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
                         <button type="button" class="btn btn-outline" id="back-to-booking-step-1">Back: Categories</button>
-                        <button type="button" class="btn btn-primary" id="next-to-booking-step-3">Next: Services</button>
+                        <button type="button" class="btn btn-primary" id="next-to-booking-step-3">Next: Select Services</button>
                     </div>
                 </div>
 
-                <!-- Step 3: Services Selection -->
+                <!-- Step 3: Select Services -->
                 <div class="booking-step" id="booking-step-3" style="display: none;">
-                    <h4 class="form-section-title">Services & Budgets</h4>
-                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select specific services and set budgets. Your event timeline remains visible below.</p>
+                    <h4 class="form-section-title">Select Services</h4>
+                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Choose from available services and set individual budgets.</p>
 
-                    <!-- Predefined Services Selection -->
                     <div class="form-group" style="margin-bottom: 2rem;">
                         <h5 style="margin-bottom: 1rem; color: var(--primary-color);">📋 Select Specific Services</h5>
                         <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1rem;">Choose from available services in your selected categories and set individual budgets.</p>
-                        
+
                         <div id="predefined-services-loading" style="text-align: center; padding: 2rem; display: none;">
                             <div class="spinner"></div>
                             <p style="margin-top: 1rem; color: var(--text-light);">Loading available services...</p>
                         </div>
-                        
+
                         <div id="booking-predefined-services-container" style="display: none;">
-                            <!-- Dropdown-based service selection -->
-                            <div id="service-selection-dropdowns">
-                                <!-- Service dropdowns will be loaded here -->
-                            </div>
-                            
-                            <!-- Selected services list -->
-                            <div id="selected-services-list-container" style="margin-top: 1.5rem;">
-                                <!-- Selected services with budgets will appear here -->
-                            </div>
+                            <div id="service-selection-dropdowns"></div>
+                            <div id="selected-services-list-container" style="margin-top: 1.5rem;"></div>
                         </div>
-                        
+
                         <div id="no-services-message" style="text-align: center; padding: 2rem; color: var(--text-light); display: none;">
                             <p>No services available for your selected categories. Please go back and select different categories.</p>
                         </div>
                     </div>
 
-                    <!-- Selected Services Summary -->
                     <div id="selected-services-summary" style="display: none; margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border-radius: 8px; border-left: 4px solid var(--primary-color);">
                         <h6 style="margin-bottom: 0.5rem; color: var(--primary-color);">Selected Services Summary</h6>
                         <div id="selected-services-list"></div>
                         <div style="margin-top: 0.5rem; font-weight: 600;">Total Budget: $<span id="total-services-budget">0</span></div>
                     </div>
 
-                    <!-- Timeline (Step 3) -->
-                    <div id="timeline-section-3" style="margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;">
+                    <!-- Timeline (visible in Step 3) -->
+                    <div class="timeline-section" data-timeline="section" style="margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;">
                         <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 0.75rem;">
                             <h5 style="margin: 0; color: var(--primary-color);"><i class="fas fa-stream" style="margin-right:0.5rem;"></i>Timeline</h5>
                         </div>
                         <div style="font-size:0.85rem; color: var(--text-light); margin-bottom:0.5rem;">
-                            Set event start/end, then assign start/end for each selected service. Duration is auto-calculated.
+                            Adjust service durations and times as needed. Conflicts will be highlighted.
                         </div>
-                        <div id="timeline-container-3" style="position: relative; height: 180px; background: #fafbff; border: 1px dashed #e2e8f0; border-radius: 8px; overflow: hidden;">
-                            <div id="timeline-axis-3" style="position:absolute; left:0; right:0; top:8px; height:20px; font-size: 11px; color:#64748b;"></div>
-                            <div id="timeline-layers-3" style="position:absolute; left:0; right:0; top:32px; bottom:8px;"></div>
+                        <div class="timeline-container" data-timeline="container" style="position: relative; height: 180px; background: #fafbff; border: 1px dashed #e2e8f0; border-radius: 8px; overflow: hidden;">
+                            <div class="timeline-axis" data-timeline="axis" style="position:absolute; left:0; right:0; top:8px; height:20px; font-size: 11px; color:#64748b;"></div>
+                            <div class="timeline-layers" data-timeline="layers" style="position:absolute; left:0; right:0; top:32px; bottom:8px;"></div>
                         </div>
-                        <div id="timeline-warning-3" style="display:none; margin-top:0.5rem; padding:0.5rem; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; border-radius:6px; font-size:0.85rem;"></div>
+                        <div class="timeline-warning" data-timeline="warning" style="display:none; margin-top:0.5rem; padding:0.5rem; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; border-radius:6px; font-size:0.85rem;"></div>
                         <div style="display:flex; gap:1rem; margin-top:0.5rem; font-size:0.85rem; color:#64748b;">
                             <span><span style="display:inline-block; width:10px; height:10px; background:#c7d2fe; border-radius:2px; margin-right:6px;"></span>Event Window</span>
                             <span><span style="display:inline-block; width:10px; height:10px; background:#bbf7d0; border-radius:2px; margin-right:6px;"></span>Vendor Hours</span>
@@ -4798,7 +4797,7 @@
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
-                        <button type="button" class="btn btn-outline" id="back-to-booking-step-3">Back: Services</button>
+                        <button type="button" class="btn btn-outline" id="back-to-booking-step-3">Back: Select Services</button>
                         <button type="button" class="btn btn-primary" id="send-requests-btn" disabled>Send Requests</button>
                     </div>
                 </div>
@@ -4856,7 +4855,7 @@
         // Global variables
         let currentUser = null;
         
-        // Ensure vendor list matches the map height exactly (now Step 4)
+        // Ensure Step 3 vendor list matches the map height exactly
         function syncVendorPanelHeight() {
             const map = document.getElementById('vendor-map');
             const panel = document.getElementById('vendor-cards-container');
@@ -4897,18 +4896,18 @@
             }
         });
         window.addEventListener('resize', () => setTimeout(syncVendorPanelHeight, 50));
-        // Recalculate when Step 4 visibility changes
-        (function observeStep4Visibility(){
-            const stepEl = document.getElementById('booking-step-4');
-            if (!stepEl) return;
+        // Recalculate when Step 3 visibility changes
+        (function observeStep3Visibility(){
+            const step3 = document.getElementById('booking-step-3');
+            if (!step3) return;
             const isVisible = (el) => {
                 const style = getComputedStyle(el);
                 return style.display !== 'none' && style.visibility !== 'hidden';
             };
             const mo = new MutationObserver(() => {
-                if (isVisible(stepEl)) setTimeout(syncVendorPanelHeight, 0);
+                if (isVisible(step3)) setTimeout(syncVendorPanelHeight, 0);
             });
-            mo.observe(stepEl, { attributes: true, attributeFilter: ['style','class'] });
+            mo.observe(step3, { attributes: true, attributeFilter: ['style','class'] });
         })();
         
         // Check for existing user session
@@ -6868,27 +6867,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             }
 
-            // Ensure booking modal JS initializes and first step is visible
-            (function initBookingFlow() {
-                const init = () => {
-                    // Default state
-                    window.bookingState = window.bookingState || {
-                        selectedServices: [],
-                        selectedPredefinedServices: [],
-                        budget: 500,
-                        currentStep: 1
-                    };
-                    try { setupBookingModalEventListeners(); } catch (e) { /* noop */ }
-                    try { if (typeof setupBookingStepNavigation === 'function') setupBookingStepNavigation(); } catch (e) { /* noop */ }
-                    try { updateBookingStep(1); } catch (e) { /* noop */ }
-                };
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', init);
-                } else {
-                    init();
-                }
-            })();
-
             async function loadCategoryServices(categoryId, categoryKey) {
                 try {
                     const response = await fetch(`${API_BASE_URL}/bookings/services/${categoryId}`);
@@ -6975,95 +6953,37 @@ document.addEventListener('DOMContentLoaded', async function() {
                 for (let i = 1; i <= 5; i++) {
                     const stepElement = document.getElementById(`booking-step-${i}`);
                     const indicatorElement = document.getElementById(`booking-step-indicator-${i}`);
-                    
                     if (stepElement) stepElement.style.display = 'none';
                     if (indicatorElement) indicatorElement.classList.remove('active');
                 }
-                
                 // Show current step
                 const currentStepElement = document.getElementById(`booking-step-${step}`);
                 const currentIndicatorElement = document.getElementById(`booking-step-indicator-${step}`);
-                
                 if (currentStepElement) currentStepElement.style.display = 'block';
                 if (currentIndicatorElement) currentIndicatorElement.classList.add('active');
-                
-                // Update progress bar
+                // Update progress bar for 5 steps
                 const progressFill = document.getElementById('booking-progress-fill');
                 if (progressFill) {
                     const progressPercentage = (step / 5) * 100;
                     progressFill.style.width = `${progressPercentage}%`;
                 }
-                
                 window.bookingState.currentStep = step;
-                
-                // Update modal title based on step
+                // Update modal title based on new flow
                 const modalTitle = document.getElementById('booking-modal-title');
                 const stepTitles = {
-                    1: 'Select Services',
+                    1: 'Select Categories',
                     2: 'Event Details',
-                    3: 'Select Services & Budgets',
+                    3: 'Select Services',
                     4: 'Choose Vendors',
                     5: 'Review Requests'
                 };
                 if (modalTitle) modalTitle.textContent = stepTitles[step] || 'Book Your Event';
-                
-                // Show search criteria summary when entering step 4
+                // Show search criteria summary when entering vendor step (now 4)
                 if (step === 4) {
                     updateSearchCriteriaSummary();
                 }
-
-                // Initialize Flatpickr calendar when entering Step 2
-                if (step === 2) {
-                    ensureFlatpickrLoaded().then(() => {
-                        initEventDateCalendar();
-                        // Draw timeline for step 2 after calendar init
-                        try { drawTimeline(); } catch (e) { console.warn('drawTimeline error:', e); }
-                    });
-                }
-
-                // Draw timeline when entering Step 3 as well
-                if (step === 3) {
-                    try { drawTimeline(); } catch (e) { console.warn('drawTimeline error:', e); }
-                }
-            }
-
-            // Load Flatpickr (once) and initialize inline calendar on Step 2 date input
-            function ensureFlatpickrLoaded() {
-                return new Promise((resolve, reject) => {
-                    if (window.flatpickr) return resolve();
-                    // Inject CSS if not present
-                    if (!document.getElementById('flatpickr-css')) {
-                        const link = document.createElement('link');
-                        link.id = 'flatpickr-css';
-                        link.rel = 'stylesheet';
-                        link.href = 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css';
-                        document.head.appendChild(link);
-                    }
-                    // Inject JS
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/npm/flatpickr';
-                    script.onload = () => resolve();
-                    script.onerror = () => reject(new Error('Failed to load Flatpickr'));
-                    document.head.appendChild(script);
-                });
-            }
-
-            function initEventDateCalendar() {
-                const dateInput = document.getElementById('event-date');
-                if (!dateInput || !window.flatpickr) return;
-                try {
-                    if (dateInput._flatpickr) {
-                        dateInput._flatpickr.destroy();
-                    }
-                    window.flatpickr(dateInput, {
-                        inline: true,
-                        dateFormat: 'Y-m-d',
-                        minDate: 'today',
-                        disableMobile: true
-                    });
-                } catch (e) {
-                    console.warn('Flatpickr init failed:', e);
-                }
+                // Redraw timelines when showing step 2 or 3
+                if (step === 2 || step === 3) setTimeout(drawTimeline, 0);
             }
             
             // Function to update search criteria summary
@@ -7154,14 +7074,23 @@ document.addEventListener('DOMContentLoaded', async function() {
                 document.getElementById('next-to-booking-step-2')?.addEventListener('click', async () => {
                     if (validateStep1()) {
                         updateBookingStep(2);
+                        // initialize date picker and timeline if needed
+                        setTimeout(() => { initEventDatePicker(); drawTimeline(); }, 0);
                     }
                 });
 
-                document.getElementById('back-to-booking-step-1')?.addEventListener('click', () => updateBookingStep(1));
+                // New: Step 2 -> Step 3
                 document.getElementById('next-to-booking-step-3')?.addEventListener('click', async () => {
+                    if (!validateStep2()) {
+                        showError('Please fill in all required event details.');
+                        return;
+                    }
                     updateBookingStep(3);
                     await loadPredefinedServicesForStep2();
+                    setTimeout(drawTimeline, 0);
                 });
+
+                document.getElementById('back-to-booking-step-1')?.addEventListener('click', () => updateBookingStep(1));
                 document.getElementById('find-vendors-btn')?.addEventListener('click', handleFindVendors);
                 document.getElementById('back-to-booking-step-2')?.addEventListener('click', () => updateBookingStep(2));
                 document.getElementById('send-requests-btn')?.addEventListener('click', () => {
@@ -7169,6 +7098,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     updateBookingStep(5);
                 });
                 document.getElementById('back-to-booking-step-3')?.addEventListener('click', () => updateBookingStep(3));
+                document.getElementById('back-to-booking-step-4')?.addEventListener('click', () => updateBookingStep(4));
 
                 // Adjust criteria button (existing)
                 document.getElementById('adjust-criteria-btn')?.addEventListener('click', () => updateBookingStep(2));
@@ -7903,8 +7833,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const services = bookingState.selectedPredefinedServices || [];
                 const conflicts = new Map();
                 services.forEach(s => {
-                    const sStart = parseTimeToMinutes(s.startTime);
-                    const sEnd = parseTimeToMinutes(s.endTime);
+                    const sStart = parseTimeToMinutes(s.startTime || '');
+                    const sEnd = parseTimeToMinutes(s.endTime || '');
                     let has = false;
                     if (!(Number.isFinite(sStart) && Number.isFinite(sEnd) && sEnd >= sStart)) return; // incomplete
                     // outside event
@@ -7915,95 +7845,97 @@ document.addEventListener('DOMContentLoaded', async function() {
                 return conflicts;
             }
 
-            // Draw timeline (step-aware). Renders to step 2 and step 3 if present.
-            function drawTimelineFor(step) {
-                const container = document.getElementById(`timeline-container-${step}`);
-                const axis = document.getElementById(`timeline-axis-${step}`);
-                const layers = document.getElementById(`timeline-layers-${step}`);
-                if (!container || !axis || !layers) return;
-
+            // Draw timeline with axis and bars in all visible sections
+            function drawTimeline() {
+                const sections = document.querySelectorAll('[data-timeline="section"]');
+                if (!sections || sections.length === 0) return;
                 const { minT, maxT } = getTimelineRange();
                 const range = maxT - minT;
-                function pct(mins) { return (mins / range) * 100; }
-
-                // Axis (hour ticks)
-                axis.innerHTML = '';
-                const startHour = Math.floor(minT / 60);
-                const endHour = Math.ceil(maxT / 60);
-                let axisHtml = '';
-                for (let h = startHour; h <= endHour; h++) {
-                    const x = pct((h * 60) - minT);
-                    const label = `${((h + 11) % 12) + 1}${h < 12 ? ' AM' : ' PM'}`;
-                    axisHtml += `<div style="position:absolute; left:${x}%; top:0; transform: translateX(-50%); white-space:nowrap;">${label}</div>`;
-                }
-                axis.innerHTML = axisHtml;
-
-                // Layers
-                layers.innerHTML = '';
-                function addBar(start, end, color, top, height, opacity=1, border='', label='') {
-                    const left = pct(start - minT);
-                    const width = pct(end - start);
-                    const div = document.createElement('div');
-                    div.style.cssText = `position:absolute; left:${left}%; width:${width}%; top:${top}px; height:${height}px; background:${color}; opacity:${opacity}; border:${border}; border-radius:6px; display:flex; align-items:center; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;`;
-                    const dur = Math.max(0, end - start);
-                    const base = `${formatTimeLabel(start)}–${formatTimeLabel(end)}${dur>0?` • ${formatMinutes(dur)}`:''}`;
-                    div.title = label ? `${label} • ${base}` : base;
-                    if (label) {
-                        const span = document.createElement('span');
-                        span.textContent = label;
-                        span.style.cssText = 'font-size:11px; color:#111827; padding:0 6px; opacity:0.95;';
-                        div.appendChild(span);
-                    }
-                    layers.appendChild(div);
-                }
-
-                // Event window
+                const pct = (mins) => (mins / range) * 100;
                 const eStart = parseTimeToMinutes(document.getElementById('event-start-time')?.value || '');
                 const eEnd = parseTimeToMinutes(document.getElementById('event-end-time')?.value || '');
-                if (Number.isFinite(eStart) && Number.isFinite(eEnd) && eEnd > eStart) {
-                    addBar(eStart, eEnd, '#c7d2fe', 10, 24, 0.8, '1px solid #a5b4fc', 'Event');
-                }
-
-                // Vendor engagement window derived from services
                 const services = bookingState.selectedPredefinedServices || [];
-                const sStarts = services.map(s => parseTimeToMinutes(s.startTime)).filter(Number.isFinite);
-                const sEnds = services.map(s => parseTimeToMinutes(s.endTime)).filter(Number.isFinite);
-                if (sStarts.length && sEnds.length) {
-                    const vStart = Math.min(...sStarts);
-                    const vEnd = Math.max(...sEnds);
-                    if (vEnd > vStart) addBar(vStart, vEnd, '#bbf7d0', 44, 20, 0.9, '1px solid #86efac', 'Vendors');
-                }
 
-                // Services and warnings
-                const conflicts = computeConflicts();
-                const warn = document.getElementById(`timeline-warning-${step}`);
-                if (warn) {
-                    const count = Array.from(conflicts.values()).filter(Boolean).length;
-                    if (count > 0) {
-                        warn.textContent = `${count} service${count>1?'s':''} are outside the event window.`;
-                        warn.style.display = 'block';
-                    } else {
-                        warn.style.display = 'none';
-                        warn.textContent = '';
+                sections.forEach(section => {
+                    const axis = section.querySelector('[data-timeline="axis"]');
+                    const layers = section.querySelector('[data-timeline="layers"]');
+                    const warningEl = section.querySelector('[data-timeline="warning"]');
+                    if (!axis || !layers) return;
+                    // Axis
+                    axis.innerHTML = '';
+                    for (let t = Math.ceil(minT/60)*60; t <= maxT; t += 60) {
+                        const label = document.createElement('div');
+                        label.style.position = 'absolute';
+                        label.style.left = pct(t - minT) + '%';
+                        label.style.transform = 'translateX(-50%)';
+                        label.textContent = formatTimeLabel(t);
+                        axis.appendChild(label);
                     }
-                }
-
-                let row = 0;
-                services.forEach(s => {
-                    const sS = parseTimeToMinutes(s.startTime);
-                    const sE = parseTimeToMinutes(s.endTime);
-                    if (!(Number.isFinite(sS) && Number.isFinite(sE) && sE > sS)) return;
-                    const top = 72 + (row * 28);
-                    const color = conflicts.get(s.id) ? '#fecaca' : '#fcd34d';
-                    addBar(sS, sE, color, top, 20, 1, '1px solid rgba(0,0,0,0.05)', s.name || 'Service');
-                    row++;
+                    // Layers
+                    layers.innerHTML = '';
+                    // Event window
+                    if (Number.isFinite(eStart) && Number.isFinite(eEnd) && eEnd > eStart) {
+                        const el = document.createElement('div');
+                        el.style.position = 'absolute';
+                        el.style.left = pct(eStart - minT) + '%';
+                        el.style.width = pct(eEnd - eStart) + '%';
+                        el.style.top = '4px';
+                        el.style.bottom = '4px';
+                        el.style.background = '#e0e7ff';
+                        el.style.borderRadius = '6px';
+                        layers.appendChild(el);
+                    }
+                    // Vendor engagement window derived from services
+                    const sStarts = services.map(s => parseTimeToMinutes(s.startTime)).filter(Number.isFinite);
+                    const sEnds = services.map(s => parseTimeToMinutes(s.endTime)).filter(Number.isFinite);
+                    if (sStarts.length && sEnds.length) {
+                        const vStart = Math.min(...sStarts);
+                        const vEnd = Math.max(...sEnds);
+                        if (vEnd > vStart) {
+                            const v = document.createElement('div');
+                            v.style.position = 'absolute';
+                            v.style.left = pct(vStart - minT) + '%';
+                            v.style.width = pct(vEnd - vStart) + '%';
+                            v.style.top = '44px';
+                            v.style.height = '20px';
+                            v.style.background = '#bbf7d0';
+                            v.style.border = '1px solid #86efac';
+                            v.style.borderRadius = '6px';
+                            layers.appendChild(v);
+                        }
+                    }
+                    // Services bars
+                    let conflictCount = 0;
+                    let row = 0;
+                    services.forEach(s => {
+                        const sStart = parseTimeToMinutes(s.startTime || '');
+                        const sEnd = parseTimeToMinutes(s.endTime || '');
+                        if (!(Number.isFinite(sStart) && Number.isFinite(sEnd) && sEnd > sStart)) return;
+                        const bar = document.createElement('div');
+                        bar.style.position = 'absolute';
+                        bar.style.left = pct(sStart - minT) + '%';
+                        bar.style.width = pct(sEnd - sStart) + '%';
+                        bar.style.top = (72 + (row * 28)) + 'px';
+                        bar.style.height = '20px';
+                        const outside = Number.isFinite(eStart) && Number.isFinite(eEnd) && (sStart < eStart || sEnd > eEnd);
+                        bar.style.background = outside ? '#fecaca' : '#fde68a';
+                        bar.style.border = outside ? '1px solid #ef4444' : '1px solid #f59e0b';
+                        bar.style.borderRadius = '6px';
+                        bar.title = s.name || 'Service';
+                        layers.appendChild(bar);
+                        if (outside) conflictCount++;
+                        row++;
+                    });
+                    if (warningEl) {
+                        if (conflictCount > 0) {
+                            warningEl.style.display = 'block';
+                            warningEl.textContent = `${conflictCount} service time conflict(s) detected.`;
+                        } else {
+                            warningEl.style.display = 'none';
+                            warningEl.textContent = '';
+                        }
+                    }
                 });
-            }
-
-            function drawTimeline() {
-                // Draw for both Step 2 and Step 3 if containers exist
-                drawTimelineFor(2);
-                drawTimelineFor(3);
             }
 
             // (Auto-Pack and Clear Times removed by request)
@@ -8015,9 +7947,26 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const el = document.getElementById(id);
                     if (el) el.addEventListener('change', () => drawTimeline());
                 });
-                // Initial draw
+                initEventDatePicker();
                 setTimeout(drawTimeline, 0);
             });
+
+            function initEventDatePicker() {
+                const input = document.getElementById('event-date');
+                if (!input || !window.flatpickr) return;
+                if (input._flatpickr) return; // prevent double init
+                flatpickr(input, {
+                    minDate: 'today',
+                    dateFormat: 'Y-m-d',
+                    altInput: true,
+                    altFormat: 'F j, Y',
+                    allowInput: false,
+                    onChange: () => {
+                        drawTimeline();
+                        // optionally update any summaries
+                    }
+                });
+            }
 
             // Update selected services summary
             function updateSelectedServicesSummary() {
@@ -8110,7 +8059,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     locationCoords: eventLocationData.lat && eventLocationData.lng ? {
                         lat: eventLocationData.lat,
                         lng: eventLocationData.lng
-                    } : null
+                    } : null,
+                    attendeeCount: parseInt(document.getElementById('attendee-count').value) || 50
                 };
                 
                 // Also update the global bookingState to ensure consistency
@@ -9017,10 +8967,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 .then(data => {
                     console.log('📊 API Response data:', data);
                     if (data.success) {
-                        // Handle both array-based and single-id responses
-                        const requestId = Array.isArray(data.requests) ? (data.requests[0]?.requestId ?? null) : (data.requestId ?? null);
-                        console.log('🆔 Resolved requestId:', requestId);
-                        // Success UI state
+                        // Success
                         if (button) {
                             button.innerHTML = '<i class="fas fa-check" style="margin-right: 0.5rem;"></i>Request Sent!';
                             button.style.background = '#27ae60';
@@ -9031,7 +8978,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             statusDiv.innerHTML = `
                                 <div style="color: #27ae60;">
                                     <i class="fas fa-check-circle" style="margin-right: 0.5rem;"></i>
-                                    Booking request sent successfully!${requestId ? ` Request ID: ${requestId}.` : ''} The vendor will respond within 24 hours.
+                                    Booking request sent successfully! Request ID: ${data.requestId}. The vendor will respond within 24 hours.
                                 </div>
                             `;
                             statusDiv.style.background = '#d5f4e6';
@@ -9041,7 +8988,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         // Mark vendor as requested in bookingState
                         vendor.requestSent = true;
                         vendor.requestTimestamp = new Date().toISOString();
-                        vendor.requestId = requestId;
+                        vendor.requestId = data.requestId;
                         
                     } else {
                         throw new Error(data.message || 'Failed to send request');
