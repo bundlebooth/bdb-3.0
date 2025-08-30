@@ -1513,9 +1513,38 @@
             position: relative;
         }
 
+        /* Make selects look consistent with inputs */
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background-color: white;
+            font-size: 0.9rem;
+            /* Remove native styling for consistency */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            /* Custom dropdown arrow */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364738b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 16px 16px;
+            padding-right: 2.25rem; /* space for arrow */
+        }
+
+        /* Consistent focus ring for inputs and selects */
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.12);
+        }
+
         .form-group {
             position: relative;
         }
+
 
         /* Location suggestions dropdown */
         .location-suggestions {
@@ -4588,6 +4617,33 @@
 
                     <div class="form-group" style="margin-bottom: 2rem;">
                         <h5 style="margin-bottom: 1rem; color: var(--primary-color);"><i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>Event Details</h5>
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="event-name">Event Name *</label>
+                                    <input type="text" id="event-name" placeholder="e.g., Sarah & Alex Wedding" required>
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="event-type">Event Type *</label>
+                                    <select id="event-type" required>
+                                        <option value="" selected disabled>Select type</option>
+                                        <option>Wedding</option>
+                                        <option>Engagement</option>
+                                        <option>Birthday</option>
+                                        <option>Corporate</option>
+                                        <option>Conference</option>
+                                        <option>Concert</option>
+                                        <option>Festival</option>
+                                        <option>Baby Shower</option>
+                                        <option>Bridal Shower</option>
+                                        <option>Anniversary</option>
+                                        <option>Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
 
                         <div class="form-row">
                             <div class="form-col">
@@ -7053,6 +7109,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const locationInput = document.getElementById('event-location');
                 const eventLocation = (locationInput?.value && locationInput.value.trim()) ? locationInput.value.trim() : 'Not specified';
                 const eventDate = document.getElementById('event-date')?.value || 'Not specified';
+                const eventName = (document.getElementById('event-name')?.value || '').trim() || 'Not specified';
+                const eventType = document.getElementById('event-type')?.value || 'Not specified';
                 const startTime = document.getElementById('event-start-time')?.value || '';
                 const endTime = document.getElementById('event-end-time')?.value || '';
                 const timeText = (startTime && endTime) ? `${startTime} - ${endTime}` : (startTime || endTime || 'Not specified');
@@ -7069,6 +7127,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <strong>Services:</strong> ${servicesText}
                     </div>
                     <div style="color: var(--text);">
+                        <strong>Event Name:</strong> ${eventName}
+                    </div>
+                    <div style="color: var(--text);">
+                        <strong>Event Type:</strong> ${eventType}
+                    </div>
+                    <div style="color: var(--text);">
                         <strong>Location:</strong> ${eventLocation}
                     </div>
                     <div style="color: var(--text);">
@@ -7078,7 +7142,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <strong>Time:</strong> ${timeText}
                     </div>
                     <div style="color: var(--text);">
-                        <strong>Budget:</strong> ${budgetText}
+                        <strong>Total Budget:</strong> ${budgetText}
                     </div>
                 `;
 
@@ -8071,12 +8135,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const eventStartTime = document.getElementById('event-start-time');
                 const eventEndTime = document.getElementById('event-end-time');
                 const eventLocation = document.getElementById('event-location');
+                const eventName = document.getElementById('event-name');
+                const eventType = document.getElementById('event-type');
                 
                 // Check if all required fields exist and have values
                 return eventDate?.value && 
                        eventStartTime?.value && 
                        eventEndTime?.value && 
-                       eventLocation?.value;
+                       eventLocation?.value &&
+                       (eventName?.value || '').trim() &&
+                       eventType?.value;
             }
 
             async function handleFindVendors() {
@@ -8096,6 +8164,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const eventLocationData = window.selectedEventLocation || {};
                 
                 window.bookingState.eventDetails = {
+                    name: (document.getElementById('event-name')?.value || '').trim(),
+                    type: document.getElementById('event-type')?.value || '',
                     date: document.getElementById('event-date').value,
                     startTime: document.getElementById('event-start-time').value,
                     endTime: document.getElementById('event-end-time').value,
@@ -9043,6 +9113,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 // Collect current event details from form (mimicking handleSendRequests)
                 const eventDetails = {
+                    name: (document.getElementById('event-name')?.value || '').trim(),
+                    type: document.getElementById('event-type')?.value || '',
                     date: document.getElementById('event-date')?.value,
                     startTime: document.getElementById('event-start-time')?.value,
                     endTime: document.getElementById('event-end-time')?.value,
