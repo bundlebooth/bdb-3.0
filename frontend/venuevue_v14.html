@@ -4556,9 +4556,10 @@
                         <span class="step-indicator" id="booking-step-indicator-2">2: Details</span>
                         <span class="step-indicator" id="booking-step-indicator-3">3: Vendors</span>
                         <span class="step-indicator" id="booking-step-indicator-4">4: Requests</span>
+                        <span class="step-indicator" id="booking-step-indicator-5">5: Review</span>
                     </div>
                     <div class="progress-bar">
-                        <div class="progress-fill" id="booking-progress-fill" style="width: 25%;"></div>
+                        <div class="progress-fill" id="booking-progress-fill" style="width: 20%;"></div>
                     </div>
                 </div>
 
@@ -6953,15 +6954,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const style = document.createElement('style');
                 style.id = 'booking-anim-css';
                 style.textContent = `
-                .vv-step-anim { position: relative; will-change: transform; }
-                .vv-slide-in-left { animation: vv-slide-in-left 320ms ease both; }
-                .vv-slide-in-right { animation: vv-slide-in-right 320ms ease both; }
-                .vv-slide-out-left { animation: vv-slide-out-left 320ms ease both; }
-                .vv-slide-out-right { animation: vv-slide-out-right 320ms ease both; }
-                @keyframes vv-slide-in-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-                @keyframes vv-slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
-                @keyframes vv-slide-out-left { from { transform: translateX(0); } to { transform: translateX(-100%); } }
-                @keyframes vv-slide-out-right { from { transform: translateX(0); } to { transform: translateX(100%); } }
                 /* Global loading overlay */
                 #booking-loading-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(255,255,255,0.7); z-index: 9999; }
                 #booking-loading-overlay.dark { background: rgba(0,0,0,0.35); }
@@ -6998,6 +6990,19 @@ document.addEventListener('DOMContentLoaded', async function() {
             function hideBookingLoading() {
                 const overlay = document.getElementById('booking-loading-overlay');
                 if (overlay) overlay.style.display = 'none';
+            }
+
+            // Utility: Haversine distance in kilometers
+            function haversineKm(lat1, lon1, lat2, lon2) {
+                const toRad = (v) => (v * Math.PI) / 180;
+                const R = 6371; // km
+                const dLat = toRad(lat2 - lat1);
+                const dLon = toRad(lon2 - lon1);
+                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
             }
 
             function updateBookingStep(step) {
@@ -8109,6 +8114,33 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 console.log('Event details collected:', bookingState.eventDetails);
 
+                // Fallback: If user typed address but didn't select from autocomplete, geocode to get coords
+                try {
+                    if (!bookingState.eventDetails.locationCoords && bookingState.eventDetails.location) {
+                        if (window.google && google.maps) {
+                            const gc = typeof geocoder !== 'undefined' && geocoder ? geocoder : new google.maps.Geocoder();
+                            const place = await new Promise((resolve, reject) => {
+                                gc.geocode({ address: bookingState.eventDetails.location }, (results, status) => {
+                                    if (status === 'OK' && results && results[0] && results[0].geometry && results[0].geometry.location) {
+                                        resolve(results[0]);
+                                    } else {
+                                        reject(new Error('Geocode failed: ' + status));
+                                    }
+                                });
+                            });
+                            const lat = place.geometry.location.lat();
+                            const lng = place.geometry.location.lng();
+                            bookingState.eventDetails.locationCoords = { lat, lng };
+                            window.bookingState.eventDetails = bookingState.eventDetails;
+                            console.log('📍 Geocoded event location to coords:', bookingState.eventDetails.locationCoords);
+                        } else {
+                            console.warn('Google Maps not available to geocode typed address; distance will be unavailable');
+                        }
+                    }
+                } catch (geoErr) {
+                    console.warn('Geocoding typed event location failed:', geoErr);
+                }
+
                 // Show loading overlay and prep UI
                 showBookingLoading('Finding matching vendors...');
                 const vendorLoading = document.getElementById('vendor-loading');
@@ -8174,31 +8206,78 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     },
                                     body: JSON.stringify(searchPayload)
                                 });
-
                                 const data = await response.json();
-                                
                                 console.log(`API Response for ${category} - ${service.name}:`, data);
-                                
                                 if (data.success && data.vendors && data.vendors.length > 0) {
-                                    // Add coordinates to vendors for map display
                                     const vendorsWithCoords = data.vendors.map(vendor => {
+                                        // Coerce lat/lng to numbers (backend may send strings)
+                                        const rawLat = vendor.Latitude ?? vendor.latitude;
+                                        const rawLng = vendor.Longitude ?? vendor.longitude;
+                                        const latNum = (typeof rawLat === 'string') ? parseFloat(rawLat) : rawLat;
+                                        const lngNum = (typeof rawLng === 'string') ? parseFloat(rawLng) : rawLng;
+                                        const safeLat = (typeof latNum === 'number' && isFinite(latNum)) ? latNum : 43.6532; // Toronto default
+                                        const safeLng = (typeof lngNum === 'number' && isFinite(lngNum)) ? lngNum : -79.3832;
+
                                         const vendorWithCoords = {
                                             ...vendor,
                                             coordinates: {
-                                                lat: vendor.Latitude || vendor.latitude || 43.6532, // Default to Toronto
-                                                lng: vendor.Longitude || vendor.longitude || -79.3832
+                                                lat: safeLat,
+                                                lng: safeLng
                                             }
                                         };
                                         console.log(`Vendor ${vendor.BusinessName || vendor.name} coordinates:`, vendorWithCoords.coordinates);
                                         return vendorWithCoords;
                                     });
-                                    
-                                    const vendorSection = {
-                                        category: category,
-                                        service: service,
-                                        vendors: vendorsWithCoords
-                                    };
-                                    
+
+                                    // Compute distance from event location; if coords missing, fallback-geocode via Nominatim (no Google required)
+                                    try {
+                                        let evt = window.bookingState?.eventDetails?.locationCoords;
+                                        const evtValid = evt && typeof evt.lat === 'number' && typeof evt.lng === 'number' && isFinite(evt.lat) && isFinite(evt.lng);
+                                        if (!evtValid) {
+                                            const addr = (window.bookingState?.eventDetails?.location || window.bookingState?.eventDetails?.address || '').trim();
+                                            if (addr) {
+                                                try {
+                                                    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}&limit=1`;
+                                                    const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                                                    if (resp.ok) {
+                                                        const j = await resp.json();
+                                                        if (Array.isArray(j) && j.length > 0) {
+                                                            const lat = parseFloat(j[0].lat);
+                                                            const lng = parseFloat(j[0].lon);
+                                                            if (!isNaN(lat) && !isNaN(lng)) {
+                                                                evt = { lat, lng };
+                                                                if (window.bookingState?.eventDetails) {
+                                                                    window.bookingState.eventDetails.locationCoords = evt;
+                                                                }
+                                                                console.log('🧭 Fallback geocoded event coords via OSM:', evt);
+                                                            }
+                                                        }
+                                                    } else {
+                                                        console.warn('OSM geocode failed status:', resp.status);
+                                                    }
+                                                } catch (gErr) {
+                                                    console.warn('OSM geocode error:', gErr);
+                                                }
+                                            }
+                                        }
+
+                                        if (evt && typeof evt.lat === 'number' && typeof evt.lng === 'number' && isFinite(evt.lat) && isFinite(evt.lng)) {
+                                            vendorsWithCoords.forEach(v => {
+                                                // Prefer mapped coordinates, but coerce if needed
+                                                const latRaw = (v.coordinates && v.coordinates.lat != null) ? v.coordinates.lat : (v.Latitude ?? v.latitude);
+                                                const lngRaw = (v.coordinates && v.coordinates.lng != null) ? v.coordinates.lng : (v.Longitude ?? v.longitude);
+                                                const lat = (typeof latRaw === 'string') ? parseFloat(latRaw) : latRaw;
+                                                const lng = (typeof lngRaw === 'string') ? parseFloat(lngRaw) : lngRaw;
+                                                if (typeof lat === 'number' && typeof lng === 'number' && isFinite(lat) && isFinite(lng)) {
+                                                    v.distance = haversineKm(evt.lat, evt.lng, lat, lng);
+                                                }
+                                            });
+                                        }
+                                    } catch (distErr) {
+                                        console.warn('Distance computation skipped:', distErr);
+                                    }
+
+                                    const vendorSection = { category, service, vendors: vendorsWithCoords };
                                     vendorSections.push(vendorSection);
                                     totalVendorsFound += vendorsWithCoords.length;
                                     console.log(`✅ Added section for ${category} - ${service.name} with ${vendorsWithCoords.length} vendors:`, vendorSection);
@@ -21872,8 +21951,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 return;
             }
 
-            // Sort by distance (closest first)
-            allVendors.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+            // Sort by distance (closest first) — treat 0 as valid; fallback to backend distanceFromEvent
+            const getDist = (v) => {
+                if (typeof v.distance === 'number' && isFinite(v.distance)) return v.distance;
+                const dfe = parseFloat(v.distanceFromEvent);
+                return isNaN(dfe) ? 999 : dfe;
+            };
+            allVendors.sort((a, b) => (getDist(a) - getDist(b)));
 
             // Render cards
             try {
@@ -21964,7 +22048,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return label;
                 }
             }
-
             // Fallback to legacy VendorPrice/Price
             const legacy = service.VendorPrice ?? service.Price;
             return legacy != null ? fmtMoney(legacy) : '';
@@ -22054,7 +22137,34 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             
             const rating = vendor.averageRating || 4.5;
             const reviewCount = vendor.totalReviews || 0;
-            const distance = vendor.distance ? `${vendor.distance.toFixed(1)} km away` : 'Distance unknown';
+
+            // Ensure distance is calculated if missing but coords exist
+            try {
+                const evt = window.bookingState?.eventDetails?.locationCoords;
+                // Coerce vendor lat/lng to numbers if strings
+                const rawLat = vendor?.coordinates?.lat ?? vendor?.Latitude ?? vendor?.latitude;
+                const rawLng = vendor?.coordinates?.lng ?? vendor?.Longitude ?? vendor?.longitude;
+                const vLat = (typeof rawLat === 'string') ? parseFloat(rawLat) : rawLat;
+                const vLng = (typeof rawLng === 'string') ? parseFloat(rawLng) : rawLng;
+                const distIsNumber = typeof vendor.distance === 'number' && isFinite(vendor.distance);
+                if (!distIsNumber && evt && typeof evt.lat === 'number' && typeof evt.lng === 'number' && typeof vLat === 'number' && typeof vLng === 'number' && isFinite(vLat) && isFinite(vLng)) {
+                    if (typeof haversineKm === 'function') {
+                        vendor.distance = haversineKm(evt.lat, evt.lng, vLat, vLng);
+                        console.log('🧭 Card fallback distance set:', { name: vendor.BusinessName || vendor.name, distance: vendor.distance, vLat, vLng, evt });
+                    }
+                }
+            } catch (e) {
+                console.warn('Distance fallback computation skipped in card:', e);
+            }
+
+            // Prefer client-computed distance; fallback to backend-provided distanceFromEvent
+            let distVal = (typeof vendor.distance === 'number' && isFinite(vendor.distance)) 
+                ? vendor.distance 
+                : (vendor.distanceFromEvent != null && !isNaN(parseFloat(vendor.distanceFromEvent)) 
+                    ? parseFloat(vendor.distanceFromEvent) 
+                    : null);
+            const hasDistance = typeof distVal === 'number' && isFinite(distVal);
+            const distance = hasDistance ? `${distVal.toFixed(1)} km away` : null;
             const isSelected = (typeof bookingState !== 'undefined' && bookingState.selectedVendors) ? 
                 window.bookingState.selectedVendors.some(v => v.vendorProfileId === vendorId) : false;
             
@@ -22154,15 +22264,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     
                     <div class="vendor-card-content">
                         <div style="margin-bottom: 0.5rem;">
-                            <h4 style="font-size: 1rem; margin: 0 0 0.25rem 0; font-weight: 600; color: #1f2937;">${businessName}</h4>
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                            <div style="display:flex; align-items:center; justify-content: space-between; gap: 0.5rem;">
+                                <h4 style="font-size: 1rem; margin: 0; font-weight: 600; color: #1f2937;">${businessName}</h4>
+                                ${distance ? `<span style="font-size: 0.8rem; color: #111827; background:#eef2ff; border:1px solid #c7d2fe; padding:2px 6px; border-radius:9999px; white-space:nowrap;">${distance}</span>` : ''}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
                                 <div style="color: #f59e0b; font-size: 0.85rem;">
                                     ${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5-Math.floor(rating))}
                                 </div>
                                 <span style="font-size: 0.8rem; color: #6b7280;">
                                     ${rating.toFixed(1)} (${reviewCount})
                                 </span>
-                                <span style="font-size: 0.8rem; color: #6b7280;">• ${location || distance}</span>
+                                ${location ? `<span style="font-size: 0.8rem; color: #6b7280;">• ${location}</span>` : ''}
                             </div>
                         </div>
                         
@@ -22196,7 +22309,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 switch (sortBy) {
                     case 'distance':
-                        sortedVendors.sort((a, b) => (a.distance || 999) - (b.distance || 999));
+                        // Treat 0 as valid distance. Use backend distanceFromEvent as fallback.
+                        const aDist = (v) => {
+                            if (typeof v.distance === 'number' && isFinite(v.distance)) return v.distance;
+                            const dfe = parseFloat(v.distanceFromEvent);
+                            return isNaN(dfe) ? 999 : dfe;
+                        };
+                        sortedVendors.sort((a, b) => (aDist(a) - aDist(b)));
                         break;
                     case 'price':
                         sortedVendors.sort((a, b) => {
