@@ -6948,44 +6948,83 @@ document.addEventListener('DOMContentLoaded', async function() {
                 Object.values(bookingState.countdownTimers).forEach(timer => clearInterval(timer));
             }
 
+            function ensureBookingAnimationsCSS() {
+                if (document.getElementById('booking-anim-css')) return;
+                const style = document.createElement('style');
+                style.id = 'booking-anim-css';
+                style.textContent = `
+                .vv-step-anim { position: relative; will-change: transform; }
+                .vv-slide-in-left { animation: vv-slide-in-left 320ms ease both; }
+                .vv-slide-in-right { animation: vv-slide-in-right 320ms ease both; }
+                .vv-slide-out-left { animation: vv-slide-out-left 320ms ease both; }
+                .vv-slide-out-right { animation: vv-slide-out-right 320ms ease both; }
+                @keyframes vv-slide-in-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+                @keyframes vv-slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+                @keyframes vv-slide-out-left { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+                @keyframes vv-slide-out-right { from { transform: translateX(0); } to { transform: translateX(100%); } }
+                /* Global loading overlay */
+                #booking-loading-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(255,255,255,0.7); z-index: 9999; }
+                #booking-loading-overlay.dark { background: rgba(0,0,0,0.35); }
+                .vv-spinner { width: 52px; height: 52px; border: 4px solid rgba(0,0,0,0.06); border-top-color: var(--primary-color, #5e72e4); border-radius: 50%; animation: vv-spin 900ms linear infinite; }
+                .vv-spinner-text { margin-top: 12px; color: var(--primary-color, #5e72e4); font-weight: 600; font-size: 0.95rem; text-align: center; }
+                @keyframes vv-spin { to { transform: rotate(360deg); } }
+                `;
+                document.head.appendChild(style);
+            }
+
+            // Global loading overlay utilities
+            function ensureBookingLoadingUI() {
+                ensureBookingAnimationsCSS();
+                let overlay = document.getElementById('booking-loading-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'booking-loading-overlay';
+                    overlay.innerHTML = `
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                            <div class="vv-spinner"></div>
+                            <div id="booking-loading-text" class="vv-spinner-text">Loading...</div>
+                        </div>
+                    `;
+                    document.body.appendChild(overlay);
+                }
+                return overlay;
+            }
+            function showBookingLoading(message = 'Loading...') {
+                const overlay = ensureBookingLoadingUI();
+                const txt = document.getElementById('booking-loading-text');
+                if (txt) txt.textContent = message;
+                overlay.style.display = 'flex';
+            }
+            function hideBookingLoading() {
+                const overlay = document.getElementById('booking-loading-overlay');
+                if (overlay) overlay.style.display = 'none';
+            }
+
             function updateBookingStep(step) {
-                // Hide all steps
+                ensureBookingAnimationsCSS();
+                // Simple, stable show/hide to avoid layout jumps
                 for (let i = 1; i <= 5; i++) {
                     const stepElement = document.getElementById(`booking-step-${i}`);
                     const indicatorElement = document.getElementById(`booking-step-indicator-${i}`);
-                    if (stepElement) stepElement.style.display = 'none';
-                    if (indicatorElement) indicatorElement.classList.remove('active');
+                    if (stepElement) stepElement.style.display = i === step ? 'block' : 'none';
+                    if (indicatorElement) indicatorElement.classList.toggle('active', i === step);
                 }
-                // Show current step
-                const currentStepElement = document.getElementById(`booking-step-${step}`);
-                const currentIndicatorElement = document.getElementById(`booking-step-indicator-${step}`);
-                if (currentStepElement) currentStepElement.style.display = 'block';
-                if (currentIndicatorElement) currentIndicatorElement.classList.add('active');
-                // Update progress bar for 5 steps
+                // Progress
                 const progressFill = document.getElementById('booking-progress-fill');
                 if (progressFill) {
                     const progressPercentage = (step / 5) * 100;
                     progressFill.style.width = `${progressPercentage}%`;
                 }
-                window.bookingState.currentStep = step;
-                // Update modal title based on new flow
+                // Title
                 const modalTitle = document.getElementById('booking-modal-title');
-                const stepTitles = {
-                    1: 'Select Categories',
-                    2: 'Event Details',
-                    3: 'Select Services',
-                    4: 'Choose Vendors',
-                    5: 'Review Requests'
-                };
+                const stepTitles = { 1: 'Select Categories', 2: 'Event Details', 3: 'Select Services', 4: 'Choose Vendors', 5: 'Review Requests' };
                 if (modalTitle) modalTitle.textContent = stepTitles[step] || 'Book Your Event';
-                // Show search criteria summary when entering vendor step (now 4)
-                if (step === 4) {
-                    updateSearchCriteriaSummary();
-                }
-                // Redraw timelines when showing step 2 or 3
+                // State
+                window.bookingState.currentStep = step;
+                if (step === 4) updateSearchCriteriaSummary();
                 if (step === 2 || step === 3) setTimeout(drawTimeline, 0);
             }
-            
+
             // Function to update search criteria summary
             function updateSearchCriteriaSummary() {
                 const summaryContainer = document.getElementById('search-criteria-summary');
@@ -8070,8 +8109,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 console.log('Event details collected:', bookingState.eventDetails);
 
-                // Show loading state
-                document.getElementById('vendor-loading').style.display = 'block';
+                // Show loading overlay and prep UI
+                showBookingLoading('Finding matching vendors...');
+                const vendorLoading = document.getElementById('vendor-loading');
+                if (vendorLoading) vendorLoading.style.display = 'none';
                 document.getElementById('vendor-results').innerHTML = '';
                 document.getElementById('no-vendors-found').style.display = 'none';
 
@@ -8170,7 +8211,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         }
                     }
 
-                    document.getElementById('vendor-loading').style.display = 'none';
+                    if (vendorLoading) vendorLoading.style.display = 'none';
 
                     console.log('🎯 Final vendor sections before rendering:', vendorSections);
                     console.log('🎯 vendorSections.length:', vendorSections.length);
@@ -8268,9 +8309,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 } catch (error) {
                     console.error('Error finding vendors:', error);
-                    document.getElementById('vendor-loading').style.display = 'none';
+                    if (vendorLoading) vendorLoading.style.display = 'none';
                     document.getElementById('no-vendors-found').style.display = 'block';
                     showError('Failed to find vendors. Please try again.');
+                } finally {
+                    hideBookingLoading();
                 }
             }
 
