@@ -602,9 +602,9 @@
         /* Compact horizontal cards specifically in Map view */
         body.map-active .vendor-horizontal-container { gap: 0.75rem; }
         body.map-active .vendor-horizontal-card { min-height: 200px; border-radius: 12px; }
-        body.map-active .vendor-card-image-container { width: 300px; height: 200px; }
-        body.map-active .vendor-card-image { width: 300px; height: 200px; }
-        body.map-active .vendor-no-image { width: 300px; height: 200px; }
+        body.map-active .vendor-card-image-container { width: 260px; height: 180px; }
+        body.map-active .vendor-card-image { width: 260px; height: 180px; }
+        body.map-active .vendor-no-image { width: 260px; height: 180px; }
         body.map-active .vendor-card-content { padding: 1rem; }
         body.map-active .vendor-card-name { font-size: 1rem; }
         body.map-active .vendor-card-distance { font-size: 0.8rem; }
@@ -1873,8 +1873,8 @@
         }
 
         .vendor-card-image-container {
-            width: 360px;
-            height: 240px;
+            width: 300px;
+            height: 200px;
             position: relative;
             flex-shrink: 0;
             overflow: hidden;
@@ -1887,16 +1887,16 @@
         }
 
         .vendor-card-image {
-            width: 360px;
-            height: 240px;
+            width: 300px;
+            height: 200px;
             object-fit: cover;
             border-top-left-radius: 12px;
             border-bottom-left-radius: 12px;
         }
 
         .vendor-no-image {
-            width: 360px;
-            height: 240px;
+            width: 300px;
+            height: 200px;
             background: #f3f4f6;
             display: flex;
             align-items: center;
@@ -1968,7 +1968,7 @@
 
         .vendor-card-content {
             flex: 1;
-            padding: 1.5rem;
+            padding: 1.25rem;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -8558,13 +8558,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     <div class="vendor-business-type" style="margin: 0.5rem 0; font-size: 0.85rem; color: #666; font-style: italic;">
                                         ${vendor.vendor?.BusinessType || vendor.BusinessType}
                                     </div>
-                                    <div class="vendor-features" style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0; padding: 0.75rem; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #3498db;">
-                                        <span style="color: #2c3e50; font-size: 0.9rem;">${service.name}</span>
-                                        <span style="color: #2c3e50; font-size: 0.9rem;">${vendorDuration ? `${Math.round(vendorDuration / 60)} hour${Math.round(vendorDuration / 60) !== 1 ? 's' : ''}` : ''}</span>
-                                        <span style="font-weight: 600; color: #27ae60; font-size: 0.95rem;">${priceInfo.label}</span>
+                                    <div class="vendor-features" style="display: flex; justify-content: space-between; align-items: center; margin: 0.5rem 0; padding: 0.4rem 0.6rem; background: #f8f9fa; border-radius: 8px;">
+                                        <span style="color: #6b7280; font-weight: 500; font-size: 0.85rem;">${service.name}</span>
+                                        <span style="color: #9ca3af; font-size: 0.8rem;">${vendorDuration ? `${Math.round(vendorDuration / 60)} min` : ''}</span>
+                                        <span style="color: #6b7280; font-weight: 500; font-size: 0.85rem;">${priceInfo.label}</span>
                                     </div>
                                     <div class="vendor-description" style="margin: 0.75rem 0; font-size: 0.9rem; color: var(--text-light); line-height: 1.4;">
-                                        ${vendorDescription && vendorDescription.length > 100 ? vendorDescription.substring(0, 100) + '...' : (vendorDescription || '')}
+                                        ${vendorDescription && vendorDescription.length > 160 ? vendorDescription.substring(0, 160) + '...' : (vendorDescription || '')}
                                     </div>
                                     <div class="vendor-footer">
                                         <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');" style="border-radius: 12px; font-weight: 600;">View Profile</button>
@@ -22233,10 +22233,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return `
                         <div style="display:flex; flex-direction:column; gap:2px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:8px; background:#fafafa;">
                             <div style="display:flex; gap:6px; align-items:center; font-size:0.85rem;">
-                                <span style="color:#10b981; font-weight:600;">${name}</span>
-                                ${priceLabel ? `<span style=\"color:#111827; font-weight:600;\">${priceLabel}</span>` : ''}
+                                <span style="color:#6b7280; font-weight:500;">${name}</span>
+                                ${priceLabel ? `<span style=\"color:#6b7280; font-weight:500;\">${priceLabel}</span>` : ''}
                             </div>
-                            ${meta ? `<div style=\"font-size:0.75rem; color:#6b7280;\">${meta}</div>` : ''}
+                            ${meta ? `<div style=\"font-size:0.75rem; color:#9ca3af;\">${meta}</div>` : ''}
                         </div>`;
                 }).join('');
                 serviceDetails = `<div style="display:grid; grid-template-columns:repeat(1, minmax(0,1fr)); gap:6px;">${chips}</div>`;
@@ -22247,8 +22247,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (displayServiceName) {
                     serviceDetails = `
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; font-size: 0.85rem;">
-                            <span style="color: #10b981; font-weight: 600;">${displayServiceName}</span>
-                            ${secondaryServices ? `<span style=\"color: #6b7280;\">•</span><span style=\"color: #6b7280;\">${secondaryServices}</span>` : ''}
+                            <span style="color: #6b7280; font-weight: 500;">${displayServiceName}</span>
+                            ${secondaryServices ? `<span style=\"color: #9ca3af;\">•</span><span style=\"color: #9ca3af;\">${secondaryServices}</span>` : ''}
                         </div>
                     `;
                 }
