@@ -22164,7 +22164,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     ? parseFloat(vendor.distanceFromEvent) 
                     : null);
             const hasDistance = typeof distVal === 'number' && isFinite(distVal);
-            const distance = hasDistance ? `${distVal.toFixed(1)} km away` : null;
+            // Display in kilometers as e.g. "5km away"
+            const distanceLabel = hasDistance ? `${Math.round(distVal)}km away` : null;
             const isSelected = (typeof bookingState !== 'undefined' && bookingState.selectedVendors) ? 
                 window.bookingState.selectedVendors.some(v => v.vendorProfileId === vendorId) : false;
             
@@ -22266,7 +22267,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         <div style="margin-bottom: 0.5rem;">
                             <div style="display:flex; align-items:center; justify-content: space-between; gap: 0.5rem;">
                                 <h4 style="font-size: 1rem; margin: 0; font-weight: 600; color: #1f2937;">${businessName}</h4>
-                                ${distance ? `<span style="font-size: 0.8rem; color: #111827; background:#eef2ff; border:1px solid #c7d2fe; padding:2px 6px; border-radius:9999px; white-space:nowrap;">${distance}</span>` : ''}
+                                ${distanceLabel ? `<span style="font-size: 0.8rem; color: #111827; background:#eef2ff; border:1px solid #c7d2fe; padding:2px 8px; border-radius:9999px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;"><i class="fas fa-location-arrow" style="font-size:0.8rem; color:#4f46e5;"></i>${distanceLabel}</span>` : ''}
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
                                 <div style="color: #f59e0b; font-size: 0.85rem;">
