@@ -1886,7 +1886,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             position: relative;
             width: 100%;
-            min-height: 240px;
+            min-height: 280px;
         }
 
         .vendor-horizontal-card:hover {
@@ -8628,17 +8628,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     <div class="vendor-business-type" style="margin: 0.5rem 0; font-size: 0.85rem; color: #666; font-style: italic;">
                                         ${vendor.vendor?.BusinessType || vendor.BusinessType}
                                     </div>
-                                    <div class="vendor-features" style="display: flex; justify-content: space-between; align-items: center; margin: 0.5rem 0; padding: 0.4rem 0.6rem; background: #f8f9fa; border-radius: 8px;">
-                                        <div style="display:flex; justify-content:space-between; width:100%; gap:8px; align-items:center;">
-                                            <span style="color: #6b7280; font-weight: 500; font-size: 0.85rem;">${service.name}</span>
-                                            <span style="color: #6b7280; font-weight: 600; font-size: 0.85rem;">${priceInfo.label}</span>
+                                    <div class="vendor-features" style="display: flex; justify-content: space-between; align-items: center; margin: 0.35rem 0; padding: 0.3rem 0.5rem; background: #f8f9fa; border-radius: 8px;">
+                                        <div style="display:flex; justify-content:space-between; width:100%; gap:6px; align-items:center;">
+                                            <span style="color: #6b7280; font-weight: 500; font-size: 0.75rem;">${service.name}</span>
+                                            <span style="color: #6b7280; font-weight: 600; font-size: 0.75rem;">${priceInfo.label}</span>
                                         </div>
                                     </div>
-                                    <div style="margin-top: -0.35rem; color: #9ca3af; font-size: 0.8rem;">
+                                    <div style="margin-top: -0.25rem; color: #9ca3af; font-size: 0.70rem;">
                                         ${vendorDuration ? `${Math.round(vendorDuration)} min` : ''}
                                     </div>
-                                    <div class="vendor-description" style="margin: 0.75rem 0; font-size: 0.9rem; color: var(--text-light); line-height: 1.4;">
-                                        ${vendorDescription && vendorDescription.length > 160 ? vendorDescription.substring(0, 160) + '...' : (vendorDescription || '')}
+                                    <div class="vendor-description" style="margin: 0.6rem 0; font-size: 0.9rem; color: #4b5563; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;">
+                                        ${vendorDescription || ''}
                                     </div>
                                     <div class="vendor-footer">
                                         <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');" style="border-radius: 12px; font-weight: 600;">View Profile</button>
@@ -22142,7 +22142,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Use the correct property names from API response
             const businessName = vendor.BusinessName || vendor.businessName || vendor.name || 'Unknown Business';
             const location = vendor.Location || vendor.location || vendor.address || 'Location not specified';
-            const description = vendor.BusinessDescription || vendor.description || vendor.businessDescription || '';
+            const description = (
+                vendor.BusinessDescription ||
+                vendor.businessDescription ||
+                vendor.description ||
+                vendor.VendorDescription ||
+                vendor.vendor?.BusinessDescription ||
+                vendor.vendor?.Description ||
+                vendor.Summary || vendor.summary ||
+                vendor.Bio || vendor.bio ||
+                ''
+            );
             const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id || 'unknown-' + Math.random();
             
             // Get vendor images - support multiple images for carousel (robust like Step 4)
@@ -22296,9 +22306,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Build detailed service chips with pricing and attributes (show up to 3)
             let serviceDetails = '';
-            const svcArray = Array.isArray(vendor.services) ? vendor.services : [];
+            const svcArray = Array.isArray(vendor.services) ? vendor.services
+                : (Array.isArray(vendor.Services) ? vendor.Services
+                : (Array.isArray(vendor.VendorServices) ? vendor.VendorServices : []));
             if (svcArray.length > 0) {
-                const chips = svcArray.slice(0, 3).map(svc => {
+                const chips = svcArray.map(svc => {
                     const name = svc.ServiceName || svc.name || 'Service';
                     const priceLabel = formatUnifiedServicePrice(svc);
                     const dur = svc.baseDurationMinutes ?? svc.BaseDurationMinutes ?? svc.VendorDurationMinutes ?? svc.DurationMinutes;
@@ -22307,32 +22319,40 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const attendance = (minA != null || maxA != null) ? `${minA ?? ''}${(minA!=null&&maxA!=null)?'-':''}${maxA ?? ''} ppl` : '';
                     const meta = [dur ? `${dur} min` : '', attendance].filter(Boolean).join(' · ');
                     return `
-                        <div style="display:flex; flex-direction:column; gap:2px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:8px; background:#fafafa;">
-                            <div style="display:flex; gap:6px; align-items:center; font-size:0.85rem;">
-                                <span style="color:#6b7280; font-weight:500;">${name}</span>
-                                ${priceLabel ? `<span style=\"color:#6b7280; font-weight:500;\">${priceLabel}</span>` : ''}
+                        <div style="display:flex; flex-direction:column; gap:2px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:8px; background:#ffffff;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.80rem;">
+                                <span style="color:#374151; font-weight:600;">${name}</span>
+                                ${priceLabel ? `<span style=\"color:#374151; font-weight:600;\">${priceLabel}</span>` : ''}
                             </div>
-                            ${meta ? `<div style=\"font-size:0.75rem; color:#9ca3af;\">${meta}</div>` : ''}
+                            ${meta ? `<div style=\"font-size:0.70rem; color:#6b7280;\">${meta}</div>` : ''}
                         </div>`;
                 }).join('');
-                serviceDetails = `<div style="display:grid; grid-template-columns:repeat(1, minmax(0,1fr)); gap:6px;">${chips}</div>`;
+
+                // Services grid container
+                serviceDetails = `
+                    <div style="max-height: 72px; overflow-y: auto; padding-right: 4px;">
+                        <div style="display:grid; grid-template-columns:repeat(1, minmax(0,1fr)); gap:6px;">${chips}</div>
+                    </div>`;
             } else {
-                // Fallback to names if no detailed services present
-                const displayServiceName = Array.isArray(serviceNames) && serviceNames.length > 0 ? serviceNames[0] : '';
-                const secondaryServices = Array.isArray(serviceNames) && serviceNames.length > 1 ? serviceNames.slice(1, 3).join(' • ') : '';
-                if (displayServiceName) {
+                // Fallback: tile the service names consistently
+                const names = Array.isArray(serviceNames) ? serviceNames : (serviceNames ? [serviceNames] : []);
+                if (names.length > 0) {
+                    const tiles = names.map(n => `
+                        <div style=\"display:flex; flex-direction:column; gap:2px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:8px; background:#ffffff;\">
+                            <div style=\"display:flex; justify-content:space-between; align-items:center; font-size:0.80rem;\">
+                                <span style=\"color:#374151; font-weight:600;\">${n}</span>
+                            </div>
+                        </div>`).join('');
                     serviceDetails = `
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; font-size: 0.85rem;">
-                            <span style="color: #6b7280; font-weight: 500;">${displayServiceName}</span>
-                            ${secondaryServices ? `<span style=\"color: #9ca3af;\">•</span><span style=\"color: #9ca3af;\">${secondaryServices}</span>` : ''}
-                        </div>
-                    `;
+                        <div style=\"max-height: 72px; overflow-y: auto; padding-right: 4px;\">
+                            <div style=\"display:grid; grid-template-columns:repeat(1, minmax(0,1fr)); gap:6px;\">${tiles}</div>
+                        </div>`;
                 }
             }
-            
 
+            // Outer card template
             return `
-                <div class="vendor-horizontal-card ${isSelected ? 'selected' : ''}" 
+                <div class="vendor-card vendor-card-horizontal"
                      data-vendor-id="${vendorId}" 
                      onmouseover="highlightMapMarker('${vendorId}', true)" 
                      onmouseout="highlightMapMarker('${vendorId}', false)" 
@@ -22343,7 +22363,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         <div style="margin-bottom: 0.5rem;">
                             <div style="display:flex; align-items:center; justify-content: space-between; gap: 0.5rem;">
                                 <h4 style="font-size: 1rem; margin: 0; font-weight: 600; color: #1f2937;">${businessName}</h4>
-                                ${distanceLabel ? `<span style="font-size: 0.8rem; color: #111827; background:#eef2ff; border:1px solid #c7d2fe; padding:2px 8px; border-radius:9999px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;"><i class="fas fa-location-arrow" style="font-size:0.8rem; color:#4f46e5;"></i>${distanceLabel}</span>` : ''}
+                                ${distanceLabel ? `<span style="font-size: 0.8rem; color: #111827; background:#eef2ff; border:1px solid #c7d2fe; padding:2px 8px; border-radius:9999px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;"><i class=\"fas fa-location-arrow\" style=\"font-size:0.8rem; color:#4f46e5;\"></i>${distanceLabel}</span>` : ''}
                             </div>
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
                                 <div style="color: #f59e0b; font-size: 0.85rem;">
@@ -22352,14 +22372,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <span style="font-size: 0.8rem; color: #6b7280;">
                                     ${rating.toFixed(1)} (${reviewCount})
                                 </span>
-                                ${location ? `<span style="font-size: 0.8rem; color: #6b7280;">• ${location}</span>` : ''}
+                                ${location ? `<span style=\"font-size: 0.8rem; color: #6b7280;\">• ${location}</span>` : ''}
                             </div>
                         </div>
                         
-                        ${description ? `<div style="font-size: 0.9rem; color: #4b5563; line-height: 1.4; margin-bottom: 0.75rem; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;">${description}</div>` : ''}
+                        ${description ? `<div style=\"font-size: 0.9rem; color: #4b5563; line-height: 1.5; margin-bottom: 0.5rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;\">${description}</div>` : ''}
                         ${startingPriceDisplay ? `
-                        <div style="font-size: 0.9rem; color: #065f46; font-weight: 700; margin-bottom: 0.5rem;">
-                            Starting from ${startingPriceDisplay}${startingServiceName ? ` • <span style="font-weight:600; color:#047857;">${startingServiceName}</span>` : ''}
+                        <div style=\"font-size: 0.9rem; color: #065f46; font-weight: 700; margin-bottom: 0.5rem;\">
+                            Starting from ${startingPriceDisplay}${startingServiceName ? ` • <span style=\"font-weight:600; color:#047857;\">${startingServiceName}</span>` : ''}
                         </div>` : ''}
                         
                         <div style="margin-bottom: 0.5rem;">
