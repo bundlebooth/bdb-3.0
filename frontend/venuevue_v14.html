@@ -602,7 +602,7 @@
         /* Compact horizontal cards specifically in Map view */
         body.map-active .vendor-horizontal-container { gap: 0.75rem; }
         body.map-active .vendor-horizontal-card { min-height: 200px; border-radius: 12px; }
-        body.map-active .vendor-card-image-container { width: 45%; height: 220px; flex: 0 0 45%; }
+        body.map-active .vendor-card-image-container { width: 45%; height: 260px; flex: 0 0 45%; }
         body.map-active .vendor-card-image { width: 100%; height: 100%; }
         body.map-active .vendor-no-image { width: 100%; height: 100%; }
         body.map-active .vendor-card-content { padding: 1rem; }
@@ -1905,12 +1905,10 @@
         }
 
         .vendor-card-image-container {
-            /* Left column: image carousel ~42% of card width */
-            width: 45%;
+            /* In grid, take full width of the left column */
+            width: 100%;
             height: 260px;
             position: relative;
-            flex-shrink: 0;
-            flex: 0 0 45%;
             overflow: hidden;
         }
 
@@ -1918,12 +1916,16 @@
             display: flex;
             transition: transform 0.3s ease;
             height: 100%;
+            width: 100%;
         }
 
         .vendor-card-image {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            object-position: center;
+            display: block; /* remove inline-gap */
+            flex: 0 0 100%; /* each slide equals container width */
             border-top-left-radius: 12px;
             border-bottom-left-radius: 12px;
         }
@@ -1936,6 +1938,8 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            border-top-left-radius: 12px;
+            border-bottom-left-radius: 12px;
         }
 
         .carousel-dots {
@@ -22399,8 +22403,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     ` : ''}
                 </div>
             ` : `
-                <div class="vendor-no-image">
-                    <i class="fas fa-user-tie" style="font-size: 2rem; color: var(--primary);"></i>
+                <div class="vendor-card-image-container">
+                    <div class="vendor-no-image">
+                        <i class="fas fa-user-tie" style="font-size: 2rem; color: var(--primary);"></i>
+                    </div>
                 </div>
             `;
 
@@ -23361,6 +23367,42 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     'Send Requests';
             }
         }
+
+        // --- Simple Image Carousel Controller ---
+        const currentCarouselIndex = {};
+
+        function updateCarousel(vendorId) {
+            const track = document.getElementById(`carousel-${vendorId}`);
+            if (!track) return;
+            const slides = track.querySelectorAll('.vendor-card-image');
+            const max = Math.max(0, slides.length - 1);
+            let idx = currentCarouselIndex[vendorId] ?? 0;
+            if (idx < 0) idx = 0;
+            if (idx > max) idx = max;
+            currentCarouselIndex[vendorId] = idx;
+            track.style.transform = `translateX(-${idx * 100}%)`;
+            const dots = track.parentElement?.querySelectorAll?.('.carousel-dot') || [];
+            dots.forEach((dot, i) => dot.classList.toggle('active', i === idx));
+        }
+
+        function navigateCarousel(vendorId, direction) {
+            currentCarouselIndex[vendorId] = (currentCarouselIndex[vendorId] ?? 0) + direction;
+            updateCarousel(vendorId);
+        }
+
+        function goToCarouselSlide(vendorId, index) {
+            currentCarouselIndex[vendorId] = index;
+            updateCarousel(vendorId);
+        }
+
+        // Initialize any rendered carousels after cards are injected
+        setTimeout(() => {
+            document.querySelectorAll('[id^="carousel-"]').forEach(el => {
+                const id = el.id.replace('carousel-', '');
+                currentCarouselIndex[id] = 0;
+                updateCarousel(id);
+            });
+        }, 0);
 
         // Make the new toggleVendorSelection function globally available
         window.toggleVendorSelection = toggleVendorSelection;
