@@ -602,9 +602,9 @@
         /* Compact horizontal cards specifically in Map view */
         body.map-active .vendor-horizontal-container { gap: 0.75rem; }
         body.map-active .vendor-horizontal-card { min-height: 200px; border-radius: 12px; }
-        body.map-active .vendor-card-image-container { width: 260px; height: 180px; }
-        body.map-active .vendor-card-image { width: 260px; height: 180px; }
-        body.map-active .vendor-no-image { width: 260px; height: 180px; }
+        body.map-active .vendor-card-image-container { width: 45%; height: 220px; flex: 0 0 45%; }
+        body.map-active .vendor-card-image { width: 100%; height: 100%; }
+        body.map-active .vendor-no-image { width: 100%; height: 100%; }
         body.map-active .vendor-card-content { padding: 1rem; }
         body.map-active .vendor-card-name { font-size: 1rem; }
         body.map-active .vendor-card-distance { font-size: 0.8rem; }
@@ -1877,7 +1877,8 @@
         }
 
         .vendor-horizontal-card {
-            display: flex;
+            display: grid;
+            grid-template-columns: 45% 55%; /* strict two-column split */
             background: white;
             border-radius: 16px;
             border: 1px solid #e5e7eb;
@@ -1886,7 +1887,9 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             position: relative;
             width: 100%;
-            min-height: 270px;
+            min-height: 240px;
+            align-items: stretch;
+            column-gap: 0; /* flush image against content like screenshot */
         }
 
         .vendor-horizontal-card:hover {
@@ -1902,10 +1905,12 @@
         }
 
         .vendor-card-image-container {
-            width: 300px;
-            height: 200px;
+            /* Left column: image carousel ~42% of card width */
+            width: 45%;
+            height: 260px;
             position: relative;
             flex-shrink: 0;
+            flex: 0 0 45%;
             overflow: hidden;
         }
 
@@ -1916,16 +1921,16 @@
         }
 
         .vendor-card-image {
-            width: 300px;
-            height: 200px;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
             border-top-left-radius: 12px;
             border-bottom-left-radius: 12px;
         }
 
         .vendor-no-image {
-            width: 300px;
-            height: 200px;
+            width: 100%;
+            height: 100%;
             background: #f3f4f6;
             display: flex;
             align-items: center;
@@ -1996,12 +2001,98 @@
         }
 
         .vendor-card-content {
-            flex: 1;
-            padding: 1.25rem;
+            flex: 1 1 auto;
+            padding: 1rem 1rem 1rem 1rem; /* even padding, relies on no column gap */
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            gap: 0.5rem; /* consistent vertical rhythm to avoid visual overlap */
+            justify-content: flex-start; /* avoid stretching sections apart unexpectedly */
             position: relative;
+            /* Allow content to shrink properly in flex layout to avoid squishing */
+            min-width: 0;
+        }
+
+        /* Prevent header squish: allow up to 2 lines for title, keep distance pill fixed */
+        .vendor-card-content h4 {
+            margin: 0;
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            display: -webkit-box;
+            line-clamp: 2; /* lint: add standard property for compatibility */
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            line-height: 1.25;
+            max-height: calc(1.25em * 2);
+        }
+
+        /* Target the header row inside content (title + distance chip) */
+        .vendor-card-content > div:first-child > div {
+            /* Override inline flex styles from renderer */
+            display: grid !important;
+            grid-template-columns: 1fr auto !important; /* title grows, chip fixed */
+            justify-content: initial !important;
+            align-items: start !important;
+            column-gap: 0.5rem;
+            row-gap: 0.25rem;
+        }
+
+        /* Ensure title grid cell can shrink properly */
+        .vendor-card-content > div:first-child > div > h4 {
+            min-width: 0;
+        }
+
+        /* Keep the distance chip from shrinking */
+        .vendor-card-content > div:first-child > div > span {
+            flex: 0 0 auto;
+        }
+
+        /* Keep action buttons anchored to the bottom of the content column */
+        .vendor-card-actions {
+            margin-top: auto;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+
+        /* Service pill rows (name left, price right, meta below) */
+        .service-pill {
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-height: 50px;
+            box-shadow: 0 1px 0 rgba(17,24,39,0.02);
+        }
+        .service-pill-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .service-pill-name {
+            color: #111827;
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .service-pill-price {
+            color: #111827;
+            font-weight: 700;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        .service-pill-meta {
+            font-size: 0.75rem;
+            color: #6b7280;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .vendor-response-badge {
@@ -2025,6 +2116,9 @@
             color: #111827;
             margin: 0 0 8px 0;
             line-height: 1.3;
+            /* Prevent long unbroken names (e.g., FiveFeetAbove) from squishing layout */
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .vendor-rating {
@@ -2256,6 +2350,12 @@
             .vendor-horizontal-card {
                 flex-direction: column;
                 gap: 1rem;
+            }
+            
+            .vendor-card-image-container {
+                width: 100%;
+                height: 200px;
+                flex: 0 0 auto;
             }
             
             .vendor-card-image {
@@ -22312,24 +22412,32 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             if (svcArray.length > 0) {
                 const tiles = svcArray.map(svc => {
                     const name = svc.ServiceName || svc.name || 'Service';
-                    const priceLabel = formatUnifiedServicePrice(svc);
+                    const fullLabel = formatUnifiedServicePrice(svc);
+                    // Split into a primary price (for right side) and meta (below)
+                    let primaryPrice = '';
+                    let metaExtra = '';
+                    if (fullLabel) {
+                        const parts = fullLabel.split('·').map(s => s.trim());
+                        primaryPrice = parts.shift() || '';
+                        metaExtra = parts.join(' · ');
+                    }
                     const dur = svc.baseDurationMinutes ?? svc.BaseDurationMinutes ?? svc.VendorDurationMinutes ?? svc.DurationMinutes;
                     const minA = svc.minimumAttendees ?? svc.MinimumAttendees;
                     const maxA = svc.maximumAttendees ?? svc.MaximumAttendees;
                     const attendance = (minA != null || maxA != null) ? `${minA ?? ''}${(minA!=null&&maxA!=null)?'-':''}${maxA ?? ''} ppl` : '';
-                    const meta = [dur ? `${dur} min` : '', attendance].filter(Boolean).join(' · ');
+                    const meta = [dur ? `${dur} min` : '', metaExtra, attendance].filter(Boolean).join(' · ');
                     return `
-                        <div style="border:1px solid #e5e7eb; background:#f9fafb; border-radius:10px; padding:6px 8px; display:flex; flex-direction:column; gap:2px; min-height:44px;">
-                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                                <span style="color:#374151; font-weight:600; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${name}</span>
-                                ${priceLabel ? `<span style=\"color:#111827; font-weight:600; font-size:0.8rem; white-space:nowrap;\">${priceLabel}</span>` : ''}
+                        <div class="service-pill">
+                            <div class="service-pill-header">
+                                <span class="service-pill-name">${name}</span>
+                                ${primaryPrice ? `<span class="service-pill-price">${primaryPrice}</span>` : ''}
                             </div>
-                            ${meta ? `<div style=\"font-size:0.72rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;\">${meta}</div>` : ''}
+                            ${meta ? `<div class=\"service-pill-meta\">${meta}</div>` : ''}
                         </div>`;
                 }).join('');
                 serviceDetails = `
-                    <div style="max-height: 96px; overflow-y: auto; padding-right: 4px;">
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">${tiles}</div>
+                    <div style="padding-right: 2px;">
+                        <div style="display:grid; grid-template-columns: 1fr; gap:8px;">${tiles}</div>
                     </div>`;
             } else {
                 // Fallback to names if no detailed services present
@@ -22338,12 +22446,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const names = [displayServiceName].concat(secondaryServices ? secondaryServices.split(' • ') : []).filter(Boolean);
                 if (names.length > 0) {
                     const tiles = names.map(n => `
-                        <div style="border:1px solid #e5e7eb; background:#f9fafb; border-radius:10px; padding:6px 8px; display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px;">
-                            <span style="color:#374151; font-weight:600; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${n}</span>
+                        <div class="service-pill">
+                            <div class="service-pill-header">
+                                <span class="service-pill-name">${n}</span>
+                            </div>
                         </div>`).join('');
                     serviceDetails = `
-                        <div style="max-height: 96px; overflow-y: auto; padding-right: 4px;">
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:8px;">${tiles}</div>
+                        <div style="padding-right: 2px;">
+                            <div style="display:grid; grid-template-columns: 1fr; gap:8px;">${tiles}</div>
                         </div>`;
                 }
             }
@@ -22359,22 +22469,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     
                     <div class="vendor-card-content">
                         <div style="margin-bottom: 0.5rem;">
-                            <div style="display:flex; align-items:center; justify-content: space-between; gap: 0.5rem;">
+                            <!-- Row 1: Name (left) + Distance pill (right) -->
+                            <div style="display:grid; grid-template-columns: 1fr auto; align-items:start; column-gap:8px;">
                                 <h4 style="font-size: 1rem; margin: 0; font-weight: 600; color: #1f2937;">${businessName}</h4>
                                 ${distanceLabel ? `<span style="font-size: 0.8rem; color: #111827; background:#eef2ff; border:1px solid #c7d2fe; padding:2px 8px; border-radius:9999px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;"><i class="fas fa-location-arrow" style="font-size:0.8rem; color:#4f46e5;"></i>${distanceLabel}</span>` : ''}
                             </div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
-                                <div style="color: #f59e0b; font-size: 0.85rem;">
-                                    ${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5-Math.floor(rating))}
+                            <!-- Row 2: Stars/Rating/Location (left) + 'No reviews yet' (right when applicable) -->
+                            <div style="display:grid; grid-template-columns: 1fr auto; align-items:center; margin-top: 0.25rem; column-gap:8px;">
+                                <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                                    <div style="color: #f59e0b; font-size: 0.85rem; line-height:1;">${(reviewCount && reviewCount > 0) ? '★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating)) : '☆☆☆☆☆'}</div>
+                                    <span style="font-size: 0.8rem; color: #6b7280; white-space:nowrap;">${(reviewCount && reviewCount > 0) ? `${rating.toFixed(1)} (${reviewCount})` : ''}</span>
+                                    ${location ? `<span style=\"font-size: 0.8rem; color: #6b7280; white-space:nowrap;\">• ${location}</span>` : ''}
                                 </div>
-                                <span style="font-size: 0.8rem; color: #6b7280;">
-                                    ${rating.toFixed(1)} (${reviewCount})
-                                </span>
-                                ${location ? `<span style="font-size: 0.8rem; color: #6b7280;">• ${location}</span>` : ''}
+                                <div style="font-size: 0.8rem; color: #6b7280; white-space:nowrap; text-align:right;">${(!reviewCount || reviewCount === 0) ? 'No reviews yet' : ''}</div>
                             </div>
                         </div>
                         
-                        ${description ? `<div style="font-size: 0.9rem; color: #4b5563; line-height: 1.4; margin-bottom: 0.5rem; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">${description}</div>` : ''}
+                        ${description ? `<div style="font-size: 0.9rem; color: #4b5563; line-height: 1.4; margin-bottom: 0.5rem; display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${description}</div>` : ''}
                         ${startingPriceDisplay ? `
                         <div style="font-size: 0.9rem; color: #065f46; font-weight: 700; margin-bottom: 0.5rem;">
                             Starting from ${startingPriceDisplay}${startingServiceName ? ` • <span style="font-weight:600; color:#047857;">${startingServiceName}</span>` : ''}
@@ -22474,8 +22585,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 state.currentIndex = state.totalImages - 1;
             }
 
-            // Apply transform
-            const translateX = -state.currentIndex * 360; // 360px is the image width
+            // Apply transform using actual image width (fallback to 260)
+            const img = carousel.querySelector('.vendor-card-image');
+            const imgWidth = (img && img.clientWidth) ? img.clientWidth : 260;
+            const translateX = -state.currentIndex * imgWidth;
             carousel.style.transform = `translateX(${translateX}px)`;
 
             // Update dots
@@ -22492,8 +22605,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Update current index
             state.currentIndex = index;
 
-            // Apply transform
-            const translateX = -state.currentIndex * 360;
+            // Apply transform using actual image width (fallback to 260)
+            const img = carousel.querySelector('.vendor-card-image');
+            const imgWidth = (img && img.clientWidth) ? img.clientWidth : 260;
+            const translateX = -state.currentIndex * imgWidth;
             carousel.style.transform = `translateX(${translateX}px)`;
 
             // Update dots
