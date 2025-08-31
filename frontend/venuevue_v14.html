@@ -8532,26 +8532,26 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const baseDuration = parseInt(service.BaseDurationMinutes ?? service.baseDurationMinutes ?? service.VendorDurationMinutes ?? service.durationMinutes);
                 const fixedPrice = toNum(service.FixedPrice ?? service.fixedPrice);
                 const ppp = toNum(service.PricePerPerson ?? service.pricePerPerson);
+                const ot = toNum(service.OvertimeRatePerHour ?? service.overtimeRatePerHour);
                 // Prefer unified fields
                 if (pm === 'fixed_based') {
                     if (fixedType === 'per_attendee' && ppp != null) {
                         return { label: `$${Math.round(ppp).toLocaleString()}/person`, value: ppp };
                     }
                     if (fixedPrice != null) {
-                        return { label: `$${Math.round(fixedPrice).toLocaleString()} fixed`, value: fixedPrice };
+                        return { label: `$${Math.round(fixedPrice).toLocaleString()} Fixed`, value: fixedPrice };
                     }
                 }
                 if (pm === 'time_based' || pm === '') {
-                    if (baseRate != null && baseDuration != null) {
-                        return { label: `$${Math.round(baseRate).toLocaleString()} for ${baseDuration} min`, value: baseRate };
+                    if (baseRate != null) {
+                        const base = `$${Math.round(baseRate).toLocaleString()}`;
+                        const otPart = ot != null ? ` · Additional hour $${Math.round(ot).toLocaleString()}/hr` : '';
+                        return { label: `${base}${otPart}`.trim(), value: baseRate };
                     }
                 }
                 // Fallback to legacy vendor price/duration if provided
                 const legacyPrice = toNum(service.VendorPrice ?? service.MinPrice ?? service.Price);
                 const legacyDuration = parseInt(service.VendorDurationMinutes ?? service.DurationMinutes ?? service.durationMinutes);
-                if (legacyPrice != null && legacyDuration != null) {
-                    return { label: `$${Math.round(legacyPrice).toLocaleString()} for ${legacyDuration} min`, value: legacyPrice };
-                }
                 if (legacyPrice != null) {
                     return { label: `$${Math.round(legacyPrice).toLocaleString()}`, value: legacyPrice };
                 }
@@ -8629,9 +8629,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                                         ${vendor.vendor?.BusinessType || vendor.BusinessType}
                                     </div>
                                     <div class="vendor-features" style="display: flex; justify-content: space-between; align-items: center; margin: 0.5rem 0; padding: 0.4rem 0.6rem; background: #f8f9fa; border-radius: 8px;">
-                                        <span style="color: #6b7280; font-weight: 500; font-size: 0.85rem;">${service.name}</span>
-                                        <span style="color: #9ca3af; font-size: 0.8rem;">${vendorDuration ? `${Math.round(vendorDuration / 60)} min` : ''}</span>
-                                        <span style="color: #6b7280; font-weight: 500; font-size: 0.85rem;">${priceInfo.label}</span>
+                                        <div style="display:flex; justify-content:space-between; width:100%; gap:8px; align-items:center;">
+                                            <span style="color: #6b7280; font-weight: 500; font-size: 0.85rem;">${service.name}</span>
+                                            <span style="color: #6b7280; font-weight: 600; font-size: 0.85rem;">${priceInfo.label}</span>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top: -0.35rem; color: #9ca3af; font-size: 0.8rem;">
+                                        ${vendorDuration ? `${Math.round(vendorDuration)} min` : ''}
                                     </div>
                                     <div class="vendor-description" style="margin: 0.75rem 0; font-size: 0.9rem; color: var(--text-light); line-height: 1.4;">
                                         ${vendorDescription && vendorDescription.length > 160 ? vendorDescription.substring(0, 160) + '...' : (vendorDescription || '')}
@@ -22103,15 +22107,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             if (pm === 'time_based') {
                 let parts = [];
-                if (baseRate != null && baseDur != null) parts.push(`${fmtMoney(baseRate)} • ${minsToH(baseDur)}`);
-                if (ot != null) parts.push(`OT ${fmtMoney(ot)}/hr`);
+                if (baseRate != null) parts.push(`${fmtMoney(baseRate)}`);
+                if (ot != null) parts.push(`Additional hour ${fmtMoney(ot)}/hr`);
                 if (minFee != null && Number(minFee) > 0) parts.push(`Min ${fmtMoney(minFee)}`);
                 return parts.join(' · ');
             }
 
             if (pm === 'fixed_based') {
                 if (fpt === 'fixed_price') {
-                    return fixedPrice != null ? `${fmtMoney(fixedPrice)} fixed` : '';
+                    return fixedPrice != null ? `${fmtMoney(fixedPrice)} Fixed` : '';
                 }
                 if (fpt === 'per_attendee') {
                     let label = ppp != null ? `${fmtMoney(ppp)}/person` : '';
