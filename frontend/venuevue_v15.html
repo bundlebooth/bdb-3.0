@@ -2142,7 +2142,7 @@
             gap: 8px;
         }
         .service-pill-name {
-            color: #111827;
+            color: #6b7280;
             font-weight: 600;
             font-size: 0.9rem;
             white-space: nowrap;
@@ -2150,7 +2150,7 @@
             text-overflow: ellipsis;
         }
         .service-pill-price {
-            color: #111827;
+            color: #6b7280;
             font-weight: 700;
             font-size: 0.9rem;
             white-space: nowrap;
@@ -4396,7 +4396,7 @@
                         </div>
                         <div class="form-group">
                             <label for="social-tiktok" style="display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fab fa-tiktok" style="color: #000000; font-size: 1.2rem;"></i>
+                                <i class="fab fa-tiktok" style="color: #6b7280; font-size: 1.2rem;"></i>
                                 TikTok
                             </label>
                             <div style="display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
@@ -5032,7 +5032,10 @@
                     
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
                         <button type="button" class="btn btn-outline" id="back-to-booking-step-3">Back: Select Services</button>
-                        <button type="button" class="btn btn-primary" id="send-requests-btn" disabled>Send Requests</button>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span id="selected-vendor-count" style="color: #6b7280; font-size: 0.9rem;">0 vendors selected</span>
+                            <button type="button" class="btn btn-primary" id="send-requests-btn" disabled>Send Requests</button>
+                        </div>
                     </div>
                 </div>
 
@@ -8589,10 +8592,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                             }
                         }, 100);
                         
-                        // Update step 3 header with match info
-                        const step3Title = document.querySelector('#booking-step-3 .form-section-title');
-                        if (step3Title) {
-                            step3Title.textContent = `Found ${totalVendorsFound} Matching Vendors across ${vendorSections.length} Services`;
+                        // Update step 4 header with match info
+                        const step4Title = document.querySelector('#booking-step-4 .form-section-title');
+                        if (step4Title) {
+                            step4Title.textContent = `Found ${totalVendorsFound} Matching Vendors across ${vendorSections.length} Services`;
                         }
                     } else {
                         // Even with no vendors found, show the map with event location
@@ -22555,24 +22558,24 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         <div style="margin-bottom: 0.5rem;">
                             <!-- Row 1: Name (left) + Distance pill (right) -->
                             <div style="display:grid; grid-template-columns: 1fr auto; align-items:start; column-gap:8px;">
-                                <h4 style="font-size: 1rem; margin: 0; font-weight: 600; color: #1f2937;">${businessName}</h4>
-                                ${distanceLabel ? `<span style="font-size: 0.8rem; color: #111827; background:#eef2ff; border:1px solid #c7d2fe; padding:2px 8px; border-radius:9999px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;"><i class="fas fa-location-arrow" style="font-size:0.8rem; color:#4f46e5;"></i>${distanceLabel}</span>` : ''}
+                                <h4 style="font-size: 1rem; margin: 0; font-weight: 600; color: #4b5563;">${businessName}</h4>
+                                ${distanceLabel ? `<span style="font-size: 0.8rem; color: #6b7280; background:#eef2ff; border:1px solid #c7d2fe; padding:2px 8px; border-radius:9999px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;"><i class="fas fa-location-arrow" style="font-size:0.8rem; color:#4f46e5;"></i>${distanceLabel}</span>` : ''}
                             </div>
                             <!-- Row 2: Stars/Rating/Location (left) + 'No reviews yet' (right when applicable) -->
                             <div style="display:grid; grid-template-columns: 1fr auto; align-items:center; margin-top: 0.25rem; column-gap:8px;">
                                 <div style="display:flex; align-items:center; gap:8px; min-width:0;">
                                     <div style="color: #f59e0b; font-size: 0.85rem; line-height:1;">${(reviewCount && reviewCount > 0) ? '★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating)) : '☆☆☆☆☆'}</div>
-                                    <span style="font-size: 0.8rem; color: #6b7280; white-space:nowrap;">${(reviewCount && reviewCount > 0) ? `${rating.toFixed(1)} (${reviewCount})` : ''}</span>
-                                    ${location ? `<span style=\"font-size: 0.8rem; color: #6b7280; white-space:nowrap;\">• ${location}</span>` : ''}
+                                    <span style="font-size: 0.8rem; color: #9ca3af; white-space:nowrap;">${(reviewCount && reviewCount > 0) ? `${rating.toFixed(1)} (${reviewCount})` : ''}</span>
+                                    ${location ? `<span style="font-size: 0.8rem; color: #9ca3af; white-space:nowrap;">• ${location}</span>` : ''}
                                 </div>
                                 <div style="font-size: 0.8rem; color: #6b7280; white-space:nowrap; text-align:right;"></div>
                             </div>
                         </div>
                         
-                        ${description ? `<div style="font-size: 0.9rem; color: #4b5563; line-height: 1.4; margin-bottom: 0.5rem; display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${description}</div>` : ''}
+                        ${description ? `<div style="font-size: 0.9rem; color: #6b7280; line-height: 1.4; margin-bottom: 0.5rem; display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${description}</div>` : ''}
                         ${startingPriceDisplay ? `
-                        <div style="font-size: 0.9rem; color: #065f46; font-weight: 700; margin-bottom: 0.5rem;">
-                            Starting from ${startingPriceDisplay}${startingServiceName ? ` • <span style="font-weight:600; color:#047857;">${startingServiceName}</span>` : ''}
+                        <div style="font-size: 0.9rem; color: #059669; font-weight: 700; margin-bottom: 0.5rem;">
+                            Starting from ${startingPriceDisplay}${startingServiceName ? ` • <span style="font-weight:600; color:#059669;">${startingServiceName}</span>` : ''}
                         </div>` : ''}
                         
                         <div style="margin-bottom: 0.5rem;">
@@ -22850,12 +22853,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             updateVendorSelectionUI();
             updateMarkerColors();
             
-            // Enable/disable send requests button
-            const sendRequestsBtn = document.getElementById('send-requests-btn');
-            if (sendRequestsBtn) {
-                sendRequestsBtn.disabled = selectedVendors.length === 0;
-                console.log('🔘 Send requests button disabled:', sendRequestsBtn.disabled);
-            }
+            // Update send requests button and count display
+            updateSendRequestsButton();
         }
         
         // Function to update marker colors based on selection state
@@ -23452,9 +23451,28 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             if (button) {
                 const hasSelections = bookingState.selectedVendors && bookingState.selectedVendors.length > 0;
                 button.disabled = !hasSelections;
-                button.textContent = hasSelections ? 
-                    `Send Requests (${bookingState.selectedVendors.length})` : 
-                    'Send Requests';
+                
+                // Update the selected vendor count display
+                const countDisplay = document.getElementById('selected-vendor-count');
+                if (countDisplay) {
+                    const count = bookingState.selectedVendors ? bookingState.selectedVendors.length : 0;
+                    countDisplay.textContent = count === 1 ? '1 vendor selected' : `${count} vendors selected`;
+                    countDisplay.style.color = '#6b7280';
+                    countDisplay.style.fontWeight = 'normal';
+                }
+                
+                // Update button styling based on selection state
+                if (hasSelections) {
+                    button.style.backgroundColor = '#5e72e4';
+                    button.style.borderColor = '#5e72e4';
+                    button.style.opacity = '1';
+                    button.style.cursor = 'pointer';
+                } else {
+                    button.style.backgroundColor = '#a5b4fc';
+                    button.style.borderColor = '#a5b4fc';
+                    button.style.opacity = '0.7';
+                    button.style.cursor = 'not-allowed';
+                }
             }
         }
 
