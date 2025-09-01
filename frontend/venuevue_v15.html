@@ -764,21 +764,21 @@
         }
 
         .vendor-eye-icon {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
-            background: #3b82f6;
+            background: #5e72e4;
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.2s ease;
-            font-size: 1.1rem;
+            font-size: 0.9rem;
         }
 
         .vendor-eye-icon:hover {
-            background: #2563eb;
+            background: #4c63d2;
             transform: scale(1.1);
         }
 
@@ -802,8 +802,8 @@
         }
 
         .vendor-checkbox.checked {
-            background: #10b981;
-            border-color: #10b981;
+            background: #5e72e4;
+            border-color: #5e72e4;
             color: white;
         }
 
@@ -812,7 +812,7 @@
         }
 
         .vendor-checkbox.checked:hover {
-            background: #059669;
+            background: #4c63d2;
         }
 
         .btn {
@@ -1964,9 +1964,8 @@
         }
 
         .vendor-horizontal-card.selected {
-            border-color: var(--primary);
-            background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+            border: 2px solid #5e72e4;
+            box-shadow: 0 0 0 1px rgba(94, 114, 228, 0.2);
         }
 
         .vendor-card-image-container {
@@ -9034,8 +9033,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                             vendorData: vendor
                         });
                         vendorCard.classList.add('selected');
-                        selectButton.classList.add('selected');
-                        selectButton.textContent = 'Selected';
+                        // Update checkbox state only (buttons have been removed)
+                        const checkbox = vendorCard.querySelector('.vendor-checkbox');
+                        if (checkbox) {
+                            checkbox.classList.add('checked');
+                            checkbox.innerHTML = '<i class="fas fa-check"></i>';
+                            checkbox.title = 'Deselect vendor';
+                        }
                     }
                 }
 
@@ -22561,7 +22565,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     <span style="font-size: 0.8rem; color: #6b7280; white-space:nowrap;">${(reviewCount && reviewCount > 0) ? `${rating.toFixed(1)} (${reviewCount})` : ''}</span>
                                     ${location ? `<span style=\"font-size: 0.8rem; color: #6b7280; white-space:nowrap;\">• ${location}</span>` : ''}
                                 </div>
-                                <div style="font-size: 0.8rem; color: #6b7280; white-space:nowrap; text-align:right;">${(!reviewCount || reviewCount === 0) ? 'No reviews yet' : ''}</div>
+                                <div style="font-size: 0.8rem; color: #6b7280; white-space:nowrap; text-align:right;"></div>
                             </div>
                         </div>
                         
@@ -22575,25 +22579,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             ${serviceDetails}
                         </div>
                         
-                        <div class="vendor-card-actions">
-                            <button class="vendor-btn vendor-btn-outline" onclick="event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');">View</button>
-                            <button class="vendor-btn vendor-btn-primary ${isSelected ? 'selected' : ''}" onclick="event.stopPropagation(); window.toggleVendorSelection('${vendorId}');">${isSelected ? 'Selected' : 'Select'}</button>
-                        </div>
                     </div>
                     
                     <!-- New Actions Column -->
                     <div class="vendor-actions-column">
-                        <div class="vendor-eye-icon" 
-                             onclick="event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');"
-                             title="View vendor profile">
-                            <i class="fas fa-eye"></i>
-                        </div>
                         <div class="vendor-checkbox-container">
                             <div class="vendor-checkbox ${isSelected ? 'checked' : ''}" 
                                  onclick="event.stopPropagation(); window.toggleVendorSelection('${vendorId}');"
                                  title="${isSelected ? 'Deselect vendor' : 'Select vendor'}">
                                 ${isSelected ? '<i class="fas fa-check"></i>' : ''}
                             </div>
+                        </div>
+                        <div class="vendor-eye-icon" 
+                             onclick="event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');"
+                             title="View vendor profile">
+                            <i class="fas fa-eye"></i>
                         </div>
                     </div>
                 </div>
@@ -22912,12 +22912,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     card.classList.remove('selected');
                 }
                 
-                // Update the select button (last button in the card)
-                const buttons = card.querySelectorAll('button');
-                const selectButton = buttons[buttons.length - 1]; // Get the last button (Select/Selected)
-                if (selectButton) {
-                    selectButton.textContent = isNowSelected ? 'Selected' : 'Select';
-                    selectButton.style.background = isNowSelected ? '#059669' : '#10b981';
+                // Update checkbox state only (buttons have been removed)
+                const checkbox = card.querySelector('.vendor-checkbox');
+                if (checkbox) {
+                    checkbox.classList.toggle('checked', isNowSelected);
+                    checkbox.innerHTML = isNowSelected ? '<i class="fas fa-check"></i>' : '';
+                    checkbox.title = isNowSelected ? 'Deselect vendor' : 'Select vendor';
                 }
             });
         }
