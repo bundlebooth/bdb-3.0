@@ -608,6 +608,21 @@
         body.map-active .results-left {
             max-height: 720px;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Fix vendor list positioning to align with map bottom */
+        body.map-active #vendor-horizontal-cards {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+        }
+        
+        /* Ensure service tabs don't push content down */
+        body.map-active #service-tabs-container {
+            flex-shrink: 0;
+            margin-bottom: 0.5rem;
         }
 
         /* Compact horizontal cards specifically in Map view */
@@ -1952,6 +1967,44 @@
             border-bottom: 2px solid #e5e7eb;
             margin-bottom: 1rem;
             overflow-x: auto;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        .service-tabs::-webkit-scrollbar {
+            display: none;
+        }
+        
+        /* Tab Navigation Buttons */
+        .tab-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #e5e7eb;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+        
+        .tab-nav-btn:hover {
+            background: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .tab-nav-left {
+            left: -16px;
+        }
+        
+        .tab-nav-right {
+            right: -16px;
         }
         
         .service-tab {
@@ -1991,6 +2044,28 @@
         
         .service-tab.active .vendor-count {
             background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Service Tags Styles */
+        .vendor-services-offered {
+            margin-top: 0.75rem;
+        }
+
+        .service-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .service-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            white-space: nowrap;
         }
 
         /* Vendor Map and Horizontal Cards Styles */
@@ -5051,26 +5126,29 @@
                     <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                         <!-- LEFT: Vendor Cards -->
                         <div style="flex: 1; min-width: 0;">
-                            <div id="vendor-cards-container" style="overflow: visible;">
-                                <div class="vendor-cards-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                    <h5 style="margin: 0; color: var(--text);">Vendor Options</h5>
-                                    <div class="vendor-filters">
-                                        <select id="vendor-sort" class="form-control" style="width: auto; display: inline-block;">
-                                            <option value="distance">Sort by Distance</option>
-                                            <option value="price">Sort by Price</option>
-                                            <option value="rating">Sort by Rating</option>
-                                        </select>
-                                    </div>
+                            <div id="vendor-cards-container" style="display: flex; flex-direction: column; height: 720px;">
+                                <div class="vendor-filters" style="flex-shrink: 0; margin-bottom: 1rem;">
+                                    <select id="vendor-sort" class="form-control" style="width: auto; display: inline-block;">
+                                        <option value="distance">Sort by Distance</option>
+                                        <option value="price">Sort by Price</option>
+                                        <option value="rating">Sort by Rating</option>
+                                    </select>
                                 </div>
                                 
                                 <!-- Service Tabs -->
-                                <div id="service-tabs-container" style="display: none; margin-bottom: 1rem;">
-                                    <div id="service-tabs" class="service-tabs" style="display: flex; gap: 0.5rem; border-bottom: 2px solid #e5e7eb; margin-bottom: 1rem; overflow-x: auto;">
+                                <div id="service-tabs-container" style="display: none; flex-shrink: 0; margin-bottom: 1rem; position: relative;">
+                                    <button id="tabs-scroll-left" class="tab-nav-btn tab-nav-left" style="display: none;" onclick="scrollTabs('left')">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <div id="service-tabs" class="service-tabs" style="display: flex; gap: 0.5rem; border-bottom: 2px solid #e5e7eb; margin-bottom: 1rem; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;">
                                         <!-- Service tabs will be populated here -->
                                     </div>
+                                    <button id="tabs-scroll-right" class="tab-nav-btn tab-nav-right" style="display: none;" onclick="scrollTabs('right')">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
                                 </div>
                                 
-                                <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box;">
+                                <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box; flex: 1; min-height: 0;">
                                     <!-- Horizontal vendor cards will be populated here -->
                                     <div style="padding: 1rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd; text-align: center;">
                                         <i class="fas fa-search" style="font-size: 2rem; color: #ccc; margin-bottom: 0.5rem;"></i>
@@ -5109,6 +5187,20 @@
                         </div>
                     </div>
                     
+                    <!-- Recommended Multi-Service Vendors Table -->
+                    <div id="recommended-vendors" style="display: none; margin-bottom: 2rem;">
+                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
+                            <h4 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-star" style="color: #ffd700;"></i>
+                                Recommended: Multi-Service Vendors
+                            </h4>
+                            <p style="margin: 0.5rem 0 0 0; opacity: 0.9; font-size: 0.9rem;">
+                                These vendors offer multiple services you're looking for - great for bundling!
+                            </p>
+                        </div>
+                        <div id="recommended-vendors-table"></div>
+                    </div>
+
                     <div id="vendor-results" class="vendor-sections-container" style="display: none;">
                         <!-- Legacy vendor sections will be populated here -->
                     </div>
@@ -8829,9 +8921,147 @@ document.addEventListener('DOMContentLoaded', async function() {
                 return { label: '', value: null };
             }
 
+
+            // Function to identify and render recommended multi-service vendors
+            function renderRecommendedVendors(vendorSections) {
+                const recommendedContainer = document.getElementById('recommended-vendors');
+                const recommendedTable = document.getElementById('recommended-vendors-table');
+                
+                if (!recommendedContainer || !recommendedTable) return;
+                
+                // Find vendors that appear in multiple services
+                const vendorServiceMap = new Map();
+                
+                vendorSections.forEach(section => {
+                    section.vendors.forEach(vendor => {
+                        const vendorId = vendor.vendor?.VendorProfileID || vendor.VendorProfileID || vendor.vendor?.id || vendor.id;
+                        const businessName = vendor.vendor?.BusinessName || vendor.BusinessName;
+                        
+                        if (!vendorServiceMap.has(vendorId)) {
+                            vendorServiceMap.set(vendorId, {
+                                vendor: vendor,
+                                businessName: businessName,
+                                services: []
+                            });
+                        }
+                        
+                        const vendorService = vendor.services?.find(vs => vs.ServiceName === section.service.name);
+                        const priceInfo = formatUnifiedServicePrice(vendorService || {});
+                        
+                        vendorServiceMap.get(vendorId).services.push({
+                            serviceName: section.service.name,
+                            price: priceInfo.value || 0,
+                            priceLabel: priceInfo.label || 'Contact for pricing'
+                        });
+                    });
+                });
+                
+                // Filter vendors with multiple services
+                const multiServiceVendors = Array.from(vendorServiceMap.values())
+                    .filter(vendorData => vendorData.services.length > 1)
+                    .sort((a, b) => b.services.length - a.services.length); // Sort by number of services
+                
+                if (multiServiceVendors.length === 0) {
+                    recommendedContainer.style.display = 'none';
+                    return;
+                }
+                
+                // Generate table HTML
+                const tableHTML = `
+                    <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #f8f9fa;">
+                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #2c3e50; border-bottom: 2px solid #e9ecef;">Vendor</th>
+                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #2c3e50; border-bottom: 2px solid #e9ecef;">Services Offered</th>
+                                    <th style="padding: 1rem; text-align: center; font-weight: 600; color: #2c3e50; border-bottom: 2px solid #e9ecef;">Total Services</th>
+                                    <th style="padding: 1rem; text-align: center; font-weight: 600; color: #2c3e50; border-bottom: 2px solid #e9ecef;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${multiServiceVendors.map((vendorData, index) => {
+                                    const vendor = vendorData.vendor;
+                                    const vendorId = vendor.vendor?.VendorProfileID || vendor.VendorProfileID || vendor.vendor?.id || vendor.id;
+                                    const businessName = vendorData.businessName;
+                                    const location = vendor.vendor?.Location || vendor.Location;
+                                    const featuredImage = vendor.vendor?.FeaturedImageURL || vendor.FeaturedImageURL;
+                                    const totalPrice = vendorData.services.reduce((sum, service) => sum + service.price, 0);
+                                    
+                                    return `
+                                        <tr style="border-bottom: 1px solid #e9ecef; ${index % 2 === 0 ? 'background: #fafbfc;' : ''}">
+                                            <td style="padding: 1rem;">
+                                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                                    <div style="width: 60px; height: 60px; border-radius: 8px; overflow: hidden; flex-shrink: 0;">
+                                                        ${featuredImage ? 
+                                                            `<img src="${featuredImage}" alt="${businessName}" style="width:100%;height:100%;object-fit:cover;">` : 
+                                                            `<div style="width:100%;height:100%;background:#e9ecef;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#666;">${businessName.charAt(0).toUpperCase()}</div>`
+                                                        }
+                                                    </div>
+                                                    <div>
+                                                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 0.25rem;">${businessName}</div>
+                                                        <div style="font-size: 0.85rem; color: #6c757d;">${location}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style="padding: 1rem;">
+                                                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                                    ${vendorData.services.map(service => `
+                                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f8f9fa; border-radius: 6px;">
+                                                            <span style="font-weight: 500; color: #495057;">${service.serviceName}</span>
+                                                            <span style="font-weight: 600; color: #28a745;">${service.priceLabel}</span>
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                            </td>
+                                            <td style="padding: 1rem; text-align: center;">
+                                                <span style="background: #28a745; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.9rem;">
+                                                    ${vendorData.services.length} Services
+                                                </span>
+                                            </td>
+                                            <td style="padding: 1rem; text-align: center;">
+                                                <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: center;">
+                                                    ${vendorData.services.map(service => `
+                                                        <button class="btn btn-primary" onclick="toggleVendorSelection('${vendorId}', '${service.serviceName}', ${service.price})" 
+                                                                style="font-size: 0.8rem; padding: 0.4rem 0.8rem; border-radius: 6px; white-space: nowrap;">
+                                                            Select for ${service.serviceName}
+                                                        </button>
+                                                    `).join('')}
+                                                    <button class="btn btn-outline" onclick="selectAllServicesForVendor('${vendorId}', ${JSON.stringify(vendorData.services).replace(/"/g, '&quot;')})" 
+                                                            style="font-size: 0.8rem; padding: 0.4rem 0.8rem; border-radius: 6px; margin-top: 0.25rem;">
+                                                        Select All Services
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                recommendedTable.innerHTML = tableHTML;
+                recommendedContainer.style.display = 'block';
+            }
+
+            // Function to select all services for a vendor
+            window.selectAllServicesForVendor = function(vendorId, servicesData) {
+                console.log('🎯 Selecting all services for vendor:', vendorId, servicesData);
+                
+                servicesData.forEach(service => {
+                    toggleVendorSelection(vendorId, service.serviceName, service.price);
+                });
+                
+                // Show success message
+                showNotificationToast('Success', `Selected all services for vendor!`);
+            };
+
             // New function to render vendors grouped by category and service
             function renderSectionedVendorResults(vendorSections) {
                 const vendorResults = document.getElementById('vendor-results');
+                
+                // First render the recommended multi-service vendors
+                renderRecommendedVendors(vendorSections);
                 
                 const sectionedHTML = vendorSections.map(section => {
                     const { category, service, vendors } = section;
@@ -9104,47 +9334,120 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
             function toggleVendorSelection(vendorId, serviceName, servicePrice) {
-                const vendorCard = document.querySelector(`[data-vendor-id="${vendorId}"]`);
-                const selectButton = vendorCard.querySelector('.btn-select-vendor');
+                console.log('🔘 toggleVendorSelection called:', { vendorId, serviceName, servicePrice });
                 
-                const isSelected = bookingState.selectedVendors.some(v => v.id === vendorId && v.serviceName === serviceName);
+                // Initialize service-specific structure if not exists
+                if (!window.bookingState.selectedVendorsByService) {
+                    window.bookingState.selectedVendorsByService = {};
+                }
+                if (!window.bookingState.selectedVendorsByService[serviceName]) {
+                    window.bookingState.selectedVendorsByService[serviceName] = [];
+                }
+                
+                const serviceVendors = window.bookingState.selectedVendorsByService[serviceName];
+                const isSelected = serviceVendors.some(v => {
+                    const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
+                    return String(vId) === String(vendorId);
+                });
+                
+                // Find vendor card (could be in regular sections or recommended table)
+                let vendorCard = document.querySelector(`[data-vendor-id="${vendorId}"]`);
+                let selectButton = vendorCard?.querySelector('.btn-select-vendor');
                 
                 if (isSelected) {
-                    // Deselect vendor
-                    window.bookingState.selectedVendors = bookingState.selectedVendors.filter(v => !(v.id === vendorId && v.serviceName === serviceName));
-                    vendorCard.classList.remove('selected');
-                    selectButton.classList.remove('selected');
-                    selectButton.textContent = 'Select Vendor';
+                    // Deselect vendor for this service
+                    window.bookingState.selectedVendorsByService[serviceName] = serviceVendors.filter(v => {
+                        const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
+                        return String(vId) !== String(vendorId);
+                    });
+                    
+                    // Update UI for vendor card if found
+                    if (vendorCard && selectButton) {
+                        // Only remove selected state if vendor is not selected for any other service
+                        const isSelectedForOtherServices = Object.keys(window.bookingState.selectedVendorsByService)
+                            .filter(service => service !== serviceName)
+                            .some(service => 
+                                window.bookingState.selectedVendorsByService[service].some(v => {
+                                    const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
+                                    return String(vId) === String(vendorId);
+                                })
+                            );
+                        
+                        if (!isSelectedForOtherServices) {
+                            vendorCard.classList.remove('selected');
+                            selectButton.classList.remove('selected');
+                            selectButton.textContent = 'Select Vendor';
+                        }
+                    }
+                    
+                    console.log(`✅ Deselected vendor ${vendorId} for ${serviceName}`);
                 } else {
-                    // Select vendor
-                    const vendor = bookingState.availableVendors.find(v => (v.VendorProfileID || v.id) === vendorId);
+                    // Select vendor for this service
+                    const vendor = bookingState.availableVendors?.find(v => {
+                        const vId = v.VendorProfileID || v.vendor?.VendorProfileID || v.id || v.vendor?.id;
+                        return String(vId) === String(vendorId);
+                    });
+                    
                     if (vendor) {
-                        window.bookingState.selectedVendors.push({
-                            id: vendorId,
-                            name: vendor.BusinessName || vendor.name,
+                        const vendorSelection = {
+                            VendorProfileID: vendorId,
+                            vendorId: vendorId,
+                            businessName: vendor.BusinessName || vendor.vendor?.BusinessName || vendor.name,
                             serviceName: serviceName,
                             servicePrice: servicePrice,
                             vendorData: vendor
-                        });
-                        vendorCard.classList.add('selected');
-                        // Update checkbox state only (buttons have been removed)
-                        const checkbox = vendorCard.querySelector('.vendor-checkbox');
-                        if (checkbox) {
-                            checkbox.classList.add('checked');
-                            checkbox.innerHTML = '<i class="fas fa-check"></i>';
-                            checkbox.title = 'Deselect vendor';
+                        };
+                        
+                        window.bookingState.selectedVendorsByService[serviceName].push(vendorSelection);
+                        
+                        // Update UI for vendor card if found
+                        if (vendorCard && selectButton) {
+                            vendorCard.classList.add('selected');
+                            selectButton.classList.add('selected');
+                            selectButton.textContent = 'Selected';
                         }
+                        
+                        console.log(`✅ Selected vendor ${vendorId} for ${serviceName}:`, vendorSelection);
                     }
                 }
+                
+                // Update button states in recommended table and regular vendor cards
+                const allButtons = document.querySelectorAll(`button[onclick*="toggleVendorSelection('${vendorId}', '${serviceName}'"]`);
+                allButtons.forEach(btn => {
+                    if (!isSelected) { // After selection (isSelected was false, now true)
+                        btn.textContent = `Selected for ${serviceName}`;
+                        btn.classList.add('selected');
+                    } else { // After deselection (isSelected was true, now false)
+                        btn.textContent = `Select for ${serviceName}`;
+                        btn.classList.remove('selected');
+                    }
+                });
+                
+                // Update regular vendor card buttons
+                vendorCard = document.querySelector(`[data-vendor-id="${vendorId}"]`);
+                if (vendorCard) {
+                    const selectButton = vendorCard.querySelector('.btn-select-vendor');
+                    if (selectButton && !selectButton.onclick.toString().includes('toggleVendorSelection')) {
+                        // For general select buttons, keep them as "Select for All Services"
+                        selectButton.textContent = 'Select for All Services';
+                        selectButton.classList.remove('selected');
+                    }
+                }
+
+                // Calculate total selected vendors across all services
+                const totalSelected = Object.values(window.bookingState.selectedVendorsByService)
+                    .reduce((total, vendors) => total + vendors.length, 0);
 
                 // Enable/disable send requests button
                 const sendRequestsBtn = document.getElementById('send-requests-btn');
                 if (sendRequestsBtn) {
-                    sendRequestsBtn.disabled = bookingState.selectedVendors.length === 0;
+                    sendRequestsBtn.disabled = totalSelected === 0;
                 }
                 
-                // Update selected vendors summary if on step 4
+                // Update selected vendors summary
                 updateSelectedVendorsSummary();
+                
+                console.log('📊 Current selections by service:', window.bookingState.selectedVendorsByService);
             }
             
             // Function to render selected vendors summary on Step 4
@@ -9159,14 +9462,21 @@ document.addEventListener('DOMContentLoaded', async function() {
                 console.log('🔄 globalBookingState:', globalBookingState);
                 console.log('🔄 selectedVendors array:', globalBookingState.selectedVendors);
                 
-                if (!globalBookingState.selectedVendors || globalBookingState.selectedVendors.length === 0) {
+                if (!globalBookingState.selectedVendorsByService || Object.keys(globalBookingState.selectedVendorsByService).length === 0) {
                     summaryContainer.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No vendors selected yet.</p>';
                     return;
                 }
                 
-                const totalCost = globalBookingState.selectedVendors.reduce((sum, v) => {
-                    const price = v.selectedService?.VendorPrice || v.VendorPrice || v.servicePrice || 0;
-                    return sum + price;
+                // Calculate total cost from service-specific selections
+                const totalCost = Object.values(globalBookingState.selectedVendorsByService || {}).reduce((total, serviceVendors) => {
+                    return total + serviceVendors.reduce((serviceSum, vendor) => {
+                        return serviceSum + (vendor.servicePrice || 0);
+                    }, 0);
+                }, 0);
+                
+                // Calculate total vendor count across all services
+                const totalVendorCount = Object.values(globalBookingState.selectedVendorsByService || {}).reduce((count, serviceVendors) => {
+                    return count + serviceVendors.length;
                 }, 0);
 
                 // Build Step 3-style horizontal cards for selected vendors
@@ -9176,9 +9486,21 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                         <!-- Per-vendor special requests are now in each card's right panel -->
 
-                        <!-- Horizontal vendor cards (same style as Step 3) -->
+                        <!-- Horizontal vendor cards grouped by service -->
                         <div id="selected-vendor-horizontal-cards" class="vendor-horizontal-container">
-                            ${globalBookingState.selectedVendors.map((entry, index) => {
+                            ${Object.entries(globalBookingState.selectedVendorsByService || {}).map(([serviceId, serviceVendors]) => {
+                                if (!serviceVendors || serviceVendors.length === 0) return '';
+                                
+                                const serviceName = serviceVendors[0]?.serviceName || serviceId;
+                                
+                                return `
+                                    <div class="service-group-section" style="margin-bottom: 2rem;">
+                                        <h6 style="color: var(--primary); font-weight: 600; margin-bottom: 1rem; padding: 0.5rem 1rem; background: #f0f9ff; border-left: 4px solid var(--primary); border-radius: 4px;">
+                                            <i class="fas fa-cog" style="margin-right: 0.5rem;"></i>${serviceName}
+                                            <span style="color: var(--text-light); font-weight: normal; margin-left: 0.5rem;">(${serviceVendors.length} vendor${serviceVendors.length > 1 ? 's' : ''})</span>
+                                        </h6>
+                                        <div class="service-vendors-container">
+                                            ${serviceVendors.map((entry, serviceIndex) => {
                                 // Prefer full vendor object if stored; otherwise resolve from availableVendors
                                 const av = (window.bookingState && Array.isArray(window.bookingState.availableVendors)) ? window.bookingState.availableVendors : [];
                                 const entryId = entry.VendorProfileID || entry.vendorProfileId || entry.vendorId || entry.id;
@@ -9192,17 +9514,17 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 // Resolve vendor id consistently and ensure not empty (needed for carousel ids)
                                 let vendorId = base.VendorProfileID || base.vendorProfileId || base.id || entry.vendorId || entry.id;
                                 if (!vendorId) {
-                                    vendorId = `selected-${index}`;
+                                    vendorId = `selected-${serviceIndex}`;
                                 }
 
                                 // Normalize core fields for the card
                                 const normalized = {
                                     ...base,
                                     // IDs for createHorizontalVendorCard and data-vendor-id
-                                    // Use unique VendorProfileID for Step 4 to avoid ID collisions with Step 3 carousels
+                                    // Use unique VendorProfileID for Step 5 to avoid ID collisions
                                     id: base.id || entry.id || entry.vendorId || vendorId,
-                                    vendorProfileId: (base.vendorProfileId || base.VendorProfileID || entry.vendorId || vendorId) + '-s4',
-                                    VendorProfileID: (base.VendorProfileID || base.vendorProfileId || entry.vendorId || vendorId) + '-s4',
+                                    vendorProfileId: (base.vendorProfileId || base.VendorProfileID || entry.vendorId || vendorId) + '-s5-' + serviceId,
+                                    VendorProfileID: (base.VendorProfileID || base.vendorProfileId || entry.vendorId || vendorId) + '-s5-' + serviceId,
                                     __realVendorId: vendorId,
                                     // Core display fields
                                     BusinessName: base.BusinessName || base.businessName || base.name || entry.name || 'Unknown Business',
@@ -9245,67 +9567,43 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     normalized.FeaturedImageURL = normalized.images[0];
                                 }
 
-                                // Ensure services include the selected service and price (robust inference)
-                                let inferredService = null;
-                                // 1) Direct selectedService from selection flow
-                                if (entry.selectedService && (entry.selectedService.ServiceName || entry.selectedService.ServiceID)) {
-                                    inferredService = {
-                                        ServiceName: entry.selectedService.ServiceName || entry.serviceName,
-                                        VendorPrice: entry.selectedService.VendorPrice ?? entry.selectedService.Price ?? entry.servicePrice ?? entry.price ?? 0,
-                                        VendorDurationMinutes: entry.selectedService.VendorDurationMinutes
-                                    };
-                                } else {
-                                    // 2) From flat fields captured during selection
-                                    const selName = entry.serviceName || (Array.isArray(entry.MatchingServiceNames) ? entry.MatchingServiceNames[0] : (typeof entry.MatchingServiceNames === 'string' ? entry.MatchingServiceNames.split(',')[0]?.trim() : undefined)) || (Array.isArray(base.MatchingServiceNames) ? base.MatchingServiceNames[0] : undefined);
-                                    // Try to find matching service in base.services by name
-                                    let matchFromBase = null;
-                                    if (Array.isArray(base.services) && base.services.length > 0) {
-                                        if (selName) {
-                                            matchFromBase = base.services.find(s => (s.ServiceName || '').toLowerCase() === selName.toLowerCase());
-                                        }
-                                        // If not found, fallback to first service
-                                        if (!matchFromBase) matchFromBase = base.services[0];
-                                    }
-                                    const selPrice = entry.servicePrice ?? entry.price ?? matchFromBase?.VendorPrice ?? base.totalEstimatedCost ?? 0;
-                                    const selDuration = matchFromBase?.VendorDurationMinutes;
-                                    const finalName = selName || matchFromBase?.ServiceName || 'Selected Service';
-                                    inferredService = { ServiceName: finalName, VendorPrice: selPrice, VendorDurationMinutes: selDuration };
-                                }
+                                // Create service-specific inferred service for this vendor
+                                const serviceSpecificService = {
+                                    ServiceName: entry.serviceName || serviceName,
+                                    VendorPrice: entry.servicePrice || 0,
+                                    VendorDurationMinutes: entry.selectedService?.VendorDurationMinutes
+                                };
+                                
+                                // Prepend service-specific service to services array
+                                const existing = Array.isArray(base.services) ? base.services : [];
+                                normalized.services = [serviceSpecificService, ...existing];
 
-                                // Prepend inferred service to services array
-                                if (inferredService) {
-                                    const existing = Array.isArray(base.services) ? base.services : [];
-                                    normalized.services = [inferredService, ...existing];
-                                } else if (Array.isArray(base.services)) {
-                                    normalized.services = base.services;
-                                }
-
-                                // Provide service names for tags if missing
+                                // Provide service names for tags
                                 if (!normalized.MatchingServiceNames) {
-                                    const names = [];
-                                    if (normalized.services && normalized.services.length > 0) {
-                                        normalized.services.forEach(s => s?.ServiceName && names.push(s.ServiceName));
-                                    } else if (entry.serviceName) {
-                                        names.push(entry.serviceName);
-                                    }
-                                    if (names.length > 0) normalized.MatchingServiceNames = names;
+                                    normalized.MatchingServiceNames = [serviceName];
                                 }
 
                                 const card = (typeof createHorizontalVendorCard === 'function') ? createHorizontalVendorCard(normalized) : '';
+                                const uniqueIndex = `${serviceId}-${serviceIndex}`;
+                                
                                 return `
-                                    <div class="selected-vendor-card-wrapper" data-selected-index="${index}" style="display:flex; gap:1rem; align-items:stretch;">
+                                    <div class="selected-vendor-card-wrapper" data-selected-index="${uniqueIndex}" style="display:flex; gap:1rem; align-items:stretch; margin-bottom: 1rem;">
                                         <div class="selected-vendor-card-left" style="flex:1; position:relative;">
                                             ${card}
                                         </div>
                                         <div class="selected-vendor-actions-right" style="width:320px; min-width:300px; background:#f8faff; border:1px solid #e1e8f0; border-radius:12px; padding:1rem; display:flex; flex-direction:column; gap:0.75rem;">
-                                            <h6 style="margin:0; color:#2c3e50; font-weight:600;">Special Request</h6>
-                                            <textarea id="special-requests-${index}" placeholder="Write a message to this vendor..." style="flex:1; min-height:120px; padding:0.75rem; border:1px solid #e1e8f0; border-radius:8px; font-family:inherit; font-size:0.9rem; resize:vertical;"></textarea>
-                                            <button onclick="sendBookingRequest('${vendorId}', ${index})"
+                                            <h6 style="margin:0; color:#2c3e50; font-weight:600;">Special Request for ${serviceName}</h6>
+                                            <textarea id="special-requests-${uniqueIndex}" placeholder="Write a message to this vendor for ${serviceName}..." style="flex:1; min-height:120px; padding:0.75rem; border:1px solid #e1e8f0; border-radius:8px; font-family:inherit; font-size:0.9rem; resize:vertical;"></textarea>
+                                            <button onclick="sendBookingRequest('${vendorId}', '${uniqueIndex}', '${serviceId}')"
                                                 class="btn-send-request"
                                                 style="background:#3498db; color:white; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; cursor:pointer;">
-                                                <i class="fas fa-paper-plane" style="margin-right:0.4rem;"></i>Send Request
+                                                <i class="fas fa-paper-plane" style="margin-right:0.4rem;"></i>Send Request for ${serviceName}
                                             </button>
-                                            <div class="request-status" id="request-status-${index}" style="display:none; padding:0.6rem; border-radius:8px;"></div>
+                                            <div class="request-status" id="request-status-${uniqueIndex}" style="display:none; padding:0.6rem; border-radius:8px;"></div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
                                         </div>
                                     </div>
                                 `;
@@ -9318,7 +9616,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 Total Estimated Cost: <span style="color: #27ae60;">$${Math.round(totalCost).toLocaleString()}</span>
                             </div>
                             <div style="font-size: 0.9rem; color: var(--text-light);">
-                                ${globalBookingState.selectedVendors.length} vendor${globalBookingState.selectedVendors.length !== 1 ? 's' : ''} selected
+                                ${totalVendorCount} vendor${totalVendorCount !== 1 ? 's' : ''} selected across ${Object.keys(globalBookingState.selectedVendorsByService || {}).length} service${Object.keys(globalBookingState.selectedVendorsByService || {}).length !== 1 ? 's' : ''}
                             </div>
                         </div>
                     </div>
@@ -9349,8 +9647,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             };
 
             // Function to send booking request to vendor
-            window.sendBookingRequest = function(vendorId, vendorIndex) {
-                console.log('📤 Sending booking request to vendor:', vendorId, 'at index:', vendorIndex);
+            window.sendBookingRequest = function(vendorId, uniqueIndex, serviceId) {
+                console.log('📤 Sending booking request to vendor:', vendorId, 'for service:', serviceId, 'unique index:', uniqueIndex);
                 
                 // Check if user is authenticated
                 console.log('🔐 Current user:', currentUser);
@@ -9363,19 +9661,25 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 console.log('✅ User authenticated, proceeding with request');
                 
-                // Read per-vendor special requests textarea, fallback to global if present (legacy)
-                const perVendorTextarea = document.getElementById(`special-requests-${vendorIndex}`);
-                const specialRequests = perVendorTextarea?.value || document.getElementById('special-requests')?.value || '';
+                // Read service-specific special requests textarea
+                const perVendorTextarea = document.getElementById(`special-requests-${uniqueIndex}`);
+                const specialRequests = perVendorTextarea?.value || '';
                 const bookingState = window.bookingState;
-                const vendor = bookingState.selectedVendors[vendorIndex];
+                
+                // Find vendor in service-specific selections
+                const serviceVendors = bookingState.selectedVendorsByService?.[serviceId] || [];
+                const vendor = serviceVendors.find(v => {
+                    const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
+                    return String(vId) === String(vendorId);
+                });
                 
                 if (!vendor) {
-                    console.error('❌ Vendor not found at index:', vendorIndex);
+                    console.error('❌ Vendor not found for service:', serviceId, 'vendorId:', vendorId);
                     return;
                 }
                 
                 // Update button state to loading
-                const button = document.querySelector(`button[onclick="sendBookingRequest('${vendorId}', ${vendorIndex})"]`);
+                const button = document.querySelector(`button[onclick="sendBookingRequest('${vendorId}', '${uniqueIndex}', '${serviceId}')"]`);
                 if (button) {
                     button.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Sending...';
                     button.disabled = true;
@@ -9383,7 +9687,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
                 
                 // Show status area
-                const statusDiv = document.getElementById(`request-status-${vendorIndex}`);
+                const statusDiv = document.getElementById(`request-status-${uniqueIndex}`);
                 if (statusDiv) {
                     statusDiv.style.display = 'block';
                     statusDiv.innerHTML = '<div style="color: #3498db;"><i class="fas fa-clock" style="margin-right: 0.5rem;"></i>Sending request...</div>';
@@ -9405,21 +9709,21 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Format time for backend (mimicking handleSendRequests)
                 const formattedTime = formatTimeForBackend(eventDetails.startTime);
 
-                // Prepare booking request data
+                // Prepare booking request data using service-specific vendor data
                 const requestData = {
                     userId: currentUser.userId || currentUser.id,
                     vendorIds: [parseInt(vendorId)],
-                    services: vendor.selectedService ? [{
+                    services: [{
                         vendorId: parseInt(vendorId),
-                        serviceName: vendor.selectedService.ServiceName || 'General Service',
-                        servicePrice: vendor.selectedService.VendorPrice || 0
-                    }] : [],
+                        serviceName: vendor.serviceName || serviceId,
+                        servicePrice: vendor.servicePrice || 0
+                    }],
                     eventDetails: {
                         ...eventDetails,
                         time: formattedTime,
                         specialRequests: specialRequests
                     },
-                    budget: vendor.selectedService?.VendorPrice || 0
+                    budget: vendor.servicePrice || 0
                 };
                 
                 console.log('📋 Request data:', requestData);
@@ -22322,9 +22626,28 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Multiple services - show tabs
                 tabsContainer.style.display = 'block';
                 
-                // Create tabs
-                const tabsHtml = serviceGroupsArray.map((group, index) => `
-                    <div class="service-tab ${index === 0 ? 'active' : ''}" 
+                // Find vendors that offer multiple services
+                const multiServiceVendors = findMultiServiceVendors(serviceGroupsArray);
+                
+                // Create tabs including Recommended tab
+                let tabsHtml = '';
+                
+                // Add Recommended tab first if there are multi-service vendors
+                if (multiServiceVendors.length > 0) {
+                    tabsHtml += `
+                        <div class="service-tab active" 
+                             data-service-id="recommended" 
+                             onclick="switchServiceTab('recommended')">
+                            <i class="fas fa-star" style="color: #ffd700; margin-right: 0.5rem;"></i>
+                            Recommended
+                            <span class="vendor-count">${multiServiceVendors.length}</span>
+                        </div>
+                    `;
+                }
+                
+                // Add regular service tabs
+                tabsHtml += serviceGroupsArray.map((group, index) => `
+                    <div class="service-tab ${multiServiceVendors.length === 0 && index === 0 ? 'active' : ''}" 
                          data-service-id="${group.id}" 
                          onclick="switchServiceTab('${group.id}')">
                         ${group.name}
@@ -22336,6 +22659,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 // Store service groups globally for tab switching
                 window.currentServiceGroups = serviceGroups;
+                
+                // Update navigation buttons after tabs are rendered
+                setTimeout(updateTabNavButtons, 100);
+                
+                // Add scroll event listener to update navigation buttons
+                tabsElement.addEventListener('scroll', updateTabNavButtons);
                 
                 // Show first service's vendors by default
                 const firstService = serviceGroupsArray[0];
@@ -22413,19 +22742,196 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
         // Function to switch between service tabs
         function switchServiceTab(serviceId) {
-            const serviceGroups = window.currentServiceGroups;
-            if (!serviceGroups || !serviceGroups[serviceId]) return;
-
             // Update active tab
             document.querySelectorAll('.service-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
             document.querySelector(`[data-service-id="${serviceId}"]`).classList.add('active');
 
-            // Render vendors for selected service
-            renderVendorsForService(serviceGroups[serviceId]);
+            if (serviceId === 'recommended') {
+                // Show recommended multi-service vendors
+                renderRecommendedTab();
+                console.log(`🔄 Switched to Recommended tab`);
+            } else {
+                const serviceGroups = window.currentServiceGroups;
+                if (!serviceGroups || !serviceGroups[serviceId]) return;
+
+                // Render vendors for selected service
+                renderVendorsForService(serviceGroups[serviceId]);
+                console.log(`🔄 Switched to service tab: ${serviceGroups[serviceId].name}`);
+            }
+        }
+
+        // Function to render the Recommended tab content
+        function renderRecommendedTab() {
+            const serviceGroups = window.currentServiceGroups;
+            if (!serviceGroups) return;
+
+            const serviceGroupsArray = Object.values(serviceGroups);
+            const multiServiceVendors = findMultiServiceVendors(serviceGroupsArray);
             
-            console.log(`🔄 Switched to service tab: ${serviceGroups[serviceId].name}`);
+            const cardsContainer = document.getElementById('vendor-horizontal-cards');
+            if (!cardsContainer) return;
+
+            if (multiServiceVendors.length === 0) {
+                cardsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 3rem; color: #6b7280;">
+                        <i class="fas fa-star" style="font-size: 3rem; color: #d1d5db; margin-bottom: 1rem;"></i>
+                        <h3 style="margin: 0 0 0.5rem 0; color: #374151;">No Multi-Service Vendors Found</h3>
+                        <p style="margin: 0;">None of the available vendors offer multiple services from your selection.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const vendorCardsHtml = multiServiceVendors.map(vendor => {
+                const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.vendorId || vendor.id;
+                const businessName = vendor.BusinessName || vendor.businessName || vendor.name || 'Unknown Business';
+                const location = vendor.Location || vendor.location || 'Location not specified';
+                const rating = vendor.AverageRating || vendor.averageRating || vendor.rating || 0;
+                const reviewCount = vendor.ReviewCount || vendor.reviewCount || vendor.reviews || 0;
+                const profileImage = vendor.ProfileImageURL || vendor.profileImageURL || vendor.image || 'https://via.placeholder.com/80x80?text=No+Image';
+
+                return `
+                    <div class="vendor-horizontal-card" data-vendor-id="${vendorId}">
+                        <div class="vendor-card-image">
+                            <img src="${profileImage}" alt="${businessName}" onerror="this.src='https://via.placeholder.com/80x80?text=No+Image'">
+                        </div>
+                        <div class="vendor-card-content">
+                            <div class="vendor-card-header">
+                                <h4 class="vendor-name">${businessName}</h4>
+                                <div class="vendor-rating">
+                                    <div class="stars">
+                                        ${generateStarRating(rating)}
+                                    </div>
+                                    <span class="rating-text">${rating.toFixed(1)} (${reviewCount} reviews)</span>
+                                </div>
+                            </div>
+                            <p class="vendor-location">
+                                <i class="fas fa-map-marker-alt"></i>
+                                ${location}
+                            </p>
+                            <div class="vendor-services-offered">
+                                <strong>Services Offered:</strong>
+                                <div class="service-tags">
+                                    ${vendor.offeredServices.map(service => `<span class="service-tag">${service}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="vendor-card-actions">
+                            <button class="btn-select-vendor" onclick="selectVendorForAllServices('${vendorId}')">
+                                Select for All Services
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            cardsContainer.innerHTML = vendorCardsHtml;
+        }
+
+        // Function to select a vendor for all applicable services
+        function selectVendorForAllServices(vendorId) {
+            const serviceGroups = window.currentServiceGroups;
+            if (!serviceGroups) return;
+
+            let selectedCount = 0;
+            
+            // Find the vendor in each service group and select them
+            Object.values(serviceGroups).forEach(serviceGroup => {
+                const vendor = serviceGroup.vendors.find(v => {
+                    const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
+                    return vId == vendorId;
+                });
+                
+                if (vendor) {
+                    selectVendor(vendor, serviceGroup.id);
+                    selectedCount++;
+                }
+            });
+
+            console.log(`✅ Selected vendor ${vendorId} for ${selectedCount} services`);
+            
+            // Show success message
+            showNotification(`Vendor selected for ${selectedCount} services!`, 'success');
+        }
+
+        // Function to scroll service tabs
+        function scrollTabs(direction) {
+            const tabsElement = document.getElementById('service-tabs');
+            if (!tabsElement) return;
+            
+            const scrollAmount = 200;
+            if (direction === 'left') {
+                tabsElement.scrollLeft -= scrollAmount;
+            } else {
+                tabsElement.scrollLeft += scrollAmount;
+            }
+            
+            // Update navigation button visibility
+            setTimeout(updateTabNavButtons, 100);
+        }
+        
+        // Function to update tab navigation button visibility
+        function updateTabNavButtons() {
+            const tabsElement = document.getElementById('service-tabs');
+            const leftBtn = document.getElementById('tabs-scroll-left');
+            const rightBtn = document.getElementById('tabs-scroll-right');
+            
+            if (!tabsElement || !leftBtn || !rightBtn) return;
+            
+            const canScrollLeft = tabsElement.scrollLeft > 0;
+            const canScrollRight = tabsElement.scrollLeft < (tabsElement.scrollWidth - tabsElement.clientWidth);
+            
+            leftBtn.style.display = canScrollLeft ? 'flex' : 'none';
+            rightBtn.style.display = canScrollRight ? 'flex' : 'none';
+        }
+        
+        // Initialize tab navigation on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add resize observer for tab navigation
+            if (window.ResizeObserver) {
+                const tabsElement = document.getElementById('service-tabs');
+                if (tabsElement) {
+                    const resizeObserver = new ResizeObserver(updateTabNavButtons);
+                    resizeObserver.observe(tabsElement);
+                }
+            }
+            
+            // Add window resize listener as fallback
+            window.addEventListener('resize', updateTabNavButtons);
+        });
+
+        // Function to find vendors that offer multiple services
+        function findMultiServiceVendors(serviceGroups) {
+            const vendorServiceMap = new Map();
+            
+            // Build map of vendors and their services
+            serviceGroups.forEach(group => {
+                group.vendors.forEach(vendor => {
+                    const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.vendorId || vendor.id;
+                    if (!vendorServiceMap.has(vendorId)) {
+                        vendorServiceMap.set(vendorId, {
+                            vendor: vendor,
+                            services: []
+                        });
+                    }
+                    vendorServiceMap.get(vendorId).services.push(group.name);
+                });
+            });
+            
+            // Filter vendors that offer more than one service
+            const multiServiceVendors = [];
+            vendorServiceMap.forEach((data, vendorId) => {
+                if (data.services.length > 1) {
+                    multiServiceVendors.push({
+                        ...data.vendor,
+                        offeredServices: data.services
+                    });
+                }
+            });
+            
+            return multiServiceVendors;
         }
 
         // Helper: format unified pricing label for a service
@@ -22930,37 +23436,60 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             return priceMap[priceRange] || 3;
         }
 
-        // Toggle vendor selection
-        function toggleVendorSelection(vendorProfileId) {
-            console.log('🔘 toggleVendorSelection called with:', vendorProfileId);
-            console.log('🔘 Function is running!');
+        // Toggle vendor selection for specific service
+        function toggleVendorSelection(vendorProfileId, serviceId = null) {
+            console.log('🔘 toggleVendorSelection called with:', vendorProfileId, 'for service:', serviceId);
             
-            // Use existing bookingState or initialize selectedVendors array
+            // Get current active service if not provided
+            if (!serviceId && window.currentServiceGroups) {
+                const activeTab = document.querySelector('.service-tab.active');
+                serviceId = activeTab ? activeTab.getAttribute('data-service-id') : null;
+            }
+            
+            // Use existing bookingState or initialize selectedVendorsByService object
             if (!window.bookingState) {
                 window.bookingState = {};
+            }
+            if (!window.bookingState.selectedVendorsByService) {
+                window.bookingState.selectedVendorsByService = {};
             }
             if (!window.bookingState.selectedVendors) {
                 window.bookingState.selectedVendors = [];
             }
             
-            const selectedVendors = window.bookingState.selectedVendors;
-            const existingIndex = selectedVendors.findIndex(v => v.vendorId === vendorProfileId);
+            const selectedVendorsByService = window.bookingState.selectedVendorsByService;
+            
+            // Initialize service array if it doesn't exist
+            if (!selectedVendorsByService[serviceId]) {
+                selectedVendorsByService[serviceId] = [];
+            }
+            
+            const serviceSelections = selectedVendorsByService[serviceId];
+            const existingIndex = serviceSelections.findIndex(v => v.vendorId === vendorProfileId);
             
             if (existingIndex > -1) {
-                // Remove vendor from selection
-                selectedVendors.splice(existingIndex, 1);
-                console.log('🔘 Vendor removed from selection');
+                // Remove vendor from this service selection
+                serviceSelections.splice(existingIndex, 1);
+                console.log(`🔘 Vendor removed from ${serviceId} selection`);
             } else {
-                // Add vendor to selection with inferred service details
+                // Add vendor to this service selection
                 const vendor = (window.bookingState?.availableVendors || []).find(v => {
                     const vId = v.VendorProfileID || v.vendorProfileId || v.id;
                     return String(vId) === String(vendorProfileId);
                 }) || {};
 
-                // Infer selected service from vendor.services or fallbacks
+                // Get service details from current service groups
+                let serviceDetails = null;
+                if (window.currentServiceGroups && window.currentServiceGroups[serviceId]) {
+                    serviceDetails = window.currentServiceGroups[serviceId].service;
+                }
+
+                // Find the specific service from vendor's services
                 let selService = null;
                 if (Array.isArray(vendor.services) && vendor.services.length > 0) {
-                    selService = vendor.services[0];
+                    selService = vendor.services.find(s => 
+                        (s.ServiceName || s.name) === (serviceDetails?.name || serviceId)
+                    ) || vendor.services[0];
                 } else if (vendor.serviceName) {
                     selService = {
                         ServiceName: vendor.serviceName,
@@ -22968,41 +23497,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     };
                 }
 
-                const serviceName = selService?.ServiceName || selService?.name || 'Selected Service';
+                const serviceName = serviceDetails?.name || selService?.ServiceName || selService?.name || serviceId;
                 const servicePrice = selService?.VendorPrice ?? selService?.Price ?? vendor.totalEstimatedCost ?? 0;
 
-                // Build detailed service payload for booking
-                const detailed = selService ? {
-                    serviceName: selService.ServiceName || selService.name,
-                    category: selService.Category || selService.category,
-                    pricingModel: selService.pricingModel || selService.PricingModel || null,
-                    fixedPricingType: selService.fixedPricingType || selService.FixedPricingType || null,
-                    baseRate: selService.baseRate ?? selService.BaseRate ?? null,
-                    baseDurationMinutes: selService.baseDurationMinutes ?? selService.BaseDurationMinutes ?? selService.VendorDurationMinutes ?? selService.DurationMinutes ?? null,
-                    overtimeRatePerHour: selService.overtimeRatePerHour ?? selService.OvertimeRatePerHour ?? null,
-                    minimumBookingFee: selService.minimumBookingFee ?? selService.MinimumBookingFee ?? null,
-                    fixedPrice: selService.fixedPrice ?? selService.FixedPrice ?? null,
-                    pricePerPerson: selService.pricePerPerson ?? selService.PricePerPerson ?? null,
-                    minimumAttendees: selService.minimumAttendees ?? selService.MinimumAttendees ?? null,
-                    maximumAttendees: selService.maximumAttendees ?? selService.MaximumAttendees ?? null,
-                    description: selService.VendorDescription || selService.description || null,
-                    vendorPrice: servicePrice
-                } : undefined;
-
-                selectedVendors.push({
+                serviceSelections.push({
                     vendorId: vendorProfileId,
                     id: vendorProfileId,
+                    serviceId: serviceId,
                     serviceName: serviceName,
                     servicePrice: servicePrice,
                     selectedService: selService || undefined,
-                    selectedServiceDetailed: detailed,
-                    availableServices: Array.isArray(vendor.services) ? vendor.services : undefined,
                     vendorData: vendor
                 });
-                console.log('🔘 Vendor added to selection');
+                console.log(`🔘 Vendor added to ${serviceId} selection`);
             }
             
-            console.log('🔘 Current selected vendors:', selectedVendors);
+            // Update the legacy selectedVendors array for compatibility
+            updateLegacySelectedVendors();
+            
+            console.log('🔘 Current selections by service:', selectedVendorsByService);
 
             // Update UI and markers
             updateVendorSelectionUI();
@@ -23010,6 +23523,48 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             
             // Update send requests button and count display
             updateSendRequestsButton();
+        }
+
+        // Update legacy selectedVendors array from service-specific selections
+        function updateLegacySelectedVendors() {
+            if (!window.bookingState.selectedVendorsByService) return;
+            
+            const legacyArray = [];
+            const vendorServiceMap = {}; // Track which services each vendor is selected for
+            
+            Object.entries(window.bookingState.selectedVendorsByService).forEach(([serviceId, vendors]) => {
+                vendors.forEach(vendorSelection => {
+                    const vendorId = vendorSelection.vendorId;
+                    
+                    if (!vendorServiceMap[vendorId]) {
+                        vendorServiceMap[vendorId] = {
+                            vendorData: vendorSelection.vendorData,
+                            services: []
+                        };
+                    }
+                    
+                    vendorServiceMap[vendorId].services.push({
+                        serviceId: serviceId,
+                        serviceName: vendorSelection.serviceName,
+                        servicePrice: vendorSelection.servicePrice,
+                        selectedService: vendorSelection.selectedService
+                    });
+                });
+            });
+            
+            // Convert to legacy format
+            Object.entries(vendorServiceMap).forEach(([vendorId, data]) => {
+                legacyArray.push({
+                    vendorId: vendorId,
+                    id: vendorId,
+                    serviceName: data.services.map(s => s.serviceName).join(', '),
+                    servicePrice: data.services.reduce((sum, s) => sum + (s.servicePrice || 0), 0),
+                    selectedServices: data.services, // New field for multiple services
+                    vendorData: data.vendorData
+                });
+            });
+            
+            window.bookingState.selectedVendors = legacyArray;
         }
         
         // Function to update marker colors based on selection state
@@ -23046,32 +23601,40 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         function updateVendorSelectionUI(vendorProfileId) {
             console.log('🎨 Updating vendor selection UI for:', vendorProfileId);
             
-            // Update all vendor cards to reflect current selection state
+            // Get current active service
+            const activeTab = document.querySelector('.service-tab.active');
+            const currentServiceId = activeTab ? activeTab.getAttribute('data-service-id') : null;
+            
+            // Update all vendor cards to reflect current selection state for current service
             const allCards = document.querySelectorAll('.vendor-horizontal-card');
             allCards.forEach(card => {
                 const cardVendorId = card.getAttribute('data-vendor-id');
                 
-                // Check if this specific card's vendor is selected
-                const isNowSelected = bookingState.selectedVendors.some(v => {
-                    const vId = v.vendorProfileId || v.VendorProfileID || v.VendorProfileId || v.id;
-                    return String(vId) === String(cardVendorId);
-                });
+                // Check if this vendor is selected for the current service
+                let isSelectedForCurrentService = false;
+                if (currentServiceId && window.bookingState?.selectedVendorsByService?.[currentServiceId]) {
+                    isSelectedForCurrentService = window.bookingState.selectedVendorsByService[currentServiceId].some(v => {
+                        const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
+                        return String(vId) === String(cardVendorId);
+                    });
+                }
                 
-                console.log(`Card ${cardVendorId}: selected = ${isNowSelected}`);
+                console.log(`Card ${cardVendorId}: selected for current service = ${isSelectedForCurrentService}`);
                 
-                // Update card visual state
-                if (isNowSelected) {
+                // Update card visual state - show as selected if selected for current service
+                if (isSelectedForCurrentService) {
                     card.classList.add('selected');
                 } else {
+                    // Not selected for current service
                     card.classList.remove('selected');
                 }
                 
-                // Update checkbox state only (buttons have been removed)
+                // Update checkbox state based on current service selection
                 const checkbox = card.querySelector('.vendor-checkbox');
                 if (checkbox) {
-                    checkbox.classList.toggle('checked', isNowSelected);
-                    checkbox.innerHTML = isNowSelected ? '<i class="fas fa-check"></i>' : '';
-                    checkbox.title = isNowSelected ? 'Deselect vendor' : 'Select vendor';
+                    checkbox.classList.toggle('checked', isSelectedForCurrentService);
+                    checkbox.innerHTML = isSelectedForCurrentService ? '<i class="fas fa-check"></i>' : '';
+                    checkbox.title = isSelectedForCurrentService ? 'Deselect vendor from this service' : 'Select vendor for this service';
                 }
             });
         }
@@ -23703,5 +24266,30 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         }, 1000);
         
         console.log('🎉 All Vendor Setup Improvements JavaScript Loaded Successfully!');
+        
+        // Test multi-service vendor selection system
+        console.log('🧪 Testing multi-service vendor selection system...');
+        
+        // Test data structure initialization
+        if (typeof window.selectAllServicesForVendor === 'function') {
+            console.log('✅ selectAllServicesForVendor function available');
+        } else {
+            console.log('❌ selectAllServicesForVendor function missing');
+        }
+        
+        if (typeof renderRecommendedVendors === 'function') {
+            console.log('✅ renderRecommendedVendors function available');
+        } else {
+            console.log('❌ renderRecommendedVendors function missing');
+        }
+        
+        // Test service-specific data structure
+        if (!window.bookingState) window.bookingState = {};
+        if (!window.bookingState.selectedVendorsByService) {
+            window.bookingState.selectedVendorsByService = {};
+            console.log('✅ Initialized selectedVendorsByService structure');
+        }
+        
+        console.log('🎯 Multi-service vendor selection system ready!');
     </script>
 </html>
