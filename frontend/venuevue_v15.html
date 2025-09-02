@@ -37,6 +37,17 @@
             --radius: 12px;
         }
 
+        /* Make asterisks red in labels */
+        label {
+            color: var(--text);
+        }
+        
+        /* Style asterisks to be red */
+        .required-asterisk {
+            color: red !important;
+            font-weight: bold;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -4797,13 +4808,13 @@
                         <div class="form-row">
                             <div class="form-col">
                                 <div class="form-group">
-                                    <label for="event-name">Event Name *</label>
+                                    <label for="event-name">Event Name <span class="required-asterisk">*</span></label>
                                     <input type="text" id="event-name" placeholder="e.g., Sarah & Alex Wedding" required>
                                 </div>
                             </div>
                             <div class="form-col">
                                 <div class="form-group">
-                                    <label for="event-type">Event Type *</label>
+                                    <label for="event-type">Event Type <span class="required-asterisk">*</span></label>
                                     <select id="event-type" required>
                                         <option value="" selected disabled>Select type</option>
                                         <option>Wedding</option>
@@ -4825,13 +4836,13 @@
                         <div class="form-row">
                             <div class="form-col">
                                 <div class="form-group">
-                                    <label for="event-date">Event Date *</label>
+                                    <label for="event-date">Event Date <span class="required-asterisk">*</span></label>
                                     <input type="text" id="event-date" placeholder="Select date" required>
                                 </div>
                             </div>
                             <div class="form-col">
                                 <div class="form-group">
-                                    <label for="event-start-time">Event Start Time *</label>
+                                    <label for="event-start-time">Event Start Time <span class="required-asterisk">*</span></label>
                                     <input type="time" id="event-start-time" required step="900">
                                 </div>
                             </div>
@@ -4840,20 +4851,42 @@
                         <div class="form-row">
                             <div class="form-col">
                                 <div class="form-group">
-                                    <label for="event-end-time">Event End Time *</label>
+                                    <label for="event-end-time">Event End Time <span class="required-asterisk">*</span></label>
                                     <input type="time" id="event-end-time" required step="900">
                                 </div>
                             </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="event-timezone">Timezone <span class="required-asterisk">*</span></label>
+                                    <select id="event-timezone" required>
+                                        <option value="">Select timezone...</option>
+                                        <option value="America/St_Johns">America/St_Johns (NST) GMT -3:30</option>
+                                        <option value="America/Halifax">America/Halifax (AST) GMT -4:00</option>
+                                        <option value="America/Toronto">America/Toronto (EST) GMT -5:00</option>
+                                        <option value="America/Winnipeg">America/Winnipeg (CST) GMT -6:00</option>
+                                        <option value="America/Edmonton">America/Edmonton (MST) GMT -7:00</option>
+                                        <option value="America/Vancouver">America/Vancouver (PST) GMT -8:00</option>
+                                        <option value="America/Anchorage">America/Anchorage (AKST) GMT -9:00</option>
+                                        <option value="America/Honolulu">America/Honolulu (HST) GMT -10:00</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-col">
                                 <div class="form-group">
                                     <label for="attendee-count">Number of Attendees</label>
                                     <input type="number" id="attendee-count" min="1" value="50">
                                 </div>
                             </div>
+                            <div class="form-col">
+                                <!-- Empty column for layout balance -->
+                            </div>
                         </div>
 
                         <div class="form-group">
-                            <label for="event-location">Event Location *</label>
+                            <label for="event-location">Event Location <span class="required-asterisk">*</span></label>
                             <input type="text" id="event-location" placeholder="Start typing to search for a location..." required autocomplete="off">
                             <div id="location-suggestions" class="location-suggestions" style="display: none;"></div>
                         </div>
@@ -4886,9 +4919,9 @@
                     </div>
                 </div>
 
-                <!-- Step 3: Select Services -->
+                <!-- Step 3: Selecting Service -->
                 <div class="booking-step" id="booking-step-3" style="display: none;">
-                    <h4 class="form-section-title">Select Services</h4>
+                    <h4 class="form-section-title">Selecting Service</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Choose from available services and set individual budgets.</p>
 
                     <div class="form-group" style="margin-bottom: 2rem;">
@@ -8314,6 +8347,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const eventDate = document.getElementById('event-date');
                 const eventStartTime = document.getElementById('event-start-time');
                 const eventEndTime = document.getElementById('event-end-time');
+                const eventTimezone = document.getElementById('event-timezone');
                 const eventLocation = document.getElementById('event-location');
                 const eventName = document.getElementById('event-name');
                 const eventType = document.getElementById('event-type');
@@ -8322,6 +8356,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 return eventDate?.value && 
                        eventStartTime?.value && 
                        eventEndTime?.value && 
+                       eventTimezone?.value &&
                        eventLocation?.value &&
                        (eventName?.value || '').trim() &&
                        eventType?.value;
