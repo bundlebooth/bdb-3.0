@@ -1945,6 +1945,54 @@
             box-shadow: var(--shadow);
         }
 
+        /* Service Tabs Styles */
+        .service-tabs {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+        }
+        
+        .service-tab {
+            padding: 0.75rem 1.5rem;
+            background: #f8faff;
+            border: 1px solid #e3f2fd;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            color: var(--text-light);
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .service-tab:hover {
+            background: #e3f2fd;
+            color: var(--text);
+        }
+        
+        .service-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        .service-tab .vendor-count {
+            background: rgba(255, 255, 255, 0.2);
+            color: inherit;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+        
+        .service-tab.active .vendor-count {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
         /* Vendor Map and Horizontal Cards Styles */
         .vendor-horizontal-container {
             display: flex;
@@ -5014,6 +5062,14 @@
                                         </select>
                                     </div>
                                 </div>
+                                
+                                <!-- Service Tabs -->
+                                <div id="service-tabs-container" style="display: none; margin-bottom: 1rem;">
+                                    <div id="service-tabs" class="service-tabs" style="display: flex; gap: 0.5rem; border-bottom: 2px solid #e5e7eb; margin-bottom: 1rem; overflow-x: auto;">
+                                        <!-- Service tabs will be populated here -->
+                                    </div>
+                                </div>
+                                
                                 <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box;">
                                     <!-- Horizontal vendor cards will be populated here -->
                                     <div style="padding: 1rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd; text-align: center;">
@@ -22146,7 +22202,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         let renderVendorCardsTimeout = null;
         let isRenderingVendorCards = false;
 
-        // Render horizontal vendor cards with retry limit and debouncing
+        // Render horizontal vendor cards with tabbed interface for multiple services
         function renderHorizontalVendorCards(vendorSections, retryCount = 0) {
             const maxRetries = 10; // Limit retries to prevent infinite loops
             
@@ -22177,16 +22233,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 retryCount: retryCount
             });
             
-            // Wait for DOM to be ready - removed step restriction to allow cards to display
-            // The step check was preventing vendor cards from showing when vendors are found
-            console.log('🎯 Current booking step:', window.bookingState?.currentStep, '- proceeding with render');
-            
             // Use a more robust approach to find elements
             let container = document.getElementById('vendor-cards-container');
             let cardsContainer = document.getElementById('vendor-horizontal-cards');
+            let tabsContainer = document.getElementById('service-tabs-container');
+            let tabsElement = document.getElementById('service-tabs');
             
             // If elements not found, wait a bit and try again (with retry limit)
-            if (!container || !cardsContainer) {
+            if (!container || !cardsContainer || !tabsContainer || !tabsElement) {
                 if (retryCount < maxRetries) {
                     if (retryCount === 1) console.log('🔄 Elements not ready, waiting for DOM...');
                     setTimeout(() => renderHorizontalVendorCards(vendorSections, retryCount + 1), 300);
@@ -22203,6 +22257,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Check if vendorSections is valid and has data
             if (!vendorSections || !Array.isArray(vendorSections) || vendorSections.length === 0) {
                 console.warn('⚠️ No vendor sections provided or empty array');
+                tabsContainer.style.display = 'none';
                 cardsContainer.innerHTML = `
                     <div style="text-align: center; padding: 2rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd;">
                         <i class="fas fa-search" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
@@ -22214,28 +22269,43 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 return;
             }
 
-            // Flatten and sort vendors by distance
-            const allVendors = [];
+            // Group vendors by service
+            const serviceGroups = {};
+            let totalVendorCount = 0;
+            
             vendorSections.forEach(section => {
-                console.log('Processing section:', section);
-                if (section.vendors && Array.isArray(section.vendors)) {
+                if (section.vendors && Array.isArray(section.vendors) && section.vendors.length > 0) {
+                    const serviceName = section.service?.name || section.category || 'Unknown Service';
+                    const serviceId = section.service?.id || section.category || serviceName.toLowerCase().replace(/\s+/g, '-');
+                    
+                    if (!serviceGroups[serviceId]) {
+                        serviceGroups[serviceId] = {
+                            id: serviceId,
+                            name: serviceName,
+                            category: section.category,
+                            service: section.service,
+                            vendors: []
+                        };
+                    }
+                    
                     section.vendors.forEach(vendor => {
-                        allVendors.push({
+                        serviceGroups[serviceId].vendors.push({
                             ...vendor,
                             serviceCategory: section.category,
-                            serviceName: section.service?.name || 'Unknown Service',
+                            serviceName: serviceName,
                             serviceBudget: section.service?.budget || 0
                         });
+                        totalVendorCount++;
                     });
-                } else {
-                    console.warn('Section has no vendors or vendors is not an array:', section);
                 }
             });
 
-            console.log(`📋 Flattened ${allVendors.length} vendors from ${vendorSections.length} sections`);
+            const serviceGroupsArray = Object.values(serviceGroups);
+            console.log(`📋 Grouped ${totalVendorCount} vendors into ${serviceGroupsArray.length} service groups`);
 
-            if (allVendors.length === 0) {
-                console.warn('⚠️ No vendors found after flattening sections');
+            if (serviceGroupsArray.length === 0) {
+                console.warn('⚠️ No vendor groups found after processing sections');
+                tabsContainer.style.display = 'none';
                 cardsContainer.innerHTML = `
                     <div style="text-align: center; padding: 2rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd;">
                         <i class="fas fa-search" style="font-size: 3rem; color: #ccc; margin-bottom: 1rem;"></i>
@@ -22247,65 +22317,115 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 return;
             }
 
-            // Sort by distance (closest first) — treat 0 as valid; fallback to backend distanceFromEvent
+            // Show/hide tabs based on number of services
+            if (serviceGroupsArray.length > 1) {
+                // Multiple services - show tabs
+                tabsContainer.style.display = 'block';
+                
+                // Create tabs
+                const tabsHtml = serviceGroupsArray.map((group, index) => `
+                    <div class="service-tab ${index === 0 ? 'active' : ''}" 
+                         data-service-id="${group.id}" 
+                         onclick="switchServiceTab('${group.id}')">
+                        ${group.name}
+                        <span class="vendor-count">${group.vendors.length}</span>
+                    </div>
+                `).join('');
+                
+                tabsElement.innerHTML = tabsHtml;
+                
+                // Store service groups globally for tab switching
+                window.currentServiceGroups = serviceGroups;
+                
+                // Show first service's vendors by default
+                const firstService = serviceGroupsArray[0];
+                renderVendorsForService(firstService);
+                
+            } else {
+                // Single service - hide tabs and show all vendors
+                tabsContainer.style.display = 'none';
+                const singleService = serviceGroupsArray[0];
+                renderVendorsForService(singleService);
+            }
+            
+            // Reset rendering flag
+            isRenderingVendorCards = false;
+        }
+
+        // Function to render vendors for a specific service
+        function renderVendorsForService(serviceGroup) {
+            const cardsContainer = document.getElementById('vendor-horizontal-cards');
+            if (!cardsContainer || !serviceGroup || !serviceGroup.vendors) return;
+
+            // Sort vendors by distance
             const getDist = (v) => {
                 if (typeof v.distance === 'number' && isFinite(v.distance)) return v.distance;
                 const dfe = parseFloat(v.distanceFromEvent);
                 return isNaN(dfe) ? 999 : dfe;
             };
-            allVendors.sort((a, b) => (getDist(a) - getDist(b)));
+            serviceGroup.vendors.sort((a, b) => (getDist(a) - getDist(b)));
 
-            // Render cards
             try {
-                const cardsHtml = allVendors.map(vendor => {
+                const cardsHtml = serviceGroup.vendors.map(vendor => {
                     try {
                         return createHorizontalVendorCard(vendor);
                     } catch (cardError) {
                         console.error('Error creating card for vendor:', vendor, cardError);
-                        return ''; // Return empty string for failed cards
+                        return '';
                     }
                 }).filter(html => html.length > 0).join('');
                 
-                console.log('🏗️ Generated cards HTML length:', cardsHtml.length);
-                
                 if (cardsHtml.length === 0) {
-                    console.error('❌ No valid HTML generated for vendor cards');
                     cardsContainer.innerHTML = `
                         <div style="text-align: center; padding: 2rem; background: #fff3cd; border-radius: 12px; border: 2px dashed #ffc107;">
                             <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #856404; margin-bottom: 1rem;"></i>
                             <h4 style="color: #856404; margin-bottom: 0.5rem;">Error displaying vendors</h4>
-                            <p style="color: #856404; margin: 0;">There was an issue displaying the vendor cards. Please try refreshing or contact support.</p>
+                            <p style="color: #856404; margin: 0;">There was an issue displaying the vendor cards for ${serviceGroup.name}.</p>
                         </div>
                     `;
                 } else {
                     cardsContainer.innerHTML = cardsHtml;
-                    console.log('✅ Cards rendered to container successfully');
+                    console.log(`✅ Rendered ${serviceGroup.vendors.length} vendors for service: ${serviceGroup.name}`);
                     
-                    // Initialize carousels for all vendor cards
+                    // Initialize carousels for vendor cards
                     setTimeout(() => {
-                        allVendors.forEach(vendor => {
+                        serviceGroup.vendors.forEach(vendor => {
                             const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id || 'unknown-' + Math.random();
                             initializeVendorCarousel(vendorId);
                         });
                     }, 100);
                 }
 
-                // Setup sorting
-                setupVendorSorting(allVendors);
+                // Setup sorting for current service vendors
+                setupVendorSorting(serviceGroup.vendors);
                 
             } catch (renderError) {
-                console.error('❌ Error rendering vendor cards:', renderError);
+                console.error('❌ Error rendering vendor cards for service:', serviceGroup.name, renderError);
                 cardsContainer.innerHTML = `
                     <div style="text-align: center; padding: 2rem; background: #f8d7da; border-radius: 12px; border: 2px dashed #dc3545;">
                         <i class="fas fa-exclamation-circle" style="font-size: 3rem; color: #721c24; margin-bottom: 1rem;"></i>
                         <h4 style="color: #721c24; margin-bottom: 0.5rem;">Rendering Error</h4>
-                        <p style="color: #721c24; margin: 0;">Failed to render vendor cards. Please try again.</p>
+                        <p style="color: #721c24; margin: 0;">Failed to render vendor cards for ${serviceGroup.name}.</p>
                     </div>
                 `;
             }
+        }
+
+        // Function to switch between service tabs
+        function switchServiceTab(serviceId) {
+            const serviceGroups = window.currentServiceGroups;
+            if (!serviceGroups || !serviceGroups[serviceId]) return;
+
+            // Update active tab
+            document.querySelectorAll('.service-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-service-id="${serviceId}"]`).classList.add('active');
+
+            // Render vendors for selected service
+            renderVendorsForService(serviceGroups[serviceId]);
             
-            // Reset rendering flag
-            isRenderingVendorCards = false;
+            console.log(`🔄 Switched to service tab: ${serviceGroups[serviceId].name}`);
         }
 
         // Helper: format unified pricing label for a service
