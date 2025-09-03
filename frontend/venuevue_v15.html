@@ -3622,7 +3622,6 @@
                         <span>Filters</span>
                     </button>
                     <select class="sort-select" id="sort-select">
-                        <option value="recommended">Sort: Recommended</option>
                         <option value="price-low">Price: Low to High</option>
                         <option value="price-high">Price: High to Low</option>
                         <option value="popular">Most Popular</option>
@@ -5187,19 +5186,6 @@
                         </div>
                     </div>
                     
-                    <!-- Recommended Multi-Service Vendors Table -->
-                    <div id="recommended-vendors" style="display: none; margin-bottom: 2rem;">
-                        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px; margin-bottom: 1rem;">
-                            <h4 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-star" style="color: #ffd700;"></i>
-                                Recommended: Multi-Service Vendors
-                            </h4>
-                            <p style="margin: 0.5rem 0 0 0; opacity: 0.9; font-size: 0.9rem;">
-                                These vendors offer multiple services you're looking for - great for bundling!
-                            </p>
-                        </div>
-                        <div id="recommended-vendors-table"></div>
-                    </div>
 
                     <div id="vendor-results" class="vendor-sections-container" style="display: none;">
                         <!-- Legacy vendor sections will be populated here -->
@@ -8922,127 +8908,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
 
-            // Function to identify and render recommended multi-service vendors
-            function renderRecommendedVendors(vendorSections) {
-                const recommendedContainer = document.getElementById('recommended-vendors');
-                const recommendedTable = document.getElementById('recommended-vendors-table');
-                
-                if (!recommendedContainer || !recommendedTable) return;
-                
-                // Find vendors that appear in multiple services
-                const vendorServiceMap = new Map();
-                
-                vendorSections.forEach(section => {
-                    section.vendors.forEach(vendor => {
-                        const vendorId = vendor.vendor?.VendorProfileID || vendor.VendorProfileID || vendor.vendor?.id || vendor.id;
-                        const businessName = vendor.vendor?.BusinessName || vendor.BusinessName;
-                        
-                        if (!vendorServiceMap.has(vendorId)) {
-                            vendorServiceMap.set(vendorId, {
-                                vendor: vendor,
-                                businessName: businessName,
-                                services: []
-                            });
-                        }
-                        
-                        const vendorService = vendor.services?.find(vs => vs.ServiceName === section.service.name);
-                        const priceInfo = formatUnifiedServicePrice(vendorService || {});
-                        
-                        vendorServiceMap.get(vendorId).services.push({
-                            serviceName: section.service.name,
-                            price: priceInfo.value || 0,
-                            priceLabel: priceInfo.label || 'Contact for pricing'
-                        });
-                    });
-                });
-                
-                // Filter vendors with multiple services
-                const multiServiceVendors = Array.from(vendorServiceMap.values())
-                    .filter(vendorData => vendorData.services.length > 1)
-                    .sort((a, b) => b.services.length - a.services.length); // Sort by number of services
-                
-                if (multiServiceVendors.length === 0) {
-                    recommendedContainer.style.display = 'none';
-                    return;
-                }
-                
-                // Generate table HTML
-                const tableHTML = `
-                    <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr style="background: #f8f9fa;">
-                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #2c3e50; border-bottom: 2px solid #e9ecef;">Vendor</th>
-                                    <th style="padding: 1rem; text-align: left; font-weight: 600; color: #2c3e50; border-bottom: 2px solid #e9ecef;">Services Offered</th>
-                                    <th style="padding: 1rem; text-align: center; font-weight: 600; color: #2c3e50; border-bottom: 2px solid #e9ecef;">Total Services</th>
-                                    <th style="padding: 1rem; text-align: center; font-weight: 600; color: #2c3e50; border-bottom: 2px solid #e9ecef;">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${multiServiceVendors.map((vendorData, index) => {
-                                    const vendor = vendorData.vendor;
-                                    const vendorId = vendor.vendor?.VendorProfileID || vendor.VendorProfileID || vendor.vendor?.id || vendor.id;
-                                    const businessName = vendorData.businessName;
-                                    const location = vendor.vendor?.Location || vendor.Location;
-                                    const featuredImage = vendor.vendor?.FeaturedImageURL || vendor.FeaturedImageURL;
-                                    const totalPrice = vendorData.services.reduce((sum, service) => sum + service.price, 0);
-                                    
-                                    return `
-                                        <tr style="border-bottom: 1px solid #e9ecef; ${index % 2 === 0 ? 'background: #fafbfc;' : ''}">
-                                            <td style="padding: 1rem;">
-                                                <div style="display: flex; align-items: center; gap: 1rem;">
-                                                    <div style="width: 60px; height: 60px; border-radius: 8px; overflow: hidden; flex-shrink: 0;">
-                                                        ${featuredImage ? 
-                                                            `<img src="${featuredImage}" alt="${businessName}" style="width:100%;height:100%;object-fit:cover;">` : 
-                                                            `<div style="width:100%;height:100%;background:#e9ecef;display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#666;">${businessName.charAt(0).toUpperCase()}</div>`
-                                                        }
-                                                    </div>
-                                                    <div>
-                                                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 0.25rem;">${businessName}</div>
-                                                        <div style="font-size: 0.85rem; color: #6c757d;">${location}</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td style="padding: 1rem;">
-                                                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                                                    ${vendorData.services.map(service => `
-                                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: #f8f9fa; border-radius: 6px;">
-                                                            <span style="font-weight: 500; color: #495057;">${service.serviceName}</span>
-                                                            <span style="font-weight: 600; color: #28a745;">${service.priceLabel}</span>
-                                                        </div>
-                                                    `).join('')}
-                                                </div>
-                                            </td>
-                                            <td style="padding: 1rem; text-align: center;">
-                                                <span style="background: #28a745; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.9rem;">
-                                                    ${vendorData.services.length} Services
-                                                </span>
-                                            </td>
-                                            <td style="padding: 1rem; text-align: center;">
-                                                <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: center;">
-                                                    ${vendorData.services.map(service => `
-                                                        <button class="btn btn-primary" onclick="toggleVendorSelection('${vendorId}', '${service.serviceName}', ${service.price})" 
-                                                                style="font-size: 0.8rem; padding: 0.4rem 0.8rem; border-radius: 6px; white-space: nowrap;">
-                                                            Select for ${service.serviceName}
-                                                        </button>
-                                                    `).join('')}
-                                                    <button class="btn btn-outline" onclick="selectAllServicesForVendor('${vendorId}', ${JSON.stringify(vendorData.services).replace(/"/g, '&quot;')})" 
-                                                            style="font-size: 0.8rem; padding: 0.4rem 0.8rem; border-radius: 6px; margin-top: 0.25rem;">
-                                                        Select All Services
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-                
-                recommendedTable.innerHTML = tableHTML;
-                recommendedContainer.style.display = 'block';
-            }
 
             // Function to select all services for a vendor
             window.selectAllServicesForVendor = function(vendorId, servicesData) {
@@ -9059,9 +8924,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             // New function to render vendors grouped by category and service
             function renderSectionedVendorResults(vendorSections) {
                 const vendorResults = document.getElementById('vendor-results');
-                
-                // First render the recommended multi-service vendors
-                renderRecommendedVendors(vendorSections);
                 
                 const sectionedHTML = vendorSections.map(section => {
                     const { category, service, vendors } = section;
@@ -9166,7 +9028,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     </div>
                                     <div>
                                         <select class="vendor-sort-select" data-service="${service.name}" style="padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #34495e; background: #ffffff; color: #2c3e50; font-size: 0.9rem;">
-                                            <option value="recommended">Recommended</option>
                                             <option value="price-low">Price: Low to High</option>
                                             <option value="price-high">Price: High to Low</option>
                                             <option value="rating">Highest Rated</option>
@@ -9229,7 +9090,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                             return (b.MatchingServices || 0) - (a.MatchingServices || 0);
                         });
                         break;
-                    case 'recommended':
                     default:
                         // Sort by premium status, then eco-friendly, then award winning, then matching services
                         vendors.sort((a, b) => {
@@ -9350,7 +9210,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     return String(vId) === String(vendorId);
                 });
                 
-                // Find vendor card (could be in regular sections or recommended table)
+                // Find vendor card
                 let vendorCard = document.querySelector(`[data-vendor-id="${vendorId}"]`);
                 let selectButton = vendorCard?.querySelector('.btn-select-vendor');
                 
@@ -9418,22 +9278,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const activeTab = document.querySelector('.service-tab.active');
                     const currentServiceId = activeTab ? activeTab.getAttribute('data-service-id') : serviceName;
                     
-                    // For recommended tab, check if vendor is selected for any service
-                    let shouldBeChecked = false;
-                    if (currentServiceId === 'recommended') {
-                        shouldBeChecked = Object.values(window.bookingState.selectedVendorsByService || {})
-                            .some(serviceVendors => serviceVendors.some(v => {
-                                const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
-                                return String(vId) === String(vendorId);
-                            }));
-                    } else {
-                        // For specific service tabs, check if vendor is selected for that service
-                        const serviceVendors = window.bookingState.selectedVendorsByService[currentServiceId] || [];
-                        shouldBeChecked = serviceVendors.some(v => {
-                            const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
-                            return String(vId) === String(vendorId);
-                        });
-                    }
+                    // For specific service tabs, check if vendor is selected for that service
+                    const serviceVendors = window.bookingState.selectedVendorsByService[currentServiceId] || [];
+                    const shouldBeChecked = serviceVendors.some(v => {
+                        const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
+                        return String(vId) === String(vendorId);
+                    });
                     
                     if (shouldBeChecked) {
                         checkbox.classList.add('checked');
@@ -9444,7 +9294,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 });
                 
-                // Update button states in recommended table and regular vendor cards
+                // Update button states in vendor cards
                 const allButtons = document.querySelectorAll(`button[onclick*="toggleVendorSelection('${vendorId}', '${serviceName}'"]`);
                 allButtons.forEach(btn => {
                     if (!isSelected) { // After selection (isSelected was false, now true)
@@ -15455,7 +15305,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         // Use the Cloudinary URLs that were uploaded via handleFeaturedImageUpload
                         const featuredImage = vendorSetupState.stepData.step3?.featuredImage || 
                                             document.getElementById('featured-image-url')?.value || 
-                                            'https://via.placeholder.com/400x300.jpg';
+                                            'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzk5YTNhZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
                         
                         stepData = {
                             vendorProfileId: vendorSetupState.vendorProfileId,
@@ -22659,28 +22509,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Multiple services - show tabs
                 tabsContainer.style.display = 'block';
                 
-                // Find vendors that offer multiple services
-                const multiServiceVendors = findMultiServiceVendors(serviceGroupsArray);
-                
-                // Create tabs including Recommended tab
+                // Create tabs
                 let tabsHtml = '';
-                
-                // Add Recommended tab first if there are multi-service vendors
-                if (multiServiceVendors.length > 0) {
-                    tabsHtml += `
-                        <div class="service-tab active" 
-                             data-service-id="recommended" 
-                             onclick="switchServiceTab('recommended')">
-                            <i class="fas fa-star" style="color: #ffd700; margin-right: 0.5rem;"></i>
-                            Recommended
-                            <span class="vendor-count">${multiServiceVendors.length}</span>
-                        </div>
-                    `;
-                }
                 
                 // Add regular service tabs
                 tabsHtml += serviceGroupsArray.map((group, index) => `
-                    <div class="service-tab ${multiServiceVendors.length === 0 && index === 0 ? 'active' : ''}" 
+                    <div class="service-tab ${index === 0 ? 'active' : ''}" 
                          data-service-id="${group.id}" 
                          onclick="switchServiceTab('${group.id}')">
                         ${group.name}
@@ -22793,19 +22627,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
             
             // Handle different tab types
-            if (serviceId === 'recommended') {
-                renderRecommendedTab();
-            } else {
-                const serviceGroups = window.currentServiceGroups;
-                if (!serviceGroups || !serviceGroups[serviceId]) {
-                    console.warn(`⚠️ Service group not found: ${serviceId}`);
-                    return;
-                }
-
-                // Render vendors for selected service
-                renderVendorsForService(serviceGroups[serviceId]);
-                console.log(`🔄 Switched to service tab: ${serviceGroups[serviceId].name}`);
+            const serviceGroups = window.currentServiceGroups;
+            if (!serviceGroups || !serviceGroups[serviceId]) {
+                console.warn(`⚠️ Service group not found: ${serviceId}`);
+                return;
             }
+
+            // Render vendors for selected service
+            renderVendorsForService(serviceGroups[serviceId]);
+            console.log(`🔄 Switched to service tab: ${serviceGroups[serviceId].name}`);
             
             // Update all vendor checkboxes to reflect current service selection state
             setTimeout(() => {
@@ -22822,23 +22652,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (!vendorCard) return;
                 
                 const vendorId = vendorCard.getAttribute('data-vendor-id');
-                let shouldBeChecked = false;
                 
-                if (serviceId === 'recommended') {
-                    // For recommended tab, check if vendor is selected for any service
-                    shouldBeChecked = Object.values(window.bookingState.selectedVendorsByService || {})
-                        .some(serviceVendors => serviceVendors.some(v => {
-                            const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
-                            return String(vId) === String(vendorId);
-                        }));
-                } else {
-                    // For specific service tabs, check if vendor is selected for that service
-                    const serviceVendors = window.bookingState.selectedVendorsByService?.[serviceId] || [];
-                    shouldBeChecked = serviceVendors.some(v => {
-                        const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
-                        return String(vId) === String(vendorId);
-                    });
-                }
+                // For specific service tabs, check if vendor is selected for that service
+                const serviceVendors = window.bookingState.selectedVendorsByService?.[serviceId] || [];
+                const shouldBeChecked = serviceVendors.some(v => {
+                    const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
+                    return String(vId) === String(vendorId);
+                });
                 
                 if (shouldBeChecked) {
                     checkbox.classList.add('checked');
@@ -22859,7 +22679,33 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
         }
 
-        // Function to render the Recommended tab content
+        // Function to generate star rating HTML
+        function generateStarRating(rating) {
+            const fullStars = Math.floor(rating);
+            const hasHalfStar = rating % 1 >= 0.5;
+            const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+            
+            let starsHtml = '';
+            
+            // Full stars
+            for (let i = 0; i < fullStars; i++) {
+                starsHtml += '<i class="fas fa-star" style="color: #fbbf24;"></i>';
+            }
+            
+            // Half star
+            if (hasHalfStar) {
+                starsHtml += '<i class="fas fa-star-half-alt" style="color: #fbbf24;"></i>';
+            }
+            
+            // Empty stars
+            for (let i = 0; i < emptyStars; i++) {
+                starsHtml += '<i class="far fa-star" style="color: #d1d5db;"></i>';
+            }
+            
+            return starsHtml;
+        }
+
+        // Legacy function - no longer used
         function renderRecommendedTab() {
             const serviceGroups = window.currentServiceGroups;
             if (!serviceGroups) return;
@@ -22887,44 +22733,62 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const location = vendor.Location || vendor.location || 'Location not specified';
                 const rating = vendor.AverageRating || vendor.averageRating || vendor.rating || 0;
                 const reviewCount = vendor.ReviewCount || vendor.reviewCount || vendor.reviews || 0;
-                const profileImage = vendor.ProfileImageURL || vendor.profileImageURL || vendor.image || 'https://via.placeholder.com/80x80?text=No+Image';
+                const featuredImage = vendor.ProfileImageURL || vendor.profileImageURL || vendor.image || vendor.FeaturedImageURL;
+                const vendorDescription = vendor.Description || vendor.description || vendor.BusinessDescription || '';
+                
+                // Create services list with scroll if needed
+                const servicesHtml = vendor.offeredServices.map(service => 
+                    `<div style="padding: 0.3rem 0.5rem; background: #f8f9fa; border-radius: 6px; margin: 0.2rem 0; font-size: 0.75rem; color: #6b7280; font-weight: 500;">${service}</div>`
+                ).join('');
 
                 return `
-                    <div class="vendor-horizontal-card" data-vendor-id="${vendorId}">
-                        <div class="vendor-card-image">
-                            <img src="${profileImage}" alt="${businessName}" onerror="this.src='https://via.placeholder.com/80x80?text=No+Image'">
-                        </div>
-                        <div class="vendor-card-content">
-                            <div class="vendor-card-header">
-                                <h4 class="vendor-name">${businessName}</h4>
-                                <div class="vendor-rating">
-                                    <div class="stars">
-                                        ${generateStarRating(rating)}
-                                    </div>
-                                    <span class="rating-text">${rating.toFixed(1)} (${reviewCount} reviews)</span>
-                                </div>
-                            </div>
-                            <p class="vendor-location">
-                                <i class="fas fa-map-marker-alt"></i>
-                                ${location}
-                            </p>
-                            <div class="vendor-services-offered">
-                                <strong>Services Offered:</strong>
-                                <div class="service-tags">
-                                    ${vendor.offeredServices.map(service => `<span class="service-tag">${service}</span>`).join('')}
-                                </div>
+                    <div class="vendor-card" data-vendor-id="${vendorId}">
+                        <div class="vendor-image">
+                            ${featuredImage ? 
+                                `<img src="${featuredImage}" alt="${businessName}" style="width:100%;height:100%;object-fit:cover;">` : 
+                                `<div style="width:100%;height:100%;background:#f0f2f5;display:flex;align-items:center;justify-content:center;font-size:2rem;color:#666;">${businessName.charAt(0).toUpperCase()}</div>`
+                            }
+                            <div class="vendor-badges" style="position: absolute; bottom: 12px; left: 12px; display: flex; gap: 6px;">
+                                ${(vendor.IsPremium) ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #5e72e4; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Premium</span>' : ''}
+                                ${(vendor.IsEcoFriendly) ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #38a169; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Eco-Friendly</span>' : ''}
+                                ${(vendor.IsAwardWinning) ? '<span class="badge" style="background: rgba(255, 255, 255, 0.95); color: #d69e2e; padding: 0.4rem 0.8rem; border-radius: 25px; font-size: 0.75rem; font-weight: 700; backdrop-filter: blur(10px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">Award Winning</span>' : ''}
                             </div>
                         </div>
-                        <div class="vendor-card-actions">
-                            <button class="btn-select-vendor" onclick="selectVendorForAllServices('${vendorId}')">
-                                Select for All Services
-                            </button>
+                        <div class="vendor-details">
+                            <h3 class="vendor-name">${businessName}</h3>
+                            <div class="vendor-location" style="margin: 0.5rem 0; font-size: 0.9rem; color: #666;">
+                                <span style="color: #888; margin-right: 0.5rem;">Location:</span>${location}
+                            </div>
+                            <div class="vendor-business-type" style="margin: 0.5rem 0; font-size: 0.85rem; color: #666; font-style: italic;">
+                                ${vendor.BusinessType || 'Service Provider'}
+                            </div>
+                            <div class="vendor-rating" style="display: flex; align-items: center; gap: 8px; margin: 0.5rem 0;">
+                                <div class="stars">
+                                    ${generateStarRating(rating)}
+                                </div>
+                                <span style="font-size: 0.85rem; color: #666;">${rating.toFixed(1)} (${reviewCount} reviews)</span>
+                            </div>
+                            <div class="vendor-services-section" style="margin: 0.6rem 0;">
+                                <div style="font-weight: 600; font-size: 0.85rem; color: #4b5563; margin-bottom: 0.4rem;">Services Offered:</div>
+                                <div class="services-list" style="max-height: 120px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #cbd5e0 #f7fafc;">
+                                    ${servicesHtml}
+                                </div>
+                            </div>
+                            <div class="vendor-description" style="margin: 0.6rem 0; font-size: 0.9rem; color: #4b5563; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                                ${vendorDescription || 'Professional service provider offering quality services for your event.'}
+                            </div>
+                            <div class="vendor-footer">
+                                <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');" style="border-radius: 12px; font-weight: 600;">View Profile</button>
+                                <button class="btn btn-primary btn-select-vendor" onclick="selectVendorForAllServices('${vendorId}')" style="border-radius: 12px; font-weight: 600;">
+                                    Select for All Services
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
             }).join('');
 
-            cardsContainer.innerHTML = vendorCardsHtml;
+            cardsContainer.innerHTML = `<div class="vendor-cards-grid">${vendorCardsHtml}</div>`;
         }
 
         // Function to select a vendor for all applicable services
@@ -23003,19 +22867,36 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         function findMultiServiceVendors(serviceGroups) {
             const vendorServiceMap = new Map();
             
+            console.log('🔍 Finding multi-service vendors from groups:', serviceGroups.map(g => g.name));
+            
             // Build map of vendors and their services
             serviceGroups.forEach(group => {
+                if (!group.vendors || group.vendors.length === 0) {
+                    console.log(`⚠️ No vendors found in group: ${group.name}`);
+                    return;
+                }
+                
                 group.vendors.forEach(vendor => {
                     const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.vendorId || vendor.id;
+                    const businessName = vendor.BusinessName || vendor.businessName || vendor.name || 'Unknown';
+                    
                     if (!vendorServiceMap.has(vendorId)) {
                         vendorServiceMap.set(vendorId, {
                             vendor: vendor,
-                            services: []
+                            services: [],
+                            businessName: businessName
                         });
                     }
                     vendorServiceMap.get(vendorId).services.push(group.name);
                 });
             });
+            
+            console.log('📊 Vendor service mapping:', Array.from(vendorServiceMap.entries()).map(([id, data]) => ({
+                id,
+                name: data.businessName,
+                serviceCount: data.services.length,
+                services: data.services
+            })));
             
             // Filter vendors that offer more than one service
             const multiServiceVendors = [];
@@ -23027,6 +22908,35 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                 }
             });
+            
+            console.log('✨ Multi-service vendors found:', multiServiceVendors.length, multiServiceVendors.map(v => ({
+                name: v.BusinessName || v.businessName || v.name,
+                services: v.offeredServices
+            })));
+            
+            // If no multi-service vendors found, return top-rated vendors from all services
+            if (multiServiceVendors.length === 0) {
+                console.log('🔄 No multi-service vendors found, showing top-rated vendors instead');
+                const allVendors = [];
+                serviceGroups.forEach(group => {
+                    if (group.vendors) {
+                        group.vendors.forEach(vendor => {
+                            const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.vendorId || vendor.id;
+                            if (!allVendors.find(v => (v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id) === vendorId)) {
+                                allVendors.push({
+                                    ...vendor,
+                                    offeredServices: [group.name]
+                                });
+                            }
+                        });
+                    }
+                });
+                
+                // Sort by rating and return top 3
+                return allVendors
+                    .sort((a, b) => (b.AverageRating || b.averageRating || 0) - (a.AverageRating || a.averageRating || 0))
+                    .slice(0, 3);
+            }
             
             return multiServiceVendors;
         }
@@ -24432,23 +24342,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             console.log('🔄 Found checkboxes:', vendorCheckboxes.length);
             
             vendorCheckboxes.forEach((checkbox, index) => {
-                let shouldBeChecked = false;
-                
-                if (serviceId === 'recommended') {
-                    // For recommended tab, check if vendor is selected for any service
-                    shouldBeChecked = Object.values(window.bookingState.selectedVendorsByService || {})
-                        .some(serviceVendors => serviceVendors.some(v => {
-                            const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
-                            return String(vId) === String(vendorId);
-                        }));
-                } else {
-                    // For specific service tabs, check if vendor is selected for that service
-                    const serviceVendors = window.bookingState.selectedVendorsByService?.[serviceId] || [];
-                    shouldBeChecked = serviceVendors.some(v => {
-                        const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
-                        return String(vId) === String(vendorId);
-                    });
-                }
+                // For specific service tabs, check if vendor is selected for that service
+                const serviceVendors = window.bookingState.selectedVendorsByService?.[serviceId] || [];
+                const shouldBeChecked = serviceVendors.some(v => {
+                    const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
+                    return String(vId) === String(vendorId);
+                });
                 
                 console.log(`🔄 Checkbox ${index}: shouldBeChecked = ${shouldBeChecked}`);
                 
@@ -24532,11 +24431,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             console.log('❌ selectAllServicesForVendor function missing');
         }
         
-        if (typeof renderRecommendedVendors === 'function') {
-            console.log('✅ renderRecommendedVendors function available');
-        } else {
-            console.log('❌ renderRecommendedVendors function missing');
-        }
+        // renderRecommendedVendors function has been removed
         
         // Test service-specific data structure
         if (!window.bookingState) window.bookingState = {};
