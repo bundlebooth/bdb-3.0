@@ -870,20 +870,6 @@
             background-color: #4a5acf;
         }
 
-        .btn:disabled,
-        .btn[disabled] {
-            opacity: 0.5;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-
-        .btn-primary:disabled,
-        .btn-primary[disabled] {
-            background-color: #9ca3af;
-            border-color: #9ca3af;
-            color: #ffffff;
-        }
-
         .pagination {
             display: flex;
             justify-content: center;
@@ -5162,7 +5148,7 @@
                                     </button>
                                 </div>
                                 
-                                <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box; flex: 1; min-height: 0; max-height: 500px;">
+                                <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box; flex: 1; min-height: 0;">
                                     <!-- Horizontal vendor cards will be populated here -->
                                     <div style="padding: 1rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd; text-align: center;">
                                         <i class="fas fa-search" style="font-size: 2rem; color: #ccc; margin-bottom: 0.5rem;"></i>
@@ -5175,7 +5161,7 @@
                         <!-- RIGHT: Google Maps Container -->
                         <div style="flex: 1; min-width: 0;">
                             <div id="vendor-map-container" style="display: block;">
-                                <div class="map-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; margin-top: 3rem;">
+                                <div class="map-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                     <h5 style="margin: 0; color: var(--text);">Vendors Near Your Event Location</h5>
                                 </div>
                                 <div style="position: relative;">
@@ -7457,10 +7443,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (modalTitle) modalTitle.textContent = stepTitles[step] || 'Book Your Event';
                 // State
                 window.bookingState.currentStep = step;
-                if (step === 4) {
-                    updateSearchCriteriaSummary();
-                    updateSendRequestsButton(); // Ensure button is properly initialized
-                }
+                if (step === 4) updateSearchCriteriaSummary();
                 if (step === 2 || step === 3) setTimeout(drawTimeline, 0);
             }
 
@@ -9350,7 +9333,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 viewVendorProfile(vendorId);
             }
 
-            function toggleVendorSelection(vendorId, serviceName, servicePrice) {
+            function toggleVendorSelectionOld(vendorId, serviceName, servicePrice) {
                 console.log('🔘 toggleVendorSelection called:', { vendorId, serviceName, servicePrice });
                 
                 // Initialize service-specific structure if not exists
@@ -9427,6 +9410,39 @@ document.addEventListener('DOMContentLoaded', async function() {
                         console.log(`✅ Selected vendor ${vendorId} for ${serviceName}:`, vendorSelection);
                     }
                 }
+                
+                // Update checkbox visual state for all vendor cards with this vendorId
+                const allVendorCheckboxes = document.querySelectorAll(`[data-vendor-id="${vendorId}"] .vendor-checkbox`);
+                allVendorCheckboxes.forEach(checkbox => {
+                    // Check if vendor is selected for current active service
+                    const activeTab = document.querySelector('.service-tab.active');
+                    const currentServiceId = activeTab ? activeTab.getAttribute('data-service-id') : serviceName;
+                    
+                    // For recommended tab, check if vendor is selected for any service
+                    let shouldBeChecked = false;
+                    if (currentServiceId === 'recommended') {
+                        shouldBeChecked = Object.values(window.bookingState.selectedVendorsByService || {})
+                            .some(serviceVendors => serviceVendors.some(v => {
+                                const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
+                                return String(vId) === String(vendorId);
+                            }));
+                    } else {
+                        // For specific service tabs, check if vendor is selected for that service
+                        const serviceVendors = window.bookingState.selectedVendorsByService[currentServiceId] || [];
+                        shouldBeChecked = serviceVendors.some(v => {
+                            const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
+                            return String(vId) === String(vendorId);
+                        });
+                    }
+                    
+                    if (shouldBeChecked) {
+                        checkbox.classList.add('checked');
+                        checkbox.innerHTML = '<i class="fas fa-check"></i>';
+                    } else {
+                        checkbox.classList.remove('checked');
+                        checkbox.innerHTML = '';
+                    }
+                });
                 
                 // Update button states in recommended table and regular vendor cards
                 const allButtons = document.querySelectorAll(`button[onclick*="toggleVendorSelection('${vendorId}', '${serviceName}'"]`);
@@ -22759,23 +22775,87 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
         // Function to switch between service tabs
         function switchServiceTab(serviceId) {
-            // Update active tab
+            console.log(`🎯 Switching to service tab: ${serviceId}`);
+            
+            // Set global variable to track current active service
+            window.currentActiveServiceId = serviceId;
+            
+            // Remove active class from all tabs
             document.querySelectorAll('.service-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            document.querySelector(`[data-service-id="${serviceId}"]`).classList.add('active');
-
+            
+            // Add active class to clicked tab
+            const clickedTab = document.querySelector(`[data-service-id="${serviceId}"]`);
+            if (clickedTab) {
+                clickedTab.classList.add('active');
+                console.log(`✅ Applied active class to tab: ${serviceId}`);
+            }
+            
+            // Handle different tab types
             if (serviceId === 'recommended') {
-                // Show recommended multi-service vendors
                 renderRecommendedTab();
-                console.log(`🔄 Switched to Recommended tab`);
             } else {
                 const serviceGroups = window.currentServiceGroups;
-                if (!serviceGroups || !serviceGroups[serviceId]) return;
+                if (!serviceGroups || !serviceGroups[serviceId]) {
+                    console.warn(`⚠️ Service group not found: ${serviceId}`);
+                    return;
+                }
 
                 // Render vendors for selected service
                 renderVendorsForService(serviceGroups[serviceId]);
                 console.log(`🔄 Switched to service tab: ${serviceGroups[serviceId].name}`);
+            }
+            
+            // Update all vendor checkboxes to reflect current service selection state
+            setTimeout(() => {
+                updateAllVendorCheckboxesForService(serviceId);
+            }, 100);
+        }
+        
+        // Helper function to update all vendor checkboxes for a specific service
+        function updateAllVendorCheckboxesForService(serviceId) {
+            console.log('🔄 Updating all checkboxes for service:', serviceId);
+            
+            document.querySelectorAll('.vendor-checkbox').forEach(checkbox => {
+                const vendorCard = checkbox.closest('[data-vendor-id]');
+                if (!vendorCard) return;
+                
+                const vendorId = vendorCard.getAttribute('data-vendor-id');
+                let shouldBeChecked = false;
+                
+                if (serviceId === 'recommended') {
+                    // For recommended tab, check if vendor is selected for any service
+                    shouldBeChecked = Object.values(window.bookingState.selectedVendorsByService || {})
+                        .some(serviceVendors => serviceVendors.some(v => {
+                            const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
+                            return String(vId) === String(vendorId);
+                        }));
+                } else {
+                    // For specific service tabs, check if vendor is selected for that service
+                    const serviceVendors = window.bookingState.selectedVendorsByService?.[serviceId] || [];
+                    shouldBeChecked = serviceVendors.some(v => {
+                        const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
+                        return String(vId) === String(vendorId);
+                    });
+                }
+                
+                if (shouldBeChecked) {
+                    checkbox.classList.add('checked');
+                    checkbox.innerHTML = '<i class="fas fa-check"></i>';
+                } else {
+                    checkbox.classList.remove('checked');
+                    checkbox.innerHTML = '';
+                }
+            });
+        }
+        
+        // Legacy function for compatibility
+        function updateAllVendorCheckboxes() {
+            const activeTab = document.querySelector('.service-tab.active');
+            const currentServiceId = activeTab ? activeTab.getAttribute('data-service-id') : null;
+            if (currentServiceId) {
+                updateAllVendorCheckboxesForService(currentServiceId);
             }
         }
 
@@ -23229,7 +23309,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                      data-vendor-id="${vendorId}" 
                      onmouseover="highlightMapMarker('${vendorId}', true)" 
                      onmouseout="highlightMapMarker('${vendorId}', false)" 
-                     onclick="console.log('Card clicked!'); console.log('About to call toggleVendorSelection with:', '${vendorId}'); window.toggleVendorSelection('${vendorId}'); console.log('toggleVendorSelection call completed');">
+                     onclick="console.log('Card clicked!'); console.log('About to call toggleVendorSelection with:', '${vendorId}'); toggleVendorSelectionForCurrentService('${vendorId}'); console.log('toggleVendorSelection call completed');">
                     ${imageCarouselHtml}
                     
                     <div class="vendor-card-content">
@@ -23266,7 +23346,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     <div class="vendor-actions-column">
                         <div class="vendor-checkbox-container">
                             <div class="vendor-checkbox ${isSelected ? 'checked' : ''}" 
-                                 onclick="event.stopPropagation(); window.toggleVendorSelection('${vendorId}');"
+                                 onclick="event.stopPropagation(); toggleVendorSelectionForCurrentService('${vendorId}');"
                                  title="${isSelected ? 'Deselect vendor' : 'Select vendor'}">
                                 ${isSelected ? '<i class="fas fa-check"></i>' : ''}
                             </div>
@@ -23455,6 +23535,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
         // Toggle vendor selection for specific service
         function toggleVendorSelection(vendorProfileId, serviceId = null) {
+            console.log('🔘 ===== CORRECT toggleVendorSelection called =====');
             console.log('🔘 toggleVendorSelection called with:', vendorProfileId, 'for service:', serviceId);
             
             // Get current active service if not provided
@@ -23484,10 +23565,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             const serviceSelections = selectedVendorsByService[serviceId];
             const existingIndex = serviceSelections.findIndex(v => v.vendorId === vendorProfileId);
             
+            console.log('🔘 Current selections for service:', serviceId, serviceSelections);
+            console.log('🔘 Looking for vendor:', vendorProfileId, 'existing index:', existingIndex);
+            
             if (existingIndex > -1) {
                 // Remove vendor from this service selection
                 serviceSelections.splice(existingIndex, 1);
-                console.log(`🔘 Vendor removed from ${serviceId} selection`);
+                console.log(`🔘 ✅ Vendor ${vendorProfileId} REMOVED from ${serviceId} selection`);
+                console.log('🔘 Updated selections:', serviceSelections);
             } else {
                 // Add vendor to this service selection
                 const vendor = (window.bookingState?.availableVendors || []).find(v => {
@@ -23526,7 +23611,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     selectedService: selService || undefined,
                     vendorData: vendor
                 });
-                console.log(`🔘 Vendor added to ${serviceId} selection`);
+                console.log(`🔘 ✅ Vendor ${vendorProfileId} ADDED to ${serviceId} selection`);
+                console.log('🔘 Updated selections:', serviceSelections);
             }
             
             // Update the legacy selectedVendors array for compatibility
@@ -23618,9 +23704,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         function updateVendorSelectionUI(vendorProfileId) {
             console.log('🎨 Updating vendor selection UI for:', vendorProfileId);
             
-            // Get current active service
-            const activeTab = document.querySelector('.service-tab.active');
-            const currentServiceId = activeTab ? activeTab.getAttribute('data-service-id') : null;
+            // Get current active service - use the same logic as toggleVendorSelectionForCurrentService
+            let currentServiceId = window.currentActiveServiceId;
+            if (!currentServiceId) {
+                const activeTab = document.querySelector('.service-tab.active');
+                currentServiceId = activeTab ? activeTab.getAttribute('data-service-id') : null;
+            }
+            
+            console.log('🎨 Current active service:', currentServiceId);
+            console.log('🎨 Current booking state:', window.bookingState?.selectedVendorsByService);
             
             // Update all vendor cards to reflect current selection state for current service
             const allCards = document.querySelectorAll('.vendor-horizontal-card');
@@ -23631,12 +23723,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 let isSelectedForCurrentService = false;
                 if (currentServiceId && window.bookingState?.selectedVendorsByService?.[currentServiceId]) {
                     isSelectedForCurrentService = window.bookingState.selectedVendorsByService[currentServiceId].some(v => {
-                        const vId = v.VendorProfileID || v.vendorProfileId || v.vendorId || v.id;
+                        const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
                         return String(vId) === String(cardVendorId);
                     });
                 }
                 
-                console.log(`Card ${cardVendorId}: selected for current service = ${isSelectedForCurrentService}`);
+                console.log(`🎨 Card ${cardVendorId}: selected for current service = ${isSelectedForCurrentService}`);
                 
                 // Update card visual state - show as selected if selected for current service
                 if (isSelectedForCurrentService) {
@@ -23649,9 +23741,40 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Update checkbox state based on current service selection
                 const checkbox = card.querySelector('.vendor-checkbox');
                 if (checkbox) {
-                    checkbox.classList.toggle('checked', isSelectedForCurrentService);
-                    checkbox.innerHTML = isSelectedForCurrentService ? '<i class="fas fa-check"></i>' : '';
-                    checkbox.title = isSelectedForCurrentService ? 'Deselect vendor from this service' : 'Select vendor for this service';
+                    if (isSelectedForCurrentService) {
+                        checkbox.classList.add('checked');
+                        checkbox.innerHTML = '<i class="fas fa-check"></i>';
+                        checkbox.title = 'Deselect vendor from this service';
+                    } else {
+                        checkbox.classList.remove('checked');
+                        checkbox.innerHTML = '';
+                        checkbox.title = 'Select vendor for this service';
+                    }
+                    console.log(`🎨 Updated checkbox for ${cardVendorId}: checked=${isSelectedForCurrentService}`);
+                }
+            });
+            
+            // Also update any other vendor cards that might exist
+            document.querySelectorAll('[data-vendor-id]').forEach(element => {
+                const elementVendorId = element.getAttribute('data-vendor-id');
+                const checkbox = element.querySelector('.vendor-checkbox');
+                
+                if (checkbox && elementVendorId) {
+                    let isSelected = false;
+                    if (currentServiceId && window.bookingState?.selectedVendorsByService?.[currentServiceId]) {
+                        isSelected = window.bookingState.selectedVendorsByService[currentServiceId].some(v => {
+                            const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
+                            return String(vId) === String(elementVendorId);
+                        });
+                    }
+                    
+                    if (isSelected) {
+                        checkbox.classList.add('checked');
+                        checkbox.innerHTML = '<i class="fas fa-check"></i>';
+                    } else {
+                        checkbox.classList.remove('checked');
+                        checkbox.innerHTML = '';
+                    }
                 }
             });
         }
@@ -24247,8 +24370,123 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             });
         }, 0);
 
+        // Create wrapper function for checkbox/card clicks that determines current service
+        function toggleVendorSelectionForCurrentService(vendorId) {
+            console.log('🔘 ===== CHECKBOX CLICKED =====');
+            console.log('🔘 toggleVendorSelectionForCurrentService called with vendorId:', vendorId);
+            
+            // Method 1: Check global tracking variable first
+            let currentServiceId = window.currentActiveServiceId;
+            console.log('🔘 Method 1 - Global variable:', currentServiceId);
+            
+            // Method 2: Try to find active service tab
+            if (!currentServiceId) {
+                const activeTab = document.querySelector('.service-tab.active');
+                if (activeTab) {
+                    currentServiceId = activeTab.getAttribute('data-service-id');
+                    console.log('🔘 Method 2 - Active tab:', currentServiceId);
+                }
+            }
+            
+            // Method 3: Check all tabs and find the one with active class (with retry)
+            if (!currentServiceId) {
+                setTimeout(() => {
+                    const retryActiveTab = document.querySelector('.service-tab.active');
+                    if (retryActiveTab) {
+                        currentServiceId = retryActiveTab.getAttribute('data-service-id');
+                        console.log('🔘 Method 3 - Retry active tab:', currentServiceId);
+                        
+                        if (currentServiceId) {
+                            toggleVendorSelection(vendorId, currentServiceId);
+                            updateVendorSelectionUI(vendorId);
+                        }
+                    } else {
+                        console.warn('⚠️ Still no active service tab found after retry');
+                    }
+                }, 50);
+                return;
+            }
+            
+            console.log('🔘 Current active service:', currentServiceId);
+            
+            if (!currentServiceId) {
+                console.warn('⚠️ No active service tab found');
+                return;
+            }
+            
+            // Call the main toggle function with the current service
+            console.log('🔘 About to call toggleVendorSelection...');
+            toggleVendorSelection(vendorId, currentServiceId);
+            console.log('🔘 toggleVendorSelection completed, now updating UI...');
+            
+            // Force immediate UI update - this handles both card and checkbox updates
+            updateVendorSelectionUI(vendorId);
+            console.log('🔘 updateVendorSelectionUI completed');
+        }
+        
+        // Helper function to update checkbox visual state
+        function updateVendorCheckboxState(vendorId, serviceId) {
+            console.log('🔄 Updating checkbox state for vendor:', vendorId, 'service:', serviceId);
+            
+            const vendorCheckboxes = document.querySelectorAll(`[data-vendor-id="${vendorId}"] .vendor-checkbox`);
+            console.log('🔄 Found checkboxes:', vendorCheckboxes.length);
+            
+            vendorCheckboxes.forEach((checkbox, index) => {
+                let shouldBeChecked = false;
+                
+                if (serviceId === 'recommended') {
+                    // For recommended tab, check if vendor is selected for any service
+                    shouldBeChecked = Object.values(window.bookingState.selectedVendorsByService || {})
+                        .some(serviceVendors => serviceVendors.some(v => {
+                            const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
+                            return String(vId) === String(vendorId);
+                        }));
+                } else {
+                    // For specific service tabs, check if vendor is selected for that service
+                    const serviceVendors = window.bookingState.selectedVendorsByService?.[serviceId] || [];
+                    shouldBeChecked = serviceVendors.some(v => {
+                        const vId = v.vendorId || v.VendorProfileID || v.vendorProfileId || v.id;
+                        return String(vId) === String(vendorId);
+                    });
+                }
+                
+                console.log(`🔄 Checkbox ${index}: shouldBeChecked = ${shouldBeChecked}`);
+                
+                // Force immediate visual update - use consistent checkmark approach
+                if (shouldBeChecked) {
+                    checkbox.classList.add('checked');
+                    checkbox.innerHTML = '<i class="fas fa-check"></i>';
+                    checkbox.title = 'Deselect vendor from this service';
+                    // Remove any conflicting inline styles
+                    checkbox.style.backgroundColor = '';
+                    checkbox.style.color = '';
+                } else {
+                    checkbox.classList.remove('checked');
+                    checkbox.innerHTML = '';
+                    checkbox.title = 'Select vendor for this service';
+                    // Remove any conflicting inline styles
+                    checkbox.style.backgroundColor = '';
+                    checkbox.style.color = '';
+                }
+                
+                // Also update the parent card if it exists
+                const parentCard = checkbox.closest('.vendor-horizontal-card');
+                if (parentCard) {
+                    if (shouldBeChecked) {
+                        parentCard.classList.add('selected');
+                    } else {
+                        parentCard.classList.remove('selected');
+                    }
+                }
+            });
+            
+            // Force a repaint
+            document.body.offsetHeight;
+        }
+
         // Make the new toggleVendorSelection function globally available
         window.toggleVendorSelection = toggleVendorSelection;
+        window.toggleVendorSelectionForCurrentService = toggleVendorSelectionForCurrentService;
         
         // Test if function is accessible
         console.log('🔧 toggleVendorSelection function:', typeof window.toggleVendorSelection);
