@@ -870,6 +870,20 @@
             background-color: #4a5acf;
         }
 
+        .btn:disabled,
+        .btn[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .btn-primary:disabled,
+        .btn-primary[disabled] {
+            background-color: #9ca3af;
+            border-color: #9ca3af;
+            color: #ffffff;
+        }
+
         .pagination {
             display: flex;
             justify-content: center;
@@ -5148,7 +5162,7 @@
                                     </button>
                                 </div>
                                 
-                                <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box; flex: 1; min-height: 0;">
+                                <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box; flex: 1; min-height: 0; max-height: 500px;">
                                     <!-- Horizontal vendor cards will be populated here -->
                                     <div style="padding: 1rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd; text-align: center;">
                                         <i class="fas fa-search" style="font-size: 2rem; color: #ccc; margin-bottom: 0.5rem;"></i>
@@ -5161,7 +5175,7 @@
                         <!-- RIGHT: Google Maps Container -->
                         <div style="flex: 1; min-width: 0;">
                             <div id="vendor-map-container" style="display: block;">
-                                <div class="map-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <div class="map-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; margin-top: 3rem;">
                                     <h5 style="margin: 0; color: var(--text);">Vendors Near Your Event Location</h5>
                                 </div>
                                 <div style="position: relative;">
@@ -7443,7 +7457,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (modalTitle) modalTitle.textContent = stepTitles[step] || 'Book Your Event';
                 // State
                 window.bookingState.currentStep = step;
-                if (step === 4) updateSearchCriteriaSummary();
+                if (step === 4) {
+                    updateSearchCriteriaSummary();
+                    updateSendRequestsButton(); // Ensure button is properly initialized
+                }
                 if (step === 2 || step === 3) setTimeout(drawTimeline, 0);
             }
 
