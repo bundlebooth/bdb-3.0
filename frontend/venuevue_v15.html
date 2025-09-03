@@ -11718,13 +11718,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (window.selectedEventLocation) {
                     console.log('📍 Prioritizing vendors by distance from event location');
                     state.filteredVendors.sort((a, b) => {
-                        const distA = calculateDistance(
+                        const distA = calculateDistanceFromCoords(
                             window.selectedEventLocation.lat, 
                             window.selectedEventLocation.lng,
                             a.coordinates.lat, 
                             a.coordinates.lng
                         );
-                        const distB = calculateDistance(
+                        const distB = calculateDistanceFromCoords(
                             window.selectedEventLocation.lat, 
                             window.selectedEventLocation.lng,
                             b.coordinates.lat, 
@@ -11811,7 +11811,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Helper function to calculate distance between two points (Haversine formula)
-            function calculateDistance(lat1, lng1, lat2, lng2) {
+            function calculateDistanceFromCoords(lat1, lng1, lat2, lng2) {
                 const R = 6371; // Radius of the Earth in kilometers
                 const dLat = (lat2 - lat1) * Math.PI / 180;
                 const dLng = (lng2 - lng1) * Math.PI / 180;
