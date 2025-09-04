@@ -9376,6 +9376,69 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                         <!-- Per-vendor special requests are now in each card's right panel -->
 
+                        <!-- Review-only styling: disable vendor card hover animations within this area -->
+                        <style>
+                            #selected-vendor-horizontal-cards .vendor-card,
+                            #selected-vendor-horizontal-cards .vendor-card:hover,
+                            #selected-vendor-horizontal-cards .selected-vendor-card-wrapper:hover .vendor-card,
+                            #selected-vendor-horizontal-cards .vendor-card:focus,
+                            #selected-vendor-horizontal-cards .vendor-card:active,
+                            #selected-vendor-horizontal-cards .vendor-card:focus-visible,
+                            #selected-vendor-horizontal-cards .vendor-image img,
+                            #selected-vendor-horizontal-cards .vendor-card:hover .vendor-image img {
+                                transition: none !important;
+                                transform: none !important;
+                                box-shadow: none !important;
+                                border-color: #e5e7eb !important; /* fixed neutral border */
+                                background: #ffffff !important;   /* fixed neutral bg */
+                                cursor: default !important;
+                                will-change: auto !important;
+                            }
+
+                            /* Absolutely disable any transitions/animations for all nested elements */
+                            #selected-vendor-horizontal-cards,
+                            #selected-vendor-horizontal-cards * {
+                                transition: none !important;
+                                animation: none !important;
+                            }
+                            #selected-vendor-horizontal-cards *:hover,
+                            #selected-vendor-horizontal-cards *:focus,
+                            #selected-vendor-horizontal-cards *:active,
+                            #selected-vendor-horizontal-cards *:focus-visible {
+                                transform: none !important;
+                                box-shadow: none !important;
+                                filter: none !important;
+                                background: transparent !important;
+                                border-color: currentColor !important;
+                                outline: none !important;
+                            }
+
+                            /* Do not allow hover interactions on the left visual/card area in Review */
+                            #selected-vendor-horizontal-cards .selected-vendor-card-left {
+                                pointer-events: none !important;
+                            }
+
+                            /* Disable all interactions on the entire vendor card to prevent any hover effects */
+                            #selected-vendor-horizontal-cards .vendor-card,
+                            #selected-vendor-horizontal-cards .vendor-card * {
+                                pointer-events: none !important;
+                            }
+                            /* Preserve interactions on the right Request panel */
+                            #selected-vendor-horizontal-cards .selected-vendor-actions-right,
+                            #selected-vendor-horizontal-cards .selected-vendor-actions-right * {
+                                pointer-events: auto !important;
+                            }
+
+                            /* Neutralize link hover styling inside Review */
+                            #selected-vendor-horizontal-cards a,
+                            #selected-vendor-horizontal-cards a:hover,
+                            #selected-vendor-horizontal-cards a:focus,
+                            #selected-vendor-horizontal-cards a:active {
+                                color: inherit !important;
+                                text-decoration: none !important;
+                            }
+                        </style>
+
                         <!-- Horizontal vendor cards grouped by service -->
                         <div id="selected-vendor-horizontal-cards" class="vendor-horizontal-container">
                             ${Object.entries(globalBookingState.selectedVendorsByService || {}).map(([serviceId, serviceVendors]) => {
@@ -9384,13 +9447,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 const serviceName = serviceVendors[0]?.serviceName || serviceId;
                                 
                                 return `
-                                    <div class="service-group-section" style="margin: 1rem 0 0.75rem;">
-                                        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem;">
-                                            <h6 style="margin:0; color:#2c3e50; font-weight:600; font-size:0.95rem;">${serviceName}</h6>
-                                            <span style="font-size:0.85rem; color:#6b7280;">${serviceVendors.length} vendor${serviceVendors.length > 1 ? 's' : ''}</span>
+                                    <div class="service-group-section" style="margin: 0.75rem 0 0.75rem;">
+                                        <div class="service-header" style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
+                                            <div style="font-size:0.8rem; color:#6b7280; font-weight:600;">${serviceName}</div>
                                         </div>
-                                        <div style="height:1px; background:#e5e7eb; margin-top:0.5rem;"></div>
-                                        <div class="service-vendors-container" style="padding: 0.75rem 0 0 0;">
+                                        <div style="height:1px; background:#e5e7eb; margin:0.4rem 0 0.65rem 0;"></div>
+                                        <div class="service-vendors-container" style="padding: 0;">
                                             ${serviceVendors.map((entry, serviceIndex) => {
                                 // Prefer full vendor object if stored; otherwise resolve from availableVendors
                                 const av = (window.bookingState && Array.isArray(window.bookingState.availableVendors)) ? window.bookingState.availableVendors : [];
@@ -9483,12 +9545,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                                         <div class="selected-vendor-card-left" style="flex:1; position:relative;">
                                             ${card}
                                         </div>
-                                        <div class="selected-vendor-actions-right" style="width:320px; min-width:300px; background:#ffffff; padding:1rem; display:flex; flex-direction:column; gap:0.75rem;">
+                                        <div class="selected-vendor-actions-right" style="width:320px; min-width:300px; background:transparent; border:none; box-shadow:none; padding:0.5rem 0 0.5rem 1rem; display:flex; flex-direction:column; gap:0.75rem;">
                                                 <h6 style="margin:0; color:#2c3e50; font-weight:600;">Special Request for ${serviceName}</h6>
                                             <textarea id="special-requests-${uniqueIndex}" placeholder="Write a message to this vendor for ${serviceName}..." style="flex:1; min-height:120px; padding:0.75rem; border:1px solid #e1e8f0; border-radius:8px; font-family:inherit; font-size:0.9rem; resize:vertical;"></textarea>
-                                            <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');" style="border-radius: 8px; font-weight: 600; border:1px solid #cfd8e3; background:white; color:#374151;">
-                                                <i class="fas fa-eye" style="margin-right:0.4rem;"></i> View Profile
-                                            </button>
+                                            <div style="font-size: 0.8rem; color:#6b7280; line-height:1.35; padding: 0.25rem 0.25rem 0.25rem 0;">
+                                                By clicking '<strong>Send Request</strong>', you agree that your information will be shared with the vendor. Please see our <a href="#" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> and <a href="#" style="color: var(--primary); text-decoration: none;">Terms of Use</a> for details.
+                                            </div>
                                             <button onclick="sendBookingRequest('${vendorId}', '${uniqueIndex}', '${serviceId}')"
                                                 class="btn-send-request"
                                                 style="background:#3498db; color:white; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; cursor:pointer;">
