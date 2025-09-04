@@ -1284,7 +1284,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE   PROCEDURE [dbo].[sp_SearchVendors]
+CREATE OR ALTER   PROCEDURE [dbo].[sp_SearchVendors]
     @SearchTerm NVARCHAR(100) = NULL,
     @Category NVARCHAR(50) = NULL,
     @MinPrice DECIMAL(10, 2) = NULL,
@@ -1300,7 +1300,10 @@ CREATE   PROCEDURE [dbo].[sp_SearchVendors]
     @SortBy NVARCHAR(50) = 'recommended',
     @BudgetType NVARCHAR(20) = NULL, -- 'total' | 'per_person'
     @PricingModelFilter NVARCHAR(20) = NULL, -- 'time_based' | 'fixed_based'
-    @FixedPricingTypeFilter NVARCHAR(20) = NULL -- 'fixed_price' | 'per_attendee'
+    @FixedPricingTypeFilter NVARCHAR(20) = NULL, -- 'fixed_price' | 'per_attendee'
+    @EventDateRaw NVARCHAR(50) = NULL,
+    @EventStartRaw NVARCHAR(20) = NULL,
+    @EventEndRaw NVARCHAR(20) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1403,6 +1406,28 @@ BEGIN
         AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
         AND (@MinPrice IS NULL OR MinSvc.MinPrice >= @MinPrice)
         AND (@MaxPrice IS NULL OR MinSvc.MinPrice <= @MaxPrice)'
+
+    -- Add business hours availability filter when all event params present
+    IF @EventDateRaw IS NOT NULL AND @EventStartRaw IS NOT NULL AND @EventEndRaw IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + '
+        AND EXISTS (
+            SELECT 1 FROM VendorBusinessHours vbh
+            WHERE vbh.VendorProfileID = v.VendorProfileID
+              AND vbh.IsAvailable = 1
+              AND vbh.DayOfWeek = CASE DATENAME(WEEKDAY, TRY_CONVERT(date, @EventDateRaw))
+                                    WHEN ''Sunday'' THEN 0
+                                    WHEN ''Monday'' THEN 1
+                                    WHEN ''Tuesday'' THEN 2
+                                    WHEN ''Wednesday'' THEN 3
+                                    WHEN ''Thursday'' THEN 4
+                                    WHEN ''Friday'' THEN 5
+                                    WHEN ''Saturday'' THEN 6
+                                  END
+              AND vbh.OpenTime <= TRY_CONVERT(time, @EventStartRaw)
+              AND vbh.CloseTime >= TRY_CONVERT(time, @EventEndRaw)
+        )'
+    END
     
     -- Add distance filter if location provided
     IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
@@ -1493,9 +1518,11 @@ BEGIN
         EXEC sp_executesql @SQL, 
             N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), 
               @IsPremium BIT, @IsEcoFriendly BIT, @IsAwardWinning BIT, @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), 
-              @RadiusMiles INT, @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20)',
+              @RadiusMiles INT, @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20),
+              @EventDateRaw NVARCHAR(50), @EventStartRaw NVARCHAR(20), @EventEndRaw NVARCHAR(20)',
             @SearchTerm, @Category, @MinPrice, @MaxPrice, @IsPremium, @IsEcoFriendly, @IsAwardWinning, 
-            @Latitude, @Longitude, @RadiusMiles, @BudgetType, @PricingModelFilter, @FixedPricingTypeFilter
+            @Latitude, @Longitude, @RadiusMiles, @BudgetType, @PricingModelFilter, @FixedPricingTypeFilter,
+            @EventDateRaw, @EventStartRaw, @EventEndRaw
     END TRY
     BEGIN CATCH
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
@@ -1730,6 +1757,8 @@ CREATE OR ALTER PROCEDURE sp_SearchVendorsByPredefinedServices
     @ServiceIds NVARCHAR(500), -- Comma-separated list of predefined service IDs
     @Budget DECIMAL(10, 2) = NULL,
     @EventDate DATE = NULL,
+    @EventStartRaw NVARCHAR(20) = NULL,
+    @EventEndRaw NVARCHAR(20) = NULL,
     @City NVARCHAR(100) = NULL,
     @State NVARCHAR(50) = NULL,
     @Latitude DECIMAL(10, 8) = NULL,
@@ -1841,7 +1870,26 @@ BEGIN
         AND (@PricingModelFilter IS NULL OR s.PricingModel = @PricingModelFilter)
         AND (@FixedPricingTypeFilter IS NULL OR s.FixedPricingType = @FixedPricingTypeFilter)
         AND (@City IS NULL OR v.City = @City)
-        AND (@State IS NULL OR v.State = @State)';
+        AND (@State IS NULL OR v.State = @State)
+        AND (
+            @EventDate IS NULL OR EXISTS (
+                SELECT 1
+                FROM VendorBusinessHours vbh
+                WHERE vbh.VendorProfileID = v.VendorProfileID
+                  AND vbh.IsAvailable = 1
+                  AND vbh.DayOfWeek = CASE DATENAME(WEEKDAY, @EventDate)
+                                        WHEN ''Sunday'' THEN 0
+                                        WHEN ''Monday'' THEN 1
+                                        WHEN ''Tuesday'' THEN 2
+                                        WHEN ''Wednesday'' THEN 3
+                                        WHEN ''Thursday'' THEN 4
+                                        WHEN ''Friday'' THEN 5
+                                        WHEN ''Saturday'' THEN 6
+                                      END
+                  AND (@EventStartRaw IS NULL OR vbh.OpenTime <= TRY_CONVERT(time, @EventStartRaw))
+                  AND (@EventEndRaw IS NULL OR vbh.CloseTime >= TRY_CONVERT(time, @EventEndRaw))
+            )
+        )';
     
     IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
     BEGIN
@@ -1948,9 +1996,11 @@ BEGIN
         EXEC sp_executesql @SQL, 
             N'@Budget DECIMAL(10, 2), @City NVARCHAR(100), @State NVARCHAR(50), 
               @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), @RadiusMiles INT,
-              @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20)',
+              @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20),
+              @EventDate DATE, @EventStartRaw NVARCHAR(20), @EventEndRaw NVARCHAR(20)',
             @Budget, @City, @State, @Latitude, @Longitude, @RadiusMiles,
-            @BudgetType, @PricingModelFilter, @FixedPricingTypeFilter;
+            @BudgetType, @PricingModelFilter, @FixedPricingTypeFilter,
+            @EventDate, @EventStartRaw, @EventEndRaw;
     END TRY
     BEGIN CATCH
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
