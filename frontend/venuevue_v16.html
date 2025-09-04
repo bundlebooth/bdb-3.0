@@ -21879,40 +21879,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     }
                 });
                 
-                // Store initial bounds for reset functionality
+                // Store initial bounds for reset functionality and fit map
                 window.bookingState.initialMapBounds = bounds;
-
-                // Add event location marker with custom icon
-                eventLocationMarker = new google.maps.Marker({
-                    position: eventCoords,
-                    map: vendorMap,
-                    title: `Event Location: ${window.selectedEventLocation?.address || 'Your Event'}`,
-                    icon: {
-                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="#e74c3c">
-                                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                            </svg>
-                        `),
-                        scaledSize: new google.maps.Size(40, 40),
-                        anchor: new google.maps.Point(20, 40)
-                    }
-                });
-
-                // Add event location info window
-                const eventInfoWindow = new google.maps.InfoWindow({
-                    content: `
-                        <div style="padding: 0.5rem;">
-                            <h6 style="margin: 0 0 0.5rem 0; color: #e74c3c;">
-                                <i class="fas fa-map-marker-alt"></i> Event Location
-                            </h6>
-                            <p style="margin: 0; font-size: 0.9rem;">${window.selectedEventLocation?.address || 'Event Location'}</p>
-                        </div>
-                    `
-                });
-
-                eventLocationMarker.addListener('click', () => {
-                    eventInfoWindow.open(vendorMap, eventLocationMarker);
-                });
+                try {
+                    vendorMap.fitBounds(bounds);
+                    const currentZoom = vendorMap.getZoom();
+                    if (currentZoom && currentZoom > 13) vendorMap.setZoom(13);
+                } catch {}
 
                 // DISABLED: Add vendor markers with distance calculation - CAUSING MARKER BOUNCING
                 // await addVendorMarkers(vendorSections, eventCoords);
