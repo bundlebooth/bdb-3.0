@@ -276,10 +276,7 @@ router.get('/', async (req, res) => {
       budgetType, // 'total' | 'per_person'
       pricingModel, // 'time_based' | 'fixed_based'
       fixedPricingType, // 'fixed_price' | 'per_attendee'
-      // availability filters (raw strings handled in SQL)
-      eventDate,
-      eventStartTime,
-      eventEndTime
+      // availability filters (not supported in this SP; use /search-by-services for time-window filtering)
     } = req.query;
 
     const pool = await poolPromise;
@@ -307,10 +304,7 @@ router.get('/', async (req, res) => {
     request.input('BudgetType', sql.NVarChar(20), budgetType || null);
     request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
     request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
-    // availability filters passed raw to stored procedure (SQL parses with TRY_CONVERT)
-    request.input('EventDateRaw', sql.NVarChar(50), eventDate || null);
-    request.input('EventStartRaw', sql.NVarChar(20), eventStartTime || null);
-    request.input('EventEndRaw', sql.NVarChar(20), eventEndTime || null);
+    // Note: Do NOT pass EventDate/Start/End here. sp_SearchVendors does not accept them.
 
     const result = await request.execute('sp_SearchVendors');
     
@@ -1728,7 +1722,7 @@ router.post('/search-by-services', async (req, res) => {
       if (ends.length > 0) derivedEnd = ends.sort().slice(-1)[0];
     }
 
-    // Provide SERVICE start/end (24h) to SP for business-hours filtering (no event-level fallback)
+    // Provide SERVICE start/end (24h) to SP for business-hours filtering (Event Date + Service times only)
     request.input('EventStartRaw', sql.NVarChar(20), derivedStart || null);
     request.input('EventEndRaw', sql.NVarChar(20), derivedEnd || null);
 
