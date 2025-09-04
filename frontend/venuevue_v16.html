@@ -22557,13 +22557,19 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 // Show first service's vendors by default
                 const firstService = serviceGroupsArray[0];
+                // Ensure the active service is tracked globally for selection
+                window.currentActiveServiceId = firstService.id;
                 renderVendorsForService(firstService);
+                setTimeout(() => updateAllVendorCheckboxesForService(firstService.id), 0);
                 
             } else {
                 // Single service - hide tabs and show all vendors
                 tabsContainer.style.display = 'none';
                 const singleService = serviceGroupsArray[0];
+                window.currentActiveServiceId = singleService.id;
                 renderVendorsForService(singleService);
+                // Sync checkboxes for the only service
+                setTimeout(() => updateAllVendorCheckboxesForService(singleService.id), 0);
             }
             
             // Reset rendering flag
@@ -23941,20 +23947,34 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return [];
                 }
 
-                // Prepare the search request
+                // Prepare the search request (include per-service times for business-hours filtering)
+                const eventDateVal = (window.bookingState?.eventDetails?.date
+                    || window.bookingState?.eventDetails?.EventDate
+                    || document.getElementById('event-date')?.value
+                    || null);
+
                 const searchRequest = {
                     selectedServices: selectedServices.map(service => ({
                         category: service.category,
                         name: service.name,
                         budget: service.budget,
-                        serviceId: service.serviceId || service.id // Include serviceId for backend processing
+                        serviceId: service.serviceId || service.id, // Include serviceId for backend processing
+                        // Ensure backend receives time windows per service
+                        startTime: service.startTime || service.serviceStartTime || null,
+                        endTime: service.endTime || service.serviceEndTime || null,
+                        duration: service.duration || null
                     })),
                     location: {
                         lat: centerLat,
                         lng: centerLng,
                         radius: 25 // 25km radius from center point
                     },
-                    eventDetails: window.bookingState?.eventDetails || {}
+                    // Ensure EventDate is present for SP filtering; include both keys for compatibility
+                    eventDetails: {
+                        ...(window.bookingState?.eventDetails || {}),
+                        date: eventDateVal,
+                        EventDate: eventDateVal
+                    }
                 };
 
                 console.log('🌐 Sending vendor search request:', searchRequest);
@@ -24320,6 +24340,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
             
+            // Method 2.5: If there is only a single service in currentServiceGroups, use it
+            if (!currentServiceId && window.currentServiceGroups && typeof window.currentServiceGroups === 'object') {
+                const keys = Object.keys(window.currentServiceGroups);
+                if (keys.length === 1) {
+                    currentServiceId = keys[0];
+                    console.log('🔘 Method 2.5 - Single service inferred from currentServiceGroups:', currentServiceId);
+                }
+            }
+
             // Method 3: Check all tabs and find the one with active class (with retry)
             if (!currentServiceId) {
                 setTimeout(() => {
@@ -24332,6 +24361,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             toggleVendorSelection(vendorId, currentServiceId);
                             updateVendorSelectionUI(vendorId);
                         }
+                    } else if (window.currentServiceGroups && Object.keys(window.currentServiceGroups || {}).length === 1) {
+                        // Retry fallback for single-service scenario with hidden tabs
+                        const onlyId = Object.keys(window.currentServiceGroups)[0];
+                        console.log('🔘 Method 3 - Retry single service fallback:', onlyId);
+                        toggleVendorSelection(vendorId, onlyId);
+                        updateVendorSelectionUI(vendorId);
                     } else {
                         console.warn('⚠️ Still no active service tab found after retry');
                     }
