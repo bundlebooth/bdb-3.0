@@ -11677,56 +11677,29 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 return R * c; // Distance in kilometers
             }
 
-            // Add event location marker to the map
+            // Pan/zoom to the event location without adding a marker
             function addEventLocationMarker() {
                 if (!state.map || !window.selectedEventLocation) return;
 
-                // Remove existing event marker if it exists
+                // Remove existing event marker if it exists (we no longer show one)
                 if (state.eventLocationMarker) {
-                    state.eventLocationMarker.setMap(null);
+                    try { state.eventLocationMarker.setMap(null); } catch {}
+                    state.eventLocationMarker = null;
                 }
 
-                // Create custom event location marker
-                state.eventLocationMarker = new google.maps.Marker({
-                    position: {
+                try {
+                    const target = {
                         lat: window.selectedEventLocation.lat,
                         lng: window.selectedEventLocation.lng
-                    },
-                    map: state.map,
-                    title: 'Event Location',
-                    icon: {
-                        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-                            <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="16" cy="16" r="12" fill="#FF6B6B" stroke="#fff" stroke-width="3"/>
-                                <circle cx="16" cy="16" r="4" fill="#fff"/>
-                            </svg>
-                        `),
-                        scaledSize: new google.maps.Size(32, 32),
-                        anchor: new google.maps.Point(16, 16)
-                    },
-                    zIndex: 1000
-                });
-
-                // Add info window for event location
-                const eventInfoWindow = new google.maps.InfoWindow({
-                    content: `
-                        <div style="padding: 8px; font-family: Arial, sans-serif;">
-                            <h4 style="margin: 0 0 8px 0; color: #333;">🎉 Event Location</h4>
-                            <p style="margin: 0; color: #666; font-size: 14px;">
-                                ${window.selectedEventLocation.address || 'Your event location'}
-                            </p>
-                        </div>
-                    `
-                });
-
-                state.eventLocationMarker.addListener('click', () => {
-                    // Close any open vendor info windows
-                    if (state.activeInfoWindow) {
-                        state.activeInfoWindow.close();
+                    };
+                    state.map.panTo(target);
+                    const currentZoom = typeof state.map.getZoom === 'function' ? state.map.getZoom() : 0;
+                    if (!currentZoom || currentZoom < 12) {
+                        state.map.setZoom(13);
                     }
-                    eventInfoWindow.open(state.map, state.eventLocationMarker);
-                    state.activeInfoWindow = eventInfoWindow;
-                });
+                } catch (e) {
+                    console.warn('Failed to pan/zoom to event location:', e);
+                }
             }
 
             // AC2 & AC4: Add debounced map movement listeners
@@ -21692,7 +21665,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             
             // Initialize native Google Places Autocomplete on the input element
             locationAutocomplete = new google.maps.places.Autocomplete(locationInput, {
-                // Do NOT restrict country to avoid empty suggestions; adjust if needed
+                // Restrict to Canada only
+                componentRestrictions: { country: ['ca'] },
                 types: ['geocode'],
                 fields: ['place_id', 'geometry', 'name', 'formatted_address']
             });
