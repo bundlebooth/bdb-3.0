@@ -9384,12 +9384,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 const serviceName = serviceVendors[0]?.serviceName || serviceId;
                                 
                                 return `
-                                    <div class="service-group-section" style="margin-bottom: 2rem;">
-                                        <h6 style="color: var(--primary); font-weight: 600; margin-bottom: 1rem; padding: 0.5rem 1rem; background: #f0f9ff; border-left: 4px solid var(--primary); border-radius: 4px;">
-                                            <i class="fas fa-cog" style="margin-right: 0.5rem;"></i>${serviceName}
-                                            <span style="color: var(--text-light); font-weight: normal; margin-left: 0.5rem;">(${serviceVendors.length} vendor${serviceVendors.length > 1 ? 's' : ''})</span>
-                                        </h6>
-                                        <div class="service-vendors-container">
+                                    <div class="service-group-section" style="margin: 1rem 0 0.75rem;">
+                                        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem;">
+                                            <h6 style="margin:0; color:#2c3e50; font-weight:600; font-size:0.95rem;">${serviceName}</h6>
+                                            <span style="font-size:0.85rem; color:#6b7280;">${serviceVendors.length} vendor${serviceVendors.length > 1 ? 's' : ''}</span>
+                                        </div>
+                                        <div style="height:1px; background:#e5e7eb; margin-top:0.5rem;"></div>
+                                        <div class="service-vendors-container" style="padding: 0.75rem 0 0 0;">
                                             ${serviceVendors.map((entry, serviceIndex) => {
                                 // Prefer full vendor object if stored; otherwise resolve from availableVendors
                                 const av = (window.bookingState && Array.isArray(window.bookingState.availableVendors)) ? window.bookingState.availableVendors : [];
@@ -9416,6 +9417,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     vendorProfileId: (base.vendorProfileId || base.VendorProfileID || entry.vendorId || vendorId) + '-s5-' + serviceId,
                                     VendorProfileID: (base.VendorProfileID || base.vendorProfileId || entry.vendorId || vendorId) + '-s5-' + serviceId,
                                     __realVendorId: vendorId,
+                                    __context: 'review',
                                     // Core display fields
                                     BusinessName: base.BusinessName || base.businessName || base.name || entry.name || 'Unknown Business',
                                     Location: base.Location || base.location || entry.location || '',
@@ -9465,8 +9467,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 };
                                 
                                 // Prepend service-specific service to services array
-                                const existing = Array.isArray(base.services) ? base.services : [];
-                                normalized.services = [serviceSpecificService, ...existing];
+                                // In Review, show ONLY the selected service for this vendor
+                                normalized.services = [serviceSpecificService];
 
                                 // Provide service names for tags
                                 if (!normalized.MatchingServiceNames) {
@@ -9481,9 +9483,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                                         <div class="selected-vendor-card-left" style="flex:1; position:relative;">
                                             ${card}
                                         </div>
-                                        <div class="selected-vendor-actions-right" style="width:320px; min-width:300px; background:#f8faff; border:1px solid #e1e8f0; border-radius:12px; padding:1rem; display:flex; flex-direction:column; gap:0.75rem;">
-                                            <h6 style="margin:0; color:#2c3e50; font-weight:600;">Special Request for ${serviceName}</h6>
+                                        <div class="selected-vendor-actions-right" style="width:320px; min-width:300px; background:#ffffff; padding:1rem; display:flex; flex-direction:column; gap:0.75rem;">
+                                                <h6 style="margin:0; color:#2c3e50; font-weight:600;">Special Request for ${serviceName}</h6>
                                             <textarea id="special-requests-${uniqueIndex}" placeholder="Write a message to this vendor for ${serviceName}..." style="flex:1; min-height:120px; padding:0.75rem; border:1px solid #e1e8f0; border-radius:8px; font-family:inherit; font-size:0.9rem; resize:vertical;"></textarea>
+                                            <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');" style="border-radius: 8px; font-weight: 600; border:1px solid #cfd8e3; background:white; color:#374151;">
+                                                <i class="fas fa-eye" style="margin-right:0.4rem;"></i> View Profile
+                                            </button>
                                             <button onclick="sendBookingRequest('${vendorId}', '${uniqueIndex}', '${serviceId}')"
                                                 class="btn-send-request"
                                                 style="background:#3498db; color:white; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; cursor:pointer;">
@@ -23189,9 +23194,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Build services as consistent tiles (detailed and fallback)
             let serviceDetails = '';
-            const svcArray = Array.isArray(vendor.services) ? vendor.services
+            const svcArrayRaw = Array.isArray(vendor.services) ? vendor.services
                 : (Array.isArray(vendor.Services) ? vendor.Services
                 : (Array.isArray(vendor.VendorServices) ? vendor.VendorServices : []));
+            // Deduplicate by name to avoid duplicates in review and elsewhere
+            const nameKey = (n) => (n || '').toString().trim().toLowerCase();
+            const seenNames = new Set();
+            const svcArray = svcArrayRaw.filter(svc => {
+                const n = nameKey(svc?.ServiceName || svc?.name);
+                if (!n) return true;
+                if (seenNames.has(n)) return false;
+                seenNames.add(n);
+                return true;
+            });
+
             if (svcArray.length > 0) {
                 const tiles = svcArray.map(svc => {
                     const name = svc.ServiceName || svc.name || 'Service';
@@ -23218,8 +23234,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             ${meta ? `<div class=\"service-pill-meta\">${meta}</div>` : ''}
                         </div>`;
                 }).join('');
+                // Add scroll if more than 2 services
+                const needsScroll = svcArray.length > 2;
+                const scrollStyles = needsScroll ? 'max-height: 150px; overflow-y: auto; padding-right: 6px;' : '';
                 serviceDetails = `
-                    <div style="padding-right: 2px;">
+                    <div style="padding-right: 2px; ${scrollStyles}">
                         <div style="display:grid; grid-template-columns: 1fr; gap:8px;">${tiles}</div>
                     </div>`;
             } else {
@@ -23234,20 +23253,24 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <span class="service-pill-name">${n}</span>
                             </div>
                         </div>`).join('');
+                    const needsScroll = names.length > 2;
+                    const scrollStyles = needsScroll ? 'max-height: 150px; overflow-y: auto; padding-right: 6px;' : '';
                     serviceDetails = `
-                        <div style="padding-right: 2px;">
+                        <div style="padding-right: 2px; ${scrollStyles}">
                             <div style="display:grid; grid-template-columns: 1fr; gap:8px;">${tiles}</div>
                         </div>`;
                 }
             }
             
 
+            const isReviewContext = vendor.__context === 'review';
+            const cardOnClick = isReviewContext ? '' : `onclick="console.log('Card clicked!'); console.log('About to call toggleVendorSelection with:', '${vendorId}'); toggleVendorSelectionForCurrentService('${vendorId}'); console.log('toggleVendorSelection call completed');"`;
             return `
                 <div class="vendor-horizontal-card ${isSelected ? 'selected' : ''}" 
                      data-vendor-id="${vendorId}" 
                      onmouseover="highlightMapMarker('${vendorId}', true)" 
                      onmouseout="highlightMapMarker('${vendorId}', false)" 
-                     onclick="console.log('Card clicked!'); console.log('About to call toggleVendorSelection with:', '${vendorId}'); toggleVendorSelectionForCurrentService('${vendorId}'); console.log('toggleVendorSelection call completed');">
+                     ${cardOnClick}>
                     ${imageCarouselHtml}
                     
                     <div class="vendor-card-content">
@@ -23280,6 +23303,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         
                     </div>
                     
+                    ${isReviewContext ? '' : `
                     <!-- New Actions Column -->
                     <div class="vendor-actions-column">
                         <div class="vendor-checkbox-container">
@@ -23294,7 +23318,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                              title="View vendor profile">
                             <i class="fas fa-eye"></i>
                         </div>
-                    </div>
+                    </div>`}
                 </div>
             `;
         }
