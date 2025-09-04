@@ -275,7 +275,11 @@ router.get('/', async (req, res) => {
       // unified pricing-aware search params
       budgetType, // 'total' | 'per_person'
       pricingModel, // 'time_based' | 'fixed_based'
-      fixedPricingType // 'fixed_price' | 'per_attendee'
+      fixedPricingType, // 'fixed_price' | 'per_attendee'
+      // availability filters (raw strings handled in SQL)
+      eventDate,
+      eventStartTime,
+      eventEndTime
     } = req.query;
 
     const pool = await poolPromise;
@@ -303,6 +307,10 @@ router.get('/', async (req, res) => {
     request.input('BudgetType', sql.NVarChar(20), budgetType || null);
     request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
     request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
+    // availability filters passed raw to stored procedure (SQL parses with TRY_CONVERT)
+    request.input('EventDateRaw', sql.NVarChar(50), eventDate || null);
+    request.input('EventStartRaw', sql.NVarChar(20), eventStartTime || null);
+    request.input('EventEndRaw', sql.NVarChar(20), eventEndTime || null);
 
     const result = await request.execute('sp_SearchVendors');
     
@@ -482,6 +490,35 @@ router.get('/map', async (req, res) => {
     if (eventLatitude && eventLongitude) {
       request.input('EventLat', sql.Decimal(10, 8), eventLatitude);
       request.input('EventLng', sql.Decimal(11, 8), eventLongitude);
+    }
+
+    // Add event date/time parameters (raw) and business hours filter in SQL
+    if (eventDate && eventStartTime && eventEndTime) {
+      try {
+        request.input('EventDateRaw', sql.NVarChar(50), eventDate);
+        request.input('EventStartRaw', sql.NVarChar(20), eventStartTime);
+        request.input('EventEndRaw', sql.NVarChar(20), eventEndTime);
+        // Filter vendors whose business hours on the event day fully cover the requested time window
+        query += ` AND EXISTS (
+          SELECT 1 FROM VendorBusinessHours vbh
+          WHERE vbh.VendorProfileID = vp.VendorProfileID
+            AND vbh.IsAvailable = 1
+            AND vbh.DayOfWeek = CASE DATENAME(WEEKDAY, TRY_CONVERT(date, @EventDateRaw))
+                                  WHEN 'Sunday' THEN 0
+                                  WHEN 'Monday' THEN 1
+                                  WHEN 'Tuesday' THEN 2
+                                  WHEN 'Wednesday' THEN 3
+                                  WHEN 'Thursday' THEN 4
+                                  WHEN 'Friday' THEN 5
+                                  WHEN 'Saturday' THEN 6
+                                END
+            AND vbh.OpenTime <= TRY_CONVERT(time, @EventStartRaw)
+            AND vbh.CloseTime >= TRY_CONVERT(time, @EventEndRaw)
+        )`;
+        console.log('Applying business hours filter for event date/time (SQL-level parsing)');
+      } catch (e) {
+        console.warn('Failed to apply business hours filter:', e.message);
+      }
     }
 
     // Add category filter
@@ -1671,7 +1708,7 @@ router.post('/search-by-services', async (req, res) => {
     request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
 
     // New: pass service start/end times to stored procedure (SP filters by business hours)
-    // Prefer per-service times from selectedServices; fallback to eventDetails times
+    // IMPORTANT: Use ONLY per-service times from selectedServices (no event-level fallback)
     const serviceTimes = Array.isArray(selectedServices)
       ? selectedServices
           .map(s => ({
@@ -1691,11 +1728,9 @@ router.post('/search-by-services', async (req, res) => {
       if (ends.length > 0) derivedEnd = ends.sort().slice(-1)[0];
     }
 
-    // Important: Only use service times; event times are UI boundaries and not used for backend filtering
-    // Note: The stored procedure sp_SearchVendorsByPredefinedServices does not accept
-    // EventStartTime/EventEndTime parameters. Do not pass them to avoid
-    // "too many arguments specified" errors. If time-based filtering is needed,
-    // extend the procedure signature first, then add inputs here.
+    // Provide SERVICE start/end (24h) to SP for business-hours filtering (no event-level fallback)
+    request.input('EventStartRaw', sql.NVarChar(20), derivedStart || null);
+    request.input('EventEndRaw', sql.NVarChar(20), derivedEnd || null);
 
     // Call the new stored procedure for predefined services
     const result = await request.execute('sp_SearchVendorsByPredefinedServices');
@@ -1817,9 +1852,9 @@ router.post('/search-by-services', async (req, res) => {
         totalBudget,
         location: eventDetails?.location,
         eventDate: eventDetails?.date,
-        eventStartTime: eventDetails?.startTime,
-        eventEndTime: eventDetails?.endTime,
-        businessHoursFiltered: !!(eventDetails?.date && eventDetails?.startTime && eventDetails?.endTime)
+        serviceStartTime: serviceTimes.length ? serviceTimes.map(t => t.start).sort()[0] : null,
+        serviceEndTime: serviceTimes.length ? serviceTimes.map(t => t.end).sort().slice(-1)[0] : null,
+        businessHoursFiltered: !!(eventDetails?.date && derivedStart && derivedEnd)
       }
     });
 
