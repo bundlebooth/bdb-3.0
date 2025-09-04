@@ -21915,7 +21915,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                         const marker = new google.maps.Marker({
                             position: { lat: lat, lng: lng },
-                            map: vendorMap,
+                            // Do not set map here; MarkerClusterer will manage it
                             title: vendor.BusinessName,
                             animation: google.maps.Animation.DROP,
                             icon: {
@@ -21940,18 +21940,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
 
                     console.log(`✅ Created ${vendorMarkers.length} vendor markers from search-by-services API`);
-                    // Cluster vendor markers when zoomed out
+                    // Cluster vendor markers when zoomed out (match main page pattern)
                     try {
-                        if (window.bookingState.vendorClusterer) {
-                            window.bookingState.vendorClusterer.setMap(null);
-                            window.bookingState.vendorClusterer = null;
+                        try { await loadMarkerClusterer(); } catch {}
+                        if (!window.markerClusterer || !markerClusterer?.MarkerClusterer) {
+                            console.warn('MarkerClusterer library not available');
+                        } else {
+                            if (window.bookingState.vendorClusterer) {
+                                try { window.bookingState.vendorClusterer.setMap(null); } catch {}
+                                window.bookingState.vendorClusterer = null;
+                            }
+                            window.bookingState.vendorClusterer = new markerClusterer.MarkerClusterer({
+                                map: vendorMap,
+                                markers: vendorMarkers,
+                            });
                         }
-                        window.bookingState.vendorClusterer = new markerClusterer.MarkerClusterer({
-                            map: vendorMap,
-                            markers: vendorMarkers,
-                        });
                     } catch (e) {
-                        console.warn('MarkerClusterer not available or failed to initialize:', e);
+                        console.warn('MarkerClusterer init failed:', e);
                     }
                 }
 
