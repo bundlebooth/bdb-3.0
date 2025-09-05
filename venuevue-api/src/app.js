@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
+const expressRaw = require('express').raw;
 const http = require('http');
 const socketio = require('socket.io');
 const jwt = require('jsonwebtoken');
@@ -24,6 +25,12 @@ const io = socketio(server, {
 app.use(cors());
 app.use(helmet());
 app.use(morgan('combined'));
+
+// Stripe webhook must be mounted BEFORE JSON parser to use raw body
+const { router: paymentsRouter, webhook: paymentsWebhook } = require('./routes/payments');
+app.post('/api/payments/webhook', expressRaw({ type: 'application/json' }), paymentsWebhook);
+
+// Regular body parsers
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -70,6 +77,7 @@ app.use('/api/reviews', reviewsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/vendor', vendorDashboardRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/payments', paymentsRouter);
 
 // Fixed route to handle fetching vendor conversations with consistent data format
 app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
