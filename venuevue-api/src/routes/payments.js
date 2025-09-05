@@ -77,6 +77,37 @@ router.get('/connect/status/:vendorProfileId', async (req, res) => {
   }
 });
 
+// Debug endpoint to check if Connect is enabled for current API key
+router.get('/debug/connect-status', async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.json({ 
+        success: false, 
+        message: 'STRIPE_SECRET_KEY not set',
+        connectEnabled: false 
+      });
+    }
+
+    // Try to list accounts - this will fail if Connect isn't enabled
+    const accounts = await stripe.accounts.list({ limit: 1 });
+    
+    return res.json({
+      success: true,
+      connectEnabled: true,
+      message: 'Connect is enabled for this API key',
+      keyPrefix: process.env.STRIPE_SECRET_KEY.substring(0, 12) + '...'
+    });
+  } catch (err) {
+    return res.json({
+      success: false,
+      connectEnabled: false,
+      message: 'Connect not enabled for this API key',
+      error: err.message,
+      keyPrefix: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 12) + '...' : 'not set'
+    });
+  }
+});
+
 // Create a Checkout Session for a booking with a platform fee and destination to vendor
 router.post('/checkout', async (req, res) => {
   try {
