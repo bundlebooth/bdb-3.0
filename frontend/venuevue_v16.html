@@ -1955,11 +1955,69 @@
 
         /* Vendor Dashboard Styles */
         .vendor-dashboard-card {
-            background-color: white;
+          background-color: white;
+          border-radius: var(--radius);
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+          box-shadow: var(--shadow);
+        }
+
+        /* Pending Request Card - Theme Aligned */
+        .request-card {
+            background: #ffffff;
+            border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            padding: 1rem 1rem .75rem 1rem;
+            margin: .75rem 0 1rem 0;
             box-shadow: var(--shadow);
+        }
+        .request-card .request-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: .5rem;
+        }
+        .request-card .request-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+        .request-status-text { color: var(--text-light); font-size: .85rem; }
+        .request-subheader { color: var(--text-light); font-size: .85rem; margin-top: .25rem; }
+        .request-meta { display:flex; gap:.85rem; flex-wrap:wrap; margin-top:.35rem; color:var(--text-light); font-size:.85rem; }
+        .request-meta span + span { position: relative; padding-left:.9rem; }
+        .request-meta span + span::before { content:"\2022"; position:absolute; left:.2rem; color:#94a3b8; }
+        .request-details {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(320px, 1fr));
+            gap: .5rem 2rem;
+            margin: .75rem 0 .9rem 0;
+        }
+        .request-detail-row { display:grid; grid-template-columns: 160px 1fr; gap:.5rem; align-items: baseline; }
+        .request-detail-label { color: var(--text-light); font-size:.85rem; }
+        .request-detail-value { color: var(--text); font-weight: 600; font-size:.95rem; }
+        .request-actions { display:flex; gap:.5rem; justify-content:flex-end; border-top:1px solid var(--border); padding-top:.7rem; }
+        .btn {
+            border-radius: 8px;
+            padding: .45rem .8rem;
+            font-weight: 600;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+        .request-actions .btn { width:auto; }
+        .btn-success { background: var(--primary); color:#fff; box-shadow: 0 3px 8px rgba(59,130,246,.15); }
+        .btn-success:hover { filter: brightness(0.97); }
+        .btn-danger { background:#ffffff; color:#111827; border-color:#d1d5db; }
+        .btn-danger:hover { background:#f9fafb; }
+        
+        @media (max-width: 920px) {
+          .request-details { grid-template-columns: 1fr; }
+          .request-detail-row { grid-template-columns: 140px 1fr; }
+          .request-actions { justify-content: flex-start; }
         }
 
         /* Service Tabs Styles */
@@ -16954,8 +17012,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         console.log('🔍 Debug - API URL called:', `${API_BASE_URL}/bookings/vendor/${vendorProfileId}/requests`);
                     }
                     
-                    // Update stats
-                    const expiringSoon = requests.filter(req => req.HoursRemaining <= 6).length;
+                    // Update stats using ExpiresAt
+                    const now = new Date();
+                    const expiringSoon = requests.filter(req => {
+                        if (!req.ExpiresAt) return false;
+                        const exp = new Date(req.ExpiresAt);
+                        const diffMs = exp.getTime() - now.getTime();
+                        const hrs = diffMs / (1000 * 60 * 60);
+                        return hrs <= 6 && hrs > 0;
+                    }).length;
                     pendingCountEl.textContent = requests.length;
                     expiringSoonCountEl.textContent = expiringSoon;
                     
@@ -16974,60 +17039,70 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return;
                 }
                 
-                container.innerHTML = requests.map(request => `
-                    <div class="request-card pending">
+                container.innerHTML = requests.map(request => {
+                    // Compute hours remaining from ExpiresAt if available
+                    let hoursRemaining = 0;
+                    try {
+                        const now = new Date();
+                        const exp = request.ExpiresAt ? new Date(request.ExpiresAt) : null;
+                        if (exp) {
+                            const diffMs = exp.getTime() - now.getTime();
+                            hoursRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60)));
+                        }
+                    } catch(_) {}
+
+                    // Parse services JSON for display
+                    let servicesList = [];
+                    let primaryService = null;
+                    try {
+                        const parsed = typeof request.Services === 'string' ? JSON.parse(request.Services) : request.Services;
+                        if (Array.isArray(parsed)) {
+                            servicesList = parsed;
+                            primaryService = parsed[0] || null;
+                        }
+                    } catch(_) {}
+
+                    const eventDateStr = request.EventDate ? new Date(request.EventDate).toLocaleDateString() : '—';
+                    const eventTimeStr = request.EventTime ? request.EventTime.toString().substring(0,5) : '—';
+                    const serviceNames = servicesList.length ? servicesList.map(s => s.Name || s.name).filter(Boolean).join(', ') : '—';
+                    const serviceCost = (request.Budget && Number(request.Budget) > 0) ? `$${Number(request.Budget).toLocaleString()}` : (primaryService && (primaryService.BasePrice || primaryService.FixedPrice)) ? `$${Number(primaryService.BasePrice || primaryService.FixedPrice).toLocaleString()}` : '—';
+                    const clientPhone = request.ClientPhone || '—';
+
+                    return `
+                    <div class="request-card">
                         <div class="request-header">
-                            <div>
-                                <h4>${request.ClientName}</h4>
-                                <div class="request-timer ${request.HoursRemaining < 6 ? 'urgent' : ''}">
-                                    ${request.HoursRemaining} hours remaining
-                                </div>
+                            <div class="request-title">
+                                <i class="fas fa-user-circle" style="color: var(--primary);"></i>
+                                ${request.ClientName || 'New Client'}
                             </div>
-                            <span class="request-status pending">pending</span>
+                            <span class="request-status-text"><i class="fas fa-clock"></i> Pending</span>
+                        </div>
+                        <div class="request-meta">
+                            <span><i class="far fa-hourglass"></i> ${hoursRemaining} hours remaining</span>
+                            <span>Request #${request.RequestID}</span>
                         </div>
                         <div class="request-details">
-                            <div class="request-detail-row">
-                                <span class="request-detail-label">Event Date:</span>
-                                <span class="request-detail-value">${new Date(request.EventDate).toLocaleDateString()}</span>
-                            </div>
-                            <div class="request-detail-row">
-                                <span class="request-detail-label">Location:</span>
-                                <span class="request-detail-value">${request.EventLocation}</span>
-                            </div>
-                            <div class="request-detail-row">
-                                <span class="request-detail-label">Attendees:</span>
-                                <span class="request-detail-value">${request.AttendeeCount}</span>
-                            </div>
-                            <div class="request-detail-row">
-                                <span class="request-detail-label">Budget:</span>
-                                <span class="request-detail-value">$${request.Budget?.toLocaleString()}</span>
-                            </div>
-                            ${request.SpecialRequests ? `
-                                <div class="request-detail-row">
-                                    <span class="request-detail-label">Special Requests:</span>
-                                    <span class="request-detail-value">${request.SpecialRequests}</span>
-                                </div>
-                            ` : ''}
-                            <div class="request-detail-row">
-                                <span class="request-detail-label">Contact:</span>
-                                <span class="request-detail-value">${request.ClientEmail} | ${request.ClientPhone || 'No phone'}</span>
-                            </div>
+                            <div class="request-detail-row"><span class="request-detail-label">Event Name</span><span class="request-detail-value">${request.EventName || '—'}</span></div>
+                            <div class="request-detail-row"><span class="request-detail-label">Event Type</span><span class="request-detail-value">${request.EventType || (primaryService && primaryService.CategoryName) || '—'}</span></div>
+                            <div class="request-detail-row"><span class="request-detail-label">Event Date</span><span class="request-detail-value">${eventDateStr}</span></div>
+                            <div class="request-detail-row"><span class="request-detail-label">Event Start Time</span><span class="request-detail-value">${eventTimeStr}</span></div>
+                            <div class="request-detail-row"><span class="request-detail-label">Event End Time</span><span class="request-detail-value">${request.EventEndTime || '—'}</span></div>
+                            <div class="request-detail-row"><span class="request-detail-label">Number of Attendees</span><span class="request-detail-value">${request.AttendeeCount ?? '—'}</span></div>
+                            <div class="request-detail-row" style="grid-column: span 2;"><span class="request-detail-label">Event Location</span><span class="request-detail-value">${request.EventLocation || '—'}</span></div>
+                            <div class="request-detail-row"><span class="request-detail-label">Service Requested</span><span class="request-detail-value">${serviceNames}</span></div>
+                            <div class="request-detail-row"><span class="request-detail-label">Service Start Time</span><span class="request-detail-value">${(primaryService && (primaryService.StartTime || primaryService.startTime)) || '—'}</span></div>
+                            <div class="request-detail-row"><span class="request-detail-label">Service End Time</span><span class="request-detail-value">${(primaryService && (primaryService.EndTime || primaryService.endTime)) || '—'}</span></div>
+                            <div class="request-detail-row"><span class="request-detail-label">Service Cost</span><span class="request-detail-value">${serviceCost}</span></div>
+                            <div class="request-detail-row" style="grid-column: span 2;"><span class="request-detail-label">Special Request</span><span class="request-detail-value">${request.SpecialRequests || '—'}</span></div>
+                            <div class="request-detail-row" style="grid-column: span 2;"><span class="request-detail-label">Contact</span><span class="request-detail-value">${request.ClientEmail || '—'} | ${clientPhone}</span></div>
                         </div>
                         <div class="request-actions">
-                            <button class="btn btn-success" onclick="approveRequest(${request.RequestID})">
-                                <i class="fas fa-check"></i> Approve
-                            </button>
-                            <button class="btn btn-danger" onclick="declineRequest(${request.RequestID})">
-                                <i class="fas fa-times"></i> Decline
-                            </button>
-                            ${request.ConversationID ? `
-                                <button class="btn btn-primary" onclick="openChatForRequest(${request.ConversationID})">
-                                    <i class="fas fa-comments"></i> Chat
-                                </button>
-                            ` : ''}
+                            <button class="btn btn-success" onclick="approveRequest(${request.RequestID})"><i class="fas fa-check"></i> Approve</button>
+                            <button class="btn btn-danger" onclick="declineRequest(${request.RequestID})"><i class="fas fa-times"></i> Decline</button>
+                            ${request.ConversationID ? `<button class="btn btn-primary" onclick="openChatForRequest(${request.ConversationID})"><i class="fas fa-comments"></i> Chat</button>` : ''}
                         </div>
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
             }
             
             async function cancelRequest(requestId) {
