@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 
@@ -10,6 +10,9 @@ const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT || 10);
 
 // Create or fetch a vendor's Stripe Connect account and return an onboarding link
 router.post('/connect/onboard/:vendorProfileId', async (req, res) => {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(500).json({ success: false, message: 'Stripe not configured on server (missing STRIPE_SECRET_KEY).' });
+  }
   const { vendorProfileId } = req.params;
   if (!vendorProfileId) return res.status(400).json({ success: false, message: 'vendorProfileId is required' });
   try {
@@ -52,6 +55,9 @@ router.post('/connect/onboard/:vendorProfileId', async (req, res) => {
 // Check connect account status
 router.get('/connect/status/:vendorProfileId', async (req, res) => {
   try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.json({ success: true, connected: false, charges_enabled: false, payouts_enabled: false, note: 'Stripe not configured on server' });
+    }
     const { vendorProfileId } = req.params;
     const pool = await poolPromise;
     const vendorRs = await pool.request()
@@ -74,6 +80,9 @@ router.get('/connect/status/:vendorProfileId', async (req, res) => {
 // Create a Checkout Session for a booking with a platform fee and destination to vendor
 router.post('/checkout', async (req, res) => {
   try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({ success: false, message: 'Stripe not configured on server (missing STRIPE_SECRET_KEY).' });
+    }
     const { bookingId } = req.body;
     if (!bookingId) return res.status(400).json({ success: false, message: 'bookingId is required' });
 
