@@ -82,7 +82,12 @@ router.post('/checkout', async (req, res) => {
     const rs = await pool.request()
       .input('BookingID', sql.Int, bookingId)
       .query(`
-        SELECT TOP 1 b.BookingID, b.TotalAmount, b.Currency, b.Description, b.VendorProfileID, b.UserID,
+        SELECT TOP 1 
+               b.BookingID,
+               b.TotalAmount,
+               b.EventDate,
+               b.VendorProfileID,
+               b.UserID,
                vp.StripeAccountID,
                ISNULL(b.TotalAmount, 0) AS Amount
         FROM Bookings b
@@ -99,8 +104,10 @@ router.post('/checkout', async (req, res) => {
 
     const amountCents = Math.max(0, Math.round(Number(booking.Amount) * 100));
     const feeAmount = Math.round((PLATFORM_FEE_PERCENT / 100) * amountCents);
-    const currency = (booking.Currency || 'usd').toLowerCase();
-    const description = booking.Description || `Booking #${booking.BookingID}`;
+    const currency = 'usd';
+    const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
+    const dateStr = eventDate ? eventDate.toISOString().split('T')[0] : '';
+    const description = `Booking #${booking.BookingID}${dateStr ? ' - ' + dateStr : ''}`;
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
