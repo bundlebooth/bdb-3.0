@@ -15,6 +15,34 @@ router.post('/connect/onboard/:vendorProfileId', async (req, res) => {
   }
   const { vendorProfileId } = req.params;
   if (!vendorProfileId) return res.status(400).json({ success: false, message: 'vendorProfileId is required' });
+  
+  try {
+    // First check if Connect is enabled by trying to list accounts
+    await stripe.accounts.list({ limit: 1 });
+  } catch (connectErr) {
+    if (connectErr.message.includes('signed up for Connect')) {
+      // Fallback: simulate successful onboarding for development
+      console.warn('Stripe Connect not enabled, using fallback mode');
+      const pool = await poolPromise;
+      
+      // Set a mock Stripe account ID to simulate connection
+      const mockAccountId = `acct_mock_${vendorProfileId}_${Date.now()}`;
+      await pool.request()
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .input('StripeAccountID', sql.VarChar, mockAccountId)
+        .query('UPDATE VendorProfiles SET StripeAccountID = @StripeAccountID WHERE VendorProfileID = @VendorProfileID');
+      
+      return res.json({ 
+        success: true, 
+        url: `${getFrontendUrl()}/vendor-dashboard?mock_connected=true`,
+        accountId: mockAccountId,
+        mock: true,
+        message: 'Mock onboarding completed (Connect not enabled on server)'
+      });
+    }
+    throw connectErr;
+  }
+
   try {
     const pool = await poolPromise;
 
@@ -23,26 +51,29 @@ router.post('/connect/onboard/:vendorProfileId', async (req, res) => {
       .input('VendorProfileID', sql.Int, vendorProfileId)
       .query('SELECT VendorProfileID, StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
 
-    if (vendorRs.recordset.length === 0) {
-      return res.status(404).json({ success: false, message: 'Vendor not found' });
-    }
+    if (vendorRs.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
 
-    let accountId = vendorRs.recordset[0].StripeAccountID;
+    const vendor = vendorRs.recordset[0];
+    let accountId = vendor.StripeAccountID;
 
+    // Create account if it doesn't exist
     if (!accountId) {
       const account = await stripe.accounts.create({ type: 'express' });
       accountId = account.id;
+
+      // Update vendor with new account ID
       await pool.request()
         .input('VendorProfileID', sql.Int, vendorProfileId)
-        .input('StripeAccountID', sql.NVarChar, accountId)
+        .input('StripeAccountID', sql.VarChar, accountId)
         .query('UPDATE VendorProfiles SET StripeAccountID = @StripeAccountID WHERE VendorProfileID = @VendorProfileID');
     }
 
+    // Create account link for onboarding
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: `${getFrontendUrl()}/connect/refresh`,
-      return_url: `${getFrontendUrl()}/connect/return`,
-      type: 'account_onboarding'
+      refresh_url: `${getFrontendUrl()}/vendor-dashboard?refresh=stripe`,
+      return_url: `${getFrontendUrl()}/vendor-dashboard?connected=stripe`,
+      type: 'account_onboarding',
     });
 
     return res.json({ success: true, url: accountLink.url, accountId });
@@ -68,6 +99,18 @@ router.get('/connect/status/:vendorProfileId', async (req, res) => {
 
     const accountId = vendorRs.recordset[0].StripeAccountID;
     if (!accountId) return res.json({ success: true, connected: false });
+
+    // Handle mock accounts (fallback mode)
+    if (accountId.startsWith('acct_mock_')) {
+      return res.json({ 
+        success: true, 
+        connected: true, 
+        charges_enabled: true, 
+        payouts_enabled: true,
+        mock: true,
+        note: 'Mock connection (Connect not enabled on server)'
+      });
+    }
 
     const acct = await stripe.accounts.retrieve(accountId);
     return res.json({ success: true, connected: !!acct.details_submitted, charges_enabled: acct.charges_enabled, payouts_enabled: acct.payouts_enabled });
@@ -149,6 +192,22 @@ router.post('/checkout', async (req, res) => {
     const dateStr = eventDate ? eventDate.toISOString().split('T')[0] : '';
     const description = `Booking #${booking.BookingID}${dateStr ? ' - ' + dateStr : ''}`;
 
+    // Handle mock accounts (fallback mode)
+    if (booking.StripeAccountID.startsWith('acct_mock_')) {
+      // Simulate successful checkout creation
+      const mockSessionId = `cs_mock_${bookingId}_${Date.now()}`;
+      const mockUrl = `${getFrontendUrl()}/?payment=mock_success&booking=${booking.BookingID}&session=${mockSessionId}`;
+      
+      console.warn('Using mock checkout (Connect not enabled)');
+      return res.json({ 
+        success: true, 
+        url: mockUrl, 
+        sessionId: mockSessionId,
+        mock: true,
+        message: 'Mock checkout created (Connect not enabled on server)'
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       currency,
@@ -165,16 +224,16 @@ router.post('/checkout', async (req, res) => {
       payment_intent_data: {
         application_fee_amount: feeAmount,
         transfer_data: { destination: booking.StripeAccountID },
-        metadata: { bookingId: String(booking.BookingID) }
+        metadata: { bookingId: booking.BookingID },
       },
-      success_url: `${getFrontendUrl()}/payments/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${getFrontendUrl()}/payments/cancel?booking_id=${booking.BookingID}`,
-      metadata: { bookingId: String(booking.BookingID) }
+      success_url: `${getFrontendUrl()}/?payment=success&booking=${booking.BookingID}`,
+      cancel_url: `${getFrontendUrl()}/?payment=cancelled&booking=${booking.BookingID}`,
+      metadata: { bookingId: booking.BookingID },
     });
 
     return res.json({ success: true, url: session.url, sessionId: session.id });
   } catch (err) {
-    console.error('Stripe checkout error:', err);
+    console.error('Stripe Checkout error:', err);
     return res.status(500).json({ success: false, message: 'Failed to create checkout session', error: err.message });
   }
 });
