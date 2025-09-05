@@ -17,33 +17,6 @@ router.post('/connect/onboard/:vendorProfileId', async (req, res) => {
   if (!vendorProfileId) return res.status(400).json({ success: false, message: 'vendorProfileId is required' });
   
   try {
-    // First check if Connect is enabled by trying to list accounts
-    await stripe.accounts.list({ limit: 1 });
-  } catch (connectErr) {
-    if (connectErr.message.includes('signed up for Connect')) {
-      // Fallback: simulate successful onboarding for development
-      console.warn('Stripe Connect not enabled, using fallback mode');
-      const pool = await poolPromise;
-      
-      // Set a mock Stripe account ID to simulate connection
-      const mockAccountId = `acct_mock_${vendorProfileId}_${Date.now()}`;
-      await pool.request()
-        .input('VendorProfileID', sql.Int, vendorProfileId)
-        .input('StripeAccountID', sql.VarChar, mockAccountId)
-        .query('UPDATE VendorProfiles SET StripeAccountID = @StripeAccountID WHERE VendorProfileID = @VendorProfileID');
-      
-      return res.json({ 
-        success: true, 
-        url: `${getFrontendUrl()}/vendor-dashboard?mock_connected=true`,
-        accountId: mockAccountId,
-        mock: true,
-        message: 'Mock onboarding completed (Connect not enabled on server)'
-      });
-    }
-    throw connectErr;
-  }
-
-  try {
     const pool = await poolPromise;
 
     // Fetch existing StripeAccountID
@@ -58,25 +31,58 @@ router.post('/connect/onboard/:vendorProfileId', async (req, res) => {
 
     // Create account if it doesn't exist
     if (!accountId) {
-      const account = await stripe.accounts.create({ type: 'express' });
-      accountId = account.id;
+      try {
+        const account = await stripe.accounts.create({ type: 'express' });
+        accountId = account.id;
 
-      // Update vendor with new account ID
-      await pool.request()
-        .input('VendorProfileID', sql.Int, vendorProfileId)
-        .input('StripeAccountID', sql.VarChar, accountId)
-        .query('UPDATE VendorProfiles SET StripeAccountID = @StripeAccountID WHERE VendorProfileID = @VendorProfileID');
+        // Update vendor with new account ID
+        await pool.request()
+          .input('VendorProfileID', sql.Int, vendorProfileId)
+          .input('StripeAccountID', sql.VarChar, accountId)
+          .query('UPDATE VendorProfiles SET StripeAccountID = @StripeAccountID WHERE VendorProfileID = @VendorProfileID');
+      } catch (connectErr) {
+        if (connectErr.message.includes('signed up for Connect')) {
+          // Fallback: simulate successful onboarding for development
+          console.warn('Stripe Connect not enabled, using fallback mode');
+          
+          // Set a mock Stripe account ID to simulate connection
+          const mockAccountId = `acct_mock_${vendorProfileId}_${Date.now()}`;
+          await pool.request()
+            .input('VendorProfileID', sql.Int, vendorProfileId)
+            .input('StripeAccountID', sql.VarChar, mockAccountId)
+            .query('UPDATE VendorProfiles SET StripeAccountID = @StripeAccountID WHERE VendorProfileID = @VendorProfileID');
+          
+          return res.json({ 
+            success: true, 
+            url: `${getFrontendUrl()}/?mock_connected=true`,
+            accountId: mockAccountId,
+            mock: true,
+            message: 'Mock onboarding completed (Connect not enabled on server)'
+          });
+        }
+        throw connectErr;
+      }
     }
 
-    // Create account link for onboarding
-    const accountLink = await stripe.accountLinks.create({
-      account: accountId,
-      refresh_url: `${getFrontendUrl()}/vendor-dashboard?refresh=stripe`,
-      return_url: `${getFrontendUrl()}/vendor-dashboard?connected=stripe`,
-      type: 'account_onboarding',
-    });
-
-    return res.json({ success: true, url: accountLink.url, accountId });
+    // Create account link for onboarding (only if real account)
+    if (!accountId.startsWith('acct_mock_')) {
+      const accountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: `${getFrontendUrl()}/?refresh=stripe`,
+        return_url: `${getFrontendUrl()}/?connected=stripe`,
+        type: 'account_onboarding',
+      });
+      return res.json({ success: true, url: accountLink.url, accountId });
+    } else {
+      // Mock account already exists, return mock success
+      return res.json({ 
+        success: true, 
+        url: `${getFrontendUrl()}/?mock_connected=true`,
+        accountId,
+        mock: true,
+        message: 'Mock account already connected'
+      });
+    }
   } catch (err) {
     console.error('Stripe Connect onboard error:', err);
     return res.status(500).json({ success: false, message: 'Failed to start onboarding', error: err.message });
