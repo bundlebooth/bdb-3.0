@@ -5,7 +5,7 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 
 // Helpers
-const getFrontendUrl = () => process.env.FRONTEND_URL || 'https://bundlebooth.github.io';
+const getFrontendUrl = () => process.env.FRONTEND_URL || 'http://localhost:8080';
 const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT || 10);
 
 // Create or fetch a vendor's Stripe Connect account and return an onboarding link
