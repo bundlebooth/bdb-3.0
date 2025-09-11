@@ -5576,6 +5576,11 @@
             }
         }
 
+        // Continue Stripe onboarding for incomplete setups
+        async function continueStripeOnboarding(vendorProfileId) {
+            await startStripeOnboarding(vendorProfileId);
+        }
+
         async function checkVendorStripeStatus(vendorProfileId, showBannerIfDisconnected = true) {
             try {
                 const resp = await fetch(`${API_BASE_URL}/payments/connect/status/${vendorProfileId}`);
@@ -18204,10 +18209,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 await loadStripeConnectStatus(vendorProfileId);
             }
 
-            // Make continueStripeOnboarding globally accessible
-            window.continueStripeOnboarding = async function(vendorProfileId) {
-                await startStripeOnboarding(vendorProfileId);
-            };
 
             function renderManageServices(services, container) {
                 container.innerHTML = '';
