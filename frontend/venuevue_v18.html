@@ -7422,6 +7422,40 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
             }
 
+            // Check for Stripe Connect redirect parameters
+            function checkStripeConnectRedirect() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const stripeConnect = urlParams.get('stripe_connect');
+                const vendor = urlParams.get('vendor');
+                const message = urlParams.get('message');
+                
+                if (stripeConnect === 'success' && vendor) {
+                    // Show success message
+                    alert(`✅ ${decodeURIComponent(message || 'Successfully connected to Stripe!')}`);
+                    
+                    // Refresh Stripe status for the vendor
+                    if (window.checkVendorStripeStatus) {
+                        setTimeout(() => {
+                            checkVendorStripeStatus(vendor, false);
+                        }, 1000);
+                    }
+                    
+                    // Clean up URL parameters
+                    const newUrl = window.location.origin + window.location.pathname;
+                    window.history.replaceState({}, document.title, newUrl);
+                    
+                } else if (stripeConnect === 'error') {
+                    // Show error message
+                    alert(`❌ ${decodeURIComponent(message || 'Stripe connection failed. Please try again.')}`);
+                    
+                    // Clean up URL parameters
+                    const newUrl = window.location.origin + window.location.pathname;
+                    window.history.replaceState({}, document.title, newUrl);
+                }
+            }
+            
+            checkStripeConnectRedirect();
+
             // Initialize the app
             init();
 
@@ -18113,13 +18147,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } else if (data.success && data.connected && !data.charges_enabled) {
                         // Connected but not ready for charges
                         statusDisplay.innerHTML = `
-                            <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;">
-                                <i class="fas fa-exclamation-triangle" style="color: #d97706; font-size: 20px;"></i>
+                            <div style="display: flex; align-items: flex-start; gap: 12px; padding: 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;">
+                                <i class="fas fa-exclamation-triangle" style="color: #d97706; font-size: 20px; margin-top: 2px;"></i>
                                 <div style="flex: 1;">
                                     <div style="font-weight: 600; color: #92400e; margin-bottom: 4px;">Setup Incomplete</div>
-                                    <div style="font-size: 14px; color: #b45309;">Your Stripe account is connected but needs additional information before you can receive payments.</div>
+                                    <div style="font-size: 14px; color: #b45309; margin-bottom: 8px;">Your Stripe account is connected but needs additional information before you can receive payments.</div>
+                                    <div style="font-size: 13px; color: #a16207;">
+                                        <strong>Next steps:</strong> Complete bank details, business verification, and tax information in Stripe.
+                                    </div>
                                 </div>
-                                <button onclick="continueStripeOnboarding(${vendorProfileId})" class="btn btn-primary">
+                                <button onclick="continueStripeOnboarding(${vendorProfileId})" class="btn btn-primary" style="white-space: nowrap;">
                                     <i class="fab fa-stripe"></i> Complete Setup
                                 </button>
                             </div>
@@ -18167,9 +18204,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 await loadStripeConnectStatus(vendorProfileId);
             }
 
-            async function continueStripeOnboarding(vendorProfileId) {
+            // Make continueStripeOnboarding globally accessible
+            window.continueStripeOnboarding = async function(vendorProfileId) {
                 await startStripeOnboarding(vendorProfileId);
-            }
+            };
 
             function renderManageServices(services, container) {
                 container.innerHTML = '';
