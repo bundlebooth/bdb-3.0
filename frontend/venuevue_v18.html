@@ -5550,9 +5550,16 @@
                     throw new Error(data.message || 'Failed to start onboarding');
                 }
                 
-                if (data.authUrl) {
-                    // Redirect to Stripe OAuth
-                    window.location.href = data.authUrl;
+                if (data.success && data.authUrl) {
+                    // Open Stripe OAuth in new tab
+                    window.open(data.authUrl, '_blank');
+                    
+                    // Reset button state since user will complete onboarding in new tab
+                    const connectBtn = document.querySelector('#stripe-connect-btn');
+                    if (connectBtn) {
+                        connectBtn.innerHTML = '<i class="fab fa-stripe"></i> Connect with Stripe';
+                        connectBtn.disabled = false;
+                    }
                 } else {
                     throw new Error('No authorization URL received');
                 }
