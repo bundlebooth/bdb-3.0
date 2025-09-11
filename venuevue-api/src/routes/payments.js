@@ -1,293 +1,620 @@
 const express = require('express');
 const router = express.Router();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 
-// Helpers
-const getFrontendUrl = () => process.env.FRONTEND_URL || 'http://localhost:8080';
-const PLATFORM_FEE_PERCENT = Number(process.env.PLATFORM_FEE_PERCENT || 10);
+// Helper function to check if Stripe is properly configured
+function isStripeConfigured() {
+  return process.env.STRIPE_SECRET_KEY && 
+         process.env.STRIPE_PUBLISHABLE_KEY && 
+         process.env.STRIPE_CLIENT_ID &&
+         !process.env.STRIPE_SECRET_KEY.includes('placeholder') &&
+         !process.env.STRIPE_PUBLISHABLE_KEY.includes('placeholder');
+}
 
-// Create or fetch a vendor's Stripe Connect account and return an onboarding link
-router.post('/connect/onboard/:vendorProfileId', async (req, res) => {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return res.status(500).json({ success: false, message: 'Stripe not configured on server (missing STRIPE_SECRET_KEY).' });
-  }
-  const { vendorProfileId } = req.params;
-  if (!vendorProfileId) return res.status(400).json({ success: false, message: 'vendorProfileId is required' });
-  
+// Helper function to get vendor's Stripe Connect account ID
+async function getVendorStripeAccountId(vendorProfileId) {
   try {
     const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.query(`
+      SELECT StripeAccountID 
+      FROM VendorProfiles 
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    return result.recordset.length > 0 ? result.recordset[0].StripeAccountID : null;
+  } catch (error) {
+    console.error('Error fetching vendor Stripe account ID:', error);
+    return null;
+  }
+}
 
-    // Fetch existing StripeAccountID
-    const vendorRs = await pool.request()
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query('SELECT VendorProfileID, StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+// Helper function to save Stripe Connect account ID
+async function saveStripeConnectAccountId(vendorProfileId, stripeAccountId) {
+  try {
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('StripeAccountID', sql.NVarChar(100), stripeAccountId);
+    
+    await request.query(`
+      UPDATE VendorProfiles 
+      SET StripeAccountID = @StripeAccountID, UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving Stripe Connect account ID:', error);
+    return false;
+  }
+}
 
-    if (vendorRs.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
+// Helper function to save charge ID to booking
+async function saveChargeIdToBooking(bookingId, chargeId) {
+  try {
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('BookingID', sql.Int, bookingId);
+    request.input('StripePaymentIntentID', sql.NVarChar(100), chargeId);
+    
+    await request.query(`
+      UPDATE Bookings 
+      SET StripePaymentIntentID = @StripePaymentIntentID, UpdatedAt = GETDATE()
+      WHERE BookingID = @BookingID
+    `);
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving charge ID to booking:', error);
+    return false;
+  }
+}
 
-    const vendor = vendorRs.recordset[0];
-    let accountId = vendor.StripeAccountID;
-
-    // Create account if it doesn't exist
-    if (!accountId) {
-      try {
-        const account = await stripe.accounts.create({ type: 'express' });
-        accountId = account.id;
-
-        // Update vendor with new account ID
-        await pool.request()
-          .input('VendorProfileID', sql.Int, vendorProfileId)
-          .input('StripeAccountID', sql.VarChar, accountId)
-          .query('UPDATE VendorProfiles SET StripeAccountID = @StripeAccountID WHERE VendorProfileID = @VendorProfileID');
-      } catch (connectErr) {
-        if (connectErr.message.includes('signed up for Connect')) {
-          // Fallback: simulate successful onboarding for development
-          console.warn('Stripe Connect not enabled, using fallback mode');
-          
-          // Set a mock Stripe account ID to simulate connection
-          const mockAccountId = `acct_mock_${vendorProfileId}_${Date.now()}`;
-          await pool.request()
-            .input('VendorProfileID', sql.Int, vendorProfileId)
-            .input('StripeAccountID', sql.VarChar, mockAccountId)
-            .query('UPDATE VendorProfiles SET StripeAccountID = @StripeAccountID WHERE VendorProfileID = @VendorProfileID');
-          
-          return res.json({ 
-            success: true, 
-            url: `${getFrontendUrl()}/?mock_connected=true`,
-            accountId: mockAccountId,
-            mock: true,
-            message: 'Mock onboarding completed (Connect not enabled on server)'
-          });
-        }
-        throw connectErr;
-      }
+// 1. VENDOR ONBOARDING - Generate Stripe Connect OAuth URL
+router.get('/connect/onboard/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    
+    if (!isStripeConfigured()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Stripe Connect is not properly configured. Please contact support.',
+        requiresSetup: true
+      });
     }
 
-    // Create account link for onboarding (only if real account)
-    if (!accountId.startsWith('acct_mock_')) {
-      const accountLink = await stripe.accountLinks.create({
-        account: accountId,
-        refresh_url: `${getFrontendUrl()}/?refresh=stripe`,
-        return_url: `${getFrontendUrl()}/?connected=stripe`,
-        type: 'account_onboarding',
-      });
-      return res.json({ success: true, url: accountLink.url, accountId });
-    } else {
-      // Mock account already exists, return mock success
-      return res.json({ 
-        success: true, 
-        url: `${getFrontendUrl()}/?mock_connected=true`,
-        accountId,
-        mock: true,
-        message: 'Mock account already connected'
-      });
-    }
-  } catch (err) {
-    console.error('Stripe Connect onboard error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to start onboarding', error: err.message });
+    // Generate secure state parameter
+    const state = `vendor_${vendorProfileId}_${Date.now()}`;
+    const redirectUri = process.env.STRIPE_REDIRECT_URI || 'http://localhost:8080/stripe/redirect';
+
+    const stripeAuthUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${process.env.STRIPE_CLIENT_ID}&scope=read_write&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+
+    res.json({
+      success: true,
+      authUrl: stripeAuthUrl,
+      state: state
+    });
+
+  } catch (error) {
+    console.error('Error generating Stripe onboarding URL:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate onboarding URL',
+      error: error.message
+    });
   }
 });
 
-// Check connect account status
+// 2. HANDLE STRIPE OAUTH REDIRECT
+router.get('/connect/redirect', async (req, res) => {
+  try {
+    const { code, state, error } = req.query;
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: `Stripe authorization failed: ${error}`
+      });
+    }
+
+    if (!code || !state) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing authorization code or state parameter'
+      });
+    }
+
+    // Verify state parameter format
+    if (!state.startsWith('vendor_')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid state parameter'
+      });
+    }
+
+    // Extract vendor profile ID from state
+    const vendorProfileId = state.split('_')[1];
+
+    // Exchange code for access token
+    const tokenResponse = await stripe.oauth.token({
+      grant_type: 'authorization_code',
+      code: code,
+    });
+
+    const connectedAccountId = tokenResponse.stripe_user_id;
+
+    // Save the connected account ID to database
+    const saved = await saveStripeConnectAccountId(vendorProfileId, connectedAccountId);
+
+    if (!saved) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to save Stripe account information'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Vendor connected successfully!',
+      vendorProfileId: vendorProfileId,
+      stripeAccountId: connectedAccountId
+    });
+
+  } catch (error) {
+    console.error('Stripe token exchange error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Connection failed',
+      error: error.message
+    });
+  }
+});
+
+// 3. CHECK VENDOR CONNECTION STATUS
 router.get('/connect/status/:vendorProfileId', async (req, res) => {
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return res.json({ success: true, connected: false, charges_enabled: false, payouts_enabled: false, note: 'Stripe not configured on server' });
-    }
     const { vendorProfileId } = req.params;
-    const pool = await poolPromise;
-    const vendorRs = await pool.request()
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query('SELECT StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
-
-    if (vendorRs.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
-
-    const accountId = vendorRs.recordset[0].StripeAccountID;
-    if (!accountId) return res.json({ success: true, connected: false });
-
-    // Handle mock accounts (fallback mode)
-    if (accountId.startsWith('acct_mock_')) {
-      return res.json({ 
-        success: true, 
-        connected: true, 
-        charges_enabled: true, 
-        payouts_enabled: true,
-        mock: true,
-        note: 'Mock connection (Connect not enabled on server)'
-      });
-    }
-
-    const acct = await stripe.accounts.retrieve(accountId);
-    return res.json({ success: true, connected: !!acct.details_submitted, charges_enabled: acct.charges_enabled, payouts_enabled: acct.payouts_enabled });
-  } catch (err) {
-    console.error('Stripe Connect status error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to get status', error: err.message });
-  }
-});
-
-// Debug endpoint to check if Connect is enabled for current API key
-router.get('/debug/connect-status', async (req, res) => {
-  try {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return res.json({ 
-        success: false, 
-        message: 'STRIPE_SECRET_KEY not set',
-        connectEnabled: false 
-      });
-    }
-
-    // Try to list accounts - this will fail if Connect isn't enabled
-    const accounts = await stripe.accounts.list({ limit: 1 });
     
-    return res.json({
-      success: true,
-      connectEnabled: true,
-      message: 'Connect is enabled for this API key',
-      keyPrefix: process.env.STRIPE_SECRET_KEY.substring(0, 12) + '...'
-    });
-  } catch (err) {
-    return res.json({
+    if (!isStripeConfigured()) {
+      return res.json({
+        success: true,
+        connected: false,
+        requiresSetup: true,
+        message: 'Stripe Connect is not configured'
+      });
+    }
+
+    const stripeAccountId = await getVendorStripeAccountId(vendorProfileId);
+
+    if (!stripeAccountId) {
+      return res.json({
+        success: true,
+        connected: false,
+        message: 'Vendor not connected to Stripe'
+      });
+    }
+
+    // Check account status with Stripe
+    try {
+      const account = await stripe.accounts.retrieve(stripeAccountId);
+      
+      res.json({
+        success: true,
+        connected: true,
+        accountId: stripeAccountId,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        detailsSubmitted: account.details_submitted,
+        country: account.country,
+        businessType: account.business_type
+      });
+    } catch (stripeError) {
+      console.error('Error retrieving Stripe account:', stripeError);
+      res.json({
+        success: true,
+        connected: false,
+        message: 'Stripe account not found or invalid'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error checking vendor connection status:', error);
+    res.status(500).json({
       success: false,
-      connectEnabled: false,
-      message: 'Connect not enabled for this API key',
-      error: err.message,
-      keyPrefix: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 12) + '...' : 'not set'
+      message: 'Failed to check connection status',
+      error: error.message
     });
   }
 });
 
-// Create a Checkout Session for a booking with a platform fee and destination to vendor
+// 4. REFRESH ONBOARDING LINK (if needed)
+router.post('/connect/refresh-onboarding/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    
+    if (!isStripeConfigured()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Stripe Connect is not properly configured'
+      });
+    }
+
+    const stripeAccountId = await getVendorStripeAccountId(vendorProfileId);
+
+    if (!stripeAccountId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not connected to Stripe'
+      });
+    }
+
+    // Create account link for onboarding
+    const accountLink = await stripe.accountLinks.create({
+      account: stripeAccountId,
+      refresh_url: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/vendor/stripe-setup?refresh=true`,
+      return_url: `${process.env.FRONTEND_URL || 'http://localhost:8080'}/vendor/stripe-setup?success=true`,
+      type: 'account_onboarding',
+    });
+
+    res.json({
+      success: true,
+      onboardingUrl: accountLink.url
+    });
+
+  } catch (error) {
+    console.error('Error refreshing onboarding link:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to refresh onboarding link',
+      error: error.message
+    });
+  }
+});
+
+// 5. GET STRIPE DASHBOARD ACCESS
+router.get('/connect/dashboard/:vendorProfileId', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    
+    if (!isStripeConfigured()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Stripe Connect is not properly configured'
+      });
+    }
+
+    const stripeAccountId = await getVendorStripeAccountId(vendorProfileId);
+
+    if (!stripeAccountId) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor not connected to Stripe'
+      });
+    }
+
+    // Create login link for Stripe Express dashboard
+    const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
+
+    res.json({
+      success: true,
+      dashboardUrl: loginLink.url
+    });
+
+  } catch (error) {
+    console.error('Error creating dashboard link:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create dashboard link',
+      error: error.message
+    });
+  }
+});
+
+// 6. CREATE DESTINATION CHARGE FOR BOOKING
 router.post('/checkout', async (req, res) => {
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return res.status(500).json({ success: false, message: 'Stripe not configured on server (missing STRIPE_SECRET_KEY).' });
-    }
-    const { bookingId } = req.body;
-    if (!bookingId) return res.status(400).json({ success: false, message: 'bookingId is required' });
+    const { 
+      paymentMethodId, 
+      bookingId, 
+      vendorProfileId, 
+      amount, 
+      currency = 'usd',
+      description,
+      customerEmail 
+    } = req.body;
 
-    const pool = await poolPromise;
-    // Get booking, user, vendor, amount, currency and vendor's Stripe account
-    const rs = await pool.request()
-      .input('BookingID', sql.Int, bookingId)
-      .query(`
-        SELECT TOP 1 
-               b.BookingID,
-               b.TotalAmount,
-               b.EventDate,
-               b.VendorProfileID,
-               b.UserID,
-               vp.StripeAccountID,
-               ISNULL(b.TotalAmount, 0) AS Amount
-        FROM Bookings b
-        INNER JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-        WHERE b.BookingID = @BookingID
-      `);
-
-    if (rs.recordset.length === 0) return res.status(404).json({ success: false, message: 'Booking not found' });
-
-    const booking = rs.recordset[0];
-    if (!booking.StripeAccountID) {
-      return res.status(400).json({ success: false, message: 'Vendor is not connected to Stripe yet' });
-    }
-
-    const amountCents = Math.max(0, Math.round(Number(booking.Amount) * 100));
-    const feeAmount = Math.round((PLATFORM_FEE_PERCENT / 100) * amountCents);
-    const currency = 'usd';
-    const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
-    const dateStr = eventDate ? eventDate.toISOString().split('T')[0] : '';
-    const description = `Booking #${booking.BookingID}${dateStr ? ' - ' + dateStr : ''}`;
-
-    // Handle mock accounts (fallback mode)
-    if (booking.StripeAccountID.startsWith('acct_mock_')) {
-      // Simulate successful checkout creation
-      const mockSessionId = `cs_mock_${bookingId}_${Date.now()}`;
-      const mockUrl = `${getFrontendUrl()}/?payment=mock_success&booking=${booking.BookingID}&session=${mockSessionId}`;
-      
-      console.warn('Using mock checkout (Connect not enabled)');
-      return res.json({ 
-        success: true, 
-        url: mockUrl, 
-        sessionId: mockSessionId,
-        mock: true,
-        message: 'Mock checkout created (Connect not enabled on server)'
+    if (!isStripeConfigured()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment processing is not available. Please contact support.'
       });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      currency,
-      line_items: [
-        {
-          price_data: {
-            currency,
-            product_data: { name: description },
-            unit_amount: amountCents,
-          },
-          quantity: 1,
-        },
-      ],
-      payment_intent_data: {
-        application_fee_amount: feeAmount,
-        transfer_data: { destination: booking.StripeAccountID },
-        metadata: { bookingId: booking.BookingID },
+    // Validate required fields
+    if (!paymentMethodId || !bookingId || !vendorProfileId || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required payment information'
+      });
+    }
+
+    // Get vendor's Stripe Connect account ID
+    const vendorStripeAccountId = await getVendorStripeAccountId(vendorProfileId);
+
+    if (!vendorStripeAccountId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor is not connected to Stripe. Please contact the vendor.'
+      });
+    }
+
+    // Calculate platform fee (5-10%, configurable via environment variable)
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8') / 100;
+    const platformFee = Math.round(amount * platformFeePercent);
+
+    // Create destination charge
+    const charge = await stripe.charges.create({
+      amount: Math.round(amount * 100), // Convert to cents
+      currency: currency,
+      source: paymentMethodId,
+      description: description || `Booking payment for booking #${bookingId}`,
+      application_fee_amount: platformFee,
+      destination: {
+        account: vendorStripeAccountId,
       },
-      success_url: `${getFrontendUrl()}/?payment=success&booking=${booking.BookingID}`,
-      cancel_url: `${getFrontendUrl()}/?payment=cancelled&booking=${booking.BookingID}`,
-      metadata: { bookingId: booking.BookingID },
+      metadata: {
+        booking_id: bookingId,
+        vendor_profile_id: vendorProfileId,
+        platform_fee_percent: (platformFeePercent * 100).toString()
+      }
     });
 
-    return res.json({ success: true, url: session.url, sessionId: session.id });
-  } catch (err) {
-    console.error('Stripe Checkout error:', err);
-    return res.status(500).json({ success: false, message: 'Failed to create checkout session', error: err.message });
+    // Save charge ID to booking
+    await saveChargeIdToBooking(bookingId, charge.id);
+
+    res.json({
+      success: true,
+      message: 'Payment processed successfully',
+      chargeId: charge.id,
+      amount: charge.amount / 100,
+      platformFee: platformFee / 100,
+      vendorAmount: (charge.amount - platformFee) / 100
+    });
+
+  } catch (error) {
+    console.error('Payment processing error:', error);
+    
+    // Handle specific Stripe errors
+    if (error.type === 'StripeCardError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Your card was declined. Please try a different payment method.',
+        error: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Payment processing failed',
+      error: error.message
+    });
   }
 });
 
-// Webhook handler exported separately so app.js can mount with express.raw
-async function webhook(req, res) {
-  const sig = req.headers['stripe-signature'];
-  let event;
+// 7. CREATE CHECKOUT SESSION (Alternative hosted checkout)
+router.post('/checkout-session', async (req, res) => {
   try {
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (webhookSecret) {
-      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } else {
-      // Unsafe fallback for local dev without verification
-      event = JSON.parse(req.body);
+    const { 
+      bookingId, 
+      vendorProfileId, 
+      amount, 
+      currency = 'usd',
+      description,
+      successUrl,
+      cancelUrl 
+    } = req.body;
+
+    if (!isStripeConfigured()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment processing is not available'
+      });
     }
+
+    const vendorStripeAccountId = await getVendorStripeAccountId(vendorProfileId);
+
+    if (!vendorStripeAccountId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor is not connected to Stripe'
+      });
+    }
+
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8') / 100;
+    const platformFee = Math.round(amount * platformFeePercent * 100);
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: currency,
+          product_data: {
+            name: description || `Booking Payment #${bookingId}`,
+          },
+          unit_amount: Math.round(amount * 100),
+        },
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: successUrl || `${process.env.FRONTEND_URL}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${process.env.FRONTEND_URL}/booking-cancelled`,
+      payment_intent_data: {
+        application_fee_amount: platformFee,
+        transfer_data: {
+          destination: vendorStripeAccountId,
+        },
+        metadata: {
+          booking_id: bookingId,
+          vendor_profile_id: vendorProfileId
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      sessionId: session.id,
+      url: session.url
+    });
+
+  } catch (error) {
+    console.error('Checkout session creation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create checkout session',
+      error: error.message
+    });
+  }
+});
+
+// 8. PROCESS REFUND
+router.post('/refund/:chargeId', async (req, res) => {
+  try {
+    const { chargeId } = req.params;
+    const { amount, reason } = req.body;
+
+    if (!isStripeConfigured()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refund processing is not available'
+      });
+    }
+
+    const refundData = {
+      charge: chargeId,
+      reason: reason || 'requested_by_customer'
+    };
+
+    if (amount) {
+      refundData.amount = Math.round(amount * 100); // Convert to cents
+    }
+
+    const refund = await stripe.refunds.create(refundData);
+
+    res.json({
+      success: true,
+      message: 'Refund processed successfully',
+      refundId: refund.id,
+      amount: refund.amount / 100,
+      status: refund.status
+    });
+
+  } catch (error) {
+    console.error('Refund processing error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Refund processing failed',
+      error: error.message
+    });
+  }
+});
+
+// 9. WEBHOOK HANDLER FOR STRIPE EVENTS
+const webhook = async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
-    console.error('Stripe webhook signature verification failed:', err.message);
+    console.error('Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   try {
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const paymentIntentId = session.payment_intent;
-      const bookingId = (session.metadata && session.metadata.bookingId) || (session.payment_intent_data && session.payment_intent_data.metadata && session.payment_intent_data.metadata.bookingId);
-
-      if (bookingId) {
-        const pool = await poolPromise;
-        await pool.request()
-          .input('BookingID', sql.Int, Number(bookingId))
-          .input('StripePaymentIntentID', sql.NVarChar, String(paymentIntentId || ''))
-          .query(`
-            UPDATE Bookings
-            SET Status = 'Paid', FullAmountPaid = 1, StripePaymentIntentID = @StripePaymentIntentID, UpdatedAt = GETDATE()
+    // Handle the event
+    switch (event.type) {
+      case 'charge.succeeded':
+        const charge = event.data.object;
+        console.log(`Payment succeeded for charge ${charge.id}`);
+        
+        // Update booking status to 'confirmed' or 'paid'
+        if (charge.metadata.booking_id) {
+          const pool = await poolPromise;
+          const request = new sql.Request(pool);
+          request.input('BookingID', sql.Int, charge.metadata.booking_id);
+          request.input('Status', sql.NVarChar(20), 'confirmed');
+          
+          await request.query(`
+            UPDATE Bookings 
+            SET Status = @Status, FullAmountPaid = 1, UpdatedAt = GETDATE()
             WHERE BookingID = @BookingID
           `);
-      }
+        }
+        break;
+
+      case 'charge.failed':
+        const failedCharge = event.data.object;
+        console.log(`Payment failed for charge ${failedCharge.id}`);
+        
+        // Update booking status to 'payment_failed'
+        if (failedCharge.metadata.booking_id) {
+          const pool = await poolPromise;
+          const request = new sql.Request(pool);
+          request.input('BookingID', sql.Int, failedCharge.metadata.booking_id);
+          request.input('Status', sql.NVarChar(20), 'payment_failed');
+          
+          await request.query(`
+            UPDATE Bookings 
+            SET Status = @Status, UpdatedAt = GETDATE()
+            WHERE BookingID = @BookingID
+          `);
+        }
+        break;
+
+      case 'charge.refunded':
+        const refundedCharge = event.data.object;
+        console.log(`Refund processed for charge ${refundedCharge.id}`);
+        
+        // Update booking with refund information
+        if (refundedCharge.metadata.booking_id) {
+          const pool = await poolPromise;
+          const request = new sql.Request(pool);
+          request.input('BookingID', sql.Int, refundedCharge.metadata.booking_id);
+          request.input('RefundAmount', sql.Decimal(10, 2), refundedCharge.amount_refunded / 100);
+          request.input('Status', sql.NVarChar(20), 'refunded');
+          
+          await request.query(`
+            UPDATE Bookings 
+            SET RefundAmount = @RefundAmount, Status = @Status, UpdatedAt = GETDATE()
+            WHERE BookingID = @BookingID
+          `);
+        }
+        break;
+
+      case 'account.updated':
+        const account = event.data.object;
+        console.log(`Connected account ${account.id} was updated`);
+        
+        // You can update vendor account status in your database here
+        // This is useful for tracking when vendors complete their onboarding
+        break;
+
+      default:
+        console.log(`Unhandled event type ${event.type}`);
     }
-  } catch (err) {
-    console.error('Stripe webhook processing error:', err);
-    // Always return 200 to acknowledge receipt to Stripe to avoid retries if handling errors are non-critical
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('Error processing webhook:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
   }
-
-  res.json({ received: true });
-}
-
-module.exports = {
-  router,
-  webhook,
 };
+
+module.exports = { router, webhook };
