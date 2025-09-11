@@ -116,10 +116,8 @@ router.get('/connect/redirect', async (req, res) => {
     const { code, state, error } = req.query;
 
     if (error) {
-      return res.status(400).json({
-        success: false,
-        message: `Stripe authorization failed: ${error}`
-      });
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+      return res.redirect(`${frontendUrl}?stripe_connect=error&message=${encodeURIComponent(`Stripe authorization failed: ${error}`)}`);
     }
 
     if (!code || !state) {
@@ -158,12 +156,9 @@ router.get('/connect/redirect', async (req, res) => {
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Vendor connected successfully!',
-      vendorProfileId: vendorProfileId,
-      stripeAccountId: connectedAccountId
-    });
+    // Redirect to frontend with success message
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+    res.redirect(`${frontendUrl}?stripe_connect=success&vendor=${vendorProfileId}&message=Successfully connected to Stripe!`);
 
   } catch (error) {
     console.error('Stripe token exchange error:', error);
