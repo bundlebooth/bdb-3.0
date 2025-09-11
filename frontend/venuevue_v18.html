@@ -5527,12 +5527,45 @@
 
         async function startStripeOnboarding(vendorProfileId) {
             try {
-                const resp = await fetch(`${API_BASE_URL}/payments/connect/onboard/${vendorProfileId}`, { method: 'POST' });
+                // Show loading state
+                const connectBtn = document.querySelector('#stripe-connect-btn');
+                if (connectBtn) {
+                    connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
+                    connectBtn.disabled = true;
+                }
+
+                const resp = await fetch(`${API_BASE_URL}/payments/connect/onboard/${vendorProfileId}`, { 
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
                 const data = await resp.json();
-                if (!resp.ok || !data.success || !data.url) throw new Error(data.message || 'Failed to start onboarding');
-                window.location.href = data.url;
+                
+                if (!resp.ok || !data.success) {
+                    if (data.requiresSetup) {
+                        alert('Stripe Connect is not configured on this server. Please contact support to set up payment processing.');
+                        return;
+                    }
+                    throw new Error(data.message || 'Failed to start onboarding');
+                }
+                
+                if (data.authUrl) {
+                    // Redirect to Stripe OAuth
+                    window.location.href = data.authUrl;
+                } else {
+                    throw new Error('No authorization URL received');
+                }
             } catch (e) {
+                console.error('Stripe onboarding error:', e);
                 alert(`Unable to start Stripe onboarding: ${e.message}`);
+                
+                // Reset button state
+                const connectBtn = document.querySelector('#stripe-connect-btn');
+                if (connectBtn) {
+                    connectBtn.innerHTML = '<i class="fab fa-stripe"></i> Connect with Stripe';
+                    connectBtn.disabled = false;
+                }
             }
         }
 
@@ -5540,7 +5573,32 @@
             try {
                 const resp = await fetch(`${API_BASE_URL}/payments/connect/status/${vendorProfileId}`);
                 const data = await resp.json();
-                const connected = !!(data && data.connected && data.charges_enabled);
+                
+                if (!resp.ok) {
+                    console.warn('Stripe status check failed:', data.message);
+                    return false;
+                }
+
+                // Check if Stripe Connect is configured
+                if (data.requiresSetup) {
+                    if (showBannerIfDisconnected) {
+                        const banner = ensureStripeBannerContainer();
+                        banner.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <i class="fas fa-exclamation-triangle" style="color:#d97706;"></i>
+                                <div style="flex:1;">
+                                    <div style="font-weight:600; color:#92400e;">Payment Processing Not Available</div>
+                                    <div style="font-size: 0.925rem; color:#b45309;">Stripe Connect is not configured on this server. Please contact support to enable payment processing.</div>
+                                </div>
+                            </div>
+                        `;
+                        banner.style.display = 'block';
+                    }
+                    return false;
+                }
+
+                const connected = !!(data && data.connected && data.chargesEnabled);
+                
                 if (!connected && showBannerIfDisconnected) {
                     const banner = ensureStripeBannerContainer();
                     banner.innerHTML = `
@@ -5548,7 +5606,7 @@
                             <i class="fas fa-exclamation-circle" style="color:#b45309;"></i>
                             <div style="flex:1;">
                                 <div style="font-weight:600; color:#92400e;">Connect your account to receive payouts</div>
-                                <div style="font-size: 0.925rem; color:#b45309;">To accept payments for approved bookings, please complete Stripe Express onboarding. This enables payouts to your bank and automatically handles our 10% platform fee.</div>
+                                <div style="font-size: 0.925rem; color:#b45309;">To accept payments for approved bookings, please complete Stripe Express onboarding. This enables payouts to your bank and automatically handles our 8% platform fee.</div>
                             </div>
                             <button id="stripe-connect-btn" class="btn btn-primary" style="white-space:nowrap;">
                                 <i class="fab fa-stripe"></i> Connect with Stripe
@@ -5560,11 +5618,210 @@
                     if (btn) {
                         btn.onclick = () => startStripeOnboarding(vendorProfileId);
                     }
+                } else if (connected && showBannerIfDisconnected) {
+                    // Hide banner if connected
+                    const banner = document.getElementById('stripe-connect-banner');
+                    if (banner) {
+                        banner.style.display = 'none';
+                    }
                 }
+                
                 return connected;
             } catch (e) {
                 console.warn('Stripe status check failed:', e);
                 return false;
+            }
+        }
+
+        // Access Stripe Dashboard for vendors
+        async function accessStripeDashboard(vendorProfileId) {
+            try {
+                const resp = await fetch(`${API_BASE_URL}/payments/connect/dashboard/${vendorProfileId}`);
+                const data = await resp.json();
+                
+                if (!resp.ok || !data.success) {
+                    throw new Error(data.message || 'Failed to access dashboard');
+                }
+                
+                if (data.dashboardUrl) {
+                    // Open dashboard in new tab
+                    window.open(data.dashboardUrl, '_blank');
+                } else {
+                    throw new Error('No dashboard URL received');
+                }
+            } catch (e) {
+                console.error('Dashboard access failed:', e);
+                alert(`Unable to access Stripe dashboard: ${e.message}`);
+            }
+        }
+
+        // Process refund for a booking
+        async function processRefund(chargeId, amount, reason) {
+            try {
+                const resp = await fetch(`${API_BASE_URL}/payments/refund/${chargeId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount, reason })
+                });
+                
+                const data = await resp.json();
+                if (!resp.ok || !data.success) {
+                    throw new Error(data.message || 'Failed to process refund');
+                }
+                
+                alert(`Refund processed successfully. Amount: $${data.amount}`);
+                return data;
+            } catch (e) {
+                console.error('Refund processing failed:', e);
+                alert(`Refund failed: ${e.message}`);
+                throw e;
+            }
+        }
+
+        // Enhanced vendor Stripe setup display
+        function renderVendorStripeSetup(vendorProfileId, container) {
+            container.innerHTML = `
+                <div class="stripe-setup-card" style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; background: white;">
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+                        <div style="width: 48px; height: 48px; background: #635bff; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fab fa-stripe" style="color: white; font-size: 24px;"></i>
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 20px; font-weight: 600; color: #1f2937;">Stripe Connect</h3>
+                            <p style="margin: 4px 0 0 0; font-size: 14px; color: #6b7280;">Secure payment processing with automatic fee handling</p>
+                        </div>
+                    </div>
+                    
+                    <div id="stripe-status-display-${vendorProfileId}">
+                        <div class="loading-spinner" style="text-align: center; padding: 20px;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #6b7280;"></i>
+                            <p style="margin: 8px 0 0 0; color: #6b7280;">Checking connection status...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Check and display Stripe status
+            checkAndDisplayStripeStatus(vendorProfileId);
+        }
+
+        async function checkAndDisplayStripeStatus(vendorProfileId) {
+            const statusDisplay = document.getElementById(`stripe-status-display-${vendorProfileId}`);
+            if (!statusDisplay) return;
+
+            try {
+                const resp = await fetch(`${API_BASE_URL}/payments/connect/status/${vendorProfileId}`);
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    throw new Error(data.message || 'Failed to check status');
+                }
+
+                if (data.requiresSetup) {
+                    statusDisplay.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px;">
+                            <i class="fas fa-exclamation-triangle" style="color: #d97706;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #92400e;">Payment Processing Not Available</div>
+                                <div style="font-size: 14px; color: #b45309;">Stripe Connect is not configured. Contact support to enable payments.</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (data.connected && data.chargesEnabled) {
+                    statusDisplay.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #d1fae5; border: 1px solid #10b981; border-radius: 8px;">
+                            <i class="fas fa-check-circle" style="color: #059669;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #065f46;">Connected & Ready</div>
+                                <div style="font-size: 14px; color: #047857;">Your Stripe account is connected and ready to receive payments.</div>
+                                ${data.payoutsEnabled ? '<div style="font-size: 12px; color: #047857; margin-top: 4px;"><i class="fas fa-check"></i> Payouts enabled</div>' : ''}
+                            </div>
+                            <button onclick="accessStripeDashboard(${vendorProfileId})" class="btn btn-outline" style="white-space: nowrap;">
+                                <i class="fas fa-external-link-alt"></i> Dashboard
+                            </button>
+                        </div>
+                        <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 14px; color: #64748b;">
+                            <div><strong>Account ID:</strong> ${data.accountId}</div>
+                            <div><strong>Country:</strong> ${data.country || 'Not specified'}</div>
+                            <div><strong>Platform Fee:</strong> 8% per transaction</div>
+                        </div>
+                    `;
+                } else if (data.connected && !data.chargesEnabled) {
+                    statusDisplay.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px;">
+                            <i class="fas fa-clock" style="color: #d97706;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #92400e;">Setup In Progress</div>
+                                <div style="font-size: 14px; color: #b45309;">Complete your Stripe onboarding to start receiving payments.</div>
+                            </div>
+                            <button onclick="refreshStripeOnboarding(${vendorProfileId})" class="btn btn-primary">
+                                <i class="fas fa-arrow-right"></i> Continue Setup
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    statusDisplay.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #fee2e2; border: 1px solid #ef4444; border-radius: 8px;">
+                            <i class="fas fa-times-circle" style="color: #dc2626;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #991b1b;">Not Connected</div>
+                                <div style="font-size: 14px; color: #b91c1c;">Connect your Stripe account to receive payments. We handle the 8% platform fee automatically.</div>
+                            </div>
+                            <button onclick="startStripeOnboarding(${vendorProfileId})" class="btn btn-primary">
+                                <i class="fab fa-stripe"></i> Connect with Stripe
+                            </button>
+                        </div>
+                        <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 14px; color: #64748b;">
+                            <div style="margin-bottom: 8px;"><strong>Benefits of connecting:</strong></div>
+                            <ul style="margin: 0; padding-left: 20px;">
+                                <li>Secure payment processing</li>
+                                <li>Automatic platform fee handling (8%)</li>
+                                <li>Direct deposits to your bank account</li>
+                                <li>Comprehensive transaction reporting</li>
+                            </ul>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Error checking Stripe status:', e);
+                statusDisplay.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #fee2e2; border: 1px solid #ef4444; border-radius: 8px;">
+                        <i class="fas fa-exclamation-triangle" style="color: #dc2626;"></i>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #991b1b;">Connection Error</div>
+                            <div style="font-size: 14px; color: #b91c1c;">Unable to check Stripe connection status. Please try again later.</div>
+                        </div>
+                        <button onclick="checkAndDisplayStripeStatus(${vendorProfileId})" class="btn btn-outline">
+                            <i class="fas fa-refresh"></i> Retry
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        async function refreshStripeOnboarding(vendorProfileId) {
+            try {
+                const resp = await fetch(`${API_BASE_URL}/payments/connect/refresh-onboarding/${vendorProfileId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await resp.json();
+                if (!resp.ok || !data.success) {
+                    throw new Error(data.message || 'Failed to refresh onboarding');
+                }
+                
+                if (data.onboardingUrl) {
+                    window.location.href = data.onboardingUrl;
+                } else {
+                    throw new Error('No onboarding URL received');
+                }
+            } catch (e) {
+                console.error('Refresh onboarding failed:', e);
+                alert(`Unable to refresh onboarding: ${e.message}`);
             }
         }
 
@@ -6048,41 +6305,56 @@
             }
         }
         
-        // Payment initiation function (Stripe Checkout via Connect)
-        async function initiatePayment(bookingId, amount) {
+        // Payment initiation function (Stripe Destination Charges via Connect)
+        async function initiatePayment(bookingId, amount, vendorProfileId) {
             const prevTextBtns = Array.from(document.querySelectorAll(`button[onclick*="initiatePayment('${bookingId}'"]`));
-            prevTextBtns.forEach(b => { b.dataset.prev = b.innerText; b.innerText = 'Redirecting...'; b.disabled = true; });
+            prevTextBtns.forEach(b => { b.dataset.prev = b.innerText; b.innerText = 'Processing...'; b.disabled = true; });
+            
             try {
                 // Ensure vendor is connected before creating checkout session
-                try {
-                    const vendorProfileId = await getVendorProfileId();
-                    const connected = await checkVendorStripeStatus(vendorProfileId, true);
+                if (vendorProfileId) {
+                    const connected = await checkVendorStripeStatus(vendorProfileId, false);
                     if (!connected) {
-                        alert('Your Stripe account is not connected yet. Please complete onboarding to accept payments.');
+                        alert('The vendor\'s Stripe account is not connected. Please contact the vendor to complete their payment setup.');
                         prevTextBtns.forEach(b => { b.innerText = b.dataset.prev || 'Pay Now'; b.disabled = false; });
                         return;
                     }
-                } catch (e) {
-                    console.warn('Skipping pre-check due to error:', e);
                 }
 
-                const response = await fetch(`${API_BASE_URL}/payments/checkout`, {
+                // Create checkout session with destination charges
+                const resp = await fetch(`${API_BASE_URL}/payments/checkout-session`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ bookingId })
+                    body: JSON.stringify({ 
+                        bookingId, 
+                        vendorProfileId,
+                        amount,
+                        description: `Booking Payment #${bookingId}`,
+                        successUrl: `${window.location.origin}/booking-success?booking_id=${bookingId}`,
+                        cancelUrl: `${window.location.origin}/booking-cancelled?booking_id=${bookingId}`
+                    })
                 });
-                const data = await response.json();
-                if (!response.ok || !data.success) {
+                
+                const data = await resp.json();
+                if (!resp.ok || !data.success) {
                     throw new Error(data.message || 'Failed to create checkout session');
                 }
+                
                 if (data.url) {
-                    window.location.href = data.url; // Redirect to Stripe Checkout
+                    // Redirect to Stripe Checkout
+                    window.location.href = data.url;
+                    return;
+                } else if (data.sessionId) {
+                    // Alternative: use Stripe.js to redirect
+                    const stripe = Stripe(window.STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder');
+                    await stripe.redirectToCheckout({ sessionId: data.sessionId });
                     return;
                 }
-                throw new Error('Checkout URL missing');
-            } catch (err) {
-                console.error('initiatePayment error:', err);
-                alert(`Failed to start payment: ${err.message}`);
+                
+                throw new Error('No checkout URL or session ID received');
+            } catch (e) {
+                console.error('Payment initiation failed:', e);
+                alert(`Payment failed: ${e.message}`);
                 prevTextBtns.forEach(b => { b.innerText = b.dataset.prev || 'Pay Now'; b.disabled = false; });
             }
         }
