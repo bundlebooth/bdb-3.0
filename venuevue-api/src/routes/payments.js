@@ -401,12 +401,31 @@ router.post('/checkout', async (req, res) => {
   }
 });
 
+// Helper function to get vendor profile ID from booking
+async function getVendorProfileIdFromBooking(bookingId) {
+  try {
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('BookingID', sql.Int, bookingId);
+    
+    const result = await request.query(`
+      SELECT VendorProfileID 
+      FROM Bookings 
+      WHERE BookingID = @BookingID
+    `);
+    
+    return result.recordset.length > 0 ? result.recordset[0].VendorProfileID : null;
+  } catch (error) {
+    console.error('Error fetching vendor profile ID from booking:', error);
+    return null;
+  }
+}
+
 // 7. CREATE CHECKOUT SESSION (Alternative hosted checkout)
 router.post('/checkout-session', async (req, res) => {
   try {
     const { 
       bookingId, 
-      vendorProfileId, 
       amount, 
       currency = 'usd',
       description,
@@ -418,6 +437,16 @@ router.post('/checkout-session', async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Payment processing is not available'
+      });
+    }
+
+    // Get vendor profile ID from the booking record
+    const vendorProfileId = await getVendorProfileIdFromBooking(bookingId);
+    
+    if (!vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Booking not found or invalid'
       });
     }
 
