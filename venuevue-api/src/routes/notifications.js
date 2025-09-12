@@ -58,8 +58,12 @@ router.get('/user/:userId', async (req, res) => {
     
     request.input('UserID', sql.Int, userId);
     
+    if (limit) {
+      request.input('Limit', sql.Int, parseInt(limit));
+    }
+    
     let query = `
-      SELECT 
+      SELECT ${limit ? 'TOP (@Limit)' : ''}
         NotificationID,
         UserID,
         Title,
@@ -80,11 +84,6 @@ router.get('/user/:userId', async (req, res) => {
     }
     
     query += ' ORDER BY CreatedAt DESC';
-    
-    if (limit) {
-      request.input('Limit', sql.Int, parseInt(limit));
-      query = `SELECT TOP (@Limit) * FROM (${query}) AS SubQuery`;
-    }
 
     const result = await request.query(query);
     
