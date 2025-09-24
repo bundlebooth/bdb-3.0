@@ -629,7 +629,6 @@ router.post('/refund/:chargeId', async (req, res) => {
       amount: refund.amount / 100,
       status: refund.status
     });
-
   } catch (error) {
     console.error('Refund processing error:', error);
     res.status(500).json({
@@ -637,6 +636,61 @@ router.post('/refund/:chargeId', async (req, res) => {
       message: 'Refund processing failed',
       error: error.message
     });
+  }
+});
+
+// 9a. VERIFY CHECKOUT SESSION (Fallback if webhook is delayed)
+router.get('/verify-session', async (req, res) => {
+  try {
+    const sessionId = req.query.session_id || req.query.sessionId;
+    if (!sessionId) {
+      return res.status(400).json({ success: false, message: 'Missing session_id' });
+    }
+
+    if (!isStripeConfigured()) {
+      return res.status(400).json({ success: false, message: 'Stripe is not configured' });
+    }
+
+    // Retrieve the Checkout Session and associated PaymentIntent
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const paymentStatus = session?.payment_status || session?.status; // 'paid' for modern sessions
+    const paymentIntentId = session && session.payment_intent ? (typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent.id) : null;
+
+    if (!paymentIntentId) {
+      return res.status(400).json({ success: false, message: 'No payment_intent on session' });
+    }
+
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const bookingId = pi?.metadata?.booking_id || null;
+
+    if (!bookingId) {
+      return res.status(404).json({ success: false, message: 'Booking not found in PaymentIntent metadata' });
+    }
+
+    if (paymentStatus && paymentStatus !== 'paid' && paymentStatus !== 'complete' && paymentStatus !== 'completed' && pi?.status !== 'succeeded') {
+      return res.status(400).json({ success: false, message: `Session not paid (status: ${paymentStatus || pi?.status})` });
+    }
+
+    // Idempotent update of the booking as paid
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('BookingID', sql.Int, bookingId);
+    request.input('Status', sql.NVarChar(20), 'confirmed');
+    request.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId);
+    await request.query(`
+      UPDATE Bookings
+      SET 
+        Status = @Status,
+        FullAmountPaid = 1,
+        StripePaymentIntentID = ISNULL(@StripePaymentIntentID, StripePaymentIntentID),
+        UpdatedAt = GETDATE()
+      WHERE BookingID = @BookingID
+    `);
+
+    res.json({ success: true, bookingId, paymentIntentId });
+  } catch (error) {
+    console.error('Verify session error:', error);
+    res.status(500).json({ success: false, message: 'Failed to verify session', error: error.message });
   }
 });
 
@@ -673,6 +727,28 @@ const webhook = async (req, res) => {
               SET Status = @Status, FullAmountPaid = 1, StripePaymentIntentID = @StripePaymentIntentID, UpdatedAt = GETDATE()
               WHERE BookingID = @BookingID
             `);
+
+            // Also update related booking request if exists (most recent for this user/vendor)
+            const bookingInfo = await pool.request()
+              .input('BookingID', sql.Int, bookingId)
+              .query('SELECT UserID, VendorProfileID FROM Bookings WHERE BookingID = @BookingID');
+            if (bookingInfo.recordset.length > 0) {
+              const userId = bookingInfo.recordset[0].UserID;
+              const vendorProfileId = bookingInfo.recordset[0].VendorProfileID;
+              await pool.request()
+                .input('UserID', sql.Int, userId)
+                .input('VendorProfileID', sql.Int, vendorProfileId)
+                .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntent.id)
+                .query(`
+                  UPDATE BookingRequests
+                  SET Status = 'confirmed', ConfirmedAt = GETDATE(), PaymentIntentID = @StripePaymentIntentID
+                  WHERE RequestID = (
+                    SELECT TOP 1 RequestID FROM BookingRequests
+                    WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+                    ORDER BY CreatedAt DESC
+                  )
+                `);
+            }
           }
         } catch (piErr) {
           console.error('Error handling payment_intent.succeeded:', piErr);
@@ -698,6 +774,28 @@ const webhook = async (req, res) => {
                 SET Status = @Status, FullAmountPaid = 1, StripePaymentIntentID = @StripePaymentIntentID, UpdatedAt = GETDATE()
                 WHERE BookingID = @BookingID
               `);
+
+              // Also update related booking request if exists (most recent for this user/vendor)
+              const bookingInfo = await pool.request()
+                .input('BookingID', sql.Int, bookingId)
+                .query('SELECT UserID, VendorProfileID FROM Bookings WHERE BookingID = @BookingID');
+              if (bookingInfo.recordset.length > 0) {
+                const userId = bookingInfo.recordset[0].UserID;
+                const vendorProfileId = bookingInfo.recordset[0].VendorProfileID;
+                await pool.request()
+                  .input('UserID', sql.Int, userId)
+                  .input('VendorProfileID', sql.Int, vendorProfileId)
+                  .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
+                  .query(`
+                    UPDATE BookingRequests
+                    SET Status = 'confirmed', ConfirmedAt = GETDATE(), PaymentIntentID = @StripePaymentIntentID
+                    WHERE RequestID = (
+                      SELECT TOP 1 RequestID FROM BookingRequests
+                      WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+                      ORDER BY CreatedAt DESC
+                    )
+                  `);
+              }
             }
           }
         } catch (csErr) {
@@ -733,6 +831,28 @@ const webhook = async (req, res) => {
               SET Status = @Status, FullAmountPaid = 1, StripePaymentIntentID = ISNULL(@StripePaymentIntentID, StripePaymentIntentID), UpdatedAt = GETDATE()
               WHERE BookingID = @BookingID
             `);
+
+            // Also update related booking request if exists (most recent for this user/vendor)
+            const bookingInfo = await pool.request()
+              .input('BookingID', sql.Int, bookingIdFromCharge)
+              .query('SELECT UserID, VendorProfileID FROM Bookings WHERE BookingID = @BookingID');
+            if (bookingInfo.recordset.length > 0) {
+              const userId = bookingInfo.recordset[0].UserID;
+              const vendorProfileId = bookingInfo.recordset[0].VendorProfileID;
+              await pool.request()
+                .input('UserID', sql.Int, userId)
+                .input('VendorProfileID', sql.Int, vendorProfileId)
+                .input('StripePaymentIntentID', sql.NVarChar(100), charge.payment_intent || null)
+                .query(`
+                  UPDATE BookingRequests
+                  SET Status = 'confirmed', ConfirmedAt = GETDATE(), PaymentIntentID = @StripePaymentIntentID
+                  WHERE RequestID = (
+                    SELECT TOP 1 RequestID FROM BookingRequests
+                    WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+                    ORDER BY CreatedAt DESC
+                  )
+                `);
+            }
           }
         } catch (chErr) {
           console.error('Error updating booking on charge.succeeded:', chErr);
