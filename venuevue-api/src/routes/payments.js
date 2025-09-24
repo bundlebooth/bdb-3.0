@@ -673,12 +673,21 @@ router.get('/verify-session', async (req, res) => {
     }
 
     const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
-    const bookingId = pi?.metadata?.booking_id || null;
+    let bookingId = pi?.metadata?.booking_id || null;
 
     console.log('[VerifySession] PI status:', pi?.status, 'metadata.booking_id:', bookingId);
 
+    // Fallback: use booking_id passed in success URL if metadata is missing (older sessions)
     if (!bookingId) {
-      return res.status(404).json({ success: false, message: 'Booking not found in PaymentIntent metadata' });
+      const qId = parseInt(req.query.booking_id, 10);
+      if (Number.isInteger(qId) && qId > 0) {
+        console.warn('[VerifySession] Falling back to booking_id from query param:', qId);
+        bookingId = qId;
+      }
+    }
+
+    if (!bookingId) {
+      return res.status(404).json({ success: false, message: 'Booking not found in PaymentIntent metadata or query' });
     }
 
     if (paymentStatus && paymentStatus !== 'paid' && paymentStatus !== 'complete' && paymentStatus !== 'completed' && pi?.status !== 'succeeded') {
