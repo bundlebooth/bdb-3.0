@@ -52,9 +52,13 @@ function toAbsoluteUrl(pathOrUrl, base = DEFAULT_FRONTEND_URL) {
 
 function getRequestBaseUrl(req) {
   try {
-    const origin = req.headers.origin || req.get && req.get('Origin');
+    // Prefer a configured stable frontend URL to avoid deploy-preview subdomain issues
+    const configured = process.env.FRONTEND_URL;
+    if (configured && isValidHttpUrl(configured)) return configured;
+
+    const origin = req.headers.origin || (req.get && req.get('Origin'));
     if (origin && isValidHttpUrl(origin)) return origin;
-    const referer = req.headers.referer || req.get && req.get('Referer');
+    const referer = req.headers.referer || (req.get && req.get('Referer'));
     if (referer) {
       const u = new URL(referer);
       if (u.protocol === 'http:' || u.protocol === 'https:') return u.origin;
@@ -655,6 +659,10 @@ router.get('/verify-session', async (req, res) => {
     const sessionId = req.query.session_id || req.query.sessionId;
     if (!sessionId) {
       return res.status(400).json({ success: false, message: 'Missing session_id' });
+    }
+
+    if (String(sessionId).includes('{CHECKOUT_SESSION_ID}')) {
+      return res.status(400).json({ success: false, message: 'Invalid session_id placeholder. This page must be opened via Stripe redirect, not directly.' });
     }
 
     if (!hasStripeSecret()) {
