@@ -13,6 +13,75 @@ function isStripeConfigured() {
          !process.env.STRIPE_PUBLISHABLE_KEY.includes('placeholder');
 }
 
+// URL helpers for Checkout Session redirects
+const DEFAULT_FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
+
+function isValidHttpUrl(urlStr) {
+  try {
+    const u = new URL(urlStr);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch (e) {
+    return false;
+  }
+}
+
+function toAbsoluteUrl(pathOrUrl, base = DEFAULT_FRONTEND_URL) {
+  if (!pathOrUrl) return base;
+  if (isValidHttpUrl(pathOrUrl)) return pathOrUrl;
+  try {
+    // Treat anything else as a path relative to FRONTEND_URL
+    if (String(pathOrUrl).startsWith('/')) {
+      return new URL(pathOrUrl, base).toString();
+    }
+  } catch (e) {
+    // fall through
+  }
+  // Fallback to base
+  return base;
+}
+
+function getRequestBaseUrl(req) {
+  try {
+    const origin = req.headers.origin || req.get && req.get('Origin');
+    if (origin && isValidHttpUrl(origin)) return origin;
+    const referer = req.headers.referer || req.get && req.get('Referer');
+    if (referer) {
+      const u = new URL(referer);
+      if (u.protocol === 'http:' || u.protocol === 'https:') return u.origin;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return DEFAULT_FRONTEND_URL;
+}
+
+function resolveToHttpUrl(inputUrl, fallbackPathOrUrl, req) {
+  const base = getRequestBaseUrl(req);
+  const fallbackAbs = isValidHttpUrl(fallbackPathOrUrl)
+    ? fallbackPathOrUrl
+    : toAbsoluteUrl(fallbackPathOrUrl, base);
+
+  if (isValidHttpUrl(inputUrl)) return inputUrl;
+  // If relative path, resolve against request base or FRONTEND_URL
+  if (inputUrl && String(inputUrl).startsWith('/')) {
+    return toAbsoluteUrl(inputUrl, base);
+  }
+  // Any other scheme (e.g., file://) or invalid -> fallback
+  return fallbackAbs;
+}
+
+function ensureSessionIdParam(urlStr) {
+  try {
+    const u = new URL(urlStr);
+    if (!u.searchParams.has('session_id')) {
+      u.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
+    }
+    return u.toString();
+  } catch (e) {
+    return urlStr;
+  }
+}
+
 // Helper function to get vendor's Stripe Connect account ID
 async function getVendorStripeAccountId(vendorProfileId) {
   try {
@@ -463,6 +532,26 @@ router.post('/checkout-session', async (req, res) => {
     const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
     const platformFee = Math.round(Math.round(amount * 100) * platformFeePercent);
 
+    // Resolve and sanitize redirect URLs
+    let successRedirect = resolveToHttpUrl(successUrl, '/booking-success', req);
+    successRedirect = ensureSessionIdParam(successRedirect);
+    let cancelRedirect = resolveToHttpUrl(cancelUrl, '/booking-cancelled', req);
+
+    // Debug logging (safe: no card details)
+    const baseUrl = getRequestBaseUrl(req);
+    console.log('[CheckoutSession] Creating with', {
+      bookingId,
+      vendorProfileId,
+      vendorStripeAccountId,
+      amount,
+      amountCents: Math.round(amount * 100),
+      currency,
+      platformFee,
+      baseUrl,
+      successRedirect,
+      cancelRedirect
+    });
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{
@@ -476,8 +565,8 @@ router.post('/checkout-session', async (req, res) => {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: successUrl || `${process.env.FRONTEND_URL}/booking-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${process.env.FRONTEND_URL}/booking-cancelled`,
+      success_url: successRedirect,
+      cancel_url: cancelRedirect,
       payment_intent_data: {
         application_fee_amount: platformFee,
         transfer_data: {
@@ -489,6 +578,9 @@ router.post('/checkout-session', async (req, res) => {
         }
       }
     });
+
+    // Debug logging (result)
+    console.log('[CheckoutSession] Created', { sessionId: session.id, url: session.url });
 
     res.json({
       success: true,
