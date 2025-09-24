@@ -13,6 +13,16 @@ function isStripeConfigured() {
          !process.env.STRIPE_PUBLISHABLE_KEY.includes('placeholder');
 }
 
+// Minimal check used for server-side operations that only require the secret key
+function hasStripeSecret() {
+  try {
+    const sk = process.env.STRIPE_SECRET_KEY || '';
+    return !!sk && !sk.includes('placeholder');
+  } catch (e) {
+    return false;
+  }
+}
+
 // URL helpers for Checkout Session redirects
 const DEFAULT_FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:8080';
 
@@ -647,8 +657,8 @@ router.get('/verify-session', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Missing session_id' });
     }
 
-    if (!isStripeConfigured()) {
-      return res.status(400).json({ success: false, message: 'Stripe is not configured' });
+    if (!hasStripeSecret()) {
+      return res.status(400).json({ success: false, message: 'Stripe secret key is not configured on the API' });
     }
 
     // Retrieve the Checkout Session and associated PaymentIntent
@@ -656,12 +666,16 @@ router.get('/verify-session', async (req, res) => {
     const paymentStatus = session?.payment_status || session?.status; // 'paid' for modern sessions
     const paymentIntentId = session && session.payment_intent ? (typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent.id) : null;
 
+    console.log('[VerifySession] session', sessionId, 'paymentStatus:', paymentStatus, 'payment_intent:', paymentIntentId);
+
     if (!paymentIntentId) {
       return res.status(400).json({ success: false, message: 'No payment_intent on session' });
     }
 
     const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
     const bookingId = pi?.metadata?.booking_id || null;
+
+    console.log('[VerifySession] PI status:', pi?.status, 'metadata.booking_id:', bookingId);
 
     if (!bookingId) {
       return res.status(404).json({ success: false, message: 'Booking not found in PaymentIntent metadata' });
