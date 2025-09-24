@@ -687,6 +687,28 @@ router.get('/verify-session', async (req, res) => {
       WHERE BookingID = @BookingID
     `);
 
+    // Also update related booking request if exists (most recent for this user/vendor)
+    const bookingInfo = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .query('SELECT UserID, VendorProfileID FROM Bookings WHERE BookingID = @BookingID');
+    if (bookingInfo.recordset.length > 0) {
+      const userId = bookingInfo.recordset[0].UserID;
+      const vendorProfileId = bookingInfo.recordset[0].VendorProfileID;
+      await pool.request()
+        .input('UserID', sql.Int, userId)
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
+        .query(`
+          UPDATE BookingRequests
+          SET Status = 'confirmed', ConfirmedAt = GETDATE(), PaymentIntentID = @StripePaymentIntentID
+          WHERE RequestID = (
+            SELECT TOP 1 RequestID FROM BookingRequests
+            WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+            ORDER BY CreatedAt DESC
+          )
+        `);
+    }
+
     res.json({ success: true, bookingId, paymentIntentId });
   } catch (error) {
     console.error('Verify session error:', error);
