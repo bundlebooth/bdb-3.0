@@ -115,20 +115,79 @@ router.post('/:id/payment', async (req, res) => {
 // Create a Stripe Payment Intent (client-side)
 router.post('/create-payment-intent', async (req, res) => {
   try {
-    const { amount, currency = 'usd' } = req.body;
+    const { amount, currency = 'usd', vendorProfileId, bookingId, description } = req.body;
 
     if (!amount) {
       return res.status(400).json({ success: false, message: 'Amount is required' });
     }
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100),
-      currency: currency,
-      metadata: { integration_check: 'accept_a_payment' },
-    });
+    // Resolve vendor profile ID from request or booking
+    let resolvedVendorProfileId = vendorProfileId || null;
+    if (!resolvedVendorProfileId && bookingId) {
+      try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+          .input('BookingID', sql.Int, bookingId)
+          .query('SELECT VendorProfileID FROM Bookings WHERE BookingID = @BookingID');
+        if (result.recordset.length > 0) {
+          resolvedVendorProfileId = result.recordset[0].VendorProfileID;
+        }
+      } catch (dbErr) {
+        console.warn('Could not resolve vendor from booking:', dbErr.message);
+      }
+    }
+
+    let paymentIntent;
+    if (resolvedVendorProfileId) {
+      // Fetch vendor's Stripe Connect account ID
+      const pool = await poolPromise;
+      const accRes = await pool.request()
+        .input('VendorProfileID', sql.Int, resolvedVendorProfileId)
+        .query('SELECT StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+      const vendorStripeAccountId = accRes.recordset.length > 0 ? accRes.recordset[0].StripeAccountID : null;
+
+      if (!vendorStripeAccountId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Vendor is not connected to Stripe'
+        });
+      }
+
+      // Calculate platform fee (default 5%) in cents
+      const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+      const platformFee = Math.round(Math.round(amount * 100) * platformFeePercent);
+
+      paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100),
+        currency: currency,
+        description: description || (bookingId ? `Booking Payment #${bookingId}` : undefined),
+        application_fee_amount: platformFee,
+        transfer_data: {
+          destination: vendorStripeAccountId,
+        },
+        metadata: {
+          booking_id: bookingId || null,
+          vendor_profile_id: resolvedVendorProfileId,
+          platform_fee_percent: (platformFeePercent * 100).toString()
+        },
+      });
+    } else {
+      // Fallback: Create standard PaymentIntent (no platform fee) for compatibility
+      paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100),
+        currency: currency,
+        description: description || (bookingId ? `Booking Payment #${bookingId}` : undefined),
+        metadata: {
+          booking_id: bookingId || null,
+          vendor_profile_id: null
+        },
+      });
+    }
 
     res.json({
       clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+      appliedPlatformFee: paymentIntent.application_fee_amount ? paymentIntent.application_fee_amount / 100 : 0,
     });
   } catch (err) {
     console.error('Stripe payment intent creation error:', err);
