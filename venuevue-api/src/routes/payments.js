@@ -657,22 +657,85 @@ const webhook = async (req, res) => {
   try {
     // Handle the event
     switch (event.type) {
+      case 'payment_intent.succeeded':
+        try {
+          const paymentIntent = event.data.object;
+          const bookingId = paymentIntent?.metadata?.booking_id;
+          console.log(`[Webhook] payment_intent.succeeded for PI ${paymentIntent?.id} booking ${bookingId}`);
+          if (bookingId) {
+            const pool = await poolPromise;
+            const request = new sql.Request(pool);
+            request.input('BookingID', sql.Int, bookingId);
+            request.input('Status', sql.NVarChar(20), 'confirmed');
+            request.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntent.id);
+            await request.query(`
+              UPDATE Bookings 
+              SET Status = @Status, FullAmountPaid = 1, StripePaymentIntentID = @StripePaymentIntentID, UpdatedAt = GETDATE()
+              WHERE BookingID = @BookingID
+            `);
+          }
+        } catch (piErr) {
+          console.error('Error handling payment_intent.succeeded:', piErr);
+        }
+        break;
+
+      case 'checkout.session.completed':
+        try {
+          const session = event.data.object;
+          const paymentIntentId = session.payment_intent;
+          console.log(`[Webhook] checkout.session.completed, PI: ${paymentIntentId}`);
+          if (paymentIntentId) {
+            const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+            const bookingId = pi?.metadata?.booking_id;
+            if (bookingId) {
+              const pool = await poolPromise;
+              const request = new sql.Request(pool);
+              request.input('BookingID', sql.Int, bookingId);
+              request.input('Status', sql.NVarChar(20), 'confirmed');
+              request.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId);
+              await request.query(`
+                UPDATE Bookings 
+                SET Status = @Status, FullAmountPaid = 1, StripePaymentIntentID = @StripePaymentIntentID, UpdatedAt = GETDATE()
+                WHERE BookingID = @BookingID
+              `);
+            }
+          }
+        } catch (csErr) {
+          console.error('Error handling checkout.session.completed:', csErr);
+        }
+        break;
+
       case 'charge.succeeded':
         const charge = event.data.object;
         console.log(`Payment succeeded for charge ${charge.id}`);
         
         // Update booking status to 'confirmed' or 'paid'
-        if (charge.metadata.booking_id) {
-          const pool = await poolPromise;
-          const request = new sql.Request(pool);
-          request.input('BookingID', sql.Int, charge.metadata.booking_id);
-          request.input('Status', sql.NVarChar(20), 'confirmed');
-          
-          await request.query(`
-            UPDATE Bookings 
-            SET Status = @Status, FullAmountPaid = 1, UpdatedAt = GETDATE()
-            WHERE BookingID = @BookingID
-          `);
+        try {
+          let bookingIdFromCharge = charge?.metadata?.booking_id;
+          // Fallback: retrieve PaymentIntent to get metadata when not present on Charge
+          if (!bookingIdFromCharge && charge?.payment_intent) {
+            try {
+              const pi = await stripe.paymentIntents.retrieve(charge.payment_intent);
+              bookingIdFromCharge = pi?.metadata?.booking_id;
+            } catch (retrieveErr) {
+              console.warn('Could not retrieve PaymentIntent for charge metadata:', retrieveErr?.message);
+            }
+          }
+
+          if (bookingIdFromCharge) {
+            const pool = await poolPromise;
+            const request = new sql.Request(pool);
+            request.input('BookingID', sql.Int, bookingIdFromCharge);
+            request.input('Status', sql.NVarChar(20), 'confirmed');
+            request.input('StripePaymentIntentID', sql.NVarChar(100), charge.payment_intent || null);
+            await request.query(`
+              UPDATE Bookings 
+              SET Status = @Status, FullAmountPaid = 1, StripePaymentIntentID = ISNULL(@StripePaymentIntentID, StripePaymentIntentID), UpdatedAt = GETDATE()
+              WHERE BookingID = @BookingID
+            `);
+          }
+        } catch (chErr) {
+          console.error('Error updating booking on charge.succeeded:', chErr);
         }
         break;
 
