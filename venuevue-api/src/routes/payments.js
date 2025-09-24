@@ -348,9 +348,10 @@ router.post('/checkout', async (req, res) => {
       });
     }
 
-    // Calculate platform fee (5-10%, configurable via environment variable)
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8') / 100;
-    const platformFee = Math.round(amount * platformFeePercent);
+    // Calculate platform fee (configurable via environment variable; default 5%)
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    // amount is expected in dollars; convert to cents before applying percent
+    const platformFeeCents = Math.round(Math.round(amount * 100) * platformFeePercent);
 
     // Create destination charge
     const charge = await stripe.charges.create({
@@ -358,7 +359,7 @@ router.post('/checkout', async (req, res) => {
       currency: currency,
       source: paymentMethodId,
       description: description || `Booking payment for booking #${bookingId}`,
-      application_fee_amount: platformFee,
+      application_fee_amount: platformFeeCents,
       destination: {
         account: vendorStripeAccountId,
       },
@@ -377,8 +378,8 @@ router.post('/checkout', async (req, res) => {
       message: 'Payment processed successfully',
       chargeId: charge.id,
       amount: charge.amount / 100,
-      platformFee: platformFee / 100,
-      vendorAmount: (charge.amount - platformFee) / 100
+      platformFee: platformFeeCents / 100,
+      vendorAmount: (charge.amount - platformFeeCents) / 100
     });
 
   } catch (error) {
@@ -459,8 +460,8 @@ router.post('/checkout-session', async (req, res) => {
       });
     }
 
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8') / 100;
-    const platformFee = Math.round(amount * platformFeePercent * 100);
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    const platformFee = Math.round(Math.round(amount * 100) * platformFeePercent);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
