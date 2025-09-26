@@ -2034,6 +2034,31 @@
             color: #6b7280;
         }
 
+        .request-status {
+            text-transform: capitalize;
+            font-weight: 500;
+        }
+
+        .request-status.pending {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .request-status.approved {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .request-status.declined {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .request-status.expired {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
         .booking-actions {
             display: flex;
             align-items: center;
@@ -18155,57 +18180,58 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return;
                 }
                 
-                container.innerHTML = filteredRequests.map(request => `
-                    <div class="request-card ${request.CurrentStatus}">
-                        <div class="request-header">
-                            <div>
-                                <h4>${request.VendorName}</h4>
-                                <div class="request-timer ${request.HoursRemaining && request.HoursRemaining < 6 ? 'urgent' : ''}">
-                                    ${request.HoursRemaining ? `${request.HoursRemaining} hours remaining` : 'Timer expired'}
-                                </div>
-                            </div>
-                            <span class="request-status ${request.CurrentStatus}">${request.CurrentStatus}</span>
+                container.innerHTML = '';
+                filteredRequests.forEach(request => {
+                    const requestItem = document.createElement('div');
+                    requestItem.className = 'booking-item';
+                    
+                    const eventDate = new Date(request.EventDate);
+                    const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
+                    const day = eventDate.getDate();
+                    const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
+                    
+                    let actionButtons = '';
+                    if (request.ConversationID) {
+                        actionButtons += `<button class="btn btn-outline" onclick="openChatForRequest(${request.ConversationID})" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Chat</button>`;
+                    }
+                    if (request.CurrentStatus === 'pending') {
+                        actionButtons += `<button class="btn-decline" onclick="cancelRequest(${request.RequestID})">Cancel</button>`;
+                    }
+                    
+                    requestItem.innerHTML = `
+                        <div class="booking-date-section">
+                            <div class="booking-month">${month}</div>
+                            <div class="booking-day">${day}</div>
+                            <div class="booking-weekday">${weekday}</div>
                         </div>
-                        <div class="request-details">
-                            <div class="request-detail-row">
-                                <span class="request-detail-label">Event Date:</span>
-                                <span class="request-detail-value">${new Date(request.EventDate).toLocaleDateString()}</span>
+                        <div class="booking-info">
+                            <div class="booking-client">
+                                <i class="fas fa-store" style="color: #6b7280; font-size: 12px;"></i>
+                                <span class="booking-client-name">${request.VendorName}</span>
                             </div>
-                            <div class="request-detail-row">
-                                <span class="request-detail-label">Location:</span>
-                                <span class="request-detail-value">${request.EventLocation}</span>
+                            <div class="booking-service-row">
+                                <span class="booking-service">Event Service Request</span>
                             </div>
-                            <div class="request-detail-row">
-                                <span class="request-detail-label">Budget:</span>
-                                <span class="request-detail-value">$${request.Budget?.toLocaleString()}</span>
+                            <div class="booking-time-row">
+                                <i class="fas fa-hourglass-half" style="color: #6b7280; font-size: 12px;"></i>
+                                <span class="booking-time">${request.HoursRemaining ? `${request.HoursRemaining} hours remaining` : 'Timer expired'}</span>
                             </div>
-                            ${request.SpecialRequests ? `
-                                <div class="request-detail-row">
-                                    <span class="request-detail-label">Special Requests:</span>
-                                    <span class="request-detail-value">${request.SpecialRequests}</span>
-                                </div>
-                            ` : ''}
-                            ${request.ResponseMessage ? `
-                                <div class="request-detail-row">
-                                    <span class="request-detail-label">Vendor Response:</span>
-                                    <span class="request-detail-value">${request.ResponseMessage}</span>
-                                </div>
-                            ` : ''}
+                            ${request.Budget ? `<div class="booking-price-row">
+                                <i class="fas fa-dollar-sign" style="color: #6b7280; font-size: 12px;"></i>
+                                <span class="booking-price">$${request.Budget.toLocaleString()}</span>
+                            </div>` : ''}
+                            ${request.EventLocation ? `<div class="booking-location-row">
+                                <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
+                                <span class="booking-location">${request.EventLocation}</span>
+                            </div>` : ''}
                         </div>
-                        <div class="request-actions">
-                            ${request.ConversationID ? `
-                                <button class="btn btn-primary" onclick="openChatForRequest(${request.ConversationID})">
-                                    <i class="fas fa-comments"></i> Chat
-                                </button>
-                            ` : ''}
-                            ${request.CurrentStatus === 'pending' ? `
-                                <button class="btn btn-danger" onclick="cancelRequest(${request.RequestID})">
-                                    <i class="fas fa-times"></i> Cancel
-                                </button>
-                            ` : ''}
+                        <div class="booking-actions">
+                            <span class="request-status ${request.CurrentStatus}" style="margin-right: 12px; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; text-transform: capitalize;">${request.CurrentStatus}</span>
+                            ${actionButtons}
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                    container.appendChild(requestItem);
+                });
             }
             
             async function loadVendorRequests() {
