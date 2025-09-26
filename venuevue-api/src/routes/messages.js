@@ -12,8 +12,8 @@ const handleSocketIO = (io) => {
     socket.on('send-message', async (messageData) => {
       try {
         // Validate message
-        if (!messageData.conversationId || !messageData.content) {
-          throw new Error('Missing required fields');
+        if (!messageData.conversationId || (!messageData.content && !messageData.files)) {
+          throw new Error('Missing required fields - need content or files');
         }
 
         const pool = await poolPromise;
@@ -21,7 +21,8 @@ const handleSocketIO = (io) => {
         
         request.input('ConversationID', sql.Int, messageData.conversationId);
         request.input('SenderID', sql.Int, socket.userId);
-        request.input('Content', sql.NVarChar(sql.MAX), messageData.content);
+        request.input('Content', sql.NVarChar(sql.MAX), messageData.content || '');
+        request.input('FileAttachments', sql.NVarChar(sql.MAX), messageData.files ? JSON.stringify(messageData.files) : null);
         
         const result = await request.execute('sp_SendMessage');
         
@@ -53,7 +54,8 @@ const handleSocketIO = (io) => {
           conversationId: messageData.conversationId,
           senderId: socket.userId,
           senderName: savedMessage.SenderName || 'User',
-          content: messageData.content,
+          content: messageData.content || '',
+          files: messageData.files || null,
           createdAt: new Date().toISOString()
         };
         
@@ -141,8 +143,8 @@ router.get('/conversations/user/:userId', async (req, res) => {
           c.ConversationID,
           c.CreatedAt,
           CASE 
-            WHEN c.UserID = @UserID THEN u.Name 
-            ELSE v.BusinessName 
+            WHEN c.UserID = @UserID THEN v.BusinessName 
+            ELSE u.Name 
           END AS OtherPartyName,
           CASE 
             WHEN c.UserID = @UserID THEN 'vendor'
@@ -316,12 +318,12 @@ router.post('/conversation', async (req, res) => {
 // Send message (HTTP endpoint)
 router.post('/', async (req, res) => {
   try {
-    const { conversationId, senderId, content } = req.body;
+    const { conversationId, senderId, content, files } = req.body;
 
-    if (!conversationId || !senderId || !content) {
+    if (!conversationId || !senderId || (!content && !files)) {
       return res.status(400).json({ 
         success: false,
-        message: 'conversationId, senderId, and content are required' 
+        message: 'conversationId, senderId, and either content or files are required' 
       });
     }
 
@@ -330,7 +332,8 @@ router.post('/', async (req, res) => {
     
     request.input('ConversationID', sql.Int, conversationId);
     request.input('SenderID', sql.Int, senderId);
-    request.input('Content', sql.NVarChar(sql.MAX), content);
+    request.input('Content', sql.NVarChar(sql.MAX), content || '');
+    request.input('FileAttachments', sql.NVarChar(sql.MAX), files ? JSON.stringify(files) : null);
     
     const result = await request.execute('sp_SendMessage');
     
