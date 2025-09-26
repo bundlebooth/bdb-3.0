@@ -60,7 +60,18 @@ async function resolveVendorProfileId(id, pool) {
     throw new Error('Invalid ID format. Must be a positive number.');
   }
 
-  // First, try to get VendorProfileID from UserID
+  // First, try as direct VendorProfileID (prioritize this over UserID lookup)
+  const vendorCheckRequest = new sql.Request(pool);
+  vendorCheckRequest.input('VendorProfileID', sql.Int, idNum);
+  const vendorCheckResult = await vendorCheckRequest.query(`
+    SELECT VendorProfileID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
+  `);
+  
+  if (vendorCheckResult.recordset.length > 0) {
+    return idNum;
+  }
+
+  // If not found as VendorProfileID, try to get VendorProfileID from UserID
   const userCheckRequest = new sql.Request(pool);
   userCheckRequest.input('UserID', sql.Int, idNum);
   const userCheckResult = await userCheckRequest.query(`
@@ -78,17 +89,6 @@ async function resolveVendorProfileId(id, pool) {
     if (user.IsVendor && user.VendorProfileID) {
       return user.VendorProfileID;
     }
-  }
-
-  // If not found by UserID, try as direct VendorProfileID
-  const vendorCheckRequest = new sql.Request(pool);
-  vendorCheckRequest.input('VendorProfileID', sql.Int, idNum);
-  const vendorCheckResult = await vendorCheckRequest.query(`
-    SELECT VendorProfileID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
-  `);
-  
-  if (vendorCheckResult.recordset.length > 0) {
-    return idNum;
   }
 
   return null;
