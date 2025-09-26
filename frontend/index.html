@@ -26211,7 +26211,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     this.socket = window.socket;
                 } else if (typeof io !== 'undefined') {
                     console.log('🔌 Creating new socket for floating chat');
-                    this.socket = io();
+                    // Use the same socket URL configuration as the main app
+                    const socketUrl = SOCKET_BASE_URL || (new URL(API_BASE_URL)).origin;
+                    this.socket = io(socketUrl, {
+                        withCredentials: true,
+                        auth: { token: localStorage.getItem('token') },
+                        transports: ['websocket', 'polling']
+                    });
                     window.socket = this.socket; // Make it globally available
                 }
                 
