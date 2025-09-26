@@ -794,10 +794,20 @@ const webhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  console.log('[Webhook] Received webhook request');
+  console.log('[Webhook] Signature present:', !!sig);
+  console.log('[Webhook] Endpoint secret configured:', !!endpointSecret && !endpointSecret.includes('placeholder'));
+
   let event;
 
   try {
+    if (!endpointSecret || endpointSecret.includes('placeholder')) {
+      console.error('[Webhook] Webhook secret not properly configured');
+      return res.status(400).send('Webhook Error: Webhook secret not configured');
+    }
+    
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    console.log('[Webhook] Event verified successfully:', event.type);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -1011,5 +1021,59 @@ const webhook = async (req, res) => {
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 };
+
+// 10. CHECK BOOKING PAYMENT STATUS
+router.get('/booking/:bookingId/status', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('BookingID', sql.Int, bookingId);
+    
+    const result = await request.query(`
+      SELECT 
+        BookingID,
+        Status,
+        FullAmountPaid,
+        DepositPaid,
+        StripePaymentIntentID,
+        TotalAmount,
+        UpdatedAt
+      FROM Bookings 
+      WHERE BookingID = @BookingID
+    `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
+      });
+    }
+    
+    const booking = result.recordset[0];
+    const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
+    const isDepositPaid = booking.DepositPaid === true || booking.DepositPaid === 1;
+    
+    res.json({
+      success: true,
+      bookingId: booking.BookingID,
+      status: booking.Status,
+      isPaid: isPaid,
+      isDepositPaid: isDepositPaid,
+      paymentIntentId: booking.StripePaymentIntentID,
+      totalAmount: booking.TotalAmount,
+      lastUpdated: booking.UpdatedAt
+    });
+    
+  } catch (error) {
+    console.error('Error checking booking payment status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check payment status',
+      error: error.message
+    });
+  }
+});
 
 module.exports = { router, webhook };
