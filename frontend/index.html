@@ -4126,17 +4126,9 @@
             <button class="btn btn-primary" id="book-now-btn" onclick="openBookingModal()" style="margin-right: 1rem; padding: 0.75rem 1.5rem; font-weight: 600;">
                 <i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>Book Now
             </button>
-            <!-- Test button for floating chat (can be removed in production) -->
-            <button class="btn btn-outline" id="test-chat-btn" onclick="openFloatingChatWidget()" style="margin-right: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem;" title="Test Floating Chat">
-                <i class="fas fa-comment-dots" style="margin-right: 0.5rem;"></i>Chat
-            </button>
             <div class="nav-icon" id="wishlist-btn">
                 <i class="fas fa-heart"></i>
                 <span class="badge" id="favorites-badge">0</span>
-            </div>
-            <div class="nav-icon" id="chat-btn" title="Messages Dashboard">
-                <i class="fas fa-comments"></i>
-                <span class="badge" id="messages-badge">0</span>
             </div>
             <div class="nav-icon" id="notifications-btn">
                 <i class="fas fa-bell"></i>
@@ -26213,10 +26205,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
             
             initializeSocket() {
-                if (typeof io !== 'undefined') {
+                // Use the global socket if available, otherwise create new one
+                if (window.socket) {
+                    console.log('🔌 Using existing global socket for floating chat');
+                    this.socket = window.socket;
+                } else if (typeof io !== 'undefined') {
+                    console.log('🔌 Creating new socket for floating chat');
                     this.socket = io();
-                    
+                    window.socket = this.socket; // Make it globally available
+                }
+                
+                if (this.socket) {
+                    // Set up floating chat specific message handler
                     this.socket.on('new-message', (data) => {
+                        console.log('📨 Floating chat received new message:', data);
                         this.handleNewMessage(data);
                     });
                     
@@ -26319,11 +26321,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
                 
                 const conversationsHTML = this.conversations.map(conv => {
-                    const lastMessage = conv.lastMessage || 'No messages yet';
-                    const timeAgo = conv.lastMessageTime ? this.formatTimeAgo(new Date(conv.lastMessageTime)) : '';
+                    const lastMessage = conv.lastMessage || conv.lastMessageContent || 'No messages yet';
+                    const timeAgo = conv.lastMessageCreatedAt ? this.formatTimeAgo(new Date(conv.lastMessageCreatedAt)) : '';
                     const unreadCount = conv.unreadCount || 0;
-                    const otherParticipant = conv.participants?.find(p => p.id !== parseInt(localStorage.getItem('userId'))) || {};
-                    const displayName = otherParticipant.businessName || otherParticipant.name || 'Unknown';
+                    // Use the OtherPartyName from the API response (same as dashboard)
+                    const displayName = conv.OtherPartyName || conv.userName || 'Unknown User';
                     const initials = this.getInitials(displayName);
                     
                     return `
@@ -26511,6 +26513,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } catch (error) {
                         console.error('❌ Error sending message via REST API:', error);
                     }
+                }
+            }
+            
+            showError(message) {
+                const container = document.getElementById('floating-chat-messages');
+                if (container) {
+                    container.innerHTML = `<div style="text-align: center; color: #dc3545; padding: 2rem;">${message}</div>`;
                 }
             }
             
