@@ -1875,20 +1875,256 @@
             margin-bottom: 1rem;
         }
 
-        .booking-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            margin-bottom: 0.5rem;
+        /* New Booking Interface Styles */
+        .booking-header {
+            margin-bottom: 1.5rem;
         }
-        
+
+        .booking-tabs {
+            display: flex;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 1.5rem;
+        }
+
+        .booking-tab {
+            background: none;
+            border: none;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .booking-tab.active {
+            color: #3b82f6;
+            border-bottom-color: #3b82f6;
+        }
+
+        .booking-tab:hover {
+            color: #3b82f6;
+        }
+
+        .booking-tab-content {
+            display: none;
+        }
+
+        .booking-tab-content.active {
+            display: block;
+        }
+
+        .booking-count {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+
+        .booking-item {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .booking-item:hover {
+            border-color: #d1d5db;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .booking-date-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-width: 60px;
+        }
+
+        .booking-month {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
+            text-transform: capitalize;
+            margin-bottom: 2px;
+        }
+
+        .booking-day {
+            font-size: 20px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .booking-weekday {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .booking-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .booking-time-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 2px;
+        }
+
+        .booking-time {
+            font-size: 14px;
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .booking-client {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 2px;
+        }
+
+        .booking-client-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .booking-service-row {
+            margin-bottom: 2px;
+        }
+
+        .booking-service {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .booking-price-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .booking-price {
+            font-size: 14px;
+            color: #059669;
+            font-weight: 600;
+        }
+
+        .booking-location-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .booking-location {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
         .booking-actions {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+        }
+
+        .btn-accept {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-accept:hover {
+            background: #059669;
+        }
+
+        .btn-decline {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-decline:hover {
+            background: #dc2626;
+        }
+
+        .btn-pay-now {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-pay-now:hover {
+            background: #2563eb;
+        }
+
+        .btn-paid {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: default;
+        }
+
+        .booking-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-confirmed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-declined {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-paid {
+            background: #d1fae5;
+            color: #065f46;
         }
         
         .payment-status {
@@ -4162,12 +4398,33 @@
                         </div>
                         <div id="bookings-section" style="display: none;">
                             <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">All Bookings</h2>
-                                <div id="all-bookings"><p>Loading all bookings...</p></div>
-                            </div>
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Completed Bookings</h2>
-                                <div id="completed-bookings"><p>No completed bookings.</p></div>
+                                <div class="booking-header">
+                                    <h2 class="dashboard-card-title">Booking requests</h2>
+                                </div>
+                                <div class="booking-tabs">
+                                    <button class="booking-tab active" data-tab="inbound">Inbound</button>
+                                    <button class="booking-tab" data-tab="outbound">Outbound</button>
+                                    <button class="booking-tab" data-tab="accepted">Accepted</button>
+                                    <button class="booking-tab" data-tab="declined">Declined</button>
+                                </div>
+                                <div class="booking-content">
+                                    <div id="inbound-bookings" class="booking-tab-content active">
+                                        <div class="booking-count">18 requests</div>
+                                        <div id="all-bookings"><p>Loading all bookings...</p></div>
+                                    </div>
+                                    <div id="outbound-bookings" class="booking-tab-content">
+                                        <div class="booking-count">0 requests</div>
+                                        <div id="outbound-bookings-list"><p>No outbound requests.</p></div>
+                                    </div>
+                                    <div id="accepted-bookings" class="booking-tab-content">
+                                        <div class="booking-count">0 requests</div>
+                                        <div id="completed-bookings"><p>No accepted bookings.</p></div>
+                                    </div>
+                                    <div id="declined-bookings" class="booking-tab-content">
+                                        <div class="booking-count">0 requests</div>
+                                        <div id="declined-bookings-list"><p>No declined bookings.</p></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div id="favorites-section" style="display: none;">
@@ -18240,6 +18497,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         renderRecentFavorites(dashboardData.recentFavorites);
                     } else if (section === 'bookings') {
                         await loadAllUserBookings();
+                        setupBookingTabs();
                     } else if (section === 'requests') {
                         await loadUserRequests();
                         setupRequestFilterTabs();
@@ -18343,11 +18601,36 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
+            function setupBookingTabs() {
+                const tabs = document.querySelectorAll('.booking-tab');
+                const tabContents = document.querySelectorAll('.booking-tab-content');
+                
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        // Remove active class from all tabs and contents
+                        tabs.forEach(t => t.classList.remove('active'));
+                        tabContents.forEach(content => content.classList.remove('active'));
+                        
+                        // Add active class to clicked tab
+                        tab.classList.add('active');
+                        
+                        // Show corresponding content
+                        const tabName = tab.getAttribute('data-tab');
+                        const content = document.getElementById(`${tabName}-bookings`);
+                        if (content) {
+                            content.classList.add('active');
+                        }
+                    });
+                });
+            }
+
             async function loadAllUserBookings() {
-                const activeContainer = document.getElementById('all-bookings');
-                const completedContainer = document.getElementById('completed-bookings');
-                if (activeContainer) activeContainer.innerHTML = '<p>Loading all bookings...</p>';
-                if (completedContainer) completedContainer.innerHTML = '<p>Loading completed bookings...</p>';
+                const inboundContainer = document.getElementById('all-bookings');
+                const acceptedContainer = document.getElementById('completed-bookings');
+                
+                if (inboundContainer) inboundContainer.innerHTML = '<p>Loading bookings...</p>';
+                if (acceptedContainer) acceptedContainer.innerHTML = '<p>Loading accepted bookings...</p>';
+                
                 // Ensure we have a currentUser (rehydrate from storage if needed)
                 if (!currentUser || !currentUser.id) {
                     try {
@@ -18358,40 +18641,102 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } catch (e) { /* no-op */ }
                 }
                 if (!currentUser || !currentUser.id) {
-                    if (activeContainer) activeContainer.innerHTML = '<p>Please log in to view your bookings.</p>';
-                    if (completedContainer) completedContainer.innerHTML = '<p>Please log in to view completed bookings.</p>';
+                    if (inboundContainer) inboundContainer.innerHTML = '<p>Please log in to view your bookings.</p>';
+                    if (acceptedContainer) acceptedContainer.innerHTML = '<p>Please log in to view accepted bookings.</p>';
                     return;
                 }
+                
                 try {
                     const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                     });
                     if (!response.ok) throw new Error('Failed to fetch all bookings');
                     const bookings = await response.json();
-                    // Split into active (not fully paid) and completed (fully paid)
-                    const isPaid = (b) => (b.FullAmountPaid === true || b.FullAmountPaid === 1);
-                    const active = bookings.filter(b => !isPaid(b));
-                    const completed = bookings.filter(b => isPaid(b));
+                    
+                    // Categorize bookings
+                    const pending = bookings.filter(b => b.Status === 'pending');
+                    const confirmed = bookings.filter(b => b.Status === 'confirmed');
+                    const declined = bookings.filter(b => b.Status === 'declined');
+                    const paid = bookings.filter(b => b.FullAmountPaid === true || b.FullAmountPaid === 1);
 
-                    if (activeContainer) {
-                        if (active.length > 0) {
-                            renderBookingsList(active, activeContainer);
+                    // Update counts
+                    const inboundCount = document.querySelector('#inbound-bookings .booking-count');
+                    if (inboundCount) inboundCount.textContent = `${pending.length} requests`;
+                    
+                    const acceptedCount = document.querySelector('#accepted-bookings .booking-count');
+                    if (acceptedCount) acceptedCount.textContent = `${confirmed.length + paid.length} requests`;
+
+                    // Render inbound (pending) bookings
+                    if (inboundContainer) {
+                        if (pending.length > 0) {
+                            renderBookingsList(pending, inboundContainer);
                         } else {
-                            activeContainer.innerHTML = '<p>No active bookings.</p>';
+                            inboundContainer.innerHTML = '<p>No pending bookings.</p>';
                         }
                     }
 
-                    if (completedContainer) {
-                        if (completed.length > 0) {
-                            renderBookingsList(completed, completedContainer);
+                    // Render accepted (confirmed + paid) bookings
+                    if (acceptedContainer) {
+                        const acceptedBookings = [...confirmed, ...paid];
+                        if (acceptedBookings.length > 0) {
+                            renderBookingsList(acceptedBookings, acceptedContainer);
                         } else {
-                            completedContainer.innerHTML = '<p>No completed bookings.</p>';
+                            acceptedContainer.innerHTML = '<p>No accepted bookings.</p>';
                         }
                     }
+                    
                 } catch (error) {
                     console.error('Error loading all user bookings:', error);
-                    if (activeContainer) activeContainer.innerHTML = `<p style="color:var(--accent);">Failed to load all bookings: ${error.message}</p>`;
-                    if (completedContainer) completedContainer.innerHTML = `<p style=\"color:var(--accent);\">Failed to load completed bookings: ${error.message}</p>`;
+                    if (inboundContainer) inboundContainer.innerHTML = `<p style="color:var(--accent);">Failed to load bookings: ${error.message}</p>`;
+                    if (acceptedContainer) acceptedContainer.innerHTML = `<p style="color:var(--accent);">Failed to load accepted bookings: ${error.message}</p>`;
+                }
+            }
+
+            async function acceptBooking(bookingId) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${bookingId}/approve`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            vendorProfileId: currentUser.vendorProfileId || currentUser.id,
+                            responseMessage: 'Your booking request has been approved!'
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to accept booking');
+                    
+                    showSuccess('Booking accepted successfully!');
+                    await loadAllUserBookings(); // Refresh the bookings list
+                } catch (error) {
+                    console.error('Error accepting booking:', error);
+                    showError('Failed to accept booking: ' + error.message);
+                }
+            }
+
+            async function declineBooking(bookingId) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${bookingId}/decline`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            vendorProfileId: currentUser.vendorProfileId || currentUser.id,
+                            responseMessage: 'Unfortunately, we cannot accommodate this booking request.'
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to decline booking');
+                    
+                    showSuccess('Booking declined.');
+                    await loadAllUserBookings(); // Refresh the bookings list
+                } catch (error) {
+                    console.error('Error declining booking:', error);
+                    showError('Failed to decline booking: ' + error.message);
                 }
             }
 
@@ -18694,35 +19039,78 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         // Compute payment status from flags returned by API
                         const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
                         const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
-                        const paymentStatusText = isPaid ? 'Paid' : (isDepositOnly ? 'Deposit Paid' : null);
+                        
+                        // Format date and time
+                        const eventDate = new Date(booking.EventDate);
+                        const day = eventDate.getDate();
+                        const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
+                        const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
+                        
+                        // Format time range (assuming 1.5 hour duration for now)
+                        const startTime = eventDate.toLocaleTimeString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit',
+                            hour12: true 
+                        });
+                        const endDate = new Date(eventDate.getTime() + 90 * 60000); // Add 1.5 hours
+                        const endTime = endDate.toLocaleTimeString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit',
+                            hour12: true 
+                        });
+                        const timeStr = `${startTime} - ${endTime}`;
 
-                        // Add payment status and button based on payment state
-                        let paymentButton = '';
-                        if (booking.Status === 'confirmed') {
+                        // Determine action buttons based on booking status and payment
+                        let actionButtons = '';
+                        if (booking.Status === 'pending') {
+                            actionButtons = `
+                                <button class="btn-accept" onclick="acceptBooking('${booking.BookingID}')">Accept</button>
+                                <button class="btn-decline" onclick="declineBooking('${booking.BookingID}')">Decline</button>
+                            `;
+                        } else if (booking.Status === 'confirmed') {
                             if (isPaid) {
-                                paymentButton = `<span class="btn btn-success" style="margin-left: 10px; cursor: default;">✓ Payment Complete</span>`;
+                                actionButtons = `<button class="btn-paid">✓ Paid</button>`;
                             } else if (isDepositOnly) {
-                                paymentButton = `<button class="btn btn-warning" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount}, ${booking.VendorProfileID})" style="margin-left: 10px;">Pay Remaining Balance</button>`;
+                                actionButtons = `<button class="btn-pay-now" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount}, ${booking.VendorProfileID})">Pay Balance</button>`;
                             } else {
-                                paymentButton = `<button class="btn btn-primary" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount}, ${booking.VendorProfileID})" style="margin-left: 10px;">Pay Now</button>`;
+                                actionButtons = `<button class="btn-pay-now" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount}, ${booking.VendorProfileID})">Pay Now</button>`;
                             }
                         }
                         
                         // Add chat button for confirmed/paid bookings
-                        const chatButton = (booking.Status === 'confirmed' || booking.Status === 'paid') ? 
-                            `<button class="btn btn-outline" onclick="openBookingChat('${booking.BookingID}')" style="margin-left: 10px;">Chat</button>` : '';
+                        if (booking.Status === 'confirmed' || booking.Status === 'paid') {
+                            actionButtons += `<button class="btn btn-outline" onclick="openBookingChat('${booking.BookingID}')" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Chat</button>`;
+                        }
                         
                         bookingItem.innerHTML = `
+                            <div class="booking-date-section">
+                                <div class="booking-month">${month}</div>
+                                <div class="booking-day">${day}</div>
+                                <div class="booking-weekday">${weekday}</div>
+                            </div>
                             <div class="booking-info">
-                                <div class="booking-vendor">${vendorOrClientName}</div>
-                                <div class="booking-date">${new Date(booking.EventDate).toLocaleDateString()} - ${booking.ServiceName}</div>
-                                <div>Total: $${booking.TotalAmount ? booking.TotalAmount.toFixed(2) : '0.00'}</div>
-                                ${paymentStatusText ? `<div class="payment-status">Payment: ${paymentStatusText}</div>` : ''}
+                                <div class="booking-client">
+                                    <i class="fas fa-user" style="color: #6b7280; font-size: 12px;"></i>
+                                    <span class="booking-client-name">${vendorOrClientName}</span>
+                                </div>
+                                <div class="booking-service-row">
+                                    <span class="booking-service">${booking.ServiceName || 'Event Service'}</span>
+                                </div>
+                                <div class="booking-time-row">
+                                    <i class="fas fa-clock" style="color: #6b7280; font-size: 12px;"></i>
+                                    <span class="booking-time">${timeStr}</span>
+                                </div>
+                                ${booking.TotalAmount ? `<div class="booking-price-row">
+                                    <i class="fas fa-dollar-sign" style="color: #6b7280; font-size: 12px;"></i>
+                                    <span class="booking-price">$${booking.TotalAmount.toFixed(2)}</span>
+                                </div>` : ''}
+                                ${booking.Location ? `<div class="booking-location-row">
+                                    <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
+                                    <span class="booking-location">${booking.Location}</span>
+                                </div>` : ''}
                             </div>
                             <div class="booking-actions">
-                                <span class="booking-status status-${booking.Status}">${booking.Status}</span>
-                                ${paymentButton}
-                                ${chatButton}
+                                ${actionButtons}
                             </div>
                         `;
                         container.appendChild(bookingItem);
