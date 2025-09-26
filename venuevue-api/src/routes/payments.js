@@ -421,6 +421,24 @@ router.post('/checkout', async (req, res) => {
       });
     }
 
+    // Prevent duplicate payment attempts if booking is already fully paid
+    try {
+      const pool = await poolPromise;
+      const check = await pool.request()
+        .input('BookingID', sql.Int, bookingId)
+        .query('SELECT FullAmountPaid FROM Bookings WHERE BookingID = @BookingID');
+      if (check.recordset.length === 0) {
+        return res.status(404).json({ success: false, message: 'Booking not found' });
+      }
+      const paidFlag = check.recordset[0].FullAmountPaid;
+      const alreadyPaid = paidFlag === true || paidFlag === 1;
+      if (alreadyPaid) {
+        return res.status(409).json({ success: false, message: 'This booking is already paid.' });
+      }
+    } catch (dbErr) {
+      console.warn('[Checkout] Could not verify booking paid status:', dbErr?.message);
+    }
+
     // Get vendor's Stripe Connect account ID
     const vendorStripeAccountId = await getVendorStripeAccountId(vendorProfileId);
 
@@ -522,6 +540,30 @@ router.post('/checkout-session', async (req, res) => {
         success: false,
         message: 'Payment processing is not available'
       });
+    }
+
+    // Server-side safety: prevent creating a Checkout Session for an already-paid booking
+    try {
+      const pool = await poolPromise;
+      const check = await pool.request()
+        .input('BookingID', sql.Int, bookingId)
+        .query('SELECT FullAmountPaid FROM Bookings WHERE BookingID = @BookingID');
+      if (check.recordset.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Booking not found'
+        });
+      }
+      const paidFlag = check.recordset[0].FullAmountPaid;
+      const alreadyPaid = paidFlag === true || paidFlag === 1;
+      if (alreadyPaid) {
+        return res.status(409).json({
+          success: false,
+          message: 'This booking is already paid.'
+        });
+      }
+    } catch (dbErr) {
+      console.warn('[CheckoutSession] Could not verify booking paid status:', dbErr?.message);
     }
 
     // Get vendor profile ID from the booking record
