@@ -1875,281 +1875,20 @@
             margin-bottom: 1rem;
         }
 
-        /* New Booking Interface Styles */
-        .booking-header {
-            margin-bottom: 1.5rem;
-        }
-
-        .booking-tabs {
-            display: flex;
-            border-bottom: 1px solid #e5e7eb;
-            margin-bottom: 1.5rem;
-        }
-
-        .booking-tab {
-            background: none;
-            border: none;
-            padding: 12px 24px;
-            font-size: 14px;
-            font-weight: 500;
-            color: #6b7280;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s ease;
-        }
-
-        .booking-tab.active {
-            color: #3b82f6;
-            border-bottom-color: #3b82f6;
-        }
-
-        .booking-tab:hover {
-            color: #3b82f6;
-        }
-
-        .booking-tab-content {
-            display: none;
-        }
-
-        .booking-tab-content.active {
-            display: block;
-        }
-
-        .booking-count {
-            font-size: 14px;
-            color: #6b7280;
-            margin-bottom: 1rem;
-        }
-
         .booking-item {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 8px;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 16px;
-            transition: all 0.2s ease;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 0.5rem;
         }
-
-        .booking-item:hover {
-            border-color: #d1d5db;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-
-        .booking-date-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            min-width: 60px;
-        }
-
-        .booking-month {
-            font-size: 12px;
-            color: #6b7280;
-            font-weight: 500;
-            text-transform: capitalize;
-            margin-bottom: 2px;
-        }
-
-        .booking-day {
-            font-size: 20px;
-            font-weight: 700;
-            color: #111827;
-            line-height: 1;
-            margin-bottom: 2px;
-        }
-
-        .booking-weekday {
-            font-size: 12px;
-            color: #6b7280;
-            font-weight: 500;
-            text-transform: capitalize;
-        }
-
-        .booking-info {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .booking-time-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 2px;
-        }
-
-        .booking-time {
-            font-size: 14px;
-            color: #374151;
-            font-weight: 500;
-        }
-
-        .booking-client {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 2px;
-        }
-
-        .booking-client-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: #111827;
-        }
-
-        .booking-service-row {
-            margin-bottom: 2px;
-        }
-
-        .booking-service {
-            font-size: 14px;
-            color: #6b7280;
-        }
-
-        .booking-price-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .booking-price {
-            font-size: 14px;
-            color: #059669;
-            font-weight: 600;
-        }
-
-        .booking-location-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .booking-location {
-            font-size: 14px;
-            color: #6b7280;
-        }
-
-        .request-status {
-            text-transform: capitalize;
-            font-weight: 500;
-        }
-
-        .request-status.pending {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        .request-status.approved {
-            background: #d1fae5;
-            color: #059669;
-        }
-
-        .request-status.declined {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-
-        .request-status.expired {
-            background: #f3f4f6;
-            color: #6b7280;
-        }
-
+        
         .booking-actions {
             display: flex;
             align-items: center;
-            gap: 8px;
-        }
-
-        .btn-accept {
-            background: #10b981;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-accept:hover {
-            background: #059669;
-        }
-
-        .btn-decline {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-decline:hover {
-            background: #dc2626;
-        }
-
-        .btn-pay-now {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-pay-now:hover {
-            background: #2563eb;
-        }
-
-        .btn-paid {
-            background: #10b981;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: default;
-        }
-
-        .booking-status {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 500;
-            text-transform: uppercase;
-        }
-
-        .status-pending {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .status-confirmed {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .status-declined {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .status-paid {
-            background: #d1fae5;
-            color: #065f46;
+            gap: 10px;
         }
         
         .payment-status {
@@ -4040,6 +3779,330 @@
                 padding: 0.25rem 0.5rem;
             }
         }
+
+        /* Facebook-style Floating Chat Widget Styles */
+        .floating-chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            max-height: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .floating-chat-widget.minimized {
+            height: 60px;
+            max-height: 60px;
+        }
+
+        .floating-chat-widget.expanded {
+            height: 500px;
+            max-height: 500px;
+        }
+
+        .floating-chat-header {
+            background: linear-gradient(135deg, #5e72e4 0%, #4c63d2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .floating-chat-header:hover {
+            background: linear-gradient(135deg, #4c63d2 0%, #3b50c7 100%);
+        }
+
+        .floating-chat-title {
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .floating-chat-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .floating-chat-btn {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+            font-size: 14px;
+        }
+
+        .floating-chat-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .floating-chat-content {
+            display: flex;
+            flex-direction: column;
+            height: calc(100% - 60px);
+            overflow: hidden;
+        }
+
+        .floating-chat-conversations {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            background: #f8fafc;
+        }
+
+        .floating-conversation-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: white;
+        }
+
+        .floating-conversation-item:hover {
+            background: #f1f5f9;
+        }
+
+        .floating-conversation-item.active {
+            background: #e0e7ff;
+            border-left: 3px solid #5e72e4;
+        }
+
+        .floating-conversation-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #5e72e4, #4c63d2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .floating-conversation-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .floating-conversation-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1f2937;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .floating-conversation-preview {
+            font-size: 12px;
+            color: #6b7280;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .floating-conversation-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        .floating-conversation-time {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        .floating-conversation-badge {
+            background: #ef4444;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        .floating-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            background: white;
+            display: none;
+        }
+
+        .floating-chat-messages.active {
+            display: block;
+        }
+
+        .floating-message {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+        }
+
+        .floating-message.sent {
+            flex-direction: row-reverse;
+        }
+
+        .floating-message-content {
+            max-width: 70%;
+            padding: 8px 12px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .floating-message.received .floating-message-content {
+            background: #f1f5f9;
+            color: #1f2937;
+            border-bottom-left-radius: 4px;
+        }
+
+        .floating-message.sent .floating-message-content {
+            background: #5e72e4;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .floating-message-time {
+            font-size: 11px;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+
+        .floating-chat-input {
+            padding: 12px 16px;
+            border-top: 1px solid #e2e8f0;
+            background: white;
+            display: none;
+        }
+
+        .floating-chat-input.active {
+            display: block;
+        }
+
+        .floating-input-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 8px 12px;
+        }
+
+        .floating-input-container:focus-within {
+            border-color: #5e72e4;
+            box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.1);
+        }
+
+        .floating-chat-input input {
+            flex: 1;
+            border: none;
+            background: none;
+            outline: none;
+            font-size: 14px;
+            color: #1f2937;
+        }
+
+        .floating-chat-input input::placeholder {
+            color: #9ca3af;
+        }
+
+        .floating-send-btn {
+            background: #5e72e4;
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 14px;
+        }
+
+        .floating-send-btn:hover {
+            background: #4c63d2;
+        }
+
+        .floating-send-btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        .floating-chat-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #6b7280;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .floating-chat-empty i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            color: #d1d5db;
+        }
+
+        .floating-chat-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .floating-chat-loading .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #5e72e4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Hide on mobile devices */
+        @media (max-width: 768px) {
+            .floating-chat-widget {
+                display: none;
+            }
+        }
     </style>
 <style id="googleidentityservice_button_styles">.qJTHM{-moz-user-select:none;color:#202124;direction:ltr;font-family:"Roboto-Regular",arial,sans-serif;font-weight:400;margin:0;overflow:hidden}.ynRLnc{left:-9999px;position:absolute;top:-9999px}.L6cTce{display:none}.bltWBb{word-break:break-all}.hSRGPd{color:#1a73e8;cursor:pointer;font-weight:500;text-decoration:none}.Bz112c-W3lGp{height:16px;width:16px}.Bz112c-E3DyYd{height:20px;width:20px}.Bz112c-r9oPif{height:24px;width:24px}.Bz112c-u2z5K{height:36px;width:36px}.Bz112c-uaxL4e{-moz-border-radius:10px;border-radius:10px}.LgbsSe-Bz112c{display:block}.S9gUrf-YoZ4jf,.S9gUrf-YoZ4jf *{border:none;margin:0;padding:0}.fFW7wc-ibnC6b>.aZ2wEe>div{border-color:#4285f4}.P1ekSe-ZMv3u>div:nth-child(1){background-color:#1a73e8!important}.P1ekSe-ZMv3u>div:nth-child(2),.P1ekSe-ZMv3u>div:nth-child(3){background-image:linear-gradient(to right,rgba(255,255,255,.7),rgba(255,255,255,.7)),linear-gradient(to right,#1a73e8,#1a73e8)!important}.haAclf{display:inline-block}.nsm7Bb-HzV7m-LgbsSe{border-radius:4px;box-sizing:border-box;transition:background-color .218s,border-color .218s;-moz-user-select:none;background-color:#fff;background-image:none;border:1px solid #dadce0;color:#3c4043;cursor:pointer;font-family:"Google Sans",arial,sans-serif;font-size:14px;height:40px;letter-spacing:0.25px;outline:none;overflow:hidden;padding:0 12px;position:relative;text-align:center;vertical-align:middle;white-space:nowrap;width:auto}@media screen and (-ms-high-contrast:active){.nsm7Bb-HzV7m-LgbsSe{border:2px solid windowText;color:windowText}}@media screen and (preferes-contrast:more){.nsm7Bb-HzV7m-LgbsSe{color:#000}}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe{font-size:14px;height:32px;letter-spacing:0.25px;padding:0 10px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe{font-size:11px;height:20px;letter-spacing:0.3px;padding:0 8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe{padding:0;width:40px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe{width:32px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe{width:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK{border-radius:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.pSzOP-SxQuSe{border-radius:16px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.purZT-SxQuSe{border-radius:10px}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc{border:none;color:#fff}.nsm7Bb-HzV7m-LgbsSe.MFS4be-v3pZbf-Ia7Qfc{background-color:#1a73e8}.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{background-color:#202124;color:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{color:#fff}}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:18px;margin-right:8px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:14px;min-width:14px;width:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:10px;min-width:10px;width:10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin-left:8px;margin-right:-4px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:10px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:4px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:3px;border-bottom-left-radius:3px;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;justify-content:center;align-items:center;background-color:#fff;height:36px;margin-left:-10px;margin-right:12px;min-width:36px;width:36px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c,.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:28px;margin-left:-8px;margin-right:10px;min-width:28px;width:28px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:16px;margin-left:-6px;margin-right:8px;min-width:16px;width:16px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:3px;margin-left:2px;margin-right:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:8px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-bN97Pc-sM5MNb{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;flex-direction:row;justify-content:space-between;flex-wrap:nowrap;height:100%;position:relative;width:100%}.nsm7Bb-HzV7m-LgbsSe .oXtfBe-l4eHX{justify-content:center}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{flex-grow:1;font-family:"Google Sans",arial,sans-serif;font-weight:500;overflow:hidden;text-overflow:ellipsis;vertical-align:top}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-weight:300}.nsm7Bb-HzV7m-LgbsSe .oXtfBe-l4eHX .nsm7Bb-HzV7m-LgbsSe-BPrWId{flex-grow:0}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-MJoBVe{transition:background-color .218s;bottom:0;left:0;position:absolute;right:0;top:0}.nsm7Bb-HzV7m-LgbsSe:hover,.nsm7Bb-HzV7m-LgbsSe:focus{box-shadow:none;border-color:rgb(210,227,252);outline:none}.nsm7Bb-HzV7m-LgbsSe:focus-within{outline:2px solid #00639b;border-color:transparent}.nsm7Bb-HzV7m-LgbsSe:hover .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(66,133,244,.08)}.nsm7Bb-HzV7m-LgbsSe:active .nsm7Bb-HzV7m-LgbsSe-MJoBVe,.nsm7Bb-HzV7m-LgbsSe:focus .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(66,133,244,.1)}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:hover .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(255,255,255,.24)}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:active .nsm7Bb-HzV7m-LgbsSe-MJoBVe,.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:focus .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(255,255,255,.32)}.nsm7Bb-HzV7m-LgbsSe .n1UuX-DkfjY{border-radius:50%;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;height:20px;margin-left:-4px;margin-right:8px;min-width:20px;width:20px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-family:"Roboto";font-size:12px;text-align:left}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .ssJRIf,.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .fmcmS{overflow:hidden;text-overflow:ellipsis}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;color:#5f6368;fill:#5f6368;font-size:11px;font-weight:400}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#e8eaed;fill:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff,.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#000;fill:#000}}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .Bz112c{height:18px;margin:-3px -3px -3px 2px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:0;border-bottom-left-radius:0;border-top-right-radius:3px;border-bottom-right-radius:3px;margin-left:12px;margin-right:-10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.L5Fo6c-sM5MNb{border:0;display:block;left:0;position:relative;top:0}.L5Fo6c-bF1uUb{-moz-border-radius:4px;border-radius:4px;bottom:0;cursor:pointer;left:0;position:absolute;right:0;top:0}.L5Fo6c-bF1uUb:focus{border:none;outline:none}sentinel{}</style><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/common.js"></script><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/util.js"></script></head>
 <body data-new-gr-c-s-check-loaded="8.932.0" data-gr-ext-installed="" style="overflow: auto;">
@@ -4063,11 +4126,15 @@
             <button class="btn btn-primary" id="book-now-btn" onclick="openBookingModal()" style="margin-right: 1rem; padding: 0.75rem 1.5rem; font-weight: 600;">
                 <i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>Book Now
             </button>
+            <!-- Test button for floating chat (can be removed in production) -->
+            <button class="btn btn-outline" id="test-chat-btn" onclick="openFloatingChatWidget()" style="margin-right: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem;" title="Test Floating Chat">
+                <i class="fas fa-comment-dots" style="margin-right: 0.5rem;"></i>Chat
+            </button>
             <div class="nav-icon" id="wishlist-btn">
                 <i class="fas fa-heart"></i>
                 <span class="badge" id="favorites-badge">0</span>
             </div>
-            <div class="nav-icon" id="chat-btn" title="Chat">
+            <div class="nav-icon" id="chat-btn" title="Messages Dashboard">
                 <i class="fas fa-comments"></i>
                 <span class="badge" id="messages-badge">0</span>
             </div>
@@ -4423,33 +4490,12 @@
                         </div>
                         <div id="bookings-section" style="display: none;">
                             <div class="dashboard-card">
-                                <div class="booking-header">
-                                    <h2 class="dashboard-card-title">Booking requests</h2>
-                                </div>
-                                <div class="booking-tabs">
-                                    <button class="booking-tab active" data-tab="inbound">Inbound</button>
-                                    <button class="booking-tab" data-tab="outbound">Outbound</button>
-                                    <button class="booking-tab" data-tab="accepted">Accepted</button>
-                                    <button class="booking-tab" data-tab="declined">Declined</button>
-                                </div>
-                                <div class="booking-content">
-                                    <div id="inbound-bookings" class="booking-tab-content active">
-                                        <div class="booking-count">18 requests</div>
-                                        <div id="all-bookings"><p>Loading all bookings...</p></div>
-                                    </div>
-                                    <div id="outbound-bookings" class="booking-tab-content">
-                                        <div class="booking-count">0 requests</div>
-                                        <div id="outbound-bookings-list"><p>No outbound requests.</p></div>
-                                    </div>
-                                    <div id="accepted-bookings" class="booking-tab-content">
-                                        <div class="booking-count">0 requests</div>
-                                        <div id="completed-bookings"><p>No accepted bookings.</p></div>
-                                    </div>
-                                    <div id="declined-bookings" class="booking-tab-content">
-                                        <div class="booking-count">0 requests</div>
-                                        <div id="declined-bookings-list"><p>No declined bookings.</p></div>
-                                    </div>
-                                </div>
+                                <h2 class="dashboard-card-title">All Bookings</h2>
+                                <div id="all-bookings"><p>Loading all bookings...</p></div>
+                            </div>
+                            <div class="dashboard-card">
+                                <h2 class="dashboard-card-title">Completed Bookings</h2>
+                                <div id="completed-bookings"><p>No completed bookings.</p></div>
                             </div>
                         </div>
                         <div id="favorites-section" style="display: none;">
@@ -5357,6 +5403,49 @@
         </div>
     </div>
     
+
+    <!-- Facebook-style Floating Chat Widget -->
+    <div id="floating-chat-widget" class="floating-chat-widget minimized" style="display: none;">
+        <div class="floating-chat-header" onclick="toggleFloatingChat()">
+            <div class="floating-chat-title">
+                <i class="fas fa-comments"></i>
+                <span id="floating-chat-title-text">Messages</span>
+            </div>
+            <div class="floating-chat-controls">
+                <button class="floating-chat-btn" onclick="event.stopPropagation(); expandToFullDashboard()" title="Open in Dashboard">
+                    <i class="fas fa-external-link-alt"></i>
+                </button>
+                <button class="floating-chat-btn" onclick="event.stopPropagation(); hideFloatingChat()" title="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div class="floating-chat-content">
+            <!-- Conversation List View -->
+            <div id="floating-conversations" class="floating-chat-conversations">
+                <div class="floating-chat-loading">
+                    <div class="spinner"></div>
+                    Loading conversations...
+                </div>
+            </div>
+            
+            <!-- Individual Chat View -->
+            <div id="floating-chat-messages" class="floating-chat-messages">
+                <!-- Messages will be loaded here -->
+            </div>
+            
+            <!-- Chat Input -->
+            <div id="floating-chat-input" class="floating-chat-input">
+                <div class="floating-input-container">
+                    <input type="text" id="floating-message-input" placeholder="Type a message..." onkeypress="handleFloatingChatKeyPress(event)">
+                    <button class="floating-send-btn" onclick="sendFloatingChatMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- New Chat Modal -->
     <div id="chat-modal" class="modal chat-modal" style="display: none;">
         <div class="modal-content">
@@ -6671,42 +6760,31 @@
             const chatBtn = document.getElementById('chat-btn');
             if (chatBtn) {
                 chatBtn.addEventListener('click', () => {
-                    // Preferred: open in-page dashboard modal directly to Messages
+                    // Use floating chat widget if available
+                    if (window.floatingChatWidget) {
+                        openFloatingChatWidget();
+                        console.log('🎯 Main chat button opened floating widget');
+                        return;
+                    }
+                    
+                    // Fallback: open in-page dashboard modal directly to Messages
                     if (typeof displayUserDashboard === 'function') {
                         const mode = (window.currentUser && window.currentUser.isVendor) ? 'vendor' : 'client';
                         const section = (mode === 'vendor') ? 'vendor-messages' : 'messages';
                         displayUserDashboard(mode, section);
                         return;
                     }
-                    // Try to open existing chat UI if present
+                    
+                    // Additional fallbacks
                     if (typeof openChat === 'function') {
                         return openChat();
-                    }
-                    if (typeof openMessages === 'function') {
-                        return openMessages();
                     }
                     if (typeof showSection === 'function') {
                         try { showSection('messages'); return; } catch (e) {}
                     }
-                    // Scroll to a likely chat/messages container if it exists
-                    const target = document.querySelector('#messages-section, #chat, .messages-panel, #inbox, #conversation-list');
-                    if (target && target.scrollIntoView) {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        return;
-                    }
-                    // Fallback: navigate to dashboard messages route (robust)
-                    try { localStorage.setItem('openMessagesOnLoad', '1'); } catch (e) {}
-                    const candidates = [
-                        window.DASHBOARD_MESSAGES_URL,
-                        '/dashboard#messages',
-                        '/dashboard/messages',
-                        '/messages',
-                        '/inbox',
-                        '/vendor-dashboard#messages',
-                        '/user-dashboard#messages'
-                    ].filter(Boolean);
-                    // Try the first candidate; if it 404s, the user can use back and try another
-                    window.location.href = candidates[0];
+                    
+                    console.log('⚠️ No chat interface available');
+                    alert('Chat interface is loading. Please try again in a moment.');
                 });
             }
         });
@@ -17903,7 +17981,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 populateVendorGallery(details.images || []);
 
                 vendorProfilePage.querySelector('#open-chat-btn').addEventListener('click', () => {
-                    // Simple chat functionality - you can replace this with your actual chat system
+                    // Check if user is logged in
                     if (!currentUser) {
                         alert('Please log in to message this vendor.');
                         profileModal.style.display = 'flex';
@@ -17911,19 +17989,33 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         return;
                     }
                     
-                    // For now, show a simple contact modal or redirect to contact form
                     const vendorName = profile.BusinessName || profile.DisplayName;
-                    const confirmed = confirm(`Would you like to start a conversation with ${vendorName}? This will open a new chat window.`);
+                    const vendorId = profile.VendorProfileID || profile.id;
                     
-                    if (confirmed) {
-                        // You can replace this with your actual chat initialization
-                        // For now, we'll show a placeholder message
-                        alert(`Chat feature coming soon! For now, you can contact ${vendorName} through their website or social media links.`);
-                        
-                        // Optional: Scroll to social media section
-                        const socialSection = document.querySelector('.services-section');
-                        if (socialSection) {
-                            socialSection.scrollIntoView({ behavior: 'smooth' });
+                    // Use floating chat widget if available
+                    if (window.floatingChatWidget) {
+                        openFloatingChatWithVendor(vendorId, vendorName);
+                    } else {
+                        // Fallback to simple confirmation
+                        const confirmed = confirm(`Would you like to start a conversation with ${vendorName}? This will open the chat interface.`);
+                        if (confirmed) {
+                            // Try to show dashboard messages section
+                            if (typeof showDashboard === 'function') {
+                                showDashboard();
+                                setTimeout(() => {
+                                    if (typeof showSection === 'function') {
+                                        showSection('messages');
+                                    }
+                                }, 100);
+                            } else {
+                                alert(`Chat feature coming soon! For now, you can contact ${vendorName} through their website or social media links.`);
+                                
+                                // Optional: Scroll to social media section
+                                const socialSection = document.querySelector('.services-section');
+                                if (socialSection) {
+                                    socialSection.scrollIntoView({ behavior: 'smooth' });
+                                }
+                            }
                         }
                     }
                 });
@@ -18180,58 +18272,57 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return;
                 }
                 
-                container.innerHTML = '';
-                filteredRequests.forEach(request => {
-                    const requestItem = document.createElement('div');
-                    requestItem.className = 'booking-item';
-                    
-                    const eventDate = new Date(request.EventDate);
-                    const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
-                    const day = eventDate.getDate();
-                    const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
-                    
-                    let actionButtons = '';
-                    if (request.ConversationID) {
-                        actionButtons += `<button class="btn btn-outline" onclick="openChatForRequest(${request.ConversationID})" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Chat</button>`;
-                    }
-                    if (request.CurrentStatus === 'pending') {
-                        actionButtons += `<button class="btn-decline" onclick="cancelRequest(${request.RequestID})">Cancel</button>`;
-                    }
-                    
-                    requestItem.innerHTML = `
-                        <div class="booking-date-section">
-                            <div class="booking-month">${month}</div>
-                            <div class="booking-day">${day}</div>
-                            <div class="booking-weekday">${weekday}</div>
-                        </div>
-                        <div class="booking-info">
-                            <div class="booking-client">
-                                <i class="fas fa-store" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-client-name">${request.VendorName}</span>
+                container.innerHTML = filteredRequests.map(request => `
+                    <div class="request-card ${request.CurrentStatus}">
+                        <div class="request-header">
+                            <div>
+                                <h4>${request.VendorName}</h4>
+                                <div class="request-timer ${request.HoursRemaining && request.HoursRemaining < 6 ? 'urgent' : ''}">
+                                    ${request.HoursRemaining ? `${request.HoursRemaining} hours remaining` : 'Timer expired'}
+                                </div>
                             </div>
-                            <div class="booking-service-row">
-                                <span class="booking-service">Event Service Request</span>
-                            </div>
-                            <div class="booking-time-row">
-                                <i class="fas fa-hourglass-half" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-time">${request.HoursRemaining ? `${request.HoursRemaining} hours remaining` : 'Timer expired'}</span>
-                            </div>
-                            ${request.Budget ? `<div class="booking-price-row">
-                                <i class="fas fa-dollar-sign" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-price">$${request.Budget.toLocaleString()}</span>
-                            </div>` : ''}
-                            ${request.EventLocation ? `<div class="booking-location-row">
-                                <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-location">${request.EventLocation}</span>
-                            </div>` : ''}
+                            <span class="request-status ${request.CurrentStatus}">${request.CurrentStatus}</span>
                         </div>
-                        <div class="booking-actions">
-                            <span class="request-status ${request.CurrentStatus}" style="margin-right: 12px; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; text-transform: capitalize;">${request.CurrentStatus}</span>
-                            ${actionButtons}
+                        <div class="request-details">
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Event Date:</span>
+                                <span class="request-detail-value">${new Date(request.EventDate).toLocaleDateString()}</span>
+                            </div>
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Location:</span>
+                                <span class="request-detail-value">${request.EventLocation}</span>
+                            </div>
+                            <div class="request-detail-row">
+                                <span class="request-detail-label">Budget:</span>
+                                <span class="request-detail-value">$${request.Budget?.toLocaleString()}</span>
+                            </div>
+                            ${request.SpecialRequests ? `
+                                <div class="request-detail-row">
+                                    <span class="request-detail-label">Special Requests:</span>
+                                    <span class="request-detail-value">${request.SpecialRequests}</span>
+                                </div>
+                            ` : ''}
+                            ${request.ResponseMessage ? `
+                                <div class="request-detail-row">
+                                    <span class="request-detail-label">Vendor Response:</span>
+                                    <span class="request-detail-value">${request.ResponseMessage}</span>
+                                </div>
+                            ` : ''}
                         </div>
-                    `;
-                    container.appendChild(requestItem);
-                });
+                        <div class="request-actions">
+                            ${request.ConversationID ? `
+                                <button class="btn btn-primary" onclick="openChatForRequest(${request.ConversationID})">
+                                    <i class="fas fa-comments"></i> Chat
+                                </button>
+                            ` : ''}
+                            ${request.CurrentStatus === 'pending' ? `
+                                <button class="btn btn-danger" onclick="cancelRequest(${request.RequestID})">
+                                    <i class="fas fa-times"></i> Cancel
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `).join('');
             }
             
             async function loadVendorRequests() {
@@ -18407,9 +18498,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
             
             function openChatForRequest(conversationId) {
-                // Switch to messages section and load the specific conversation
-                document.querySelector('[data-section="messages"]').click();
-                // TODO: Load specific conversation
+                // Try to use floating chat widget first
+                if (window.floatingChatWidget) {
+                    window.floatingChatWidget.showWidget();
+                    window.floatingChatWidget.expand();
+                    window.floatingChatWidget.openConversation(conversationId);
+                } else {
+                    // Fallback to dashboard messages section
+                    document.querySelector('[data-section="messages"]').click();
+                    // TODO: Load specific conversation
+                }
             }
             
             function setupRequestFilterTabs() {
@@ -18523,7 +18621,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         renderRecentFavorites(dashboardData.recentFavorites);
                     } else if (section === 'bookings') {
                         await loadAllUserBookings();
-                        setupBookingTabs();
                     } else if (section === 'requests') {
                         await loadUserRequests();
                         setupRequestFilterTabs();
@@ -18627,36 +18724,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
-            function setupBookingTabs() {
-                const tabs = document.querySelectorAll('.booking-tab');
-                const tabContents = document.querySelectorAll('.booking-tab-content');
-                
-                tabs.forEach(tab => {
-                    tab.addEventListener('click', () => {
-                        // Remove active class from all tabs and contents
-                        tabs.forEach(t => t.classList.remove('active'));
-                        tabContents.forEach(content => content.classList.remove('active'));
-                        
-                        // Add active class to clicked tab
-                        tab.classList.add('active');
-                        
-                        // Show corresponding content
-                        const tabName = tab.getAttribute('data-tab');
-                        const content = document.getElementById(`${tabName}-bookings`);
-                        if (content) {
-                            content.classList.add('active');
-                        }
-                    });
-                });
-            }
-
             async function loadAllUserBookings() {
-                const inboundContainer = document.getElementById('all-bookings');
-                const acceptedContainer = document.getElementById('completed-bookings');
-                
-                if (inboundContainer) inboundContainer.innerHTML = '<p>Loading bookings...</p>';
-                if (acceptedContainer) acceptedContainer.innerHTML = '<p>Loading accepted bookings...</p>';
-                
+                const activeContainer = document.getElementById('all-bookings');
+                const completedContainer = document.getElementById('completed-bookings');
+                if (activeContainer) activeContainer.innerHTML = '<p>Loading all bookings...</p>';
+                if (completedContainer) completedContainer.innerHTML = '<p>Loading completed bookings...</p>';
                 // Ensure we have a currentUser (rehydrate from storage if needed)
                 if (!currentUser || !currentUser.id) {
                     try {
@@ -18667,102 +18739,40 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } catch (e) { /* no-op */ }
                 }
                 if (!currentUser || !currentUser.id) {
-                    if (inboundContainer) inboundContainer.innerHTML = '<p>Please log in to view your bookings.</p>';
-                    if (acceptedContainer) acceptedContainer.innerHTML = '<p>Please log in to view accepted bookings.</p>';
+                    if (activeContainer) activeContainer.innerHTML = '<p>Please log in to view your bookings.</p>';
+                    if (completedContainer) completedContainer.innerHTML = '<p>Please log in to view completed bookings.</p>';
                     return;
                 }
-                
                 try {
                     const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                     });
                     if (!response.ok) throw new Error('Failed to fetch all bookings');
                     const bookings = await response.json();
-                    
-                    // Categorize bookings
-                    const pending = bookings.filter(b => b.Status === 'pending');
-                    const confirmed = bookings.filter(b => b.Status === 'confirmed');
-                    const declined = bookings.filter(b => b.Status === 'declined');
-                    const paid = bookings.filter(b => b.FullAmountPaid === true || b.FullAmountPaid === 1);
+                    // Split into active (not fully paid) and completed (fully paid)
+                    const isPaid = (b) => (b.FullAmountPaid === true || b.FullAmountPaid === 1);
+                    const active = bookings.filter(b => !isPaid(b));
+                    const completed = bookings.filter(b => isPaid(b));
 
-                    // Update counts
-                    const inboundCount = document.querySelector('#inbound-bookings .booking-count');
-                    if (inboundCount) inboundCount.textContent = `${pending.length} requests`;
-                    
-                    const acceptedCount = document.querySelector('#accepted-bookings .booking-count');
-                    if (acceptedCount) acceptedCount.textContent = `${confirmed.length + paid.length} requests`;
-
-                    // Render inbound (pending) bookings
-                    if (inboundContainer) {
-                        if (pending.length > 0) {
-                            renderBookingsList(pending, inboundContainer);
+                    if (activeContainer) {
+                        if (active.length > 0) {
+                            renderBookingsList(active, activeContainer);
                         } else {
-                            inboundContainer.innerHTML = '<p>No pending bookings.</p>';
+                            activeContainer.innerHTML = '<p>No active bookings.</p>';
                         }
                     }
 
-                    // Render accepted (confirmed + paid) bookings
-                    if (acceptedContainer) {
-                        const acceptedBookings = [...confirmed, ...paid];
-                        if (acceptedBookings.length > 0) {
-                            renderBookingsList(acceptedBookings, acceptedContainer);
+                    if (completedContainer) {
+                        if (completed.length > 0) {
+                            renderBookingsList(completed, completedContainer);
                         } else {
-                            acceptedContainer.innerHTML = '<p>No accepted bookings.</p>';
+                            completedContainer.innerHTML = '<p>No completed bookings.</p>';
                         }
                     }
-                    
                 } catch (error) {
                     console.error('Error loading all user bookings:', error);
-                    if (inboundContainer) inboundContainer.innerHTML = `<p style="color:var(--accent);">Failed to load bookings: ${error.message}</p>`;
-                    if (acceptedContainer) acceptedContainer.innerHTML = `<p style="color:var(--accent);">Failed to load accepted bookings: ${error.message}</p>`;
-                }
-            }
-
-            async function acceptBooking(bookingId) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${bookingId}/approve`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        },
-                        body: JSON.stringify({
-                            vendorProfileId: currentUser.vendorProfileId || currentUser.id,
-                            responseMessage: 'Your booking request has been approved!'
-                        })
-                    });
-
-                    if (!response.ok) throw new Error('Failed to accept booking');
-                    
-                    showSuccess('Booking accepted successfully!');
-                    await loadAllUserBookings(); // Refresh the bookings list
-                } catch (error) {
-                    console.error('Error accepting booking:', error);
-                    showError('Failed to accept booking: ' + error.message);
-                }
-            }
-
-            async function declineBooking(bookingId) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${bookingId}/decline`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        },
-                        body: JSON.stringify({
-                            vendorProfileId: currentUser.vendorProfileId || currentUser.id,
-                            responseMessage: 'Unfortunately, we cannot accommodate this booking request.'
-                        })
-                    });
-
-                    if (!response.ok) throw new Error('Failed to decline booking');
-                    
-                    showSuccess('Booking declined.');
-                    await loadAllUserBookings(); // Refresh the bookings list
-                } catch (error) {
-                    console.error('Error declining booking:', error);
-                    showError('Failed to decline booking: ' + error.message);
+                    if (activeContainer) activeContainer.innerHTML = `<p style="color:var(--accent);">Failed to load all bookings: ${error.message}</p>`;
+                    if (completedContainer) completedContainer.innerHTML = `<p style=\"color:var(--accent);\">Failed to load completed bookings: ${error.message}</p>`;
                 }
             }
 
@@ -19065,78 +19075,35 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         // Compute payment status from flags returned by API
                         const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
                         const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
-                        
-                        // Format date and time
-                        const eventDate = new Date(booking.EventDate);
-                        const day = eventDate.getDate();
-                        const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
-                        const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
-                        
-                        // Format time range (assuming 1.5 hour duration for now)
-                        const startTime = eventDate.toLocaleTimeString('en-US', { 
-                            hour: 'numeric', 
-                            minute: '2-digit',
-                            hour12: true 
-                        });
-                        const endDate = new Date(eventDate.getTime() + 90 * 60000); // Add 1.5 hours
-                        const endTime = endDate.toLocaleTimeString('en-US', { 
-                            hour: 'numeric', 
-                            minute: '2-digit',
-                            hour12: true 
-                        });
-                        const timeStr = `${startTime} - ${endTime}`;
+                        const paymentStatusText = isPaid ? 'Paid' : (isDepositOnly ? 'Deposit Paid' : null);
 
-                        // Determine action buttons based on booking status and payment
-                        let actionButtons = '';
-                        if (booking.Status === 'pending') {
-                            actionButtons = `
-                                <button class="btn-accept" onclick="acceptBooking('${booking.BookingID}')">Accept</button>
-                                <button class="btn-decline" onclick="declineBooking('${booking.BookingID}')">Decline</button>
-                            `;
-                        } else if (booking.Status === 'confirmed') {
+                        // Add payment status and button based on payment state
+                        let paymentButton = '';
+                        if (booking.Status === 'confirmed') {
                             if (isPaid) {
-                                actionButtons = `<button class="btn-paid">✓ Paid</button>`;
+                                paymentButton = `<span class="btn btn-success" style="margin-left: 10px; cursor: default;">✓ Payment Complete</span>`;
                             } else if (isDepositOnly) {
-                                actionButtons = `<button class="btn-pay-now" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount}, ${booking.VendorProfileID})">Pay Balance</button>`;
+                                paymentButton = `<button class="btn btn-warning" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount}, ${booking.VendorProfileID})" style="margin-left: 10px;">Pay Remaining Balance</button>`;
                             } else {
-                                actionButtons = `<button class="btn-pay-now" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount}, ${booking.VendorProfileID})">Pay Now</button>`;
+                                paymentButton = `<button class="btn btn-primary" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount}, ${booking.VendorProfileID})" style="margin-left: 10px;">Pay Now</button>`;
                             }
                         }
                         
                         // Add chat button for confirmed/paid bookings
-                        if (booking.Status === 'confirmed' || booking.Status === 'paid') {
-                            actionButtons += `<button class="btn btn-outline" onclick="openBookingChat('${booking.BookingID}')" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Chat</button>`;
-                        }
+                        const chatButton = (booking.Status === 'confirmed' || booking.Status === 'paid') ? 
+                            `<button class="btn btn-outline" onclick="openBookingChat('${booking.BookingID}')" style="margin-left: 10px;">Chat</button>` : '';
                         
                         bookingItem.innerHTML = `
-                            <div class="booking-date-section">
-                                <div class="booking-month">${month}</div>
-                                <div class="booking-day">${day}</div>
-                                <div class="booking-weekday">${weekday}</div>
-                            </div>
                             <div class="booking-info">
-                                <div class="booking-client">
-                                    <i class="fas fa-user" style="color: #6b7280; font-size: 12px;"></i>
-                                    <span class="booking-client-name">${vendorOrClientName}</span>
-                                </div>
-                                <div class="booking-service-row">
-                                    <span class="booking-service">${booking.ServiceName || 'Event Service'}</span>
-                                </div>
-                                <div class="booking-time-row">
-                                    <i class="fas fa-clock" style="color: #6b7280; font-size: 12px;"></i>
-                                    <span class="booking-time">${timeStr}</span>
-                                </div>
-                                ${booking.TotalAmount ? `<div class="booking-price-row">
-                                    <i class="fas fa-dollar-sign" style="color: #6b7280; font-size: 12px;"></i>
-                                    <span class="booking-price">$${booking.TotalAmount.toFixed(2)}</span>
-                                </div>` : ''}
-                                ${booking.Location ? `<div class="booking-location-row">
-                                    <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
-                                    <span class="booking-location">${booking.Location}</span>
-                                </div>` : ''}
+                                <div class="booking-vendor">${vendorOrClientName}</div>
+                                <div class="booking-date">${new Date(booking.EventDate).toLocaleDateString()} - ${booking.ServiceName}</div>
+                                <div>Total: $${booking.TotalAmount ? booking.TotalAmount.toFixed(2) : '0.00'}</div>
+                                ${paymentStatusText ? `<div class="payment-status">Payment: ${paymentStatusText}</div>` : ''}
                             </div>
                             <div class="booking-actions">
-                                ${actionButtons}
+                                <span class="booking-status status-${booking.Status}">${booking.Status}</span>
+                                ${paymentButton}
+                                ${chatButton}
                             </div>
                         `;
                         container.appendChild(bookingItem);
@@ -26223,5 +26190,631 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         }
         
         console.log('🎯 Multi-service vendor selection system ready!');
+        
+        // ===== FACEBOOK-STYLE FLOATING CHAT WIDGET =====
+        
+        class FloatingChatWidget {
+            constructor() {
+                this.isMinimized = true;
+                this.currentConversationId = null;
+                this.conversations = [];
+                this.messages = {};
+                this.socket = null;
+                this.unreadCount = 0;
+                this.isLoading = false;
+                
+                this.initializeSocket();
+                this.loadConversations();
+                
+                // Auto-show widget if user has conversations
+                setTimeout(() => {
+                    this.checkAndShowWidget();
+                }, 2000);
+            }
+            
+            initializeSocket() {
+                if (typeof io !== 'undefined') {
+                    this.socket = io();
+                    
+                    this.socket.on('new-message', (data) => {
+                        this.handleNewMessage(data);
+                    });
+                    
+                    this.socket.on('connect', () => {
+                        console.log('🔌 Floating chat socket connected');
+                    });
+                }
+            }
+            
+            async loadConversations() {
+                try {
+                    this.isLoading = true;
+                    this.showLoading();
+                    
+                    console.log('🔄 Loading conversations for floating chat...');
+                    
+                    if (!currentUser) {
+                        console.warn('Cannot load conversations: User not logged in.');
+                        this.showError('Please log in to view conversations');
+                        this.isLoading = false;
+                        this.hideLoading();
+                        return;
+                    }
+                    
+                    // Use the exact same API call as the dashboard
+                    const url = `${API_BASE_URL}/messages/conversations/user/${currentUser.id}`;
+                    console.log('🌐 Making API call to:', url);
+                    
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+                    
+                    let conversations = [];
+                    
+                    if (response.ok) {
+                        const responseData = await response.json();
+                        console.log('✅ API response:', responseData);
+                        conversations = responseData.conversations || [];
+                        
+                        // Map API response to expected format (same as dashboard)
+                        conversations = conversations.map(conv => ({
+                            id: conv.id || conv.ConversationID,
+                            userName: conv.OtherPartyName || conv.userName || 'Unknown User',
+                            OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
+                            lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
+                            lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
+                            lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
+                            unreadCount: conv.unreadCount || conv.UnreadCount || 0,
+                            // Add timestamp for display
+                            timestamp: new Date(conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt),
+                            lastMessage: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet'
+                        }));
+                    } else {
+                        console.log('❌ API failed, loading local conversations');
+                        // Fallback: Load from localStorage (same as dashboard)
+                        const localConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+                        console.log('📱 Local conversations found:', localConversations);
+                        conversations = localConversations.filter(conv => 
+                            conv.userId === currentUser.id || conv.vendorProfileId === currentUser.vendorProfileId
+                        );
+                        console.log('🔍 Filtered conversations for current user:', conversations);
+                    }
+                    
+                    console.log('✅ Final conversations for floating chat:', conversations);
+                    this.conversations = conversations;
+                    this.renderConversations();
+                    
+                } catch (error) {
+                    console.error('❌ Error loading conversations, using local fallback:', error);
+                    // Load local conversations as fallback (same as dashboard)
+                    const localConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+                    console.log('📱 Error fallback - Local conversations:', localConversations);
+                    const conversations = localConversations.filter(conv => 
+                        conv.userId === currentUser.id || conv.vendorProfileId === currentUser.vendorProfileId
+                    );
+                    console.log('🔍 Error fallback - Filtered conversations:', conversations);
+                    this.conversations = conversations;
+                    this.renderConversations();
+                } finally {
+                    this.isLoading = false;
+                    this.hideLoading();
+                }
+            }
+            
+            renderConversations() {
+                const container = document.getElementById('floating-conversations');
+                if (!container) return;
+                
+                if (this.conversations.length === 0) {
+                    container.innerHTML = `
+                        <div class="floating-chat-empty">
+                            <i class="fas fa-comments"></i>
+                            <h4>No conversations yet</h4>
+                            <p>Start a conversation with a vendor to see it here.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const conversationsHTML = this.conversations.map(conv => {
+                    const lastMessage = conv.lastMessage || 'No messages yet';
+                    const timeAgo = conv.lastMessageTime ? this.formatTimeAgo(new Date(conv.lastMessageTime)) : '';
+                    const unreadCount = conv.unreadCount || 0;
+                    const otherParticipant = conv.participants?.find(p => p.id !== parseInt(localStorage.getItem('userId'))) || {};
+                    const displayName = otherParticipant.businessName || otherParticipant.name || 'Unknown';
+                    const initials = this.getInitials(displayName);
+                    
+                    return `
+                        <div class="floating-conversation-item" onclick="openFloatingConversation(${conv.id})">
+                            <div class="floating-conversation-avatar">${initials}</div>
+                            <div class="floating-conversation-info">
+                                <div class="floating-conversation-name">${displayName}</div>
+                                <div class="floating-conversation-preview">${lastMessage}</div>
+                            </div>
+                            <div class="floating-conversation-meta">
+                                ${timeAgo ? `<div class="floating-conversation-time">${timeAgo}</div>` : ''}
+                                ${unreadCount > 0 ? `<div class="floating-conversation-badge">${unreadCount}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                container.innerHTML = conversationsHTML;
+                
+                // Update total unread count
+                this.unreadCount = this.conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+                this.updateUnreadBadge();
+            }
+            
+            async openConversation(conversationId) {
+                this.currentConversationId = conversationId;
+                const conversation = this.conversations.find(c => c.id === conversationId);
+                
+                if (!conversation) return;
+                
+                // Update UI to show conversation view
+                document.getElementById('floating-conversations').style.display = 'none';
+                document.getElementById('floating-chat-messages').style.display = 'block';
+                document.getElementById('floating-chat-input').style.display = 'block';
+                
+                // Update header title
+                const otherParticipant = conversation.participants?.find(p => p.id !== parseInt(localStorage.getItem('userId'))) || {};
+                const displayName = otherParticipant.businessName || otherParticipant.name || 'Chat';
+                document.getElementById('floating-chat-title-text').textContent = displayName;
+                
+                // Add back button to header
+                const backBtn = document.querySelector('.floating-chat-back-btn');
+                if (!backBtn) {
+                    const titleElement = document.querySelector('.floating-chat-title');
+                    titleElement.innerHTML = `
+                        <button class="floating-chat-btn floating-chat-back-btn" onclick="backToConversationList()">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <span>${displayName}</span>
+                    `;
+                }
+                
+                // Load messages
+                await this.loadMessages(conversationId);
+                
+                // Expand if minimized
+                if (this.isMinimized) {
+                    this.expand();
+                }
+            }
+            
+            async loadMessages(conversationId) {
+                try {
+                    console.log('🔄 Loading messages for conversation:', conversationId);
+                    
+                    // Use the same API endpoint as the dashboard
+                    const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${currentUser?.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('✅ Messages loaded:', data.messages);
+                        this.messages[conversationId] = data.messages || [];
+                        this.renderMessages(conversationId);
+                    } else {
+                        console.error('❌ Failed to load messages:', response.status);
+                        this.showError('Failed to load messages');
+                    }
+                } catch (error) {
+                    console.error('❌ Error loading messages:', error);
+                    this.showError('Error loading messages');
+                }
+            }
+            
+            renderMessages(conversationId) {
+                const container = document.getElementById('floating-chat-messages');
+                if (!container) return;
+                
+                const messages = this.messages[conversationId] || [];
+                
+                if (!messages || messages.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #666; padding: 2rem;">No messages yet. Start the conversation!</div>';
+                    return;
+                }
+                
+                // Use the same field names as the dashboard
+                const messagesHTML = messages.map(message => {
+                    const isOwnMessage = message.SenderID === currentUser?.id;
+                    const senderName = isOwnMessage ? 'You' : (message.SenderName || 'Other User');
+                    const timeFormatted = this.formatMessageTime(new Date(message.CreatedAt));
+                    
+                    const messageClass = isOwnMessage ? 'sent' : 'received';
+                    const bubbleStyle = isOwnMessage 
+                        ? 'background: #007bff; color: white; margin-left: auto;' 
+                        : 'background: #e9ecef; color: #333; margin-right: auto;';
+                    
+                    return `
+                        <div class="floating-message ${messageClass}" style="margin-bottom: 0.75rem; display: flex; ${isOwnMessage ? 'justify-content: flex-end;' : 'justify-content: flex-start;'}">
+                            <div style="padding: 0.5rem 0.75rem; border-radius: 12px; ${bubbleStyle} max-width: 80%; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                                <div style="font-size: 0.7rem; font-weight: 600; margin-bottom: 0.25rem; opacity: 0.8;">${senderName}</div>
+                                <div style="margin-bottom: 0.25rem;">${message.Content}</div>
+                                <div style="font-size: 0.7rem; opacity: 0.7;">${timeFormatted}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                container.innerHTML = messagesHTML;
+                
+                // Scroll to bottom
+                container.scrollTop = container.scrollHeight;
+            }
+            
+            async sendMessage() {
+                const input = document.getElementById('floating-message-input');
+                const message = input?.value.trim();
+                
+                if (!message || !this.currentConversationId) return;
+                
+                console.log('🔄 Sending message via floating chat:', message);
+                
+                // Use Socket.IO for real-time message sending (same as dashboard)
+                if (window.socket) {
+                    window.socket.emit('send-message', {
+                        conversationId: this.currentConversationId,
+                        senderId: currentUser?.id,
+                        content: message
+                    });
+
+                    // Clear input immediately
+                    input.value = '';
+                    
+                    // Add message to UI immediately for instant feedback
+                    this.addMessageToUI({
+                        SenderID: currentUser.id,
+                        SenderName: 'You',
+                        Content: message,
+                        CreatedAt: new Date().toISOString(),
+                        conversationId: this.currentConversationId
+                    });
+                } else {
+                    // Fallback to REST API if Socket.IO not available (same as dashboard)
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/messages`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: JSON.stringify({
+                                conversationId: this.currentConversationId,
+                                senderId: currentUser?.id,
+                                content: message
+                            })
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to send message');
+                        }
+
+                        // Clear input immediately
+                        input.value = '';
+                        
+                        // Add message to UI immediately for instant feedback
+                        this.addMessageToUI({
+                            SenderID: currentUser.id,
+                            SenderName: 'You',
+                            Content: message,
+                            CreatedAt: new Date().toISOString(),
+                            conversationId: this.currentConversationId
+                        });
+                    } catch (error) {
+                        console.error('❌ Error sending message via REST API:', error);
+                    }
+                }
+            }
+            
+            addMessageToUI(message) {
+                // Add message to local cache
+                if (!this.messages[message.conversationId]) {
+                    this.messages[message.conversationId] = [];
+                }
+                this.messages[message.conversationId].push(message);
+                
+                // Re-render messages if this is the current conversation
+                if (this.currentConversationId === message.conversationId) {
+                    this.renderMessages(message.conversationId);
+                }
+            }
+            
+            handleNewMessage(data) {
+                // Add message to local cache
+                if (!this.messages[data.conversationId]) {
+                    this.messages[data.conversationId] = [];
+                }
+                this.messages[data.conversationId].push(data);
+                
+                // If viewing this conversation, update the display
+                if (this.currentConversationId === data.conversationId) {
+                    this.renderMessages(data.conversationId);
+                } else {
+                    // Update unread count and conversation list
+                    this.loadConversations();
+                }
+            }
+            
+            backToConversationList() {
+                this.currentConversationId = null;
+                
+                // Reset header
+                document.querySelector('.floating-chat-title').innerHTML = `
+                    <i class="fas fa-comments"></i>
+                    <span id="floating-chat-title-text">Messages</span>
+                `;
+                
+                // Show conversation list, hide chat
+                document.getElementById('floating-conversations').style.display = 'block';
+                document.getElementById('floating-chat-messages').style.display = 'none';
+                document.getElementById('floating-chat-input').style.display = 'none';
+                
+                // Refresh conversations to update unread counts
+                this.loadConversations();
+            }
+            
+            toggle() {
+                if (this.isMinimized) {
+                    this.expand();
+                } else {
+                    this.minimize();
+                }
+            }
+            
+            expand() {
+                const widget = document.getElementById('floating-chat-widget');
+                widget.classList.remove('minimized');
+                widget.classList.add('expanded');
+                this.isMinimized = false;
+            }
+            
+            minimize() {
+                const widget = document.getElementById('floating-chat-widget');
+                widget.classList.remove('expanded');
+                widget.classList.add('minimized');
+                this.isMinimized = true;
+                
+                // If in a conversation, go back to list
+                if (this.currentConversationId) {
+                    this.backToConversationList();
+                }
+            }
+            
+            showWidget() {
+                document.getElementById('floating-chat-widget').style.display = 'block';
+            }
+            
+            hideWidget() {
+                document.getElementById('floating-chat-widget').style.display = 'none';
+            }
+            
+            showLoading() {
+                const container = document.getElementById('floating-conversations');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="floating-chat-loading">
+                            <div class="spinner"></div>
+                            Loading conversations...
+                        </div>
+                    `;
+                }
+            }
+            
+            hideLoading() {
+                // Loading will be replaced by renderConversations
+            }
+            
+            showError(message) {
+                const container = document.getElementById('floating-conversations');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="floating-chat-error" style="text-align: center; padding: 2rem; color: #ef4444;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                            <div>${message}</div>
+                            <button onclick="window.floatingChatWidget.loadConversations()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                Try Again
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+            
+            updateUnreadBadge() {
+                // Update any existing message badges in the main UI
+                const badge = document.getElementById('messages-badge');
+                if (badge) {
+                    badge.textContent = this.unreadCount;
+                    badge.style.display = this.unreadCount > 0 ? 'block' : 'none';
+                }
+            }
+            
+            checkAndShowWidget() {
+                const token = localStorage.getItem('token');
+                if (token && this.conversations.length > 0) {
+                    this.showWidget();
+                }
+            }
+            
+            expandToFullDashboard() {
+                // Navigate to messages section in dashboard
+                if (typeof showDashboard === 'function') {
+                    showDashboard();
+                    setTimeout(() => {
+                        if (typeof showSection === 'function') {
+                            showSection('messages');
+                        }
+                    }, 100);
+                }
+            }
+            
+            // Utility methods
+            getInitials(name) {
+                return name.split(' ').map(word => word[0]).join('').toUpperCase().substring(0, 2);
+            }
+            
+            formatTimeAgo(date) {
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMins / 60);
+                const diffDays = Math.floor(diffHours / 24);
+                
+                if (diffMins < 1) return 'now';
+                if (diffMins < 60) return `${diffMins}m`;
+                if (diffHours < 24) return `${diffHours}h`;
+                if (diffDays < 7) return `${diffDays}d`;
+                return date.toLocaleDateString();
+            }
+            
+            formatMessageTime(date) {
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+        }
+        
+        // Global functions for the floating chat widget
+        let floatingChatWidget = null;
+        
+        function initFloatingChatWidget() {
+            console.log('Initializing floating chat widget...');
+            
+            // Check if widget HTML exists
+            const widgetElement = document.getElementById('floating-chat-widget');
+            if (!widgetElement) {
+                console.error('Floating chat widget HTML element not found!');
+                return;
+            }
+            
+            if (!floatingChatWidget) {
+                floatingChatWidget = new FloatingChatWidget();
+                window.floatingChatWidget = floatingChatWidget;
+                
+                // Show the widget immediately for testing
+                floatingChatWidget.showWidget();
+                
+                console.log('Floating chat widget initialized and shown!');
+            }
+        }
+        
+        function toggleFloatingChat() {
+            if (floatingChatWidget) {
+                floatingChatWidget.toggle();
+            }
+        }
+        
+        function hideFloatingChat() {
+            if (floatingChatWidget) {
+                floatingChatWidget.hideWidget();
+            }
+        }
+        
+        function openFloatingConversation(conversationId) {
+            if (floatingChatWidget) {
+                floatingChatWidget.openConversation(conversationId);
+            }
+        }
+        
+        function backToConversationList() {
+            if (floatingChatWidget) {
+                floatingChatWidget.backToConversationList();
+            }
+        }
+        
+        function sendFloatingChatMessage() {
+            if (floatingChatWidget) {
+                floatingChatWidget.sendMessage();
+            }
+        }
+        
+        function handleFloatingChatKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendFloatingChatMessage();
+            }
+        }
+        
+        function expandToFullDashboard() {
+            if (floatingChatWidget) {
+                floatingChatWidget.expandToFullDashboard();
+            }
+        }
+        
+        // Function to open floating chat widget for a specific vendor
+        function openFloatingChatWithVendor(vendorId, vendorName) {
+            if (floatingChatWidget) {
+                // First show the widget
+                floatingChatWidget.showWidget();
+                floatingChatWidget.expand();
+                
+                // Try to find existing conversation with this vendor
+                const existingConv = floatingChatWidget.conversations.find(conv => {
+                    return conv.participants?.some(p => p.vendorProfileId === vendorId || p.businessName === vendorName);
+                });
+                
+                if (existingConv) {
+                    // Open existing conversation
+                    floatingChatWidget.openConversation(existingConv.id);
+                } else {
+                    // Show conversation list for now - user can start new conversation from dashboard
+                    floatingChatWidget.backToConversationList();
+                }
+            }
+        }
+        
+        // Function to open floating chat widget and show conversation list
+        function openFloatingChatWidget() {
+            if (floatingChatWidget) {
+                floatingChatWidget.showWidget();
+                floatingChatWidget.expand();
+                floatingChatWidget.backToConversationList();
+            }
+        }
+        
+        // Initialize the floating chat widget when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🎯 DOM Content Loaded - starting floating chat initialization...');
+            
+            // Wait a bit for other initializations
+            setTimeout(() => {
+                console.log('🎯 Timeout reached - calling initFloatingChatWidget...');
+                initFloatingChatWidget();
+                
+                // Add keyboard shortcut for testing (Ctrl+Shift+C)
+                document.addEventListener('keydown', function(e) {
+                    if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+                        e.preventDefault();
+                        if (window.floatingChatWidget) {
+                            openFloatingChatWidget();
+                            console.log('🎯 Floating chat widget opened via keyboard shortcut (Ctrl+Shift+C)');
+                        } else {
+                            console.log('⚠️ Floating chat widget not available for keyboard shortcut');
+                        }
+                    }
+                });
+                
+                // Show widget automatically for demonstration
+                setTimeout(() => {
+                    if (window.floatingChatWidget) {
+                        window.floatingChatWidget.showWidget();
+                        console.log('🎯 Floating chat widget auto-displayed for demonstration');
+                    } else {
+                        console.log('⚠️ Floating chat widget not available for auto-display');
+                    }
+                }, 2000);
+            }, 1000);
+        });
+        
+        // Fallback initialization if DOM is already loaded
+        if (document.readyState !== 'loading') {
+            setTimeout(initFloatingChatWidget, 500);
+        }
+        
+        console.log('🎯 Facebook-style floating chat widget loaded!');
     </script>
 </html>
