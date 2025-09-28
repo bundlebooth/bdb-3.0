@@ -1811,6 +1811,27 @@
             min-height: 100vh;
         }
 
+        /* Ensure proper scrolling when dashboard is inside the modal */
+        #dashboard-modal .dashboard-container {
+            height: 100%;
+            min-height: 0;
+        }
+        #dashboard-modal .dashboard-content {
+            height: 100%;
+            min-height: 0; /* allow child to compute height within modal */
+            overflow-y: auto;
+            padding-bottom: 2.5rem; /* ensure bottom fields are not clipped */
+        }
+        #dashboard-modal .dashboard-sidebar {
+            overflow-y: auto;
+            max-height: 100%;
+        }
+        #dashboard-modal .modal-body {
+            min-height: 0; /* critical for flex children to allow inner scroll */
+            max-height: none; /* remove global modal-body max-height cap */
+            height: auto;
+        }
+
         .dashboard-sidebar {
             background-color: white;
             border-right: 1px solid var(--border);
@@ -3182,6 +3203,16 @@
             margin-bottom: 1.5rem;
             border-bottom: 1px solid var(--border);
         }
+
+        /* Settings Tabs */
+        .settings-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .settings-panels .settings-panel { display: none; }
+        .settings-panels .settings-panel.active { display: block; }
 
         .tab-btn {
             padding: 0.75rem 1rem;
@@ -4908,23 +4939,33 @@
                             </div>
                         </div>
                         <div id="settings-section" style="display: none;">
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Account Settings</h2>
-                                <form id="profile-form">
-                                    <div class="form-group"><label for="profile-name">Full Name</label><input type="text" id="profile-name"></div>
-                                    <div class="form-group"><label for="profile-email">Email</label><input type="email" id="profile-email" disabled=""></div>
-                                    <div class="form-group"><label for="profile-phone">Phone Number</label><input type="tel" id="profile-phone"></div>
-                                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                                </form>
+                            <div class="settings-tabs">
+                                <button class="tab-btn active" data-target="client-settings-account">Account</button>
+                                <button class="tab-btn" data-target="client-settings-password">Password</button>
                             </div>
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Change Password</h2>
-                                <form id="password-form">
-                                    <div class="form-group"><label for="current-password">Current Password</label><input type="password" id="current-password"></div>
-                                    <div class="form-group"><label for="new-password">New Password</label><input type="password" id="new-password"></div>
-                                    <div class="form-group"><label for="confirm-password">Confirm New Password</label><input type="password" id="confirm-password"></div>
-                                    <button type="submit" class="btn btn-primary">Update Password</button>
-                                </form>
+                            <div class="settings-panels">
+                                <div id="client-settings-account" class="settings-panel active">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Account Settings</h2>
+                                        <form id="profile-form">
+                                            <div class="form-group"><label for="profile-name">Full Name</label><input type="text" id="profile-name"></div>
+                                            <div class="form-group"><label for="profile-email">Email</label><input type="email" id="profile-email" disabled=""></div>
+                                            <div class="form-group"><label for="profile-phone">Phone Number</label><input type="tel" id="profile-phone"></div>
+                                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div id="client-settings-password" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Change Password</h2>
+                                        <form id="password-form">
+                                            <div class="form-group"><label for="current-password">Current Password</label><input type="password" id="current-password"></div>
+                                            <div class="form-group"><label for="new-password">New Password</label><input type="password" id="new-password"></div>
+                                            <div class="form-group"><label for="confirm-password">Confirm New Password</label><input type="password" id="confirm-password"></div>
+                                            <button type="submit" class="btn btn-primary">Update Password</button>
+                                        </form>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </main>
@@ -5051,36 +5092,49 @@
                             </div>
                         </div>
                         <div id="vendor-settings-section" style="display: none;">
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Business Profile</h2>
-                                <form id="vendor-profile-form">
-                                    <div class="form-group"><label for="vendor-name">Business Name</label><input type="text" id="vendor-name"></div>
-                                    <div class="form-group"><label for="vendor-category">Category</label><select id="vendor-category"></select></div>
-                                    <div class="form-group"><label for="vendor-description">Description</label><textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);"></textarea></div>
-                                    <div class="form-group"><label for="vendor-address">Address</label><input type="text" id="vendor-address"></div>
-                                    <div class="form-group"><label for="vendor-city">City</label><input type="text" id="vendor-city"></div>
-                                    <div class="form-group"><label for="vendor-state">State</label><input type="text" id="vendor-state"></div>
-                                    <div class="form-group"><label for="vendor-country">Country</label><input type="text" id="vendor-country"></div>
-                                    <div class="form-group"><label for="vendor-postalCode">Postal Code</label><input type="text" id="vendor-postalCode"></div>
-                                    <div class="form-group"><label for="vendor-phone">Phone Number</label><input type="tel" id="vendor-phone"></div>
-                                    <div class="form-group"><label for="vendor-email">Business Email</label><input type="email" id="vendor-email"></div>
-                                    <div class="form-group"><label for="vendor-website">Website (optional)</label><input type="url" id="vendor-website"></div>
-                                    <div class="form-group"><label for="vendor-years-in-business">Years in Business</label><input type="number" id="vendor-years-in-business" min="0"></div>
-                                    <div class="form-group"><label for="vendor-is-premium">Premium Vendor</label><input type="checkbox" id="vendor-is-premium"></div>
-                                    <div class="form-group"><label for="vendor-is-eco-friendly">Eco-Friendly</label><input type="checkbox" id="vendor-is-eco-friendly"></div>
-                                    <div class="form-group"><label for="vendor-is-award-winning">Award Winning</label><input type="checkbox" id="vendor-is-award-winning"></div>
-                                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                                </form>
+                            <div class="settings-tabs">
+                                <button class="tab-btn active" data-target="vendor-profile-panel">Business Profile</button>
+                                <button class="tab-btn" data-target="vendor-photos-panel">Photos</button>
+                                <button class="tab-btn" data-target="vendor-availability-panel">Availability</button>
                             </div>
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Business Photos</h2>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="vendor-photos"><p>No photos uploaded.</p></div>
-                                <button class="btn btn-outline" id="upload-photos-btn">Upload Photos</button>
-                            </div>
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Availability Settings</h2>
-                                <div id="vendor-availability-calendar" style="margin-bottom: 1.5rem;"></div>
-                                <button class="btn btn-outline" id="set-business-hours-btn">Set Business Hours</button>
+                            <div class="settings-panels">
+                                <div id="vendor-profile-panel" class="settings-panel active">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Business Profile</h2>
+                                        <form id="vendor-profile-form">
+                                            <div class="form-group"><label for="vendor-name">Business Name</label><input type="text" id="vendor-name"></div>
+                                            <div class="form-group"><label for="vendor-category">Category</label><select id="vendor-category"></select></div>
+                                            <div class="form-group"><label for="vendor-description">Description</label><textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);"></textarea></div>
+                                            <div class="form-group"><label for="vendor-address">Address</label><input type="text" id="vendor-address"></div>
+                                            <div class="form-group"><label for="vendor-city">City</label><input type="text" id="vendor-city"></div>
+                                            <div class="form-group"><label for="vendor-state">State</label><input type="text" id="vendor-state"></div>
+                                            <div class="form-group"><label for="vendor-country">Country</label><input type="text" id="vendor-country"></div>
+                                            <div class="form-group"><label for="vendor-postalCode">Postal Code</label><input type="text" id="vendor-postalCode"></div>
+                                            <div class="form-group"><label for="vendor-phone">Phone Number</label><input type="tel" id="vendor-phone"></div>
+                                            <div class="form-group"><label for="vendor-email">Business Email</label><input type="email" id="vendor-email"></div>
+                                            <div class="form-group"><label for="vendor-website">Website (optional)</label><input type="url" id="vendor-website"></div>
+                                            <div class="form-group"><label for="vendor-years-in-business">Years in Business</label><input type="number" id="vendor-years-in-business" min="0"></div>
+                                            <div class="form-group"><label for="vendor-is-premium">Premium Vendor</label><input type="checkbox" id="vendor-is-premium"></div>
+                                            <div class="form-group"><label for="vendor-is-eco-friendly">Eco-Friendly</label><input type="checkbox" id="vendor-is-eco-friendly"></div>
+                                            <div class="form-group"><label for="vendor-is-award-winning">Award Winning</label><input type="checkbox" id="vendor-is-award-winning"></div>
+                                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div id="vendor-photos-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Business Photos</h2>
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="vendor-photos"><p>No photos uploaded.</p></div>
+                                        <button class="btn btn-outline" id="upload-photos-btn">Upload Photos</button>
+                                    </div>
+                                </div>
+                                <div id="vendor-availability-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Availability Settings</h2>
+                                        <div id="vendor-availability-calendar" style="margin-bottom: 1.5rem;"></div>
+                                        <button class="btn btn-outline" id="set-business-hours-btn">Set Business Hours</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </main>
@@ -18870,6 +18924,52 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 });
             }
 
+            // Generic settings tabs setup for a given container
+            function setupSettingsTabs(rootEl, onChange) {
+                if (!rootEl) return;
+                const btns = rootEl.querySelectorAll('.settings-tabs .tab-btn');
+                const panels = rootEl.querySelectorAll('.settings-panels .settings-panel');
+                btns.forEach(btn => {
+                    if (btn.dataset.bound === '1') return; // prevent duplicate binding
+                    btn.dataset.bound = '1';
+                    btn.addEventListener('click', async () => {
+                        // button active state
+                        btns.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        // panels active state
+                        const targetId = btn.dataset.target;
+                        panels.forEach(p => p.classList.remove('active'));
+                        const targetPanel = rootEl.querySelector(`#${targetId}`);
+                        if (targetPanel) targetPanel.classList.add('active');
+                        // callback for lazy loading per tab
+                        if (onChange) await onChange(targetId);
+                    });
+                });
+            }
+
+            // Client settings tabs
+            function setupClientSettingsTabs() {
+                const section = document.getElementById('settings-section');
+                setupSettingsTabs(section, null);
+            }
+
+            // Vendor settings tabs with lazy-loading of Photos & Availability
+            let vendorSettingsLoaded = { photos: false, availability: false };
+            function setupVendorSettingsTabs(vendorProfileId) {
+                const section = document.getElementById('vendor-settings-section');
+                vendorSettingsLoaded = { photos: false, availability: false };
+                setupSettingsTabs(section, async (targetId) => {
+                    if (targetId === 'vendor-photos-panel' && !vendorSettingsLoaded.photos) {
+                        await loadVendorImages(vendorProfileId);
+                        vendorSettingsLoaded.photos = true;
+                    }
+                    if (targetId === 'vendor-availability-panel' && !vendorSettingsLoaded.availability) {
+                        await loadVendorAvailability(vendorProfileId);
+                        vendorSettingsLoaded.availability = true;
+                    }
+                });
+            }
+
             // Unified function to display either client or vendor dashboard
             async function displayUserDashboard(mode, section) {
                 // Update global state and localStorage
@@ -18976,6 +19076,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         await loadUserReviews();
                     } else if (section === 'settings') {
                         await loadUserProfileDetails();
+                        setupClientSettingsTabs();
                     }
                 } catch (error) {
                     console.error('Error loading client dashboard:', error);
@@ -19445,6 +19546,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         await loadVendorAnalytics(vendorProfileId);
                     } else if (section === 'vendor-settings') {
                         await loadVendorProfileDetails(vendorProfileId);
+                        setupVendorSettingsTabs(vendorProfileId);
                     }
                 } catch (error) {
                     console.error('Error loading vendor dashboard:', error);
@@ -20010,8 +20112,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                     }
 
-                    await loadVendorImages(vendorProfileId);
-                    await loadVendorAvailability(vendorProfileId);
+                    // Defer heavy loads to tab activation to keep settings fast
+                    const photosPanel = document.getElementById('vendor-photos-panel');
+                    const availabilityPanel = document.getElementById('vendor-availability-panel');
+                    if (photosPanel && photosPanel.classList.contains('active')) {
+                        await loadVendorImages(vendorProfileId);
+                    }
+                    if (availabilityPanel && availabilityPanel.classList.contains('active')) {
+                        await loadVendorAvailability(vendorProfileId);
+                    }
 
                 } catch (error) {
                     console.error('Error loading vendor profile details:', error);
