@@ -4102,6 +4102,8 @@
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
             border: 1px solid #e1e5e9;
             overflow: hidden;
+            display: flex;               /* ensure header + content stack within fixed height */
+            flex-direction: column;
             animation: slideUp 0.3s ease;
         }
 
@@ -4152,9 +4154,23 @@
         }
 
         .widget-view {
-            height: calc(100% - 64px);
+            /* fill the space below widget header */
+            flex: 1 1 auto;
+            min-height: 0;              /* allow inner scroller to shrink */
             display: flex;
             flex-direction: column;
+        }
+
+        /* Make sure individual views also allow shrinking */
+        #conversations-view {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        #chat-view {
+            display: grid;
+            grid-template-rows: auto 1fr auto; /* header | messages | input */
+            min-height: 0; /* allow middle row to shrink */
         }
 
         .conversations-header {
@@ -4264,6 +4280,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            flex-shrink: 0;              /* keep header fixed height */
         }
 
         .back-button {
@@ -4301,8 +4318,10 @@
         }
 
         .chat-messages-container {
-            flex: 1;
-            overflow-y: auto;
+            flex: 1 1 auto;              /* take remaining space between chat header and input */
+            min-height: 0;               /* allow to shrink within flex column */
+            overflow-y: scroll;          /* always show scroll area */
+            -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
             padding: 16px 20px;
             display: flex;
             flex-direction: column;
@@ -4362,6 +4381,7 @@
             display: flex;
             gap: 8px;
             align-items: center;
+            flex-shrink: 0;              /* keep input fixed at bottom */
         }
 
         .widget-chat-input {
@@ -26740,7 +26760,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const container = document.getElementById('widget-container');
                 console.log('🔍 Widget container found:', container);
                 if (container) {
-                    container.style.display = 'block';
+                    // Use flex so header/messages/input layout correctly
+                    container.style.display = 'flex';
                     this.isOpen = true;
                     console.log('✅ Widget opened, loading conversations...');
                     this.loadConversations();
@@ -26758,7 +26779,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             showConversationsView() {
-                document.getElementById('conversations-view').style.display = 'block';
+                document.getElementById('conversations-view').style.display = 'flex';
                 document.getElementById('chat-view').style.display = 'none';
                 this.currentView = 'conversations';
                 this.currentConversationId = null;
@@ -26767,7 +26788,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             showChatView(conversationId, user) {
                 document.getElementById('conversations-view').style.display = 'none';
-                document.getElementById('chat-view').style.display = 'block';
+                // Use grid to fix header and input, only messages scroll
+                document.getElementById('chat-view').style.display = 'grid';
                 this.currentView = 'chat';
                 this.currentConversationId = conversationId;
                 this.currentChatUser = user;
