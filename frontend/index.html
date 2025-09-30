@@ -8567,6 +8567,27 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
             function splitCsv(v) { return v ? v.split(',').map(s => s.trim()).filter(Boolean) : null; }
 
+            // Lazy-load Google Maps JS (Places) on demand. Set window.GOOGLE_MAPS_API_KEY or localStorage.gmaps_api_key
+            function loadGoogleMapsIfNeeded() {
+                if (window.google && window.google.maps && window.google.maps.places) return Promise.resolve();
+                if (window._gmapsLoadingPromise) return window._gmapsLoadingPromise;
+                const apiKey = window.GOOGLE_MAPS_API_KEY || localStorage.getItem('gmaps_api_key');
+                if (!apiKey) {
+                    console.warn('Google Maps API key not set. Define window.GOOGLE_MAPS_API_KEY or localStorage.gmaps_api_key. Autocomplete will be disabled.');
+                    return Promise.resolve();
+                }
+                window._gmapsLoadingPromise = new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&v=weekly`;
+                    script.async = true;
+                    script.defer = true;
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error('Failed to load Google Maps JS'));
+                    document.head.appendChild(script);
+                });
+                return window._gmapsLoadingPromise;
+            }
+
             // Initialize Vendor Setup
             function initializeVendorSetup(vendorId) {
                 vendorSetupState.vendorId = vendorId;
@@ -20998,6 +21019,88 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                 }
 
+                // Initialize Google Places Autocomplete for Location panel
+                try {
+                    await loadGoogleMapsIfNeeded();
+                    if (window.google && window.google.maps && window.google.maps.places) {
+                        // Address Autocomplete (fills city/province/country/postal and lat/lng)
+                        if (inputs.address) {
+                            const addrAuto = new google.maps.places.Autocomplete(inputs.address, {
+                                fields: ['address_components','geometry','formatted_address','place_id','types'],
+                                types: ['address'],
+                                componentRestrictions: { country: ['ca'] }
+                            });
+                            addrAuto.addListener('place_changed', () => {
+                                const place = addrAuto.getPlace();
+                                if (!place || !place.address_components) return;
+                                inputs.address.value = place.formatted_address || inputs.address.value;
+                                const comps = place.address_components;
+                                const pick = (t) => comps.find(c => c.types.includes(t))?.long_name || '';
+                                const city = pick('locality') || pick('sublocality') || pick('postal_town') || pick('administrative_area_level_3') || '';
+                                const province = pick('administrative_area_level_1') || '';
+                                const country = pick('country') || '';
+                                const postal = pick('postal_code') || '';
+                                if (inputs.city) inputs.city.value = city;
+                                if (inputs.state) inputs.state.value = province;
+                                if (inputs.country) inputs.country.value = country;
+                                if (inputs.postal) inputs.postal.value = postal;
+                                const loc = place.geometry?.location;
+                                if (loc) {
+                                    if (inputs.lat) inputs.lat.value = (typeof loc.lat === 'function') ? loc.lat() : loc.lat;
+                                    if (inputs.lng) inputs.lng.value = (typeof loc.lng === 'function') ? loc.lng() : loc.lng;
+                                }
+                            });
+                        }
+
+                        // Helper to check duplicate areas
+                        const areaExists = (a) => areasState.list.some(x =>
+                            (a.placeId && x.placeId && a.placeId === x.placeId) ||
+                            (
+                                (x.city || '').toLowerCase() === (a.city || '').toLowerCase() &&
+                                (x.province || x.state || '').toLowerCase() === (a.province || a.state || '').toLowerCase() &&
+                                (x.country || '').toLowerCase() === (a.country || '').toLowerCase()
+                            )
+                        );
+
+                        // Service Area Autocomplete (cities)
+                        if (areaInputEl) {
+                            const cityAuto = new google.maps.places.Autocomplete(areaInputEl, {
+                                fields: ['address_components','geometry','formatted_address','place_id','types'],
+                                types: ['(cities)'],
+                                componentRestrictions: { country: ['ca'] }
+                            });
+                            cityAuto.addListener('place_changed', () => {
+                                const place = cityAuto.getPlace();
+                                if (!place || !place.address_components) return;
+                                const comps = place.address_components;
+                                const pick = (t) => comps.find(c => c.types.includes(t))?.long_name || '';
+                                const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || '';
+                                const province = pick('administrative_area_level_1') || '';
+                                const country = pick('country') || (inputs.country?.value || '') || '';
+                                const loc = place.geometry?.location;
+                                const newArea = {
+                                    placeId: place.place_id || null,
+                                    city,
+                                    province,
+                                    country,
+                                    latitude: loc ? ((typeof loc.lat === 'function') ? loc.lat() : loc.lat) : null,
+                                    longitude: loc ? ((typeof loc.lng === 'function') ? loc.lng() : loc.lng) : null,
+                                    formattedAddress: place.formatted_address || [city, province, country].filter(Boolean).join(', '),
+                                    placeType: Array.isArray(place.types) ? place.types[0] : 'locality',
+                                    serviceRadius: 25.0
+                                };
+                                if (!areaExists(newArea)) {
+                                    areasState.list.push(newArea);
+                                    renderAreas();
+                                }
+                                areaInputEl.value = '';
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Google Maps not available:', e);
+                }
+
                 try {
                     const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/location`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -21103,31 +21206,137 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const aData = await aRes.json();
                     const answers = aData?.answers || [];
 
-                    const answerMap = new Map(answers.map(a => [a.QuestionID, a.Answer]));
+                    // Normalize answers into a map keyed by stringified QuestionID/QuestionId
+                    const answerMap = new Map();
+                    answers.forEach(a => {
+                        const key = (a.QuestionID ?? a.QuestionId ?? a.QuestionID)?.toString();
+                        if (key) {
+                            const val = a.Answer ?? a.AnswerValue ?? a.Value ?? a.Response ?? null;
+                            answerMap.set(key, val);
+                        }
+                    });
                     if (questions.length === 0) {
                         container.innerHTML = '<p>No additional questions for your category.</p>';
                         return;
                     }
-                    const formHtml = questions.map(q => `
-                        <div class=\"form-group\">\n                            <label>${q.QuestionText}</label>\n                            <textarea data-question-id=\"${q.QuestionID}\" rows=\"3\" style=\"width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);\">${answerMap.get(q.QuestionID) || ''}</textarea>\n                        </div>
-                    `).join('');
+                    const formHtml = questions.map(q => {
+                        const qId = (q.QuestionID ?? q.QuestionId ?? q.ID ?? q.Id ?? q.QID);
+                        const qIdStr = qId != null ? String(qId) : String(q.QuestionID);
+                        const qText = q.QuestionText ?? q.Question ?? q.Text ?? q.Prompt ?? 'Question';
+                        const typeCandidates = [
+                            q.QuestionType, q.Type, q.AnswerType, q.InputType, q.ResponseType, q.Format, q.QuestionFormat
+                        ].map(v => (v ? String(v).toLowerCase() : ''));
+                        const flagCandidates = [q.IsBoolean, q.IsBool, q.IsYesNo, q.YesNo];
+                        const isBoolFlag = flagCandidates.some(v => {
+                            const s = String(v).toLowerCase();
+                            return s === '1' || s === 'true' || s === 'yes' || s === 'y';
+                        });
+                        const isBoolType = typeCandidates.some(t =>
+                            t.includes('boolean') || t.includes('bool') || t.includes('yes_no') || t.includes('yes/no') || t.includes('yes no') || t.includes('yesno') || t === 'yn' || t === 'y/n' || t.includes('bit') || t.includes('radio') || t.includes('switch') || t.includes('toggle')
+                        );
+                        // Extract options if present and see if they are Yes/No
+                        function getOptionsArray(o) {
+                            if (!o) return [];
+                            if (Array.isArray(o)) return o.map(x => String(x));
+                            try {
+                                const parsed = JSON.parse(o);
+                                if (Array.isArray(parsed)) return parsed.map(x => String(x));
+                            } catch {}
+                            const s = String(o);
+                            if (/[\|,;]/.test(s)) return s.split(/[\|,;]+/).map(x => x.trim());
+                            return [s];
+                        }
+                        const options = [
+                            ...getOptionsArray(q.Options),
+                            ...getOptionsArray(q.OptionsJSON),
+                            ...getOptionsArray(q.OptionList)
+                        ].map(x => x.toLowerCase());
+                        const hasYesNoOptions = options.includes('yes') && options.includes('no');
+                        const textLower = String(q.QuestionText || '').toLowerCase();
+                        const isYesNoInText = textLower.includes('yes/no') || textLower.includes('yes or no') || textLower.includes('(yes/no)') || textLower.includes('y/n');
+                        const isBoolean = isBoolFlag || isBoolType || hasYesNoOptions || isYesNoInText;
+
+                        const rawAns = answerMap.get(qIdStr);
+                        const ansStr = (() => {
+                            if (typeof rawAns === 'string') return rawAns;
+                            if (rawAns === true || rawAns === 1) return 'Yes';
+                            if (rawAns === false || rawAns === 0) return 'No';
+                            return '';
+                        })();
+                        try { console.debug('AdditionalDetails detect', { id: qIdStr, text: qText, typeCandidates, options, isBoolean }); } catch {}
+                        const yesChecked = ansStr && ['yes','true','y','1'].includes(String(ansStr).toLowerCase());
+                        const noChecked = ansStr && ['no','false','n','0'].includes(String(ansStr).toLowerCase());
+                        if (isBoolean) {
+                            return `
+                                <div class="form-group">
+                                    <label style="display:block;margin-bottom:.25rem;">${qText}</label>
+                                    <div style="display:flex;gap:1rem;align-items:center;">
+                                        <label style="display:flex;gap:.4rem;align-items:center;"><input type="radio" name="ad-q-${qIdStr}" value="Yes" ${yesChecked ? 'checked' : ''}> Yes</label>
+                                        <label style="display:flex;gap:.4rem;align-items:center;"><input type="radio" name="ad-q-${qIdStr}" value="No" ${noChecked ? 'checked' : ''}> No</label>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        return `
+                            <div class="form-group">
+                                <label>${q.QuestionText}</label>
+                                <textarea data-question-id="${q.QuestionID}" rows="3" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);">${ansStr || ''}</textarea>
+                            </div>
+                        `;
+                    }).join('');
                     container.innerHTML = formHtml;
 
                     const form = document.getElementById('vendor-additional-details-form');
                     form.onsubmit = async (e) => {
                         e.preventDefault();
                         try {
-                            const payload = {
-                                answers: Array.from(container.querySelectorAll('textarea[data-question-id]')).map(t => ({
-                                    questionId: parseInt(t.getAttribute('data-question-id'), 10),
-                                    answer: t.value?.trim()
-                                }))
-                            };
+                            const compiled = questions.map(q => {
+                                const qId = (q.QuestionID ?? q.QuestionId ?? q.ID ?? q.Id ?? q.QID);
+                                const qIdStr = qId != null ? String(qId) : String(q.QuestionID);
+                                const typeCandidates = [
+                                    q.QuestionType, q.Type, q.AnswerType, q.InputType, q.ResponseType, q.Format, q.QuestionFormat
+                                ].map(v => (v ? String(v).toLowerCase() : ''));
+                                const flagCandidates = [q.IsBoolean, q.IsBool, q.IsYesNo, q.YesNo];
+                                const isBoolFlag = flagCandidates.some(v => {
+                                    const s = String(v).toLowerCase();
+                                    return s === '1' || s === 'true' || s === 'yes' || s === 'y';
+                                });
+                                const isBoolType = typeCandidates.some(t =>
+                                    t.includes('boolean') || t.includes('bool') || t.includes('yes_no') || t.includes('yes/no') || t.includes('yes no') || t.includes('yesno') || t === 'yn' || t === 'y/n' || t.includes('bit') || t.includes('radio') || t.includes('switch') || t.includes('toggle')
+                                );
+                                function getOptionsArray(o) {
+                                    if (!o) return [];
+                                    if (Array.isArray(o)) return o.map(x => String(x));
+                                    try {
+                                        const parsed = JSON.parse(o);
+                                        if (Array.isArray(parsed)) return parsed.map(x => String(x));
+                                    } catch {}
+                                    const s = String(o);
+                                    if (/[\|,;]/.test(s)) return s.split(/[\|,;]+/).map(x => x.trim());
+                                    return [s];
+                                }
+                                const options = [
+                                    ...getOptionsArray(q.Options),
+                                    ...getOptionsArray(q.OptionsJSON),
+                                    ...getOptionsArray(q.OptionList)
+                                ].map(x => x.toLowerCase());
+                                const hasYesNoOptions = options.includes('yes') && options.includes('no');
+                                const textLower = String(q.QuestionText || '').toLowerCase();
+                                const isYesNoInText = textLower.includes('yes/no') || textLower.includes('yes or no') || textLower.includes('(yes/no)') || textLower.includes('y/n');
+                                const isBoolean = isBoolFlag || isBoolType || hasYesNoOptions || isYesNoInText;
+
+                                if (isBoolean) {
+                                    const val = container.querySelector(`input[name="ad-q-${qIdStr}"]:checked`)?.value || '';
+                                    return { questionId: qId, answer: val };
+                                }
+                                const t = container.querySelector(`textarea[data-question-id="${qIdStr}"]`);
+                                return { questionId: qId, answer: t?.value?.trim() || '' };
+                            }).filter(a => a && String(a.answer).length > 0);
+
+                            const payload = { answers: compiled };
                             const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/category-answers/upsert`, {
                                 method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                                 body: JSON.stringify(payload)
                             });
                             if (!res.ok) throw new Error('Failed to save answers');
