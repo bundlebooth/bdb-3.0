@@ -5093,32 +5093,174 @@
                         </div>
                         <div id="vendor-settings-section" style="display: none;">
                             <div class="settings-tabs">
-                                <button class="tab-btn active" data-target="vendor-profile-panel">Business Profile</button>
-                                <button class="tab-btn" data-target="vendor-photos-panel">Photos</button>
-                                <button class="tab-btn" data-target="vendor-availability-panel">Availability</button>
+                                <button class="tab-btn active" data-target="vendor-profile-panel">Business Basics</button>
+                                <button class="tab-btn" data-target="vendor-location-panel">Location Information</button>
+                                <button class="tab-btn" data-target="vendor-additional-details-panel">Additional Details</button>
+                                <button class="tab-btn" data-target="vendor-social-panel">Social Media</button>
+                                <button class="tab-btn" data-target="vendor-policies-panel">Policies</button>
+                                <button class="tab-btn" data-target="vendor-verification-panel">Verification</button>
+                                <button class="tab-btn" data-target="vendor-team-panel">Team</button>
+                                <button class="tab-btn" data-target="vendor-services-panel">Services & Packages</button>
+                                <button class="tab-btn" data-target="vendor-packages-panel">Packages</button>
+                                <button class="tab-btn" data-target="vendor-faqs-panel">FAQ Section</button>
+                                <button class="tab-btn" data-target="vendor-photos-panel">Gallery & Media</button>
+                                <button class="tab-btn" data-target="vendor-availability-panel">Availability & Scheduling</button>
                             </div>
                             <div class="settings-panels">
                                 <div id="vendor-profile-panel" class="settings-panel active">
                                     <div class="dashboard-card">
                                         <h2 class="dashboard-card-title">Business Profile</h2>
                                         <form id="vendor-profile-form">
-                                            <div class="form-group"><label for="vendor-name">Business Name</label><input type="text" id="vendor-name"></div>
-                                            <div class="form-group"><label for="vendor-category">Category</label><select id="vendor-category"></select></div>
-                                            <div class="form-group"><label for="vendor-description">Description</label><textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);"></textarea></div>
-                                            <div class="form-group"><label for="vendor-address">Address</label><input type="text" id="vendor-address"></div>
-                                            <div class="form-group"><label for="vendor-city">City</label><input type="text" id="vendor-city"></div>
-                                            <div class="form-group"><label for="vendor-state">State</label><input type="text" id="vendor-state"></div>
-                                            <div class="form-group"><label for="vendor-country">Country</label><input type="text" id="vendor-country"></div>
-                                            <div class="form-group"><label for="vendor-postalCode">Postal Code</label><input type="text" id="vendor-postalCode"></div>
-                                            <div class="form-group"><label for="vendor-phone">Phone Number</label><input type="tel" id="vendor-phone"></div>
-                                            <div class="form-group"><label for="vendor-email">Business Email</label><input type="email" id="vendor-email"></div>
-                                            <div class="form-group"><label for="vendor-website">Website (optional)</label><input type="url" id="vendor-website"></div>
+                                            <div class="form-group"><label for="vendor-name">Business Name <span style="color:red;">*</span></label><input type="text" id="vendor-name" required></div>
+                                            <div class="form-group"><label for="vendor-display-name">Display Name (for public listing)</label><input type="text" id="vendor-display-name" placeholder="Public listing name"></div>
+                                            <div class="form-group"><label for="vendor-email">Business Email <span style="color:red;">*</span></label><input type="email" id="vendor-email" required></div>
+                                            <div class="form-group"><label for="vendor-phone">Business Phone <span style="color:red;">*</span></label><input type="tel" id="vendor-phone" required></div>
+                                            <div class="form-group"><label for="vendor-website">Website URL</label><input type="url" id="vendor-website"></div>
                                             <div class="form-group"><label for="vendor-years-in-business">Years in Business</label><input type="number" id="vendor-years-in-business" min="0"></div>
-                                            <div class="form-group"><label for="vendor-is-premium">Premium Vendor</label><input type="checkbox" id="vendor-is-premium"></div>
-                                            <div class="form-group"><label for="vendor-is-eco-friendly">Eco-Friendly</label><input type="checkbox" id="vendor-is-eco-friendly"></div>
-                                            <div class="form-group"><label for="vendor-is-award-winning">Award Winning</label><input type="checkbox" id="vendor-is-award-winning"></div>
+                                            <div class="form-group"><label for="vendor-description">Business Description <span style="color:red;">*</span></label><textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);" required></textarea></div>
+                                            <div class="form-group"><label for="vendor-tagline">Tagline (short description)</label><input type="text" id="vendor-tagline" placeholder="Short description"></div>
+                                            <div class="form-group"><label for="vendor-category">Primary Category <span style="color:red;">*</span></label><select id="vendor-category" required></select></div>
+                                            <div class="form-group"><label for="vendor-additional-categories">Additional Categories</label><select id="vendor-additional-categories" multiple></select></div>
                                             <button type="submit" class="btn btn-primary">Save Changes</button>
                                         </form>
+                                    </div>
+                                </div>
+                                <div id="vendor-location-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Location</h2>
+                                        <form id="vendor-location-form">
+                                            <div class="form-group"><label for="loc-address">Street Address</label><input type="text" id="loc-address"></div>
+                                            <div class="form-group"><label for="loc-city">City</label><input type="text" id="loc-city"></div>
+                                            <div class="form-group"><label for="loc-state">Province</label><input type="text" id="loc-state"></div>
+                                            <div class="form-group"><label for="loc-country">Country</label><input type="text" id="loc-country" placeholder="Canada"></div>
+                                            <div class="form-group"><label for="loc-postal">Postal Code</label><input type="text" id="loc-postal"></div>
+                                            <div class="form-row">
+                                                <div class="form-col"><div class="form-group"><label for="loc-lat">Latitude</label><input type="text" id="loc-lat" readonly></div></div>
+                                                <div class="form-col"><div class="form-group"><label for="loc-lng">Longitude</label><input type="text" id="loc-lng" readonly></div></div>
+                                            </div>
+                                            <div class="dashboard-subcard" style="margin-top:1rem;">
+                                                <h3 class="dashboard-card-title" style="font-size:1rem;">Service Areas (Cities/Regions Served) <span style="color:red;">*</span></h3>
+                                                <div class="form-row">
+                                                    <div class="form-col"><div class="form-group"><label for="service-area-input">Add City/Region</label><input type="text" id="service-area-input" placeholder="e.g., Toronto, ON"></div></div>
+                                                    <div class="form-col" style="align-self:end;"><button type="button" class="btn btn-outline" id="add-service-area-btn">Add</button></div>
+                                                </div>
+                                                <div id="service-areas-list" style="display:flex;gap:.5rem;flex-wrap:wrap;"></div>
+                                                <p style="color:var(--text-light);margin-top:.5rem;">Add at least one city or region you serve.</p>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Save Location</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div id="vendor-additional-details-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Additional Details</h2>
+                                        <form id="vendor-additional-details-form">
+                                            <div id="additional-questions-container"><p>Loading questions...</p></div>
+                                            <button type="submit" class="btn btn-primary">Save Answers</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div id="vendor-social-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Social & Booking</h2>
+                                        <form id="vendor-social-form">
+                                            <div class="form-group"><label for="booking-link">Booking Link</label><input type="url" id="booking-link" placeholder="https://..."></div>
+                                            <div class="form-group"><label for="social-facebook-settings">Facebook</label><input type="text" id="social-facebook-settings" placeholder="https://facebook.com/yourpage"></div>
+                                            <div class="form-group"><label for="social-instagram-settings">Instagram</label><input type="text" id="social-instagram-settings" placeholder="https://instagram.com/youraccount"></div>
+                                            <div class="form-group"><label for="social-twitter-settings">Twitter</label><input type="text" id="social-twitter-settings" placeholder="https://twitter.com/youraccount"></div>
+                                            <div class="form-group"><label for="social-linkedin-settings">LinkedIn</label><input type="text" id="social-linkedin-settings" placeholder="https://linkedin.com/in/yourprofile"></div>
+                                            <div class="form-group"><label for="social-youtube-settings">YouTube</label><input type="text" id="social-youtube-settings" placeholder="https://youtube.com/yourchannel"></div>
+                                            <div class="form-group"><label for="social-tiktok-settings">TikTok</label><input type="text" id="social-tiktok-settings" placeholder="https://tiktok.com/@yourhandle"></div>
+                                            <button type="submit" class="btn btn-primary">Save Social</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div id="vendor-policies-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Policies & Preferences</h2>
+                                        <form id="vendor-policies-form">
+                                            <div class="form-group"><label for="pol-deposit">Deposit Requirements (JSON or text)</label><textarea id="pol-deposit" rows="3" style="width:100%;"></textarea></div>
+                                            <div class="form-group"><label for="pol-cancel">Cancellation Policy</label><textarea id="pol-cancel" rows="3" style="width:100%;"></textarea></div>
+                                            <div class="form-group"><label for="pol-reschedule">Rescheduling Policy</label><textarea id="pol-reschedule" rows="3" style="width:100%;"></textarea></div>
+                                            <div class="form-group"><label for="pol-payment-methods">Payment Methods (comma-separated)</label><input type="text" id="pol-payment-methods" placeholder="Visa, MasterCard, Cash"></div>
+                                            <div class="form-group"><label for="pol-payment-terms">Payment Terms</label><textarea id="pol-payment-terms" rows="3" style="width:100%;"></textarea></div>
+                                            <button type="submit" class="btn btn-primary">Save Policies</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div id="vendor-verification-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Verification & Legal</h2>
+                                        <form id="vendor-verification-form">
+                                            <div class="form-group"><label for="ver-license">License Number</label><input type="text" id="ver-license"></div>
+                                            <div class="form-group"><label><input type="checkbox" id="ver-insurance"> Insurance Verified</label></div>
+                                            <div class="form-group"><label for="ver-awards">Awards (comma-separated or JSON)</label><textarea id="ver-awards" rows="2" style="width:100%;"></textarea></div>
+                                            <div class="form-group"><label for="ver-certifications">Certifications (comma-separated or JSON)</label><textarea id="ver-certifications" rows="2" style="width:100%;"></textarea></div>
+                                            <div class="form-row">
+                                                <div class="form-col"><div class="form-group"><label><input type="checkbox" id="ver-eco"> Eco Friendly</label></div></div>
+                                                <div class="form-col"><div class="form-group"><label><input type="checkbox" id="ver-premium"> Premium</label></div></div>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Save Verification</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div id="vendor-team-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Team</h2>
+                                        <div id="team-list"></div>
+                                        <div style="margin-top:1rem;">
+                                            <button class="btn btn-outline" id="add-team-member">Add Team Member</button>
+                                            <button class="btn btn-primary" id="save-team">Save Team</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="vendor-services-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Services</h2>
+                                        <div id="services-list"></div>
+                                        <div style="margin-top:1rem;">
+                                            <h3 style="margin:0 0 .5rem 0;">Add New Service</h3>
+                                            <div class="form-row">
+                                                <div class="form-col"><div class="form-group"><label>Name</label><input type="text" id="svc-name"></div></div>
+                                                <div class="form-col"><div class="form-group"><label>Price</label><input type="number" step="0.01" id="svc-price"></div></div>
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="form-col"><div class="form-group"><label>Duration (minutes)</label><input type="number" id="svc-duration"></div></div>
+                                                <div class="form-col"><div class="form-group"><label>Pricing Model</label><select id="svc-pricing-model"><option value="">Select</option><option value="time_based">Time Based</option><option value="fixed_price">Fixed Price</option><option value="per_attendee">Per Attendee</option></select></div></div>
+                                            </div>
+                                            <div class="form-group"><label>Description</label><textarea id="svc-desc" rows="2" style="width:100%;"></textarea></div>
+                                            <button class="btn btn-primary" id="add-service-btn">Add Service</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="vendor-packages-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Packages</h2>
+                                        <div id="packages-list"></div>
+                                        <div style="margin-top:1rem;">
+                                            <h3 style="margin:0 0 .5rem 0;">Add New Package</h3>
+                                            <div class="form-row">
+                                                <div class="form-col"><div class="form-group"><label>Name</label><input type="text" id="pkg-name"></div></div>
+                                                <div class="form-col"><div class="form-group"><label>Price</label><input type="number" step="0.01" id="pkg-price"></div></div>
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="form-col"><div class="form-group"><label>Duration (minutes)</label><input type="number" id="pkg-duration"></div></div>
+                                                <div class="form-col"><div class="form-group"><label>Max Guests</label><input type="number" id="pkg-max-guests"></div></div>
+                                            </div>
+                                            <div class="form-group"><label>Description</label><textarea id="pkg-desc" rows="2" style="width:100%;"></textarea></div>
+                                            <div class="form-group"><label>What's Included</label><textarea id="pkg-includes" rows="2" style="width:100%;"></textarea></div>
+                                            <button class="btn btn-primary" id="add-package-btn">Add Package</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="vendor-faqs-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">FAQs</h2>
+                                        <div id="faqs-list"></div>
+                                        <div style="margin-top: 1rem;">
+                                            <button id="add-faq-btn" class="btn btn-outline">Add FAQ</button>
+                                            <button id="save-faqs-btn" class="btn btn-primary" style="margin-left: 0.5rem;">Save FAQs</button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div id="vendor-photos-panel" class="settings-panel">
@@ -5126,13 +5268,19 @@
                                         <h2 class="dashboard-card-title">Business Photos</h2>
                                         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="vendor-photos"><p>No photos uploaded.</p></div>
                                         <button class="btn btn-outline" id="upload-photos-btn">Upload Photos</button>
+                                        <div style="margin-top:1rem;display:grid;grid-template-columns:1fr 1fr auto;gap:.5rem;align-items:end;">
+                                            <div class="form-group" style="margin:0;"><label for="image-url-input">Add Image by URL</label><input type="url" id="image-url-input" placeholder="https://..."></div>
+                                            <div class="form-group" style="margin:0;"><label for="image-caption-input">Caption (optional)</label><input type="text" id="image-caption-input"></div>
+                                            <div class="form-group" style="margin:0;display:flex;gap:.5rem;align-items:center;"><label><input type="checkbox" id="image-primary-checkbox"> Primary</label><button class="btn btn-primary" type="button" id="add-photo-url-btn">Add</button></div>
+                                        </div>
                                     </div>
                                 </div>
                                 <div id="vendor-availability-panel" class="settings-panel">
                                     <div class="dashboard-card">
                                         <h2 class="dashboard-card-title">Availability Settings</h2>
                                         <div id="vendor-availability-calendar" style="margin-bottom: 1.5rem;"></div>
-                                        <button class="btn btn-outline" id="set-business-hours-btn">Set Business Hours</button>
+                                        <div id="business-hours-container" style="margin-top:1rem;"></div>
+                                        <button class="btn btn-primary" id="save-business-hours-btn" style="margin-top:.5rem;">Save Business Hours</button>
                                     </div>
                                 </div>
                             </div>
@@ -8113,6 +8261,311 @@ document.addEventListener('DOMContentLoaded', async function() {
                     selectedCities: []
                 };
             }
+
+            // Load & Save: Policies
+            async function loadVendorPolicies(vendorProfileId) {
+                const form = document.getElementById('vendor-policies-form');
+                const inputs = {
+                    deposit: document.getElementById('pol-deposit'),
+                    cancel: document.getElementById('pol-cancel'),
+                    reschedule: document.getElementById('pol-reschedule'),
+                    methods: document.getElementById('pol-payment-methods'),
+                    terms: document.getElementById('pol-payment-terms')
+                };
+                try {
+                    const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/policies`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const p = data?.policies || {};
+                        inputs.deposit.value = p.DepositRequirements || '';
+                        inputs.cancel.value = p.CancellationPolicy || '';
+                        inputs.reschedule.value = p.ReschedulingPolicy || '';
+                        inputs.methods.value = Array.isArray(p.PaymentMethods) ? p.PaymentMethods.join(', ') : (p.PaymentMethods || '');
+                        inputs.terms.value = p.PaymentTerms || '';
+                    }
+                } catch (err) {
+                    console.error('Load policies error:', err);
+                }
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    try {
+                        const payload = {
+                            depositRequirements: safeMaybeJson(inputs.deposit.value?.trim()),
+                            cancellationPolicy: inputs.cancel.value?.trim(),
+                            reschedulingPolicy: inputs.reschedule.value?.trim(),
+                            paymentMethods: safeMaybeJson(inputs.methods.value?.trim()) || inputs.methods.value?.split(',').map(s => s.trim()).filter(Boolean),
+                            paymentTerms: inputs.terms.value?.trim()
+                        };
+                        const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/policies`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!res.ok) throw new Error('Failed to save policies');
+                        alert('Policies saved');
+                    } catch (err) {
+                        console.error('Save policies error:', err);
+                        alert('Failed to save policies: ' + err.message);
+                    }
+                };
+            }
+
+            // Load & Save: Verification
+            async function loadVendorVerification(vendorProfileId) {
+                const form = document.getElementById('vendor-verification-form');
+                const inputs = {
+                    lic: document.getElementById('ver-license'),
+                    insured: document.getElementById('ver-insurance'),
+                    awards: document.getElementById('ver-awards'),
+                    certs: document.getElementById('ver-certifications'),
+                    eco: document.getElementById('ver-eco'),
+                    premium: document.getElementById('ver-premium')
+                };
+                try {
+                    const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/verification`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const v = data?.verification || {};
+                        inputs.lic.value = v.LicenseNumber || '';
+                        inputs.insured.checked = !!v.InsuranceVerified;
+                        inputs.awards.value = tryStringifyIfJson(v.Awards) || '';
+                        inputs.certs.value = tryStringifyIfJson(v.Certifications) || '';
+                        inputs.eco.checked = !!v.IsEcoFriendly;
+                        inputs.premium.checked = !!v.IsPremium;
+                    }
+                } catch (err) {
+                    console.error('Load verification error:', err);
+                }
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    try {
+                        const payload = {
+                            licenseNumber: inputs.lic.value?.trim(),
+                            insuranceVerified: inputs.insured.checked,
+                            awards: safeMaybeJson(inputs.awards.value?.trim()) || splitCsv(inputs.awards.value),
+                            certifications: safeMaybeJson(inputs.certs.value?.trim()) || splitCsv(inputs.certs.value),
+                            isEcoFriendly: inputs.eco.checked,
+                            isPremium: inputs.premium.checked
+                        };
+                        const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/verification`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!res.ok) throw new Error('Failed to save verification');
+                        alert('Verification saved');
+                    } catch (err) {
+                        console.error('Save verification error:', err);
+                        alert('Failed to save verification: ' + err.message);
+                    }
+                };
+            }
+
+            // Load & Save: Team
+            async function loadVendorTeam(vendorProfileId) {
+                const list = document.getElementById('team-list');
+                const addBtn = document.getElementById('add-team-member');
+                const saveBtn = document.getElementById('save-team');
+                list.innerHTML = '<p>Loading team...</p>';
+                try {
+                    const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/team`);
+                    const data = await res.json();
+                    const team = data?.team || [];
+                    renderTeam(team);
+                } catch (err) {
+                    console.error('Load team error:', err);
+                    list.innerHTML = '<p>Failed to load team.</p>';
+                }
+                function renderTeam(team) {
+                    list.innerHTML = '';
+                    if (!team || team.length === 0) {
+                        list.innerHTML = '<p>No team members yet.</p>';
+                        return;
+                    }
+                    team.forEach((t) => addTeamRow(t.Name, t.Role, t.Bio, t.ImageURL));
+                }
+                function addTeamRow(name = '', role = '', bio = '', imageUrl = '') {
+                    const row = document.createElement('div');
+                    row.className = 'form-row';
+                    row.innerHTML = `
+                        <div class="form-col"><div class="form-group"><label>Name</label><input type="text" class="team-name" value="${name}"></div></div>
+                        <div class="form-col"><div class="form-group"><label>Role</label><input type="text" class="team-role" value="${role}"></div></div>
+                        <div class="form-col"><div class="form-group"><label>Image URL</label><input type="text" class="team-image" value="${imageUrl}"></div></div>
+                        <div class="form-col"><div class="form-group"><label>Bio</label><textarea class="team-bio" rows="2" style="width:100%;">${bio}</textarea></div></div>
+                    `;
+                    list.appendChild(row);
+                }
+                addBtn.onclick = () => addTeamRow();
+                saveBtn.onclick = async () => {
+                    try {
+                        const teamMembers = Array.from(list.querySelectorAll('.form-row')).map(row => ({
+                            name: row.querySelector('.team-name')?.value?.trim(),
+                            role: row.querySelector('.team-role')?.value?.trim(),
+                            bio: row.querySelector('.team-bio')?.value?.trim(),
+                            imageUrl: row.querySelector('.team-image')?.value?.trim(),
+                        })).filter(m => m.name);
+                        const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/team/upsert`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ teamMembers })
+                        });
+                        if (!res.ok) throw new Error('Failed to save team');
+                        alert('Team saved');
+                        await loadVendorTeam(vendorProfileId);
+                    } catch (err) {
+                        console.error('Save team error:', err);
+                        alert('Failed to save team: ' + err.message);
+                    }
+                };
+            }
+
+            // Load & Save: Services (Settings Panel)
+            async function loadVendorServicesSettings(vendorProfileId) {
+                const list = document.getElementById('services-list');
+                const addBtn = document.getElementById('add-service-btn');
+                list.innerHTML = '<p>Loading services...</p>';
+                try {
+                    const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/services`);
+                    const services = await res.json();
+                    renderServices(services || []);
+                } catch (err) {
+                    console.error('Load services error:', err);
+                    list.innerHTML = '<p>Failed to load services.</p>';
+                }
+                function renderServices(items) {
+                    list.innerHTML = '';
+                    if (!items || items.length === 0) {
+                        list.innerHTML = '<p>No services yet.</p>';
+                        return;
+                    }
+                    items.forEach(s => {
+                        const row = document.createElement('div');
+                        row.className = 'form-row';
+                        row.innerHTML = `
+                            <div class="form-col"><div class="form-group"><label>Name</label><input type="text" value="${s.ServiceName || s.Name || ''}" disabled></div></div>
+                            <div class="form-col"><div class="form-group"><label>Price</label><input type="text" value="${s.Price || s.VendorPrice || ''}" disabled></div></div>
+                            <div class="form-col"><div class="form-group"><label>Duration</label><input type="text" value="${s.DurationMinutes || s.BaseDurationMinutes || ''}" disabled></div></div>
+                            <div class="form-col"><button class="btn btn-outline btn-sm" data-id="${s.ServiceID}">Delete</button></div>
+                        `;
+                        list.appendChild(row);
+                        row.querySelector('button').addEventListener('click', async () => {
+                            if (!confirm('Delete this service?')) return;
+                            try {
+                                const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/services/${s.ServiceID}`, { method: 'DELETE' });
+                                if (!resp.ok) throw new Error('Failed to delete');
+                                alert('Service deleted');
+                                await loadVendorServicesSettings(vendorProfileId);
+                            } catch (err) {
+                                console.error('Delete service error:', err);
+                                alert('Failed to delete service: ' + err.message);
+                            }
+                        });
+                    });
+                }
+                addBtn.onclick = async () => {
+                    try {
+                        const name = document.getElementById('svc-name')?.value?.trim();
+                        const price = parseFloat(document.getElementById('svc-price')?.value);
+                        const duration = parseInt(document.getElementById('svc-duration')?.value, 10);
+                        const pricingModel = document.getElementById('svc-pricing-model')?.value;
+                        const description = document.getElementById('svc-desc')?.value?.trim();
+                        if (!name || isNaN(price) || !pricingModel) {
+                            alert('Please provide name, price and pricing model.');
+                            return;
+                        }
+                        const payload = {
+                            serviceName: name,
+                            serviceDescription: description || null,
+                            price,
+                            durationMinutes: duration || null,
+                            categoryName: null,
+                            isActive: true
+                        };
+                        const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/services/upsert`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!resp.ok) throw new Error('Failed to add service');
+                        alert('Service added');
+                        await loadVendorServicesSettings(vendorProfileId);
+                    } catch (err) {
+                        console.error('Add service error:', err);
+                        alert('Failed to add service: ' + err.message);
+                    }
+                };
+            }
+
+            // Load & Save: Packages
+            async function loadVendorPackagesSettings(vendorProfileId) {
+                const list = document.getElementById('packages-list');
+                const addBtn = document.getElementById('add-package-btn');
+                list.innerHTML = '<p>Loading packages...</p>';
+                try {
+                    const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/packages`);
+                    const data = await res.json();
+                    const items = data?.packages || [];
+                    renderPackages(items);
+                } catch (err) {
+                    console.error('Load packages error:', err);
+                    list.innerHTML = '<p>Failed to load packages.</p>';
+                }
+                function renderPackages(items) {
+                    list.innerHTML = '';
+                    if (!items || items.length === 0) {
+                        list.innerHTML = '<p>No packages yet.</p>';
+                        return;
+                    }
+                    items.forEach(p => {
+                        const row = document.createElement('div');
+                        row.className = 'form-row';
+                        row.innerHTML = `
+                            <div class="form-col"><div class="form-group"><label>Name</label><input type="text" value="${p.Name || ''}" disabled></div></div>
+                            <div class="form-col"><div class="form-group"><label>Price</label><input type="text" value="${p.Price || ''}" disabled></div></div>
+                            <div class="form-col"><div class="form-group"><label>Duration</label><input type="text" value="${p.DurationMinutes || ''}" disabled></div></div>
+                            <div class="form-col"><div class="form-group"><label>Max Guests</label><input type="text" value="${p.MaxGuests || ''}" disabled></div></div>
+                        `;
+                        list.appendChild(row);
+                    });
+                }
+                addBtn.onclick = async () => {
+                    try {
+                        const name = document.getElementById('pkg-name')?.value?.trim();
+                        const price = parseFloat(document.getElementById('pkg-price')?.value);
+                        const durationMinutes = parseInt(document.getElementById('pkg-duration')?.value, 10) || null;
+                        const maxGuests = parseInt(document.getElementById('pkg-max-guests')?.value, 10) || null;
+                        const description = document.getElementById('pkg-desc')?.value?.trim() || null;
+                        const whatsIncluded = document.getElementById('pkg-includes')?.value?.trim() || null;
+                        if (!name || isNaN(price)) {
+                            alert('Please provide package name and price.');
+                            return;
+                        }
+                        const payload = { name, description, price, durationMinutes, maxGuests, whatsIncluded };
+                        const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/packages/upsert`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!resp.ok) throw new Error('Failed to add package');
+                        alert('Package added');
+                        await loadVendorPackagesSettings(vendorProfileId);
+                    } catch (err) {
+                        console.error('Add package error:', err);
+                        alert('Failed to add package: ' + err.message);
+                    }
+                };
+            }
+
+            // Helpers
+            function safeMaybeJson(value) {
+                if (!value) return null;
+                try { return JSON.parse(value); } catch { return null; }
+            }
+            function tryStringifyIfJson(value) {
+                if (!value) return '';
+                try { const parsed = typeof value === 'string' ? JSON.parse(value) : value; return JSON.stringify(parsed); } catch { return String(value); }
+            }
+            function splitCsv(v) { return v ? v.split(',').map(s => s.trim()).filter(Boolean) : null; }
 
             // Initialize Vendor Setup
             function initializeVendorSetup(vendorId) {
@@ -18953,12 +19406,48 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 setupSettingsTabs(section, null);
             }
 
-            // Vendor settings tabs with lazy-loading of Photos & Availability
-            let vendorSettingsLoaded = { photos: false, availability: false };
+            // Vendor settings tabs with lazy-loading for each panel
+            let vendorSettingsLoaded = { location: false, additional: false, social: false, policies: false, verification: false, team: false, services: false, packages: false, faqs: false, photos: false, availability: false };
             function setupVendorSettingsTabs(vendorProfileId) {
                 const section = document.getElementById('vendor-settings-section');
-                vendorSettingsLoaded = { photos: false, availability: false };
+                vendorSettingsLoaded = { location: false, additional: false, social: false, policies: false, verification: false, team: false, services: false, packages: false, faqs: false, photos: false, availability: false };
                 setupSettingsTabs(section, async (targetId) => {
+                    if (targetId === 'vendor-location-panel' && !vendorSettingsLoaded.location) {
+                        await loadVendorLocation(vendorProfileId);
+                        vendorSettingsLoaded.location = true;
+                    }
+                    if (targetId === 'vendor-additional-details-panel' && !vendorSettingsLoaded.additional) {
+                        await loadVendorAdditionalDetails(vendorProfileId);
+                        vendorSettingsLoaded.additional = true;
+                    }
+                    if (targetId === 'vendor-social-panel' && !vendorSettingsLoaded.social) {
+                        await loadVendorSocial(vendorProfileId);
+                        vendorSettingsLoaded.social = true;
+                    }
+                    if (targetId === 'vendor-policies-panel' && !vendorSettingsLoaded.policies) {
+                        await loadVendorPolicies(vendorProfileId);
+                        vendorSettingsLoaded.policies = true;
+                    }
+                    if (targetId === 'vendor-verification-panel' && !vendorSettingsLoaded.verification) {
+                        await loadVendorVerification(vendorProfileId);
+                        vendorSettingsLoaded.verification = true;
+                    }
+                    if (targetId === 'vendor-team-panel' && !vendorSettingsLoaded.team) {
+                        await loadVendorTeam(vendorProfileId);
+                        vendorSettingsLoaded.team = true;
+                    }
+                    if (targetId === 'vendor-services-panel' && !vendorSettingsLoaded.services) {
+                        await loadVendorServicesSettings(vendorProfileId);
+                        vendorSettingsLoaded.services = true;
+                    }
+                    if (targetId === 'vendor-packages-panel' && !vendorSettingsLoaded.packages) {
+                        await loadVendorPackagesSettings(vendorProfileId);
+                        vendorSettingsLoaded.packages = true;
+                    }
+                    if (targetId === 'vendor-faqs-panel' && !vendorSettingsLoaded.faqs) {
+                        await loadVendorFaqs(vendorProfileId);
+                        vendorSettingsLoaded.faqs = true;
+                    }
                     if (targetId === 'vendor-photos-panel' && !vendorSettingsLoaded.photos) {
                         await loadVendorImages(vendorProfileId);
                         vendorSettingsLoaded.photos = true;
@@ -19917,7 +20406,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     analyticsData.bookingStats.PendingBookings,
                                     analyticsData.bookingStats.CancelledBookings
                                 ],
-                                backgroundColor: ['#4CAF50', '#2196F3', '#FFC107', '#F4436']
+                                backgroundColor: ['#4CAF50', '#2196F3', '#FFC107', '#F44336']
                             }]
                         },
                         options: {
@@ -20030,7 +20519,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     analyticsData.reviewStats.TwoStarReviews,
                                     analyticsData.reviewStats.OneStarReviews
                                 ],
-                                backgroundColor: ['#4CAF50', '#8BC34A', '#FFEB3B', '#FF9800', '#F4436']
+                                backgroundColor: ['#4CAF50', '#8BC34A', '#FFEB3B', '#FF9800', '#F44336']
                             }]
                         },
                         options: {
@@ -20054,25 +20543,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const form = document.getElementById('vendor-profile-form');
                 const inputs = {
                     businessName: document.getElementById('vendor-name'),
+                    displayName: document.getElementById('vendor-display-name'),
                     category: document.getElementById('vendor-category'),
+                    additionalCategories: document.getElementById('vendor-additional-categories'),
                     description: document.getElementById('vendor-description'),
-                    address: document.getElementById('vendor-address'),
-                    city: document.getElementById('vendor-city'),
-                    state: document.getElementById('vendor-state'),
-                    country: document.getElementById('vendor-country'),
-                    postalCode: document.getElementById('vendor-postalCode'),
                     phone: document.getElementById('vendor-phone'),
                     email: document.getElementById('vendor-email'),
                     website: document.getElementById('vendor-website'),
                     yearsInBusiness: document.getElementById('vendor-years-in-business'),
-                    isPremium: document.getElementById('vendor-is-premium'),
-                    isEcoFriendly: document.getElementById('vendor-is-eco-friendly'),
-                    isAwardWinning: document.getElementById('vendor-is-award-winning')
+                    tagline: document.getElementById('vendor-tagline')
                 };
 
                 // Populate category dropdown
                 inputs.category.innerHTML = '<option value="">Select category</option>' +
                     state.categories.filter(c => c.id !== 'all').map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                // Populate additional categories
+                inputs.additionalCategories.innerHTML = state.categories
+                    .filter(c => c.id !== 'all')
+                    .map(c => `<option value="${c.id}">${c.name}</option>`)
+                    .join('');
 
                 for (const key in inputs) {
                     if (inputs[key] instanceof HTMLInputElement || inputs[key] instanceof HTMLTextAreaElement || inputs[key] instanceof HTMLSelectElement) {
@@ -20089,19 +20578,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const profile = await response.json();
 
                     inputs.businessName.value = profile.BusinessName || '';
+                    inputs.displayName.value = profile.DisplayName || profile.BusinessName || '';
                     inputs.description.value = profile.BusinessDescription || '';
-                    inputs.address.value = profile.Address || '';
-                    inputs.city.value = profile.City || '';
-                    inputs.state.value = profile.State || '';
-                    inputs.country.value = profile.Country || '';
-                    inputs.postalCode.value = profile.PostalCode || '';
                     inputs.phone.value = profile.BusinessPhone || '';
                     inputs.email.value = profile.BusinessEmail || '';
                     inputs.website.value = profile.Website || '';
                     inputs.yearsInBusiness.value = profile.YearsInBusiness || 0;
-                    inputs.isPremium.checked = profile.IsPremium;
-                    inputs.isEcoFriendly.checked = profile.IsEcoFriendly;
-                    inputs.isAwardWinning.checked = profile.IsAwardWinning;
+                    inputs.tagline.value = profile.Tagline || '';
 
                     // Set selected category
                     if (profile.Categories) {
@@ -20135,30 +20618,27 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 form.onsubmit = async (e) => {
                     e.preventDefault();
                     try {
-                        const updateData = {
-                            businessName: inputs.businessName.value,
-                            description: inputs.description.value,
-                            phone: inputs.phone.value,
-                            email: inputs.email.value,
-                            website: inputs.website.value,
-                            yearsInBusiness: parseInt(inputs.yearsInBusiness.value),
-                            address: inputs.address.value,
-                            city: inputs.city.value,
-                            state: inputs.state.value,
-                            country: inputs.country.value,
-                            postalCode: inputs.postalCode.value,
-                            isPremium: inputs.isPremium.checked,
-                            isEcoFriendly: inputs.isEcoFriendly.checked,
-                            isAwardWinning: inputs.isAwardWinning.checked,
+                        const payload = {
+                            vendorProfileId: vendorProfileId,
+                            businessName: inputs.businessName.value?.trim(),
+                            displayName: inputs.displayName.value?.trim() || inputs.businessName.value?.trim(),
+                            businessEmail: inputs.email.value?.trim(),
+                            businessPhone: inputs.phone.value?.trim(),
+                            website: inputs.website.value?.trim(),
+                            businessDescription: inputs.description.value?.trim(),
+                            tagline: inputs.tagline.value?.trim(),
+                            yearsInBusiness: inputs.yearsInBusiness.value ? parseInt(inputs.yearsInBusiness.value, 10) : null,
+                            primaryCategory: inputs.category.value,
+                            additionalCategories: Array.from(inputs.additionalCategories.selectedOptions).map(o => o.value)
                         };
 
-                        const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
-                            method: 'PUT',
+                        const response = await fetch(`${API_BASE_URL}/vendors/setup/step1-business-basics`, {
+                            method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                                 'Authorization': `Bearer ${localStorage.getItem('token')}`
                             },
-                            body: JSON.stringify(updateData)
+                            body: JSON.stringify(payload)
                         });
                         if (!response.ok) {
                             const errorData = await response.json();
@@ -20258,11 +20738,48 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     };
                     input.click();
                 };
+
+                // Add image by URL handler
+                const addUrlBtn = document.getElementById('add-photo-url-btn');
+                if (addUrlBtn) {
+                    addUrlBtn.onclick = async () => {
+                        try {
+                            const urlInput = document.getElementById('image-url-input');
+                            const captionInput = document.getElementById('image-caption-input');
+                            const primaryCheckbox = document.getElementById('image-primary-checkbox');
+                            const imageUrl = urlInput?.value?.trim();
+                            if (!imageUrl) {
+                                alert('Please enter an image URL');
+                                return;
+                            }
+                            const payload = {
+                                imageUrl,
+                                caption: captionInput?.value?.trim() || null,
+                                isPrimary: !!primaryCheckbox?.checked,
+                                displayOrder: 0
+                            };
+                            const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/images/upsert`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                                body: JSON.stringify(payload)
+                            });
+                            if (!resp.ok) throw new Error('Failed to add image');
+                            if (urlInput) urlInput.value = '';
+                            if (captionInput) captionInput.value = '';
+                            if (primaryCheckbox) primaryCheckbox.checked = false;
+                            await loadVendorImages(vendorProfileId);
+                        } catch (err) {
+                            console.error('Add image by URL error:', err);
+                            alert('Failed to add image: ' + err.message);
+                        }
+                    };
+                }
             }
 
             async function loadVendorAvailability(vendorProfileId) {
                 const calendarEl = document.getElementById('vendor-availability-calendar');
                 if (!calendarEl) return;
+                let lastBusinessHours = [];
 
                 // Destroy existing calendar instance if it exists
                 if (calendarEl._fullCalendar) {
@@ -20278,6 +20795,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const data = await response.json();
                     const businessHours = data.businessHours || [];
                     const exceptions = data.availabilityExceptions || [];
+                    lastBusinessHours = businessHours;
 
                     const events = [];
 
@@ -20306,7 +20824,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             start: ex.StartDate + (ex.StartTime ? 'T' + ex.StartTime : ''),
                             end: ex.EndDate + (ex.EndTime ? 'T' + ex.EndTime : ''),
                             title: ex.Reason || (ex.IsAvailable ? 'Available' : 'Unavailable'),
-                            color: ex.IsAvailable ? '#2196F3' : '#F4436',
+                            color: ex.IsAvailable ? '#2196F3' : '#F44336',
                             allDay: !ex.StartTime && !ex.EndTime,
                             extendedProps: {
                                 exceptionId: ex.ExceptionID,
@@ -20346,13 +20864,68 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 } catch (error) {
                     console.error('Error loading vendor availability:', error);
-                    calendarEl.innerHTML = `<p style="color:var(--accent);">Failed to load availability: ${error.message}</p>`;
+                    calendarEl.innerHTML = `<p style=\"color:var(--accent);\">Failed to load availability: ${error.message}</p>`;
                 }
 
-                // Set Business Hours button handler
-                document.getElementById('set-business-hours-btn').onclick = () => {
-                    alert('Business Hours settings would open here. You can configure daily open/close times.');
-                };
+                // Render and save Business Hours
+                try {
+                    const bhContainer = document.getElementById('business-hours-container');
+                    if (bhContainer) {
+                        const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+                        const byDay = {};
+                        // Re-fetch or reuse businessHours if available in outer scope
+                        // businessHours is defined above in try block
+                        // For safety, if not available, initialize empty
+                        const existing = Array.isArray(lastBusinessHours) ? lastBusinessHours : [];
+                        existing.forEach(bh => { byDay[bh.DayOfWeek] = bh; });
+                        bhContainer.innerHTML = '';
+                        days.forEach((day, idx) => {
+                            const bh = byDay[idx] || { HoursID: null, DayOfWeek: idx, OpenTime: '09:00:00', CloseTime: '17:00:00', IsAvailable: false };
+                            const row = document.createElement('div');
+                            row.className = 'form-row';
+                            row.dataset.day = String(idx);
+                            row.dataset.hoursId = bh.HoursID || '';
+                            const openVal = (bh.OpenTime || '09:00:00').slice(0,5);
+                            const closeVal = (bh.CloseTime || '17:00:00').slice(0,5);
+                            row.innerHTML = `
+                                <div class="form-col"><div class="form-group"><label>${day}</label><input type="checkbox" class="bh-available" ${bh.IsAvailable ? 'checked' : ''}> Available</div></div>
+                                <div class="form-col"><div class="form-group"><label>Open</label><input type="time" class="bh-open" value="${openVal}"></div></div>
+                                <div class="form-col"><div class="form-group"><label>Close</label><input type="time" class="bh-close" value="${closeVal}"></div></div>
+                            `;
+                            bhContainer.appendChild(row);
+                        });
+
+                        const saveHoursBtn = document.getElementById('save-business-hours-btn');
+                        if (saveHoursBtn) {
+                            saveHoursBtn.onclick = async () => {
+                                try {
+                                    const rows = Array.from(bhContainer.querySelectorAll('.form-row'));
+                                    for (const row of rows) {
+                                        const dayOfWeek = parseInt(row.dataset.day, 10);
+                                        const hoursId = row.dataset.hoursId ? parseInt(row.dataset.hoursId, 10) : null;
+                                        const isAvailable = row.querySelector('.bh-available')?.checked || false;
+                                        const openTime = (row.querySelector('.bh-open')?.value || '') + ':00';
+                                        const closeTime = (row.querySelector('.bh-close')?.value || '') + ':00';
+                                        const payload = { hoursId, dayOfWeek, openTime: isAvailable ? openTime : null, closeTime: isAvailable ? closeTime : null, isAvailable };
+                                        const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/business-hours/upsert`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                                            body: JSON.stringify(payload)
+                                        });
+                                        if (!resp.ok) throw new Error('Failed to save hours for ' + days[dayOfWeek]);
+                                    }
+                                    alert('Business hours saved');
+                                    await loadVendorAvailability(vendorProfileId);
+                                } catch (err) {
+                                    console.error('Save business hours error:', err);
+                                    alert('Failed to save business hours: ' + err.message);
+                                }
+                            };
+                        }
+                    }
+                } catch (err) {
+                    console.error('Render business hours UI error:', err);
+                }
             }
 
             async function upsertVendorAvailabilityException(exceptionId, startDate, endDate, startTime, endTime, isAvailable, reason) {
@@ -20384,6 +20957,313 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     console.error('Error upserting availability exception:', error);
                     alert('Failed to save availability exception: ' + error.message);
                 }
+            }
+
+            // Load and Save: Location
+            async function loadVendorLocation(vendorProfileId) {
+                const form = document.getElementById('vendor-location-form');
+                const inputs = {
+                    address: document.getElementById('loc-address'),
+                    city: document.getElementById('loc-city'),
+                    state: document.getElementById('loc-state'),
+                    country: document.getElementById('loc-country'),
+                    postal: document.getElementById('loc-postal'),
+                    lat: document.getElementById('loc-lat'),
+                    lng: document.getElementById('loc-lng'),
+                };
+                const areasListEl = document.getElementById('service-areas-list');
+                const areaInputEl = document.getElementById('service-area-input');
+                const addAreaBtn = document.getElementById('add-service-area-btn');
+                const areasState = { list: [] };
+
+                function renderAreas() {
+                    if (!areasListEl) return;
+                    areasListEl.innerHTML = '';
+                    areasState.list.forEach((area, idx) => {
+                        const tag = document.createElement('span');
+                        tag.style.display = 'inline-flex';
+                        tag.style.alignItems = 'center';
+                        tag.style.gap = '6px';
+                        tag.style.background = 'var(--muted)';
+                        tag.style.border = '1px solid var(--border)';
+                        tag.style.padding = '4px 8px';
+                        tag.style.borderRadius = '9999px';
+                        const label = [area.city, area.province || area.state, area.country].filter(Boolean).join(', ');
+                        tag.innerHTML = `${label} <button type="button" aria-label="Remove" style="border:none;background:transparent;color:var(--accent);cursor:pointer;">×</button>`;
+                        tag.querySelector('button').onclick = () => {
+                            areasState.list.splice(idx, 1);
+                            renderAreas();
+                        };
+                        areasListEl.appendChild(tag);
+                    });
+                }
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/location`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (!res.ok) throw new Error('Failed to load location');
+                    const data = await res.json();
+                    const loc = data.location || {};
+                    inputs.address.value = loc.Address || '';
+                    inputs.city.value = loc.City || '';
+                    inputs.state.value = loc.State || '';
+                    inputs.country.value = loc.Country || '';
+                    inputs.postal.value = loc.PostalCode || '';
+                    inputs.lat.value = loc.Latitude || '';
+                    inputs.lng.value = loc.Longitude || '';
+
+                    // Initialize service areas
+                    areasState.list = (data.serviceAreas || []).map(a => ({
+                        placeId: a.GooglePlaceID || null,
+                        city: a.CityName || '',
+                        province: a.StateProvince || '',
+                        country: a.Country || (inputs.country.value || ''),
+                        latitude: a.Latitude ?? null,
+                        longitude: a.Longitude ?? null,
+                        serviceRadius: a.ServiceRadius ?? 25.0,
+                        formattedAddress: a.FormattedAddress || null,
+                        placeType: a.PlaceType || null,
+                        postalCode: a.PostalCode || null,
+                        travelCost: a.TravelCost ?? null,
+                        minimumBookingAmount: a.MinimumBookingAmount ?? null
+                    }));
+                    renderAreas();
+                } catch (err) {
+                    console.error('Error loading location:', err);
+                }
+
+                if (addAreaBtn) {
+                    addAreaBtn.onclick = () => {
+                        const raw = areaInputEl?.value?.trim();
+                        if (!raw) return;
+                        const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+                        const city = parts[0] || raw;
+                        const province = parts[1] || inputs.state.value || '';
+                        const country = inputs.country.value || 'Canada';
+                        areasState.list.push({ city, province, country, serviceRadius: 25.0 });
+                        areaInputEl.value = '';
+                        renderAreas();
+                    };
+                }
+
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    try {
+                        const payload = {
+                            address: inputs.address.value?.trim(),
+                            city: inputs.city.value?.trim(),
+                            state: inputs.state.value?.trim(),
+                            country: inputs.country.value?.trim(),
+                            postalCode: inputs.postal.value?.trim(),
+                            latitude: inputs.lat.value || null,
+                            longitude: inputs.lng.value || null,
+                            serviceAreas: areasState.list
+                        };
+                        const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/location`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!res.ok) {
+                            const errData = await res.json();
+                            throw new Error(errData.message || 'Failed to save location');
+                        }
+                        alert('Location saved');
+                    } catch (err) {
+                        console.error('Save location error:', err);
+                        alert('Failed to save location: ' + err.message);
+                    }
+                };
+            }
+
+            // Load: Additional Details (category questions + existing answers)
+            async function loadVendorAdditionalDetails(vendorProfileId) {
+                const container = document.getElementById('additional-questions-container');
+                container.innerHTML = '<p>Loading questions...</p>';
+                try {
+                    // Get vendor primary category from profile details
+                    const profileRes = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/profile-details`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (!profileRes.ok) throw new Error('Failed to fetch profile for category');
+                    const profile = await profileRes.json();
+                    const primaryCategory = (profile.Categories || '').split(',')[0]?.trim().toLowerCase();
+
+                    // Load questions by category
+                    const qRes = await fetch(`${API_BASE_URL}/vendors/category-questions/${encodeURIComponent(primaryCategory)}`);
+                    const qData = await qRes.json();
+                    const questions = qData?.questions || [];
+
+                    // Load existing answers
+                    const aRes = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/category-answers`);
+                    const aData = await aRes.json();
+                    const answers = aData?.answers || [];
+
+                    const answerMap = new Map(answers.map(a => [a.QuestionID, a.Answer]));
+                    if (questions.length === 0) {
+                        container.innerHTML = '<p>No additional questions for your category.</p>';
+                        return;
+                    }
+                    const formHtml = questions.map(q => `
+                        <div class=\"form-group\">\n                            <label>${q.QuestionText}</label>\n                            <textarea data-question-id=\"${q.QuestionID}\" rows=\"3\" style=\"width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);\">${answerMap.get(q.QuestionID) || ''}</textarea>\n                        </div>
+                    `).join('');
+                    container.innerHTML = formHtml;
+
+                    const form = document.getElementById('vendor-additional-details-form');
+                    form.onsubmit = async (e) => {
+                        e.preventDefault();
+                        try {
+                            const payload = {
+                                answers: Array.from(container.querySelectorAll('textarea[data-question-id]')).map(t => ({
+                                    questionId: parseInt(t.getAttribute('data-question-id'), 10),
+                                    answer: t.value?.trim()
+                                }))
+                            };
+                            const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/category-answers/upsert`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(payload)
+                            });
+                            if (!res.ok) throw new Error('Failed to save answers');
+                            alert('Additional details saved');
+                        } catch (err) {
+                            console.error('Save additional details error:', err);
+                            alert('Failed to save: ' + err.message);
+                        }
+                    };
+                } catch (err) {
+                    console.error('Load additional details error:', err);
+                    container.innerHTML = `<p style="color:var(--accent);">Failed to load additional details: ${err.message}</p>`;
+                }
+            }
+
+            // Load & Save: Social
+            async function loadVendorSocial(vendorProfileId) {
+                const form = document.getElementById('vendor-social-form');
+                const inputs = {
+                    bookingLink: document.getElementById('booking-link'),
+                    fb: document.getElementById('social-facebook-settings'),
+                    ig: document.getElementById('social-instagram-settings'),
+                    tw: document.getElementById('social-twitter-settings'),
+                    li: document.getElementById('social-linkedin-settings'),
+                    yt: document.getElementById('social-youtube-settings'),
+                    tk: document.getElementById('social-tiktok-settings'),
+                };
+                try {
+                    const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/social`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        inputs.bookingLink.value = data?.bookingLink || '';
+                        const profiles = data?.socialMediaProfiles || [];
+                        const map = new Map(profiles.map(p => [String(p.Platform || p.platform).toLowerCase(), p.URL || p.url]));
+                        inputs.fb.value = map.get('facebook') || '';
+                        inputs.ig.value = map.get('instagram') || '';
+                        inputs.tw.value = map.get('twitter') || '';
+                        inputs.li.value = map.get('linkedin') || '';
+                        inputs.yt.value = map.get('youtube') || '';
+                        inputs.tk.value = map.get('tiktok') || '';
+                    }
+                } catch (err) {
+                    console.error('Load social error:', err);
+                }
+
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    try {
+                        const payload = {
+                            bookingLink: inputs.bookingLink.value?.trim(),
+                            socialMediaProfiles: [
+                                { platform: 'Facebook', url: inputs.fb.value?.trim() },
+                                { platform: 'Instagram', url: inputs.ig.value?.trim() },
+                                { platform: 'Twitter', url: inputs.tw.value?.trim() },
+                                { platform: 'LinkedIn', url: inputs.li.value?.trim() },
+                                { platform: 'YouTube', url: inputs.yt.value?.trim() },
+                                { platform: 'TikTok', url: inputs.tk.value?.trim() },
+                            ].filter(p => p.url)
+                        };
+                        const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/social`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!res.ok) throw new Error('Failed to save social');
+                        alert('Social saved');
+                    } catch (err) {
+                        console.error('Save social error:', err);
+                        alert('Failed to save social: ' + err.message);
+                    }
+                };
+            }
+
+            // Load & Save: FAQs
+            async function loadVendorFaqs(vendorProfileId) {
+                const list = document.getElementById('faqs-list');
+                const addBtn = document.getElementById('add-faq-btn');
+                const saveBtn = document.getElementById('save-faqs-btn');
+                list.innerHTML = '<p>Loading FAQs...</p>';
+                try {
+                    const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/faqs`);
+                    if (!res.ok) throw new Error('Failed to load FAQs');
+                    const data = await res.json();
+                    const faqs = data?.faqs || [];
+                    renderFaqs(faqs);
+                } catch (err) {
+                    console.error('Load FAQs error:', err);
+                    list.innerHTML = `<p style=\"color:var(--accent);\">Failed to load FAQs: ${err.message}</p>`;
+                }
+
+                function renderFaqs(faqs) {
+                    list.innerHTML = '';
+                    if (!faqs || faqs.length === 0) {
+                        list.innerHTML = '<p>No FAQs yet.</p>';
+                    } else {
+                        faqs.forEach((f) => {
+                            const row = document.createElement('div');
+                            row.className = 'form-row';
+                            row.innerHTML = `
+                                <div class=\"form-col\"><div class=\"form-group\"><label>Question</label><input type=\"text\" class=\"faq-q\" value=\"${f.Question || ''}\"></div></div>
+                                <div class=\"form-col\"><div class=\"form-group\"><label>Answer</label><textarea class=\"faq-a\" rows=\"2\" style=\"width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);\">${f.Answer || ''}</textarea></div></div>
+                            `;
+                            list.appendChild(row);
+                        });
+                    }
+                }
+
+                addBtn.onclick = () => {
+                    const row = document.createElement('div');
+                    row.className = 'form-row';
+                    row.innerHTML = `
+                        <div class=\"form-col\"><div class=\"form-group\"><label>Question</label><input type=\"text\" class=\"faq-q\"></div></div>
+                        <div class=\"form-col\"><div class=\"form-group\"><label>Answer</label><textarea class=\"faq-a\" rows=\"2\" style=\"width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);\"></textarea></div></div>
+                    `;
+                    list.appendChild(row);
+                };
+
+                saveBtn.onclick = async () => {
+                    try {
+                        const faqs = Array.from(list.querySelectorAll('.form-row')).map(row => ({
+                            question: row.querySelector('.faq-q')?.value?.trim(),
+                            answer: row.querySelector('.faq-a')?.value?.trim(),
+                        })).filter(f => f.question && f.answer);
+                        const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/faqs/upsert`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ faqs })
+                        });
+                        if (!res.ok) throw new Error('Failed to save FAQs');
+                        alert('FAQs saved');
+                        await loadVendorFaqs(vendorProfileId);
+                    } catch (err) {
+                        console.error('Save FAQs error:', err);
+                        alert('Failed to save FAQs: ' + err.message);
+                    }
+                };
             }
 
             // Simulate user login (for demo purposes)
