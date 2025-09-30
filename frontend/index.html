@@ -5097,9 +5097,6 @@
                                 <button class="tab-btn" data-target="vendor-location-panel">Location Information</button>
                                 <button class="tab-btn" data-target="vendor-additional-details-panel">Additional Details</button>
                                 <button class="tab-btn" data-target="vendor-social-panel">Social Media</button>
-                                <button class="tab-btn" data-target="vendor-policies-panel">Policies</button>
-                                <button class="tab-btn" data-target="vendor-verification-panel">Verification</button>
-                                <button class="tab-btn" data-target="vendor-team-panel">Team</button>
                                 <button class="tab-btn" data-target="vendor-services-panel">Services & Packages</button>
                                 <button class="tab-btn" data-target="vendor-packages-panel">Packages</button>
                                 <button class="tab-btn" data-target="vendor-faqs-panel">FAQ Section</button>
@@ -5165,53 +5162,73 @@
                                         <h2 class="dashboard-card-title">Social & Booking</h2>
                                         <form id="vendor-social-form">
                                             <div class="form-group"><label for="booking-link">Booking Link</label><input type="url" id="booking-link" placeholder="https://..."></div>
-                                            <div class="form-group"><label for="social-facebook-settings">Facebook</label><input type="text" id="social-facebook-settings" placeholder="https://facebook.com/yourpage"></div>
-                                            <div class="form-group"><label for="social-instagram-settings">Instagram</label><input type="text" id="social-instagram-settings" placeholder="https://instagram.com/youraccount"></div>
-                                            <div class="form-group"><label for="social-twitter-settings">Twitter</label><input type="text" id="social-twitter-settings" placeholder="https://twitter.com/youraccount"></div>
-                                            <div class="form-group"><label for="social-linkedin-settings">LinkedIn</label><input type="text" id="social-linkedin-settings" placeholder="https://linkedin.com/in/yourprofile"></div>
-                                            <div class="form-group"><label for="social-youtube-settings">YouTube</label><input type="text" id="social-youtube-settings" placeholder="https://youtube.com/yourchannel"></div>
-                                            <div class="form-group"><label for="social-tiktok-settings">TikTok</label><input type="text" id="social-tiktok-settings" placeholder="https://tiktok.com/@yourhandle"></div>
+
+                                            <h3 class="dashboard-card-subtitle" style="margin: 1rem 0; color: var(--primary);">Social Media Profiles</h3>
+                                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+                                                <div class="form-group">
+                                                    <label for="social-facebook-settings" style="display: flex; align-items: center; gap: 0.5rem;">
+                                                        <i class="fab fa-facebook" style="color: #1877F2; font-size: 1.2rem;"></i>
+                                                        Facebook
+                                                    </label>
+                                                    <div style="display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
+                                                        <span style="padding: 0.75rem 0.5rem 0.75rem 0.75rem; color: var(--text-light); font-size: 0.9rem; background-color: var(--secondary); border-right: 1px solid var(--border);">facebook.com/</span>
+                                                        <input type="text" id="social-facebook-settings" placeholder="yourpage" style="border: none; outline: none; padding: 0.75rem; flex: 1; font-size: 0.9rem; background: transparent;" data-prefix="https://facebook.com/">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="social-instagram-settings" style="display: flex; align-items: center; gap: 0.5rem;">
+                                                        <i class="fab fa-instagram" style="color: #E4405F; font-size: 1.2rem;"></i>
+                                                        Instagram
+                                                    </label>
+                                                    <div style="display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
+                                                        <span style="padding: 0.75rem 0.5rem 0.75rem 0.75rem; color: var(--text-light); font-size: 0.9rem; background-color: var(--secondary); border-right: 1px solid var(--border);">instagram.com/</span>
+                                                        <input type="text" id="social-instagram-settings" placeholder="youraccount" style="border: none; outline: none; padding: 0.75rem; flex: 1; font-size: 0.9rem; background: transparent;" data-prefix="https://instagram.com/">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="social-twitter-settings" style="display: flex; align-items: center; gap: 0.5rem;">
+                                                        <i class="fab fa-twitter" style="color: #1DA1F2; font-size: 1.2rem;"></i>
+                                                        Twitter
+                                                    </label>
+                                                    <div style="display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
+                                                        <span style="padding: 0.75rem 0.5rem 0.75rem 0.75rem; color: var(--text-light); font-size: 0.9rem; background-color: var(--secondary); border-right: 1px solid var(--border);">twitter.com/</span>
+                                                        <input type="text" id="social-twitter-settings" placeholder="youraccount" style="border: none; outline: none; padding: 0.75rem; flex: 1; font-size: 0.9rem; background: transparent;" data-prefix="https://twitter.com/">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="social-linkedin-settings" style="display: flex; align-items: center; gap: 0.5rem;">
+                                                        <i class="fab fa-linkedin" style="color: #0077B5; font-size: 1.2rem;"></i>
+                                                        LinkedIn
+                                                    </label>
+                                                    <div style="display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
+                                                        <span style="padding: 0.75rem 0.5rem 0.75rem 0.75rem; color: var(--text-light); font-size: 0.9rem; background-color: var(--secondary); border-right: 1px solid var(--border);">linkedin.com/in/</span>
+                                                        <input type="text" id="social-linkedin-settings" placeholder="yourprofile" style="border: none; outline: none; padding: 0.75rem; flex: 1; font-size: 0.9rem; background: transparent;" data-prefix="https://linkedin.com/in/">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="social-youtube-settings" style="display: flex; align-items: center; gap: 0.5rem;">
+                                                        <i class="fab fa-youtube" style="color: #FF0000; font-size: 1.2rem;"></i>
+                                                        YouTube
+                                                    </label>
+                                                    <div style="display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
+                                                        <span style="padding: 0.75rem 0.5rem 0.75rem 0.75rem; color: var(--text-light); font-size: 0.9rem; background-color: var(--secondary); border-right: 1px solid var(--border);">youtube.com/</span>
+                                                        <input type="text" id="social-youtube-settings" placeholder="yourchannel" style="border: none; outline: none; padding: 0.75rem; flex: 1; font-size: 0.9rem; background: transparent;" data-prefix="https://youtube.com/">
+                                                    </div>
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="social-tiktok-settings" style="display: flex; align-items: center; gap: 0.5rem;">
+                                                        <i class="fab fa-tiktok" style="color: #6b7280; font-size: 1.2rem;"></i>
+                                                        TikTok
+                                                    </label>
+                                                    <div style="display: flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
+                                                        <span style="padding: 0.75rem 0.5rem 0.75rem 0.75rem; color: var(--text-light); font-size: 0.9rem; background-color: var(--secondary); border-right: 1px solid var(--border);">tiktok.com/@</span>
+                                                        <input type="text" id="social-tiktok-settings" placeholder="youraccount" style="border: none; outline: none; padding: 0.75rem; flex: 1; font-size: 0.9rem; background: transparent;" data-prefix="https://tiktok.com/@">
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <button type="submit" class="btn btn-primary">Save Social</button>
                                         </form>
-                                    </div>
-                                </div>
-                                <div id="vendor-policies-panel" class="settings-panel">
-                                    <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Policies & Preferences</h2>
-                                        <form id="vendor-policies-form">
-                                            <div class="form-group"><label for="pol-deposit">Deposit Requirements (JSON or text)</label><textarea id="pol-deposit" rows="3" style="width:100%;"></textarea></div>
-                                            <div class="form-group"><label for="pol-cancel">Cancellation Policy</label><textarea id="pol-cancel" rows="3" style="width:100%;"></textarea></div>
-                                            <div class="form-group"><label for="pol-reschedule">Rescheduling Policy</label><textarea id="pol-reschedule" rows="3" style="width:100%;"></textarea></div>
-                                            <div class="form-group"><label for="pol-payment-methods">Payment Methods (comma-separated)</label><input type="text" id="pol-payment-methods" placeholder="Visa, MasterCard, Cash"></div>
-                                            <div class="form-group"><label for="pol-payment-terms">Payment Terms</label><textarea id="pol-payment-terms" rows="3" style="width:100%;"></textarea></div>
-                                            <button type="submit" class="btn btn-primary">Save Policies</button>
-                                        </form>
-                                    </div>
-                                </div>
-                                <div id="vendor-verification-panel" class="settings-panel">
-                                    <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Verification & Legal</h2>
-                                        <form id="vendor-verification-form">
-                                            <div class="form-group"><label for="ver-license">License Number</label><input type="text" id="ver-license"></div>
-                                            <div class="form-group"><label><input type="checkbox" id="ver-insurance"> Insurance Verified</label></div>
-                                            <div class="form-group"><label for="ver-awards">Awards (comma-separated or JSON)</label><textarea id="ver-awards" rows="2" style="width:100%;"></textarea></div>
-                                            <div class="form-group"><label for="ver-certifications">Certifications (comma-separated or JSON)</label><textarea id="ver-certifications" rows="2" style="width:100%;"></textarea></div>
-                                            <div class="form-row">
-                                                <div class="form-col"><div class="form-group"><label><input type="checkbox" id="ver-eco"> Eco Friendly</label></div></div>
-                                                <div class="form-col"><div class="form-group"><label><input type="checkbox" id="ver-premium"> Premium</label></div></div>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary">Save Verification</button>
-                                        </form>
-                                    </div>
-                                </div>
-                                <div id="vendor-team-panel" class="settings-panel">
-                                    <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Team</h2>
-                                        <div id="team-list"></div>
-                                        <div style="margin-top:1rem;">
-                                            <button class="btn btn-outline" id="add-team-member">Add Team Member</button>
-                                            <button class="btn btn-primary" id="save-team">Save Team</button>
-                                        </div>
                                     </div>
                                 </div>
                                 <div id="vendor-services-panel" class="settings-panel">
@@ -5278,7 +5295,6 @@
                                 <div id="vendor-availability-panel" class="settings-panel">
                                     <div class="dashboard-card">
                                         <h2 class="dashboard-card-title">Availability Settings</h2>
-                                        <div id="vendor-availability-calendar" style="margin-bottom: 1.5rem;"></div>
                                         <div id="business-hours-container" style="margin-top:1rem;"></div>
                                         <button class="btn btn-primary" id="save-business-hours-btn" style="margin-top:.5rem;">Save Business Hours</button>
                                     </div>
@@ -19428,10 +19444,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Vendor settings tabs with lazy-loading for each panel
-            let vendorSettingsLoaded = { location: false, additional: false, social: false, policies: false, verification: false, team: false, services: false, packages: false, faqs: false, photos: false, availability: false };
+            let vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, packages: false, faqs: false, photos: false, availability: false };
             function setupVendorSettingsTabs(vendorProfileId) {
                 const section = document.getElementById('vendor-settings-section');
-                vendorSettingsLoaded = { location: false, additional: false, social: false, policies: false, verification: false, team: false, services: false, packages: false, faqs: false, photos: false, availability: false };
+                vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, packages: false, faqs: false, photos: false, availability: false };
                 setupSettingsTabs(section, async (targetId) => {
                     if (targetId === 'vendor-location-panel' && !vendorSettingsLoaded.location) {
                         await loadVendorLocation(vendorProfileId);
@@ -19444,18 +19460,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (targetId === 'vendor-social-panel' && !vendorSettingsLoaded.social) {
                         await loadVendorSocial(vendorProfileId);
                         vendorSettingsLoaded.social = true;
-                    }
-                    if (targetId === 'vendor-policies-panel' && !vendorSettingsLoaded.policies) {
-                        await loadVendorPolicies(vendorProfileId);
-                        vendorSettingsLoaded.policies = true;
-                    }
-                    if (targetId === 'vendor-verification-panel' && !vendorSettingsLoaded.verification) {
-                        await loadVendorVerification(vendorProfileId);
-                        vendorSettingsLoaded.verification = true;
-                    }
-                    if (targetId === 'vendor-team-panel' && !vendorSettingsLoaded.team) {
-                        await loadVendorTeam(vendorProfileId);
-                        vendorSettingsLoaded.team = true;
                     }
                     if (targetId === 'vendor-services-panel' && !vendorSettingsLoaded.services) {
                         await loadVendorServicesSettings(vendorProfileId);
@@ -20799,20 +20803,42 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             async function loadVendorAvailability(vendorProfileId) {
                 const calendarEl = document.getElementById('vendor-availability-calendar');
-                if (!calendarEl) return;
                 let lastBusinessHours = [];
 
+                // Ensure we have a VendorProfileID; fall back to currentUser or status endpoint if needed
+                try {
+                    if (!vendorProfileId) {
+                        if (currentUser?.vendorProfileId) {
+                            vendorProfileId = currentUser.vendorProfileId;
+                        } else if (typeof getVendorProfileId === 'function') {
+                            vendorProfileId = await getVendorProfileId();
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Could not determine vendorProfileId for availability:', e);
+                }
+                console.debug('loadVendorAvailability()', { vendorProfileId, url: `${API_BASE_URL}/vendor/${vendorProfileId}/availability` });
+
+                // If we still don't have a valid vendorProfileId, skip API fetch; UI will render defaults below
+                // (no user-facing error message here to keep the panel clean)
+
                 // Destroy existing calendar instance if it exists
-                if (calendarEl._fullCalendar) {
+                if (calendarEl && calendarEl._fullCalendar) {
                     calendarEl._fullCalendar.destroy();
                     calendarEl._fullCalendar = null;
                 }
 
                 try {
+                    if (vendorProfileId) {
                     const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/availability`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                     });
-                    if (!response.ok) throw new Error('Failed to fetch vendor availability');
+                    if (!response.ok) {
+                        let serverMsg = '';
+                        try { serverMsg = (await response.json())?.message || ''; } catch {}
+                        const msg = serverMsg || `HTTP ${response.status}`;
+                        throw new Error(`Failed to fetch vendor availability (${msg})`);
+                    }
                     const data = await response.json();
                     const businessHours = data.businessHours || [];
                     const exceptions = data.availabilityExceptions || [];
@@ -20855,6 +20881,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         });
                     });
 
+                    if (calendarEl) {
                     const calendar = new FullCalendar.Calendar(calendarEl, {
                         initialView: 'dayGridMonth',
                         events: events,
@@ -20882,10 +20909,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                     calendar.render();
                     calendarEl._fullCalendar = calendar;
+                    }
 
+                }
                 } catch (error) {
                     console.error('Error loading vendor availability:', error);
-                    calendarEl.innerHTML = `<p style=\"color:var(--accent);\">Failed to load availability: ${error.message}</p>`;
+                    // Calendar UI has been removed from Availability settings.
+                    // We simply log the error; the Business Hours UI will still render below with defaults.
                 }
 
                 // Render and save Business Hours
@@ -20920,6 +20950,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (saveHoursBtn) {
                             saveHoursBtn.onclick = async () => {
                                 try {
+                                    const resolvedVendorId = vendorProfileId || (currentUser?.vendorProfileId) || (typeof getVendorProfileId === 'function' ? await getVendorProfileId() : null);
+                                    if (!resolvedVendorId) {
+                                        alert('Cannot save: missing vendor profile ID');
+                                        return;
+                                    }
                                     const rows = Array.from(bhContainer.querySelectorAll('.form-row'));
                                     for (const row of rows) {
                                         const dayOfWeek = parseInt(row.dataset.day, 10);
@@ -20928,7 +20963,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                         const openTime = (row.querySelector('.bh-open')?.value || '') + ':00';
                                         const closeTime = (row.querySelector('.bh-close')?.value || '') + ':00';
                                         const payload = { hoursId, dayOfWeek, openTime: isAvailable ? openTime : null, closeTime: isAvailable ? closeTime : null, isAvailable };
-                                        const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/business-hours/upsert`, {
+                                        const resp = await fetch(`${API_BASE_URL}/vendor/${resolvedVendorId}/business-hours/upsert`, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                                             body: JSON.stringify(payload)
@@ -20936,7 +20971,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                         if (!resp.ok) throw new Error('Failed to save hours for ' + days[dayOfWeek]);
                                     }
                                     alert('Business hours saved');
-                                    await loadVendorAvailability(vendorProfileId);
+                                    await loadVendorAvailability(resolvedVendorId);
                                 } catch (err) {
                                     console.error('Save business hours error:', err);
                                     alert('Failed to save business hours: ' + err.message);
@@ -21364,19 +21399,66 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     yt: document.getElementById('social-youtube-settings'),
                     tk: document.getElementById('social-tiktok-settings'),
                 };
+                // Helpers to convert full URLs to handles and back using the data-prefix
+                function stripProtoWww(s) {
+                    return String(s || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+                }
+                function toHandle(url, prefix) {
+                    if (!url) return '';
+                    const u = String(url).trim();
+                    const p = String(prefix || '').trim();
+                    const uStripped = stripProtoWww(u);
+                    const pStripped = stripProtoWww(p);
+                    const uLower = uStripped.toLowerCase();
+                    const pLower = pStripped.toLowerCase();
+                    // Prefer exact prefix match (includes path like 'linkedin.com/in/' or 'tiktok.com/@')
+                    if (pLower && uLower.startsWith(pLower)) {
+                        return uStripped.slice(pStripped.length).replace(/^\/+/, '').replace(/^@/, '');
+                    }
+                    // Fallback: match domain only
+                    const domain = pStripped.split('/')[0]; // e.g., 'instagram.com'
+                    if (domain && uLower.startsWith(domain.toLowerCase() + '/')) {
+                        const remainder = uStripped.slice(domain.length + 1);
+                        // Drop common path prefixes if present
+                        return remainder.replace(/^(in\/|@)/, '');
+                    }
+                    // Last resort: try URL API
+                    try {
+                        const parsed = new URL(u);
+                        const hostPath = `${parsed.host}${parsed.pathname}`.replace(/^www\./i, '');
+                        if (pLower && hostPath.toLowerCase().startsWith(pLower)) {
+                            return hostPath.slice(pStripped.length).replace(/^\/+/, '').replace(/^@/, '');
+                        }
+                        if (domain && hostPath.toLowerCase().startsWith(domain.toLowerCase() + '/')) {
+                            return hostPath.slice(domain.length + 1).replace(/^(in\/|@)/, '');
+                        }
+                    } catch {}
+                    return u; // Unknown format; show as-is
+                }
+                function toUrl(handle, prefix) {
+                    const h = String(handle || '').trim();
+                    if (!h) return '';
+                    if (/^https?:\/\//i.test(h)) return h; // user pasted a full URL
+                    const p = String(prefix || '').trim();
+                    // Remove leading slashes or '@' in handle; prefix will include these if needed
+                    const clean = h.replace(/^\/+/, '').replace(/^@/, '');
+                    return p ? (p.endsWith('/') || p.endsWith('@') ? p + clean : p + '/' + clean) : clean;
+                }
                 try {
-                    const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/social`);
+                    const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/social`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
                     if (res.ok) {
                         const data = await res.json();
                         inputs.bookingLink.value = data?.bookingLink || '';
                         const profiles = data?.socialMediaProfiles || [];
                         const map = new Map(profiles.map(p => [String(p.Platform || p.platform).toLowerCase(), p.URL || p.url]));
-                        inputs.fb.value = map.get('facebook') || '';
-                        inputs.ig.value = map.get('instagram') || '';
-                        inputs.tw.value = map.get('twitter') || '';
-                        inputs.li.value = map.get('linkedin') || '';
-                        inputs.yt.value = map.get('youtube') || '';
-                        inputs.tk.value = map.get('tiktok') || '';
+                        inputs.fb.value = toHandle(map.get('facebook') || '', inputs.fb.dataset.prefix);
+                        inputs.ig.value = toHandle(map.get('instagram') || '', inputs.ig.dataset.prefix);
+                        inputs.tw.value = toHandle(map.get('twitter') || '', inputs.tw.dataset.prefix);
+                        inputs.li.value = toHandle(map.get('linkedin') || '', inputs.li.dataset.prefix);
+                        inputs.yt.value = toHandle(map.get('youtube') || '', inputs.yt.dataset.prefix);
+                        inputs.tk.value = toHandle(map.get('tiktok') || '', inputs.tk.dataset.prefix);
                     }
                 } catch (err) {
                     console.error('Load social error:', err);
@@ -21385,20 +21467,26 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 form.onsubmit = async (e) => {
                     e.preventDefault();
                     try {
+                        const entries = [
+                            ['Facebook', inputs.fb],
+                            ['Instagram', inputs.ig],
+                            ['Twitter', inputs.tw],
+                            ['LinkedIn', inputs.li],
+                            ['YouTube', inputs.yt],
+                            ['TikTok', inputs.tk]
+                        ];
+                        const profiles = entries.map(([platform, el]) => {
+                            const handle = el.value?.trim();
+                            const url = toUrl(handle, el.dataset.prefix);
+                            return { platform, url };
+                        }).filter(p => p.url);
                         const payload = {
                             bookingLink: inputs.bookingLink.value?.trim(),
-                            socialMediaProfiles: [
-                                { platform: 'Facebook', url: inputs.fb.value?.trim() },
-                                { platform: 'Instagram', url: inputs.ig.value?.trim() },
-                                { platform: 'Twitter', url: inputs.tw.value?.trim() },
-                                { platform: 'LinkedIn', url: inputs.li.value?.trim() },
-                                { platform: 'YouTube', url: inputs.yt.value?.trim() },
-                                { platform: 'TikTok', url: inputs.tk.value?.trim() },
-                            ].filter(p => p.url)
+                            socialMediaProfiles: profiles
                         };
                         const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/social`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                             body: JSON.stringify(payload)
                         });
                         if (!res.ok) throw new Error('Failed to save social');
