@@ -360,4 +360,560 @@ router.delete('/:id/availability-exceptions/:exceptionId', async (req, res) => {
   }
 });
 
+// ===== Additional REST endpoints to edit all vendor setup data =====
+
+// Social: GET current social links and booking link
+router.get('/:id/social', async (req, res) => {
+  try {
+    const { id } = req.params; // VendorProfileID
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+
+    const socialResult = await request.query(`
+      SELECT Platform, URL, DisplayOrder FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
+    `);
+
+    const bookingLinkResult = await request.query(`
+      SELECT BookingLink FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    res.json({
+      success: true,
+      bookingLink: bookingLinkResult.recordset[0]?.BookingLink || null,
+      socialMediaProfiles: socialResult.recordset || []
+    });
+
+  } catch (err) {
+    console.error('Get social error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get social media', error: err.message });
+  }
+});
+
+// Social: Upsert social links and booking link
+router.post('/:id/social', async (req, res) => {
+  try {
+    const { id } = req.params; // VendorProfileID
+    const { bookingLink, socialMediaProfiles } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+
+    // Update booking link if provided
+    if (bookingLink !== undefined) {
+      const blReq = new sql.Request(pool);
+      blReq.input('VendorProfileID', sql.Int, parseInt(id));
+      blReq.input('BookingLink', sql.NVarChar, bookingLink || null);
+      await blReq.query(`
+        UPDATE VendorProfiles SET BookingLink = @BookingLink, UpdatedAt = GETDATE() WHERE VendorProfileID = @VendorProfileID
+      `);
+    }
+
+    if (Array.isArray(socialMediaProfiles)) {
+      // Clear existing
+      await request.query(`DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID`);
+      // Insert new
+      for (let i = 0; i < socialMediaProfiles.length; i++) {
+        const profile = socialMediaProfiles[i];
+        if (!profile?.platform || !profile?.url) continue;
+        const sReq = new sql.Request(pool);
+        sReq.input('VendorProfileID', sql.Int, parseInt(id));
+        sReq.input('Platform', sql.NVarChar(50), profile.platform);
+        sReq.input('URL', sql.NVarChar(500), profile.url);
+        sReq.input('DisplayOrder', sql.Int, i);
+        await sReq.query(`
+          INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
+          VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
+        `);
+      }
+    }
+
+    res.json({ success: true, message: 'Social settings saved' });
+  } catch (err) {
+    console.error('Upsert social error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save social media', error: err.message });
+  }
+});
+
+// Policies: GET
+router.get('/:id/policies', async (req, res) => {
+  try {
+    const { id } = req.params; // VendorProfileID
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.query(`
+      SELECT DepositRequirements, CancellationPolicy, ReschedulingPolicy, PaymentMethods, PaymentTerms
+      FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
+    `);
+    if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    res.json({ success: true, policies: result.recordset[0] });
+  } catch (err) {
+    console.error('Get policies error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get policies', error: err.message });
+  }
+});
+
+// Policies: SAVE
+router.post('/:id/policies', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { depositRequirements, cancellationPolicy, reschedulingPolicy, paymentMethods, paymentTerms } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    request.input('DepositRequirements', sql.NVarChar, depositRequirements ? JSON.stringify(depositRequirements) : null);
+    request.input('CancellationPolicy', sql.NVarChar, cancellationPolicy || null);
+    request.input('ReschedulingPolicy', sql.NVarChar, reschedulingPolicy || null);
+    request.input('PaymentMethods', sql.NVarChar, paymentMethods ? JSON.stringify(paymentMethods) : null);
+    request.input('PaymentTerms', sql.NVarChar, paymentTerms || null);
+    await request.query(`
+      UPDATE VendorProfiles SET 
+        DepositRequirements = @DepositRequirements,
+        CancellationPolicy = @CancellationPolicy,
+        ReschedulingPolicy = @ReschedulingPolicy,
+        PaymentMethods = @PaymentMethods,
+        PaymentTerms = @PaymentTerms,
+        UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    res.json({ success: true, message: 'Policies saved' });
+  } catch (err) {
+    console.error('Save policies error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save policies', error: err.message });
+  }
+});
+
+// Verification & Legal: GET
+router.get('/:id/verification', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.query(`
+      SELECT LicenseNumber, InsuranceVerified, Awards, Certifications, IsEcoFriendly, IsPremium
+      FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
+    `);
+    if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    res.json({ success: true, verification: result.recordset[0] });
+  } catch (err) {
+    console.error('Get verification error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get verification info', error: err.message });
+  }
+});
+
+// Verification & Legal: SAVE
+router.post('/:id/verification', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { licenseNumber, insuranceVerified, awards, certifications, isEcoFriendly, isPremium } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    request.input('LicenseNumber', sql.NVarChar, licenseNumber || null);
+    request.input('InsuranceVerified', sql.Bit, !!insuranceVerified);
+    request.input('Awards', sql.NVarChar, awards ? JSON.stringify(awards) : null);
+    request.input('Certifications', sql.NVarChar, certifications ? JSON.stringify(certifications) : null);
+    request.input('IsEcoFriendly', sql.Bit, !!isEcoFriendly);
+    request.input('IsPremium', sql.Bit, !!isPremium);
+    await request.query(`
+      UPDATE VendorProfiles SET 
+        LicenseNumber = @LicenseNumber,
+        InsuranceVerified = @InsuranceVerified,
+        Awards = @Awards,
+        Certifications = @Certifications,
+        IsEcoFriendly = @IsEcoFriendly,
+        IsPremium = @IsPremium,
+        UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    res.json({ success: true, message: 'Verification info saved' });
+  } catch (err) {
+    console.error('Save verification error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save verification info', error: err.message });
+  }
+});
+
+// FAQs: GET
+router.get('/:id/faqs', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.query(`
+      SELECT FAQID, Question, Answer, DisplayOrder, IsActive FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
+    `);
+    res.json({ success: true, faqs: result.recordset });
+  } catch (err) {
+    console.error('Get FAQs error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get FAQs', error: err.message });
+  }
+});
+
+// FAQs: UPSERT (replace all)
+router.post('/:id/faqs/upsert', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { faqs } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    // Clear existing
+    await request.query(`DELETE FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID`);
+    // Insert new
+    if (Array.isArray(faqs)) {
+      for (let i = 0; i < faqs.length; i++) {
+        const f = faqs[i];
+        if (!f?.question || !f?.answer) continue;
+        const fReq = new sql.Request(pool);
+        fReq.input('VendorProfileID', sql.Int, parseInt(id));
+        fReq.input('Question', sql.NVarChar(500), f.question);
+        fReq.input('Answer', sql.NVarChar(sql.MAX), f.answer);
+        fReq.input('DisplayOrder', sql.Int, i + 1);
+        await fReq.query(`
+          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
+          VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder, 1, GETDATE(), GETDATE())
+        `);
+      }
+    }
+    res.json({ success: true, message: 'FAQs saved' });
+  } catch (err) {
+    console.error('Upsert FAQs error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save FAQs', error: err.message });
+  }
+});
+
+// Category Answers: GET
+router.get('/:id/category-answers', async (req, res) => {
+  try {
+    const { id } = req.params; // VendorProfileID
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.query(`
+      SELECT AnswerID, QuestionID, Answer, CreatedAt, UpdatedAt
+      FROM VendorCategoryAnswers
+      WHERE VendorProfileID = @VendorProfileID
+      ORDER BY AnswerID
+    `);
+    res.json({ success: true, answers: result.recordset });
+  } catch (err) {
+    console.error('Get category answers error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get category answers', error: err.message });
+  }
+});
+
+// Category Answers: UPSERT (replace all)
+router.post('/:id/category-answers/upsert', async (req, res) => {
+  try {
+    const { id } = req.params; // VendorProfileID
+    const { answers } = req.body; // [{ questionId, answer }]
+
+    if (!Array.isArray(answers)) {
+      return res.status(400).json({ success: false, message: 'Invalid payload: answers must be an array' });
+    }
+
+    const pool = await poolPromise;
+
+    // Clear existing answers
+    const delReq = new sql.Request(pool);
+    delReq.input('VendorProfileID', sql.Int, parseInt(id));
+    await delReq.query(`DELETE FROM VendorCategoryAnswers WHERE VendorProfileID = @VendorProfileID`);
+
+    // Insert new answers
+    for (const a of answers) {
+      if (!a || !a.questionId || typeof a.answer !== 'string') continue;
+      const insReq = new sql.Request(pool);
+      insReq.input('VendorProfileID', sql.Int, parseInt(id));
+      insReq.input('QuestionID', sql.Int, parseInt(a.questionId));
+      insReq.input('Answer', sql.NVarChar(sql.MAX), a.answer);
+      await insReq.query(`
+        INSERT INTO VendorCategoryAnswers (VendorProfileID, QuestionID, Answer, CreatedAt, UpdatedAt)
+        VALUES (@VendorProfileID, @QuestionID, @Answer, GETDATE(), GETDATE())
+      `);
+    }
+
+    res.json({ success: true, message: 'Category answers saved' });
+  } catch (err) {
+    console.error('Upsert category answers error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save category answers', error: err.message });
+  }
+});
+
+// Team: GET
+router.get('/:id/team', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.query(`
+      SELECT TeamID, Name, Role, Bio, ImageURL, DisplayOrder FROM VendorTeam WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
+    `);
+    res.json({ success: true, team: result.recordset });
+  } catch (err) {
+    console.error('Get team error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get team', error: err.message });
+  }
+});
+
+// Team: UPSERT (replace all)
+router.post('/:id/team/upsert', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { teamMembers } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    await request.query(`DELETE FROM VendorTeam WHERE VendorProfileID = @VendorProfileID`);
+    if (Array.isArray(teamMembers)) {
+      for (let i = 0; i < teamMembers.length; i++) {
+        const t = teamMembers[i];
+        if (!t?.name) continue;
+        const tReq = new sql.Request(pool);
+        tReq.input('VendorProfileID', sql.Int, parseInt(id));
+        tReq.input('Name', sql.NVarChar, t.name);
+        tReq.input('Role', sql.NVarChar, t.role || null);
+        tReq.input('Bio', sql.NVarChar, t.bio || null);
+        tReq.input('ImageURL', sql.NVarChar, t.imageUrl || null);
+        tReq.input('DisplayOrder', sql.Int, i);
+        await tReq.query(`
+          INSERT INTO VendorTeam (VendorProfileID, Name, Role, Bio, ImageURL, DisplayOrder)
+          VALUES (@VendorProfileID, @Name, @Role, @Bio, @ImageURL, @DisplayOrder)
+        `);
+      }
+    }
+    res.json({ success: true, message: 'Team saved' });
+  } catch (err) {
+    console.error('Upsert team error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save team', error: err.message });
+  }
+});
+
+// Location: GET (profile address + service areas)
+router.get('/:id/location', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const pReq = new sql.Request(pool);
+    pReq.input('VendorProfileID', sql.Int, parseInt(id));
+    const profileResult = await pReq.query(`
+      SELECT Address, City, State, Country, PostalCode, Latitude, Longitude
+      FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
+    `);
+    if (profileResult.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    const aReq = new sql.Request(pool);
+    aReq.input('VendorProfileID', sql.Int, parseInt(id));
+    const areas = await aReq.query(`
+      SELECT VendorServiceAreaID, GooglePlaceID, CityName, [State/Province] AS StateProvince, Country,
+             Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, PostalCode,
+             TravelCost, MinimumBookingAmount, BoundsNortheastLat, BoundsNortheastLng,
+             BoundsSouthwestLat, BoundsSouthwestLng, IsActive
+      FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID ORDER BY VendorServiceAreaID
+    `);
+    res.json({ success: true, location: profileResult.recordset[0], serviceAreas: areas.recordset });
+  } catch (err) {
+    console.error('Get location error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get location', error: err.message });
+  }
+});
+
+// Location: SAVE (address + replace service areas)
+router.post('/:id/location', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { address, city, state, country, postalCode, latitude, longitude, serviceAreas } = req.body;
+    const pool = await poolPromise;
+    const uReq = new sql.Request(pool);
+    uReq.input('VendorProfileID', sql.Int, parseInt(id));
+    uReq.input('Address', sql.NVarChar(255), address || null);
+    uReq.input('City', sql.NVarChar(100), city || null);
+    uReq.input('State', sql.NVarChar(100), state || null);
+    uReq.input('Country', sql.NVarChar(100), country || null);
+    uReq.input('PostalCode', sql.NVarChar(20), postalCode || null);
+    uReq.input('Latitude', sql.Decimal(10, 8), latitude != null ? Number(latitude) : null);
+    uReq.input('Longitude', sql.Decimal(11, 8), longitude != null ? Number(longitude) : null);
+    await uReq.query(`
+      UPDATE VendorProfiles SET Address=@Address, City=@City, State=@State, Country=@Country, PostalCode=@PostalCode,
+        Latitude=@Latitude, Longitude=@Longitude, UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    // Replace service areas if provided
+    if (Array.isArray(serviceAreas)) {
+      const dReq = new sql.Request(pool);
+      dReq.input('VendorProfileID', sql.Int, parseInt(id));
+      await dReq.query(`DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID`);
+      for (const area of serviceAreas) {
+        const aReq = new sql.Request(pool);
+        aReq.input('VendorProfileID', sql.Int, parseInt(id));
+        aReq.input('GooglePlaceID', sql.NVarChar(100), area.placeId || area.googlePlaceId || '');
+        aReq.input('CityName', sql.NVarChar(100), area.city || area.name || area.locality || null);
+        aReq.input('StateProvince', sql.NVarChar(100), area.province || area.state || null);
+        aReq.input('Country', sql.NVarChar(100), area.country || country || null);
+        aReq.input('Latitude', sql.Decimal(9, 6), area.latitude != null ? Number(area.latitude) : null);
+        aReq.input('Longitude', sql.Decimal(9, 6), area.longitude != null ? Number(area.longitude) : null);
+        aReq.input('ServiceRadius', sql.Decimal(10, 2), area.serviceRadius != null ? Number(area.serviceRadius) : 25.0);
+        aReq.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || null);
+        aReq.input('PlaceType', sql.NVarChar(50), area.placeType || null);
+        aReq.input('PostalCode', sql.NVarChar(20), area.postalCode || null);
+        aReq.input('TravelCost', sql.Decimal(10, 2), area.travelCost != null ? Number(area.travelCost) : null);
+        aReq.input('MinimumBookingAmount', sql.Decimal(10, 2), area.minimumBookingAmount != null ? Number(area.minimumBookingAmount) : null);
+        aReq.input('BoundsNortheastLat', sql.Decimal(9, 6), area.bounds?.northeast?.lat != null ? Number(area.bounds.northeast.lat) : null);
+        aReq.input('BoundsNortheastLng', sql.Decimal(9, 6), area.bounds?.northeast?.lng != null ? Number(area.bounds.northeast.lng) : null);
+        aReq.input('BoundsSouthwestLat', sql.Decimal(9, 6), area.bounds?.southwest?.lat != null ? Number(area.bounds.southwest.lat) : null);
+        aReq.input('BoundsSouthwestLng', sql.Decimal(9, 6), area.bounds?.southwest?.lng != null ? Number(area.bounds.southwest.lng) : null);
+        await aReq.query(`
+          INSERT INTO VendorServiceAreas (
+            VendorProfileID, GooglePlaceID, CityName, [State/Province], Country,
+            Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, PostalCode,
+            TravelCost, MinimumBookingAmount, BoundsNortheastLat, BoundsNortheastLng,
+            BoundsSouthwestLat, BoundsSouthwestLng, IsActive, CreatedDate, LastModifiedDate
+          ) VALUES (
+            @VendorProfileID, @GooglePlaceID, @CityName, @StateProvince, @Country,
+            @Latitude, @Longitude, @ServiceRadius, @FormattedAddress, @PlaceType, @PostalCode,
+            @TravelCost, @MinimumBookingAmount, @BoundsNortheastLat, @BoundsNortheastLng,
+            @BoundsSouthwestLat, @BoundsSouthwestLng, 1, GETDATE(), GETDATE()
+          )
+        `);
+      }
+    }
+
+    res.json({ success: true, message: 'Location saved' });
+  } catch (err) {
+    console.error('Save location error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save location', error: err.message });
+  }
+});
+
+// Packages: GET
+router.get('/:id/packages', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.query(`
+      SELECT PackageID, Name, Description, Price, DurationMinutes, MaxGuests, WhatsIncluded
+      FROM Packages WHERE VendorProfileID = @VendorProfileID ORDER BY PackageID
+    `);
+    res.json({ success: true, packages: result.recordset });
+  } catch (err) {
+    console.error('Get packages error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get packages', error: err.message });
+  }
+});
+
+// Packages: UPSERT
+router.post('/:id/packages/upsert', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { packageId, name, description, price, durationMinutes, maxGuests, whatsIncluded } = req.body;
+    const pool = await poolPromise;
+    if (packageId) {
+      const uReq = new sql.Request(pool);
+      uReq.input('VendorProfileID', sql.Int, parseInt(id));
+      uReq.input('PackageID', sql.Int, parseInt(packageId));
+      uReq.input('Name', sql.NVarChar, name);
+      uReq.input('Description', sql.NVarChar, description || null);
+      uReq.input('Price', sql.Decimal(10, 2), price != null ? Number(price) : null);
+      uReq.input('DurationMinutes', sql.Int, durationMinutes != null ? parseInt(durationMinutes) : null);
+      uReq.input('MaxGuests', sql.Int, maxGuests != null ? parseInt(maxGuests) : null);
+      uReq.input('WhatsIncluded', sql.NVarChar, whatsIncluded || null);
+      await uReq.query(`
+        UPDATE Packages SET Name=@Name, Description=@Description, Price=@Price, DurationMinutes=@DurationMinutes,
+          MaxGuests=@MaxGuests, WhatsIncluded=@WhatsIncluded
+        WHERE PackageID=@PackageID AND VendorProfileID=@VendorProfileID
+      `);
+      res.json({ success: true, packageId: parseInt(packageId), message: 'Package updated' });
+    } else {
+      const iReq = new sql.Request(pool);
+      iReq.input('VendorProfileID', sql.Int, parseInt(id));
+      iReq.input('Name', sql.NVarChar, name);
+      iReq.input('Description', sql.NVarChar, description || null);
+      iReq.input('Price', sql.Decimal(10, 2), price != null ? Number(price) : null);
+      iReq.input('DurationMinutes', sql.Int, durationMinutes != null ? parseInt(durationMinutes) : null);
+      iReq.input('MaxGuests', sql.Int, maxGuests != null ? parseInt(maxGuests) : null);
+      iReq.input('WhatsIncluded', sql.NVarChar, whatsIncluded || null);
+      const result = await iReq.query(`
+        INSERT INTO Packages (VendorProfileID, Name, Description, Price, DurationMinutes, MaxGuests, WhatsIncluded)
+        OUTPUT INSERTED.PackageID
+        VALUES (@VendorProfileID, @Name, @Description, @Price, @DurationMinutes, @MaxGuests, @WhatsIncluded)
+      `);
+      res.json({ success: true, packageId: result.recordset[0].PackageID, message: 'Package created' });
+    }
+  } catch (err) {
+    console.error('Upsert package error:', err);
+    res.status(500).json({ success: false, message: 'Failed to upsert package', error: err.message });
+  }
+});
+
+// Packages: DELETE
+router.delete('/:id/packages/:packageId', async (req, res) => {
+  try {
+    const { id, packageId } = req.params;
+    const pool = await poolPromise;
+    const dReq = new sql.Request(pool);
+    dReq.input('VendorProfileID', sql.Int, parseInt(id));
+    dReq.input('PackageID', sql.Int, parseInt(packageId));
+    await dReq.query(`DELETE FROM Packages WHERE PackageID = @PackageID AND VendorProfileID = @VendorProfileID`);
+    res.json({ success: true, message: 'Package deleted' });
+  } catch (err) {
+    console.error('Delete package error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete package', error: err.message });
+  }
+});
+
+// Category Answers: GET
+router.get('/:id/category-answers', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.query(`
+      SELECT ca.AnswerID, ca.QuestionID, cq.QuestionText, cq.Category, ca.Answer
+      FROM VendorCategoryAnswers ca
+      JOIN CategoryQuestions cq ON ca.QuestionID = cq.QuestionID
+      WHERE ca.VendorProfileID = @VendorProfileID
+      ORDER BY ca.AnswerID
+    `);
+    res.json({ success: true, answers: result.recordset });
+  } catch (err) {
+    console.error('Get category answers error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get category answers', error: err.message });
+  }
+});
+
+// Category Answers: UPSERT (replace all)
+router.post('/:id/category-answers/upsert', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { answers } = req.body; // [{questionId, answer}]
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    await request.query(`DELETE FROM VendorCategoryAnswers WHERE VendorProfileID = @VendorProfileID`);
+    if (Array.isArray(answers)) {
+      for (const a of answers) {
+        if (!a?.questionId) continue;
+        const aReq = new sql.Request(pool);
+        aReq.input('VendorProfileID', sql.Int, parseInt(id));
+        aReq.input('QuestionID', sql.Int, parseInt(a.questionId));
+        aReq.input('Answer', sql.NVarChar(sql.MAX), a.answer || null);
+        await aReq.query(`
+          INSERT INTO VendorCategoryAnswers (VendorProfileID, QuestionID, Answer, CreatedAt, UpdatedAt)
+          VALUES (@VendorProfileID, @QuestionID, @Answer, GETDATE(), GETDATE())
+        `);
+      }
+    }
+    res.json({ success: true, message: 'Category answers saved' });
+  } catch (err) {
+    console.error('Upsert category answers error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save category answers', error: err.message });
+  }
+});
+
 module.exports = router;
