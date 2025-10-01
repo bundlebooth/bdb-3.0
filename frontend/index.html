@@ -1843,6 +1843,17 @@
             margin-top: 2rem;
         }
 
+        /* Group headings for unified Client/Vendor menu */
+        .dashboard-menu .menu-heading {
+            margin: 1rem 0 0.5rem;
+            padding: 0 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: default;
+        }
+
         .dashboard-menu li {
             margin-bottom: 0.5rem;
         }
@@ -4828,6 +4839,12 @@
         <div class="modal-content" style="max-width: 95%; width: 1200px; height: 90vh; display: flex; flex-direction: column;">
             <div class="modal-header">
                 <h3 id="dashboard-modal-title">Dashboard</h3>
+                <div id="mode-toggle" style="display:flex; align-items:center; gap:8px; margin-left:auto; margin-right:8px;">
+                    <div role="group" aria-label="Mode" style="display:flex; background:#eef2ff; border:1px solid #e5e7eb; border-radius:999px; overflow:hidden;">
+                        <button id="mode-toggle-client" type="button" aria-pressed="true" class="seg" style="padding:6px 12px; border:none; background:#ffffff; font-weight:600; cursor:pointer;">Client</button>
+                        <button id="mode-toggle-vendor" type="button" aria-pressed="false" class="seg" style="padding:6px 12px; border:none; background:transparent; font-weight:600; cursor:pointer;">Vendor</button>
+                    </div>
+                </div>
                 <span class="close-modal">×</span>
             </div>
             <div class="modal-body" style="padding: 0; overflow: hidden; flex-grow: 1;">
@@ -8241,15 +8258,100 @@ document.addEventListener('DOMContentLoaded', async function() {
             const viewDashboardBtn = document.getElementById('view-dashboard-btn');
             const accountTypeSelect = document.getElementById('account-type');
 
-            // Dashboard elements
+            // Dashboard elements (unified menu and container)
             const clientDashboardContainer = document.getElementById('dashboard-container');
-            const vendorDashboardContainer = document.getElementById('vendor-dashboard-container');
-            const clientDashboardMenuItems = clientDashboardContainer.querySelectorAll('.dashboard-menu a');
-            const vendorDashboardMenuItems = vendorDashboardContainer.querySelectorAll('.dashboard-menu a');
-            const switchToVendorBtn = document.getElementById('switch-to-vendor');
-            const switchToClientBtn = document.getElementById('switch-to-client');
+            // Merge vendor menu items and sections into the unified dashboard
+            (function unifyDashboardUI() {
+                try {
+                    const vendorContainer = document.getElementById('vendor-dashboard-container');
+                    if (!clientDashboardContainer || !vendorContainer) return;
+
+                    // Merge menus: move vendor menu items into client menu (before logout)
+                    const clientMenu = clientDashboardContainer.querySelector('.dashboard-menu');
+                    const vendorMenu = vendorContainer.querySelector('.dashboard-menu');
+                    if (clientMenu && vendorMenu) {
+                        const beforeNode = clientMenu.querySelector('#logout-dashboard')?.closest('li') || null;
+                        Array.from(vendorMenu.querySelectorAll('li')).forEach(li => {
+                            const a = li.querySelector('a');
+                            if (!a) return;
+                            const id = a.id || '';
+                            // Skip vendor-only switch/logout items (we keep one unified Logout in client menu)
+                            if (id === 'switch-to-client' || id === 'vendor-logout') return;
+                            const section = a.dataset.section;
+                            // Avoid duplicates by section key
+                            if (section && clientMenu.querySelector(`a[data-section="${section}"]`)) return;
+                            const clone = li.cloneNode(true);
+                            const link = clone.querySelector('a');
+                            if (link) link.classList.remove('active');
+                            if (beforeNode) clientMenu.insertBefore(clone, beforeNode); else clientMenu.appendChild(clone);
+                        });
+                        // Remove client-side switch-to-vendor entry (redundant with unified menu)
+                        const switchToVendorEl = clientMenu.querySelector('#switch-to-vendor');
+                        if (switchToVendorEl) switchToVendorEl.closest('li')?.remove();
+                    }
+
+                    // Merge content sections: move vendor sections into client main
+                    const clientMain = clientDashboardContainer.querySelector('main');
+                    const vendorMain = vendorContainer.querySelector('main');
+                    if (clientMain && vendorMain) {
+                        const vendorSections = Array.from(vendorMain.querySelectorAll('div[id$="-section"]'));
+                        vendorSections.forEach(sec => clientMain.appendChild(sec));
+                    }
+
+                    // Remove vendor container to avoid duplicate IDs and simplify logic
+                    vendorContainer.remove();
+                } catch (err) {
+                    console.warn('Dashboard unify failed:', err);
+                }
+            })();
+
+            // Group unified menu into Client and Vendor sections
+            (function groupUnifiedMenu() {
+                try {
+                    const clientMenu = clientDashboardContainer?.querySelector('.dashboard-menu');
+                    if (!clientMenu) return;
+
+                    const logoutLi = clientMenu.querySelector('#logout-dashboard')?.closest('li') || null;
+                    const allLis = Array.from(clientMenu.querySelectorAll('li'));
+                    const clientLis = [];
+                    const vendorLis = [];
+
+                    allLis.forEach(li => {
+                        if (logoutLi && li === logoutLi) return;
+                        const a = li.querySelector('a');
+                        if (!a) return;
+                        const sec = a.dataset.section;
+                        if (!sec) return;
+                        if (sec.startsWith('vendor-')) vendorLis.push(li); else clientLis.push(li);
+                    });
+
+                    // Rebuild menu in grouped order
+                    clientMenu.innerHTML = '';
+                    const makeHeading = (text) => {
+                        const h = document.createElement('li');
+                        h.className = 'menu-heading';
+                        h.textContent = text;
+                        return h;
+                    };
+
+                    if (clientLis.length) {
+                        clientMenu.appendChild(makeHeading('Client'));
+                        clientLis.forEach(li => clientMenu.appendChild(li));
+                    }
+
+                    if (vendorLis.length) {
+                        clientMenu.appendChild(makeHeading('Vendor'));
+                        vendorLis.forEach(li => clientMenu.appendChild(li));
+                    }
+
+                    if (logoutLi) clientMenu.appendChild(logoutLi);
+                } catch (err) {
+                    console.warn('Menu grouping failed:', err);
+                }
+            })();
+
+            const dashboardMenuItems = clientDashboardContainer.querySelectorAll('.dashboard-menu a');
             const logoutDashboardBtn = document.getElementById('logout-dashboard');
-            const vendorLogoutBtn = document.getElementById('vendor-logout');
             
             // Chat modal elements
             const chatModal = document.getElementById('chat-modal');
@@ -9510,6 +9612,67 @@ document.addEventListener('DOMContentLoaded', async function() {
             // State variables for dashboard mode and active section, persisted in localStorage
             let isVendorMode = localStorage.getItem('isVendorMode') === 'true';
             let activeDashboardSection = localStorage.getItem('activeDashboardSection') || 'dashboard';
+            // Track last section per mode (backward-compatible with activeDashboardSection)
+            let activeClientSection = localStorage.getItem('activeClientSection') || 'dashboard';
+            let activeVendorSection = localStorage.getItem('activeVendorSection') || 'vendor-dashboard';
+            // Track currently displayed mode to detect mode switches
+            let currentDashboardMode = isVendorMode;
+            // Unsaved changes guard flag (set true by settings inputs)
+            window.dashboardUnsavedWarning = false;
+
+            // Valid sections per mode
+            const CLIENT_SECTIONS = new Set(['dashboard','bookings','requests','favorites','messages','reviews','settings']);
+            const VENDOR_SECTIONS = new Set(['vendor-dashboard','vendor-bookings','vendor-requests','vendor-services','vendor-messages','vendor-reviews','vendor-analytics','vendor-settings']);
+
+            function persistActiveSection(mode, section) {
+                try {
+                    localStorage.setItem('activeDashboardSection', section);
+                    if (mode === 'vendor') {
+                        activeVendorSection = section;
+                        localStorage.setItem('activeVendorSection', section);
+                    } else {
+                        activeClientSection = section;
+                        localStorage.setItem('activeClientSection', section);
+                    }
+                } catch (e) {}
+            }
+
+            // Mark unsaved when editing settings
+            document.addEventListener('input', (e) => {
+                if (e.target.closest('#vendor-settings-section, #settings-section')) {
+                    window.dashboardUnsavedWarning = true;
+                }
+            });
+
+            // Reset unsaved flag on settings form submits
+            document.addEventListener('submit', (e) => {
+                if (e.target && e.target.closest('#vendor-settings-section, #settings-section')) {
+                    window.dashboardUnsavedWarning = false;
+                }
+            }, true);
+
+            // Warn when leaving the page with unsaved changes
+            window.addEventListener('beforeunload', (e) => {
+                if (window.dashboardUnsavedWarning) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+
+            // Intercept dashboard modal close when there are unsaved settings changes
+            document.addEventListener('click', (e) => {
+                const closeBtn = e.target.closest('#dashboard-modal .close-modal');
+                if (!closeBtn) return;
+                if (!window.dashboardUnsavedWarning) return;
+                const proceed = confirm('You have unsaved changes in Settings. Close dashboard and discard them?');
+                if (!proceed) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                } else {
+                    window.dashboardUnsavedWarning = false;
+                }
+            }, true);
 
             // Lightbox state
             let lightboxImages = [];
@@ -9792,7 +9955,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     // Show main app since we're not loading a direct vendor URL
                     mainAppView.style.display = 'grid';
                     clientDashboardContainer.style.display = 'none';
-                    vendorDashboardContainer.style.display = 'none';
+                    // vendor container removed (unified dashboard)
 
                     // Setup lightbox event listeners
                     setupLightboxEventListeners();
@@ -15287,6 +15450,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     localStorage.removeItem('userSession');
                     localStorage.removeItem('isVendorMode');
                     localStorage.removeItem('activeDashboardSection');
+                    localStorage.removeItem('activeClientSection');
+                    localStorage.removeItem('activeVendorSection');
                     sessionStorage.clear();
 
                     // Disconnect from chat
@@ -15312,63 +15477,51 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     showMainApp();
                 });
 
-                // View dashboard button
+                // View dashboard button (respects last used mode & section)
                 viewDashboardBtn.addEventListener('click', () => {
                     profileModal.style.display = 'none';
-                    const initialSection = currentUser.isVendor ? 'vendor-dashboard' : 'dashboard';
-                    displayUserDashboard(currentUser.isVendor ? 'vendor' : 'client', activeDashboardSection || initialSection);
+                    const preferredMode = (isVendorMode && currentUser.isVendor) ? 'vendor' : 'client';
+                    const section = preferredMode === 'vendor' ? (activeVendorSection || 'vendor-dashboard') : (activeClientSection || 'dashboard');
+                    displayUserDashboard(preferredMode, section);
                 });
 
-                // Dashboard menu items (both client and vendor)
-                clientDashboardMenuItems.forEach(item => {
-                    item.addEventListener('click', (e) => {
+                // Dashboard menu items (unified, event delegation)
+                const dashboardMenuEl = clientDashboardContainer.querySelector('.dashboard-menu');
+                if (dashboardMenuEl) {
+                    dashboardMenuEl.addEventListener('click', (e) => {
+                        const link = e.target.closest('a[data-section]');
+                        if (!link || !dashboardMenuEl.contains(link)) return;
                         e.preventDefault();
-                        const section = item.dataset.section;
-                        displayUserDashboard('client', section);
+                        const section = link.dataset.section;
+                        if (!section) return;
+                        const mode = section.startsWith('vendor-') ? 'vendor' : 'client';
+                        displayUserDashboard(mode, section);
                     });
-                });
+                }
 
-                vendorDashboardMenuItems.forEach(item => {
-                    item.addEventListener('click', (e) => {
+                // Removed switch-to-vendor/client buttons in unified menu
+
+                // Header segmented toggle handlers
+                const headerToggleClient = document.getElementById('mode-toggle-client');
+                const headerToggleVendor = document.getElementById('mode-toggle-vendor');
+                if (headerToggleClient && headerToggleVendor) {
+                    headerToggleClient.addEventListener('click', () => {
+                        displayUserDashboard('client', activeClientSection || 'dashboard');
+                    });
+                    headerToggleVendor.addEventListener('click', () => {
+                        displayUserDashboard('vendor', activeVendorSection || 'vendor-dashboard');
+                    });
+                }
+
+                // Keyboard shortcut: Ctrl/Cmd + Shift + M toggles mode
+                document.addEventListener('keydown', (e) => {
+                    const isMeta = navigator.platform.includes('Mac') ? e.metaKey : e.ctrlKey;
+                    if (isMeta && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
                         e.preventDefault();
-                        const section = item.dataset.section;
-                        displayUserDashboard('vendor', section);
-                    });
-                });
-
-                // Switch to vendor mode
-                switchToVendorBtn.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    if (currentUser.isVendor) {
-                        displayUserDashboard('vendor', 'vendor-dashboard');
-                    } else {
-                        // Check if user has a vendor profile
-                        try {
-                            const response = await fetch(`${API_BASE_URL}/vendors/status?userId=${currentUser.id}`, {
-                                headers: {
-                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                                }
-                            });
-                            const data = await response.json();
-                            if (data.isVendor && data.isProfileComplete) {
-                                // User is a vendor and profile is complete
-                                currentUser.isVendor = true;
-                                displayUserDashboard('vendor', 'vendor-dashboard');
-                        } else {
-                            // User is not a vendor or profile is incomplete, show setup wizard
-                            initializeVendorSetup(currentUser.id);
-                        }
-                        } catch (error) {
-                            console.error('Error checking vendor status:', error);
-                            alert('Failed to check vendor status. Please try again.');
-                        }
+                        const nextMode = isVendorMode ? 'client' : 'vendor';
+                        const section = nextMode === 'vendor' ? (activeVendorSection || 'vendor-dashboard') : (activeClientSection || 'dashboard');
+                        displayUserDashboard(nextMode, section);
                     }
-                });
-
-                // Switch to client mode
-                switchToClientBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    displayUserDashboard('client', 'dashboard');
                 });
 
                 // Logout from dashboard
@@ -15377,11 +15530,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     logoutBtn.click();
                 });
 
-                // Logout from vendor dashboard
-                vendorLogoutBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    logoutBtn.click();
-                });
+                // Vendor logout item removed; using unified Logout only
 
                 // Vendor registration form steps
                 document.querySelectorAll('.next-step').forEach(btn => {
@@ -19942,33 +20091,91 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 });
             }
 
+            // Backward compatibility for legacy calls
+            function displayVendorDashboard(section) {
+                return displayUserDashboard('vendor', section || 'vendor-dashboard');
+            }
+
             // Unified function to display either client or vendor dashboard
             async function displayUserDashboard(mode, section) {
-                // Update global state and localStorage
-                isVendorMode = (mode === 'vendor');
+                const targetVendorMode = (mode === 'vendor');
+
+                // Warn on unsaved changes when switching modes
+                if (currentDashboardMode !== targetVendorMode && window.dashboardUnsavedWarning) {
+                    const proceed = confirm('You have unsaved changes in Settings. Switch modes and discard them?');
+                    if (!proceed) return;
+                    window.dashboardUnsavedWarning = false;
+                }
+
+                // Warn on unsaved changes when leaving Settings within the same mode
+                if (currentDashboardMode === targetVendorMode && window.dashboardUnsavedWarning) {
+                    const prevSection = targetVendorMode ? (activeVendorSection || 'vendor-dashboard') : (activeClientSection || 'dashboard');
+                    const settingsKey = targetVendorMode ? 'vendor-settings' : 'settings';
+                    const leavingSettings = (prevSection === settingsKey) && (section !== settingsKey);
+                    if (leavingSettings) {
+                        const proceed = confirm('You have unsaved changes in Settings. Leave this section and discard them?');
+                        if (!proceed) return;
+                        window.dashboardUnsavedWarning = false;
+                    }
+                }
+
+                // If switching to vendor mode, ensure vendor status is ready
+                if (targetVendorMode && currentUser && !currentUser.isVendor) {
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/vendors/status?userId=${currentUser.id}`, {
+                            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                        });
+                        const data = await response.json();
+                        if (data.isVendor && data.isProfileComplete) {
+                            currentUser.isVendor = true;
+                        } else {
+                            initializeVendorSetup(currentUser.id);
+                            return;
+                        }
+                    } catch (err) {
+                        console.error('Error checking vendor status:', err);
+                        alert('Unable to switch to Vendor mode right now. Please try again.');
+                        return;
+                    }
+                }
+
+                // Update global state and resolve section per mode
+                isVendorMode = targetVendorMode;
+                // Derive allowed sections from DOM (unified container)
+                const allSections = Array.from(document.querySelectorAll('#dashboard-container main > div[id$="-section"]'))
+                    .map(el => el.id.replace('-section', ''));
+                const allowed = new Set(allSections.filter(id => isVendorMode ? id.startsWith('vendor-') : !id.startsWith('vendor-')));
+                const defaultSection = isVendorMode ? 'vendor-dashboard' : 'dashboard';
+                if (!section || !allowed.has(section)) {
+                    section = isVendorMode ? (activeVendorSection || defaultSection) : (activeClientSection || defaultSection);
+                    if (!allowed.has(section)) section = defaultSection;
+                }
                 activeDashboardSection = section;
                 localStorage.setItem('isVendorMode', isVendorMode);
                 localStorage.setItem('activeDashboardSection', activeDashboardSection);
+                persistActiveSection(isVendorMode ? 'vendor' : 'client', section);
 
                 // Show the dashboard modal
                 const dashboardModal = document.getElementById('dashboard-modal');
                 dashboardModal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
 
-                // Determine which dashboard to show
-                if (isVendorMode) {
-                    clientDashboardContainer.style.display = 'none';
-                    vendorDashboardContainer.style.display = 'grid';
-                } else {
-                    clientDashboardContainer.style.display = 'grid';
-                    vendorDashboardContainer.style.display = 'none';
+                // Ensure unified dashboard container is visible
+                clientDashboardContainer.style.display = 'grid';
+
+                // Sync segmented toggle in header
+                const toggleClient = document.getElementById('mode-toggle-client');
+                const toggleVendor = document.getElementById('mode-toggle-vendor');
+                if (toggleClient && toggleVendor) {
+                    toggleClient.setAttribute('aria-pressed', (!isVendorMode).toString());
+                    toggleVendor.setAttribute('aria-pressed', (isVendorMode).toString());
+                    toggleClient.style.background = isVendorMode ? 'transparent' : '#ffffff';
+                    toggleVendor.style.background = isVendorMode ? '#ffffff' : 'transparent';
                 }
 
-                // Get the correct menu and content sections based on the mode
-                const currentDashboardMenu = isVendorMode ? vendorDashboardContainer.querySelector('.dashboard-menu') : clientDashboardContainer.querySelector('.dashboard-menu');
-                const currentDashboardContentSections = document.querySelectorAll(
-                    isVendorMode ? '#vendor-dashboard-container main > div[id]' : '#dashboard-container main > div[id]'
-                );
+                // Get the menu and content sections from unified container
+                const currentDashboardMenu = clientDashboardContainer.querySelector('.dashboard-menu');
+                const currentDashboardContentSections = document.querySelectorAll('#dashboard-container main > div[id$="-section"]');
 
                 // Hide all sections in the active dashboard first
                 currentDashboardContentSections.forEach(sec => {
@@ -20015,6 +20222,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     showLoginView();
                     profileModal.style.display = 'flex';
                 }
+
+                // Update current displayed mode tracker
+                currentDashboardMode = isVendorMode;
             }
 
             // Client Dashboard Data Loading
@@ -20458,6 +20668,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         document.getElementById('current-password').value = '';
                         document.getElementById('new-password').value = '';
                         document.getElementById('confirm-password').value = '';
+                        window.dashboardUnsavedWarning = false;
                     } catch (error) {
                         console.error('Error updating password:', error);
                         alert('Failed to update password: ' + error.message);
@@ -20466,6 +20677,41 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Vendor Dashboard Data Loading
+            // Safe DOM helpers for unified dashboard
+            function setHTMLIfExists(id, html) {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.innerHTML = html;
+                    return true;
+                }
+                return false;
+            }
+            function getEl(id) { return document.getElementById(id); }
+            // Ensure vendor overview containers exist (in case DOM was regrouped)
+            function ensureVendorOverviewContainers() {
+                const section = document.getElementById('vendor-dashboard-section');
+                if (!section) return;
+
+                // Ensure stats container
+                if (!document.getElementById('vendor-stats')) {
+                    const statsDiv = document.createElement('div');
+                    statsDiv.className = 'vendor-stats';
+                    statsDiv.id = 'vendor-stats';
+                    statsDiv.innerHTML = '<p>Loading vendor stats...</p>';
+                    section.insertBefore(statsDiv, section.firstChild);
+                }
+
+                // Ensure recent bookings card + container
+                if (!document.getElementById('vendor-recent-bookings')) {
+                    const card = document.createElement('div');
+                    card.className = 'dashboard-card';
+                    card.innerHTML = `
+                        <h2 class="dashboard-card-title">Recent Bookings</h2>
+                        <div id="vendor-recent-bookings"><p>Loading recent bookings...</p></div>
+                    `;
+                    section.appendChild(card);
+                }
+            }
             async function loadVendorDashboardData(section) {
                 if (!currentUser || !currentUser.id) return;
 
@@ -20480,12 +20726,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (statusData.isVendor && statusData.vendorProfileId) {
                         vendorProfileId = statusData.vendorProfileId;
                     } else {
-                        document.getElementById('vendor-dashboard-section').innerHTML = '<p>You are not registered as a vendor or your profile is incomplete. Please register or complete your profile to access the vendor dashboard.</p>';
+                        setHTMLIfExists('vendor-dashboard-section', '<p>You are not registered as a vendor or your profile is incomplete. Please register or complete your profile to access the vendor dashboard.</p>');
                         return;
                     }
                 } catch (error) {
                     console.error('Error getting vendor profile ID:', error);
-                    document.getElementById('vendor-dashboard-section').innerHTML = `<p style="color:var(--accent);">Error: ${error.message}. Could not load vendor dashboard.</p>`;
+                    setHTMLIfExists('vendor-dashboard-section', `<p style="color:var(--accent);">Error: ${error.message}. Could not load vendor dashboard.</p>`);
                     return;
                 }
 
@@ -20497,13 +20743,22 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const dashboardData = await response.json();
 
                     // Update notifications badge
-                    document.getElementById('vendor-notifications-badge').textContent = dashboardData.unreadNotifications || 0;
+                    const notifBadge = document.getElementById('dashboard-notifications-badge') || document.getElementById('vendor-notifications-badge');
+                    if (notifBadge) notifBadge.textContent = dashboardData.unreadNotifications || 0;
 
                     if (section === 'vendor-dashboard') {
-                        renderVendorStats(dashboardData.stats);
-                        renderVendorRecentBookings(dashboardData.recentBookings);
+                        ensureVendorOverviewContainers();
+                        // Render only if containers exist (extra safety across unified DOM)
+                        if (document.getElementById('vendor-stats')) {
+                            renderVendorStats(dashboardData.stats);
+                        }
+                        if (document.getElementById('vendor-recent-bookings')) {
+                            renderVendorRecentBookings(dashboardData.recentBookings);
+                        }
                         // Load recent messages for the vendor dashboard overview
-                        loadConversations('vendor-dashboard-section', 'vendor-chat-input', 'vendor-send-btn');
+                        if (getEl('vendor-chat-input') && getEl('vendor-send-btn')) {
+                            loadConversations('vendor-dashboard-section', 'vendor-chat-input', 'vendor-send-btn');
+                        }
                     } else if (section === 'vendor-bookings') {
                         await loadAllVendorBookings(vendorProfileId);
                     } else if (section === 'vendor-requests') {
@@ -20528,6 +20783,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             function renderVendorStats(stats) {
                 const container = document.getElementById('vendor-stats');
+                if (!container) return;
                 container.innerHTML = `
                     <div class="stat-card">
                         <div class="stat-value">${stats.TotalBookings || 0}</div>
@@ -20550,6 +20806,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             function renderVendorRecentBookings(bookings) {
                 const container = document.getElementById('vendor-recent-bookings');
+                if (!container) return;
                 container.innerHTML = '';
                 if (bookings && bookings.length > 0) {
                     bookings.forEach(booking => {
@@ -20565,7 +20822,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         container.appendChild(bookingItem);
                     });
                 } else {
-                    container.innerHTML = '<p>No recent bookings.</p>';
+                    container.innerHTML = '<p>No recent bookings found.</p>';
                 }
             }
 
