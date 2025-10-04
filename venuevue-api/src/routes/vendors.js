@@ -9,14 +9,10 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
 // Helper function to convert time string to 24-hour format for database comparison
 function convertTo24Hour(timeString) {
   if (!timeString) return null;
-  
   try {
-    // Handle various time formats (12-hour with AM/PM, 24-hour, etc.)
     const timeRegex = /^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i;
     const match = timeString.trim().match(timeRegex);
-    
     if (!match) {
-      // Try parsing as direct time input (HH:MM format)
       const directMatch = timeString.match(/^(\d{1,2}):(\d{2})$/);
       if (directMatch) {
         const hours = parseInt(directMatch[1]);
@@ -24,104 +20,25 @@ function convertTo24Hour(timeString) {
         if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
           return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
         }
-
-// Helper: Stripe configured check
-function isStripeConfigured() {
-  try {
-    const sk = process.env.STRIPE_SECRET_KEY || '';
-    return !!sk && !sk.includes('placeholder');
-  } catch (e) { return false; }
-}
-
-// Helper: get Stripe status for a vendor profile
-async function getStripeStatusByVendorProfileId(pool, vendorProfileId) {
-  try {
-    const req = new sql.Request(pool);
-    req.input('VendorProfileID', sql.Int, vendorProfileId);
-    const r = await req.query('SELECT StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
-    const acct = r.recordset[0]?.StripeAccountID || null;
-    if (!acct) return { connected: false, chargesEnabled: false, payoutsEnabled: false, accountId: null };
-    if (!isStripeConfigured()) return { connected: true, chargesEnabled: false, payoutsEnabled: false, accountId: acct };
-    try {
-      const a = await stripe.accounts.retrieve(acct);
-      return { connected: true, chargesEnabled: !!a.charges_enabled, payoutsEnabled: !!a.payouts_enabled, accountId: acct };
-    } catch {
-      return { connected: true, chargesEnabled: false, payoutsEnabled: false, accountId: acct };
-    }
-  } catch {
-    return { connected: false, chargesEnabled: false, payoutsEnabled: false, accountId: null };
-  }
-}
-
-// Helper: compute setup status and incomplete steps (mandatory steps)
-async function computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId) {
-  const profReq = new sql.Request(pool);
-  profReq.input('VendorProfileID', sql.Int, vendorProfileId);
-  const profRes = await profReq.query(`
-    SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, FeaturedImageURL,
-           PaymentMethods, PaymentTerms, LicenseNumber, InsuranceVerified, IsCompleted, AcceptingBookings
-    FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
-  if (!profRes.recordset.length) return { exists: false, error: 'Vendor profile not found' };
-  const p = profRes.recordset[0];
-  const countsRes = await new sql.Request(pool)
-    .input('VendorProfileID', sql.Int, vendorProfileId)
-    .query(`SELECT
-      (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID = @VendorProfileID) AS CategoriesCount,
-      (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = @VendorProfileID) AS ImagesCount,
-      (SELECT COUNT(*) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID=@VendorProfileID AND s.IsActive=1) AS ServicesCount,
-      (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID) AS SocialCount,
-      (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND IsAvailable = 1) AS HoursCount`);
-  const c = countsRes.recordset[0] || {};
-  const stripeStatus = await getStripeStatusByVendorProfileId(pool, vendorProfileId);
-  const steps = {
-    basics: !!(p.BusinessName && p.BusinessEmail && p.BusinessPhone && (c.CategoriesCount||0) > 0),
-    location: !!p.Address,
-    gallery: !!p.FeaturedImageURL,
-    services: (c.ServicesCount||0) > 0,
-    social: (c.SocialCount||0) > 0,
-    availability: (c.HoursCount||0) > 0,
-    policies: !!(p.PaymentMethods && p.PaymentTerms),
-    verification: !!(p.InsuranceVerified || p.LicenseNumber),
-    stripe: (stripeStatus.connected && stripeStatus.chargesEnabled && stripeStatus.payoutsEnabled)
-  };
-  const labels = {
-    basics: 'Business basics', location: 'Location', gallery: 'Gallery', services: 'Services',
-    social: 'Social media', availability: 'Availability', policies: 'Policies',
-    verification: 'Verification & legal', stripe: 'Stripe payouts'
-  };
-  const requiredOrder = ['basics','location','gallery','services','social','availability','policies','verification','stripe'];
-  const incompleteSteps = requiredOrder.filter(k => !steps[k]).map(k => ({ key: k, label: labels[k] }));
-  return { exists: true, vendorProfileId, steps, incompleteSteps, stripe: stripeStatus, allRequiredComplete: incompleteSteps.length === 0 };
-}
       }
       return null;
     }
-    
     let hours = parseInt(match[1]);
     const minutes = parseInt(match[2]);
     const period = match[3] ? match[3].toUpperCase() : null;
-    
-    // Convert 12-hour to 24-hour format
     if (period) {
-      if (period === 'PM' && hours !== 12) {
-        hours += 12;
-      } else if (period === 'AM' && hours === 12) {
-        hours = 0;
-      }
+      if (period === 'PM' && hours !== 12) hours += 12;
+      else if (period === 'AM' && hours === 12) hours = 0;
     }
-    
-    // Validate hours and minutes
-    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-      return null;
-    }
-    
-    // Return in HH:MM:SS format for SQL TIME type
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
   } catch (error) {
     console.warn('Error converting time string:', timeString, error.message);
     return null;
   }
 }
+
+// (removed erroneous debug step route)
 // Stripe/setup helpers (top-level)
 function isStripeConfigured() {
   try {
