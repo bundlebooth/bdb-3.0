@@ -392,8 +392,6 @@ router.get('/services/:categoryId', async (req, res) => {
       INNER JOIN VendorProfiles vp ON vc.VendorProfileID = vp.VendorProfileID
       WHERE vc.Category LIKE '%' + @Category + '%'
         AND vp.IsCompleted = 1
-        AND vp.AcceptingBookings = 1
-        AND vp.StripeAccountID IS NOT NULL
       ORDER BY vp.BusinessName
     `);
 
