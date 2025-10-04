@@ -5119,6 +5119,7 @@
                                 <button class="tab-btn" data-target="vendor-faqs-panel">FAQ Section</button>
                                 <button class="tab-btn" data-target="vendor-photos-panel">Gallery & Media</button>
                                 <button class="tab-btn" data-target="vendor-availability-panel">Availability & Scheduling</button>
+                                <button class="tab-btn" data-target="vendor-verification-panel">Verification & Legal</button>
                             </div>
                             <div class="settings-panels">
                                 <div id="vendor-profile-panel" class="settings-panel active">
@@ -5328,6 +5329,53 @@
                                         <h2 class="dashboard-card-title">Availability Settings</h2>
                                         <div id="business-hours-container" style="margin-top:1rem;"></div>
                                         <button class="btn btn-primary" id="save-business-hours-btn" style="margin-top:.5rem;">Save Business Hours</button>
+                                    </div>
+                                </div>
+                                <div id="vendor-verification-panel" class="settings-panel">
+                                    <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Verification & Legal</h2>
+                                        <form id="vendor-verification-form">
+                                            <div class="form-row">
+                                                <div class="form-col">
+                                                    <div class="form-group">
+                                                        <label for="ver-license">License Number</label>
+                                                        <input type="text" id="ver-license" placeholder="e.g., AB-123456">
+                                                    </div>
+                                                </div>
+                                                <div class="form-col" style="align-self: end;">
+                                                    <div class="form-group" style="margin-top: 1.8rem;">
+                                                        <label style="display:flex; align-items:center; gap:.5rem;">
+                                                            <input type="checkbox" id="ver-insurance"> Insurance Verified
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="ver-awards">Awards (JSON or comma-separated)</label>
+                                                <textarea id="ver-awards" rows="2" style="width:100%;"></textarea>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="ver-certifications">Certifications (JSON or comma-separated)</label>
+                                                <textarea id="ver-certifications" rows="2" style="width:100%;"></textarea>
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="form-col">
+                                                    <div class="form-group">
+                                                        <label style="display:flex; align-items:center; gap:.5rem;">
+                                                            <input type="checkbox" id="ver-eco"> Eco-Friendly
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="form-col">
+                                                    <div class="form-group">
+                                                        <label style="display:flex; align-items:center; gap:.5rem;">
+                                                            <input type="checkbox" id="ver-premium"> Premium Vendor
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Save Verification</button>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
@@ -20051,10 +20099,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Vendor settings tabs with lazy-loading for each panel
-            let vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, packages: false, faqs: false, photos: false, availability: false };
+            let vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, packages: false, faqs: false, photos: false, availability: false, verification: false };
             function setupVendorSettingsTabs(vendorProfileId) {
                 const section = document.getElementById('vendor-settings-section');
-                vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, packages: false, faqs: false, photos: false, availability: false };
+                vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, packages: false, faqs: false, photos: false, availability: false, verification: false };
                 setupSettingsTabs(section, async (targetId) => {
                     if (targetId === 'vendor-location-panel' && !vendorSettingsLoaded.location) {
                         await loadVendorLocation(vendorProfileId);
@@ -20087,6 +20135,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (targetId === 'vendor-availability-panel' && !vendorSettingsLoaded.availability) {
                         await loadVendorAvailability(vendorProfileId);
                         vendorSettingsLoaded.availability = true;
+                    }
+                    if (targetId === 'vendor-verification-panel' && !vendorSettingsLoaded.verification) {
+                        await loadVendorVerification(vendorProfileId);
+                        vendorSettingsLoaded.verification = true;
                     }
                 });
             }
@@ -20691,6 +20743,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function ensureVendorOverviewContainers() {
                 const section = document.getElementById('vendor-dashboard-section');
                 if (!section) return;
+                
+                // Ensure incomplete setup panel container at the top
+                if (!document.getElementById('vendor-incomplete-setup')) {
+                    const incDiv = document.createElement('div');
+                    incDiv.id = 'vendor-incomplete-setup';
+                    section.insertBefore(incDiv, section.firstChild);
+                }
 
                 // Ensure stats container
                 if (!document.getElementById('vendor-stats')) {
@@ -20748,6 +20807,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                     if (section === 'vendor-dashboard') {
                         ensureVendorOverviewContainers();
+                        // Incomplete setup panel
+                        if (document.getElementById('vendor-incomplete-setup')) {
+                            renderVendorIncompleteSetup(dashboardData.setupStatus, vendorProfileId);
+                        }
                         // Render only if containers exist (extra safety across unified DOM)
                         if (document.getElementById('vendor-stats')) {
                             renderVendorStats(dashboardData.stats);
@@ -20778,6 +20841,196 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 } catch (error) {
                     console.error('Error loading vendor dashboard:', error);
                     alert('Failed to load vendor dashboard data: ' + error.message);
+                }
+            }
+
+            function renderVendorIncompleteSetup(setupStatus, vendorProfileId) {
+                const container = document.getElementById('vendor-incomplete-setup');
+                if (!container) return;
+                container.innerHTML = '';
+                if (!setupStatus || setupStatus.allRequiredComplete) {
+                    container.style.display = 'none';
+                    return;
+                }
+                container.style.display = 'block';
+                const items = (setupStatus.incompleteSteps || []).map(s => {
+                    const isPolicies = s.key === 'policies';
+                    const inner = isPolicies
+                        ? `<span style="color: var(--text-light);">${s.label}</span>`
+                        : `<button 
+                                type="button"
+                                data-step-key="${s.key}"
+                                style="background:none;border:none;color:var(--primary);text-decoration:underline;cursor:pointer;padding:0;font:inherit;"
+                                onclick="openVendorSettingsStep('${s.key}', ${vendorProfileId})"
+                                aria-label="Open ${s.label} settings">
+                                ${s.label}
+                           </button>`;
+                    return `<li style="margin: 6px 0;">${inner}</li>`;
+                }).join('');
+                const needsStripe = !(setupStatus.steps && setupStatus.steps.stripe);
+                const stripeCta = needsStripe ? `
+                    <button class="btn btn-primary" onclick="startStripeOnboarding(${vendorProfileId})" style="margin-right: 8px;">
+                        <i class="fab fa-stripe"></i> Connect Stripe
+                    </button>
+                ` : '';
+                const settingsCta = `
+                    <button class="btn btn-outline" onclick="displayUserDashboard('vendor','vendor-settings')">
+                        Open Settings
+                    </button>
+                `;
+                container.innerHTML = `
+                    <div class="dashboard-card" style="border-left: 4px solid var(--primary);">
+                        <h2 class="dashboard-card-title">Complete your setup</h2>
+                        <p style="margin: 0 0 8px 0; color: #6b7280;">Finish these required items to enable bookings and go live.</p>
+                        <ul style="margin: 8px 0 12px 20px;">${items}</ul>
+                        <div>${stripeCta}${settingsCta}</div>
+                    </div>
+                `;
+
+                // Delegate click as a fallback in case inline onclick is blocked
+                if (!container.dataset.bound) {
+                    container.addEventListener('click', (e) => {
+                        const btn = e.target.closest('button[data-step-key]');
+                        if (!btn) return;
+                        const key = btn.getAttribute('data-step-key');
+                        if (key === 'policies') return; // ignored per requirement
+                        try { openVendorSettingsStep(key, vendorProfileId); } catch (err) { console.warn('delegate openVendorSettingsStep failed', err); }
+                    });
+                    container.dataset.bound = '1';
+                }
+            }
+
+            async function openVendorSettingsStep(stepKey, vendorProfileId) {
+                try {
+                    // Special handling for Stripe: go straight to onboarding
+                    if (stepKey === 'stripe') {
+                        await startStripeOnboarding(vendorProfileId);
+                        return;
+                    }
+
+                    // Open vendor settings section
+                    await displayUserDashboard('vendor', 'vendor-settings');
+
+                    // Additionally click the left menu as a robust fallback to switch the section
+                    for (let i = 0; i < 30; i++) {
+                        const menuLink = document.querySelector('.dashboard-menu a[data-section="vendor-settings"]');
+                        if (menuLink) { menuLink.click(); break; }
+                        await new Promise(r => setTimeout(r, 100));
+                    }
+
+                    // Map setup step keys to settings tab target IDs
+                    const targetMap = {
+                        basics: 'vendor-profile-panel',
+                        location: 'vendor-location-panel',
+                        gallery: 'vendor-photos-panel',
+                        services: 'vendor-services-panel',
+                        social: 'vendor-social-panel',
+                        availability: 'vendor-availability-panel',
+                        // Policies currently handled via FAQ panel in UI
+                        policies: 'vendor-faqs-panel',
+                        // Verification & Legal
+                        verification: 'vendor-verification-panel'
+                    };
+                    const targetId = targetMap[stepKey] || 'vendor-profile-panel';
+
+                    // Wait for tab buttons to be ready, then activate the matching tab
+                    for (let i = 0; i < 30; i++) { // up to ~3s
+                        const btn = document.querySelector(`#vendor-settings-section .settings-tabs .tab-btn[data-target='${targetId}']`);
+                        if (btn) { btn.click(); break; }
+                        await new Promise(r => setTimeout(r, 100));
+                    }
+
+                    // If panel didn't activate via click (e.g., listeners not bound yet), do a manual activation fallback
+                    let activated = false;
+                    for (let i = 0; i < 20; i++) { // ~1s wait for active class
+                        const panel = document.querySelector(`#${targetId}.active`);
+                        if (panel) { activated = true; break; }
+                        await new Promise(r => setTimeout(r, 50));
+                    }
+                    if (!activated) {
+                        manuallyActivateVendorSettingsTab(targetId, vendorProfileId);
+                    }
+
+                    // After activating, try to focus the most relevant subsection within that panel
+                    const anchorMap = {
+                        basics: '#vendor-profile-form',
+                        location: '#vendor-location-form',
+                        gallery: '#vendor-photos, #upload-photos-btn',
+                        services: '#vendor-settings-services-grid, #vendor-settings-services-loading',
+                        social: '#vendor-social-form',
+                        availability: '#business-hours-container, #vendor-availability-panel',
+                        policies: '#faqs-list, #vendor-faqs-panel',
+                        verification: '#vendor-verification-form'
+                    };
+                    const selectorList = (anchorMap[stepKey] || '').split(',').map(s => s.trim()).filter(Boolean);
+                    let anchorEl = null;
+                    if (selectorList.length) {
+                        for (let i = 0; i < 50 && !anchorEl; i++) { // wait up to ~5s for lazy content
+                            for (const sel of selectorList) {
+                                const el = document.querySelector(sel);
+                                if (el) { anchorEl = el; break; }
+                            }
+                            if (!anchorEl) await new Promise(r => setTimeout(r, 100));
+                        }
+                    }
+                    if (anchorEl) {
+                        anchorEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        try {
+                            anchorEl.style.outline = '2px solid var(--primary)';
+                            anchorEl.style.transition = 'outline 0.3s ease';
+                            setTimeout(() => { anchorEl.style.outline = ''; }, 1500);
+                        } catch {}
+                    } else {
+                        document.getElementById('vendor-settings-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }
+                } catch (e) {
+                    console.error('Failed to open vendor settings step:', stepKey, e);
+                }
+            }
+            // Ensure global access for inline handlers
+            window.openVendorSettingsStep = openVendorSettingsStep;
+
+            // Fallback: directly activate the desired settings tab and run its lazy-loader if needed
+            function manuallyActivateVendorSettingsTab(targetId, vendorProfileId) {
+                try {
+                    const root = document.getElementById('vendor-settings-section');
+                    if (!root) return;
+                    const btns = root.querySelectorAll('.settings-tabs .tab-btn');
+                    const panels = root.querySelectorAll('.settings-panels .settings-panel');
+                    // Toggle active classes
+                    btns.forEach(b => b.classList.remove('active'));
+                    const targetBtn = root.querySelector(`.settings-tabs .tab-btn[data-target='${targetId}']`);
+                    if (targetBtn) targetBtn.classList.add('active');
+                    panels.forEach(p => p.classList.remove('active'));
+                    const targetPanel = root.querySelector(`#${targetId}`);
+                    if (targetPanel) targetPanel.classList.add('active');
+
+                    // Trigger corresponding lazy-load one-off if it hasn't run yet
+                    if (typeof vendorSettingsLoaded !== 'undefined') {
+                        if (targetId === 'vendor-services-panel' && !vendorSettingsLoaded.services && typeof loadVendorServicesSettings === 'function') {
+                            loadVendorServicesSettings(vendorProfileId); vendorSettingsLoaded.services = true;
+                        }
+                        if (targetId === 'vendor-availability-panel' && !vendorSettingsLoaded.availability && typeof loadVendorAvailability === 'function') {
+                            loadVendorAvailability(vendorProfileId); vendorSettingsLoaded.availability = true;
+                        }
+                        if (targetId === 'vendor-verification-panel' && !vendorSettingsLoaded.verification && typeof loadVendorVerification === 'function') {
+                            loadVendorVerification(vendorProfileId); vendorSettingsLoaded.verification = true;
+                        }
+                        if (targetId === 'vendor-faqs-panel' && !vendorSettingsLoaded.faqs && typeof loadVendorFAQs === 'function') {
+                            loadVendorFAQs(vendorProfileId); vendorSettingsLoaded.faqs = true;
+                        }
+                        if (targetId === 'vendor-photos-panel' && !vendorSettingsLoaded.photos && typeof loadVendorImages === 'function') {
+                            loadVendorImages(vendorProfileId); vendorSettingsLoaded.photos = true;
+                        }
+                        if (targetId === 'vendor-location-panel' && !vendorSettingsLoaded.location && typeof loadVendorLocation === 'function') {
+                            loadVendorLocation(vendorProfileId); vendorSettingsLoaded.location = true;
+                        }
+                        if (targetId === 'vendor-social-panel' && !vendorSettingsLoaded.social && typeof loadVendorSocial === 'function') {
+                            loadVendorSocial(vendorProfileId); vendorSettingsLoaded.social = true;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Manual tab activation failed for', targetId, err);
                 }
             }
 
