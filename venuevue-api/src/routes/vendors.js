@@ -5,6 +5,162 @@ const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
 
+// Stripe (optional; used for setup gating)
+const stripe = (process.env.STRIPE_SECRET_KEY && !String(process.env.STRIPE_SECRET_KEY).includes('placeholder'))
+  ? require('stripe')(process.env.STRIPE_SECRET_KEY)
+  : null;
+
+function isStripeConfigured() {
+  try {
+    const sk = process.env.STRIPE_SECRET_KEY || '';
+    const pk = process.env.STRIPE_PUBLISHABLE_KEY || '';
+    const ci = process.env.STRIPE_CLIENT_ID || '';
+    return !!sk && !!pk && !!ci && !sk.includes('placeholder') && !pk.includes('placeholder');
+  } catch (e) {
+    return false;
+  }
+}
+
+// Expose incomplete steps for dashboard/settings
+router.get('/:id/incomplete-steps', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, pool);
+    if (!vendorProfileId) {
+      return res.status(404).json({ success: false, message: 'Vendor not found' });
+    }
+    const incompleteSteps = await computeIncompleteSteps(parseInt(vendorProfileId), pool);
+    res.json({ success: true, vendorProfileId, incompleteSteps, canComplete: incompleteSteps.length === 0 });
+  } catch (e) {
+    console.error('Incomplete steps error:', e);
+    res.status(500).json({ success: false, message: 'Failed to compute incomplete steps', error: e.message });
+  }
+});
+
+// Compute which setup steps are incomplete for a vendor (includes Stripe)
+async function computeIncompleteSteps(vendorProfileId, pool) {
+  const incomplete = [];
+  try {
+    const req = new sql.Request(pool);
+    req.input('VendorProfileID', sql.Int, vendorProfileId);
+    const result = await req.query(`
+      SELECT 
+        BusinessName, BusinessEmail, BusinessPhone, BusinessDescription, Website,
+        Address, City, State, Country, PostalCode, Latitude, Longitude,
+        FeaturedImageURL, BookingLink, AcceptingBookings,
+        LicenseNumber, InsuranceVerified, BusinessType, TaxID,
+        DepositRequirements, CancellationPolicy, ReschedulingPolicy, PaymentMethods, PaymentTerms,
+        StripeAccountID, IsCompleted
+      FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID;
+
+      SELECT COUNT(*) AS CategoriesCount FROM VendorCategories WHERE VendorProfileID = @VendorProfileID;
+      SELECT COUNT(*) AS ImagesCount FROM VendorImages WHERE VendorProfileID = @VendorProfileID;
+      SELECT COUNT(*) AS ServicesCount 
+        FROM Services s
+        INNER JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+        WHERE sc.VendorProfileID = @VendorProfileID;
+      SELECT COUNT(*) AS SelectedPredefinedCount FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID;
+      SELECT COUNT(*) AS PackagesCount FROM Packages WHERE VendorProfileID = @VendorProfileID;
+      SELECT COUNT(*) AS SocialMediaCount FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID;
+      SELECT COUNT(*) AS BusinessHoursCount FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND IsAvailable = 1;
+      SELECT COUNT(*) AS CategoryAnswersCount FROM VendorCategoryAnswers WHERE VendorProfileID = @VendorProfileID;
+    `);
+
+    const p = result.recordsets[0] && result.recordsets[0][0] ? result.recordsets[0][0] : {};
+    const counts = {
+      categories: result.recordsets[1]?.[0]?.CategoriesCount || 0,
+      images: result.recordsets[2]?.[0]?.ImagesCount || 0,
+      services: result.recordsets[3]?.[0]?.ServicesCount || 0,
+      selectedPredefined: result.recordsets[4]?.[0]?.SelectedPredefinedCount || 0,
+      packages: result.recordsets[5]?.[0]?.PackagesCount || 0,
+      social: result.recordsets[6]?.[0]?.SocialMediaCount || 0,
+      hours: result.recordsets[7]?.[0]?.BusinessHoursCount || 0,
+      categoryAnswers: result.recordsets[8]?.[0]?.CategoryAnswersCount || 0,
+    };
+
+    // Step 1: Business Basics (name, email, phone, categories)
+    if (!(p.BusinessName && p.BusinessEmail && p.BusinessPhone) || counts.categories <= 0) {
+      incomplete.push({ step: 1, key: 'business_basics', title: 'Business basics', reason: 'Missing business name, email, phone, or categories' });
+    }
+
+    // Step 2: Location (address + geo)
+    if (!(p.Address && p.City && p.State && p.PostalCode && p.Latitude != null && p.Longitude != null)) {
+      incomplete.push({ step: 2, key: 'location', title: 'Location', reason: 'Missing full address or coordinates' });
+    }
+
+    // Step 3: Services & Packages (at least one service, selected predefined, or package)
+    if ((counts.services + counts.selectedPredefined + counts.packages) <= 0) {
+      incomplete.push({ step: 3, key: 'services', title: 'Services & packages', reason: 'Add at least one service or package' });
+    }
+
+    // Step 4: Additional details (category Q&A)
+    if (counts.categoryAnswers <= 0) {
+      incomplete.push({ step: 4, key: 'additional_details', title: 'Additional details', reason: 'Complete category-specific questions' });
+    }
+
+    // Step 5: Availability & Scheduling (business hours)
+    if (counts.hours <= 0) {
+      incomplete.push({ step: 5, key: 'availability', title: 'Availability & scheduling', reason: 'Add your business hours' });
+    }
+
+    // Step 6: Gallery & Media (featured image or any images)
+    if (!(p.FeaturedImageURL) && counts.images <= 0) {
+      incomplete.push({ step: 6, key: 'gallery', title: 'Gallery & media', reason: 'Upload a featured image or gallery images' });
+    }
+
+    // Step 7: Social Media & Links (at least one link)
+    if (counts.social <= 0) {
+      incomplete.push({ step: 7, key: 'social', title: 'Social media & links', reason: 'Add at least one social/profile link' });
+    }
+
+    // Step 8: Policies & Preferences (payment methods and cancellation policy)
+    if (!(p.PaymentMethods) || !(p.CancellationPolicy)) {
+      incomplete.push({ step: 8, key: 'policies', title: 'Policies & preferences', reason: 'Set payment methods and cancellation policy' });
+    }
+
+    // Step 9: Verification & Legal (at least one form of verification)
+    const verificationOk = (p.InsuranceVerified === true || p.InsuranceVerified === 1) || !!p.LicenseNumber || (p.BusinessType && p.TaxID);
+    if (!verificationOk) {
+      incomplete.push({ step: 9, key: 'verification', title: 'Verification & legal', reason: 'Provide license/insurance or business details' });
+    }
+
+    // Stripe: must be connected (and preferably fully enabled)
+    let stripeIssue = null;
+    let stripeDetails = { connected: !!p.StripeAccountID, chargesEnabled: null, payoutsEnabled: null, detailsSubmitted: null };
+    if (!p.StripeAccountID) {
+      stripeIssue = 'not_connected';
+    } else if (stripe && isStripeConfigured()) {
+      try {
+        const account = await stripe.accounts.retrieve(p.StripeAccountID);
+        stripeDetails.chargesEnabled = !!account?.charges_enabled;
+        stripeDetails.payoutsEnabled = !!account?.payouts_enabled;
+        stripeDetails.detailsSubmitted = !!account?.details_submitted;
+        if (!stripeDetails.chargesEnabled || !stripeDetails.payoutsEnabled || !stripeDetails.detailsSubmitted) {
+          stripeIssue = 'requirements_pending';
+        }
+      } catch (e) {
+        stripeIssue = 'invalid_account';
+      }
+    } else {
+      // Stripe not configured on platform
+      stripeIssue = 'platform_not_configured';
+    }
+
+    if (stripeIssue) {
+      incomplete.push({ step: 'stripe', key: 'stripe_connect', title: 'Stripe Connect', reason: stripeIssue, details: stripeDetails });
+    }
+
+    return incomplete;
+  } catch (e) {
+    console.warn('Failed to compute incomplete steps:', e.message);
+    // Fallback: do not block unexpectedly; return empty (caller can decide)
+    return incomplete;
+  }
+}
+
 // Helper function to convert time string to 24-hour format for database comparison
 function convertTo24Hour(timeString) {
   if (!timeString) return null;
@@ -367,6 +523,27 @@ router.get('/', async (req, res) => {
       formattedVendors = enhancedVendors;
     }
 
+    // Gate results: only vendors fully public/bookable (IsCompleted, AcceptingBookings, Stripe connected)
+    try {
+      const ids = Array.from(new Set((formattedVendors || []).map(v => parseInt(v.vendorProfileId || v.id)).filter(n => Number.isInteger(n) && n > 0)));
+      if (ids.length > 0) {
+        const idList = ids.join(',');
+        const gateRes = await pool.request().query(`
+          SELECT VendorProfileID, IsCompleted, AcceptingBookings, StripeAccountID
+          FROM VendorProfiles
+          WHERE VendorProfileID IN (${idList})
+        `);
+        const gateMap = {};
+        gateRes.recordset.forEach(g => { gateMap[g.VendorProfileID] = g; });
+        formattedVendors = formattedVendors.filter(v => {
+          const g = gateMap[v.vendorProfileId];
+          return g && (g.IsCompleted === true || g.IsCompleted === 1) && (g.AcceptingBookings === true || g.AcceptingBookings === 1) && !!g.StripeAccountID;
+        });
+      }
+    } catch (gateErr) {
+      console.warn('Public listing gate failed:', gateErr.message);
+    }
+
     res.json({
       success: true,
       vendors: formattedVendors,
@@ -474,6 +651,8 @@ router.get('/map', async (req, res) => {
       LEFT JOIN VendorCategories vc ON vp.VendorProfileID = vc.VendorProfileID
       LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = ps.PredefinedServiceID
       WHERE vp.IsCompleted = 1 
+        AND vp.AcceptingBookings = 1
+        AND vp.StripeAccountID IS NOT NULL
         AND vp.Latitude IS NOT NULL 
         AND vp.Longitude IS NOT NULL`;
 
@@ -1732,7 +1911,7 @@ router.post('/search-by-services', async (req, res) => {
     // Business hours filtering now handled inside stored procedure
 
     // Process results to match expected format
-    const vendorsWithServices = result.recordset.map(vendor => {
+    let vendorsWithServices = result.recordset.map(vendor => {
       // Parse VendorImages JSON if it exists
       let vendorImages = [];
       if (vendor.VendorImages) {
@@ -1836,6 +2015,27 @@ router.post('/search-by-services', async (req, res) => {
         totalEstimatedCost: vendor.TotalEstimatedPrice || services.reduce((sum, service) => sum + (service.VendorPrice || 0), 0)
       };
     });
+
+    // Gate results: Only public/bookable vendors (IsCompleted, AcceptingBookings, Stripe connected)
+    try {
+      const ids = Array.from(new Set((vendorsWithServices || []).map(v => parseInt(v.VendorProfileID)).filter(n => Number.isInteger(n) && n > 0)));
+      if (ids.length > 0) {
+        const idList = ids.join(',');
+        const gateRes = await pool.request().query(`
+          SELECT VendorProfileID, IsCompleted, AcceptingBookings, StripeAccountID
+          FROM VendorProfiles
+          WHERE VendorProfileID IN (${idList})
+        `);
+        const gateMap = {};
+        gateRes.recordset.forEach(g => { gateMap[g.VendorProfileID] = g; });
+        vendorsWithServices = vendorsWithServices.filter(v => {
+          const g = gateMap[v.VendorProfileID];
+          return g && (g.IsCompleted === true || g.IsCompleted === 1) && (g.AcceptingBookings === true || g.AcceptingBookings === 1) && !!g.StripeAccountID;
+        });
+      }
+    } catch (gateErr) {
+      console.warn('Service search gate failed:', gateErr.message);
+    }
 
     res.json({
       success: true,
@@ -2538,16 +2738,25 @@ router.post('/setup/step10-completion', async (req, res) => {
       }
     }
     
-    // Mark setup as completed
+    // Validate all steps and Stripe before marking complete
+    const incompleteSteps = await computeIncompleteSteps(parseInt(vendorProfileId), pool);
+    if (incompleteSteps.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Setup is not complete. Please finish the remaining steps.',
+        incompleteSteps
+      });
+    }
+
+    // All good: mark setup completed and enable bookings
     const updateRequest = new sql.Request(pool);
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    
     await updateRequest.query(`
       UPDATE VendorProfiles 
-      SET IsCompleted = 1, UpdatedAt = GETDATE()
+      SET IsCompleted = 1, AcceptingBookings = 1, SetupCompletedAt = GETDATE(), UpdatedAt = GETDATE()
       WHERE VendorProfileID = @VendorProfileID
     `);
-    
+
     res.json({
       success: true,
       message: 'Vendor setup completed successfully! Your profile is now live.',
@@ -2619,6 +2828,9 @@ router.get('/setup/progress/:vendorProfileId', async (req, res) => {
     const totalSteps = Object.keys(steps).length;
     const progressPercentage = Math.round((completedSteps / totalSteps) * 100);
     
+    // Include detailed incomplete steps
+    const incompleteSteps = await computeIncompleteSteps(parseInt(vendorProfileId), pool);
+
     res.json({
       success: true,
       progress: {
@@ -2628,7 +2840,8 @@ router.get('/setup/progress/:vendorProfileId', async (req, res) => {
         progressPercentage,
         isCompleted: profile.IsCompleted,
         steps
-      }
+      },
+      incompleteSteps
     });
     
   } catch (err) {
@@ -2676,9 +2889,13 @@ router.get('/:id/setup-progress', async (req, res) => {
       });
     }
 
+    // Also return incomplete steps for dashboard/settings use
+    const incompleteSteps = await computeIncompleteSteps(vendorProfileId, pool);
+
     res.json({
       success: true,
-      data: result.recordset[0]
+      data: result.recordset[0],
+      incompleteSteps
     });
 
   } catch (err) {
