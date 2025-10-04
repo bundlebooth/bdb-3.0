@@ -106,6 +106,18 @@ async function computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId) 
   return { exists: true, vendorProfileId, steps, incompleteSteps, stripe: stripeStatus, allRequiredComplete: incompleteSteps.length === 0 };
 }
 
+// Mark vendor setup step as completed (best-effort)
+async function markSetupStep(pool, vendorProfileId, stepNumber) {
+  try {
+    const sReq = new sql.Request(pool);
+    sReq.input('VendorProfileID', sql.Int, parseInt(vendorProfileId));
+    sReq.input('StepNumber', sql.Int, parseInt(stepNumber));
+    await sReq.execute('sp_UpdateVendorSetupStep');
+  } catch (e) {
+    console.warn('sp_UpdateVendorSetupStep failed:', e?.message || e);
+  }
+}
+
 // Helper function to resolve UserID to VendorProfileID
 async function resolveVendorProfileId(id, pool) {
   const idNum = parseInt(id);
@@ -1442,7 +1454,9 @@ router.post('/setup/step1-business-basics', async (req, res) => {
         `);
       }
     }
-    
+    // Mark step 1 completed (best-effort)
+    await markSetupStep(pool, vendorProfileId, 1);
+
     res.json({
       success: true,
       message: 'Business basics saved successfully',
@@ -1539,7 +1553,9 @@ router.post('/setup/step3-gallery', async (req, res) => {
         `);
       }
     }
-    
+    // Mark step 3 completed (gallery)
+    await markSetupStep(pool, vendorProfileId, 3);
+
     res.json({
       success: true,
       message: 'Gallery and media saved successfully',
@@ -2189,6 +2205,9 @@ router.post('/setup/step3-services', async (req, res) => {
       }
     }
     
+    // Mark step 3 completed (services)
+    await markSetupStep(pool, vendorProfileId, 3);
+
     res.json({
       success: true,
       message: 'Services and packages saved successfully',
@@ -2246,6 +2265,9 @@ router.post('/setup/step5-team', async (req, res) => {
       }
     }
     
+    // Mark step 5 completed
+    await markSetupStep(pool, vendorProfileId, 5);
+
     res.json({
       success: true,
       message: 'Team information saved successfully',
@@ -2319,6 +2341,9 @@ router.post('/setup/step6-social', async (req, res) => {
       }
     }
     
+    // Mark step 6 completed
+    await markSetupStep(pool, vendorProfileId, 6);
+
     res.json({
       success: true,
       message: 'Social media and links saved successfully',
@@ -2426,6 +2451,9 @@ router.post('/setup/step7-availability', async (req, res) => {
       }
     }
     
+    // Mark step 7 completed
+    await markSetupStep(pool, vendorProfileId, 7);
+
     res.json({
       success: true,
       message: 'Availability and scheduling saved successfully',
@@ -2484,6 +2512,9 @@ router.post('/setup/step8-policies', async (req, res) => {
       WHERE VendorProfileID = @VendorProfileID
     `);
     
+    // Mark step 8 completed
+    await markSetupStep(pool, vendorProfileId, 8);
+
     res.json({
       success: true,
       message: 'Policies and preferences saved successfully',
@@ -2545,6 +2576,9 @@ router.post('/setup/step9-verification', async (req, res) => {
       WHERE VendorProfileID = @VendorProfileID
     `);
     
+    // Mark step 9 completed
+    await markSetupStep(pool, vendorProfileId, 9);
+
     res.json({
       success: true,
       message: 'Verification and legal information saved successfully',
@@ -2613,7 +2647,9 @@ router.post('/setup/step10-completion', async (req, res) => {
       SET IsCompleted = 1, UpdatedAt = GETDATE()
       WHERE VendorProfileID = @VendorProfileID
     `);
-    
+    // Mark step 10 completed
+    await markSetupStep(pool, vendorProfileId, 10);
+
     res.json({
       success: true,
       message: 'Vendor setup completed successfully! Your profile is now live.',
