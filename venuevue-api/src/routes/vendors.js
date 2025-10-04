@@ -4,6 +4,7 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
 
 // Helper function to convert time string to 24-hour format for database comparison
 function convertTo24Hour(timeString) {
@@ -23,6 +24,75 @@ function convertTo24Hour(timeString) {
         if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
           return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
         }
+
+// Helper: Stripe configured check
+function isStripeConfigured() {
+  try {
+    const sk = process.env.STRIPE_SECRET_KEY || '';
+    return !!sk && !sk.includes('placeholder');
+  } catch (e) { return false; }
+}
+
+// Helper: get Stripe status for a vendor profile
+async function getStripeStatusByVendorProfileId(pool, vendorProfileId) {
+  try {
+    const req = new sql.Request(pool);
+    req.input('VendorProfileID', sql.Int, vendorProfileId);
+    const r = await req.query('SELECT StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+    const acct = r.recordset[0]?.StripeAccountID || null;
+    if (!acct) return { connected: false, chargesEnabled: false, payoutsEnabled: false, accountId: null };
+    if (!isStripeConfigured()) return { connected: true, chargesEnabled: false, payoutsEnabled: false, accountId: acct };
+    try {
+      const a = await stripe.accounts.retrieve(acct);
+      return { connected: true, chargesEnabled: !!a.charges_enabled, payoutsEnabled: !!a.payouts_enabled, accountId: acct };
+    } catch {
+      return { connected: true, chargesEnabled: false, payoutsEnabled: false, accountId: acct };
+    }
+  } catch {
+    return { connected: false, chargesEnabled: false, payoutsEnabled: false, accountId: null };
+  }
+}
+
+// Helper: compute setup status and incomplete steps (mandatory steps)
+async function computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId) {
+  const profReq = new sql.Request(pool);
+  profReq.input('VendorProfileID', sql.Int, vendorProfileId);
+  const profRes = await profReq.query(`
+    SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, FeaturedImageURL,
+           PaymentMethods, PaymentTerms, LicenseNumber, InsuranceVerified, IsCompleted, AcceptingBookings
+    FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
+  if (!profRes.recordset.length) return { exists: false, error: 'Vendor profile not found' };
+  const p = profRes.recordset[0];
+  const countsRes = await new sql.Request(pool)
+    .input('VendorProfileID', sql.Int, vendorProfileId)
+    .query(`SELECT
+      (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID = @VendorProfileID) AS CategoriesCount,
+      (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = @VendorProfileID) AS ImagesCount,
+      (SELECT COUNT(*) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID=@VendorProfileID AND s.IsActive=1) AS ServicesCount,
+      (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID) AS SocialCount,
+      (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND IsAvailable = 1) AS HoursCount`);
+  const c = countsRes.recordset[0] || {};
+  const stripeStatus = await getStripeStatusByVendorProfileId(pool, vendorProfileId);
+  const steps = {
+    basics: !!(p.BusinessName && p.BusinessEmail && p.BusinessPhone && (c.CategoriesCount||0) > 0),
+    location: !!p.Address,
+    gallery: !!p.FeaturedImageURL,
+    services: (c.ServicesCount||0) > 0,
+    social: (c.SocialCount||0) > 0,
+    availability: (c.HoursCount||0) > 0,
+    policies: !!(p.PaymentMethods && p.PaymentTerms),
+    verification: !!(p.InsuranceVerified || p.LicenseNumber),
+    stripe: (stripeStatus.connected && stripeStatus.chargesEnabled && stripeStatus.payoutsEnabled)
+  };
+  const labels = {
+    basics: 'Business basics', location: 'Location', gallery: 'Gallery', services: 'Services',
+    social: 'Social media', availability: 'Availability', policies: 'Policies',
+    verification: 'Verification & legal', stripe: 'Stripe payouts'
+  };
+  const requiredOrder = ['basics','location','gallery','services','social','availability','policies','verification','stripe'];
+  const incompleteSteps = requiredOrder.filter(k => !steps[k]).map(k => ({ key: k, label: labels[k] }));
+  return { exists: true, vendorProfileId, steps, incompleteSteps, stripe: stripeStatus, allRequiredComplete: incompleteSteps.length === 0 };
+}
       }
       return null;
     }
@@ -51,6 +121,72 @@ function convertTo24Hour(timeString) {
     console.warn('Error converting time string:', timeString, error.message);
     return null;
   }
+}
+// Stripe/setup helpers (top-level)
+function isStripeConfigured() {
+  try {
+    const sk = process.env.STRIPE_SECRET_KEY || '';
+    return !!sk && !sk.includes('placeholder');
+  } catch (e) { return false; }
+}
+
+async function getStripeStatusByVendorProfileId(pool, vendorProfileId) {
+  try {
+    const req = new sql.Request(pool);
+    req.input('VendorProfileID', sql.Int, vendorProfileId);
+    const r = await req.query('SELECT StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+    const acct = r.recordset[0]?.StripeAccountID || null;
+    if (!acct) return { connected: false, chargesEnabled: false, payoutsEnabled: false, accountId: null };
+    if (!isStripeConfigured()) return { connected: true, chargesEnabled: false, payoutsEnabled: false, accountId: acct };
+    try {
+      const a = await stripe.accounts.retrieve(acct);
+      return { connected: true, chargesEnabled: !!a.charges_enabled, payoutsEnabled: !!a.payouts_enabled, accountId: acct };
+    } catch {
+      return { connected: true, chargesEnabled: false, payoutsEnabled: false, accountId: acct };
+    }
+  } catch {
+    return { connected: false, chargesEnabled: false, payoutsEnabled: false, accountId: null };
+  }
+}
+
+async function computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId) {
+  const profReq = new sql.Request(pool);
+  profReq.input('VendorProfileID', sql.Int, vendorProfileId);
+  const profRes = await profReq.query(`
+    SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, FeaturedImageURL,
+           PaymentMethods, PaymentTerms, LicenseNumber, InsuranceVerified, IsCompleted, AcceptingBookings
+    FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
+  if (!profRes.recordset.length) return { exists: false, error: 'Vendor profile not found' };
+  const p = profRes.recordset[0];
+  const countsRes = await new sql.Request(pool)
+    .input('VendorProfileID', sql.Int, vendorProfileId)
+    .query(`SELECT
+      (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID = @VendorProfileID) AS CategoriesCount,
+      (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = @VendorProfileID) AS ImagesCount,
+      (SELECT COUNT(*) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID=@VendorProfileID AND s.IsActive=1) AS ServicesCount,
+      (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID) AS SocialCount,
+      (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND IsAvailable = 1) AS HoursCount`);
+  const c = countsRes.recordset[0] || {};
+  const stripeStatus = await getStripeStatusByVendorProfileId(pool, vendorProfileId);
+  const steps = {
+    basics: !!(p.BusinessName && p.BusinessEmail && p.BusinessPhone && (c.CategoriesCount||0) > 0),
+    location: !!p.Address,
+    gallery: !!p.FeaturedImageURL,
+    services: (c.ServicesCount||0) > 0,
+    social: (c.SocialCount||0) > 0,
+    availability: (c.HoursCount||0) > 0,
+    policies: !!(p.PaymentMethods && p.PaymentTerms),
+    verification: !!(p.InsuranceVerified || p.LicenseNumber),
+    stripe: (stripeStatus.connected && stripeStatus.chargesEnabled && stripeStatus.payoutsEnabled)
+  };
+  const labels = {
+    basics: 'Business basics', location: 'Location', gallery: 'Gallery', services: 'Services',
+    social: 'Social media', availability: 'Availability', policies: 'Policies',
+    verification: 'Verification & legal', stripe: 'Stripe payouts'
+  };
+  const requiredOrder = ['basics','location','gallery','services','social','availability','policies','verification','stripe'];
+  const incompleteSteps = requiredOrder.filter(k => !steps[k]).map(k => ({ key: k, label: labels[k] }));
+  return { exists: true, vendorProfileId, steps, incompleteSteps, stripe: stripeStatus, allRequiredComplete: incompleteSteps.length === 0 };
 }
 
 // Helper function to resolve UserID to VendorProfileID
@@ -2304,6 +2440,19 @@ router.post('/setup/step7-availability', async (req, res) => {
 
     const pool = await poolPromise;
     
+    // If attempting to enable bookings, enforce setup completion (including Stripe)
+    if (acceptingBookings) {
+      const status = await computeVendorSetupStatusByVendorProfileId(pool, parseInt(vendorProfileId));
+      if (!status.allRequiredComplete) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot enable accepting bookings until all mandatory setup steps (including Stripe payouts) are complete.',
+          incompleteSteps: status.incompleteSteps,
+          stripe: status.stripe
+        });
+      }
+    }
+    
     // Update booking settings
     const updateRequest = new sql.Request(pool);
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
@@ -2600,6 +2749,7 @@ router.get('/setup/progress/:vendorProfileId', async (req, res) => {
     }
     
     const profile = result.recordset[0];
+    const status = await computeVendorSetupStatusByVendorProfileId(pool, parseInt(vendorProfileId));
     
     // Calculate completion progress
     const steps = {
@@ -2627,7 +2777,10 @@ router.get('/setup/progress/:vendorProfileId', async (req, res) => {
         totalSteps,
         progressPercentage,
         isCompleted: profile.IsCompleted,
-        steps
+        steps,
+        incompleteSteps: status.incompleteSteps,
+        stripe: status.stripe,
+        allRequiredComplete: status.allRequiredComplete
       }
     });
     
@@ -2668,6 +2821,7 @@ router.get('/:id/setup-progress', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
 
     const result = await request.execute('sp_GetVendorSetupProgress');
+    const status = await computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId);
     
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -2678,7 +2832,12 @@ router.get('/:id/setup-progress', async (req, res) => {
 
     res.json({
       success: true,
-      data: result.recordset[0]
+      data: {
+        ...result.recordset[0],
+        incompleteSteps: status.incompleteSteps,
+        stripe: status.stripe,
+        allRequiredComplete: status.allRequiredComplete
+      }
     });
 
   } catch (err) {
@@ -3595,6 +3754,17 @@ router.post('/setup/step9-completion', async (req, res) => {
 
     const pool = await poolPromise;
     
+    // Enforce completion of mandatory steps (including Stripe) before marking complete
+    const status = await computeVendorSetupStatusByVendorProfileId(pool, parseInt(vendorProfileId));
+    if (!status.allRequiredComplete) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot complete setup until all mandatory steps (including Stripe payouts) are complete.',
+        incompleteSteps: status.incompleteSteps,
+        stripe: status.stripe
+      });
+    }
+
     // Mark vendor setup as complete
     const updateRequest = new sql.Request(pool);
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
