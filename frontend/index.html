@@ -8992,27 +8992,36 @@ document.addEventListener('DOMContentLoaded', async function() {
                     gridEl.innerHTML = '';
                     gridEl.appendChild(createSettingsAddServiceCard());
 
-                    // Preload existing vendor services (best-effort match by name)
+                    // Preload existing selected predefined services (authoritative)
                     try {
-                        const eResp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/services`);
-                        if (eResp.ok) {
-                            const existing = await eResp.json();
-                            const norm = (v) => String(v || '').trim().toLowerCase();
-                            (existing || []).forEach(s => {
-                                const match = (window.vendorSettingsAvailableServices || []).find(a => norm(a.name) === norm(s.ServiceName || s.Name));
+                        const selResp = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/selected-services`, {
+                            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                        });
+                        if (selResp.ok) {
+                            const selData = await selResp.json();
+                            const existingSelected = selData?.selectedServices || [];
+                            existingSelected.forEach(s => {
+                                // Prefer ID match to avoid name mismatches
+                                const match = (window.vendorSettingsAvailableServices || []).find(a => String(a.id) === String(s.PredefinedServiceID));
                                 if (match) {
                                     addSettingsServiceById(match.id, true);
-                                    // best-effort prefill for fixed price
                                     const card = gridEl.querySelector(`.predefined-service-card[data-service-id="${match.id}"]`);
                                     if (card) {
+                                        // Default to time-based with base rate = VendorPrice and duration = VendorDurationMinutes
                                         const modelSel = card.querySelector('.vendor-pricing-model');
-                                        const fixedEl = card.querySelector('.vendor-fixed-price-section');
-                                        const fixedInput = card.querySelector('.vendor-fixed-price-input');
-                                        if (modelSel) modelSel.value = 'fixed_price';
-                                        if (fixedEl) fixedEl.style.display = '';
-                                        if (fixedInput && (s.Price || s.VendorPrice)) fixedInput.value = parseFloat(s.Price || s.VendorPrice).toString();
-                                        // trigger update
-                                        fixedInput?.dispatchEvent(new Event('input'));
+                                        const timeBasedSection = card.querySelector('.vendor-time-based');
+                                        const baseRateInput = card.querySelector('.vendor-base-rate');
+                                        const durationInput = card.querySelector('.vendor-duration-input');
+                                        const descInput = card.querySelector('.vendor-description-input');
+                                        if (modelSel) modelSel.value = 'time_based';
+                                        if (timeBasedSection) timeBasedSection.style.display = '';
+                                        if (baseRateInput && s.VendorPrice != null) baseRateInput.value = parseFloat(s.VendorPrice).toString();
+                                        if (durationInput && s.VendorDurationMinutes != null) durationInput.value = parseInt(s.VendorDurationMinutes, 10).toString();
+                                        if (descInput && s.VendorDescription) descInput.value = s.VendorDescription;
+                                        // Trigger updates to sync state/summary
+                                        durationInput?.dispatchEvent(new Event('input'));
+                                        baseRateInput?.dispatchEvent(new Event('input'));
+                                        descInput?.dispatchEvent(new Event('input'));
                                         modelSel?.dispatchEvent(new Event('change'));
                                     }
                                 }
@@ -9021,7 +9030,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                             updateSummary();
                         }
                     } catch (preErr) {
-                        console.warn('Preload existing vendor services failed:', preErr);
+                        console.warn('Preload selected services failed:', preErr);
                     }
 
                     loadingEl.style.display = 'none';
@@ -9040,8 +9049,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                             const resolvedVendorId = vendorProfileId || (currentUser?.vendorProfileId) || (typeof getVendorProfileId === 'function' ? await getVendorProfileId() : null);
                             if (!resolvedVendorId) { alert('Cannot save: missing vendor profile ID'); return; }
                             const selected = (window.vendorSettingsState.selectedPredefinedServices || []);
+                            // Derive service categories from current selection so Services have CategoryID
+                            const serviceCategories = Array.from(new Set(selected.map(s => s.category).filter(Boolean)))
+                                .map((name, i) => ({ name, description: null, displayOrder: i }));
                             const body = {
                                 vendorProfileId: resolvedVendorId,
+                                serviceCategories,
                                 selectedPredefinedServices: selected.map(s => ({
                                     predefinedServiceId: s.id,
                                     name: s.name,
@@ -9112,6 +9125,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 console.warn('Post-save cleanup failed:', cleanupErr);
                             }
                             alert('Services saved');
+                            window.dashboardUnsavedWarning = false;
                             await refreshVendorSetupCard();
                         } catch (e) {
                             console.error('Save services (settings) error:', e);
@@ -9173,6 +9187,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         });
                         if (!resp.ok) throw new Error('Failed to add package');
                         alert('Package added');
+                        window.dashboardUnsavedWarning = false;
                         await loadVendorPackagesSettings(vendorProfileId);
                     } catch (err) {
                         console.error('Add package error:', err);
