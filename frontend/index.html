@@ -9112,6 +9112,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 console.warn('Post-save cleanup failed:', cleanupErr);
                             }
                             alert('Services saved');
+                            await refreshVendorSetupCard();
                         } catch (e) {
                             console.error('Save services (settings) error:', e);
                             alert('Failed to save services: ' + e.message);
@@ -20900,6 +20901,24 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
+            // Lightweight refresher for the "Complete your setup" card
+            async function refreshVendorSetupCard() {
+                try {
+                    if (!currentUser?.id) return;
+                    const res = await fetch(`${API_BASE_URL}/vendor/${currentUser.id}/setup-status`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (!res.ok) return; // silent fail
+                    const data = await res.json();
+                    const vendorPid = currentUser.vendorProfileId || data.vendorProfileId;
+                    if (document.getElementById('vendor-incomplete-setup')) {
+                        renderVendorIncompleteSetup(data, vendorPid);
+                    }
+                } catch (e) {
+                    console.warn('refreshVendorSetupCard failed', e);
+                }
+            }
+
             async function openVendorSettingsStep(stepKey, vendorProfileId) {
                 try {
                     // Special handling for Stripe: go straight to onboarding
@@ -20923,11 +20942,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         basics: 'vendor-profile-panel',
                         location: 'vendor-location-panel',
                         gallery: 'vendor-photos-panel',
+                        // Back-compat key
                         services: 'vendor-services-panel',
+                        // New key from enhanced checklist
+                        servicesPackages: 'vendor-services-panel',
                         social: 'vendor-social-panel',
                         availability: 'vendor-availability-panel',
                         // Policies currently handled via FAQ panel in UI
                         policies: 'vendor-faqs-panel',
+                        // New sections
+                        additionalDetails: 'vendor-additional-details-panel',
+                        faq: 'vendor-faqs-panel',
                         // Verification & Legal
                         verification: 'vendor-verification-panel'
                     };
@@ -20957,9 +20982,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         location: '#vendor-location-form',
                         gallery: '#vendor-photos, #upload-photos-btn',
                         services: '#vendor-settings-services-grid, #vendor-settings-services-loading',
+                        servicesPackages: '#vendor-settings-services-grid, #vendor-settings-services-loading',
                         social: '#vendor-social-form',
                         availability: '#business-hours-container, #vendor-availability-panel',
                         policies: '#faqs-list, #vendor-faqs-panel',
+                        additionalDetails: '#additional-questions-container, #vendor-additional-details-panel',
+                        faq: '#faqs-list, #vendor-faqs-panel',
                         verification: '#vendor-verification-form'
                     };
                     const selectorList = (anchorMap[stepKey] || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -21539,7 +21567,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     displayName: document.getElementById('vendor-display-name'),
                     category: document.getElementById('vendor-category'),
                     additionalCategories: document.getElementById('vendor-additional-categories'),
-                    description: document.getElementById('vendor-description'),
+                    description: form.querySelector('#vendor-description'),
                     phone: document.getElementById('vendor-phone'),
                     email: document.getElementById('vendor-email'),
                     website: document.getElementById('vendor-website'),
@@ -21611,18 +21639,43 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 form.onsubmit = async (e) => {
                     e.preventDefault();
                     try {
+                        // Basic validation to satisfy deployed API requirements
+                        const name = inputs.businessName.value?.trim();
+                        const display = inputs.displayName.value?.trim() || name;
+                        const email = inputs.email.value?.trim();
+                        const phone = inputs.phone.value?.trim();
+                        const website = inputs.website.value?.trim();
+                        const description = inputs.description.value?.trim();
+                        const tagline = inputs.tagline.value?.trim();
+                        const years = inputs.yearsInBusiness.value ? parseInt(inputs.yearsInBusiness.value, 10) : null;
+                        const primaryCategory = inputs.category.value?.trim();
+                        const additionalCategories = Array.from(inputs.additionalCategories.selectedOptions)
+                            .map(o => o.value)
+                            .filter(v => v && v !== primaryCategory);
+
+                        if (!name || !email || !phone || !primaryCategory) {
+                            alert('Please fill in Business Name, Email, Phone, and Category.');
+                            return;
+                        }
+                        // Compatibility: remote API currently requires a non-empty description
+                        if (!description) {
+                            alert('Please enter a brief business description.');
+                            inputs.description?.focus();
+                            return;
+                        }
+
                         const payload = {
                             vendorProfileId: vendorProfileId,
-                            businessName: inputs.businessName.value?.trim(),
-                            displayName: inputs.displayName.value?.trim() || inputs.businessName.value?.trim(),
-                            businessEmail: inputs.email.value?.trim(),
-                            businessPhone: inputs.phone.value?.trim(),
-                            website: inputs.website.value?.trim(),
-                            businessDescription: inputs.description.value?.trim(),
-                            tagline: inputs.tagline.value?.trim(),
-                            yearsInBusiness: inputs.yearsInBusiness.value ? parseInt(inputs.yearsInBusiness.value, 10) : null,
-                            primaryCategory: inputs.category.value,
-                            additionalCategories: Array.from(inputs.additionalCategories.selectedOptions).map(o => o.value)
+                            businessName: name,
+                            displayName: display,
+                            businessEmail: email,
+                            businessPhone: phone,
+                            website: website,
+                            businessDescription: description,
+                            tagline: tagline,
+                            yearsInBusiness: years,
+                            primaryCategory: primaryCategory,
+                            additionalCategories: additionalCategories
                         };
 
                         const response = await fetch(`${API_BASE_URL}/vendors/setup/step1-business-basics`, {
@@ -21638,6 +21691,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             throw new Error(errorData.message || 'Failed to update vendor profile');
                         }
                         alert('Vendor profile updated successfully!');
+                        await refreshVendorSetupCard();
                     } catch (error) {
                         console.error('Error updating vendor profile:', error);
                         alert('Failed to update vendor profile: ' + error.message);
@@ -21686,6 +21740,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     });
                                     if (!response.ok) throw new Error('Failed to delete image');
                                     alert('Image deleted successfully!');
+                                    await refreshVendorSetupCard();
                                     loadVendorImages(currentUser.vendorProfileId);
                                 } catch (error) {
                                     console.error('Error deleting image:', error);
@@ -21761,6 +21816,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             if (captionInput) captionInput.value = '';
                             if (primaryCheckbox) primaryCheckbox.checked = false;
                             await loadVendorImages(vendorProfileId);
+                            await refreshVendorSetupCard();
                         } catch (err) {
                             console.error('Add image by URL error:', err);
                             alert('Failed to add image: ' + err.message);
@@ -21928,9 +21984,28 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                         const dayOfWeek = parseInt(row.dataset.day, 10);
                                         const hoursId = row.dataset.hoursId ? parseInt(row.dataset.hoursId, 10) : null;
                                         const isAvailable = row.querySelector('.bh-available')?.checked || false;
-                                        const openTime = (row.querySelector('.bh-open')?.value || '') + ':00';
-                                        const closeTime = (row.querySelector('.bh-close')?.value || '') + ':00';
-                                        const payload = { hoursId, dayOfWeek, openTime: isAvailable ? openTime : null, closeTime: isAvailable ? closeTime : null, isAvailable };
+                                        const openRaw = (row.querySelector('.bh-open')?.value || '').trim();
+                                        const closeRaw = (row.querySelector('.bh-close')?.value || '').trim();
+
+                                        let openTime = null;
+                                        let closeTime = null;
+                                        if (isAvailable) {
+                                            const timeRe = /^\d{2}:\d{2}$/;
+                                            if (!timeRe.test(openRaw) || !timeRe.test(closeRaw)) {
+                                                throw new Error(`Please enter valid times (HH:mm) for ${days[dayOfWeek]}`);
+                                            }
+                                            const [oh, om] = openRaw.split(':').map(n => parseInt(n, 10));
+                                            const [ch, cm] = closeRaw.split(':').map(n => parseInt(n, 10));
+                                            const oMin = oh * 60 + om;
+                                            const cMin = ch * 60 + cm;
+                                            if (oMin >= cMin) {
+                                                throw new Error(`Open time must be earlier than close time for ${days[dayOfWeek]}`);
+                                            }
+                                            openTime = `${openRaw}:00`;
+                                            closeTime = `${closeRaw}:00`;
+                                        }
+
+                                        const payload = { hoursId, dayOfWeek, openTime, closeTime, isAvailable };
                                         const resp = await fetch(`${API_BASE_URL}/vendor/${resolvedVendorId}/business-hours/upsert`, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
@@ -21976,6 +22051,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         throw new Error(errorData.message || 'Failed to upsert availability exception');
                     }
                     alert('Availability exception saved successfully!');
+                    await refreshVendorSetupCard();
                     loadVendorAvailability(currentUser.vendorProfileId);
                 } catch (error) {
                     console.error('Error upserting availability exception:', error);
@@ -22179,6 +22255,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             throw new Error(errData.message || 'Failed to save location');
                         }
                         alert('Location saved');
+                        await refreshVendorSetupCard();
                     } catch (err) {
                         console.error('Save location error:', err);
                         alert('Failed to save location: ' + err.message);
@@ -22459,6 +22536,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         });
                         if (!res.ok) throw new Error('Failed to save social');
                         alert('Social saved');
+                        await refreshVendorSetupCard();
                     } catch (err) {
                         console.error('Save social error:', err);
                         alert('Failed to save social: ' + err.message);
