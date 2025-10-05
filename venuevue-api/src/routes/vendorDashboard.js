@@ -48,28 +48,43 @@ async function computeSetupStatusByUserId(userId) {
       (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID=@VendorProfileID) AS CategoriesCount,
       (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID=@VendorProfileID) AS ImagesCount,
       (SELECT COUNT(*) FROM Services s JOIN ServiceCategories sc ON s.CategoryID=sc.CategoryID WHERE sc.VendorProfileID=@VendorProfileID AND s.IsActive=1) AS ServicesCount,
+      (SELECT COUNT(*) FROM Packages WHERE VendorProfileID=@VendorProfileID) AS PackageCount,
+      (SELECT COUNT(*) FROM VendorFAQs WHERE VendorProfileID=@VendorProfileID AND (IsActive = 1 OR IsActive IS NULL)) AS FAQCount,
+      (SELECT COUNT(*) FROM VendorCategoryAnswers WHERE VendorProfileID=@VendorProfileID) AS CategoryAnswerCount,
       (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID=@VendorProfileID) AS SocialCount,
-      (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID=@VendorProfileID AND IsAvailable=1) AS HoursCount`);
+      (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID=@VendorProfileID AND IsAvailable=1) AS HoursCount,
+      (SELECT COUNT(*) FROM VendorServiceAreas WHERE VendorProfileID=@VendorProfileID AND IsActive=1) AS ServiceAreaCount`);
   const c = counts.recordset[0] || {};
   const stripeStatus = await getStripeStatus(pool, vId);
 
   const steps = {
-    basics: !!(p.BusinessName && p.BusinessEmail && p.BusinessPhone && (c.CategoriesCount||0)>0),
-    location: !!p.Address,
-    gallery: !!p.FeaturedImageURL,
-    services: (c.ServicesCount||0) > 0,
-    social: (c.SocialCount||0) > 0,
-    availability: (c.HoursCount||0) > 0,
-    policies: !!(p.PaymentMethods && p.PaymentTerms),
+    basics: !!(p.BusinessName && p.BusinessEmail && p.BusinessPhone && (c.CategoriesCount||0) > 0),
+    location: !!p.Address && (c.ServiceAreaCount || 0) > 0,
+    additionalDetails: (c.CategoryAnswerCount || 0) > 0,
+    social: (c.SocialCount || 0) > 0,
+    servicesPackages: ((c.ServicesCount || 0) > 0) || ((c.PackageCount || 0) > 0),
+    faq: (c.FAQCount || 0) > 0,
+    gallery: !!p.FeaturedImageURL || (c.ImagesCount || 0) > 0,
+    availability: (c.HoursCount || 0) > 0,
     verification: !!(p.InsuranceVerified || p.LicenseNumber),
+    // Keep policies for legacy use (not in required list)
+    policies: !!(p.PaymentMethods && p.PaymentTerms),
     stripe: (stripeStatus.connected && stripeStatus.chargesEnabled && stripeStatus.payoutsEnabled)
   };
   const labels = {
-    basics: 'Business basics', location: 'Location', gallery: 'Gallery', services: 'Services',
-    social: 'Social media', availability: 'Availability', policies: 'Policies',
-    verification: 'Verification & legal', stripe: 'Stripe payouts'
+    basics: 'Business Basics',
+    location: 'Location Information',
+    additionalDetails: 'Additional Details',
+    social: 'Social Media',
+    servicesPackages: 'Services & Packages',
+    faq: 'FAQ Section',
+    gallery: 'Gallery & Media',
+    availability: 'Availability & Scheduling',
+    verification: 'Verification & legal',
+    policies: 'Policies',
+    stripe: 'Stripe payouts'
   };
-  const requiredOrder = ['basics','location','gallery','services','social','availability','policies','verification','stripe'];
+  const requiredOrder = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','verification','stripe'];
   const incompleteSteps = requiredOrder.filter(k => !steps[k]).map(k => ({ key: k, label: labels[k] }));
   const allRequiredComplete = incompleteSteps.length === 0;
   const canGoPublic = allRequiredComplete;
@@ -375,13 +390,37 @@ router.post('/:id/business-hours/upsert', async (req, res) => {
     const { id } = req.params; // VendorProfileID
     const { hoursId, dayOfWeek, openTime, closeTime, isAvailable } = req.body;
 
+    // Normalize/validate time strings to HH:mm:ss
+    const normalizeTime = (t) => {
+      if (!t) return null;
+      if (typeof t !== 'string') t = String(t);
+      const m = t.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (!m) return null;
+      let h = parseInt(m[1], 10);
+      let min = parseInt(m[2], 10);
+      let s = m[3] ? parseInt(m[3], 10) : 0;
+      if (h < 0 || h > 23 || min < 0 || min > 59 || s < 0 || s > 59) return null;
+      return `${h.toString().padStart(2,'0')}:${min.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    };
+
+    const normOpen = isAvailable ? normalizeTime(openTime) : null;
+    const normClose = isAvailable ? normalizeTime(closeTime) : null;
+
+    if (isAvailable && (!normOpen || !normClose)) {
+      return res.status(400).json({ success: false, message: 'Invalid time. Expect HH:mm or HH:mm:ss.' });
+    }
+    if (isAvailable && normOpen && normClose && normOpen >= normClose) {
+      return res.status(400).json({ success: false, message: 'Close time must be after open time.' });
+    }
+
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('HoursID', sql.Int, hoursId || null);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     request.input('DayOfWeek', sql.TinyInt, dayOfWeek);
-    request.input('OpenTime', sql.Time, openTime || null);
-    request.input('CloseTime', sql.Time, closeTime || null);
+    // Pass as VarChar to avoid driver-side TIME validation issues; SQL Server will implicitly convert to TIME
+    request.input('OpenTime', sql.VarChar(8), normOpen);
+    request.input('CloseTime', sql.VarChar(8), normClose);
     request.input('IsAvailable', sql.Bit, isAvailable);
 
     const result = await request.execute('sp_UpsertVendorBusinessHour');
@@ -418,14 +457,34 @@ router.post('/:id/availability-exceptions/upsert', async (req, res) => {
     const { id } = req.params; // VendorProfileID
     const { exceptionId, startDate, endDate, startTime, endTime, isAvailable, reason } = req.body;
 
+    const normalizeTime = (t) => {
+      if (!t) return null;
+      if (typeof t !== 'string') t = String(t);
+      const m = t.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (!m) return null;
+      let h = parseInt(m[1], 10);
+      let min = parseInt(m[2], 10);
+      let s = m[3] ? parseInt(m[3], 10) : 0;
+      if (h < 0 || h > 23 || min < 0 || min > 59 || s < 0 || s > 59) return null;
+      return `${h.toString().padStart(2,'0')}:${min.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    };
+
+    const normStart = normalizeTime(startTime);
+    const normEnd = normalizeTime(endTime);
+
+    if ((startTime && !normStart) || (endTime && !normEnd)) {
+      return res.status(400).json({ success: false, message: 'Invalid time for availability exception. Expect HH:mm or HH:mm:ss.' });
+    }
+
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('ExceptionID', sql.Int, exceptionId || null);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     request.input('StartDate', sql.Date, startDate);
     request.input('EndDate', sql.Date, endDate);
-    request.input('StartTime', sql.Time, startTime || null);
-    request.input('EndTime', sql.Time, endTime || null);
+    // Pass as VarChar for implicit TIME conversion server-side
+    request.input('StartTime', sql.VarChar(8), normStart);
+    request.input('EndTime', sql.VarChar(8), normEnd);
     request.input('IsAvailable', sql.Bit, isAvailable);
     request.input('Reason', sql.NVarChar(255), reason || null);
 
