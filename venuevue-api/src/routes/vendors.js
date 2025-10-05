@@ -1388,10 +1388,6 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
   }
 });
 
-// ============================================
-// COMPREHENSIVE VENDOR SETUP ENDPOINTS
-// ============================================
-
 // Step 1: Business Basics
 router.post('/setup/step1-business-basics', async (req, res) => {
   try {
@@ -1409,11 +1405,11 @@ router.post('/setup/step1-business-basics', async (req, res) => {
       additionalCategories
     } = req.body;
 
-    // Validation
-    if (!vendorProfileId || !businessName || !businessEmail || !businessPhone || !businessDescription || !primaryCategory) {
+    // Validation (description optional)
+    if (!vendorProfileId || !businessName || !businessEmail || !businessPhone || !primaryCategory) {
       return res.status(400).json({
         success: false,
-        message: 'Required fields: businessName, businessEmail, businessPhone, businessDescription, primaryCategory'
+        message: 'Required fields: businessName, businessEmail, businessPhone, primaryCategory'
       });
     }
 
@@ -1427,7 +1423,7 @@ router.post('/setup/step1-business-basics', async (req, res) => {
     updateRequest.input('BusinessEmail', sql.NVarChar, businessEmail);
     updateRequest.input('BusinessPhone', sql.NVarChar, businessPhone);
     updateRequest.input('Website', sql.NVarChar, website || null);
-    updateRequest.input('BusinessDescription', sql.NVarChar, businessDescription);
+    updateRequest.input('BusinessDescription', sql.NVarChar, (businessDescription && businessDescription.trim().length > 0) ? businessDescription : null);
     updateRequest.input('Tagline', sql.NVarChar, tagline || null);
     updateRequest.input('YearsInBusiness', sql.Int, yearsInBusiness || null);
     
@@ -1441,13 +1437,11 @@ router.post('/setup/step1-business-basics', async (req, res) => {
       WHERE VendorProfileID = @VendorProfileID
     `);
     
-    // Handle categories
-    // Delete existing categories
+    // Handle categories - replace existing with primary + additional
     await updateRequest.query(`
       DELETE FROM VendorCategories WHERE VendorProfileID = @VendorProfileID
     `);
     
-    // Insert primary category
     const primaryCatRequest = new sql.Request(pool);
     primaryCatRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     primaryCatRequest.input('Category', sql.NVarChar, primaryCategory);
@@ -1456,9 +1450,9 @@ router.post('/setup/step1-business-basics', async (req, res) => {
       VALUES (@VendorProfileID, @Category)
     `);
     
-    // Insert additional categories
-    if (additionalCategories && additionalCategories.length > 0) {
+    if (Array.isArray(additionalCategories) && additionalCategories.length > 0) {
       for (const category of additionalCategories) {
+        if (!category || category === primaryCategory) continue;
         const catRequest = new sql.Request(pool);
         catRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         catRequest.input('Category', sql.NVarChar, category);
@@ -1468,7 +1462,7 @@ router.post('/setup/step1-business-basics', async (req, res) => {
         `);
       }
     }
-    // Mark step 1 completed (best-effort)
+
     await markSetupStep(pool, vendorProfileId, 1);
 
     res.json({
@@ -1477,7 +1471,7 @@ router.post('/setup/step1-business-basics', async (req, res) => {
       step: 1,
       nextStep: 2
     });
-    
+
   } catch (err) {
     console.error('Step 1 setup error:', err);
     res.status(500).json({
@@ -3257,45 +3251,7 @@ router.get('/summary/:id', async (req, res) => {
   }
 });
 
-// Step 1: Business Basics
-router.post('/setup/step1-business-basics', async (req, res) => {
-  try {
-    const { vendorProfileId, businessName, businessEmail, businessPhone, businessDescription, website, categories } = req.body;
-
-    if (!vendorProfileId) {
-      return res.status(400).json({ success: false, message: 'Vendor profile ID is required' });
-    }
-
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('BusinessName', sql.NVarChar(255), businessName);
-    request.input('BusinessEmail', sql.NVarChar(255), businessEmail);
-    request.input('BusinessPhone', sql.NVarChar(20), businessPhone);
-    request.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription);
-    request.input('Website', sql.NVarChar(255), website);
-    request.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categories));
-    
-    await request.query(`
-      UPDATE VendorProfiles 
-      SET BusinessName = @BusinessName,
-          BusinessEmail = @BusinessEmail,
-          BusinessPhone = @BusinessPhone,
-          BusinessDescription = @BusinessDescription,
-          Website = @Website,
-          Categories = @Categories,
-          UpdatedAt = GETUTCDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-    
-    res.json({ success: true, message: 'Business basics saved successfully' });
-
-  } catch (err) {
-    console.error('Step 1 error:', err);
-    res.status(500).json({ success: false, message: 'Failed to save business basics', error: err.message });
-  }
-});
+// (removed duplicate older Step 1 route; consolidated above)
 
 // Step 2: Location Information
 router.post('/setup/step2-location', async (req, res) => {
