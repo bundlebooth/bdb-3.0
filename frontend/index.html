@@ -20864,42 +20864,88 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const container = document.getElementById('vendor-incomplete-setup');
                 if (!container) return;
                 container.innerHTML = '';
-                if (!setupStatus || setupStatus.allRequiredComplete) {
-                    container.style.display = 'none';
-                    return;
-                }
                 container.style.display = 'block';
-                const items = (setupStatus.incompleteSteps || []).map(s => {
-                    const isPolicies = s.key === 'policies';
-                    const inner = isPolicies
-                        ? `<span style="color: var(--text-light);">${s.label}</span>`
-                        : `<button 
-                                type="button"
-                                data-step-key="${s.key}"
-                                style="background:none;border:none;color:var(--primary);text-decoration:underline;cursor:pointer;padding:0;font:inherit;"
-                                onclick="openVendorSettingsStep('${s.key}', ${vendorProfileId})"
-                                aria-label="Open ${s.label} settings">
-                                ${s.label}
-                           </button>`;
-                    return `<li style="margin: 6px 0;">${inner}</li>`;
+
+                // Consistent list of steps with labels
+                const stepLabels = {
+                    basics: 'Business Basics',
+                    location: 'Location Information',
+                    additionalDetails: 'Additional Details',
+                    social: 'Social Media',
+                    servicesPackages: 'Services & Packages',
+                    faq: 'FAQ Section',
+                    gallery: 'Gallery & Media',
+                    availability: 'Availability & Scheduling',
+                    verification: 'Verification & legal',
+                    stripe: 'Stripe payouts'
+                };
+                const requiredOrder = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','verification','stripe'];
+
+                const steps = setupStatus?.steps || {};
+                const items = requiredOrder.map(key => {
+                    const done = !!steps[key];
+                    const label = stepLabels[key] || key;
+                    const statusBadge = done
+                        ? `<span style="display:inline-flex;align-items:center;gap:6px;color:#16a34a;font-weight:600;"><i class="fas fa-check-circle"></i> Completed</span>`
+                        : `<span style="display:inline-flex;align-items:center;gap:6px;color:#d97706;font-weight:600;"><i class="fas fa-clock"></i> Pending</span>`;
+                    const actionBtn = (key === 'policies') ? '' : `
+                        <button 
+                            class="btn btn-outline"
+                            data-step-key="${key}"
+                            onclick="openVendorSettingsStep('${key}', ${vendorProfileId})"
+                            aria-label="Open ${label} settings"
+                            style="white-space:nowrap;">
+                            Open
+                        </button>`;
+                    return `
+                        <li style="margin: 10px 0; list-style:none;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    ${done ? '<i class="fas fa-check-circle" style="color:#16a34a;"></i>' : '<i class="fas fa-circle" style="color:#d1d5db;font-size:8px;"></i>'}
+                                    <span style="font-weight:600;">${label}</span>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    ${statusBadge}
+                                    ${actionBtn}
+                                </div>
+                            </div>
+                        </li>`;
                 }).join('');
-                const needsStripe = !(setupStatus.steps && setupStatus.steps.stripe);
+
+                const allDone = !!setupStatus?.allRequiredComplete;
+                const isCompleted = !!setupStatus?.isCompletedFlag;
+                const needsStripe = !(steps.stripe);
                 const stripeCta = needsStripe ? `
                     <button class="btn btn-primary" onclick="startStripeOnboarding(${vendorProfileId})" style="margin-right: 8px;">
                         <i class="fab fa-stripe"></i> Connect Stripe
                     </button>
                 ` : '';
-                const settingsCta = `
-                    <button class="btn btn-outline" onclick="displayUserDashboard('vendor','vendor-settings')">
-                        Open Settings
-                    </button>
-                `;
+
+                let footerCtas = '';
+                if (allDone && !isCompleted) {
+                    footerCtas = `
+                        <button class="btn btn-primary" onclick="submitVendorProfileForReview(${vendorProfileId})">
+                            <i class="fas fa-paper-plane"></i> Submit for Review
+                        </button>`;
+                } else if (allDone && isCompleted) {
+                    footerCtas = `
+                        <button class="btn btn-outline" disabled>
+                            <i class="fas fa-check"></i> Submitted for Review
+                        </button>`;
+                } else {
+                    footerCtas = `
+                        ${stripeCta}
+                        <button class="btn btn-outline" onclick="displayUserDashboard('vendor','vendor-settings')">
+                            Open Settings
+                        </button>`;
+                }
+
                 container.innerHTML = `
                     <div class="dashboard-card" style="border-left: 4px solid var(--primary);">
-                        <h2 class="dashboard-card-title">Complete your setup</h2>
-                        <p style="margin: 0 0 8px 0; color: #6b7280;">Finish these required items to enable bookings and go live.</p>
-                        <ul style="margin: 8px 0 12px 20px;">${items}</ul>
-                        <div>${stripeCta}${settingsCta}</div>
+                        <h2 class="dashboard-card-title">Vendor setup checklist</h2>
+                        <p style="margin: 0 0 8px 0; color: #6b7280;">Track progress across all sections. Completed items show a checkmark; pending items are marked accordingly.</p>
+                        <ul style="margin: 8px 0 12px 0; padding:0;">${items}</ul>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">${footerCtas}</div>
                     </div>
                 `;
 
@@ -20931,6 +20977,29 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     }
                 } catch (e) {
                     console.warn('refreshVendorSetupCard failed', e);
+                }
+            }
+
+            // Submit for Review: mark setup as completed (server can review and set live)
+            async function submitVendorProfileForReview(vendorProfileId) {
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/vendors/setup/step10-completion`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({ vendorProfileId })
+                    });
+                    if (!resp.ok) {
+                        const j = await resp.json().catch(() => ({}));
+                        throw new Error(j.message || `HTTP ${resp.status}`);
+                    }
+                    alert('Submitted for review. We will notify you once your profile is live.');
+                    await refreshVendorSetupCard();
+                } catch (err) {
+                    console.error('Submit for review failed:', err);
+                    alert('Failed to submit for review: ' + err.message);
                 }
             }
 
