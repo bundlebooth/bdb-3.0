@@ -81,27 +81,41 @@ async function computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId) 
       (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID = @VendorProfileID) AS CategoriesCount,
       (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = @VendorProfileID) AS ImagesCount,
       (SELECT COUNT(*) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID=@VendorProfileID AND s.IsActive=1) AS ServicesCount,
+      (SELECT COUNT(*) FROM Packages WHERE VendorProfileID = @VendorProfileID) AS PackageCount,
+      (SELECT COUNT(*) FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID AND (IsActive = 1 OR IsActive IS NULL)) AS FAQCount,
+      (SELECT COUNT(*) FROM VendorCategoryAnswers WHERE VendorProfileID = @VendorProfileID) AS CategoryAnswerCount,
       (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID) AS SocialCount,
-      (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND IsAvailable = 1) AS HoursCount`);
+      (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND IsAvailable = 1) AS HoursCount,
+      (SELECT COUNT(*) FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID AND IsActive = 1) AS ServiceAreaCount`);
   const c = countsRes.recordset[0] || {};
   const stripeStatus = await getStripeStatusByVendorProfileId(pool, vendorProfileId);
   const steps = {
     basics: !!(p.BusinessName && p.BusinessEmail && p.BusinessPhone && (c.CategoriesCount||0) > 0),
-    location: !!p.Address,
-    gallery: !!p.FeaturedImageURL,
-    services: (c.ServicesCount||0) > 0,
-    social: (c.SocialCount||0) > 0,
-    availability: (c.HoursCount||0) > 0,
-    policies: !!(p.PaymentMethods && p.PaymentTerms),
+    location: !!p.Address && (c.ServiceAreaCount || 0) > 0,
+    additionalDetails: (c.CategoryAnswerCount || 0) > 0,
+    social: (c.SocialCount || 0) > 0,
+    servicesPackages: ((c.ServicesCount || 0) > 0) || ((c.PackageCount || 0) > 0),
+    faq: (c.FAQCount || 0) > 0,
+    gallery: !!p.FeaturedImageURL || (c.ImagesCount || 0) > 0,
+    availability: (c.HoursCount || 0) > 0,
     verification: !!(p.InsuranceVerified || p.LicenseNumber),
+    policies: !!(p.PaymentMethods && p.PaymentTerms),
     stripe: (stripeStatus.connected && stripeStatus.chargesEnabled && stripeStatus.payoutsEnabled)
   };
   const labels = {
-    basics: 'Business basics', location: 'Location', gallery: 'Gallery', services: 'Services',
-    social: 'Social media', availability: 'Availability', policies: 'Policies',
-    verification: 'Verification & legal', stripe: 'Stripe payouts'
+    basics: 'Business Basics',
+    location: 'Location Information',
+    additionalDetails: 'Additional Details',
+    social: 'Social Media',
+    servicesPackages: 'Services & Packages',
+    faq: 'FAQ Section',
+    gallery: 'Gallery & Media',
+    availability: 'Availability & Scheduling',
+    verification: 'Verification & legal',
+    policies: 'Policies',
+    stripe: 'Stripe payouts'
   };
-  const requiredOrder = ['basics','location','gallery','services','social','availability','policies','verification','stripe'];
+  const requiredOrder = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','verification','stripe'];
   const incompleteSteps = requiredOrder.filter(k => !steps[k]).map(k => ({ key: k, label: labels[k] }));
   return { exists: true, vendorProfileId, steps, incompleteSteps, stripe: stripeStatus, allRequiredComplete: incompleteSteps.length === 0 };
 }
