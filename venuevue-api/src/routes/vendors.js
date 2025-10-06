@@ -1960,7 +1960,7 @@ router.get('/:id/selected-services', async (req, res) => {
         vss.VendorSelectedServiceID,
         vss.PredefinedServiceID,
         ps.ServiceName,
-        ps.Description as PredefinedDescription,
+        ps.ServiceDescription as PredefinedDescription,
         ps.Category,
         ps.DefaultDurationMinutes,
         vss.VendorPrice,
@@ -1974,9 +1974,41 @@ router.get('/:id/selected-services', async (req, res) => {
       ORDER BY ps.Category, ps.DisplayOrder, ps.ServiceName
     `);
     
+    let rows = result.recordset;
+    // Fallback: if no legacy selected entries, derive from Services linked to predefined services
+    if (!rows || rows.length === 0) {
+      try {
+        const fbReq = new sql.Request(pool);
+        fbReq.input('VendorProfileID', sql.Int, vendorProfileId);
+        const fbRes = await fbReq.query(`
+          SELECT 
+            s.LinkedPredefinedServiceID AS PredefinedServiceID,
+            ps.ServiceName,
+            ps.Category,
+            ps.DefaultDurationMinutes,
+            s.Description AS VendorDescription,
+            -- Derive a single VendorPrice compatible with settings UI
+            CASE 
+              WHEN s.PricingModel = 'time_based' THEN s.BaseRate
+              WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'fixed_price' THEN s.FixedPrice
+              WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'per_attendee' THEN s.PricePerPerson
+              ELSE s.Price
+            END AS VendorPrice,
+            COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes
+          FROM Services s
+          LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
+          WHERE s.VendorProfileID = @VendorProfileID AND s.LinkedPredefinedServiceID IS NOT NULL
+          ORDER BY ps.Category, ps.ServiceName
+        `);
+        rows = fbRes.recordset || [];
+      } catch (fbErr) {
+        console.warn('Fallback selected-services query failed:', fbErr?.message || fbErr);
+      }
+    }
+
     res.json({ 
       success: true, 
-      selectedServices: result.recordset 
+      selectedServices: rows 
     });
   } catch (error) {
     console.error('Error fetching vendor selected services:', error);
@@ -2009,7 +2041,16 @@ router.post('/setup/step3-services', async (req, res) => {
     
     // Handle service categories
     if (serviceCategories && serviceCategories.length > 0) {
-      // Delete existing categories
+      // Detach existing services from categories to avoid FK constraint when deleting categories
+      const detachRequest = new sql.Request(pool);
+      detachRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await detachRequest.query(`
+        UPDATE Services
+        SET CategoryID = NULL
+        WHERE VendorProfileID = @VendorProfileID AND CategoryID IS NOT NULL
+      `);
+
+      // Now delete existing categories
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       await deleteRequest.query(`
