@@ -5276,11 +5276,9 @@
                                 <button class="tab-btn" data-target="vendor-additional-details-panel">Additional Details</button>
                                 <button class="tab-btn" data-target="vendor-social-panel">Social Media</button>
                                 <button class="tab-btn" data-target="vendor-services-panel">Services & Packages</button>
-                                <button class="tab-btn" data-target="vendor-packages-panel">Packages</button>
                                 <button class="tab-btn" data-target="vendor-faqs-panel">FAQ Section</button>
                                 <button class="tab-btn" data-target="vendor-photos-panel">Gallery & Media</button>
                                 <button class="tab-btn" data-target="vendor-availability-panel">Availability & Scheduling</button>
-                                <button class="tab-btn" data-target="vendor-verification-panel">Verification & Legal</button>
                             </div>
                             <div class="settings-panels">
                                 <div id="vendor-profile-panel" class="settings-panel active">
@@ -5443,26 +5441,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div id="vendor-packages-panel" class="settings-panel">
-                                    <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Packages</h2>
-                                        <div id="packages-list"></div>
-                                        <div style="margin-top:1rem;">
-                                            <h3 style="margin:0 0 .5rem 0;">Add New Package</h3>
-                                            <div class="form-row">
-                                                <div class="form-col"><div class="form-group"><label>Name</label><input type="text" id="pkg-name"></div></div>
-                                                <div class="form-col"><div class="form-group"><label>Price</label><input type="number" step="0.01" id="pkg-price"></div></div>
-                                            </div>
-                                            <div class="form-row">
-                                                <div class="form-col"><div class="form-group"><label>Duration (minutes)</label><input type="number" id="pkg-duration"></div></div>
-                                                <div class="form-col"><div class="form-group"><label>Max Guests</label><input type="number" id="pkg-max-guests"></div></div>
-                                            </div>
-                                            <div class="form-group"><label>Description</label><textarea id="pkg-desc" rows="2" style="width:100%;"></textarea></div>
-                                            <div class="form-group"><label>What's Included</label><textarea id="pkg-includes" rows="2" style="width:100%;"></textarea></div>
-                                            <button class="btn btn-primary" id="add-package-btn">Add Package</button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <!-- Packages panel removed -->
                                 <div id="vendor-faqs-panel" class="settings-panel">
                                     <div class="dashboard-card">
                                         <h2 class="dashboard-card-title">FAQs</h2>
@@ -5492,53 +5471,7 @@
                                         <button class="btn btn-primary" id="save-business-hours-btn" style="margin-top:.5rem;">Save Business Hours</button>
                                     </div>
                                 </div>
-                                <div id="vendor-verification-panel" class="settings-panel">
-                                    <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Verification & Legal</h2>
-                                        <form id="vendor-verification-form">
-                                            <div class="form-row">
-                                                <div class="form-col">
-                                                    <div class="form-group">
-                                                        <label for="ver-license">License Number</label>
-                                                        <input type="text" id="ver-license" placeholder="e.g., AB-123456">
-                                                    </div>
-                                                </div>
-                                                <div class="form-col" style="align-self: end;">
-                                                    <div class="form-group" style="margin-top: 1.8rem;">
-                                                        <label style="display:flex; align-items:center; gap:.5rem;">
-                                                            <input type="checkbox" id="ver-insurance"> Insurance Verified
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="ver-awards">Awards (JSON or comma-separated)</label>
-                                                <textarea id="ver-awards" rows="2" style="width:100%;"></textarea>
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="ver-certifications">Certifications (JSON or comma-separated)</label>
-                                                <textarea id="ver-certifications" rows="2" style="width:100%;"></textarea>
-                                            </div>
-                                            <div class="form-row">
-                                                <div class="form-col">
-                                                    <div class="form-group">
-                                                        <label style="display:flex; align-items:center; gap:.5rem;">
-                                                            <input type="checkbox" id="ver-eco"> Eco-Friendly
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                <div class="form-col">
-                                                    <div class="form-group">
-                                                        <label style="display:flex; align-items:center; gap:.5rem;">
-                                                            <input type="checkbox" id="ver-premium"> Premium Vendor
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary">Save Verification</button>
-                                        </form>
-                                    </div>
-                                </div>
+                                <!-- Verification & Legal panel removed -->
                             </div>
                         </div>
                     </main>
@@ -7146,7 +7079,6 @@
                                         policies: 'vendor-faqs-panel',
                                         additionalDetails: 'vendor-additional-details-panel',
                                         faq: 'vendor-faqs-panel',
-                                        verification: 'vendor-verification-panel',
                                         stripe: null
                                     };
                                     const targetId = targetMap[key] || 'vendor-profile-panel';
@@ -20621,10 +20553,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Vendor settings tabs with lazy-loading for each panel
-            let vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, packages: false, faqs: false, photos: false, availability: false, verification: false };
+            let vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, availability: false };
             function setupVendorSettingsTabs(vendorProfileId) {
                 const section = document.getElementById('vendor-settings-section');
-                vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, packages: false, faqs: false, photos: false, availability: false, verification: false };
+                vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, availability: false };
                 setupSettingsTabs(section, async (targetId) => {
                     if (targetId === 'vendor-location-panel' && !vendorSettingsLoaded.location) {
                         await loadVendorLocation(vendorProfileId);
@@ -20642,10 +20574,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         await loadVendorServicesSettings(vendorProfileId);
                         vendorSettingsLoaded.services = true;
                     }
-                    if (targetId === 'vendor-packages-panel' && !vendorSettingsLoaded.packages) {
-                        await loadVendorPackagesSettings(vendorProfileId);
-                        vendorSettingsLoaded.packages = true;
-                    }
                     if (targetId === 'vendor-faqs-panel' && !vendorSettingsLoaded.faqs) {
                         await loadVendorFaqs(vendorProfileId);
                         vendorSettingsLoaded.faqs = true;
@@ -20657,10 +20585,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (targetId === 'vendor-availability-panel' && !vendorSettingsLoaded.availability) {
                         await loadVendorAvailability(vendorProfileId);
                         vendorSettingsLoaded.availability = true;
-                    }
-                    if (targetId === 'vendor-verification-panel' && !vendorSettingsLoaded.verification) {
-                        await loadVendorVerification(vendorProfileId);
-                        vendorSettingsLoaded.verification = true;
                     }
                 });
             }
@@ -21667,8 +21591,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         // New sections
                         additionalDetails: 'vendor-additional-details-panel',
                         faq: 'vendor-faqs-panel',
-                        // Verification & Legal
-                        verification: 'vendor-verification-panel'
+                        // Verification & Legal removed from Settings
                     };
                     const targetId = targetMap[stepKey] || 'vendor-profile-panel';
 
@@ -21701,8 +21624,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         availability: '#business-hours-container, #vendor-availability-panel',
                         policies: '#faqs-list, #vendor-faqs-panel',
                         additionalDetails: '#additional-questions-container, #vendor-additional-details-panel',
-                        faq: '#faqs-list, #vendor-faqs-panel',
-                        verification: '#vendor-verification-form'
+                        faq: '#faqs-list, #vendor-faqs-panel'
                     };
                     const selectorList = (anchorMap[stepKey] || '').split(',').map(s => s.trim()).filter(Boolean);
                     let anchorEl = null;
@@ -21754,9 +21676,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                         if (targetId === 'vendor-availability-panel' && !vendorSettingsLoaded.availability && typeof loadVendorAvailability === 'function') {
                             loadVendorAvailability(vendorProfileId); vendorSettingsLoaded.availability = true;
-                        }
-                        if (targetId === 'vendor-verification-panel' && !vendorSettingsLoaded.verification && typeof loadVendorVerification === 'function') {
-                            loadVendorVerification(vendorProfileId); vendorSettingsLoaded.verification = true;
                         }
                         if (targetId === 'vendor-faqs-panel' && !vendorSettingsLoaded.faqs && typeof loadVendorFAQs === 'function') {
                             loadVendorFAQs(vendorProfileId); vendorSettingsLoaded.faqs = true;
