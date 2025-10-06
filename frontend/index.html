@@ -497,9 +497,11 @@
 
         .vendor-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(clamp(260px, 28vw, 380px), 1fr));
+            /* Larger cards with fixed max width so a single card doesn't stretch full screen */
+            grid-template-columns: repeat(auto-fit, minmax(340px, 480px));
             gap: 1.5rem;
             align-items: stretch;
+            justify-content: center;
         }
         @media (max-width: 640px) {
             .vendor-grid {
@@ -512,17 +514,19 @@
             background-color: white;
             border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            box-shadow: none;
             transition: transform .35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow .35s cubic-bezier(0.22, 1, 0.36, 1), border-color .35s ease;
-            border: 1px solid rgba(0, 0, 0, 0.04);
+            border: none;
             transform: translateY(0) scale(1);
             will-change: transform, box-shadow;
+            outline: none;
         }
 
         .vendor-card:hover {
             transform: translateY(-6px) scale(1.015);
-            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
-            border-color: rgba(94, 114, 228, 0.2);
+            box-shadow: none;
+            border-color: transparent;
+            outline: none;
         }
 
         .vendor-image {
@@ -535,6 +539,7 @@
             align-items: center;
             justify-content: center;
             color: white;
+            line-height: 0; /* remove inline image baseline gap */
             overflow: hidden;
         }
 
@@ -543,6 +548,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            display: block; /* ensure no gap under image */
             transform: scale(1);
             transition: transform .6s cubic-bezier(0.22, 1, 0.36, 1);
             will-change: transform;
@@ -566,6 +572,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+            display: block; /* ensure no gap under image (duplicate rule section) */
         }
 
         .vendor-card:hover .vendor-image img {
@@ -641,8 +648,7 @@
         /* Card highlight states for map/list sync */
         .vendor-card.map-hover,
         .vendor-card.map-active {
-            outline: 2px solid #2563eb;
-            outline-offset: 0;
+            outline: none;
             background: #f6f8ff;
         }
 
@@ -759,7 +765,7 @@
             justify-content: space-between;
             align-items: center;
             padding-top: 1rem;
-            border-top: 1px solid var(--border);
+            border-top: none;
         }
 
         .vendor-price {
@@ -786,7 +792,7 @@
             justify-content: center;
             padding: 1rem;
             gap: 1rem;
-            border-left: 1px solid #e5e7eb;
+            border-left: none;
             background: #f9fafb;
             min-width: 80px;
         }
@@ -2681,10 +2687,11 @@
             grid-template-columns: 45% 1fr auto; /* image, content, actions column */
             background: white;
             border-radius: 16px;
-            border: 1px solid #e5e7eb;
+            border: none;
             overflow: hidden;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            transition: none;
+            box-shadow: none;
+            outline: none;
             position: relative;
             width: 100%;
             min-height: 240px;
@@ -2693,14 +2700,23 @@
         }
 
         .vendor-horizontal-card:hover {
-            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-            transform: translateY(-3px);
-            border-color: #3b82f6;
+            box-shadow: none;
+            transform: none;
+            border-color: transparent;
+            outline: none;
         }
 
         .vendor-horizontal-card.selected {
-            border: 2px solid #5e72e4;
-            box-shadow: 0 0 0 1px rgba(94, 114, 228, 0.2);
+            border: none;
+            box-shadow: none;
+        }
+
+        .vendor-horizontal-card:focus,
+        .vendor-horizontal-card:active,
+        .vendor-horizontal-card:focus-visible {
+            outline: none;
+            box-shadow: none;
+            border: none;
         }
 
         .vendor-card-image-container {
@@ -3159,7 +3175,7 @@
                 flex-direction: row;
                 justify-content: center;
                 border-left: none;
-                border-top: 1px solid #e5e7eb;
+                border-top: none;
                 padding: 0.75rem;
                 gap: 2rem;
             }
@@ -3823,31 +3839,45 @@
 
         .vendor-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            /* Larger cards with fixed max width so a single card doesn't stretch full screen */
+            grid-template-columns: repeat(auto-fit, minmax(340px, 480px));
             gap: 1.5rem;
             margin-bottom: 1.5rem;
+            align-items: stretch;
+            justify-content: center;
         }
 
         .vendor-card {
             background-color: white;
-            border: 1px solid rgba(0, 0, 0, 0.04);
+            border: none;
             border-radius: 16px;
             overflow: hidden;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            box-shadow: none;
+            outline: none;
         }
 
         .vendor-card:hover {
-            border-color: rgba(94, 114, 228, 0.2);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+            border-color: transparent;
+            box-shadow: none;
             transform: translateY(-8px);
+            outline: none;
+        }
+
+        .vendor-card:focus,
+        .vendor-card:active,
+        .vendor-card:focus-visible {
+            outline: none;
+            box-shadow: none;
+            border: none;
+            transform: none;
         }
 
         .vendor-card.selected {
-            border-color: #5e72e4;
+            border: none;
             background-color: rgba(94, 114, 228, 0.02);
-            box-shadow: 0 8px 32px rgba(94, 114, 228, 0.15);
+            box-shadow: none;
         }
 
         .vendor-card-header {
@@ -6500,7 +6530,7 @@
                                 
                                 <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box; flex: 1; min-height: 0;">
                                     <!-- Horizontal vendor cards will be populated here -->
-                                    <div style="padding: 1rem; background: #f8faff; border-radius: 12px; border: 2px dashed #ddd; text-align: center;">
+                                    <div style="padding: 1rem; background: #f8faff; border-radius: 12px; text-align: center;">
                                         <i class="fas fa-search" style="font-size: 2rem; color: #ccc; margin-bottom: 0.5rem;"></i>
                                         <p style="color: #666; margin: 0;">Search for vendors to see options here</p>
                                     </div>
@@ -12002,8 +12032,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }).filter(card => card !== '').join(''); // Filter out empty cards
 
                     return `
-                        <div class="vendor-section" style="margin-bottom: 3rem; border: 2px solid #e1e8f0; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                            <div class="section-header" style="background: #2c3e50; color: #ffffff; padding: 1.2rem; border-radius: 10px 10px 0 0; margin-bottom: 0; border-bottom: 3px solid #34495e;">
+                        <div class="vendor-section" style="margin-bottom: 3rem; border-radius: 12px;">
+                            <div class="section-header" style="background: #2c3e50; color: #ffffff; padding: 1.2rem; border-radius: 10px 10px 0 0; margin-bottom: 0;">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
                                     <div>
                                         <h4 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">
@@ -12022,7 +12052,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     </div>
                                 </div>
                             </div>
-                            <div class="vendor-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; padding: 2rem; background: #ffffff; border-radius: 0 0 10px 10px;">
+                            <div class="vendor-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 480px)); gap: 1.5rem; padding: 2rem; background: #ffffff; border-radius: 0 0 10px 10px; justify-content: center;">
                                 ${vendorCards}
                             </div>
                         </div>
@@ -12136,7 +12166,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 <div class="vendor-business-type" style="margin: 0.5rem 0; font-size: 0.85rem; color: #666; font-style: italic;">
                                     ${vendor.BusinessType}
                                 </div>
-                                <div class="vendor-features" style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0; padding: 0.75rem; background: #f8f9fa; border-radius: 8px; border-left: 3px solid #3498db;">
+                                <div class="vendor-features" style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0; padding: 0.75rem; background: #f8f9fa; border-radius: 8px;">
                                     <span style="color: #2c3e50; font-size: 0.9rem;">${service.name}</span>
                                     <span style="color: #2c3e50; font-size: 0.9rem;">${Math.round(vendorDuration / 60)} hour${Math.round(vendorDuration / 60) !== 1 ? 's' : ''}</span>
                                     <span style="font-weight: 600; color: #27ae60; font-size: 0.95rem;">$${Math.round(actualPrice).toLocaleString()}</span>
@@ -12369,7 +12399,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 transition: none !important;
                                 transform: none !important;
                                 box-shadow: none !important;
-                                border-color: #e5e7eb !important; /* fixed neutral border */
+                                border: none !important; /* absolutely no border */
                                 background: #ffffff !important;   /* fixed neutral bg */
                                 cursor: default !important;
                                 will-change: auto !important;
@@ -13568,6 +13598,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Check for existing user session
             async function checkAuthStatus() {
                 const token = localStorage.getItem('token');
+ 
                 if (!token) return;
 
                 try {
@@ -20380,40 +20411,77 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function renderRecentFavorites(favorites) {
                 const container = document.getElementById('dashboard-favorites');
                 container.innerHTML = '';
+                // Ensure same grid layout as main vendor grid
+                try { container.classList.add('vendor-grid'); } catch {}
                 if (favorites && favorites.length > 0) {
-                    favorites.forEach(vendor => {
-                        const vendorCard = document.createElement('div');
-                        vendorCard.className = 'vendor-card';
-                        vendorCard.innerHTML = `
-                            <div class="vendor-image">
-                                ${vendor.PortfolioImage ? `<img src="${vendor.PortfolioImage}" alt="${vendor.VendorName}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.Categories?.split(',')[0] || 'all')}
-                                <div class="vendor-favorite active" data-id="${vendor.VendorProfileID}"><i class="fas fa-heart"></i></div>
-                            </div>
-                            <div class="vendor-details">
-                                <h3 class="vendor-name">${vendor.VendorName}</h3>
-                                <div class="vendor-location">
-                                    <i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${vendor.City}, ${vendor.State}
-                                </div>
-                                <div class="vendor-features">
-                                    <div class="feature">
-                                        <span class="feature-icon">${getCategoryIcon(vendor.Categories?.split(',')[0] || 'all')}</span>
-                                        <span>${vendor.Categories?.split(',')[0] || 'Service'}</span>
+                    const cardsHtml = favorites.map(vendor => {
+                        const imageUrl = vendor.PortfolioImage || vendor.FeaturedImageURL || vendor.ImageURL || vendor.imageUrl || vendor.image || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+                        const businessName = vendor.VendorName || vendor.BusinessName || vendor.name || 'Vendor';
+                        const isFavorite = true; // favorites list by definition
+                        const rawPrice = vendor.startingPrice ?? vendor.MinPriceNumeric ?? vendor.MinPrice ?? vendor.price ?? vendor.Price ?? vendor.minPrice ?? vendor.starting_price ?? vendor.price;
+                        let priceDisplay = '';
+                        if (rawPrice !== undefined && rawPrice !== null && rawPrice !== '') {
+                            if (typeof rawPrice === 'number') priceDisplay = `$${Math.round(rawPrice)}`;
+                            else if (typeof rawPrice === 'string') {
+                                const trimmed = rawPrice.trim();
+                                priceDisplay = trimmed.startsWith('$') ? trimmed : `$${trimmed}`;
+                            }
+                        }
+                        const descText = (vendor.Bio || vendor.bio || vendor.BusinessDescription || vendor.businessDescription || vendor.Description || vendor.description || vendor.About || vendor.about || '').toString();
+                        const shortDesc = descText.length > 140 ? `${descText.slice(0, 140)}…` : descText;
+                        const ratingRaw = vendor.averageRating ?? vendor.rating ?? '4.5';
+                        const ratingValue = (() => { const r = parseFloat(ratingRaw); return isNaN(r) ? 4.5 : r; })();
+                        const reviewCount = (() => {
+                            if (vendor.totalReviews != null) return vendor.totalReviews;
+                            if (vendor.reviewCount != null) return vendor.reviewCount;
+                            if (typeof ratingRaw === 'string') { const m = ratingRaw.match(/\((\d+)\)/); if (m) return parseInt(m[1]); }
+                            return 0;
+                        })();
+                        const locCity = vendor.City || vendor.city || '';
+                        const locState = vendor.State || vendor.state || '';
+                        const locationText = (vendor.location && vendor.location.trim()) || [locCity, locState].filter(Boolean).join(', ');
+                        const vendorId = vendor.VendorProfileID || vendor.id;
+                        const badges = [];
+                        if (vendor.isPremium) badges.push('<span class="vendor-badge premium">Premium</span>');
+                        if (vendor.isEcoFriendly) badges.push('<span class="vendor-badge eco">Eco-Friendly</span>');
+                        if (vendor.isAwardWinning) badges.push('<span class="vendor-badge award">Award Winner</span>');
+
+                        return `
+                            <div class="vendor-card">
+                                <div class="vendor-image">
+                                    <img src="${imageUrl}" alt="${businessName}" 
+                                         style="width:100%;height:100%;object-fit:cover;"
+                                         onerror="this.src='https://placehold.co/800x600/e2e8f0/718096?text=No+Image'">
+                                    <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendorId}"><i class="fas fa-heart"></i></div>
+                                    <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
+                                        ${badges.join('')}
                                     </div>
                                 </div>
-                                <div class="vendor-footer" style="margin-top: 1rem;">
-                                    <button class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 12px; font-weight: 600;" data-id="${vendor.VendorProfileID}">View Profile</button>
+                                <div class="vendor-details">
+                                    <h3 class="vendor-name" style="font-size:1.1rem;">${businessName}</h3>
+                                    <div class="vendor-location" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+                                        <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${locationText || 'Location unavailable'}</span>
+                                        <span style="color:#6b7280;">•</span>
+                                        <span style="display:flex;align-items:center;gap:.5rem;">
+                                            <span style="color:#f59e0b;font-size:.9rem;">${'★'.repeat(Math.floor(ratingValue))}${'☆'.repeat(5-Math.floor(ratingValue))}</span>
+                                            <span style="font-size:.85rem;color:#6b7280;">${ratingValue.toFixed(1)} (${reviewCount})</span>
+                                        </span>
+                                    </div>
+                                    ${shortDesc ? `<div class="vendor-description" style="margin:.5rem 0 0.25rem;color:var(--text-light);font-size:.95rem;line-height:1.4;">${shortDesc}</div>` : ''}
+                                    <div class="vendor-footer">
+                                        <div class="vendor-price" style="font-weight:600;">${priceDisplay ? `<span>Starting from</span> ${priceDisplay}` : ''}</div>
+                                        <div class="vendor-actions">
+                                            <button class="btn btn-outline save-btn" data-id="${vendorId}">Save</button>
+                                            <button class="btn btn-primary view-btn" data-id="${vendorId}">View</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         `;
-                        container.appendChild(vendorCard);
-                        vendorCard.querySelector('button').addEventListener('click', () => {
-                            window.location.hash = `/listings/${vendor.VendorProfileID}`;
-                        });
-                        vendorCard.querySelector('.vendor-favorite').addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            toggleFavorite(vendor.VendorProfileID);
-                        });
-                    });
+                    }).join('');
+                    container.innerHTML = cardsHtml;
+                    // Wire up actions to match main cards
+                    try { setupVendorCardEventListeners(); } catch {}
                 } else {
                     container.innerHTML = '<p>No recent favorites.</p>';
                 }
@@ -20576,40 +20644,77 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             function renderFavoritesList(favorites, container) {
                 container.innerHTML = '';
+                // Ensure same grid layout as main vendor grid
+                try { container.classList.add('vendor-grid'); } catch {}
                 if (favorites && favorites.length > 0) {
-                    favorites.forEach(vendor => {
-                        const vendorCard = document.createElement('div');
-                        vendorCard.className = 'vendor-card';
-                        vendorCard.innerHTML = `
-                            <div class="vendor-image">
-                                ${vendor.PortfolioImage ? `<img src="${vendor.PortfolioImage}" alt="${vendor.VendorName}" style="width:100%;height:100%;object-fit:cover;">` : getCategoryIcon(vendor.Categories?.split(',')[0] || 'all')}
-                                <div class="vendor-favorite active" data-id="${vendor.VendorProfileID}"><i class="fas fa-heart"></i></div>
-                            </div>
-                            <div class="vendor-details">
-                                <h3 class="vendor-name">${vendor.VendorName}</h3>
-                                <div class="vendor-location">
-                                    <i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${vendor.City}, ${vendor.State}
-                                </div>
-                                <div class="vendor-features">
-                                    <div class="feature">
-                                        <span class="feature-icon">${getCategoryIcon(vendor.Categories?.split(',')[0] || 'all')}</span>
-                                        <span>${vendor.Categories?.split(',')[0] || 'Service'}</span>
+                    const cardsHtml = favorites.map(vendor => {
+                        const imageUrl = vendor.PortfolioImage || vendor.FeaturedImageURL || vendor.ImageURL || vendor.imageUrl || vendor.image || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+                        const businessName = vendor.VendorName || vendor.BusinessName || vendor.name || 'Vendor';
+                        const isFavorite = true; // favorites list by definition
+                        const rawPrice = vendor.startingPrice ?? vendor.MinPriceNumeric ?? vendor.MinPrice ?? vendor.price ?? vendor.Price ?? vendor.minPrice ?? vendor.starting_price ?? vendor.price;
+                        let priceDisplay = '';
+                        if (rawPrice !== undefined && rawPrice !== null && rawPrice !== '') {
+                            if (typeof rawPrice === 'number') priceDisplay = `$${Math.round(rawPrice)}`;
+                            else if (typeof rawPrice === 'string') {
+                                const trimmed = rawPrice.trim();
+                                priceDisplay = trimmed.startsWith('$') ? trimmed : `$${trimmed}`;
+                            }
+                        }
+                        const descText = (vendor.Bio || vendor.bio || vendor.BusinessDescription || vendor.businessDescription || vendor.Description || vendor.description || vendor.About || vendor.about || '').toString();
+                        const shortDesc = descText.length > 140 ? `${descText.slice(0, 140)}…` : descText;
+                        const ratingRaw = vendor.averageRating ?? vendor.rating ?? '4.5';
+                        const ratingValue = (() => { const r = parseFloat(ratingRaw); return isNaN(r) ? 4.5 : r; })();
+                        const reviewCount = (() => {
+                            if (vendor.totalReviews != null) return vendor.totalReviews;
+                            if (vendor.reviewCount != null) return vendor.reviewCount;
+                            if (typeof ratingRaw === 'string') { const m = ratingRaw.match(/\((\d+)\)/); if (m) return parseInt(m[1]); }
+                            return 0;
+                        })();
+                        const locCity = vendor.City || vendor.city || '';
+                        const locState = vendor.State || vendor.state || '';
+                        const locationText = (vendor.location && vendor.location.trim()) || [locCity, locState].filter(Boolean).join(', ');
+                        const vendorId = vendor.VendorProfileID || vendor.id;
+                        const badges = [];
+                        if (vendor.isPremium) badges.push('<span class="vendor-badge premium">Premium</span>');
+                        if (vendor.isEcoFriendly) badges.push('<span class="vendor-badge eco">Eco-Friendly</span>');
+                        if (vendor.isAwardWinning) badges.push('<span class="vendor-badge award">Award Winner</span>');
+
+                        return `
+                            <div class="vendor-card">
+                                <div class="vendor-image">
+                                    <img src="${imageUrl}" alt="${businessName}" 
+                                         style="width:100%;height:100%;object-fit:cover;"
+                                         onerror="this.src='https://placehold.co/800x600/e2e8f0/718096?text=No+Image'">
+                                    <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendorId}"><i class="fas fa-heart"></i></div>
+                                    <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
+                                        ${badges.join('')}
                                     </div>
                                 </div>
-                                <div class="vendor-footer" style="margin-top: 1rem;">
-                                    <button class="btn btn-primary" style="width: 100%; padding: 0.75rem; border-radius: 12px; font-weight: 600;" data-id="${vendor.VendorProfileID}">View Profile</button>
+                                <div class="vendor-details">
+                                    <h3 class="vendor-name" style="font-size:1.1rem;">${businessName}</h3>
+                                    <div class="vendor-location" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+                                        <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${locationText || 'Location unavailable'}</span>
+                                        <span style="color:#6b7280;">•</span>
+                                        <span style="display:flex;align-items:center;gap:.5rem;">
+                                            <span style="color:#f59e0b;font-size:.9rem;">${'★'.repeat(Math.floor(ratingValue))}${'☆'.repeat(5-Math.floor(ratingValue))}</span>
+                                            <span style="font-size:.85rem;color:#6b7280;">${ratingValue.toFixed(1)} (${reviewCount})</span>
+                                        </span>
+                                    </div>
+                                    ${shortDesc ? `<div class=\"vendor-description\" style=\"margin:.5rem 0 0.25rem;color:var(--text-light);font-size:.95rem;line-height:1.4;\">${shortDesc}</div>` : ''}
+                                    <div class="vendor-footer">
+                                        <div class="vendor-price" style="font-weight:600;">${priceDisplay ? `<span>Starting from</span> ${priceDisplay}` : ''}</div>
+                                        <div class="vendor-actions">
+                                            <button class="btn btn-outline save-btn" data-id="${vendorId}">Save</button>
+                                            <button class="btn btn-primary view-btn" data-id="${vendorId}">View</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         `;
-                        container.appendChild(vendorCard);
-                        vendorCard.querySelector('button').addEventListener('click', () => {
-                            window.location.hash = `/listings/${vendor.VendorProfileID}`;
-                        });
-                        vendorCard.querySelector('.vendor-favorite').addEventListener('click', (e) => {
-                            e.stopPropagation();
-                            toggleFavorite(vendor.VendorProfileID);
-                        });
-                    });
+                    }).join('');
+                    container.innerHTML = cardsHtml;
+                    // Wire up actions to match main cards
+                    try { setupVendorCardEventListeners(); } catch {}
                 } else {
                     container.innerHTML = '<p>No saved favorites.</p>';
                 }
@@ -23610,7 +23715,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             async function fetchVendorsForBounds(bounds) {
                 const params = new URLSearchParams();
                 params.set('bounds', JSON.stringify(bounds));
-                if (state.currentCategory && state.currentCategory !== 'all') params.set('category', state.currentCategory);
+                if (state.currentCategory && state.currentCategory !== 'all') {
+                    // Pass category key so backend LIKE '%key%' matches common synonyms (e.g., 'photo' -> 'Photography')
+                    params.set('category', state.currentCategory);
+                }
                 // Include event details for backend filtering (business hours + proximity)
                 try {
                     const ed = (window.bookingState && window.bookingState.eventDetails) ? window.bookingState.eventDetails : null;
@@ -23676,7 +23784,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`Map vendors fetch failed: ${res.status}`);
                 const data = await res.json();
-                return data.vendors || [];
+                const raw = data.vendors || [];
+                // Normalize primary category for each vendor in viewport results
+                const normalized = raw.map(v => {
+                    const primary = v.PrimaryCategory || v.primaryCategory || v.type || (v.categories || '').split(',')[0] || '';
+                    const categoryKey = mapTypeToCategory(primary);
+                    return { ...v, category: categoryKey || '' };
+                });
+                return normalized;
             }
 
             // Highlight helper for markers and cards
@@ -24040,9 +24155,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     
                     console.log(`API returned ${vendors.length} vendors, totalCount: ${totalCount}`);
                     
-                    // Store vendors in state
-                    state.vendors = vendors;
-                    state.filteredVendors = vendors;
+                    // Store vendors in state, normalizing primary category -> navbar category id
+                    const normalizedVendors = vendors.map(v => {
+                        const primary = v.type || v.PrimaryCategory || ((v.categories || v.Categories || '').split(',')[0] || '').trim();
+                        const categoryKey = mapTypeToCategory(primary);
+                        return { ...v, category: categoryKey || '' };
+                    });
+
+                    state.vendors = normalizedVendors;
+                    state.filteredVendors = normalizedVendors;
                     
                     // Clear the static HTML and render dynamic vendors
                     if (vendorGrid) {
@@ -28705,7 +28826,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             const skeletonHTML = Array(4).fill(0).map(() => `
                 <div class="vendor-horizontal-card" style="
                     background: #f8f9fa;
-                    border: 1px solid #e9ecef;
                     border-radius: 12px;
                     padding: 1rem;
                     margin-bottom: 1rem;
