@@ -6954,6 +6954,246 @@
             }
         }
 
+        // Vendor Setup Reminder Banner
+        function ensureSetupReminderContainer() {
+            let container = document.getElementById('vendor-setup-reminder');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'vendor-setup-reminder';
+                container.style.cssText = 'display:none; margin:16px 0; border:1px solid var(--border, #e5e7eb); background:#fff7ed; color:#7c2d12; border-radius:12px; padding:14px 16px; box-shadow:0 1px 2px rgba(0,0,0,0.04)';
+                const main = document.querySelector('.main-content');
+                if (main) {
+                    main.insertBefore(container, main.firstChild);
+                } else {
+                    document.body.prepend(container);
+                }
+            }
+            return container;
+        }
+
+        function getUserIdFromToken() {
+            try {
+                const t = localStorage.getItem('token');
+                if (!t || t.split('.').length !== 3) return null;
+                const payload = JSON.parse(atob(t.split('.')[1]));
+                return payload.userId || payload.id || null;
+            } catch (_) { return null; }
+        }
+
+        async function renderVendorSetupReminder() {
+            try {
+                // Don't show on dedicated vendor profile page
+                if (typeof vendorProfilePage !== 'undefined' && vendorProfilePage && vendorProfilePage.style.display === 'block') {
+                    const banner = document.getElementById('vendor-setup-reminder');
+                    if (banner) banner.style.display = 'none';
+                    return;
+                }
+
+                // Rehydrate current user if needed
+                if (!currentUser && typeof getCurrentUser === 'function') {
+                    const stored = getCurrentUser();
+                    if (stored) currentUser = stored;
+                }
+
+                const userId = currentUser?.id || getUserIdFromToken();
+                if (!userId) {
+                    const banner = document.getElementById('vendor-setup-reminder');
+                    if (banner) banner.style.display = 'none';
+                    return;
+                }
+
+                // Cleanup any legacy per-day flag (we'll decide visibility after we know completion status)
+                try { localStorage.removeItem('vv_hideSetupReminderUntil'); } catch (_) {}
+
+                // First, verify vendor status
+                const statusRes = await fetch(`${API_BASE_URL}/vendors/status?userId=${userId}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                });
+                if (!statusRes.ok) {
+                    const banner = document.getElementById('vendor-setup-reminder');
+                    if (banner) banner.style.display = 'none';
+                    return;
+                }
+                const status = await statusRes.json();
+                if (!status.isVendor) {
+                    const banner = document.getElementById('vendor-setup-reminder');
+                    if (banner) banner.style.display = 'none';
+                    return;
+                }
+
+                // Get detailed setup status from vendor dashboard API
+                const setupRes = await fetch(`${API_BASE_URL}/vendor/${userId}/setup-status`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+                });
+                if (!setupRes.ok) {
+                    const banner = document.getElementById('vendor-setup-reminder');
+                    if (banner) banner.style.display = 'none';
+                    return;
+                }
+                const setup = await setupRes.json();
+                const allComplete = setup.allRequiredComplete ?? setup?.setupStatus?.allRequiredComplete;
+                const incompleteSteps = setup.incompleteSteps ?? setup?.setupStatus?.incompleteSteps ?? [];
+                const labelMap = {
+                    basics: 'Business Basics',
+                    location: 'Location Information',
+                    additionalDetails: 'Additional Details',
+                    social: 'Social Media',
+                    servicesPackages: 'Services & Packages',
+                    faq: 'FAQ Section',
+                    gallery: 'Gallery & Media',
+                    availability: 'Availability & Scheduling',
+                    verification: 'Verification & legal',
+                    policies: 'Policies',
+                    stripe: 'Stripe payouts'
+                };
+                const stepsObj = setup.steps ?? setup?.setupStatus?.steps ?? {};
+                // Only count required steps in the header (exclude optional 'policies') to match backend requiredOrder
+                const requiredKeys = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','verification','stripe'];
+                const completedStepKeys = requiredKeys.filter(k => stepsObj[k]);
+                const completedChips = completedStepKeys.map(k => `
+                    <span data-step-key="${k}" style="display:inline-flex;align-items:center;gap:6px;background:#ecfdf5;color:#166534;border:1px solid #bbf7d0;border-radius:999px;padding:4px 10px;font-size:.85rem;white-space:nowrap;cursor:pointer;" title="Open ${labelMap[k] || k} settings">
+                        <i class="fas fa-check-circle"></i>${labelMap[k] || k}
+                    </span>
+                `).join(' ');
+
+                if (allComplete) {
+                    // Clear any persisted hides once setup is complete
+                    try {
+                        localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userId}`);
+                        sessionStorage.removeItem('vv_hideSetupReminderThisSession');
+                    } catch (_) {}
+                    const banner = document.getElementById('vendor-setup-reminder');
+                    if (banner) banner.style.display = 'none';
+                    return;
+                }
+
+                // Respect dismiss for this session only and bind it to current login token
+                // This ensures banner reappears on next login even within the same tab
+                try {
+                    const token = localStorage.getItem('token') || '';
+                    const tokenKey = token ? token.slice(-16) : 'no_token';
+                    const sessKey = `vv_hideSetupReminderThisSession_${userId}_${tokenKey}`;
+                    const sessionHide = sessionStorage.getItem(sessKey) === '1';
+                    if (sessionHide) {
+                        const banner = document.getElementById('vendor-setup-reminder');
+                        if (banner) banner.style.display = 'none';
+                        return;
+                    }
+                    // Clean legacy session/persistent flags
+                    try {
+                        sessionStorage.removeItem('vv_hideSetupReminderThisSession');
+                        sessionStorage.removeItem(`vv_hideSetupReminderThisSession_${userId}`);
+                    } catch (_) {}
+                    try { localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userId}`); } catch (_) {}
+                } catch (_) {}
+
+                const banner = ensureSetupReminderContainer();
+                const stepsHtml = incompleteSteps.slice(0, 6).map(s => `
+                    <span data-step-key="${(s && (s.key || s))}" style="display:inline-flex;align-items:center;gap:6px;background:#ffedd5;color:#7c2d12;border:1px solid #fed7aa;border-radius:999px;padding:4px 10px;font-size:.85rem;white-space:nowrap;cursor:pointer;" title="Open ${(s && (labelMap[s.key] || s.label || s))} settings">
+                        <i class="fas fa-circle-xmark"></i>${s.label || s.key}
+                    </span>
+                `).join(' ');
+                const moreCount = Math.max(0, incompleteSteps.length - 6);
+                const completedCount = completedStepKeys.length;
+                const totalSteps = requiredKeys.length;
+
+                banner.innerHTML = `
+                    <div style="display:flex;gap:12px;align-items:flex-start;">
+                        <div style="font-size:20px;line-height:1;color:#b45309;"><i class="fas fa-exclamation-circle"></i></div>
+                        <div style="flex:1;">
+                            <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
+                                <div style="font-weight:700;color:#92400e;">Complete your vendor profile to go live</div>
+                                <div style="display:flex;gap:8px;">
+                                    <button id="vv-setup-continue" class="btn btn-primary" style="padding:.5rem .9rem;">Continue setup</button>
+                                    <button id="vv-setup-dismiss" class="btn btn-outline" style="padding:.5rem .9rem;">Dismiss</button>
+                                </div>
+                            </div>
+                            <div style="margin-top:8px;">
+                                <div style="font-weight:600;color:#7c2d12;margin-bottom:6px;">Incomplete</div>
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;">${stepsHtml}${moreCount>0?`<span style=\"font-size:.85rem;color:#7c2d12;\">+${moreCount} more</span>`:''}</div>
+                            </div>
+                            <div style="margin-top:10px;">
+                                <div style="font-weight:600;color:#166534;margin-bottom:6px;">Completed (${completedCount}/${totalSteps})</div>
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;">${completedChips}</div>
+                            </div>
+                            <div style="margin-top:8px;font-size:.9rem;color:#7c2d12;">Your profile will not be visible to clients until all required steps are complete.</div>
+                        </div>
+                    </div>
+                `;
+                banner.style.display = 'block';
+
+                // Make chips clickable to open the corresponding settings tab
+                try {
+                    const vendorProfileId = setup.vendorProfileId || status.vendorProfileId || currentUser?.vendorProfileId || null;
+                    const chipEls = banner.querySelectorAll('[data-step-key]');
+                    chipEls.forEach(el => {
+                        el.addEventListener('click', async () => {
+                            const key = el.getAttribute('data-step-key');
+                            try {
+                                if (typeof openVendorSettingsStep === 'function' && vendorProfileId) {
+                                    await openVendorSettingsStep(key, vendorProfileId);
+                                } else if (typeof displayUserDashboard === 'function') {
+                                    await displayUserDashboard('vendor', 'vendor-settings');
+                                    // Fallback: try to activate tab by clicking its button
+                                    const targetMap = {
+                                        basics: 'vendor-profile-panel',
+                                        location: 'vendor-location-panel',
+                                        gallery: 'vendor-photos-panel',
+                                        services: 'vendor-services-panel',
+                                        servicesPackages: 'vendor-services-panel',
+                                        social: 'vendor-social-panel',
+                                        availability: 'vendor-availability-panel',
+                                        policies: 'vendor-faqs-panel',
+                                        additionalDetails: 'vendor-additional-details-panel',
+                                        faq: 'vendor-faqs-panel',
+                                        verification: 'vendor-verification-panel',
+                                        stripe: null
+                                    };
+                                    const targetId = targetMap[key] || 'vendor-profile-panel';
+                                    if (key === 'stripe' && typeof startStripeOnboarding === 'function' && vendorProfileId) {
+                                        await startStripeOnboarding(vendorProfileId);
+                                        return;
+                                    }
+                                    const btn = document.querySelector(`#vendor-settings-section .settings-tabs .tab-btn[data-target='${targetId}']`);
+                                    btn?.click();
+                                } else {
+                                    alert('Opening settings...');
+                                }
+                            } catch (err) {
+                                console.warn('chip openVendorSettingsStep failed', err);
+                            }
+                        });
+                    });
+                } catch (_) {}
+
+                const contBtn = document.getElementById('vv-setup-continue');
+                contBtn?.addEventListener('click', async () => {
+                    if (typeof displayUserDashboard === 'function') {
+                        await displayUserDashboard('vendor', 'vendor-settings');
+                    } else {
+                        alert('Opening vendor settings. If nothing happens, use the profile menu to open Vendor Dashboard.');
+                    }
+                });
+                const dismissBtn = document.getElementById('vv-setup-dismiss');
+                dismissBtn?.addEventListener('click', () => {
+                    try {
+                        const token = localStorage.getItem('token') || '';
+                        const tokenKey = token ? token.slice(-16) : 'no_token';
+                        const sessKey = `vv_hideSetupReminderThisSession_${userId}_${tokenKey}`;
+                        sessionStorage.setItem(sessKey, '1');
+                        // Cleanup any legacy persistent/day/session flags
+                        localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userId}`);
+                        localStorage.removeItem('vv_hideSetupReminderUntil');
+                        sessionStorage.removeItem('vv_hideSetupReminderThisSession');
+                        sessionStorage.removeItem(`vv_hideSetupReminderThisSession_${userId}`);
+                    } catch (_) {}
+                    banner.style.display = 'none';
+                });
+            } catch (e) {
+                console.warn('renderVendorSetupReminder failed:', e);
+            }
+        }
+
         // Stripe Connect: show banner if vendor not connected
         function ensureStripeBannerContainer() {
             let container = document.getElementById('stripe-connect-banner');
@@ -10229,6 +10469,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                     // Setup booking modal event listeners
                     setupBookingModalEventListeners();
+
+                    // Show vendor setup reminder if applicable
+                    try { await renderVendorSetupReminder(); } catch (e) {}
 
                 } catch (error) {
                     console.error('Initialization error:', error);
@@ -13621,6 +13864,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (mainAppView) {
                     mainAppView.style.display = 'grid';
                     console.log('🏠 mainAppView shown');
+                    try { renderVendorSetupReminder(); } catch (e) {}
                 } else {
                     console.error('❌ mainAppView not found');
                 }
@@ -21202,6 +21446,27 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 container.innerHTML = '';
                 container.style.display = 'block';
 
+                // Respect session dismissal (same behavior as main page banner)
+                try {
+                    const token = localStorage.getItem('token') || '';
+                    const tokenKey = token ? token.slice(-16) : 'no_token';
+                    const uid = (window.currentUser && window.currentUser.id) ? window.currentUser.id : 'unknown';
+                    const sessKey = `vv_hideSetupReminderThisSession_${uid}_${tokenKey}`;
+                    if (sessionStorage.getItem(sessKey) === '1') {
+                        container.style.display = 'none';
+                        return;
+                    }
+                    // Clean legacy session/persistent flags (parity with banner)
+                    try {
+                        sessionStorage.removeItem('vv_hideSetupReminderThisSession');
+                        sessionStorage.removeItem(`vv_hideSetupReminderThisSession_${uid}`);
+                    } catch (_) {}
+                    try {
+                        localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${uid}`);
+                        localStorage.removeItem('vv_hideSetupReminderUntil');
+                    } catch (_) {}
+                } catch (_) {}
+
                 // Consistent list of steps with labels
                 const stepLabels = {
                     basics: 'Business Basics',
@@ -21213,89 +21478,118 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     gallery: 'Gallery & Media',
                     availability: 'Availability & Scheduling',
                     verification: 'Verification & legal',
+                    policies: 'Policies',
                     stripe: 'Stripe payouts'
                 };
                 const requiredOrder = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','verification','stripe'];
 
                 const steps = setupStatus?.steps || {};
-                const items = requiredOrder.map(key => {
-                    const done = !!steps[key];
-                    const label = stepLabels[key] || key;
-                    const statusBadge = done
-                        ? `<span style="display:inline-flex;align-items:center;gap:6px;color:#16a34a;font-weight:600;"><i class="fas fa-check-circle"></i> Completed</span>`
-                        : `<span style="display:inline-flex;align-items:center;gap:6px;color:#d97706;font-weight:600;"><i class="fas fa-clock"></i> Pending</span>`;
-                    const actionBtn = (key === 'policies') ? '' : `
-                        <button 
-                            class="btn btn-outline"
-                            data-step-key="${key}"
-                            onclick="openVendorSettingsStep('${key}', ${vendorProfileId})"
-                            aria-label="Open ${label} settings"
-                            style="white-space:nowrap;">
-                            Open
-                        </button>`;
-                    return `
-                        <li style="margin: 10px 0; list-style:none;">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                                <div style="display:flex;align-items:center;gap:10px;">
-                                    ${done ? '<i class="fas fa-check-circle" style="color:#16a34a;"></i>' : '<i class="fas fa-circle" style="color:#d1d5db;font-size:8px;"></i>'}
-                                    <span style="font-weight:600;">${label}</span>
-                                </div>
-                                <div style="display:flex;align-items:center;gap:10px;">
-                                    ${statusBadge}
-                                    ${actionBtn}
-                                </div>
-                            </div>
-                        </li>`;
-                }).join('');
-
-                const allDone = !!setupStatus?.allRequiredComplete;
-                const isCompleted = !!setupStatus?.isCompletedFlag;
-                const needsStripe = !(steps.stripe);
-                const stripeCta = needsStripe ? `
-                    <button class="btn btn-primary" onclick="startStripeOnboarding(${vendorProfileId})" style="margin-right: 8px;">
-                        <i class="fab fa-stripe"></i> Connect Stripe
-                    </button>
-                ` : '';
-
-                let footerCtas = '';
-                if (allDone && !isCompleted) {
-                    footerCtas = `
-                        <button class="btn btn-primary" onclick="submitVendorProfileForReview(${vendorProfileId})">
-                            <i class="fas fa-paper-plane"></i> Submit for Review
-                        </button>`;
-                } else if (allDone && isCompleted) {
-                    footerCtas = `
-                        <button class="btn btn-outline" disabled>
-                            <i class="fas fa-check"></i> Submitted for Review
-                        </button>`;
-                } else {
-                    footerCtas = `
-                        ${stripeCta}
-                        <button class="btn btn-outline" onclick="displayUserDashboard('vendor','vendor-settings')">
-                            Open Settings
-                        </button>`;
+                const labelMap = stepLabels;
+                // Hide entire card if all required steps are complete (parity with banner)
+                const allComplete = setupStatus?.allRequiredComplete ?? setupStatus?.setupStatus?.allRequiredComplete;
+                if (allComplete) {
+                    try {
+                        const userId = (window.currentUser && window.currentUser.id) ? window.currentUser.id : (typeof getUserIdFromToken === 'function' ? getUserIdFromToken() : null);
+                        if (userId) localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userId}`);
+                        sessionStorage.removeItem('vv_hideSetupReminderThisSession');
+                        // Also clear potential per-user session keys
+                        try {
+                            const token = localStorage.getItem('token') || '';
+                            const tokenKey = token ? token.slice(-16) : 'no_token';
+                            const uid = userId || 'unknown';
+                            sessionStorage.removeItem(`vv_hideSetupReminderThisSession_${uid}_${tokenKey}`);
+                        } catch (_) {}
+                    } catch (_) {}
+                    container.style.display = 'none';
+                    return;
                 }
+                const completedKeys = requiredOrder.filter(k => steps[k]);
+                const incompleteKeys = requiredOrder.filter(k => !steps[k]);
+                const completedCount = completedKeys.length;
+                const totalSteps = requiredOrder.length;
+                const needsStripe = !steps.stripe;
+
+                const incompleteSteps = setupStatus?.incompleteSteps ?? [];
+                const stepsHtml = incompleteSteps.slice(0, 6).map(s => `
+                    <span data-step-key="${(s && (s.key || s))}" style="display:inline-flex;align-items:center;gap:6px;background:#ffedd5;color:#7c2d12;border:1px solid #fed7aa;border-radius:999px;padding:4px 10px;font-size:.85rem;white-space:nowrap;cursor:pointer;" title="Open ${(s && (labelMap[s.key] || s.label || s))} settings">
+                        <i class=\"fas fa-circle-xmark\"></i>${s.label || s.key}
+                    </span>
+                `).join(' ');
+                const moreCount = Math.max(0, incompleteSteps.length - 6);
+                const completedChips = completedKeys.map(k => `
+                    <span data-step-key="${k}" style="display:inline-flex;align-items:center;gap:6px;background:#ecfdf5;color:#166534;border:1px solid #bbf7d0;border-radius:999px;padding:4px 10px;font-size:.85rem;white-space:nowrap;cursor:pointer;" title="Open ${labelMap[k] || k} settings">
+                        <i class="fas fa-check-circle"></i>${labelMap[k] || k}
+                    </span>
+                `).join(' ');
 
                 container.innerHTML = `
-                    <div class="dashboard-card" style="border-left: 4px solid var(--primary);">
-                        <h2 class="dashboard-card-title">Vendor setup checklist</h2>
-                        <p style="margin: 0 0 8px 0; color: #6b7280;">Track progress across all sections. Completed items show a checkmark; pending items are marked accordingly.</p>
-                        <ul style="margin: 8px 0 12px 0; padding:0;">${items}</ul>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;">${footerCtas}</div>
+                    <div class="dashboard-card" style="margin:16px 0; border:1px solid var(--border, #e5e7eb); background:#fff7ed; color:#7c2d12; border-radius:12px; padding:14px 16px; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div style="font-size:20px;line-height:1;color:#b45309;"><i class="fas fa-exclamation-circle"></i></div>
+                            <div style="flex:1;">
+                                <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
+                                    <div style="font-weight:700;color:#92400e;">Complete your vendor profile to go live</div>
+                                    <div style="display:flex;gap:8px;">
+                                        <button id="vv-dash-continue" class="btn btn-primary" style="padding:.5rem .9rem;">Continue setup</button>
+                                        <button id="vv-dash-dismiss" class="btn btn-outline" style="padding:.5rem .9rem;">Dismiss</button>
+                                    </div>
+                                </div>
+                                <div style="margin-top:8px;">
+                                    <div style="font-weight:600;color:#7c2d12;margin-bottom:6px;">Incomplete</div>
+                                    <div style="display:flex;flex-wrap:wrap;gap:8px;">${stepsHtml}${moreCount>0?`<span style=\"font-size:.85rem;color:#7c2d12;\">+${moreCount} more</span>`:''}</div>
+                                </div>
+                                <div style="margin-top:10px;">
+                                    <div style="font-weight:600;color:#166534;margin-bottom:6px;">Completed (${completedCount}/${totalSteps})</div>
+                                    <div style="display:flex;flex-wrap:wrap;gap:8px;">${completedChips}</div>
+                                </div>
+                                <div style="margin-top:8px;font-size:.9rem;color:#7c2d12;">Your profile will not be visible to clients until all required steps are complete.</div>
+                            </div>
+                        </div>
                     </div>
                 `;
 
-                // Delegate click as a fallback in case inline onclick is blocked
-                if (!container.dataset.bound) {
-                    container.addEventListener('click', (e) => {
-                        const btn = e.target.closest('button[data-step-key]');
-                        if (!btn) return;
-                        const key = btn.getAttribute('data-step-key');
-                        if (key === 'policies') return; // ignored per requirement
-                        try { openVendorSettingsStep(key, vendorProfileId); } catch (err) { console.warn('delegate openVendorSettingsStep failed', err); }
+                // Chip click handlers
+                try {
+                    const chipEls = container.querySelectorAll('[data-step-key]');
+                    chipEls.forEach(el => {
+                        el.addEventListener('click', async () => {
+                            const key = el.getAttribute('data-step-key');
+                            try {
+                                if (key === 'stripe' && typeof startStripeOnboarding === 'function') {
+                                    await startStripeOnboarding(vendorProfileId);
+                                    return;
+                                }
+                                if (typeof openVendorSettingsStep === 'function') {
+                                    await openVendorSettingsStep(key, vendorProfileId);
+                                } else if (typeof displayUserDashboard === 'function') {
+                                    await displayUserDashboard('vendor', 'vendor-settings');
+                                }
+                            } catch (err) { console.warn('dashboard chip openVendorSettingsStep failed', err); }
+                        });
                     });
-                    container.dataset.bound = '1';
-                }
+                } catch (_) {}
+
+                // Button handlers
+                container.querySelector('#vv-dash-continue')?.addEventListener('click', async () => {
+                    if (typeof displayUserDashboard === 'function') {
+                        await displayUserDashboard('vendor', 'vendor-settings');
+                    }
+                });
+                container.querySelector('#vv-dash-dismiss')?.addEventListener('click', () => {
+                    try {
+                        const token = localStorage.getItem('token') || '';
+                        const tokenKey = token ? token.slice(-16) : 'no_token';
+                        const uid = (window.currentUser && window.currentUser.id) ? window.currentUser.id : 'unknown';
+                        const sessKey = `vv_hideSetupReminderThisSession_${uid}_${tokenKey}`;
+                        sessionStorage.setItem(sessKey, '1');
+                        // Cleanup any legacy persistent/day/session flags
+                        localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${uid}`);
+                        localStorage.removeItem('vv_hideSetupReminderUntil');
+                        sessionStorage.removeItem('vv_hideSetupReminderThisSession');
+                        sessionStorage.removeItem(`vv_hideSetupReminderThisSession_${uid}`);
+                    } catch (_) {}
+                    container.style.display = 'none';
+                });
             }
 
             // Lightweight refresher for the "Complete your setup" card
