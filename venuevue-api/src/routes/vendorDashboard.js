@@ -414,8 +414,20 @@ router.post('/:id/business-hours/upsert', async (req, res) => {
     }
 
     const pool = await poolPromise;
+    // If HoursID not provided, try to find existing entry for this vendor/day to avoid duplicate insert
+    let resolvedHoursId = hoursId || null;
+    if (!resolvedHoursId) {
+      const existsReq = new sql.Request(pool);
+      existsReq.input('VendorProfileID', sql.Int, parseInt(id));
+      existsReq.input('DayOfWeek', sql.TinyInt, dayOfWeek);
+      const existsRes = await existsReq.query(`
+        SELECT HoursID FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek
+      `);
+      resolvedHoursId = existsRes.recordset[0]?.HoursID || null;
+    }
+
     const request = new sql.Request(pool);
-    request.input('HoursID', sql.Int, hoursId || null);
+    request.input('HoursID', sql.Int, resolvedHoursId);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     request.input('DayOfWeek', sql.TinyInt, dayOfWeek);
     // Pass as VarChar to avoid driver-side TIME validation issues; SQL Server will implicitly convert to TIME
