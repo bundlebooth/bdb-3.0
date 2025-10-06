@@ -2458,6 +2458,118 @@
             position: relative;
         }
 
+        /* Profile Dropdown Styles */
+        .profile-dropdown {
+            position: absolute;
+            width: 280px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: none;
+            z-index: 10000;
+            overflow: hidden;
+            animation: dropdownFadeIn 0.2s ease-out;
+            display: none;
+        }
+        .profile-dropdown::before,
+        .profile-dropdown::after {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: var(--arrow-left, calc(100% - 28px));
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+        }
+        .profile-dropdown::before {
+            border-bottom: 8px solid #e5e7eb; /* border color */
+            top: -9px;
+        }
+        .profile-dropdown::after {
+            border-bottom: 8px solid #ffffff; /* fill color */
+        }
+        .profile-dropdown .header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1rem;
+            border-bottom: none;
+            background: #ffffff;
+            justify-content: flex-start;
+        }
+
+        /* Ensure no shadows appear anywhere inside the profile dropdown */
+        .profile-dropdown,
+        .profile-dropdown *,
+        .profile-dropdown::before,
+        .profile-dropdown::after {
+            box-shadow: none !important;
+            filter: none !important;
+            text-shadow: none !important;
+        }
+        .profile-dropdown .header .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+        }
+        .profile-dropdown .header .info {
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .profile-dropdown .header .info .name {
+            font-weight: 600;
+            color: #111827;
+        }
+        .profile-dropdown .header .info .email {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+        .profile-dropdown .menu {
+            list-style: none;
+            margin: 0;
+            padding: 0.25rem 0;
+        }
+        .profile-dropdown .menu li.divider {
+            border-top: 1px solid #f3f4f6;
+            margin: 0.25rem 0;
+        }
+        .profile-dropdown .menu a {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            color: #111827;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background-color 0.2s ease, color 0.2s ease, transform 0.05s ease;
+        }
+        .profile-dropdown .menu a i {
+            width: 18px;
+            text-align: center;
+            color: #6b7280;
+        }
+        .profile-dropdown .menu a:hover {
+            background: #f9fafb;
+            color: #111827;
+            transform: translateY(-1px);
+        }
+        .profile-dropdown .menu a.logout {
+            color: #dc2626;
+        }
+        .profile-dropdown .menu a.logout i {
+            color: #dc2626;
+        }
+        .profile-dropdown .menu a.logout:hover {
+            background: #fee2e2;
+        }
+
         /* Mobile responsive */
         @media (max-width: 768px) {
             .notifications-dropdown {
@@ -2745,8 +2857,8 @@
             object-position: center;
             display: block; /* remove inline-gap */
             flex: 0 0 100%; /* each slide equals container width */
-            border-top-left-radius: 12px;
-            border-bottom-left-radius: 12px;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
             border: none;
             outline: none;
         }
@@ -2759,8 +2871,8 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            border-top-left-radius: 12px;
-            border-bottom-left-radius: 12px;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
         }
 
         .carousel-dots {
@@ -6257,6 +6369,22 @@
         </div>
     </div>
 
+    <!-- Profile Dropdown -->
+    <div id="profile-dropdown" class="profile-dropdown" style="display: none;">
+        <div class="header">
+            <div class="avatar" id="profile-dd-avatar">S</div>
+            <div class="info">
+                <div class="name" id="profile-dd-name">User Name</div>
+                <div class="email" id="profile-dd-email">user@example.com</div>
+            </div>
+        </div>
+        <ul class="menu">
+            <li><a href="#" id="profile-view-dashboard"><i class="fas fa-th-large"></i><span>View Dashboard</span></a></li>
+            <li class="divider"></li>
+            <li><a href="#" id="profile-logout" class="logout"><i class="fas fa-sign-out-alt"></i><span>Log Out</span></a></li>
+        </ul>
+    </div>
+
     <!-- Lightbox Modal -->
     <div id="lightbox-modal" class="lightbox-modal">
         <span class="lightbox-close">×</span>
@@ -6526,7 +6654,7 @@
                                     <button id="tabs-scroll-left" class="tab-nav-btn tab-nav-left" style="display: none;" onclick="scrollTabs('left')">
                                         <i class="fas fa-chevron-left"></i>
                                     </button>
-                                    <div id="service-tabs" class="service-tabs" style="display: flex; gap: 0.5rem; border-bottom: 2px solid #e5e7eb; margin-bottom: 1rem; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;">
+                                    <div id="service-tabs" class="service-tabs" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none;">
                                         <!-- Service tabs will be populated here -->
                                     </div>
                                     <button id="tabs-scroll-right" class="tab-nav-btn tab-nav-right" style="display: none;" onclick="scrollTabs('right')">
@@ -7538,6 +7666,7 @@
             
             // Hide any existing dropdown
             hideNotificationsDropdown();
+            try { hideProfileDropdown(); } catch {}
             
             // Move dropdown to body to avoid positioning issues
             document.body.appendChild(dropdown);
@@ -7571,11 +7700,12 @@
 
         function hideNotificationsDropdown() {
             const dropdown = document.getElementById('notifications-dropdown');
-            dropdown.style.display = 'none';
+            if (dropdown) dropdown.style.display = 'none';
         }
 
         function toggleNotificationsDropdown(buttonElement) {
             const dropdown = document.getElementById('notifications-dropdown');
+            if (!dropdown) return;
             if (dropdown.style.display === 'block') {
                 hideNotificationsDropdown();
             } else {
@@ -7583,38 +7713,62 @@
             }
         }
 
-        async function loadNotifications(unreadOnly = false) {
-            if (!currentUser) return;
-            
-            const notificationsList = document.getElementById('notifications-list');
-            notificationsList.innerHTML = '<div class="loading-notifications" style="padding: 2rem; text-align: center; color: #6b7280;"><i class="fas fa-spinner fa-spin"></i> Loading notifications...</div>';
-            
+        // Profile Dropdown Functions
+        function showProfileDropdown(buttonElement) {
+            const dropdown = document.getElementById('profile-dropdown');
+            if (!dropdown) return;
+            // Hide notifications if open
+            try { hideNotificationsDropdown(); } catch {}
+            // Move dropdown to body
+            document.body.appendChild(dropdown);
+            // Populate header with current user info (from in-memory or localStorage)
             try {
-                const response = await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}?unreadOnly=${unreadOnly}`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                const nameEl = document.getElementById('profile-dd-name');
+                const emailEl = document.getElementById('profile-dd-email');
+                const avatarEl = document.getElementById('profile-dd-avatar');
+                const user = (typeof currentUser !== 'undefined' && currentUser) 
+                    || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+                if (user) {
+                    if (nameEl) nameEl.textContent = user.name || (user.email ? user.email.split('@')[0] : 'User');
+                    if (emailEl) emailEl.textContent = user.email || '';
+                    if (avatarEl) {
+                        const initial = (user.avatar?.toString() || user.name?.[0] || user.email?.[0] || 'U').toString();
+                        avatarEl.textContent = initial.toUpperCase();
                     }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    displayNotifications(data.notifications || []);
-                } else {
-                    // Fallback to local notifications
-                    const localNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-                    const userNotifications = localNotifications.filter(n => 
-                        n.userId === currentUser.id && (!unreadOnly || !n.isRead)
-                    );
-                    displayNotifications(userNotifications);
                 }
-            } catch (error) {
-                console.error('Error loading notifications:', error);
-                // Fallback to local notifications
-                const localNotifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-                const userNotifications = localNotifications.filter(n => 
-                    n.userId === currentUser.id && (!unreadOnly || !n.isRead)
-                );
-                displayNotifications(userNotifications);
+            } catch (_) { /* ignore */ }
+            const rect = buttonElement.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+            const dropdownWidth = 280;
+            let left = rect.left + scrollLeft - dropdownWidth + rect.width;
+            let top = rect.bottom + scrollTop + 5;
+            if (left < 10) left = 10;
+            if (left + dropdownWidth > window.innerWidth - 10) left = window.innerWidth - dropdownWidth - 10;
+            dropdown.style.position = 'absolute';
+            dropdown.style.left = left + 'px';
+            dropdown.style.top = top + 'px';
+            // Align arrow to the button horizontally
+            try {
+                const anchorCenter = rect.left + scrollLeft + (rect.width / 2);
+                const arrowLeft = Math.max(16, Math.min(dropdownWidth - 16, anchorCenter - left));
+                dropdown.style.setProperty('--arrow-left', arrowLeft + 'px');
+            } catch (_) { /* ignore */ }
+            dropdown.style.display = 'block';
+        }
+
+        function hideProfileDropdown() {
+            const dropdown = document.getElementById('profile-dropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }
+
+        function toggleProfileDropdown(buttonElement) {
+            const dropdown = document.getElementById('profile-dropdown');
+            if (!dropdown) return;
+            if (dropdown.style.display === 'block') {
+                hideProfileDropdown();
+            } else {
+                showProfileDropdown(buttonElement);
             }
         }
 
@@ -15310,14 +15464,26 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     }
                 });
 
-            // Profile button click handler
-            profileBtn.addEventListener('click', () => {
+            // Profile button click handler (dropdown when logged in, modal when not)
+            profileBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 if (currentUser) {
-                    showLoggedInView();
+                    toggleProfileDropdown(e.currentTarget || profileBtn);
                 } else {
                     showLoginView();
+                    profileModal.style.display = 'flex';
                 }
-                profileModal.style.display = 'flex';
+            });
+
+            // Close profile dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                const dropdown = document.getElementById('profile-dropdown');
+                if (!dropdown) return;
+                const isClickInsideDropdown = dropdown.contains(e.target);
+                const isProfileButton = e.target.closest('#profile-btn');
+                if (!isClickInsideDropdown && !isProfileButton && dropdown.style.display === 'block') {
+                    hideProfileDropdown();
+                }
             });
 
             // Logo click navigates to main page
@@ -15561,6 +15727,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     }
 
                     currentUser = null;
+                    window.currentUser = null;
                     showLoginView();
                     alert('You have been logged out');
 
@@ -15584,6 +15751,51 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const preferredMode = (isVendorMode && currentUser.isVendor) ? 'vendor' : 'client';
                     const section = preferredMode === 'vendor' ? (activeVendorSection || 'vendor-dashboard') : (activeClientSection || 'dashboard');
                     displayUserDashboard(preferredMode, section);
+                });
+
+                // Profile dropdown menu actions
+                document.getElementById('profile-view-dashboard')?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    hideProfileDropdown();
+                    const preferredMode = (isVendorMode && currentUser?.isVendor) ? 'vendor' : 'client';
+                    const section = preferredMode === 'vendor' ? (activeVendorSection || 'vendor-dashboard') : (activeClientSection || 'dashboard');
+                    displayUserDashboard(preferredMode, section);
+                });
+
+                document.getElementById('profile-logout')?.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    hideProfileDropdown();
+                    // Clear ALL authentication-related data from storage
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('userSession');
+                    localStorage.removeItem('isVendorMode');
+                    localStorage.removeItem('activeDashboardSection');
+                    localStorage.removeItem('activeClientSection');
+                    localStorage.removeItem('activeVendorSection');
+                    sessionStorage.clear();
+
+                    // Disconnect from chat
+                    if (state.socket) {
+                        state.socket.disconnect();
+                    }
+
+                    currentUser = null;
+                    window.currentUser = null;
+                    showLoginView();
+                    alert('You have been logged out');
+
+                    // Reset profile button
+                    profileBtn.textContent = '👤';
+                    profileBtn.style.backgroundColor = '';
+                    profileBtn.style.color = '';
+                    profileBtn.style.borderRadius = '';
+                    profileBtn.style.width = '';
+                    profileBtn.style.height = '';
+                    profileBtn.style.display = '';
+                    profileBtn.style.alignItems = '';
+                    profileBtn.style.justifyContent = '';
+
+                    showMainApp();
                 });
 
                 // Dashboard menu items (unified, event delegation)
@@ -22811,6 +23023,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     userId: user.id, // Add userId for compatibility
                     isVendor: user.isVendor || false
                 };
+                // Expose globally for parts of the app that reference window.currentUser
+                window.currentUser = currentUser;
                 
                 // Also store in localStorage for consistency with getCurrentUser function
                 localStorage.setItem('userSession', JSON.stringify(currentUser));
