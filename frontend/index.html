@@ -20605,45 +20605,80 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     // Parse services JSON for display
                     let servicesList = [];
                     let primaryService = null;
+                    let servicesRaw = '';
                     try {
-                        const parsed = typeof request.Services === 'string' ? JSON.parse(request.Services) : request.Services;
-                        if (Array.isArray(parsed)) {
-                            servicesList = parsed;
-                            primaryService = parsed[0] || null;
+                        if (typeof request.Services === 'string') {
+                            servicesRaw = request.Services;
+                            const parsed = JSON.parse(request.Services);
+                            if (Array.isArray(parsed)) {
+                                servicesList = parsed;
+                                primaryService = parsed[0] || null;
+                            }
+                        } else if (Array.isArray(request.Services)) {
+                            servicesList = request.Services;
+                            primaryService = servicesList[0] || null;
                         }
-                    } catch(_) {}
+                    } catch(_) {
+                        // Fallback: use raw string if JSON parse fails
+                        servicesList = [];
+                    }
 
                     const eventDate = request.EventDate ? new Date(request.EventDate) : null;
                     const month = eventDate ? eventDate.toLocaleDateString('en-US', { month: 'short' }) : '—';
                     const day = eventDate ? eventDate.getDate() : '—';
                     const weekday = eventDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '—';
                     const eventDateStr = eventDate ? eventDate.toLocaleDateString() : '—';
-                    const eventTimeStr = request.EventTime ? request.EventTime.toString().substring(0,5) : '—';
-                    const serviceNames = servicesList.length ? servicesList.map(s => s.Name || s.name).filter(Boolean).join(', ') : '—';
+                    const serviceNames = servicesList.length 
+                        ? servicesList.map(s => s.Name || s.name || s.ServiceName || s.title).filter(Boolean).join(', ')
+                        : (servicesRaw || '—');
+                    // Build richer service details if available
+                    let servicesDetailsHtml = '';
+                    if (servicesList.length) {
+                        const items = servicesList.map(s => {
+                            const n = s.Name || s.name || s.ServiceName || s.title || 'Service';
+                            const priceNum = s.VendorPrice || s.BasePrice || s.FixedPrice || s.price;
+                            const price = priceNum ? `$${Number(priceNum).toLocaleString()}` : null;
+                            const unit = s.PriceUnit || s.priceUnit || null;
+                            const durationMin = s.VendorDurationMinutes || s.Duration || s.duration || s.durationMinutes;
+                            const duration = durationMin ? `${durationMin} min` : null;
+                            const start = s.StartTime || s.startTime || null;
+                            const end = s.EndTime || s.endTime || null;
+                            const timeRange = (start || end) ? `${start || ''}${start && end ? ' - ' : ''}${end || ''}` : null;
+                            const parts = [price, unit, duration, timeRange].filter(Boolean).join(' · ');
+                            return parts ? `${n} — ${parts}` : n;
+                        });
+                        servicesDetailsHtml = `<ul class="service-detail-list" style="margin:0; padding-left: 1rem;">
+                            ${items.map(i => `<li>${i}</li>`).join('')}
+                        </ul>`;
+                    }
                     const serviceCost = (request.Budget && Number(request.Budget) > 0) ? `$${Number(request.Budget).toLocaleString()}` : (primaryService && (primaryService.BasePrice || primaryService.FixedPrice)) ? `$${Number(primaryService.BasePrice || primaryService.FixedPrice).toLocaleString()}` : '—';
-                    const clientPhone = request.ClientPhone || '—';
+                    const clientEmail = request.ClientEmail || '';
+                    const budgetStr = (request.Budget && Number(request.Budget) > 0) ? `$${Number(request.Budget).toLocaleString()}` : '';
+                    const expiresStr = request.ExpiresAt ? new Date(request.ExpiresAt).toLocaleString() : '';
+                    const eventTimeStr = request.EventTime ? request.EventTime.toString().substring(0,5) : '';
+                    const createdAtStr = request.CreatedAt ? new Date(request.CreatedAt).toLocaleString() : '';
                     
-                    // Build clean details grid with only available fields
+                    // Build details grid with available backend fields
                     const detailsRows = [];
                     const pushRow = (label, value, full = false) => {
                         if (value && value !== '—') {
                             detailsRows.push(`<div class="request-detail-row" ${full ? 'style="grid-column: span 2;"' : ''}><span class="request-detail-label">${label}</span><span class="request-detail-value">${value}</span></div>`);
                         }
                     };
-                    pushRow('Event Name', request.EventName);
-                    pushRow('Event Type', request.EventType || (primaryService && primaryService.CategoryName));
+                    pushRow('Request ID', request.RequestID);
+                    pushRow('Client', request.ClientName);
+                    pushRow('Email', clientEmail);
                     pushRow('Event Date', eventDateStr);
-                    pushRow('Event Start Time', eventTimeStr);
-                    pushRow('Event End Time', request.EventEndTime);
-                    pushRow('Number of Attendees', (request.AttendeeCount !== null && request.AttendeeCount !== undefined) ? request.AttendeeCount : '');
+                    pushRow('Event Time', eventTimeStr);
                     pushRow('Event Location', request.EventLocation, true);
-                    pushRow('Service Requested', serviceNames);
-                    pushRow('Service Start Time', (primaryService && (primaryService.StartTime || primaryService.startTime)) || '');
-                    pushRow('Service End Time', (primaryService && (primaryService.EndTime || primaryService.endTime)) || '');
-                    // Do not duplicate cost here; it's shown in summary cleanly
-                    if (request.SpecialRequests) pushRow('Special Request', request.SpecialRequests, true);
-                    const contactParts = [request.ClientEmail, clientPhone && clientPhone !== '—' ? clientPhone : ''].filter(Boolean);
-                    if (contactParts.length) pushRow('Contact', contactParts.join(' | '), true);
+                    pushRow('Attendees', (request.AttendeeCount !== null && request.AttendeeCount !== undefined) ? request.AttendeeCount : '');
+                    pushRow('Budget', budgetStr);
+                    pushRow('Services', serviceNames, true);
+                    if (servicesDetailsHtml) pushRow('Service Details', servicesDetailsHtml, true);
+                    if (request.SpecialRequests) pushRow('Special Requests', request.SpecialRequests, true);
+                    pushRow('Respond By', expiresStr);
+                    pushRow('Requested On', createdAtStr);
+                    pushRow('Status', request.Status);
                     const detailsHtml = detailsRows.join('');
 
                     return `
