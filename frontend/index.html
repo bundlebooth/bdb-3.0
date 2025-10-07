@@ -3346,10 +3346,12 @@
         /* KPI cards */
         .kpi-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
             margin-bottom: 1.5rem;
         }
+        /* Force 2x2 KPI layout when used in dashboard top grid */
+        .kpi-grid.two-col { grid-template-columns: repeat(2, 1fr); margin-bottom: 0; }
         .kpi-card {
             display: flex;
             align-items: center;
@@ -3377,7 +3379,58 @@
         .kpi-value { font-size: 1.6rem; font-weight: 700; line-height: 1; }
         .kpi-label { color: var(--text-light); font-size: 0.9rem; }
 
+        /* Calendar tile inside KPI row */
+        .kpi-card.calendar-tile {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            padding: 0;
+            overflow: hidden;
+        }
+        .kpi-card.calendar-tile.full-height { height: 100%; }
+        .calendar-tile .cal-header {
+            background: var(--primary);
+            color: #fff;
+            text-align: center;
+            font-weight: 700;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+        .calendar-tile .cal-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 12px 16px;
+            gap: 6px;
+        }
+        .calendar-tile .cal-day {
+            font-size: 12px;
+            color: var(--text-light);
+            letter-spacing: .04em;
+        }
+        .calendar-tile .cal-date {
+            font-size: 40px;
+            font-weight: 800;
+            line-height: 1;
+            color: var(--text);
+        }
+
         /* Dashboard overview layout */
+        /* Top stats grid: left 2x2 KPIs, right calendar */
+        .vendor-stats.stats-top-grid {
+            display: grid;
+            grid-template-columns: 2fr 1.2fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: stretch;
+        }
+        .vendor-stats.stats-top-grid > .calendar-tile { align-self: stretch; }
+        @media (max-width: 900px) {
+            .vendor-stats.stats-top-grid { grid-template-columns: 1fr; }
+        }
         .overview-grid {
             display: grid;
             grid-template-columns: 2fr 1.2fr;
@@ -21759,39 +21812,55 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function renderVendorStats(stats) {
                 const container = document.getElementById('vendor-stats');
                 if (!container) return;
-                try { container.classList.add('kpi-grid'); } catch (_) {}
+                try {
+                    container.classList.remove('kpi-grid');
+                    container.classList.add('stats-top-grid');
+                } catch (_) {}
+                const now = new Date();
+                const month = now.toLocaleString([], { month: 'long' });
+                const day = now.getDate();
+                const year = now.getFullYear();
+
                 container.innerHTML = `
-                    <div class="kpi-card">
-                        <div class="kpi-icon bookings"><i class="fas fa-calendar-check"></i></div>
-                        <div class="kpi-content">
-                            <div class="kpi-value">${stats.TotalBookings || 0}</div>
-                            <div class="kpi-label">Total Bookings</div>
+                    <div class="kpi-grid two-col">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bookings"><i class="fas fa-calendar-check"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-value">${stats.TotalBookings || 0}</div>
+                                <div class="kpi-label">Total Bookings</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon reviews"><i class="fas fa-star"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-value">${stats.TotalReviews || 0}</div>
+                                <div class="kpi-label">Total Reviews</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon rating"><i class="fas fa-star-half-alt"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-value">${(stats.AvgRating || 0).toFixed(1)}</div>
+                                <div class="kpi-label">Average Rating</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon favorites"><i class="fas fa-heart"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-value">${stats.TotalFavorites || 0}</div>
+                                <div class="kpi-label">Total Favorites</div>
+                            </div>
                         </div>
                     </div>
-                    <div class="kpi-card">
-                        <div class="kpi-icon reviews"><i class="fas fa-star"></i></div>
-                        <div class="kpi-content">
-                            <div class="kpi-value">${stats.TotalReviews || 0}</div>
-                            <div class="kpi-label">Total Reviews</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-icon rating"><i class="fas fa-star-half-alt"></i></div>
-                        <div class="kpi-content">
-                            <div class="kpi-value">${(stats.AvgRating || 0).toFixed(1)}</div>
-                            <div class="kpi-label">Average Rating</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card">
-                        <div class="kpi-icon favorites"><i class="fas fa-heart"></i></div>
-                        <div class="kpi-content">
-                            <div class="kpi-value">${stats.TotalFavorites || 0}</div>
-                            <div class="kpi-label">Total Favorites</div>
+                    <div class="kpi-card calendar-tile full-height" id="vendor-mini-calendar">
+                        <div class="cal-header">${month} ${year}</div>
+                        <div class="cal-body">
+                            <div class="cal-day">${now.toLocaleString([], { weekday: 'long' })}</div>
+                            <div class="cal-date">${day}</div>
                         </div>
                     </div>
                 `;
             }
-
             function renderVendorRecentBookings(bookings) {
                 const container = document.getElementById('vendor-recent-bookings');
                 if (!container) return;
