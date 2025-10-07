@@ -609,6 +609,7 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
         u.Email as ClientEmail,
         br.Services,
         br.EventDate,
+        br.EventTime,
         br.EventLocation,
         br.AttendeeCount,
         br.Budget,
