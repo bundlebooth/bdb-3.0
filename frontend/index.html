@@ -3375,6 +3375,8 @@
         .kpi-icon.reviews { background:#fff7ed; color:#b45309; }
         .kpi-icon.rating { background:#ecfeff; color:#0891b2; }
         .kpi-icon.favorites { background:#f0fdf4; color:#16a34a; }
+        .kpi-icon.requests { background:#fef3c7; color:#d97706; }
+        .kpi-icon.messages { background:#e0f2fe; color:#0284c7; }
         .kpi-content { display:flex; flex-direction: column; }
         .kpi-value { font-size: 1.6rem; font-weight: 700; line-height: 1; }
         .kpi-label { color: var(--text-light); font-size: 0.9rem; }
@@ -5148,13 +5150,19 @@
                             </div>
                         </div>
                         <div id="dashboard-section">
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Upcoming Bookings</h2>
-                                <div id="upcoming-bookings"><p>Loading upcoming bookings...</p></div>
-                            </div>
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Recent Favorites</h2>
-                                <div class="vendor-grid" id="dashboard-favorites"><p>Loading recent favorites...</p></div>
+                            <div class="vendor-stats" id="client-stats"><p>Loading your stats...</p></div>
+                            <div class="overview-grid">
+                                <div class="dashboard-card">
+                                    <h2 class="dashboard-card-title">Recent Bookings</h2>
+                                    <div id="upcoming-bookings"><p>Loading upcoming bookings...</p></div>
+                                </div>
+                                <div class="dashboard-card">
+                                    <div class="dashboard-card-title-row">
+                                        <h2 class="dashboard-card-title">Recent Messages</h2>
+                                        <button class="btn btn-outline" id="open-all-messages-btn-client" style="padding:.5rem .9rem;">Open Messages</button>
+                                    </div>
+                                    <div id="client-recent-messages" class="message-preview-list"><p>Loading recent messages...</p></div>
+                                </div>
                             </div>
                         </div>
                         <div id="bookings-section" style="display: none;">
@@ -20848,8 +20856,57 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     document.getElementById('dashboard-notifications-badge').textContent = dashboardData.unreadNotifications || 0;
 
                     if (section === 'dashboard') {
+                        // Ensure top KPI container exists and render client KPIs similar to vendor look
+                        ensureClientOverviewContainers();
+
+                        // Derive KPI counts
+                        const upcomingCount = Array.isArray(dashboardData.upcomingBookings) ? dashboardData.upcomingBookings.length : 0;
+                        const unreadMsgs = dashboardData.unreadMessages || 0;
+
+                        // Fetch favorites count
+                        let favoritesCount = 0;
+                        try {
+                            const favResp = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
+                                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                            });
+                            if (favResp.ok) {
+                                const favs = await favResp.json();
+                                favoritesCount = Array.isArray(favs) ? favs.length : (favs?.length || 0);
+                            }
+                        } catch (_) {}
+
+                        // Fetch pending requests count
+                        let pendingRequests = 0;
+                        try {
+                            const reqResp = await fetch(`${API_BASE_URL}/bookings/requests/${currentUser.id}`, {
+                                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                            });
+                            if (reqResp.ok) {
+                                const reqData = await reqResp.json();
+                                const reqs = reqData.requests || [];
+                                pendingRequests = reqs.filter(r => (r.Status || r.status) === 'pending').length;
+                            }
+                        } catch (_) {}
+
+                        renderClientStats({
+                            upcoming: upcomingCount,
+                            favorites: favoritesCount,
+                            pendingRequests: pendingRequests,
+                            unreadMessages: unreadMsgs
+                        });
+
+                        // Render existing dashboard cards
                         renderUpcomingBookings(dashboardData.upcomingBookings);
-                        renderRecentFavorites(dashboardData.recentFavorites);
+                        // Load recent messages preview for client
+                        if (document.getElementById('client-recent-messages')) {
+                            await loadClientRecentMessagesPreview();
+                            const openBtnClient = document.getElementById('open-all-messages-btn-client');
+                            if (openBtnClient) {
+                                openBtnClient.addEventListener('click', () => {
+                                    try { displayUserDashboard('client', 'messages'); } catch(_) {}
+                                });
+                            }
+                        }
                     } else if (section === 'bookings') {
                         await loadAllUserBookings();
                         setupBookingTabs();
@@ -20870,6 +20927,134 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     console.error('Error loading client dashboard:', error);
                     alert('Failed to load dashboard data: ' + error.message);
                 }
+            }
+
+            // Ensure client overview containers (KPI grid at the top of dashboard)
+            function ensureClientOverviewContainers() {
+                const section = document.getElementById('dashboard-section');
+                if (!section) return;
+                if (!document.getElementById('client-stats')) {
+                    const statsDiv = document.createElement('div');
+                    statsDiv.className = 'vendor-stats';
+                    statsDiv.id = 'client-stats';
+                    statsDiv.innerHTML = '<p>Loading your stats...</p>';
+                    section.insertBefore(statsDiv, section.firstChild);
+                }
+            }
+
+            // Render client KPIs in the same look as vendor
+            function renderClientStats(kpis) {
+                const container = document.getElementById('client-stats');
+                if (!container) return;
+                try {
+                    container.classList.remove('kpi-grid');
+                    container.classList.add('stats-top-grid');
+                } catch (_) {}
+
+                const now = new Date();
+                const month = now.toLocaleString([], { month: 'long' });
+                const day = now.getDate();
+                const year = now.getFullYear();
+
+                container.innerHTML = `
+                    <div class="kpi-grid two-col">
+                        <div class="kpi-card">
+                            <div class="kpi-icon bookings"><i class="fas fa-calendar-check"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-value">${kpis.upcoming || 0}</div>
+                                <div class="kpi-label">Upcoming Bookings</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon requests"><i class="fas fa-paper-plane"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-value">${kpis.pendingRequests || 0}</div>
+                                <div class="kpi-label">Pending Requests</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon favorites"><i class="fas fa-heart"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-value">${kpis.favorites || 0}</div>
+                                <div class="kpi-label">Favorites Saved</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-icon messages"><i class="fas fa-envelope"></i></div>
+                            <div class="kpi-content">
+                                <div class="kpi-value">${kpis.unreadMessages || 0}</div>
+                                <div class="kpi-label">Unread Messages</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="kpi-card calendar-tile full-height" id="client-mini-calendar">
+                        <div class="cal-header">${month} ${year}</div>
+                        <div class="cal-body">
+                            <div class="cal-day">${now.toLocaleString([], { weekday: 'long' })}</div>
+                            <div class="cal-date">${day}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Lightweight recent messages preview for client dashboard overview
+            async function loadClientRecentMessagesPreview() {
+                const container = document.getElementById('client-recent-messages');
+                if (!container || !currentUser) return;
+                container.innerHTML = '<p>Loading recent messages...</p>';
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    let conversations = [];
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        conversations = (data.conversations || []).map(conv => ({
+                            id: conv.id || conv.ConversationID,
+                            name: conv.OtherPartyName || conv.userName || 'Unknown',
+                            last: conv.lastMessageContent || conv.LastMessageContent || '',
+                            ts: new Date(conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt || Date.now())
+                        })).sort((a,b) => b.ts - a.ts);
+                    } else {
+                        const localConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+                        conversations = localConversations
+                            .filter(c => c.userId === currentUser.id)
+                            .map(c => ({ id: c.id, name: c.OtherPartyName || c.userName || 'Unknown', last: c.lastMessageContent || '', ts: new Date(c.lastMessageCreatedAt || c.createdAt || Date.now()) }))
+                            .sort((a,b) => b.ts - a.ts);
+                    }
+                    renderClientRecentMessages(conversations.slice(0,5));
+                } catch (e) {
+                    console.warn('loadClientRecentMessagesPreview failed', e);
+                    container.innerHTML = '<p style="color:var(--accent);">Failed to load messages.</p>';
+                }
+            }
+
+            function renderClientRecentMessages(items) {
+                const container = document.getElementById('client-recent-messages');
+                if (!container) return;
+                if (!items || items.length === 0) {
+                    container.innerHTML = '<p>No recent messages.</p>';
+                    return;
+                }
+                container.innerHTML = '';
+                items.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'message-preview-item';
+                    const initials = (item.name || 'U').trim().charAt(0).toUpperCase();
+                    const timeStr = item.ts ? item.ts.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                    el.innerHTML = `
+                        <div class="preview-avatar">${initials}</div>
+                        <div class="preview-content">
+                            <div class="preview-name">${item.name}</div>
+                            <div class="preview-snippet">${(item.last || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+                        </div>
+                        <div class="preview-time">${timeStr}</div>
+                    `;
+                    el.addEventListener('click', () => {
+                        try { displayUserDashboard('client', 'messages'); } catch(_) {}
+                    });
+                    container.appendChild(el);
+                });
             }
 
             function renderUpcomingBookings(bookings) {
