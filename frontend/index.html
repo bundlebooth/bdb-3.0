@@ -20629,13 +20629,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const weekday = eventDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '—';
                     const eventDateStr = eventDate ? eventDate.toLocaleDateString() : '—';
                     const serviceNames = servicesList.length 
-                        ? servicesList.map(s => s.Name || s.name || s.ServiceName || s.title).filter(Boolean).join(', ')
+                        ? servicesList.map(s => (typeof s === 'string' ? s : (s.Name || s.name || s.ServiceName || s.service || s.Service || s.title || s.Label || s.label || s.DisplayName || s.displayName))).filter(Boolean).join(', ')
                         : (servicesRaw || '—');
                     // Build richer service details if available
                     let servicesDetailsHtml = '';
                     if (servicesList.length) {
                         const items = servicesList.map(s => {
-                            const n = s.Name || s.name || s.ServiceName || s.title || 'Service';
+                            const n = (typeof s === 'string') 
+                                ? s 
+                                : (s.Name || s.name || s.ServiceName || s.title || s.Label || s.label || s.DisplayName || s.displayName || s.service || s.Service || 'Service');
                             const priceNum = s.VendorPrice || s.BasePrice || s.FixedPrice || s.price;
                             const price = priceNum ? `$${Number(priceNum).toLocaleString()}` : null;
                             const unit = s.PriceUnit || s.priceUnit || null;
@@ -20655,9 +20657,69 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const clientEmail = request.ClientEmail || '';
                     const budgetStr = (request.Budget && Number(request.Budget) > 0) ? `$${Number(request.Budget).toLocaleString()}` : '';
                     const expiresStr = request.ExpiresAt ? new Date(request.ExpiresAt).toLocaleString() : '';
-                    const eventTimeStr = request.EventTime ? request.EventTime.toString().substring(0,5) : '';
+                    // Event start/end with duration
+                    const parseTime = (val) => {
+                        try {
+                            if (!val) return { mins:null, label:'' };
+                            if (val instanceof Date) {
+                                const h = val.getHours();
+                                const m = val.getMinutes();
+                                return { mins: h*60+m, label: `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}` };
+                            }
+                            const s = String(val).trim();
+                            const iso = s.includes('T') ? new Date(s) : null;
+                            if (iso && !isNaN(iso.getTime())) {
+                                const h = iso.getHours();
+                                const m = iso.getMinutes();
+                                return { mins: h*60+m, label: `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}` };
+                            }
+                            const re = /^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM|am|pm)?/;
+                            const m = s.match(re);
+                            if (m) {
+                                let h = parseInt(m[1],10);
+                                const mm = parseInt(m[2],10);
+                                const ap = m[3] ? m[3].toLowerCase() : '';
+                                if (ap) {
+                                    if (ap === 'pm' && h < 12) h += 12;
+                                    if (ap === 'am' && h === 12) h = 0;
+                                }
+                                return { mins: h*60+mm, label: `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}` };
+                            }
+                            // Fallback: if it's just hours or other format, return as-is label
+                            return { mins:null, label: s };
+                        } catch { return { mins:null, label:'' }; }
+                    };
+                    const startCandidate = request.EventStartTime || request.EventTime || (primaryService && (primaryService.StartTime || primaryService.startTime)) || '';
+                    const endCandidate = request.EventEndTime || (primaryService && (primaryService.EndTime || primaryService.endTime)) || '';
+                    const parsedStart = parseTime(startCandidate);
+                    let parsedEnd = parseTime(endCandidate);
+                    const primaryDurationMin = (primaryService && (Number(primaryService.VendorDurationMinutes || primaryService.Duration || primaryService.duration || primaryService.durationMinutes))) || null;
+                    if (!parsedEnd.label && parsedStart.mins != null && primaryDurationMin) {
+                        const total = (parsedStart.mins + primaryDurationMin) % (24*60);
+                        parsedEnd = { mins: total, label: `${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}` };
+                    }
+                    let durationMin = null;
+                    if (parsedStart.mins != null && parsedEnd.mins != null) {
+                        durationMin = (parsedEnd.mins - parsedStart.mins + 24*60) % (24*60);
+                    } else if (primaryDurationMin) {
+                        durationMin = primaryDurationMin;
+                    }
+                    const durationLabel = durationMin != null ? (durationMin >= 60 ? `${Math.floor(durationMin/60)}h ${durationMin%60 ? (durationMin%60)+'m' : ''}`.trim() : `${durationMin}m`) : '';
+                    const eventTimeStr = (parsedStart.label && parsedEnd.label)
+                        ? `${parsedStart.label} - ${parsedEnd.label}${durationLabel ? ` (${durationLabel})` : ''}`
+                        : (parsedStart.label || parsedEnd.label || '');
                     const createdAtStr = request.CreatedAt ? new Date(request.CreatedAt).toLocaleString() : '';
                     
+                    // Status badge config
+                    const statusRaw = (request.Status || 'pending').toString().toLowerCase();
+                    const statusMap = {
+                        pending: { icon: 'fa-clock', color: '#f59e0b', textColor: '#92400e', label: 'Pending' },
+                        accepted: { icon: 'fa-check-circle', color: '#10b981', textColor: '#065f46', label: 'Accepted' },
+                        declined: { icon: 'fa-times-circle', color: '#ef4444', textColor: '#991b1b', label: 'Declined' }
+                    };
+                    const statusCfg = statusMap[statusRaw] || statusMap.pending;
+                    const isPending = statusRaw === 'pending';
+
                     // Build details grid with available backend fields
                     const detailsRows = [];
                     const pushRow = (label, value, full = false) => {
@@ -20665,20 +20727,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             detailsRows.push(`<div class="request-detail-row" ${full ? 'style="grid-column: span 2;"' : ''}><span class="request-detail-label">${label}</span><span class="request-detail-value">${value}</span></div>`);
                         }
                     };
-                    pushRow('Request ID', request.RequestID);
+                    // Removed Request ID per requirement
                     pushRow('Client', request.ClientName);
-                    pushRow('Email', clientEmail);
                     pushRow('Event Date', eventDateStr);
                     pushRow('Event Time', eventTimeStr);
                     pushRow('Event Location', request.EventLocation, true);
                     pushRow('Attendees', (request.AttendeeCount !== null && request.AttendeeCount !== undefined) ? request.AttendeeCount : '');
-                    pushRow('Budget', budgetStr);
+                    pushRow('Service Cost', budgetStr);
                     pushRow('Services', serviceNames, true);
                     if (servicesDetailsHtml) pushRow('Service Details', servicesDetailsHtml, true);
                     if (request.SpecialRequests) pushRow('Special Requests', request.SpecialRequests, true);
                     pushRow('Respond By', expiresStr);
                     pushRow('Requested On', createdAtStr);
-                    pushRow('Status', request.Status);
                     const detailsHtml = detailsRows.join('');
 
                     return `
@@ -20705,11 +20765,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <span class="booking-price">${serviceCost}</span>
                             </div>` : ''}
                         </div>
-                        <div class="booking-actions">
-                            <button class="btn-accept" onclick="approveRequest(${request.RequestID})">Accept</button>
-                            <button class="btn-decline" onclick="declineRequest(${request.RequestID})">Decline</button>
-                            ${request.ConversationID ? `<button class="btn btn-outline" onclick="openChatForRequest(${request.ConversationID})" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Chat</button>` : ''}
-                            ${detailsHtml ? `<button class="link-btn" onclick="toggleVendorDetails(this)">Show details</button>` : ''}
+                        <div class="booking-actions" style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+                            <div class="request-status-badge" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; background:${(statusCfg && (statusCfg.bg || '#f3f4f6'))}; color:#6b7280; border:1px solid ${statusCfg.color};">
+                                <i class="fas ${statusCfg.icon}" style="color:${statusCfg.color};"></i>
+                                <span>${statusCfg.label}</span>
+                            </div>
+                            <div class="actions-row" style="display:flex; align-items:center; gap:8px;">
+                                ${isPending ? `<button class="btn-accept" onclick="approveRequest(${request.RequestID})">Accept</button>` : ''}
+                                ${isPending ? `<button class="btn-decline" onclick="declineRequest(${request.RequestID})">Decline</button>` : ''}
+                                ${request.ConversationID ? `<button class="btn btn-outline" onclick="openChatForRequest(${request.ConversationID})" style="padding: 8px 16px; border-radius: 8px;">Chat</button>` : ''}
+                                ${detailsHtml ? `<button class="link-btn" onclick="toggleVendorDetails(this)">Show details</button>` : ''}
+                            </div>
                         </div>
                         ${detailsHtml ? `<div class="request-details collapsed">${detailsHtml}</div>` : ''}
                     </div>`;
