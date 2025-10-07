@@ -3343,6 +3343,62 @@
             box-shadow: var(--shadow);
         }
 
+        /* KPI cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .kpi-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(180deg, #ffffff, #f8fafc);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .kpi-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .kpi-icon.bookings { background:#eef2ff; color:#4f46e5; }
+        .kpi-icon.reviews { background:#fff7ed; color:#b45309; }
+        .kpi-icon.rating { background:#ecfeff; color:#0891b2; }
+        .kpi-icon.favorites { background:#f0fdf4; color:#16a34a; }
+        .kpi-content { display:flex; flex-direction: column; }
+        .kpi-value { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+        .kpi-label { color: var(--text-light); font-size: 0.9rem; }
+
+        /* Dashboard overview layout */
+        .overview-grid {
+            display: grid;
+            grid-template-columns: 2fr 1.2fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 900px) {
+            .overview-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Message preview styles */
+        .message-preview-list { display: flex; flex-direction: column; gap: 10px; }
+        .message-preview-item { display:flex; align-items: center; gap: 12px; padding: 10px 12px; border:1px solid var(--border); border-radius: 10px; background:#fff; transition: background .2s; cursor: pointer; }
+        .message-preview-item:hover { background:#f8fafc; }
+        .preview-avatar { width:36px; height:36px; border-radius: 8px; background:#eef2ff; color:#4f46e5; display:flex; align-items:center; justify-content:center; font-weight:700; }
+        .preview-content { flex:1; min-width: 0; }
+        .preview-name { font-weight:600; color:#111827; }
+        .preview-snippet { color:#6b7280; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .preview-time { color:#9ca3af; font-size:.8rem; margin-left:8px; }
+
+        .dashboard-card-title-row { display:flex; align-items:center; justify-content: space-between; margin-bottom: 1rem; }
+
         /* Request Management Styles */
         .requests-filter-tabs {
             display: flex;
@@ -5180,18 +5236,17 @@
                         </div>
                         <div id="vendor-dashboard-section">
                             <div class="vendor-stats" id="vendor-stats"><p>Loading vendor stats...</p></div>
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Recent Bookings</h2>
-                                <div id="vendor-recent-bookings"><p>Loading recent bookings...</p></div>
-                            </div>
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Recent Messages</h2>
-                                <div class="chat-container" style="height: 400px;">
-                                    <div class="chat-messages" id="vendor-chat-messages"><p>Loading recent messages...</p></div>
-                                    <div class="chat-input">
-                                        <input type="text" placeholder="Type your message..." id="vendor-chat-input">
-                                        <button class="btn btn-primary" id="vendor-send-btn">Send</button>
+                            <div class="overview-grid">
+                                <div class="dashboard-card">
+                                    <h2 class="dashboard-card-title">Recent Bookings</h2>
+                                    <div id="vendor-recent-bookings"><p>Loading recent bookings...</p></div>
+                                </div>
+                                <div class="dashboard-card">
+                                    <div class="dashboard-card-title-row">
+                                        <h2 class="dashboard-card-title">Recent Messages</h2>
+                                        <button class="btn btn-outline" id="open-all-messages-btn" style="padding:.5rem .9rem;">Open Messages</button>
                                     </div>
+                                    <div id="vendor-recent-messages" class="message-preview-list"><p>Loading recent messages...</p></div>
                                 </div>
                             </div>
                         </div>
@@ -21338,9 +21393,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (document.getElementById('vendor-recent-bookings')) {
                             renderVendorRecentBookings(dashboardData.recentBookings);
                         }
-                        // Load recent messages for the vendor dashboard overview
-                        if (getEl('vendor-chat-input') && getEl('vendor-send-btn')) {
-                            loadConversations('vendor-dashboard-section', 'vendor-chat-input', 'vendor-send-btn');
+                        // Load recent messages PREVIEW for the vendor dashboard overview
+                        if (document.getElementById('vendor-recent-messages')) {
+                            await loadVendorRecentMessagesPreview();
+                            const openBtn = document.getElementById('open-all-messages-btn');
+                            if (openBtn) {
+                                openBtn.addEventListener('click', () => {
+                                    try { displayUserDashboard('vendor','vendor-messages'); } catch(_) {}
+                                });
+                            }
                         }
                     } else if (section === 'vendor-bookings') {
                         await loadAllVendorBookings(vendorProfileId);
@@ -21698,22 +21759,35 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function renderVendorStats(stats) {
                 const container = document.getElementById('vendor-stats');
                 if (!container) return;
+                try { container.classList.add('kpi-grid'); } catch (_) {}
                 container.innerHTML = `
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.TotalBookings || 0}</div>
-                        <div class="stat-label">Total Bookings</div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon bookings"><i class="fas fa-calendar-check"></i></div>
+                        <div class="kpi-content">
+                            <div class="kpi-value">${stats.TotalBookings || 0}</div>
+                            <div class="kpi-label">Total Bookings</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.TotalReviews || 0}</div>
-                        <div class="stat-label">Total Reviews</div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon reviews"><i class="fas fa-star"></i></div>
+                        <div class="kpi-content">
+                            <div class="kpi-value">${stats.TotalReviews || 0}</div>
+                            <div class="kpi-label">Total Reviews</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${(stats.AvgRating || 0).toFixed(1)}</div>
-                        <div class="stat-label">Average Rating</div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon rating"><i class="fas fa-star-half-alt"></i></div>
+                        <div class="kpi-content">
+                            <div class="kpi-value">${(stats.AvgRating || 0).toFixed(1)}</div>
+                            <div class="kpi-label">Average Rating</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value">${stats.TotalFavorites || 0}</div>
-                        <div class="stat-label">Total Favorites</div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon favorites"><i class="fas fa-heart"></i></div>
+                        <div class="kpi-content">
+                            <div class="kpi-value">${stats.TotalFavorites || 0}</div>
+                            <div class="kpi-label">Total Favorites</div>
+                        </div>
                     </div>
                 `;
             }
@@ -21738,6 +21812,66 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 } else {
                     container.innerHTML = '<p>No recent bookings found.</p>';
                 }
+            }
+
+            // Lightweight recent messages preview for dashboard overview
+            async function loadVendorRecentMessagesPreview() {
+                const container = document.getElementById('vendor-recent-messages');
+                if (!container || !currentUser) return;
+                container.innerHTML = '<p>Loading recent messages...</p>';
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    let conversations = [];
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        conversations = (data.conversations || []).map(conv => ({
+                            id: conv.id || conv.ConversationID,
+                            name: conv.OtherPartyName || conv.userName || 'Unknown',
+                            last: conv.lastMessageContent || conv.LastMessageContent || '',
+                            ts: new Date(conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt || Date.now())
+                        })).sort((a,b) => b.ts - a.ts);
+                    } else {
+                        const localConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+                        conversations = localConversations
+                            .filter(c => c.userId === currentUser.id || c.vendorProfileId === currentUser.vendorProfileId)
+                            .map(c => ({ id: c.id, name: c.OtherPartyName || c.userName || 'Unknown', last: c.lastMessageContent || '', ts: new Date(c.lastMessageCreatedAt || c.createdAt || Date.now()) }))
+                            .sort((a,b) => b.ts - a.ts);
+                    }
+                    renderVendorRecentMessages(conversations.slice(0,5));
+                } catch (e) {
+                    console.warn('loadVendorRecentMessagesPreview failed', e);
+                    container.innerHTML = '<p style="color:var(--accent);">Failed to load messages.</p>';
+                }
+            }
+
+            function renderVendorRecentMessages(items) {
+                const container = document.getElementById('vendor-recent-messages');
+                if (!container) return;
+                if (!items || items.length === 0) {
+                    container.innerHTML = '<p>No recent messages.</p>';
+                    return;
+                }
+                container.innerHTML = '';
+                items.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'message-preview-item';
+                    const initials = (item.name || 'U').trim().charAt(0).toUpperCase();
+                    const timeStr = item.ts ? item.ts.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+                    el.innerHTML = `
+                        <div class="preview-avatar">${initials}</div>
+                        <div class="preview-content">
+                            <div class="preview-name">${item.name}</div>
+                            <div class="preview-snippet">${(item.last || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+                        </div>
+                        <div class="preview-time">${timeStr}</div>
+                    `;
+                    el.addEventListener('click', () => {
+                        try { displayUserDashboard('vendor','vendor-messages'); } catch(_) {}
+                    });
+                    container.appendChild(el);
+                });
             }
 
             function renderBookingsList(bookings, container) {
