@@ -2103,9 +2103,9 @@
             font-size: .875rem;
         }
         .booking-item .request-detail-value {
-            color: #111827;
+            color: #6b7280;
             font-weight: 600;
-            font-size: .95rem;
+            font-size: .875rem;
         }
         @media (max-width: 920px) {
             .booking-item .request-details { grid-template-columns: 1fr; }
@@ -20774,8 +20774,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 ${isPending ? `<button class="btn-accept" onclick="approveRequest(${request.RequestID})">Accept</button>` : ''}
                                 ${isPending ? `<button class="btn-decline" onclick="declineRequest(${request.RequestID})">Decline</button>` : ''}
                                 ${request.ConversationID ? `<button class="btn btn-outline" onclick="openChatForRequest(${request.ConversationID})" style="padding: 8px 16px; border-radius: 8px;">Chat</button>` : ''}
-                                ${detailsHtml ? `<button class="link-btn" onclick="toggleVendorDetails(this)">Show details</button>` : ''}
                             </div>
+                            ${detailsHtml ? `<div class="details-toggle-row" style="display:flex; justify-content:flex-end; width:100%;"><button class="link-btn" onclick="toggleVendorDetails(this)">Show details</button></div>` : ''}
                         </div>
                         ${detailsHtml ? `<div class="request-details collapsed">${detailsHtml}</div>` : ''}
                     </div>`;
