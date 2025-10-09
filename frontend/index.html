@@ -951,6 +951,25 @@
             overflow-y: auto;
             max-height: calc(90vh - 70px);
         }
+        /* Booking modal uses dashboard background/theme without affecting other modals */
+        #booking-modal .modal-body {
+            background-color: var(--secondary);
+            padding: 2rem; /* match dashboard spacing */
+        }
+        #booking-modal .modal-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid var(--border);
+        }
+        /* Card look for progress and step sections to mirror dashboard cards */
+        #booking-modal .booking-progress,
+        #booking-modal .booking-step {
+            background-color: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+        #booking-modal .booking-progress { padding: 1rem; }
+        #booking-modal .booking-step { padding: 1.5rem; }
 
         .close-modal {
             font-size: 28px;
