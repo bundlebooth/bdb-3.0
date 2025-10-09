@@ -20684,32 +20684,40 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const parseTime = (val) => {
                         try {
                             if (!val) return { mins:null, label:'' };
+                            // If Date object, use UTC components to avoid TZ shifts
                             if (val instanceof Date) {
-                                // Use UTC components to avoid local timezone shifting of SQL TIME values
                                 const h = val.getUTCHours();
                                 const m = val.getUTCMinutes();
                                 return { mins: h*60+m, label: `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}` };
                             }
                             const s = String(val).trim();
-                            const iso = s.includes('T') ? new Date(s) : null;
-                            if (iso && !isNaN(iso.getTime())) {
-                                const h = iso.getHours();
-                                const m = iso.getMinutes();
-                                return { mins: h*60+m, label: `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}` };
-                            }
-                            const re = /^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM|am|pm)?/;
-                            const m = s.match(re);
-                            if (m) {
-                                let h = parseInt(m[1],10);
-                                const mm = parseInt(m[2],10);
-                                const ap = m[3] ? m[3].toLowerCase() : '';
+                            // 1) Prefer extracting time-of-day tokens directly (avoids TZ issues)
+                            const m1 = s.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?/);
+                            if (m1) {
+                                let h = parseInt(m1[1],10);
+                                const mm = parseInt(m1[2],10);
+                                const ap = m1[4] ? m1[4].toLowerCase() : '';
                                 if (ap) {
                                     if (ap === 'pm' && h < 12) h += 12;
                                     if (ap === 'am' && h === 12) h = 0;
                                 }
                                 return { mins: h*60+mm, label: `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}` };
                             }
-                            // Fallback: if it's just hours or other format, return as-is label
+                            // 2) ISO-like string: extract the HH:MM(:SS) part after 'T' if present
+                            const tMatch = s.match(/T(\d{2}):(\d{2})(?::(\d{2}))?/);
+                            if (tMatch) {
+                                const h = parseInt(tMatch[1],10);
+                                const mm = parseInt(tMatch[2],10);
+                                return { mins: h*60+mm, label: `${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}` };
+                            }
+                            // 3) Fallback: construct Date and use UTC components
+                            const iso = s.includes('T') ? new Date(s) : null;
+                            if (iso && !isNaN(iso.getTime())) {
+                                const h = iso.getUTCHours();
+                                const m = iso.getUTCMinutes();
+                                return { mins: h*60+m, label: `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}` };
+                            }
+                            // Fallback: return as-is
                             return { mins:null, label: s };
                         } catch { return { mins:null, label:'' }; }
                     };
