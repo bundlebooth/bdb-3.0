@@ -980,18 +980,18 @@
         /* Vendor registration modal uses the same dashboard theme */
         #vendor-registration-modal .modal-content {
             background-color: var(--secondary) !important;
-            max-width: 95% !important; /* mimic dashboard modal sizing */
-            width: 1200px;
-            height: 90vh;
-            display: flex;
-            flex-direction: column;
+            max-width: 1400px;
+            width: 95%;
+            max-height: 95vh;
+            overflow-y: auto; /* match booking modal container scroll */
         }
         #vendor-registration-modal .modal-body {
             background-color: var(--secondary) !important;
             padding: 2rem; /* match dashboard spacing */
-            flex: 1 1 auto;
-            max-height: none; /* override global cap */
-            overflow-y: auto; /* inner scroll */
+            min-height: 0; /* match dashboard/booking overrides */
+            max-height: none; /* remove global cap */
+            height: auto;
+            overflow-y: visible; /* let container handle scrolling */
         }
         #vendor-registration-modal .modal-header {
             background-color: #ffffff;
