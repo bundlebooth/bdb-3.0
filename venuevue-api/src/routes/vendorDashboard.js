@@ -312,9 +312,13 @@ router.get('/:id/profile-details', async (req, res) => {
 router.get('/:id/images', async (req, res) => {
   try {
     const { id } = req.params; // VendorProfileID
+    const idNum = parseInt(id, 10);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
     const pool = await poolPromise;
     const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, parseInt(id));
+    request.input('VendorProfileID', sql.Int, idNum);
     const result = await request.execute('sp_GetVendorImages');
     res.json(result.recordset);
   } catch (err) {
@@ -327,12 +331,16 @@ router.get('/:id/images', async (req, res) => {
 router.post('/:id/images/upsert', async (req, res) => {
   try {
     const { id } = req.params; // VendorProfileID
+    const idNum = parseInt(id, 10);
+    if (!Number.isInteger(idNum) || idNum <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid vendor profile ID' });
+    }
     const { imageId, imageUrl, isPrimary, caption, displayOrder } = req.body;
 
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('ImageID', sql.Int, imageId || null);
-    request.input('VendorProfileID', sql.Int, parseInt(id));
+    request.input('VendorProfileID', sql.Int, idNum);
     request.input('ImageURL', sql.NVarChar(255), imageUrl);
     request.input('IsPrimary', sql.Bit, isPrimary);
     request.input('Caption', sql.NVarChar(255), caption || null);
