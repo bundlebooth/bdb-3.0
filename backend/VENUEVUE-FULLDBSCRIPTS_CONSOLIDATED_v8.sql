@@ -2147,22 +2147,35 @@ BEGIN
         
         -- Create bookings for each approved request
         DECLARE @RequestID INT, @UserID INT, @VendorProfileID INT;
-        DECLARE @Services NVARCHAR(MAX), @EventDate DATE, @EventTime TIME;
+        DECLARE @Services NVARCHAR(MAX), @EventDate DATE, @EventTime TIME, @EventEndTime TIME;
         DECLARE @EventLocation NVARCHAR(500), @AttendeeCount INT, @SpecialRequests NVARCHAR(MAX);
+        DECLARE @EventName NVARCHAR(255), @EventType NVARCHAR(100), @TimeZone NVARCHAR(100);
+        DECLARE @StartDateTime DATETIME, @EndDateTime DATETIME;
         
         DECLARE request_cursor CURSOR FOR 
         SELECT br.RequestID, br.UserID, br.VendorProfileID, br.Services, 
-               br.EventDate, br.EventTime, br.EventLocation, br.AttendeeCount, br.SpecialRequests
+               br.EventDate, br.EventTime, br.EventEndTime, br.EventLocation, br.AttendeeCount, br.SpecialRequests,
+               br.EventName, br.EventType, br.TimeZone
         FROM BookingRequests br
         JOIN @RequestTable rt ON br.RequestID = rt.RequestID
         WHERE br.Status = 'approved';
         
         OPEN request_cursor;
         FETCH NEXT FROM request_cursor INTO @RequestID, @UserID, @VendorProfileID, @Services, 
-                                           @EventDate, @EventTime, @EventLocation, @AttendeeCount, @SpecialRequests;
+                                           @EventDate, @EventTime, @EventEndTime, @EventLocation, @AttendeeCount, @SpecialRequests,
+                                           @EventName, @EventType, @TimeZone;
         
         WHILE @@FETCH_STATUS = 0
         BEGIN
+            -- Combine date and time into full datetimes
+            SET @StartDateTime = CASE 
+                WHEN @EventTime IS NOT NULL THEN CONVERT(DATETIME, CONVERT(VARCHAR(10), @EventDate, 120) + ' ' + CONVERT(VARCHAR(8), @EventTime, 108))
+                ELSE CONVERT(DATETIME, @EventDate)
+            END;
+            SET @EndDateTime = CASE 
+                WHEN @EventEndTime IS NOT NULL THEN CONVERT(DATETIME, CONVERT(VARCHAR(10), @EventDate, 120) + ' ' + CONVERT(VARCHAR(8), @EventEndTime, 108))
+                ELSE @StartDateTime
+            END;
             -- Create booking using existing stored procedure
             DECLARE @BookingResult TABLE (BookingID INT, ConversationID INT);
             
@@ -2170,12 +2183,16 @@ BEGIN
             EXEC sp_CreateBookingWithServices
                 @UserID = @UserID,
                 @VendorProfileID = @VendorProfileID,
-                @EventDate = @EventDate,
-                @EndDate = @EventDate, -- Assuming single day event
+                @EventDate = @StartDateTime,
+                @EndDate = @EndDateTime,
                 @AttendeeCount = @AttendeeCount,
                 @SpecialRequests = @SpecialRequests,
                 @ServicesJSON = @Services,
-                @PaymentIntentID = @PaymentIntentID;
+                @PaymentIntentID = @PaymentIntentID,
+                @EventLocation = @EventLocation,
+                @EventName = @EventName,
+                @EventType = @EventType,
+                @TimeZone = @TimeZone;
             
             -- Record the created booking
             INSERT INTO @CreatedBookings (BookingID, VendorProfileID, UserID)
@@ -2254,6 +2271,56 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('BookingRequests') AND name = 'GroupID')
 BEGIN
     ALTER TABLE BookingRequests ADD GroupID NVARCHAR(100) NULL;
+END;
+GO
+
+-- Additional fields for richer booking requests
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('BookingRequests') AND name = 'EventEndTime')
+BEGIN
+    ALTER TABLE BookingRequests ADD EventEndTime TIME NULL;
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('BookingRequests') AND name = 'EventName')
+BEGIN
+    ALTER TABLE BookingRequests ADD EventName NVARCHAR(255) NULL;
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('BookingRequests') AND name = 'EventType')
+BEGIN
+    ALTER TABLE BookingRequests ADD EventType NVARCHAR(100) NULL;
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('BookingRequests') AND name = 'TimeZone')
+BEGIN
+    ALTER TABLE BookingRequests ADD TimeZone NVARCHAR(100) NULL;
+END;
+GO
+
+-- Additional optional details for final bookings
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'EventLocation')
+BEGIN
+    ALTER TABLE Bookings ADD EventLocation NVARCHAR(500) NULL;
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'EventName')
+BEGIN
+    ALTER TABLE Bookings ADD EventName NVARCHAR(255) NULL;
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'EventType')
+BEGIN
+    ALTER TABLE Bookings ADD EventType NVARCHAR(100) NULL;
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'TimeZone')
+BEGIN
+    ALTER TABLE Bookings ADD TimeZone NVARCHAR(100) NULL;
 END;
 GO
 
@@ -2904,7 +2971,11 @@ CREATE OR ALTER PROCEDURE sp_CreateBookingWithServices
     @AttendeeCount INT = 1,
     @SpecialRequests NVARCHAR(MAX) = NULL,
     @PaymentIntentID NVARCHAR(100) = NULL,
-    @ServicesJSON NVARCHAR(MAX)
+    @ServicesJSON NVARCHAR(MAX),
+    @EventLocation NVARCHAR(500) = NULL,
+    @EventName NVARCHAR(255) = NULL,
+    @EventType NVARCHAR(100) = NULL,
+    @TimeZone NVARCHAR(100) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -2960,7 +3031,11 @@ BEGIN
             DepositAmount,
             AttendeeCount,
             SpecialRequests,
-            StripePaymentIntentID
+            StripePaymentIntentID,
+            EventLocation,
+            EventName,
+            EventType,
+            TimeZone
         )
         VALUES (
             @UserID,
@@ -2972,7 +3047,11 @@ BEGIN
             @DepositAmount,
             @AttendeeCount,
             @SpecialRequests,
-            @PaymentIntentID
+            @PaymentIntentID,
+            @EventLocation,
+            @EventName,
+            @EventType,
+            @TimeZone
         );
         
         DECLARE @BookingID INT = SCOPE_IDENTITY();
