@@ -20846,7 +20846,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (serviceStart) pushRow('Service Start Time', serviceStart);
                     if (serviceEnd) pushRow('Service End Time', serviceEnd);
                     pushRow('Services', serviceNames, true);
-                    if (servicesDetailsHtml) pushRow('Service Details', servicesDetailsHtml, true);
                     if (request.SpecialRequests) pushRow('Special Requests', request.SpecialRequests, true);
                     pushRow('Respond By', expiresStr);
                     pushRow('Requested On', createdAtStr);
