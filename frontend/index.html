@@ -977,6 +977,45 @@
             cursor: pointer;
         }
 
+        /* Vendor registration modal uses the same dashboard theme */
+        #vendor-registration-modal .modal-content {
+            background-color: var(--secondary) !important;
+            max-width: 95% !important; /* mimic dashboard modal sizing */
+            width: 1200px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #vendor-registration-modal .modal-body {
+            background-color: var(--secondary) !important;
+            padding: 2rem; /* match dashboard spacing */
+            flex: 1 1 auto;
+            max-height: none; /* override global cap */
+            overflow-y: auto; /* inner scroll */
+        }
+        #vendor-registration-modal .modal-header {
+            background-color: #ffffff;
+            border-bottom: 1px solid var(--border);
+        }
+        /* Progress area card */
+        #vendor-registration-modal .modal-body > div:first-child {
+            background-color: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1rem;
+            margin-bottom: 2rem; /* preserve spacing */
+        }
+        /* Each setup step as a dashboard-style card */
+        #vendor-registration-modal .setup-step {
+            background-color: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            margin-bottom: 2rem; /* create separation from background */
+        }
+
         .close-modal:hover {
             color: var(--primary);
         }
@@ -5678,7 +5717,7 @@
 
     <!-- Vendor Registration Modal -->
     <div id="vendor-registration-modal" class="modal" data-no-outside-close style="display: none;">
-        <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-content" style="max-width: 95%; width: 1200px; height: 90vh; display: flex; flex-direction: column; background: var(--secondary);">
             <div class="modal-header">
                 <h3 id="registration-title">Complete Your Vendor Setup</h3>
                 <span class="close-modal">×</span>
