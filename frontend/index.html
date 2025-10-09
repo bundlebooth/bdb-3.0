@@ -20683,25 +20683,34 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                     } catch(_) {}
 
-                    // Parse services JSON for display
+                    // Parse services JSON for display (robust)
                     let servicesList = [];
                     let primaryService = null;
                     let servicesRaw = '';
                     try {
-                        if (typeof request.Services === 'string') {
+                        if (typeof request.Services === 'string' && request.Services.trim()) {
                             servicesRaw = request.Services;
                             const parsed = JSON.parse(request.Services);
                             if (Array.isArray(parsed)) {
                                 servicesList = parsed;
-                                primaryService = parsed[0] || null;
+                            } else if (parsed && typeof parsed === 'object') {
+                                if (Array.isArray(parsed.services)) servicesList = parsed.services;
+                                else if (Array.isArray(parsed.selectedServices)) servicesList = parsed.selectedServices;
+                                else if (Array.isArray(parsed.items)) servicesList = parsed.items;
+                                else if (parsed.Service || parsed.service || parsed.Name || parsed.name) servicesList = [parsed];
+                                else {
+                                    const values = Object.values(parsed).filter(v => v && typeof v === 'object');
+                                    if (values.length) servicesList = values;
+                                }
                             }
                         } else if (Array.isArray(request.Services)) {
                             servicesList = request.Services;
-                            primaryService = servicesList[0] || null;
                         }
+                        primaryService = servicesList[0] || null;
                     } catch(_) {
                         // Fallback: use raw string if JSON parse fails
                         servicesList = [];
+                        primaryService = null;
                     }
 
                     const eventDate = request.EventDate ? new Date(request.EventDate) : null;
@@ -20709,31 +20718,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const day = eventDate ? eventDate.getDate() : '—';
                     const weekday = eventDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '—';
                     const eventDateStr = eventDate ? eventDate.toLocaleDateString() : '—';
-                    const serviceNames = servicesList.length 
-                        ? servicesList.map(s => (typeof s === 'string' ? s : (s.Name || s.name || s.ServiceName || s.service || s.Service || s.title || s.Label || s.label || s.DisplayName || s.displayName))).filter(Boolean).join(', ')
-                        : (servicesRaw || '—');
-                    // Build richer service details if available
-                    let servicesDetailsHtml = '';
-                    if (servicesList.length) {
-                        const items = servicesList.map(s => {
-                            const n = (typeof s === 'string') 
-                                ? s 
-                                : (s.Name || s.name || s.ServiceName || s.title || s.Label || s.label || s.DisplayName || s.displayName || s.service || s.Service || 'Service');
-                            const priceNum = s.VendorPrice || s.BasePrice || s.FixedPrice || s.price;
-                            const price = priceNum ? `$${Number(priceNum).toLocaleString()}` : null;
-                            const unit = s.PriceUnit || s.priceUnit || null;
-                            const durationMin = s.VendorDurationMinutes || s.Duration || s.duration || s.durationMinutes;
-                            const duration = durationMin ? `${durationMin} min` : null;
-                            const start = s.StartTime || s.startTime || null;
-                            const end = s.EndTime || s.endTime || null;
-                            const timeRange = (start || end) ? `${start || ''}${start && end ? ' - ' : ''}${end || ''}` : null;
-                            const parts = [price, unit, duration, timeRange].filter(Boolean).join(' · ');
-                            return parts ? `${n} — ${parts}` : n;
-                        });
-                        servicesDetailsHtml = `<ul class="service-detail-list" style="margin:0; padding-left: 1rem;">
-                            ${items.map(i => `<li>${i}</li>`).join('')}
-                        </ul>`;
+                    const getServiceName = (s) => (typeof s === 'string'
+                        ? s
+                        : (s.Name || s.name || s.ServiceName || s.serviceName || s.service || s.Service || s.Title || s.title || s.Label || s.label || s.DisplayName || s.displayName || s.CategoryName || s.category || s.Category));
+                    let serviceNamesArr = servicesList.map(getServiceName).filter(Boolean);
+                    // Fallback: if Services is a raw CSV or plain string
+                    if ((!serviceNamesArr || serviceNamesArr.length === 0) && servicesRaw && typeof servicesRaw === 'string') {
+                        const rawList = servicesRaw.split(',').map(s => s.trim()).filter(Boolean);
+                        if (rawList.length > 0) serviceNamesArr = rawList;
                     }
+                    const primaryServiceName = serviceNamesArr[0] || (primaryService ? getServiceName(primaryService) : (servicesRaw && typeof servicesRaw === 'string' ? servicesRaw.split(',')[0].trim() : ''));
+                    const additionalServiceCount = Math.max(0, serviceNamesArr.length - 1);
+                    const serviceNames = serviceNamesArr.length 
+                        ? serviceNamesArr.join(', ')
+                        : (servicesRaw || '—');
                     const serviceCost = (request.Budget && Number(request.Budget) > 0) ? `$${Number(request.Budget).toLocaleString()}` : (primaryService && (primaryService.BasePrice || primaryService.FixedPrice)) ? `$${Number(primaryService.BasePrice || primaryService.FixedPrice).toLocaleString()}` : '—';
                     const clientEmail = request.ClientEmail || '';
                     const budgetStr = (request.Budget && Number(request.Budget) > 0) ? `$${Number(request.Budget).toLocaleString()}` : '';
@@ -20814,12 +20812,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     // Status badge config
                     const statusRaw = (request.Status || 'pending').toString().toLowerCase();
                     const statusMap = {
-                        pending: { icon: 'fa-clock', color: '#f59e0b', textColor: '#92400e', label: 'Pending' },
+                        pending: { icon: 'fa-clock', color: '#f59e0b', textColor: '#92400e', label: 'Pending response' },
                         accepted: { icon: 'fa-check-circle', color: '#10b981', textColor: '#065f46', label: 'Accepted' },
                         declined: { icon: 'fa-times-circle', color: '#ef4444', textColor: '#991b1b', label: 'Declined' }
                     };
                     const statusCfg = statusMap[statusRaw] || statusMap.pending;
                     const isPending = statusRaw === 'pending';
+                    const pendingResponseText = isPending ? `Pending response • ${hoursRemaining > 0 ? `${hoursRemaining}h left` : 'expired'}` : '';
 
                     // Build details grid with available backend fields
                     const detailsRows = [];
@@ -20829,23 +20828,40 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                     };
                     // Removed Request ID per requirement
-                    pushRow('Client', request.ClientName);
+                    // Client already shown in main summary, don't duplicate in details
                     pushRow('Event Name', request.EventName);
                     pushRow('Event Type', request.EventType);
-                    pushRow('Event Date', eventDateStr);
-                    pushRow('Event Time', eventTimeStr);
+                    // Date/Time and Location moved to main summary section
                     pushRow('Time Zone', request.TimeZone);
-                    pushRow('Event Location', request.EventLocation, true);
                     pushRow('Attendees', (request.AttendeeCount !== null && request.AttendeeCount !== undefined) ? request.AttendeeCount : '');
-                    pushRow('Service Cost', budgetStr);
-                    // Service-specific times (primary service or fallback to event times)
+                    // Service-specific times for display and details
                     const serviceStartRaw = (primaryService && (primaryService.StartTime || primaryService.startTime)) || '';
                     const serviceEndRaw = (primaryService && (primaryService.EndTime || primaryService.endTime)) || '';
-                    const serviceStart = serviceStartRaw ? to12h(parseTime(serviceStartRaw).label) : '';
-                    const serviceEnd = serviceEndRaw ? to12h(parseTime(serviceEndRaw).label) : '';
+                    const serviceParsedStart = serviceStartRaw ? parseTime(serviceStartRaw) : { mins:null, label:'' };
+                    let serviceParsedEnd = serviceEndRaw ? parseTime(serviceEndRaw) : { mins:null, label:'' };
+                    // derive end from duration if missing
+                    if (!serviceParsedEnd.label && serviceParsedStart.mins != null && primaryDurationMin) {
+                        const total = (serviceParsedStart.mins + primaryDurationMin) % (24*60);
+                        serviceParsedEnd = { mins: total, label: `${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}` };
+                    }
+                    let serviceDurationMin = null;
+                    if (serviceParsedStart.mins != null && serviceParsedEnd.mins != null) {
+                        serviceDurationMin = (serviceParsedEnd.mins - serviceParsedStart.mins + 24*60) % (24*60);
+                    } else if (primaryDurationMin) {
+                        serviceDurationMin = primaryDurationMin;
+                    }
+                    const serviceDurationLabel = serviceDurationMin != null ? (serviceDurationMin >= 60 ? `${Math.floor(serviceDurationMin/60)}h ${serviceDurationMin%60 ? (serviceDurationMin%60)+'m' : ''}`.trim() : `${serviceDurationMin}m`) : '';
+                    const serviceStart = serviceParsedStart.label ? to12h(serviceParsedStart.label) : '';
+                    const serviceEnd = serviceParsedEnd.label ? to12h(serviceParsedEnd.label) : '';
+                    const serviceTimeStr = (serviceParsedStart.label && serviceParsedEnd.label)
+                        ? `${serviceStart} - ${serviceEnd}${serviceDurationLabel ? ` (${serviceDurationLabel})` : ''}`
+                        : (serviceStart || serviceEnd || '');
                     if (serviceStart) pushRow('Service Start Time', serviceStart);
                     if (serviceEnd) pushRow('Service End Time', serviceEnd);
-                    pushRow('Services', serviceNames, true);
+                    // Services already shown in main summary; include full list in details if multiple
+                    if (additionalServiceCount > 0 && serviceNames && serviceNames !== '—') {
+                        pushRow('Services', serviceNames, true);
+                    }
                     if (request.SpecialRequests) pushRow('Special Requests', request.SpecialRequests, true);
                     pushRow('Respond By', expiresStr);
                     pushRow('Requested On', createdAtStr);
@@ -20863,9 +20879,19 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <i class="fas fa-user" style="color: #6b7280; font-size: 12px;"></i>
                                 <span class="booking-client-name">${request.ClientName || 'New Client'}</span>
                             </div>
-                            <div class="booking-service-row">
-                                <span class="booking-service">${serviceNames !== '—' ? serviceNames : 'Event Service Request'}</span>
+                            <div class="booking-service-row" style="display:flex; align-items:center; gap:6px;">
+                                <i class="fas fa-briefcase" style="color: #6b7280; font-size: 12px;"></i>
+                                <span class="booking-service-label" style="color:#6b7280;">Service:</span>
+                                <span class="booking-service" title="${serviceNames}">${primaryServiceName ? primaryServiceName : 'Service'}${additionalServiceCount > 0 ? ` + ${additionalServiceCount} more` : ''}</span>
                             </div>
+                            ${(eventDateStr && eventDateStr !== '—') || serviceTimeStr ? `<div class="booking-date-row">
+                                <i class="fas fa-calendar-alt" style="color: #6b7280; font-size: 12px;"></i>
+                                <span class="booking-date">${[eventDateStr !== '—' ? eventDateStr : '', serviceTimeStr].filter(Boolean).join(' · ')}</span>
+                            </div>` : ''}
+                            ${request.EventLocation ? `<div class="booking-location-row">
+                                <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
+                                <span class="booking-location" title="${request.EventLocation}" style="max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: bottom;">${request.EventLocation}</span>
+                            </div>` : ''}
                             <div class="booking-time-row">
                                 <i class="fas fa-hourglass-half" style="color: #6b7280; font-size: 12px;"></i>
                                 <span class="booking-time">${hoursRemaining > 0 ? `${hoursRemaining} hours remaining` : 'Timer expired'}</span>
@@ -20878,14 +20904,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         <div class="booking-actions" style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
                             <div class="request-status-badge" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; background:${(statusCfg && (statusCfg.bg || '#f3f4f6'))}; color:#6b7280; border:1px solid ${statusCfg.color};">
                                 <i class="fas ${statusCfg.icon}" style="color:${statusCfg.color};"></i>
-                                <span>${statusCfg.label}</span>
+                                <span>${isPending ? pendingResponseText : statusCfg.label}</span>
                             </div>
                             <div class="actions-row" style="display:flex; align-items:center; gap:8px;">
                                 ${isPending ? `<button class="btn-accept" onclick="approveRequest(${request.RequestID})">Accept</button>` : ''}
                                 ${isPending ? `<button class="btn-decline" onclick="declineRequest(${request.RequestID})">Decline</button>` : ''}
                                 ${request.ConversationID ? `<button class="btn btn-outline" onclick="openChatForRequest(${request.ConversationID})" style="padding: 8px 16px; border-radius: 8px;">Chat</button>` : ''}
                             </div>
-                            ${detailsHtml ? `<div class="details-toggle-row" style="display:flex; justify-content:flex-end; width:100%;"><button class="link-btn" onclick="toggleVendorDetails(this)">Show details</button></div>` : ''}
+                            ${detailsHtml ? `<div class="details-toggle-row" style="display:flex; justify-content:flex-end; width:100%;"><button class="link-btn" onclick="toggleVendorDetails(this)">More info</button></div>` : ''}
                         </div>
                         ${detailsHtml ? `<div class="request-details collapsed">${detailsHtml}</div>` : ''}
                     </div>`;
@@ -20933,7 +20959,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } else {
                         details.style.display = 'grid';
                     }
-                    btn.textContent = isCollapsed ? 'Show details' : 'Hide details';
+                    btn.textContent = isCollapsed ? 'More info' : 'Less info';
                 } catch (e) {
                     console.error('toggleVendorDetails error:', e);
                 }
