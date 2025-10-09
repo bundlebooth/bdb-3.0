@@ -1,14 +1,25 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const cloudinaryService = require('../services/cloudinaryService');
 
 const router = express.Router();
 
+// Ensure a real temp directory exists (cross-env)
+const TEMP_DIR = path.join(__dirname, '../../temp');
+try {
+    if (!fs.existsSync(TEMP_DIR)) {
+        fs.mkdirSync(TEMP_DIR, { recursive: true });
+    }
+} catch (e) {
+    console.warn('Could not ensure TEMP_DIR exists:', e?.message || e);
+}
+
 // Configure multer for temporary file storage
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, 'temp/') // Temporary directory
+        cb(null, TEMP_DIR); // Temporary directory
     },
     filename: function (req, file, cb) {
         cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname))
