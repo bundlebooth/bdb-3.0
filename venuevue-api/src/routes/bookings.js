@@ -271,12 +271,11 @@ router.post('/requests', async (req, res) => {
       formattedEndTime = `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}:${es.toString().padStart(2, '0')}`;
     }
 
-    // 3. Create a combined datetime object
-    const eventDateTime = new Date(`${eventDetails.date}T${formattedTime}`);
-    if (isNaN(eventDateTime.getTime())) {
+    // 3. Validate date string (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(eventDetails.date))) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid date/time combination'
+        message: 'Invalid date format. Please use YYYY-MM-DD'
       });
     }
 
@@ -285,11 +284,11 @@ router.post('/requests', async (req, res) => {
       try {
         const request = new sql.Request(pool);
         
-        // Using a single DateTime parameter instead of separate Date and Time
         request.input('UserID', sql.Int, userId);
         request.input('VendorProfileID', sql.Int, vendorId);
         request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
-        request.input('EventDateTime', sql.DateTime, eventDateTime);
+        request.input('EventDate', sql.VarChar(10), String(eventDetails.date));
+        request.input('EventTime', sql.VarChar(8), formattedTime);
         request.input('EventEndTime', sql.VarChar(8), formattedEndTime || null);
         request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
         request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
@@ -313,8 +312,8 @@ router.post('/requests', async (req, res) => {
           OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
           VALUES (
             @UserID, @VendorProfileID, @Services, 
-            CONVERT(DATE, @EventDateTime), 
-            CONVERT(TIME, @EventDateTime),
+            TRY_CONVERT(DATE, @EventDate), 
+            TRY_CONVERT(TIME, @EventTime),
             TRY_CONVERT(TIME, @EventEndTime),
             @EventLocation,
             @AttendeeCount, @Budget, @SpecialRequests,
@@ -536,8 +535,8 @@ router.get('/requests/:userId', async (req, res) => {
         vp.BusinessName as VendorName,
         br.Services,
         br.EventDate,
-        br.EventTime,
-        br.EventEndTime,
+        CONVERT(VARCHAR(8), br.EventTime, 108) AS EventTime,
+        CONVERT(VARCHAR(8), br.EventEndTime, 108) AS EventEndTime,
         br.EventLocation,
         br.AttendeeCount,
         br.Budget,
@@ -644,8 +643,8 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
         u.Email as ClientEmail,
         br.Services,
         br.EventDate,
-        br.EventTime,
-        br.EventEndTime,
+        CONVERT(VARCHAR(8), br.EventTime, 108) AS EventTime,
+        CONVERT(VARCHAR(8), br.EventEndTime, 108) AS EventEndTime,
         br.EventLocation,
         br.AttendeeCount,
         br.Budget,
@@ -718,7 +717,7 @@ router.post('/requests/send', async (req, res) => {
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('SpecialRequestText', sql.NVarChar(sql.MAX), specialRequestText || null);
-    request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+    request.input('EventDate', sql.VarChar(10), eventDate || null);
     request.input('EventTime', sql.VarChar(8), eventTime || null);
     request.input('EventEndTime', sql.VarChar(8), eventEndTime || null);
     request.input('EventLocation', sql.NVarChar(500), eventLocation || null);
@@ -738,7 +737,7 @@ router.post('/requests/send', async (req, res) => {
       )
       OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
       VALUES (
-        @UserID, @VendorProfileID, @SpecialRequestText, @EventDate, TRY_CONVERT(TIME, @EventTime), TRY_CONVERT(TIME, @EventEndTime),
+        @UserID, @VendorProfileID, @SpecialRequestText, TRY_CONVERT(DATE, @EventDate), TRY_CONVERT(TIME, @EventTime), TRY_CONVERT(TIME, @EventEndTime),
         @EventLocation, @AttendeeCount, @Budget, @Services, @EventName, @EventType, @TimeZone, @Status, @ExpiresAt, GETDATE()
       )
     `);
