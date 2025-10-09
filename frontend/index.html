@@ -13195,7 +13195,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     startTime: document.getElementById('event-start-time')?.value,
                     endTime: document.getElementById('event-end-time')?.value,
                     location: document.getElementById('event-location')?.value,
-                    attendeeCount: parseInt(document.getElementById('attendee-count')?.value) || 50
+                    attendeeCount: parseInt(document.getElementById('attendee-count')?.value) || 50,
+                    timezone: (document.getElementById('event-timezone')?.value || '').trim()
                 };
 
                 // Format time for backend (mimicking handleSendRequests)
@@ -13205,11 +13206,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const requestData = {
                     userId: currentUser.userId || currentUser.id,
                     vendorIds: [parseInt(vendorId)],
-                    services: [{
-                        vendorId: parseInt(vendorId),
-                        serviceName: vendor.serviceName || serviceId,
-                        servicePrice: vendor.servicePrice || 0
-                    }],
+                    services: (() => {
+                        const svc = (window.bookingState?.selectedPredefinedServices || []).find(s => String(s.id) === String(serviceId));
+                        return [{
+                            vendorId: parseInt(vendorId),
+                            serviceName: vendor.serviceName || serviceId,
+                            servicePrice: vendor.servicePrice || 0,
+                            startTime: svc?.startTime ? formatTimeForBackend(svc.startTime) : undefined,
+                            endTime: svc?.endTime ? formatTimeForBackend(svc.endTime) : undefined,
+                            durationMinutes: Number(svc?.duration) || undefined,
+                            budget: Number(svc?.budget) || undefined
+                        }];
+                    })(),
                     eventDetails: {
                         ...eventDetails,
                         time: formattedTime,
@@ -13424,7 +13432,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                     startTime: document.getElementById('event-start-time')?.value,
                     endTime: document.getElementById('event-end-time')?.value,
                     location: document.getElementById('event-location')?.value,
-                    attendeeCount: parseInt(document.getElementById('attendee-count')?.value) || 50
+                    attendeeCount: parseInt(document.getElementById('attendee-count')?.value) || 50,
+                    timezone: (document.getElementById('event-timezone')?.value || '').trim(),
+                    name: (document.getElementById('event-name')?.value || '').trim(),
+                    type: document.getElementById('event-type')?.value || ''
                 };
                 
                 // Use the global bookingState where vendors are actually stored
@@ -13477,11 +13488,23 @@ document.addEventListener('DOMContentLoaded', async function() {
                         .map(v => v.VendorProfileID || v.vendorProfileId || v.VendorProfileId || v.id || v.vendorId)
                         .filter(id => id != null);
                     
-                    const services = globalBookingState.selectedVendors.map(v => ({
-                        vendorId: v.VendorProfileID || v.vendorProfileId || v.VendorProfileId || v.id || v.vendorId,
-                        serviceName: v.selectedService?.ServiceName || v.serviceName || v.MatchingServiceNames || 'General Service',
-                        servicePrice: v.selectedService?.VendorPrice || v.servicePrice || v.VendorPrice || 0
-                    })).filter(s => s.vendorId != null);
+                    const selectedServicesList = Array.isArray(window.bookingState?.selectedPredefinedServices)
+                        ? window.bookingState.selectedPredefinedServices
+                        : [];
+                    const services = globalBookingState.selectedVendors.map(v => {
+                        const vendorId = v.VendorProfileID || v.vendorProfileId || v.VendorProfileId || v.id || v.vendorId;
+                        const serviceName = v.selectedService?.ServiceName || v.serviceName || v.MatchingServiceNames || 'General Service';
+                        const svcInfo = selectedServicesList.find(s => (s.name || '').toLowerCase() === (serviceName || '').toLowerCase());
+                        return {
+                            vendorId,
+                            serviceName,
+                            servicePrice: v.selectedService?.VendorPrice || v.servicePrice || v.VendorPrice || 0,
+                            startTime: svcInfo?.startTime ? formatTimeForBackend(svcInfo.startTime) : undefined,
+                            endTime: svcInfo?.endTime ? formatTimeForBackend(svcInfo.endTime) : undefined,
+                            durationMinutes: Number(svcInfo?.duration) || undefined,
+                            budget: Number(svcInfo?.budget) || undefined
+                        };
+                    }).filter(s => s.vendorId != null);
 
                     console.log('🔍 Debug - vendorIds:', vendorIds);
                     console.log('🔍 Debug - services:', services);
@@ -20662,8 +20685,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         try {
                             if (!val) return { mins:null, label:'' };
                             if (val instanceof Date) {
-                                const h = val.getHours();
-                                const m = val.getMinutes();
+                                // Use UTC components to avoid local timezone shifting of SQL TIME values
+                                const h = val.getUTCHours();
+                                const m = val.getUTCMinutes();
                                 return { mins: h*60+m, label: `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}` };
                             }
                             const s = String(val).trim();
@@ -20705,9 +20729,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         durationMin = primaryDurationMin;
                     }
                     const durationLabel = durationMin != null ? (durationMin >= 60 ? `${Math.floor(durationMin/60)}h ${durationMin%60 ? (durationMin%60)+'m' : ''}`.trim() : `${durationMin}m`) : '';
+                    const to12h = (lab) => {
+                        try {
+                            if (!lab) return '';
+                            const [hh, mm] = String(lab).split(':');
+                            let h = parseInt(hh, 10);
+                            const m = parseInt(mm, 10);
+                            const ap = h >= 12 ? 'PM' : 'AM';
+                            h = h % 12; if (h === 0) h = 12;
+                            return `${h}:${String(m).padStart(2,'0')} ${ap}`;
+                        } catch { return lab; }
+                    };
                     const eventTimeStr = (parsedStart.label && parsedEnd.label)
-                        ? `${parsedStart.label} - ${parsedEnd.label}${durationLabel ? ` (${durationLabel})` : ''}`
-                        : (parsedStart.label || parsedEnd.label || '');
+                        ? `${to12h(parsedStart.label)} - ${to12h(parsedEnd.label)}${durationLabel ? ` (${durationLabel})` : ''}`
+                        : (to12h(parsedStart.label) || to12h(parsedEnd.label) || '');
                     const createdAtStr = request.CreatedAt ? new Date(request.CreatedAt).toLocaleString() : '';
                     
                     // Status badge config
@@ -20729,11 +20764,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     };
                     // Removed Request ID per requirement
                     pushRow('Client', request.ClientName);
+                    pushRow('Event Name', request.EventName);
+                    pushRow('Event Type', request.EventType);
                     pushRow('Event Date', eventDateStr);
                     pushRow('Event Time', eventTimeStr);
+                    pushRow('Time Zone', request.TimeZone);
                     pushRow('Event Location', request.EventLocation, true);
                     pushRow('Attendees', (request.AttendeeCount !== null && request.AttendeeCount !== undefined) ? request.AttendeeCount : '');
                     pushRow('Service Cost', budgetStr);
+                    // Service-specific times (primary service or fallback to event times)
+                    const serviceStartRaw = (primaryService && (primaryService.StartTime || primaryService.startTime)) || '';
+                    const serviceEndRaw = (primaryService && (primaryService.EndTime || primaryService.endTime)) || '';
+                    const serviceStart = serviceStartRaw ? to12h(parseTime(serviceStartRaw).label) : '';
+                    const serviceEnd = serviceEndRaw ? to12h(parseTime(serviceEndRaw).label) : '';
+                    if (serviceStart) pushRow('Service Start Time', serviceStart);
+                    if (serviceEnd) pushRow('Service End Time', serviceEnd);
                     pushRow('Services', serviceNames, true);
                     if (servicesDetailsHtml) pushRow('Service Details', servicesDetailsHtml, true);
                     if (request.SpecialRequests) pushRow('Special Requests', request.SpecialRequests, true);
