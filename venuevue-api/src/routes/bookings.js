@@ -223,7 +223,7 @@ router.post('/requests', async (req, res) => {
     const requests = [];
 
     // 1. Parse and validate the time string
-    const timeString = eventDetails.time.trim();
+    const timeString = String(eventDetails.time).trim();
     const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
     
     if (!timeRegex.test(timeString)) {
@@ -248,6 +248,29 @@ router.post('/requests', async (req, res) => {
 
     const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
+    // Optional: parse and normalize end time if provided
+    let formattedEndTime = null;
+    if (eventDetails.endTime) {
+      const endRaw = String(eventDetails.endTime).trim();
+      if (!timeRegex.test(endRaw)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid end time format. Please use HH:MM or HH:MM:SS'
+        });
+      }
+      const eparts = endRaw.split(':');
+      const eh = parseInt(eparts[0], 10);
+      const em = parseInt(eparts[1], 10);
+      const es = eparts[2] ? parseInt(eparts[2], 10) : 0;
+      if (eh < 0 || eh > 23 || em < 0 || em > 59 || es < 0 || es > 59) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid end time values. Hours (0-23), Minutes (0-59), Seconds (0-59)'
+        });
+      }
+      formattedEndTime = `${eh.toString().padStart(2, '0')}:${em.toString().padStart(2, '0')}:${es.toString().padStart(2, '0')}`;
+    }
+
     // 3. Create a combined datetime object
     const eventDateTime = new Date(`${eventDetails.date}T${formattedTime}`);
     if (isNaN(eventDateTime.getTime())) {
@@ -267,10 +290,14 @@ router.post('/requests', async (req, res) => {
         request.input('VendorProfileID', sql.Int, vendorId);
         request.input('Services', sql.NVarChar(sql.MAX), JSON.stringify(services));
         request.input('EventDateTime', sql.DateTime, eventDateTime);
+        request.input('EventEndTime', sql.VarChar(8), formattedEndTime || null);
         request.input('EventLocation', sql.NVarChar(500), eventDetails.location || null);
         request.input('AttendeeCount', sql.Int, eventDetails.attendeeCount || 50);
         request.input('Budget', sql.Decimal(10, 2), budget);
         request.input('SpecialRequests', sql.NVarChar(sql.MAX), eventDetails.specialRequests || null);
+        request.input('EventName', sql.NVarChar(255), eventDetails.name || null);
+        request.input('EventType', sql.NVarChar(100), eventDetails.type || null);
+        request.input('TimeZone', sql.NVarChar(100), eventDetails.timezone || null);
         request.input('Status', sql.NVarChar(50), 'pending');
         
         // Set expiry to 24 hours from now
@@ -280,16 +307,19 @@ router.post('/requests', async (req, res) => {
 
         const result = await request.query(`
           INSERT INTO BookingRequests (
-            UserID, VendorProfileID, Services, EventDate, EventTime, EventLocation, 
-            AttendeeCount, Budget, SpecialRequests, Status, ExpiresAt, CreatedAt
+            UserID, VendorProfileID, Services, EventDate, EventTime, EventEndTime, EventLocation, 
+            AttendeeCount, Budget, SpecialRequests, EventName, EventType, TimeZone, Status, ExpiresAt, CreatedAt
           )
           OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
           VALUES (
             @UserID, @VendorProfileID, @Services, 
             CONVERT(DATE, @EventDateTime), 
-            CONVERT(TIME, @EventDateTime), 
+            CONVERT(TIME, @EventDateTime),
+            TRY_CONVERT(TIME, @EventEndTime),
             @EventLocation,
-            @AttendeeCount, @Budget, @SpecialRequests, @Status, @ExpiresAt, GETDATE()
+            @AttendeeCount, @Budget, @SpecialRequests,
+            @EventName, @EventType, @TimeZone,
+            @Status, @ExpiresAt, GETDATE()
           )
         `);
 
@@ -506,10 +536,15 @@ router.get('/requests/:userId', async (req, res) => {
         vp.BusinessName as VendorName,
         br.Services,
         br.EventDate,
+        br.EventTime,
+        br.EventEndTime,
         br.EventLocation,
         br.AttendeeCount,
         br.Budget,
         br.SpecialRequests,
+        br.EventName,
+        br.EventType,
+        br.TimeZone,
         br.Status,
         br.CreatedAt,
         br.ExpiresAt,
@@ -610,10 +645,14 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
         br.Services,
         br.EventDate,
         br.EventTime,
+        br.EventEndTime,
         br.EventLocation,
         br.AttendeeCount,
         br.Budget,
         br.SpecialRequests,
+        br.EventName,
+        br.EventType,
+        br.TimeZone,
         br.Status,
         br.CreatedAt,
         br.ExpiresAt
@@ -651,10 +690,14 @@ router.post('/requests/send', async (req, res) => {
       specialRequestText,
       eventDate,
       eventTime,
+      eventEndTime,
       eventLocation,
       attendeeCount,
       budget,
-      services
+      services,
+      eventName,
+      eventType,
+      timeZone
     } = req.body;
 
     // Validation
@@ -676,23 +719,27 @@ router.post('/requests/send', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('SpecialRequestText', sql.NVarChar(sql.MAX), specialRequestText || null);
     request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
-    request.input('EventTime', sql.Time, eventTime || null);
+    request.input('EventTime', sql.VarChar(8), eventTime || null);
+    request.input('EventEndTime', sql.VarChar(8), eventEndTime || null);
     request.input('EventLocation', sql.NVarChar(500), eventLocation || null);
     request.input('AttendeeCount', sql.Int, attendeeCount || null);
     request.input('Budget', sql.Decimal(10, 2), budget || null);
     request.input('Services', sql.NVarChar(sql.MAX), services ? JSON.stringify(services) : null);
+    request.input('EventName', sql.NVarChar(255), eventName || null);
+    request.input('EventType', sql.NVarChar(100), eventType || null);
+    request.input('TimeZone', sql.NVarChar(100), timeZone || null);
     request.input('Status', sql.NVarChar(50), 'pending');
     request.input('ExpiresAt', sql.DateTime, expiresAt);
 
     const result = await request.query(`
       INSERT INTO BookingRequests (
-        UserID, VendorProfileID, SpecialRequests, EventDate, EventTime, 
-        EventLocation, AttendeeCount, Budget, Services, Status, ExpiresAt, CreatedAt
+        UserID, VendorProfileID, SpecialRequests, EventDate, EventTime, EventEndTime,
+        EventLocation, AttendeeCount, Budget, Services, EventName, EventType, TimeZone, Status, ExpiresAt, CreatedAt
       )
       OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
       VALUES (
-        @UserID, @VendorProfileID, @SpecialRequestText, @EventDate, @EventTime,
-        @EventLocation, @AttendeeCount, @Budget, @Services, @Status, @ExpiresAt, GETDATE()
+        @UserID, @VendorProfileID, @SpecialRequestText, @EventDate, TRY_CONVERT(TIME, @EventTime), TRY_CONVERT(TIME, @EventEndTime),
+        @EventLocation, @AttendeeCount, @Budget, @Services, @EventName, @EventType, @TimeZone, @Status, @ExpiresAt, GETDATE()
       )
     `);
 
