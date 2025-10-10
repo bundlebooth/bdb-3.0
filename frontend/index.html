@@ -5252,12 +5252,7 @@
         <div class="modal-content" style="max-width: 95%; width: 1200px; height: 90vh; display: flex; flex-direction: column;">
             <div class="modal-header">
                 <h3 id="dashboard-modal-title">Dashboard</h3>
-                <div id="mode-toggle" style="display:flex; align-items:center; gap:8px; margin-left:auto; margin-right:8px;">
-                    <div role="group" aria-label="Mode" style="display:flex; background:#eef2ff; border:1px solid #e5e7eb; border-radius:999px; overflow:hidden;">
-                        <button id="mode-toggle-client" type="button" aria-pressed="true" class="seg" style="padding:6px 12px; border:none; background:#ffffff; font-weight:600; cursor:pointer;">Client</button>
-                        <button id="mode-toggle-vendor" type="button" aria-pressed="false" class="seg" style="padding:6px 12px; border:none; background:transparent; font-weight:600; cursor:pointer;">Vendor</button>
-                    </div>
-                </div>
+                <!-- Mode toggle removed per request -->
                 <span class="close-modal">×</span>
             </div>
             <div class="modal-body" style="padding: 0; overflow: hidden; flex-grow: 1;">
@@ -5276,7 +5271,6 @@
                             <li><a href="#" data-section="messages">Messages</a></li>
                             <li><a href="#" data-section="reviews">My Reviews</a></li>
                             <li><a href="#" data-section="settings">Settings</a></li>
-                            <li><a href="#" id="switch-to-vendor">Switch to Vendor Mode</a></li>
                             <li><a href="#" id="logout-dashboard">Log Out</a></li>
                         </ul>
                     </aside>
@@ -5284,7 +5278,7 @@
                         <div class="dashboard-header">
                             <h1 class="dashboard-title" id="dashboard-title">Dashboard</h1>
                             <div class="user-nav">
-                                <div class="nav-icon" id="dashboard-notifications-btn">
+                                <div class="nav-icon" id="dashboard-notifications-btn" style="display: none;">
                                     <i class="fas fa-bell"></i>
                                     <span class="badge" id="dashboard-notifications-badge">0</span>
                                 </div>
@@ -5422,7 +5416,6 @@
                             <li><a href="#" data-section="vendor-reviews">Reviews</a></li>
                             <li><a href="#" data-section="vendor-analytics">Analytics</a></li>
                             <li><a href="#" data-section="vendor-settings">Settings</a></li>
-                            <li><a href="#" id="switch-to-client">Switch to Client Mode</a></li>
                             <li><a href="#" id="vendor-logout">Log Out</a></li>
                         </ul>
                     </aside>
@@ -5430,7 +5423,7 @@
                         <div class="dashboard-header">
                             <h1 class="dashboard-title" id="vendor-dashboard-title">Vendor Dashboard</h1>
                             <div class="user-nav">
-                                <div class="nav-icon" id="vendor-notifications-btn">
+                                <div class="nav-icon" id="vendor-notifications-btn" style="display: none;">
                                     <i class="fas fa-bell"></i>
                                     <span class="badge" id="vendor-notifications-badge">0</span>
                                 </div>
@@ -21163,15 +21156,27 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     targetSectionElement.style.display = 'block';
                     // Update dashboard title
                     const dashboardTitleElement = document.getElementById('dashboard-modal-title');
+                    // Prefer the sidebar menu text for the active section; fallback to normalized section key
+                    const activeLink = currentDashboardMenu?.querySelector(`a[data-section="${section}"]`);
+                    let titleText = activeLink ? activeLink.textContent.trim() : '';
+                    if (!titleText) {
+                        const normalized = section.replace(/^vendor-/, '').replace(/-/g, ' ');
+                        titleText = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+                    }
                     if (dashboardTitleElement) {
-                        const titleText = section.charAt(0).toUpperCase() + section.slice(1).replace('vendor-', '').replace('-', ' ');
                         dashboardTitleElement.textContent = isVendorMode ? `Vendor Dashboard - ${titleText}` : `Dashboard - ${titleText}`;
                     }
+                    // Also update the main header title inside the content area
+                    const mainTitleEl = document.getElementById(isVendorMode ? 'vendor-dashboard-title' : 'dashboard-title');
+                    if (mainTitleEl) mainTitleEl.textContent = titleText;
                 } else {
                     // Fallback for the main dashboard view
                     const mainDashboardSection = document.getElementById(isVendorMode ? 'vendor-dashboard-section' : 'dashboard-section');
                     if(mainDashboardSection) mainDashboardSection.style.display = 'block';
-                    document.getElementById('dashboard-modal-title').textContent = isVendorMode ? 'Vendor Dashboard' : 'Dashboard';
+                    const modalTitleEl = document.getElementById('dashboard-modal-title');
+                    if (modalTitleEl) modalTitleEl.textContent = isVendorMode ? 'Vendor Dashboard - Dashboard' : 'Dashboard';
+                    const mainTitleEl = document.getElementById(isVendorMode ? 'vendor-dashboard-title' : 'dashboard-title');
+                    if (mainTitleEl) mainTitleEl.textContent = 'Dashboard';
                 }
 
                 // Update active class on menu items
