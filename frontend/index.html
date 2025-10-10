@@ -20820,7 +20820,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     };
                     const statusCfg = statusMap[statusRaw] || statusMap.pending;
                     const isPending = statusRaw === 'pending';
-                    const pendingResponseText = isPending ? `Pending response • ${hoursRemaining > 0 ? `${hoursRemaining}h left` : 'expired'}` : '';
+                    const pendingResponseText = isPending ? 'Pending response' : '';
 
                     // Build details grid with available backend fields
                     const detailsRows = [];
@@ -20883,21 +20883,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </div>
                             <div class="booking-service-row" style="display:flex; align-items:center; gap:6px;">
                                 <i class="fas fa-briefcase" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-service-label" style="color:#6b7280;">Service:</span>
                                 <span class="booking-service" title="${serviceNames}">${primaryServiceName ? primaryServiceName : 'Service'}${additionalServiceCount > 0 ? ` + ${additionalServiceCount} more` : ''}</span>
                             </div>
-                            ${(eventDateStr && eventDateStr !== '—') || serviceTimeStr ? `<div class="booking-date-row">
+                            ${(eventDateStr && eventDateStr !== '—') ? `<div class="booking-date-row">
                                 <i class="fas fa-calendar-alt" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-date">${[eventDateStr !== '—' ? eventDateStr : '', serviceTimeStr].filter(Boolean).join(' · ')}</span>
+                                <span class="booking-date">${eventDateStr}</span>
+                            </div>` : ''}
+                            ${serviceTimeStr ? `<div class="booking-date-row">
+                                <i class="fas fa-clock" style="color: #6b7280; font-size: 12px;"></i>
+                                <span class="booking-date">${serviceTimeStr}</span>
                             </div>` : ''}
                             ${request.EventLocation ? `<div class="booking-location-row">
                                 <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
                                 <span class="booking-location" title="${request.EventLocation}" style="max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: bottom;">${request.EventLocation}</span>
                             </div>` : ''}
-                            <div class="booking-time-row">
-                                <i class="fas fa-hourglass-half" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-time">${hoursRemaining > 0 ? `${hoursRemaining} hours remaining` : 'Timer expired'}</span>
-                            </div>
+                            
                             ${serviceCost && serviceCost !== '—' ? `<div class="booking-price-row">
                                 <i class="fas fa-dollar-sign" style="color: #6b7280; font-size: 12px;"></i>
                                 <span class="booking-price">${serviceCost}</span>
@@ -20908,6 +20908,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <i class="fas ${statusCfg.icon}" style="color:${statusCfg.color};"></i>
                                 <span>${isPending ? pendingResponseText : statusCfg.label}</span>
                             </div>
+                            ${isPending ? `<div class="request-deadline-note" style="font-size:12px; color:#6b7280; margin-top:2px;">${hoursRemaining > 0 ? `${hoursRemaining} ${hoursRemaining === 1 ? 'hour' : 'hours'} remaining` : 'Timer expired'}</div>` : ''}
                             <div class="actions-row" style="display:flex; align-items:center; gap:8px;">
                                 ${isPending ? `<button class="btn-accept" onclick="approveRequest(${request.RequestID})">Accept</button>` : ''}
                                 ${isPending ? `<button class="btn-decline" onclick="declineRequest(${request.RequestID})">Decline</button>` : ''}
