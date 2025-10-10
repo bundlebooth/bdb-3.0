@@ -2045,23 +2045,23 @@
             justify-content: center;
             align-self: stretch;
             text-align: center;
-            min-width: 60px;
+            min-width: 72px;
         }
 
         .booking-month {
             font-size: 12px;
             color: #6b7280;
-            font-weight: 500;
-            text-transform: capitalize;
+            font-weight: 600;
+            text-transform: uppercase;
             margin-bottom: 2px;
         }
 
         .booking-day {
-            font-size: 20px;
-            font-weight: 700;
+            font-size: 36px;
+            font-weight: 800;
             color: #111827;
             line-height: 1;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
 
         .booking-weekday {
@@ -2137,7 +2137,7 @@
         }
 
         /* Vendor request details inside booking-item (more specific to avoid conflicts) */
-        .booking-item.has-details { align-items: flex-start; flex-wrap: wrap; }
+        .booking-item.has-details { align-items: center; flex-wrap: wrap; }
         .booking-item .request-details {
             display: grid;
             grid-template-columns: repeat(2, minmax(260px, 1fr));
@@ -2149,7 +2149,15 @@
             flex-basis: 100%;
         }
         .booking-item .request-details.collapsed { display: none; }
-        .booking-item .booking-actions { margin-left: auto; }
+        .booking-item .booking-actions {
+            margin-left: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            align-self: stretch; /* make actions column match row height */
+        }
+        .booking-item .actions-row { margin-top: auto; }
         .booking-item .request-detail-row {
             display: grid;
             grid-template-columns: 160px 1fr;
@@ -20807,33 +20815,31 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         } catch { return lab; }
                     };
                     const eventTimeStr = (parsedStart.label && parsedEnd.label)
-                        ? `${to12h(parsedStart.label)} - ${to12h(parsedEnd.label)}${durationLabel ? ` (${durationLabel})` : ''}`
+                        ? `${to12h(parsedStart.label)} – ${to12h(parsedEnd.label)}${durationLabel ? ` (${durationLabel})` : ''}`
                         : (to12h(parsedStart.label) || to12h(parsedEnd.label) || '');
                     const createdAtStr = request.CreatedAt ? new Date(request.CreatedAt).toLocaleString() : '';
                     
                     // Status badge config
                     const statusRaw = (request.Status || 'pending').toString().toLowerCase();
                     const statusMap = {
-                        pending: { icon: 'fa-clock', color: '#f59e0b', textColor: '#92400e', label: 'Pending response' },
-                        accepted: { icon: 'fa-check-circle', color: '#10b981', textColor: '#065f46', label: 'Accepted' },
-                        declined: { icon: 'fa-times-circle', color: '#ef4444', textColor: '#991b1b', label: 'Declined' }
+                        pending:  { icon: 'fa-clock',        color: '#f59e0b', textColor: '#111827', bg: 'rgba(245, 158, 11, 0.12)', label: 'Pending response' },
+                        accepted: { icon: 'fa-check-circle',  color: '#10b981', textColor: '#111827', bg: 'rgba(16, 185, 129, 0.12)',  label: 'Accepted' },
+                        declined: { icon: 'fa-times-circle',  color: '#ef4444', textColor: '#111827', bg: 'rgba(239, 68, 68, 0.12)',  label: 'Declined' }
                     };
                     const statusCfg = statusMap[statusRaw] || statusMap.pending;
                     const isPending = statusRaw === 'pending';
                     const pendingResponseText = isPending ? 'Pending response' : '';
 
-                    // Build details grid with available backend fields
+                    // Build details grid with specific order
                     const detailsRows = [];
                     const pushRow = (label, value, full = false) => {
                         if (value && value !== '—') {
-                            detailsRows.push(`<div class="request-detail-row" ${full ? 'style="grid-column: span 2;"' : ''}><span class="request-detail-label">${label}</span><span class="request-detail-value">${value}</span></div>`);
+                            detailsRows.push(`<div class=\"request-detail-row\" ${full ? 'style=\"grid-column: span 2;\"' : ''}><span class=\"request-detail-label\">${label}</span><span class=\"request-detail-value\">${value}</span></div>`);
                         }
                     };
-                    // Removed Request ID per requirement
-                    // Client already shown in main summary, don't duplicate in details
+                    // Include previous info in details
                     pushRow('Event Name', request.EventName);
-                    pushRow('Event Type', request.EventType);
-                    // Date/Time and Location moved to main summary section
+                    pushRow('Event', request.EventType);
                     pushRow('Time Zone', request.TimeZone);
                     pushRow('Attendees', (request.AttendeeCount !== null && request.AttendeeCount !== undefined) ? request.AttendeeCount : '');
                     // Service-specific times for display and details
@@ -20856,10 +20862,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const serviceStart = serviceParsedStart.label ? to12h(serviceParsedStart.label) : '';
                     const serviceEnd = serviceParsedEnd.label ? to12h(serviceParsedEnd.label) : '';
                     const serviceTimeStr = (serviceParsedStart.label && serviceParsedEnd.label)
-                        ? `${serviceStart} - ${serviceEnd}${serviceDurationLabel ? ` (${serviceDurationLabel})` : ''}`
+                        ? `${serviceStart} – ${serviceEnd}${serviceDurationLabel ? ` (${serviceDurationLabel})` : ''}`
                         : (serviceStart || serviceEnd || '');
-                    if (serviceStart) pushRow('Service Start Time', serviceStart);
-                    if (serviceEnd) pushRow('Service End Time', serviceEnd);
                     // Services already shown in main summary; include full list in details if multiple
                     if (additionalServiceCount > 0 && serviceNames && serviceNames !== '—') {
                         pushRow('Services', serviceNames, true);
@@ -20877,14 +20881,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <div class="booking-weekday">${weekday}</div>
                         </div>
                         <div class="booking-info">
-                            <div class="booking-client">
-                                <i class="fas fa-user" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-client-name">${request.ClientName || 'New Client'}</span>
+                            <div class="booking-client" style="gap:8px; margin-bottom: 6px;">
+                                <span class="booking-client-name" style="font-size:16px; font-weight:700; color:#111827;">${request.ClientName || 'New Client'}</span>
                             </div>
-                            <div class="booking-service-row" style="display:flex; align-items:center; gap:6px;">
-                                <i class="fas fa-briefcase" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-service" title="${serviceNames}">${primaryServiceName ? primaryServiceName : 'Service'}${additionalServiceCount > 0 ? ` + ${additionalServiceCount} more` : ''}</span>
-                            </div>
+                            ${primaryServiceName ? `<div class="booking-service-row"><i class="fas fa-briefcase" style="color: #6b7280; font-size: 12px;"></i><span class="booking-service" title="${serviceNames}">${primaryServiceName}</span></div>` : ''}
+                            ${request.EventLocation ? `<div class="booking-location-row">
+                                <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
+                                <span class="booking-location" title="${request.EventLocation}" style="max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: bottom;">${request.EventLocation}</span>
+                            </div>` : ''}
                             ${(eventDateStr && eventDateStr !== '—') ? `<div class="booking-date-row">
                                 <i class="fas fa-calendar-alt" style="color: #6b7280; font-size: 12px;"></i>
                                 <span class="booking-date">${eventDateStr}</span>
@@ -20893,30 +20897,22 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <i class="fas fa-clock" style="color: #6b7280; font-size: 12px;"></i>
                                 <span class="booking-date">${serviceTimeStr}</span>
                             </div>` : ''}
-                            ${request.EventLocation ? `<div class="booking-location-row">
-                                <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-location" title="${request.EventLocation}" style="max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: bottom;">${request.EventLocation}</span>
-                            </div>` : ''}
-                            
-                            ${serviceCost && serviceCost !== '—' ? `<div class="booking-price-row">
-                                <i class="fas fa-dollar-sign" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-price">${serviceCost}</span>
-                            </div>` : ''}
                         </div>
                         <div class="booking-actions" style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-                            <div class="request-status-badge" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; background:${(statusCfg && (statusCfg.bg || '#f3f4f6'))}; color:#6b7280; border:1px solid ${statusCfg.color};">
+                            <div class="request-status-badge" style="display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:999px; font-size:13px; background:${(statusCfg && (statusCfg.bg || '#f3f4f6'))}; color:#111827; border:1px solid ${statusCfg.color};">
                                 <i class="fas ${statusCfg.icon}" style="color:${statusCfg.color};"></i>
                                 <span>${isPending ? pendingResponseText : statusCfg.label}</span>
                             </div>
-                            ${isPending ? `<div class="request-deadline-note" style="font-size:12px; color:#6b7280; margin-top:2px;">${hoursRemaining > 0 ? `${hoursRemaining} ${hoursRemaining === 1 ? 'hour' : 'hours'} remaining` : 'Timer expired'}</div>` : ''}
+                            ${isPending ? `<div class="request-deadline-note" style="font-size:13px; color:#6b7280; margin-top:6px;">${hoursRemaining > 0 ? `${hoursRemaining} ${hoursRemaining === 1 ? 'hour' : 'hours'} remaining` : 'Timer expired'}</div>` : ''}
+                            ${serviceCost && serviceCost !== '—' ? `<div class="booking-price-large" style="font-weight: 700; font-size: 28px; color: #111827; margin-top: 8px;">${serviceCost}</div>` : ''}
+                            ${detailsHtml ? `<div class=\"details-toggle-row\" style=\"display:flex; justify-content:flex-end; width:100%;\"><button class=\"link-btn\" onclick=\"toggleVendorDetails(this)\">More info</button></div>` : ''}
                             <div class="actions-row" style="display:flex; align-items:center; gap:8px;">
                                 ${isPending ? `<button class="btn-accept" onclick="approveRequest(${request.RequestID})">Accept</button>` : ''}
                                 ${isPending ? `<button class="btn-decline" onclick="declineRequest(${request.RequestID})">Decline</button>` : ''}
                                 ${request.ConversationID ? `<button class="btn btn-outline" onclick="openChatForRequest(${request.ConversationID})" style="padding: 8px 16px; border-radius: 8px;">Chat</button>` : ''}
                             </div>
-                            ${detailsHtml ? `<div class="details-toggle-row" style="display:flex; justify-content:flex-end; width:100%;"><button class="link-btn" onclick="toggleVendorDetails(this)">More info</button></div>` : ''}
                         </div>
-                        ${detailsHtml ? `<div class="request-details collapsed">${detailsHtml}</div>` : ''}
+                        ${detailsHtml ? `<div class=\"request-details collapsed\">${detailsHtml}</div>` : ''}
                     </div>`;
                 }).join('');
             }
