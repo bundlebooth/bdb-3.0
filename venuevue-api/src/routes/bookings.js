@@ -671,6 +671,12 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
       }
     }
 
+    const orderClause = (rawStatus === 'all')
+      ? 'ORDER BY br.CreatedAt DESC'
+      : `ORDER BY 
+        CASE WHEN br.Status = 'pending' THEN 1 ELSE 2 END,
+        br.CreatedAt DESC`;
+
     const query = `
       SELECT 
         br.RequestID,
@@ -698,9 +704,7 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
       LEFT JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
       WHERE ${whereClause}
       ${statusFilter}
-      ORDER BY 
-        CASE WHEN br.Status = 'pending' THEN 1 ELSE 2 END,
-        br.CreatedAt DESC`;
+      ${orderClause}`;
 
     const result = await request.query(query);
 
