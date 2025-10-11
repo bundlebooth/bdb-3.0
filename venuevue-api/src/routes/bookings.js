@@ -880,7 +880,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
       .input('RespondedAt', sql.DateTime, new Date())
       .query(`
         UPDATE BookingRequests 
-        SET Status = @Status, ResponseMessage = @ResponseMessage, RespondedAt = @RespondedAt, ExpiresAt = NULL
+        SET Status = @Status, ResponseMessage = @ResponseMessage, RespondedAt = @RespondedAt
         OUTPUT INSERTED.UserID, INSERTED.RequestID
         WHERE RequestID = @RequestID AND VendorProfileID = @VendorProfileID AND Status IN ('pending','expired')
       `);
