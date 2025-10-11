@@ -625,22 +625,59 @@ router.put('/requests/:requestId/respond', async (req, res) => {
   }
 });
 
-// Get pending requests for a vendor
+// Get requests for a vendor with direction and status filters
 router.get('/vendor/:vendorId/requests', async (req, res) => {
   try {
     const { vendorId } = req.params;
-    
+    const rawStatus = (req.query.status || 'all').toString().toLowerCase();
+    const direction = (req.query.direction || 'inbound').toString().toLowerCase(); // inbound | outbound
+
     const pool = await poolPromise;
     const request = new sql.Request(pool);
-    
-    request.input('VendorProfileID', sql.Int, vendorId);
-    
-    const result = await request.query(`
+
+    // Always have VendorProfileID param
+    request.input('VendorProfileID', sql.Int, parseInt(vendorId));
+
+    // Resolve vendor's UserID (for outbound queries)
+    let vendorUserId = null;
+    if (direction === 'outbound') {
+      const vu = await pool.request()
+        .input('VendorProfileID', sql.Int, parseInt(vendorId))
+        .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+      vendorUserId = vu.recordset[0]?.UserID || null;
+      if (!vendorUserId) {
+        return res.json({ success: true, requests: [] });
+      }
+    }
+
+    // Build WHERE for direction
+    let whereClause = direction === 'outbound'
+      ? 'br.UserID = @VendorUserID'
+      : 'br.VendorProfileID = @VendorProfileID';
+
+    if (direction === 'outbound') {
+      request.input('VendorUserID', sql.Int, vendorUserId);
+    }
+
+    // Build status filter
+    let statusFilter = '';
+    if (rawStatus && rawStatus !== 'all') {
+      request.input('Status', sql.NVarChar(50), rawStatus);
+      if (rawStatus === 'expired') {
+        // Include explicit expired rows or pending rows past expiry
+        statusFilter = " AND (br.Status = 'expired' OR (br.Status = 'pending' AND br.ExpiresAt <= GETDATE()))";
+      } else {
+        statusFilter = ' AND br.Status = @Status';
+      }
+    }
+
+    const query = `
       SELECT 
         br.RequestID,
         br.UserID,
-        u.Name as ClientName,
-        u.Email as ClientEmail,
+        u.Name AS ClientName,
+        u.Email AS ClientEmail,
+        vp.BusinessName AS VendorName,
         br.Services,
         br.EventDate,
         CONVERT(VARCHAR(8), br.EventTime, 108) AS EventTime,
@@ -654,14 +691,18 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
         br.TimeZone,
         br.Status,
         br.CreatedAt,
-        br.ExpiresAt
+        br.ExpiresAt,
+        CASE WHEN br.ExpiresAt <= GETDATE() AND br.Status = 'pending' THEN 1 ELSE 0 END AS IsExpired
       FROM BookingRequests br
       LEFT JOIN Users u ON br.UserID = u.UserID
-      WHERE br.VendorProfileID = @VendorProfileID
-        AND br.Status = 'pending'
-        AND br.ExpiresAt > GETDATE()
-      ORDER BY br.CreatedAt DESC
-    `);
+      LEFT JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
+      WHERE ${whereClause}
+      ${statusFilter}
+      ORDER BY 
+        CASE WHEN br.Status = 'pending' THEN 1 ELSE 2 END,
+        br.CreatedAt DESC`;
+
+    const result = await request.query(query);
 
     res.json({
       success: true,
