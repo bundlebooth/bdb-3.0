@@ -5409,8 +5409,7 @@
                         </div>
                         <ul class="dashboard-menu">
                             <li><a href="#" class="active" data-section="vendor-dashboard">Dashboard</a></li>
-                            <li><a href="#" data-section="vendor-bookings">Bookings</a></li>
-                            <li><a href="#" data-section="vendor-requests">Pending Requests</a></li>
+                            <li><a href="#" data-section="vendor-requests">Bookings</a></li>
                             <li><a href="#" data-section="vendor-services">Services</a></li>
                             <li><a href="#" data-section="vendor-messages">Messages</a></li>
                             <li><a href="#" data-section="vendor-reviews">Reviews</a></li>
@@ -5445,26 +5444,19 @@
                                 </div>
                             </div>
                         </div>
-                        <div id="vendor-bookings-section" style="display: none;">
-                            <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">All Bookings</h2>
-                                <div id="vendor-all-bookings"><p>Loading all bookings...</p></div>
-                            </div>
-                        </div>
                         <div id="vendor-requests-section" style="display: none;">
                             <div class="dashboard-card">
                                 <div class="booking-header">
-                                    <h2 class="dashboard-card-title">Booking requests</h2>
+                                    <h2 class="dashboard-card-title">Bookings</h2>
                                 </div>
-                                <div class="requests-stats">
-                                    <div class="stat-card">
-                                        <div class="stat-value" id="pending-requests-count">0</div>
-                                        <div class="stat-label">Pending Requests</div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="stat-value" id="expiring-soon-count">0</div>
-                                        <div class="stat-label">Expiring Soon</div>
-                                    </div>
+                                <!-- Direction tabs removed per UI preference -->
+                                <!-- Status filter tabs -->
+                                <div class="requests-filter-tabs" id="vendor-request-status-tabs" style="margin-top: .5rem;">
+                                    <button class="tab-btn active" data-status="all">All</button>
+                                    <button class="tab-btn" data-status="pending">Pending</button>
+                                    <button class="tab-btn" data-status="approved">Accepted</button>
+                                    <button class="tab-btn" data-status="declined">Declined</button>
+                                    <button class="tab-btn" data-status="expired">Expired</button>
                                 </div>
                                 <div id="vendor-pending-requests"><p>Loading pending requests...</p></div>
                             </div>
@@ -7707,10 +7699,94 @@
             }
         }
 
+        // Vendor requests filter state (inbound/outbound + status)
+        let vendorReqFilters = { direction: 'inbound', status: 'all' };
+
+        // Normalize backend status for consistent filtering/rendering
+        function normalizeVendorRequestStatus(item) {
+            try {
+                let s = (item && item.Status ? String(item.Status) : 'pending').toLowerCase();
+                if (s === 'pending') {
+                    const isExpired = (item.IsExpired === 1) || (item.ExpiresAt && new Date(item.ExpiresAt) <= new Date());
+                    if (isExpired) s = 'expired';
+                }
+                if (s === 'accepted') s = 'approved';
+                return s;
+            } catch (_) { return 'pending'; }
+        }
+
+        // Optimistic UI helpers for vendor requests
+        const STATUS_STYLES = {
+            approved: { label: 'Accepted', icon: 'fa-check-circle', color: '#059669', bg: '#d1fae5' },
+            declined: { label: 'Declined', icon: 'fa-times-circle', color: '#b91c1c', bg: '#fee2e2' }
+        };
+        function optimisticUpdateRequestCard(requestId, status) {
+            try {
+                const card = document.querySelector(`.booking-item[data-request-id="${requestId}"]`);
+                if (!card) return () => {};
+                const previousHTML = card.outerHTML;
+                const cfg = STATUS_STYLES[status] || { label: status };
+                const badge = card.querySelector('.request-status-badge');
+                if (badge) {
+                    if (cfg.color) badge.style.borderColor = cfg.color;
+                    if (cfg.bg) badge.style.background = cfg.bg;
+                    const icon = badge.querySelector('i');
+                    if (icon && cfg.icon) {
+                        icon.className = `fas ${cfg.icon}`;
+                        icon.style.color = cfg.color || icon.style.color;
+                    }
+                    const textSpan = badge.querySelector('span');
+                    if (textSpan) textSpan.textContent = cfg.label || status;
+                    const dot = badge.querySelector('.dot-new');
+                    if (dot) dot.remove();
+                }
+                const note = card.querySelector('.request-deadline-note');
+                if (note) note.remove();
+                const actionsRow = card.querySelector('.actions-row');
+                if (actionsRow) {
+                    actionsRow.querySelectorAll('.btn-accept, .btn-decline').forEach(btn => btn.remove());
+                }
+                // If current tab excludes the new status, remove the card immediately
+                const cur = (typeof vendorReqFilters !== 'undefined' && vendorReqFilters && vendorReqFilters.status) || 'all';
+                if (cur !== 'all' && cur !== status) {
+                    card.style.opacity = '0';
+                    setTimeout(() => { 
+                        try { 
+                            const container = document.getElementById('vendor-pending-requests');
+                            // Decrement visible count if present
+                            const countEl = container ? container.querySelector('.booking-count') : null;
+                            if (countEl) {
+                                const n = parseInt(countEl.textContent, 10);
+                                if (!isNaN(n) && n > 0) countEl.textContent = `${n - 1} requests`;
+                            }
+                            card.remove(); 
+                        } catch (_) {} 
+                    }, 150);
+                }
+                return () => {
+                    try {
+                        // Find by request id again, in case the original reference was removed
+                        const existing = document.querySelector(`.booking-item[data-request-id="${requestId}"]`);
+                        if (existing) {
+                            existing.outerHTML = previousHTML;
+                        } else {
+                            // If card was removed due to filter mismatch, refresh list silently
+                            try { loadVendorRequests(vendorReqFilters.direction, vendorReqFilters.status, { silent: true }); } catch (_) {}
+                        }
+                    } catch (_) {}
+                };
+            } catch (_) {
+                return () => {};
+            }
+        }
+
         // Global functions for vendor request handling (accessible to onclick handlers)
         async function approveRequest(requestId) {
+            let revertOptimistic = () => {};
             try {
                 const vendorProfileId = await getVendorProfileId();
+                // Optimistic UI: mark card as accepted immediately
+                revertOptimistic = optimisticUpdateRequestCard(requestId, 'approved');
                 
                 const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/approve`, {
                     method: 'POST',
@@ -7756,9 +7832,10 @@
                 
                 showSuccess('Request approved successfully! Chat initiated with customer.');
                 
-                // Refresh the vendor requests list without page reload
+                // Keep current filter; refresh list in background to reconcile
+                if (typeof syncVendorRequestTabStates === 'function') { try { syncVendorRequestTabStates(); } catch (_) {} }
                 if (typeof loadVendorRequests === 'function') {
-                    await loadVendorRequests();
+                    try { loadVendorRequests(vendorReqFilters.direction, vendorReqFilters.status, { silent: true }); } catch (_) {}
                 }
                 
                 // Update notifications
@@ -7768,6 +7845,7 @@
                 
             } catch (error) {
                 console.error('Error approving request:', error);
+                try { if (typeof revertOptimistic === 'function') revertOptimistic(); } catch (_) {}
                 showGlobalError(`Failed to approve request: ${error.message}`);
             }
         }
@@ -8687,8 +8765,11 @@
         async function declineRequest(requestId) {
             const reason = prompt('Please provide a reason for declining (optional):');
             
+            let revertOptimistic = () => {};
             try {
                 const vendorProfileId = await getVendorProfileId();
+                // Optimistic UI: mark card as declined immediately
+                revertOptimistic = optimisticUpdateRequestCard(requestId, 'declined');
                 
                 const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/decline`, {
                     method: 'POST',
@@ -8723,9 +8804,10 @@
                 
                 showSuccess('Request declined.');
                 
-                // Refresh the vendor requests list without page reload
+                // Keep current filter; refresh list in background to reconcile
+                if (typeof syncVendorRequestTabStates === 'function') { try { syncVendorRequestTabStates(); } catch (_) {} }
                 if (typeof loadVendorRequests === 'function') {
-                    await loadVendorRequests();
+                    try { loadVendorRequests(vendorReqFilters.direction, vendorReqFilters.status, { silent: true }); } catch (_) {}
                 }
                 
                 // Update notifications
@@ -8734,6 +8816,7 @@
                 }
             } catch (error) {
                 console.error('Error declining request:', error);
+                try { if (typeof revertOptimistic === 'function') revertOptimistic(); } catch (_) {}
                 showGlobalError(`Failed to decline request: ${error.message}`);
             }
         }
@@ -10313,7 +10396,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Valid sections per mode
             const CLIENT_SECTIONS = new Set(['dashboard','bookings','requests','favorites','messages','reviews','settings']);
-            const VENDOR_SECTIONS = new Set(['vendor-dashboard','vendor-bookings','vendor-requests','vendor-services','vendor-messages','vendor-reviews','vendor-analytics','vendor-settings']);
+            const VENDOR_SECTIONS = new Set(['vendor-dashboard','vendor-requests','vendor-services','vendor-messages','vendor-reviews','vendor-analytics','vendor-settings']);
 
             function persistActiveSection(mode, section) {
                 try {
@@ -20539,9 +20622,22 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function renderUserRequests(requests, filter) {
                 const container = document.getElementById('user-requests');
                 
-                let filteredRequests = requests;
-                if (filter !== 'all') {
-                    filteredRequests = requests.filter(req => req.CurrentStatus === filter);
+                // Normalize backend status and handle expired
+                const normalize = (r) => {
+                    try {
+                        let s = (r.Status || r.status || r.CurrentStatus || 'pending').toString().toLowerCase();
+                        if (s === 'accepted') s = 'approved';
+                        if (s === 'pending' && r.ExpiresAt) {
+                            const exp = new Date(r.ExpiresAt);
+                            if (!isNaN(exp.getTime()) && exp <= new Date()) s = 'expired';
+                        }
+                        return s;
+                    } catch(_) { return 'pending'; }
+                };
+
+                let filteredRequests = Array.isArray(requests) ? requests.slice() : [];
+                if (filter && filter !== 'all') {
+                    filteredRequests = filteredRequests.filter(req => normalize(req) === filter);
                 }
                 
                 if (filteredRequests.length === 0) {
@@ -20554,16 +20650,31 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const requestItem = document.createElement('div');
                     requestItem.className = 'booking-item';
                     
-                    const eventDate = new Date(request.EventDate);
-                    const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
-                    const day = eventDate.getDate();
-                    const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
+                    const eventDate = request.EventDate ? new Date(request.EventDate) : null;
+                    const month = eventDate ? eventDate.toLocaleDateString('en-US', { month: 'short' }) : '—';
+                    const day = eventDate ? eventDate.getDate() : '—';
+                    const weekday = eventDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '—';
+
+                    // Compute hours remaining (if ExpiresAt returned)
+                    let hoursRemaining = 0;
+                    try {
+                        const now = new Date();
+                        const exp = request.ExpiresAt ? new Date(request.ExpiresAt) : null;
+                        if (exp) {
+                            const diffMs = exp.getTime() - now.getTime();
+                            hoursRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60)));
+                        }
+                    } catch(_) {}
+
+                    const statusNorm = normalize(request);
+                    const statusLabelMap = { pending: 'Pending', approved: 'Accepted', declined: 'Declined', expired: 'Expired' };
+                    const statusLabel = statusLabelMap[statusNorm] || 'Pending';
                     
                     let actionButtons = '';
                     if (request.ConversationID) {
                         actionButtons += `<button class="btn btn-outline" onclick="openChatForRequest(${request.ConversationID})" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Chat</button>`;
                     }
-                    if (request.CurrentStatus === 'pending') {
+                    if (statusNorm === 'pending') {
                         actionButtons += `<button class="btn-decline" onclick="cancelRequest(${request.RequestID})">Cancel</button>`;
                     }
                     
@@ -20583,7 +20694,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </div>
                             <div class="booking-time-row">
                                 <i class="fas fa-hourglass-half" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-time">${request.HoursRemaining ? `${request.HoursRemaining} hours remaining` : 'Timer expired'}</span>
+                                <span class="booking-time">${hoursRemaining > 0 ? `${hoursRemaining} ${hoursRemaining === 1 ? 'hour' : 'hours'} remaining` : 'Timer expired'}</span>
                             </div>
                             ${request.Budget ? `<div class="booking-price-row">
                                 <i class="fas fa-dollar-sign" style="color: #6b7280; font-size: 12px;"></i>
@@ -20595,7 +20706,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </div>` : ''}
                         </div>
                         <div class="booking-actions">
-                            <span class="request-status ${request.CurrentStatus}" style="margin-right: 12px; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; text-transform: capitalize;">${request.CurrentStatus}</span>
+                            <span class="request-status ${statusNorm}" style="margin-right: 12px; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; text-transform: capitalize;">${statusLabel}</span>
                             ${actionButtons}
                         </div>
                     `;
@@ -20603,12 +20714,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 });
             }
             
-            async function loadVendorRequests() {
+            async function loadVendorRequests(direction = (vendorReqFilters?.direction || 'inbound'), status = (vendorReqFilters?.status || 'all'), options = {}) {
                 const container = document.getElementById('vendor-pending-requests');
                 const pendingCountEl = document.getElementById('pending-requests-count');
                 const expiringSoonCountEl = document.getElementById('expiring-soon-count');
+                const silent = options && options.silent;
                 
-                container.innerHTML = '<p>Loading pending requests...</p>';
+                if (!silent) container.innerHTML = '<p>Loading requests...</p>';
                 
                 try {
                     // Get vendor profile ID using current user's ID
@@ -20616,74 +20728,61 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         throw new Error('User not logged in');
                     }
                     
-                    console.log('🔍 Debug - Loading vendor requests for user:', currentUser);
-                    
                     const vendorProfileResponse = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
                         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                     });
-                    
-                    console.log('🔍 Debug - Vendor profile response status:', vendorProfileResponse.status);
-                    
-                    if (!vendorProfileResponse.ok) {
-                        throw new Error('Failed to fetch vendor profile');
-                    }
-                    
+                    if (!vendorProfileResponse.ok) throw new Error('Failed to fetch vendor profile');
                     const vendorProfileData = await vendorProfileResponse.json();
-                    console.log('🔍 Debug - Vendor profile data:', vendorProfileData);
-                    
                     const vendorProfileId = vendorProfileData.vendorProfileId;
-                    console.log('🔍 Debug - Extracted vendor profile ID:', vendorProfileId);
+                    if (!vendorProfileId) throw new Error('Vendor profile not found');
                     
-                    if (!vendorProfileId) {
-                        throw new Error('Vendor profile not found');
-                    }
-                    
-                    console.log('🔍 Debug - Fetching requests for vendor ID:', vendorProfileId);
-                    const response = await fetch(`${API_BASE_URL}/bookings/vendor/${vendorProfileId}/requests`, {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                    });
-                    
-                    console.log('🔍 Debug - Vendor requests response status:', response.status);
-                    
+                    const qs = new URLSearchParams({ direction, status }).toString();
+                    const url = `${API_BASE_URL}/bookings/vendor/${vendorProfileId}/requests?${qs}`;
+                    const response = await fetch(url, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
                     if (!response.ok) throw new Error('Failed to fetch vendor requests');
                     const data = await response.json();
-                    console.log('🔍 Debug - Vendor requests data:', data);
+                    const allRequests = data.requests || [];
+                    // Client-side safety filter matching selected status (handles edge cases)
+                    const normalizeStatus = (r) => {
+                        let s = (r.Status || 'pending').toString().toLowerCase();
+                        if (s === 'pending' && (r.IsExpired === 1 || (r.ExpiresAt && new Date(r.ExpiresAt) <= new Date()))) s = 'expired';
+                        if (s === 'accepted') s = 'approved';
+                        return s;
+                    };
+                    const requests = (status && status !== 'all') ? allRequests.filter(r => normalizeStatus(r) === status) : allRequests;
                     
-                    const requests = data.requests || [];
-                    console.log('🔍 Debug - Parsed requests:', requests);
-                    console.log('🔍 Debug - Number of requests found:', requests.length);
+                    // Update inbound pending stats (independent of current filter)
+                    try {
+                        const statResp = await fetch(`${API_BASE_URL}/bookings/vendor/${vendorProfileId}/requests?${new URLSearchParams({ direction: 'inbound', status: 'pending' }).toString()}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+                        if (statResp.ok) {
+                            const statData = await statResp.json();
+                            const now = new Date();
+                            const expSoon = (statData.requests || []).filter(req => {
+                                if (!req.ExpiresAt) return false;
+                                const exp = new Date(req.ExpiresAt);
+                                const hrs = (exp.getTime() - now.getTime()) / (1000 * 60 * 60);
+                                return hrs <= 6 && hrs > 0;
+                            }).length;
+                            if (pendingCountEl) pendingCountEl.textContent = (statData.requests || []).length;
+                            if (expiringSoonCountEl) expiringSoonCountEl.textContent = expSoon;
+                        }
+                    } catch (_) { /* non-blocking */ }
                     
-                    if (requests.length === 0) {
-                        console.log('🔍 Debug - No requests found. Checking if booking requests exist in database for vendor ID:', vendorProfileId);
-                        console.log('🔍 Debug - API URL called:', `${API_BASE_URL}/bookings/vendor/${vendorProfileId}/requests`);
-                    }
-                    
-                    // Update stats using ExpiresAt
-                    const now = new Date();
-                    const expiringSoon = requests.filter(req => {
-                        if (!req.ExpiresAt) return false;
-                        const exp = new Date(req.ExpiresAt);
-                        const diffMs = exp.getTime() - now.getTime();
-                        const hrs = diffMs / (1000 * 60 * 60);
-                        return hrs <= 6 && hrs > 0;
-                    }).length;
-                    pendingCountEl.textContent = requests.length;
-                    expiringSoonCountEl.textContent = expiringSoon;
-                    
-                    renderVendorRequests(requests);
+                    renderVendorRequests(requests, direction, status);
                 } catch (error) {
                     console.error('Error loading vendor requests:', error);
                     container.innerHTML = `<p style="color:var(--accent);">Failed to load requests: ${error.message}</p>`;
                 }
             }
             
-            function renderVendorRequests(requests) {
+            function renderVendorRequests(requests, direction = 'inbound', status = 'all') {
                 const container = document.getElementById('vendor-pending-requests');
                 // Non-blocking: prompt vendor to connect to Stripe if needed
                 getVendorProfileId().then(vId => { if (vId) checkVendorStripeStatus(vId, true); }).catch(() => {});
                 
                 if (requests.length === 0) {
-                    container.innerHTML = '<p>No pending requests at this time.</p>';
+                    const msg = (status === 'pending') ? 'No pending requests at this time.' : 'No requests for this filter.';
+                    container.innerHTML = `<p>${msg}</p>`;
                     return;
                 }
                 
@@ -20827,11 +20926,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const createdAtStr = request.CreatedAt ? new Date(request.CreatedAt).toLocaleString() : '';
                     
                     // Status badge config
-                    const statusRaw = (request.Status || 'pending').toString().toLowerCase();
+                    let statusRaw = (request.Status || 'pending').toString().toLowerCase();
+                    // Normalize expired pending
+                    if (statusRaw === 'pending' && (request.IsExpired === 1 || (request.ExpiresAt && new Date(request.ExpiresAt) <= new Date()))) {
+                        statusRaw = 'expired';
+                    }
                     const statusMap = {
-                        pending:  { icon: 'fa-clock',        color: '#f59e0b', textColor: '#111827', bg: 'rgba(245, 158, 11, 0.12)', label: 'Pending response' },
-                        accepted: { icon: 'fa-check-circle',  color: '#10b981', textColor: '#111827', bg: 'rgba(16, 185, 129, 0.12)',  label: 'Accepted' },
-                        declined: { icon: 'fa-times-circle',  color: '#ef4444', textColor: '#111827', bg: 'rgba(239, 68, 68, 0.12)',  label: 'Declined' }
+                        pending:  { icon: 'fa-clock',          color: '#f59e0b', textColor: '#111827', bg: 'rgba(245, 158, 11, 0.12)', label: 'Pending response' },
+                        approved: { icon: 'fa-check-circle',   color: '#10b981', textColor: '#111827', bg: 'rgba(16, 185, 129, 0.12)', label: 'Accepted' },
+                        accepted: { icon: 'fa-check-circle',   color: '#10b981', textColor: '#111827', bg: 'rgba(16, 185, 129, 0.12)', label: 'Accepted' },
+                        declined: { icon: 'fa-times-circle',   color: '#ef4444', textColor: '#111827', bg: 'rgba(239, 68, 68, 0.12)', label: 'Declined' },
+                        expired:  { icon: 'fa-hourglass-end',  color: '#6b7280', textColor: '#111827', bg: 'rgba(107, 114, 128, 0.12)', label: 'Expired' }
                     };
                     const statusCfg = statusMap[statusRaw] || statusMap.pending;
                     const isPending = statusRaw === 'pending';
@@ -20881,7 +20986,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const detailsHtml = detailsRows.join('');
 
                     return `
-                    <div class="booking-item has-details">
+                    <div class="booking-item has-details" data-request-id="${request.RequestID}">
                         <div class="booking-date-section">
                             <div class="booking-month">${month}</div>
                             <div class="booking-day">${day}</div>
@@ -20919,8 +21024,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 ${detailsHtml ? `<button class=\"link-btn\" onclick=\"toggleVendorDetails(this)\">More info</button>` : ''}
                               </div>` : ''}
                             <div class="actions-row" style="display:flex; align-items:center; gap:6px;">
-                                ${isPending ? `<button class="btn-accept" onclick="approveRequest(${request.RequestID})">Accept</button>` : ''}
-                                ${isPending ? `<button class="btn-decline" onclick="declineRequest(${request.RequestID})">Decline</button>` : ''}
+                                ${(direction === 'inbound' && isPending) ? `<button class="btn-accept" onclick="approveRequest(${request.RequestID})">Accept</button>` : ''}
+                                ${(direction === 'inbound' && isPending) ? `<button class="btn-decline" onclick="declineRequest(${request.RequestID})">Decline</button>` : ''}
                                 ${request.ConversationID ? `<button class="btn btn-outline" onclick="openChatForRequest(${request.ConversationID})" style="padding: 6px 12px; border-radius: 8px; font-size: 13px;">Chat</button>` : ''}
                             </div>
                         </div>
@@ -20977,7 +21082,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
             
             function setupRequestFilterTabs() {
-                const tabButtons = document.querySelectorAll('.requests-filter-tabs .tab-btn');
+                // Scope to client requests only to avoid binding vendor tabs
+                const tabButtons = document.querySelectorAll('#requests-section .requests-filter-tabs .tab-btn');
                 
                 tabButtons.forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -20988,9 +21094,57 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         
                         // Load requests with the selected filter
                         const filter = e.target.dataset.filter;
-                        loadUserRequests(filter);
+                        if (filter) {
+                            loadUserRequests(filter);
+                        }
                     });
                 });
+            }
+
+            // Setup vendor requests status tabs only (direction hidden)
+            function setupVendorRequestTabs() {
+                // Always default to inbound
+                vendorReqFilters.direction = 'inbound';
+                const statusTabsWrap = document.getElementById('vendor-request-status-tabs');
+                if (!statusTabsWrap) return;
+
+                // Hard-hide any legacy direction tab bars in this section (defensive)
+                try {
+                    const vendorSection = document.getElementById('vendor-requests-section');
+                    const strayTabs = vendorSection ? vendorSection.querySelectorAll('.booking-tabs') : [];
+                    strayTabs.forEach(el => { el.style.display = 'none'; });
+                } catch (_) {}
+
+                // Prevent duplicate bindings
+                if (statusTabsWrap.dataset.bound === '1') {
+                    syncVendorRequestTabStates();
+                    return;
+                }
+                statusTabsWrap.dataset.bound = '1';
+
+                const statusTabs = statusTabsWrap.querySelectorAll('.tab-btn');
+                statusTabs.forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        statusTabs.forEach(b => b.classList.remove('active'));
+                        e.currentTarget.classList.add('active');
+                        vendorReqFilters.status = e.currentTarget.dataset.status || 'all';
+                        await loadVendorRequests(vendorReqFilters.direction, vendorReqFilters.status);
+                    });
+                });
+
+                // Ensure initial active states match current filters
+                syncVendorRequestTabStates();
+            }
+
+            function syncVendorRequestTabStates() {
+                try {
+                    // Only status tabs are present now
+                    const statusTabsWrap = document.getElementById('vendor-request-status-tabs');
+                    if (statusTabsWrap) {
+                        const statusTabs = statusTabsWrap.querySelectorAll('.tab-btn');
+                        statusTabs.forEach(b => b.classList.toggle('active', (b.dataset.status || 'all') === (vendorReqFilters.status || 'all')));
+                    }
+                } catch (_) {}
             }
 
             // Generic settings tabs setup for a given container
@@ -22007,10 +22161,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 });
                             }
                         }
-                    } else if (section === 'vendor-bookings') {
-                        await loadAllVendorBookings(vendorProfileId);
                     } else if (section === 'vendor-requests') {
-                        await loadVendorRequests();
+                        // Initialize vendor request tabs and load with current filters
+                        try { setupVendorRequestTabs(); } catch (_) {}
+                        await loadVendorRequests(vendorReqFilters.direction, vendorReqFilters.status);
                     } else if (section === 'vendor-services') {
                         await loadVendorServices(vendorProfileId);
                     } else if (section === 'vendor-messages') {
