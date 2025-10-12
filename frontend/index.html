@@ -7611,6 +7611,27 @@
             state.bookings = Array.isArray(bookings) ? bookings.slice() : [];
             window._invoiceListState[listId] = state;
 
+            // Inject CSS once for tabular look
+            if (!window._invoicesTableCSSApplied) {
+                const style = document.createElement('style');
+                style.id = 'invoices-table-css';
+                style.textContent = `
+                    .invoices-table{border-collapse:collapse;width:100%;}
+                    .invoices-table th,.invoices-table td{padding:10px 12px;border:1px solid var(--border, #e5e7eb); background: var(--secondary, #fff);} 
+                    .invoices-table thead th{background:#f9fafb;color:#374151;font-weight:600;position:sticky;top:0;z-index:1;}
+                    .invoices-table tbody tr:nth-child(even) td{background:#fbfdff;}
+                    .invoices-table tbody tr:hover td{background:#f3f4f6;}
+                    .invoices-table th.sortable{cursor:pointer;user-select:none;}
+                    .invoices-table th.sortable.sorted-asc::after{content:' ▲';}
+                    .invoices-table th.sortable.sorted-desc::after{content:' ▼';}
+                    .ta-right{text-align:right;}
+                    .ta-center{text-align:center;}
+                    .nowrap{white-space:nowrap;}
+                `;
+                document.head.appendChild(style);
+                window._invoicesTableCSSApplied = true;
+            }
+
             if (!Array.isArray(bookings) || bookings.length === 0) {
                 container.innerHTML = '<p>No invoices available.</p>';
                 return;
@@ -7620,7 +7641,7 @@
             container.innerHTML = `
                 <div class="invoices-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap;">
                     <div style="display:flex;gap:8px;align-items:center;">
-                        <input id="${listId}-search" type="text" placeholder="Search by name, status, invoice #" style="padding:8px 10px;border:1px solid var(--border, #e5e7eb);border-radius:6px;min-width:260px;">
+                        <input id="${listId}-search" type="text" placeholder="Search by name, status, invoice #, event" style="padding:8px 10px;border:1px solid var(--border, #e5e7eb);border-radius:6px;min-width:260px;">
                         <button id="${listId}-clear" class="btn btn-outline btn-sm">Clear</button>
                     </div>
                     <div id="${listId}-count" style="color:#6b7280;font-size:.9rem;"></div>
@@ -7656,7 +7677,13 @@
                         const name = state.viewerRole === 'vendor' ? (b.ClientName || '') : (b.VendorName || '');
                         const status = b.Status || '';
                         const invNum = state.meta[b.BookingID]?.invoiceNumber || '';
-                        return normalize(name).includes(q) || normalize(status).includes(q) || normalize(invNum).includes(q);
+                        const svc = state.meta[b.BookingID]?.servicesSummary || '';
+                        const evn = state.meta[b.BookingID]?.eventName || '';
+                        const typ = state.meta[b.BookingID]?.eventType || '';
+                        const loc = state.meta[b.BookingID]?.eventLocation || '';
+                        const tz = state.meta[b.BookingID]?.timeZone || '';
+                        const guests = (state.meta[b.BookingID]?.attendeeCount != null) ? String(state.meta[b.BookingID]?.attendeeCount) : '';
+                        return normalize(name).includes(q) || normalize(status).includes(q) || normalize(invNum).includes(q) || normalize(svc).includes(q) || normalize(evn).includes(q) || normalize(typ).includes(q) || normalize(loc).includes(q) || normalize(tz).includes(q) || normalize(guests).includes(q);
                     });
                 }
                 const dir = state.sortDir === 'asc' ? 1 : -1;
@@ -7666,12 +7693,22 @@
                                key === 'amount' ? Number(a.TotalAmount || 0) :
                                key === 'name' ? normalize(state.viewerRole === 'vendor' ? (a.ClientName||'') : (a.VendorName||'')) :
                                key === 'status' ? normalize(a.Status || '') :
+                               key === 'booking' ? normalize([
+                                   state.meta[a.BookingID]?.eventName,
+                                   state.meta[a.BookingID]?.servicesSummary,
+                                   state.meta[a.BookingID]?.eventLocation
+                               ].filter(Boolean).join(' ')) :
                                key === 'invoice' ? (state.meta[a.BookingID]?.invoiceNumber || '') :
                                key === 'due' ? new Date(state.meta[a.BookingID]?.dueDate || 0) : new Date(a.EventDate || 0);
                     const bv = key === 'date' ? new Date(b.EventDate || 0) :
                                key === 'amount' ? Number(b.TotalAmount || 0) :
                                key === 'name' ? normalize(state.viewerRole === 'vendor' ? (b.ClientName||'') : (b.VendorName||'')) :
                                key === 'status' ? normalize(b.Status || '') :
+                               key === 'booking' ? normalize([
+                                   state.meta[b.BookingID]?.eventName,
+                                   state.meta[b.BookingID]?.servicesSummary,
+                                   state.meta[b.BookingID]?.eventLocation
+                               ].filter(Boolean).join(' ')) :
                                key === 'invoice' ? (state.meta[b.BookingID]?.invoiceNumber || '') :
                                key === 'due' ? new Date(state.meta[b.BookingID]?.dueDate || 0) : new Date(b.EventDate || 0);
                     if (av < bv) return -1*dir;
@@ -7681,7 +7718,14 @@
                 return arr;
             }
 
-            function sortArrow(k){ return state.sortKey === k ? (state.sortDir === 'asc' ? ' ▲' : ' ▼') : ''; }
+            function applyHeaderSortClasses(){
+                tableWrap.querySelectorAll('th[data-sort]')?.forEach(th => {
+                    th.classList.remove('sorted-asc','sorted-desc','sortable');
+                    th.classList.add('sortable');
+                    const k = th.getAttribute('data-sort');
+                    if (k === state.sortKey) th.classList.add(state.sortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+                });
+            }
 
             function renderBody(){
                 const list = filteredAndSorted();
@@ -7696,15 +7740,29 @@
                     const meta = state.meta[b.BookingID] || {};
                     const invNum = meta.invoiceNumber || '—';
                     const due = meta.dueDate ? formatDate(meta.dueDate) : '—';
+                    const svc = meta.servicesSummary || '—';
+                    const timeTxt = meta.eventTimeText || '';
+                    const evn = meta.eventName || '';
+                    const typ = meta.eventType || '';
+                    const loc = meta.eventLocation || '';
+                    const tz = meta.timeZone || '';
+                    const guests = (meta.attendeeCount != null) ? `${meta.attendeeCount} guests` : '';
                     return `
                         <tr>
-                            <td style="white-space:nowrap;color:#374151;">${dateStr}</td>
+                            <td class="nowrap" style="color:#374151;">${dateStr}</td>
                             <td style="color:#111827;">${name}</td>
+                            <td data-invbook="${b.BookingID}">
+                                <div style="line-height:1.1;">
+                                    <div style="font-weight:600;color:#111827;">${evn || svc}</div>
+                                    <div style="color:#6b7280;">${[timeTxt, typ, tz].filter(Boolean).join(' • ')}</div>
+                                    <div style="color:#6b7280;">${[loc, evn ? svc : ''].filter(Boolean).join(' • ')}${guests ? ((loc || evn) ? ' • ' : '') + guests : ''}</div>
+                                </div>
+                            </td>
                             <td style="text-transform:capitalize;color:#374151;">${statusLabel || ''}</td>
-                            <td style="text-align:right;color:#111827;">${total}</td>
+                            <td class="ta-right" style="color:#111827;">${total}</td>
                             <td data-invnum="${b.BookingID}" style="color:#111827;">${invNum}</td>
-                            <td data-invdue="${b.BookingID}" style="text-align:right;color:#374151;">${due}</td>
-                            <td style="text-align:right;white-space:nowrap;">
+                            <td data-invdue="${b.BookingID}" class="ta-right nowrap" style="color:#374151;">${due}</td>
+                            <td class="ta-right nowrap">
                                 <button class="btn btn-outline btn-sm" onclick="openInvoiceModal('${b.BookingID}')">View</button>
                                 <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="downloadInvoiceForBooking('${b.BookingID}')">Download</button>
                             </td>
@@ -7714,16 +7772,17 @@
 
                 tableWrap.innerHTML = `
                     <div style="overflow:auto;">
-                        <table role="table" aria-label="Invoices" style="width:100%;border-collapse:separate;border-spacing:0 8px;">
-                            <thead style="text-align:left;color:#6b7280;font-size:.9rem;">
+                        <table role="table" aria-label="Invoices" class="invoices-table">
+                            <thead>
                                 <tr>
-                                    <th data-sort="date" style="padding:8px 12px;cursor:pointer;">Date${sortArrow('date')}</th>
-                                    <th data-sort="name" style="padding:8px 12px;cursor:pointer;">${state.viewerRole === 'vendor' ? 'Client' : 'Vendor'}${sortArrow('name')}</th>
-                                    <th data-sort="status" style="padding:8px 12px;cursor:pointer;">Status${sortArrow('status')}</th>
-                                    <th data-sort="amount" style="padding:8px 12px;text-align:right;cursor:pointer;">Amount${sortArrow('amount')}</th>
-                                    <th data-sort="invoice" style="padding:8px 12px;cursor:pointer;">Invoice #${sortArrow('invoice')}</th>
-                                    <th data-sort="due" style="padding:8px 12px;text-align:right;cursor:pointer;">Due date${sortArrow('due')}</th>
-                                    <th style="padding:8px 12px;text-align:right;">Actions</th>
+                                    <th data-sort="date" class="sortable">Date</th>
+                                    <th data-sort="name" class="sortable">${state.viewerRole === 'vendor' ? 'Client' : 'Vendor'}</th>
+                                    <th data-sort="booking" class="sortable">Booking</th>
+                                    <th data-sort="status" class="sortable">Status</th>
+                                    <th data-sort="amount" class="sortable ta-right">Amount</th>
+                                    <th data-sort="invoice" class="sortable">Invoice #</th>
+                                    <th data-sort="due" class="sortable ta-right">Due date</th>
+                                    <th class="ta-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -7748,11 +7807,21 @@
 
                 // Prefetch invoice metadata (Invoice # / Due date)
                 prefetchMeta(list);
+
+                // Update header sort indicators
+                applyHeaderSortClasses();
             }
 
             async function prefetchMeta(list){
-                // Fetch for first 25 rows not in cache to limit load
-                const toFetch = list.filter(b => !state.meta[b.BookingID]).slice(0, 25);
+                // Fetch for first 50 rows not in cache OR with incomplete meta to limit load
+                const toFetch = list.filter(b => {
+                    const m = state.meta[b.BookingID];
+                    if (!m) return true;
+                    const missingInvoice = !m.invoiceNumber;
+                    const missingEvent = !m.eventName && !m.eventLocation && !m.eventType;
+                    const missingServices = !m.servicesSummary;
+                    return missingInvoice || missingEvent || missingServices;
+                }).slice(0, 50);
                 for (const b of toFetch) {
                     try {
                         const meta = await tryFetchInvoiceMeta(b.BookingID);
@@ -7760,16 +7829,25 @@
                             state.meta[b.BookingID] = meta;
                             const numCell = container.querySelector(`[data-invnum='${b.BookingID}']`);
                             const dueCell = container.querySelector(`[data-invdue='${b.BookingID}']`);
+                            const bookCell = container.querySelector(`[data-invbook='${b.BookingID}']`);
                             if (numCell) numCell.textContent = meta.invoiceNumber || '—';
                             if (dueCell) dueCell.textContent = meta.dueDate ? formatDate(meta.dueDate) : '—';
+                            if (bookCell) bookCell.innerHTML = `
+                                <div style="line-height:1.1;">
+                                    <div style="font-weight:600;color:#111827;">${meta.eventName || meta.servicesSummary || '—'}</div>
+                                    <div style="color:#6b7280;">${[meta.eventTimeText || '', meta.eventType || '', meta.timeZone || ''].filter(Boolean).join(' • ')}</div>
+                                    <div style="color:#6b7280;">${[meta.eventLocation || '', meta.eventName ? (meta.servicesSummary || '') : ''].filter(Boolean).join(' • ')}${(meta.attendeeCount!=null)? ((meta.eventLocation||meta.eventName)? ' • ' : '') + meta.attendeeCount + ' guests' : ''}</div>
+                                </div>
+                            `;
                         }
                     } catch(_) {}
                 }
             }
 
             async function tryFetchInvoiceMeta(bookingId){
-                if (!window.currentUser || !currentUser.id) return null;
-                const primaryUrl = `${API_BASE_URL}/invoices/booking/${bookingId}?userId=${currentUser.id}`;
+                const uid = (window.currentUser && currentUser.id) ? currentUser.id : (typeof getUserIdFromToken === 'function' ? getUserIdFromToken() : null);
+                if (!uid) return null;
+                const primaryUrl = `${API_BASE_URL}/invoices/booking/${bookingId}?userId=${uid}`;
                 try {
                     const resp = await fetch(primaryUrl, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
                     const ct = resp.headers.get('content-type') || '';
@@ -7777,9 +7855,102 @@
                     const data = await resp.json();
                     if (!data || !data.success || !data.invoice) return null;
                     const inv = data.invoice;
+                    // Parse snapshot for services and times
+                    let servicesSummary = '';
+                    let eventTimeText = '';
+                    let eventName = '';
+                    let eventType = '';
+                    let eventLocation = '';
+                    let attendeeCount = null;
+                    let timeZone = '';
+                    try {
+                        const snap = typeof inv.SnapshotJSON === 'string' ? JSON.parse(inv.SnapshotJSON) : (inv.SnapshotJSON || {});
+                        const svcArr = Array.isArray(snap.services) ? snap.services : [];
+                        const names = svcArr.map(s => s.ServiceName).filter(Boolean);
+                        if (names.length > 0) {
+                            const show = names.slice(0,2).join(', ');
+                            const more = names.length > 2 ? ` +${names.length-2} more` : '';
+                            servicesSummary = `${names.length} service${names.length>1?'s':''}: ${show}${more}`;
+                        }
+                        const bd = snap.booking?.EventDate ? new Date(snap.booking.EventDate) : null;
+                        const ed = snap.booking?.EndDate ? new Date(snap.booking.EndDate) : null;
+                        if (bd) {
+                            const t1 = bd.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                            const t2 = ed ? ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+                            eventTimeText = t2 ? `${t1} – ${t2}` : `${t1}`;
+                        }
+                        // Try to get event fields if present in snapshot
+                        eventName = snap.booking?.EventName || snap.booking?.eventName || '';
+                        eventType = snap.booking?.EventType || snap.booking?.eventType || '';
+                        eventLocation = snap.booking?.EventLocation || snap.booking?.eventLocation || '';
+                        timeZone = snap.booking?.TimeZone || snap.booking?.timeZone || '';
+                        attendeeCount = (snap.booking && (snap.booking.AttendeeCount ?? snap.booking.attendeeCount)) ?? null;
+                    } catch(_) {}
+
+                    // Fill from invoice.booking if available (server enriches invoice with booking)
+                    if (inv.booking) {
+                        eventName = eventName || inv.booking.EventName || inv.booking.eventName || '';
+                        eventType = eventType || inv.booking.EventType || inv.booking.eventType || '';
+                        eventLocation = eventLocation || inv.booking.EventLocation || inv.booking.eventLocation || '';
+                        timeZone = timeZone || inv.booking.TimeZone || inv.booking.timeZone || '';
+                    }
+
+                    // Compute servicesSummary from invoice items if missing
+                    if (!servicesSummary && Array.isArray(inv.items)) {
+                        const n2 = inv.items
+                            .filter(it => (String(it.ItemType || '')).toLowerCase().includes('service'))
+                            .map(it => it.Title)
+                            .filter(Boolean);
+                        if (n2.length > 0) {
+                            const show = n2.slice(0,2).join(', ');
+                            const more = n2.length > 2 ? ` +${n2.length-2} more` : '';
+                            servicesSummary = `${n2.length} service${n2.length>1?'s':''}: ${show}${more}`;
+                        }
+                    }
+
+                    // If any essential event fields missing, fetch booking details
+                    if (!eventName || !eventType || !eventLocation || attendeeCount == null || !timeZone) {
+                        try {
+                            const detUrl = `${API_BASE_URL}/bookings/${bookingId}?userId=${uid}`;
+                            const detResp = await fetch(detUrl, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+                            const dct = detResp.headers.get('content-type') || '';
+                            if (detResp.ok && dct.includes('application/json')) {
+                                const det = await detResp.json();
+                                const info = det?.info || det?.booking?.info || det || {};
+                                const getFirst = (obj, keys) => {
+                                    for (const k of keys) { if (obj && obj[k] != null && obj[k] !== '') return obj[k]; }
+                                    return '';
+                                };
+                                eventName = getFirst(info, ['EventName','eventName','Name','name','Title','title']) || eventName;
+                                eventType = getFirst(info, ['EventType','eventType','Type','type']) || eventType;
+                                eventLocation = getFirst(info, ['EventLocation','eventLocation','Location','location','Address','address']) || eventLocation;
+                                timeZone = getFirst(info, ['TimeZone','timeZone','Timezone','timezone']) || timeZone;
+                                const guestsVal = getFirst(info, ['AttendeeCount','attendeeCount','Guests','guests','GuestCount','guestCount']);
+                                if (guestsVal !== '') attendeeCount = Number(guestsVal) || null;
+
+                                // Compute servicesSummary from booking services if still missing
+                                if (!servicesSummary) {
+                                    const sArr = Array.isArray(det?.services) ? det.services : [];
+                                    const sn = sArr.map(s => s.ServiceName || s.Name || s.Title).filter(Boolean);
+                                    if (sn.length > 0) {
+                                        const show = sn.slice(0,2).join(', ');
+                                        const more = sn.length > 2 ? ` +${sn.length-2} more` : '';
+                                        servicesSummary = `${sn.length} service${sn.length>1?'s':''}: ${show}${more}`;
+                                    }
+                                }
+                            }
+                        } catch (_) {}
+                    }
                     return {
                         invoiceNumber: inv.InvoiceNumber || inv.invoiceNumber || null,
-                        dueDate: inv.DueDate || inv.dueDate || null
+                        dueDate: inv.DueDate || inv.dueDate || null,
+                        servicesSummary,
+                        eventTimeText,
+                        eventName,
+                        eventType,
+                        eventLocation,
+                        attendeeCount,
+                        timeZone
                     };
                 } catch { return null; }
             }
