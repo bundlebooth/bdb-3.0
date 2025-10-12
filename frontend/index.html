@@ -7595,43 +7595,198 @@
             }
         }
 
-        // Render invoice list cards
+        // Render invoice list as a table (client and vendor) with search + sortable headers
         function renderInvoicesList(bookings, container, viewerRole) {
             if (!container) return;
-            container.innerHTML = '';
+            const listId = container.id || 'invoices-list';
+            // State per list container
+            window._invoiceListState = window._invoiceListState || {};
+            const state = window._invoiceListState[listId] || {
+                sortKey: 'date', // date | name | status | amount | invoice | due
+                sortDir: 'desc',
+                search: '',
+                meta: {} // bookingId -> { invoiceNumber, dueDate }
+            };
+            state.viewerRole = viewerRole;
+            state.bookings = Array.isArray(bookings) ? bookings.slice() : [];
+            window._invoiceListState[listId] = state;
+
             if (!Array.isArray(bookings) || bookings.length === 0) {
                 container.innerHTML = '<p>No invoices available.</p>';
                 return;
             }
-            const html = bookings.map(b => {
-                const eventDate = new Date(b.EventDate);
-                const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
-                const day = eventDate.getDate();
-                const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
-                const name = viewerRole === 'vendor' ? (b.ClientName || 'Client') : (b.VendorName || 'Vendor');
-                const total = (b.TotalAmount != null) ? `$${Number(b.TotalAmount).toFixed(2)}` : '';
-                const status = (b.Status || '').toString().toLowerCase();
-                return `
-                    <div class="booking-item">
-                        <div class="booking-date-section">
-                            <div class="booking-month">${month}</div>
-                            <div class="booking-day">${day}</div>
-                            <div class="booking-weekday">${weekday}</div>
-                        </div>
-                        <div class="booking-info">
-                            <div class="booking-client"><i class="fas fa-store" style="color:#6b7280;font-size:12px;"></i><span class="booking-client-name">${name}</span></div>
-                            <div class="booking-service-row"><span class="booking-service">Confirmed Booking</span></div>
-                            ${total ? `<div class=\"booking-price-row\"><i class=\"fas fa-dollar-sign\" style=\"color:#6b7280;font-size:12px;\"></i><span class=\"booking-price\">${total}</span></div>` : ''}
-                        </div>
-                        <div class="booking-actions">
-                            <span class="request-status ${status}" style="margin-right:12px;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:500;text-transform:capitalize;">${status === 'confirmed' ? 'Accepted' : status}</span>
-                            <button class="btn btn-outline btn-sm" onclick="openInvoiceModal('${b.BookingID}')">View</button>
-                            <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="downloadInvoiceForBooking('${b.BookingID}')">Download</button>
-                        </div>
+
+            // Toolbar + table shell
+            container.innerHTML = `
+                <div class="invoices-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap;">
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input id="${listId}-search" type="text" placeholder="Search by name, status, invoice #" style="padding:8px 10px;border:1px solid var(--border, #e5e7eb);border-radius:6px;min-width:260px;">
+                        <button id="${listId}-clear" class="btn btn-outline btn-sm">Clear</button>
+                    </div>
+                    <div id="${listId}-count" style="color:#6b7280;font-size:.9rem;"></div>
+                </div>
+                <div class="invoices-table-wrap"></div>
+            `;
+
+            const tableWrap = container.querySelector('.invoices-table-wrap');
+            const searchEl = container.querySelector(`#${listId}-search`);
+            const clearEl = container.querySelector(`#${listId}-clear`);
+            const countEl = container.querySelector(`#${listId}-count`);
+            if (searchEl) {
+                searchEl.value = state.search || '';
+                searchEl.addEventListener('input', debounce(() => {
+                    state.search = searchEl.value.trim();
+                    renderBody();
+                }, 200));
+            }
+            clearEl?.addEventListener('click', () => {
+                state.search = '';
+                if (searchEl) searchEl.value = '';
+                renderBody();
+            });
+
+            function normalize(v){ return (v||'').toString().toLowerCase(); }
+            function formatDate(d){ try{ const dt = new Date(d); return dt.toLocaleDateString([], { month:'short', day:'2-digit', year:'numeric' }); } catch{ return ''; } }
+
+            function filteredAndSorted(){
+                let arr = state.bookings.slice();
+                if (state.search) {
+                    const q = normalize(state.search);
+                    arr = arr.filter(b => {
+                        const name = state.viewerRole === 'vendor' ? (b.ClientName || '') : (b.VendorName || '');
+                        const status = b.Status || '';
+                        const invNum = state.meta[b.BookingID]?.invoiceNumber || '';
+                        return normalize(name).includes(q) || normalize(status).includes(q) || normalize(invNum).includes(q);
+                    });
+                }
+                const dir = state.sortDir === 'asc' ? 1 : -1;
+                const key = state.sortKey;
+                arr.sort((a,b) => {
+                    const av = key === 'date' ? new Date(a.EventDate || 0) :
+                               key === 'amount' ? Number(a.TotalAmount || 0) :
+                               key === 'name' ? normalize(state.viewerRole === 'vendor' ? (a.ClientName||'') : (a.VendorName||'')) :
+                               key === 'status' ? normalize(a.Status || '') :
+                               key === 'invoice' ? (state.meta[a.BookingID]?.invoiceNumber || '') :
+                               key === 'due' ? new Date(state.meta[a.BookingID]?.dueDate || 0) : new Date(a.EventDate || 0);
+                    const bv = key === 'date' ? new Date(b.EventDate || 0) :
+                               key === 'amount' ? Number(b.TotalAmount || 0) :
+                               key === 'name' ? normalize(state.viewerRole === 'vendor' ? (b.ClientName||'') : (b.VendorName||'')) :
+                               key === 'status' ? normalize(b.Status || '') :
+                               key === 'invoice' ? (state.meta[b.BookingID]?.invoiceNumber || '') :
+                               key === 'due' ? new Date(state.meta[b.BookingID]?.dueDate || 0) : new Date(b.EventDate || 0);
+                    if (av < bv) return -1*dir;
+                    if (av > bv) return 1*dir;
+                    return 0;
+                });
+                return arr;
+            }
+
+            function sortArrow(k){ return state.sortKey === k ? (state.sortDir === 'asc' ? ' ▲' : ' ▼') : ''; }
+
+            function renderBody(){
+                const list = filteredAndSorted();
+                if (countEl) countEl.textContent = `${list.length} item${list.length!==1?'s':''}`;
+                const rows = list.map(b => {
+                    const eventDate = b.EventDate ? new Date(b.EventDate) : null;
+                    const dateStr = eventDate ? formatDate(eventDate) : '';
+                    const name = state.viewerRole === 'vendor' ? (b.ClientName || 'Client') : (b.VendorName || 'Vendor');
+                    const total = (b.TotalAmount != null) ? `$${Number(b.TotalAmount).toFixed(2)}` : '';
+                    const status = (b.Status || '').toString().toLowerCase();
+                    const statusLabel = status === 'confirmed' ? 'Accepted' : (status.charAt(0).toUpperCase() + status.slice(1));
+                    const meta = state.meta[b.BookingID] || {};
+                    const invNum = meta.invoiceNumber || '—';
+                    const due = meta.dueDate ? formatDate(meta.dueDate) : '—';
+                    return `
+                        <tr>
+                            <td style="white-space:nowrap;color:#374151;">${dateStr}</td>
+                            <td style="color:#111827;">${name}</td>
+                            <td style="text-transform:capitalize;color:#374151;">${statusLabel || ''}</td>
+                            <td style="text-align:right;color:#111827;">${total}</td>
+                            <td data-invnum="${b.BookingID}" style="color:#111827;">${invNum}</td>
+                            <td data-invdue="${b.BookingID}" style="text-align:right;color:#374151;">${due}</td>
+                            <td style="text-align:right;white-space:nowrap;">
+                                <button class="btn btn-outline btn-sm" onclick="openInvoiceModal('${b.BookingID}')">View</button>
+                                <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="downloadInvoiceForBooking('${b.BookingID}')">Download</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                tableWrap.innerHTML = `
+                    <div style="overflow:auto;">
+                        <table role="table" aria-label="Invoices" style="width:100%;border-collapse:separate;border-spacing:0 8px;">
+                            <thead style="text-align:left;color:#6b7280;font-size:.9rem;">
+                                <tr>
+                                    <th data-sort="date" style="padding:8px 12px;cursor:pointer;">Date${sortArrow('date')}</th>
+                                    <th data-sort="name" style="padding:8px 12px;cursor:pointer;">${state.viewerRole === 'vendor' ? 'Client' : 'Vendor'}${sortArrow('name')}</th>
+                                    <th data-sort="status" style="padding:8px 12px;cursor:pointer;">Status${sortArrow('status')}</th>
+                                    <th data-sort="amount" style="padding:8px 12px;text-align:right;cursor:pointer;">Amount${sortArrow('amount')}</th>
+                                    <th data-sort="invoice" style="padding:8px 12px;cursor:pointer;">Invoice #${sortArrow('invoice')}</th>
+                                    <th data-sort="due" style="padding:8px 12px;text-align:right;cursor:pointer;">Due date${sortArrow('due')}</th>
+                                    <th style="padding:8px 12px;text-align:right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                        </table>
                     </div>
                 `;
-            }).join('');
-            container.innerHTML = html;
+
+                // Sorting handlers
+                tableWrap.querySelectorAll('th[data-sort]')?.forEach(th => {
+                    th.addEventListener('click', () => {
+                        const k = th.getAttribute('data-sort');
+                        if (state.sortKey === k) {
+                            state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+                        } else {
+                            state.sortKey = k; state.sortDir = 'asc';
+                        }
+                        renderBody();
+                    });
+                });
+
+                // Prefetch invoice metadata (Invoice # / Due date)
+                prefetchMeta(list);
+            }
+
+            async function prefetchMeta(list){
+                // Fetch for first 25 rows not in cache to limit load
+                const toFetch = list.filter(b => !state.meta[b.BookingID]).slice(0, 25);
+                for (const b of toFetch) {
+                    try {
+                        const meta = await tryFetchInvoiceMeta(b.BookingID);
+                        if (meta) {
+                            state.meta[b.BookingID] = meta;
+                            const numCell = container.querySelector(`[data-invnum='${b.BookingID}']`);
+                            const dueCell = container.querySelector(`[data-invdue='${b.BookingID}']`);
+                            if (numCell) numCell.textContent = meta.invoiceNumber || '—';
+                            if (dueCell) dueCell.textContent = meta.dueDate ? formatDate(meta.dueDate) : '—';
+                        }
+                    } catch(_) {}
+                }
+            }
+
+            async function tryFetchInvoiceMeta(bookingId){
+                if (!window.currentUser || !currentUser.id) return null;
+                const primaryUrl = `${API_BASE_URL}/invoices/booking/${bookingId}?userId=${currentUser.id}`;
+                try {
+                    const resp = await fetch(primaryUrl, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+                    const ct = resp.headers.get('content-type') || '';
+                    if (!resp.ok || !ct.includes('application/json')) return null;
+                    const data = await resp.json();
+                    if (!data || !data.success || !data.invoice) return null;
+                    const inv = data.invoice;
+                    return {
+                        invoiceNumber: inv.InvoiceNumber || inv.invoiceNumber || null,
+                        dueDate: inv.DueDate || inv.dueDate || null
+                    };
+                } catch { return null; }
+            }
+
+            function debounce(fn, ms){ let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; }
+
+            renderBody();
         }
 
         // Convenience: open invoice then download as PDF
