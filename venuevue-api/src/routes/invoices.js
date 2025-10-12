@@ -40,13 +40,24 @@ async function loadBookingSnapshot(pool, bookingId) {
   const services = servicesRes.recordset || [];
 
   // Expenses
-  const expensesRes = await request.query(`
-    SELECT BookingExpenseID, Title, Amount, Notes, CreatedAt
-    FROM BookingExpenses
-    WHERE BookingID = @BookingID
-    ORDER BY CreatedAt ASC
-  `);
-  const expenses = expensesRes.recordset || [];
+  let expenses = [];
+  try {
+    const expensesRes = await request.query(`
+      SELECT BookingExpenseID, Title, Amount, Notes, CreatedAt
+      FROM BookingExpenses
+      WHERE BookingID = @BookingID
+      ORDER BY CreatedAt ASC
+    `);
+    expenses = expensesRes.recordset || [];
+  } catch (err) {
+    const msg = String(err?.message || '');
+    // SQL Server missing table error number is usually 208
+    if (msg.includes("Invalid object name 'BookingExpenses'") || err?.number === 208) {
+      expenses = [];
+    } else {
+      throw err;
+    }
+  }
 
   // Stripe fees if recorded (Transactions.FeeAmount)
   const txRes = await request.query(`
@@ -164,77 +175,91 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       }
     }
 
-    // Insert items (services, expenses, and fee-notes)
-    // Insert service items
-    for (const s of snap.services) {
-      const reqItem = new sql.Request(tx);
-      reqItem
+    // Insert items (services, expenses, and fee-notes) if the table exists
+    let itemsTableAvailable = true;
+    try {
+      await new sql.Request(tx).query('SELECT TOP 0 1 AS ok FROM InvoiceItems');
+    } catch (err) {
+      const msg = String(err?.message || '');
+      if (msg.includes("Invalid object name 'InvoiceItems'") || err?.number === 208) {
+        itemsTableAvailable = false;
+      } else {
+        throw err;
+      }
+    }
+
+    if (itemsTableAvailable) {
+      // Insert service items
+      for (const s of snap.services) {
+        const reqItem = new sql.Request(tx);
+        reqItem
+          .input('InvoiceID', sql.Int, invoiceId)
+          .input('ItemType', sql.NVarChar(50), 'service')
+          .input('RefID', sql.Int, s.BookingServiceID || null)
+          .input('Title', sql.NVarChar(255), s.ServiceName || 'Service')
+          .input('Description', sql.NVarChar(sql.MAX), null)
+          .input('Quantity', sql.Decimal(10,2), Number(s.Quantity || 1))
+          .input('UnitPrice', sql.Decimal(10,2), Number(s.PriceAtBooking || 0))
+          .input('Amount', sql.Decimal(10,2), toCurrency(Number(s.Quantity || 1) * Number(s.PriceAtBooking || 0)))
+          .input('IsPayable', sql.Bit, 1);
+        await reqItem.query(`
+          INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
+          VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable)
+        `);
+      }
+
+      // Insert expense items
+      for (const e of snap.expenses) {
+        const reqItem = new sql.Request(tx);
+        reqItem
+          .input('InvoiceID', sql.Int, invoiceId)
+          .input('ItemType', sql.NVarChar(50), 'expense')
+          .input('RefID', sql.Int, e.BookingExpenseID || null)
+          .input('Title', sql.NVarChar(255), e.Title || 'Expense')
+          .input('Description', sql.NVarChar(sql.MAX), e.Notes || null)
+          .input('Quantity', sql.Decimal(10,2), 1)
+          .input('UnitPrice', sql.Decimal(10,2), toCurrency(Number(e.Amount || 0)))
+          .input('Amount', sql.Decimal(10,2), toCurrency(Number(e.Amount || 0)))
+          .input('IsPayable', sql.Bit, 1);
+        await reqItem.query(`
+          INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
+          VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable)
+        `);
+      }
+
+      // Fees as non-payable informational lines
+      const feePlatformReq = new sql.Request(tx);
+      await feePlatformReq
         .input('InvoiceID', sql.Int, invoiceId)
-        .input('ItemType', sql.NVarChar(50), 'service')
-        .input('RefID', sql.Int, s.BookingServiceID || null)
-        .input('Title', sql.NVarChar(255), s.ServiceName || 'Service')
+        .input('ItemType', sql.NVarChar(50), 'fee_platform')
+        .input('RefID', sql.Int, null)
+        .input('Title', sql.NVarChar(255), 'Platform fee (info)')
         .input('Description', sql.NVarChar(sql.MAX), null)
-        .input('Quantity', sql.Decimal(10,2), Number(s.Quantity || 1))
-        .input('UnitPrice', sql.Decimal(10,2), Number(s.PriceAtBooking || 0))
-        .input('Amount', sql.Decimal(10,2), toCurrency(Number(s.Quantity || 1) * Number(s.PriceAtBooking || 0)))
-        .input('IsPayable', sql.Bit, 1);
-      await reqItem.query(`
-        INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
-        VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable)
-      `);
-    }
-
-    // Insert expense items
-    for (const e of snap.expenses) {
-      const reqItem = new sql.Request(tx);
-      reqItem
-        .input('InvoiceID', sql.Int, invoiceId)
-        .input('ItemType', sql.NVarChar(50), 'expense')
-        .input('RefID', sql.Int, e.BookingExpenseID || null)
-        .input('Title', sql.NVarChar(255), e.Title || 'Expense')
-        .input('Description', sql.NVarChar(sql.MAX), e.Notes || null)
         .input('Quantity', sql.Decimal(10,2), 1)
-        .input('UnitPrice', sql.Decimal(10,2), toCurrency(Number(e.Amount || 0)))
-        .input('Amount', sql.Decimal(10,2), toCurrency(Number(e.Amount || 0)))
-        .input('IsPayable', sql.Bit, 1);
-      await reqItem.query(`
-        INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
-        VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable)
-      `);
+        .input('UnitPrice', sql.Decimal(10,2), platformFee)
+        .input('Amount', sql.Decimal(10,2), platformFee)
+        .input('IsPayable', sql.Bit, 0)
+        .query(`
+          INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
+          VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable)
+        `);
+
+      const feeStripeReq = new sql.Request(tx);
+      await feeStripeReq
+        .input('InvoiceID', sql.Int, invoiceId)
+        .input('ItemType', sql.NVarChar(50), 'fee_stripe')
+        .input('RefID', sql.Int, null)
+        .input('Title', sql.NVarChar(255), 'Stripe processing fee (info)')
+        .input('Description', sql.NVarChar(sql.MAX), null)
+        .input('Quantity', sql.Decimal(10,2), 1)
+        .input('UnitPrice', sql.Decimal(10,2), stripeFee)
+        .input('Amount', sql.Decimal(10,2), stripeFee)
+        .input('IsPayable', sql.Bit, 0)
+        .query(`
+          INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
+          VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable)
+        `);
     }
-
-    // Fees as non-payable informational lines
-    const feePlatformReq = new sql.Request(tx);
-    await feePlatformReq
-      .input('InvoiceID', sql.Int, invoiceId)
-      .input('ItemType', sql.NVarChar(50), 'fee_platform')
-      .input('RefID', sql.Int, null)
-      .input('Title', sql.NVarChar(255), 'Platform fee (info)')
-      .input('Description', sql.NVarChar(sql.MAX), null)
-      .input('Quantity', sql.Decimal(10,2), 1)
-      .input('UnitPrice', sql.Decimal(10,2), platformFee)
-      .input('Amount', sql.Decimal(10,2), platformFee)
-      .input('IsPayable', sql.Bit, 0)
-      .query(`
-        INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
-        VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable)
-      `);
-
-    const feeStripeReq = new sql.Request(tx);
-    await feeStripeReq
-      .input('InvoiceID', sql.Int, invoiceId)
-      .input('ItemType', sql.NVarChar(50), 'fee_stripe')
-      .input('RefID', sql.Int, null)
-      .input('Title', sql.NVarChar(255), 'Stripe processing fee (info)')
-      .input('Description', sql.NVarChar(sql.MAX), null)
-      .input('Quantity', sql.Decimal(10,2), 1)
-      .input('UnitPrice', sql.Decimal(10,2), stripeFee)
-      .input('Amount', sql.Decimal(10,2), stripeFee)
-      .input('IsPayable', sql.Bit, 0)
-      .query(`
-        INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
-        VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable)
-      `);
 
     await tx.commit();
 
@@ -279,8 +304,17 @@ async function getInvoiceCore(pool, invoiceId) {
   const invRes = await r.query(`SELECT * FROM Invoices WHERE InvoiceID=@InvoiceID`);
   if (!invRes.recordset.length) return null;
   const invoice = invRes.recordset[0];
-  const itemsRes = await r.query(`SELECT * FROM InvoiceItems WHERE InvoiceID=@InvoiceID ORDER BY InvoiceItemID ASC`);
-  invoice.items = itemsRes.recordset || [];
+  try {
+    const itemsRes = await r.query(`SELECT * FROM InvoiceItems WHERE InvoiceID=@InvoiceID ORDER BY InvoiceItemID ASC`);
+    invoice.items = itemsRes.recordset || [];
+  } catch (err) {
+    const msg = String(err?.message || '');
+    if (msg.includes("Invalid object name 'InvoiceItems'") || err?.number === 208) {
+      invoice.items = [];
+    } else {
+      throw err;
+    }
+  }
   // Enrich with booking/vendor/client for ease of frontend
   const bookRes = await r.query(`
     SELECT b.BookingID, b.EventDate, b.Status, u.Name AS ClientName, u.Email AS ClientEmail, vp.BusinessName AS VendorName
