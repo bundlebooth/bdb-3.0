@@ -696,7 +696,6 @@ CREATE TABLE PaymentMethods (
 );
 GO
 
--- Transactions/payments
 CREATE TABLE Transactions (
     TransactionID INT PRIMARY KEY IDENTITY(1,1),
     UserID INT FOREIGN KEY REFERENCES Users(UserID),
@@ -711,6 +710,72 @@ CREATE TABLE Transactions (
     Status NVARCHAR(20) NOT NULL,
     CreatedAt DATETIME DEFAULT GETDATE()
 );
+GO
+
+-- Booking-level vendor expenses for invoice breakdowns
+IF OBJECT_ID('dbo.BookingExpenses', 'U') IS NULL
+BEGIN
+    CREATE TABLE BookingExpenses (
+        BookingExpenseID INT IDENTITY(1,1) PRIMARY KEY,
+        BookingID INT NOT NULL FOREIGN KEY REFERENCES Bookings(BookingID) ON DELETE CASCADE,
+        VendorProfileID INT NULL FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+        Title NVARCHAR(255) NOT NULL,
+        Amount DECIMAL(10,2) NOT NULL,
+        Notes NVARCHAR(MAX) NULL,
+        CreatedAt DATETIME NOT NULL DEFAULT(GETDATE())
+    );
+    CREATE INDEX IX_BookingExpenses_BookingID ON BookingExpenses(BookingID);
+END
+GO
+
+-- Invoices master table
+IF OBJECT_ID('dbo.Invoices', 'U') IS NULL
+BEGIN
+    CREATE TABLE Invoices (
+        InvoiceID INT IDENTITY(1,1) PRIMARY KEY,
+        BookingID INT NOT NULL FOREIGN KEY REFERENCES Bookings(BookingID) ON DELETE CASCADE,
+        UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+        VendorProfileID INT NOT NULL FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+        InvoiceNumber NVARCHAR(50) NOT NULL,
+        IssueDate DATETIME NOT NULL DEFAULT(GETDATE()),
+        DueDate DATETIME NULL,
+        Status NVARCHAR(20) NOT NULL DEFAULT('issued'),
+        Currency NVARCHAR(3) NOT NULL DEFAULT('USD'),
+        Subtotal DECIMAL(10,2) NOT NULL DEFAULT(0),
+        VendorExpensesTotal DECIMAL(10,2) NOT NULL DEFAULT(0),
+        PlatformFee DECIMAL(10,2) NOT NULL DEFAULT(0),
+        StripeFee DECIMAL(10,2) NOT NULL DEFAULT(0),
+        TaxAmount DECIMAL(10,2) NOT NULL DEFAULT(0),
+        TotalAmount DECIMAL(10,2) NOT NULL DEFAULT(0),
+        FeesIncludedInTotal BIT NOT NULL DEFAULT(0),
+        SnapshotJSON NVARCHAR(MAX) NULL,
+        CreatedAt DATETIME NOT NULL DEFAULT(GETDATE()),
+        UpdatedAt DATETIME NOT NULL DEFAULT(GETDATE())
+    );
+    CREATE INDEX IX_Invoices_BookingID ON Invoices(BookingID);
+    CREATE INDEX IX_Invoices_UserID ON Invoices(UserID);
+    CREATE INDEX IX_Invoices_VendorProfileID ON Invoices(VendorProfileID);
+END
+GO
+
+-- Invoice line items
+IF OBJECT_ID('dbo.InvoiceItems', 'U') IS NULL
+BEGIN
+    CREATE TABLE InvoiceItems (
+        InvoiceItemID INT IDENTITY(1,1) PRIMARY KEY,
+        InvoiceID INT NOT NULL FOREIGN KEY REFERENCES Invoices(InvoiceID) ON DELETE CASCADE,
+        ItemType NVARCHAR(50) NOT NULL, -- service | expense | fee_platform | fee_stripe | tax | other
+        RefID INT NULL, -- e.g., BookingServiceID or BookingExpenseID
+        Title NVARCHAR(255) NOT NULL,
+        Description NVARCHAR(MAX) NULL,
+        Quantity DECIMAL(10,2) NOT NULL DEFAULT(1),
+        UnitPrice DECIMAL(10,2) NOT NULL DEFAULT(0),
+        Amount DECIMAL(10,2) NOT NULL DEFAULT(0),
+        IsPayable BIT NOT NULL DEFAULT(1),
+        CreatedAt DATETIME NOT NULL DEFAULT(GETDATE())
+    );
+    CREATE INDEX IX_InvoiceItems_InvoiceID ON InvoiceItems(InvoiceID);
+END
 GO
 
 -- User location history
