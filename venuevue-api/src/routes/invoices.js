@@ -17,6 +17,7 @@ async function loadBookingSnapshot(pool, bookingId) {
     SELECT TOP 1 
       b.BookingID, b.UserID, b.VendorProfileID, b.EventDate, b.EndDate, b.Status,
       b.TotalAmount, b.DepositAmount, b.DepositPaid, b.FullAmountPaid,
+      b.EventName, b.EventType, b.EventLocation, b.TimeZone,
       u.Name AS ClientName, u.Email AS ClientEmail,
       vp.BusinessName AS VendorName
     FROM Bookings b
@@ -317,7 +318,8 @@ async function getInvoiceCore(pool, invoiceId) {
   }
   // Enrich with booking/vendor/client for ease of frontend
   const bookRes = await r.query(`
-    SELECT b.BookingID, b.EventDate, b.Status, u.Name AS ClientName, u.Email AS ClientEmail, vp.BusinessName AS VendorName
+    SELECT b.BookingID, b.EventDate, b.Status, b.EventName, b.EventType, b.EventLocation, b.TimeZone,
+           u.Name AS ClientName, u.Email AS ClientEmail, vp.BusinessName AS VendorName
     FROM Bookings b
     LEFT JOIN Users u ON b.UserID=u.UserID
     LEFT JOIN VendorProfiles vp ON b.VendorProfileID=vp.VendorProfileID
