@@ -5265,8 +5265,9 @@
                         </div>
                         <ul class="dashboard-menu">
                             <li><a href="#" class="active" data-section="dashboard">Dashboard</a></li>
-                            <li><a href="#" data-section="bookings">My Bookings</a></li>
-                            <li><a href="#" data-section="requests">My Requests</a></li>
+                            <li><a href="#" data-section="bookings">Bookings</a></li>
+                            <!-- Requests merged into Bookings; hide legacy link -->
+                            <li style="display:none;"><a href="#" data-section="requests">My Requests</a></li>
                             <li><a href="#" data-section="favorites">Favorites</a></li>
                             <li><a href="#" data-section="messages">Messages</a></li>
                             <li><a href="#" data-section="reviews">My Reviews</a></li>
@@ -5303,30 +5304,35 @@
                         <div id="bookings-section" style="display: none;">
                             <div class="dashboard-card">
                                 <div class="booking-header">
-                                    <h2 class="dashboard-card-title">Booking requests</h2>
+                                    <h2 class="dashboard-card-title">Bookings</h2>
                                 </div>
                                 <div class="booking-tabs">
-                                    <button class="booking-tab active" data-tab="inbound">Inbound</button>
-                                    <button class="booking-tab" data-tab="outbound">Outbound</button>
+                                    <button class="booking-tab active" data-tab="all">All</button>
+                                    <button class="booking-tab" data-tab="pending">Pending</button>
                                     <button class="booking-tab" data-tab="accepted">Accepted</button>
                                     <button class="booking-tab" data-tab="declined">Declined</button>
+                                    <button class="booking-tab" data-tab="expired">Expired</button>
                                 </div>
                                 <div class="booking-content">
-                                    <div id="inbound-bookings" class="booking-tab-content active">
-                                        <div class="booking-count">18 requests</div>
-                                        <div id="all-bookings"><p>Loading all bookings...</p></div>
+                                    <div id="all-bookings" class="booking-tab-content active">
+                                        <div class="booking-count">0 items</div>
+                                        <div id="all-bookings-list"><p>Loading...</p></div>
                                     </div>
-                                    <div id="outbound-bookings" class="booking-tab-content">
+                                    <div id="pending-bookings" class="booking-tab-content">
                                         <div class="booking-count">0 requests</div>
-                                        <div id="outbound-bookings-list"><p>No outbound requests.</p></div>
+                                        <div id="pending-bookings-list"><p>No pending items.</p></div>
                                     </div>
                                     <div id="accepted-bookings" class="booking-tab-content">
-                                        <div class="booking-count">0 requests</div>
-                                        <div id="completed-bookings"><p>No accepted bookings.</p></div>
+                                        <div class="booking-count">0 items</div>
+                                        <div id="completed-bookings"><p>No accepted items.</p></div>
                                     </div>
                                     <div id="declined-bookings" class="booking-tab-content">
-                                        <div class="booking-count">0 requests</div>
-                                        <div id="declined-bookings-list"><p>No declined bookings.</p></div>
+                                        <div class="booking-count">0 items</div>
+                                        <div id="declined-bookings-list"><p>No declined items.</p></div>
+                                    </div>
+                                    <div id="expired-bookings" class="booking-tab-content">
+                                        <div class="booking-count">0 items</div>
+                                        <div id="expired-bookings-list"><p>No expired items.</p></div>
                                     </div>
                                 </div>
                             </div>
@@ -20594,125 +20600,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (avatarEl && currentUser) avatarEl.textContent = currentUser.avatar;
             }
 
-            // Request management functions
-            async function loadUserRequests(filter = 'all') {
-                const container = document.getElementById('user-requests');
-                container.innerHTML = '<p>Loading your requests...</p>';
-                
-                try {
-                    if (!currentUser || !currentUser.id) {
-                        throw new Error('User not logged in');
-                    }
-                    
-                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${currentUser.id}`, {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                    });
-                    
-                    if (!response.ok) throw new Error('Failed to fetch requests');
-                    const data = await response.json();
-                    const requests = data.requests || [];
-                    
-                    renderUserRequests(requests, filter);
-                } catch (error) {
-                    console.error('Error loading user requests:', error);
-                    container.innerHTML = `<p style="color:var(--accent);">Failed to load requests: ${error.message}</p>`;
-                }
-            }
-            
-            function renderUserRequests(requests, filter) {
-                const container = document.getElementById('user-requests');
-                
-                // Normalize backend status and handle expired
-                const normalize = (r) => {
-                    try {
-                        let s = (r.Status || r.status || r.CurrentStatus || 'pending').toString().toLowerCase();
-                        if (s === 'accepted') s = 'approved';
-                        if (s === 'pending' && r.ExpiresAt) {
-                            const exp = new Date(r.ExpiresAt);
-                            if (!isNaN(exp.getTime()) && exp <= new Date()) s = 'expired';
-                        }
-                        return s;
-                    } catch(_) { return 'pending'; }
-                };
-
-                let filteredRequests = Array.isArray(requests) ? requests.slice() : [];
-                if (filter && filter !== 'all') {
-                    filteredRequests = filteredRequests.filter(req => normalize(req) === filter);
-                }
-                
-                if (filteredRequests.length === 0) {
-                    container.innerHTML = `<p>No ${filter === 'all' ? '' : filter} requests found.</p>`;
-                    return;
-                }
-                
-                container.innerHTML = '';
-                filteredRequests.forEach(request => {
-                    const requestItem = document.createElement('div');
-                    requestItem.className = 'booking-item';
-                    
-                    const eventDate = request.EventDate ? new Date(request.EventDate) : null;
-                    const month = eventDate ? eventDate.toLocaleDateString('en-US', { month: 'short' }) : '—';
-                    const day = eventDate ? eventDate.getDate() : '—';
-                    const weekday = eventDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '—';
-
-                    // Compute hours remaining (if ExpiresAt returned)
-                    let hoursRemaining = 0;
-                    try {
-                        const now = new Date();
-                        const exp = request.ExpiresAt ? new Date(request.ExpiresAt) : null;
-                        if (exp) {
-                            const diffMs = exp.getTime() - now.getTime();
-                            hoursRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60)));
-                        }
-                    } catch(_) {}
-
-                    const statusNorm = normalize(request);
-                    const statusLabelMap = { pending: 'Pending', approved: 'Accepted', declined: 'Declined', expired: 'Expired' };
-                    const statusLabel = statusLabelMap[statusNorm] || 'Pending';
-                    
-                    let actionButtons = '';
-                    if (request.ConversationID) {
-                        actionButtons += `<button class="btn btn-outline" onclick="openChatForRequest(${request.ConversationID})" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Chat</button>`;
-                    }
-                    if (statusNorm === 'pending') {
-                        actionButtons += `<button class="btn-decline" onclick="cancelRequest(${request.RequestID})">Cancel</button>`;
-                    }
-                    
-                    requestItem.innerHTML = `
-                        <div class="booking-date-section">
-                            <div class="booking-month">${month}</div>
-                            <div class="booking-day">${day}</div>
-                            <div class="booking-weekday">${weekday}</div>
-                        </div>
-                        <div class="booking-info">
-                            <div class="booking-client">
-                                <i class="fas fa-store" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-client-name">${request.VendorName}</span>
-                            </div>
-                            <div class="booking-service-row">
-                                <span class="booking-service">Event Service Request</span>
-                            </div>
-                            <div class="booking-time-row">
-                                <i class="fas fa-hourglass-half" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-time">${hoursRemaining > 0 ? `${hoursRemaining} ${hoursRemaining === 1 ? 'hour' : 'hours'} remaining` : 'Timer expired'}</span>
-                            </div>
-                            ${request.Budget ? `<div class="booking-price-row">
-                                <i class="fas fa-dollar-sign" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-price">$${request.Budget.toLocaleString()}</span>
-                            </div>` : ''}
-                            ${request.EventLocation ? `<div class="booking-location-row">
-                                <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
-                                <span class="booking-location">${request.EventLocation}</span>
-                            </div>` : ''}
-                        </div>
-                        <div class="booking-actions">
-                            <span class="request-status ${statusNorm}" style="margin-right: 12px; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; text-transform: capitalize;">${statusLabel}</span>
-                            ${actionButtons}
-                        </div>
-                    `;
-                    container.appendChild(requestItem);
-                });
-            }
             
             async function loadVendorRequests(direction = (vendorReqFilters?.direction || 'inbound'), status = (vendorReqFilters?.status || 'all'), options = {}) {
                 const container = document.getElementById('vendor-pending-requests');
@@ -21034,27 +20921,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }).join('');
             }
             
-            async function cancelRequest(requestId) {
-                if (!confirm('Are you sure you want to cancel this request?')) return;
-                
-                try {
-                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${requestId}/cancel`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        }
-                    });
-                    
-                    if (!response.ok) throw new Error('Failed to cancel request');
-                    
-                    showSuccess('Request cancelled successfully.');
-                    loadUserRequests(); // Refresh the list
-                } catch (error) {
-                    console.error('Error cancelling request:', error);
-                    showError(`Failed to cancel request: ${error.message}`);
-                }
-            }
             
             function openChatForRequest(conversationId) {
                 // Switch to messages section and load the specific conversation
@@ -21081,25 +20947,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
             
-            function setupRequestFilterTabs() {
-                // Scope to client requests only to avoid binding vendor tabs
-                const tabButtons = document.querySelectorAll('#requests-section .requests-filter-tabs .tab-btn');
-                
-                tabButtons.forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        // Remove active class from all tabs
-                        tabButtons.forEach(tab => tab.classList.remove('active'));
-                        // Add active class to clicked tab
-                        e.target.classList.add('active');
-                        
-                        // Load requests with the selected filter
-                        const filter = e.target.dataset.filter;
-                        if (filter) {
-                            loadUserRequests(filter);
-                        }
-                    });
-                });
-            }
 
             // Setup vendor requests status tabs only (direction hidden)
             function setupVendorRequestTabs() {
@@ -21430,9 +21277,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } else if (section === 'bookings') {
                         await loadAllUserBookings();
                         setupBookingTabs();
-                    } else if (section === 'requests') {
-                        await loadUserRequests();
-                        setupRequestFilterTabs();
                     } else if (section === 'favorites') {
                         await loadUserFavoritesDashboard();
                     } else if (section === 'messages') {
@@ -21723,11 +21567,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             async function loadAllUserBookings() {
-                const inboundContainer = document.getElementById('all-bookings');
+                const allContainer = document.getElementById('all-bookings-list');
+                const pendingContainer = document.getElementById('pending-bookings-list');
                 const acceptedContainer = document.getElementById('completed-bookings');
+                const declinedContainer = document.getElementById('declined-bookings-list');
+                const expiredContainer = document.getElementById('expired-bookings-list');
                 
-                if (inboundContainer) inboundContainer.innerHTML = '<p>Loading bookings...</p>';
-                if (acceptedContainer) acceptedContainer.innerHTML = '<p>Loading accepted bookings...</p>';
+                if (allContainer) allContainer.innerHTML = '<p>Loading...</p>';
+                if (pendingContainer) pendingContainer.innerHTML = '<p>Loading...</p>';
+                if (acceptedContainer) acceptedContainer.innerHTML = '<p>Loading...</p>';
+                if (declinedContainer) declinedContainer.innerHTML = '<p>Loading...</p>';
+                if (expiredContainer) expiredContainer.innerHTML = '<p>Loading...</p>';
                 
                 // Ensure we have a currentUser (rehydrate from storage if needed)
                 if (!currentUser || !currentUser.id) {
@@ -21739,7 +21589,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } catch (e) { /* no-op */ }
                 }
                 if (!currentUser || !currentUser.id) {
-                    if (inboundContainer) inboundContainer.innerHTML = '<p>Please log in to view your bookings.</p>';
+                    if (allContainer) allContainer.innerHTML = '<p>Please log in to view your bookings.</p>';
                     if (acceptedContainer) acceptedContainer.innerHTML = '<p>Please log in to view accepted bookings.</p>';
                     return;
                 }
@@ -21750,6 +21600,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                     if (!response.ok) throw new Error('Failed to fetch all bookings');
                     const bookings = await response.json();
+                    // Also fetch user's booking requests to merge into unified "All"
+                    let requests = [];
+                    try {
+                        const reqResp = await fetch(`${API_BASE_URL}/bookings/requests/${currentUser.id}`, {
+                            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                        });
+                        if (reqResp.ok) {
+                            const reqData = await reqResp.json();
+                            requests = reqData.requests || [];
+                        }
+                    } catch (e) { console.warn('Failed to fetch user requests for unified list:', e); }
                     
                     // Categorize bookings
                     const pending = bookings.filter(b => b.Status === 'pending');
@@ -21757,86 +21618,50 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const declined = bookings.filter(b => b.Status === 'declined');
                     const paid = bookings.filter(b => b.FullAmountPaid === true || b.FullAmountPaid === 1);
 
-                    // Update counts
-                    const inboundCount = document.querySelector('#inbound-bookings .booking-count');
-                    if (inboundCount) inboundCount.textContent = `${pending.length} requests`;
-                    
-                    const acceptedCount = document.querySelector('#accepted-bookings .booking-count');
-                    if (acceptedCount) acceptedCount.textContent = `${confirmed.length + paid.length} requests`;
+                    // Update counts for tabs
+                    const allCountEl = document.querySelector('#all-bookings .booking-count');
+                    const pendingCountEl = document.querySelector('#pending-bookings .booking-count');
+                    const acceptedCountEl = document.querySelector('#accepted-bookings .booking-count');
+                    const declinedCountEl = document.querySelector('#declined-bookings .booking-count');
+                    const expiredCountEl = document.querySelector('#expired-bookings .booking-count');
+                    const normReq = (r) => {
+                        let s = (r.Status||r.status||'pending').toString().toLowerCase();
+                        if (s==='accepted') s='approved';
+                        if (s==='pending' && r.ExpiresAt) { const exp = new Date(r.ExpiresAt); if (!isNaN(exp) && exp <= new Date()) s='expired'; }
+                        return s;
+                    };
+                    const allItemsCount = (Array.isArray(bookings)?bookings.length:0) + (Array.isArray(requests)?requests.length:0);
+                    const pendingCount = (()=>{
+                        let c=0; (bookings||[]).forEach(b=>{ if((b.Status||'').toLowerCase()==='pending') c++; }); (requests||[]).forEach(r=>{ if(normReq(r)==='pending') c++; }); return c; })();
+                    const acceptedCount = (()=>{
+                        let c=0; (bookings||[]).forEach(b=>{ const s=(b.Status||'').toLowerCase(); if(s==='confirmed'||s==='paid') c++; }); (requests||[]).forEach(r=>{ if(normReq(r)==='approved') c++; }); return c; })();
+                    const declinedCount = (()=>{
+                        let c=0; (bookings||[]).forEach(b=>{ const s=(b.Status||'').toLowerCase(); if(s==='cancelled'||s==='rejected'||s==='declined') c++; }); (requests||[]).forEach(r=>{ if(normReq(r)==='declined') c++; }); return c; })();
+                    const expiredCount = (()=>{ let c=0; (requests||[]).forEach(r=>{ if(normReq(r)==='expired') c++; }); return c; })();
+                    if (allCountEl) allCountEl.textContent = `${allItemsCount} items`;
+                    if (pendingCountEl) pendingCountEl.textContent = `${pendingCount} requests`;
+                    if (acceptedCountEl) acceptedCountEl.textContent = `${acceptedCount} items`;
+                    if (declinedCountEl) declinedCountEl.textContent = `${declinedCount} items`;
+                    if (expiredCountEl) expiredCountEl.textContent = `${expiredCount} items`;
 
-                    // Render inbound (pending) bookings
-                    if (inboundContainer) {
-                        if (pending.length > 0) {
-                            renderBookingsList(pending, inboundContainer);
-                        } else {
-                            inboundContainer.innerHTML = '<p>No pending bookings.</p>';
-                        }
-                    }
-
-                    // Render accepted (confirmed + paid) bookings
-                    if (acceptedContainer) {
-                        const acceptedBookings = [...confirmed, ...paid];
-                        if (acceptedBookings.length > 0) {
-                            renderBookingsList(acceptedBookings, acceptedContainer);
-                        } else {
-                            acceptedContainer.innerHTML = '<p>No accepted bookings.</p>';
-                        }
-                    }
+                    // Render unified lists
+                    if (allContainer) renderUnifiedClientAll(bookings, requests, allContainer, 'all');
+                    if (pendingContainer) renderUnifiedClientAll(bookings, requests, pendingContainer, 'pending');
+                    if (acceptedContainer) renderUnifiedClientAll(bookings, requests, acceptedContainer, 'accepted');
+                    if (declinedContainer) renderUnifiedClientAll(bookings, requests, declinedContainer, 'declined');
+                    if (expiredContainer) renderUnifiedClientAll(bookings, requests, expiredContainer, 'expired');
                     
                 } catch (error) {
                     console.error('Error loading all user bookings:', error);
-                    if (inboundContainer) inboundContainer.innerHTML = `<p style="color:var(--accent);">Failed to load bookings: ${error.message}</p>`;
-                    if (acceptedContainer) acceptedContainer.innerHTML = `<p style="color:var(--accent);">Failed to load accepted bookings: ${error.message}</p>`;
+                    if (allContainer) allContainer.innerHTML = `<p style="color:var(--accent);">Failed to load bookings: ${error.message}</p>`;
+                    if (pendingContainer) pendingContainer.innerHTML = `<p style="color:var(--accent);">Failed to load pending items.</p>`;
+                    if (acceptedContainer) acceptedContainer.innerHTML = `<p style="color:var(--accent);">Failed to load accepted items.</p>`;
+                    if (declinedContainer) declinedContainer.innerHTML = `<p style="color:var(--accent);">Failed to load declined items.</p>`;
+                    if (expiredContainer) expiredContainer.innerHTML = `<p style="color:var(--accent);">Failed to load expired items.</p>`;
                 }
             }
 
-            async function acceptBooking(bookingId) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${bookingId}/approve`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        },
-                        body: JSON.stringify({
-                            vendorProfileId: currentUser.vendorProfileId || currentUser.id,
-                            responseMessage: 'Your booking request has been approved!'
-                        })
-                    });
 
-                    if (!response.ok) throw new Error('Failed to accept booking');
-                    
-                    showSuccess('Booking accepted successfully!');
-                    await loadAllUserBookings(); // Refresh the bookings list
-                } catch (error) {
-                    console.error('Error accepting booking:', error);
-                    showError('Failed to accept booking: ' + error.message);
-                }
-            }
-
-            async function declineBooking(bookingId) {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/bookings/requests/${bookingId}/decline`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
-                        },
-                        body: JSON.stringify({
-                            vendorProfileId: currentUser.vendorProfileId || currentUser.id,
-                            responseMessage: 'Unfortunately, we cannot accommodate this booking request.'
-                        })
-                    });
-
-                    if (!response.ok) throw new Error('Failed to decline booking');
-                    
-                    showSuccess('Booking declined.');
-                    await loadAllUserBookings(); // Refresh the bookings list
-                } catch (error) {
-                    console.error('Error declining booking:', error);
-                    showError('Failed to decline booking: ' + error.message);
-                }
-            }
 
             async function loadUserFavoritesDashboard() {
                 const container = document.getElementById('saved-favorites');
@@ -22683,10 +22508,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         // Determine action buttons based on booking status and payment
                         let actionButtons = '';
                         if (booking.Status === 'pending') {
-                            actionButtons = `
-                                <button class="btn-accept" onclick="acceptBooking('${booking.BookingID}')">Accept</button>
-                                <button class="btn-decline" onclick="declineBooking('${booking.BookingID}')">Decline</button>
-                            `;
+                            actionButtons = '';
                         } else if (booking.Status === 'confirmed') {
                             if (isPaid) {
                                 actionButtons = `<button class="btn-paid">✓ Paid</button>`;
@@ -22737,6 +22559,165 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                 } else {
                     container.innerHTML = '<p>No bookings found.</p>';
+                }
+            }
+
+            // Unified client "All" list: merge booking requests and bookings into one ordered feed (global)
+            function renderUnifiedClientAll(bookings, requests, container, statusFilter) {
+                try {
+                    const items = [];
+                    // Map bookings
+                    (Array.isArray(bookings) ? bookings : []).forEach(b => {
+                        const sortTs = (() => { try { return new Date(b.EventDate).getTime(); } catch (_) { return Date.now(); } })();
+                        const isPaid = b.FullAmountPaid === true || b.FullAmountPaid === 1;
+                        const isDepositOnly = !isPaid && (b.DepositPaid === true || b.DepositPaid === 1);
+                        items.push({
+                            type: 'booking',
+                            sortTs,
+                            id: b.BookingID,
+                            vendorName: b.VendorName,
+                            eventDate: b.EventDate,
+                            totalAmount: b.TotalAmount,
+                            status: (b.Status || '').toString().toLowerCase(),
+                            vendorProfileId: b.VendorProfileID,
+                            isPaid,
+                            isDepositOnly
+                        });
+                    });
+                    // Map requests
+                    const normReqStatus = (r) => {
+                        try {
+                            let s = (r.Status || r.status || 'pending').toString().toLowerCase();
+                            if (s === 'accepted') s = 'approved';
+                            if (s === 'pending' && r.ExpiresAt) {
+                                const exp = new Date(r.ExpiresAt);
+                                if (!isNaN(exp.getTime()) && exp <= new Date()) s = 'expired';
+                            }
+                            return s;
+                        } catch { return 'pending'; }
+                    };
+                    (Array.isArray(requests) ? requests : []).forEach(r => {
+                        const createdTs = (() => { try { return new Date(r.CreatedAt || r.Created || r.ExpiresAt || r.EventDate || Date.now()).getTime(); } catch (_) { return Date.now(); } })();
+                        items.push({
+                            type: 'request',
+                            sortTs: createdTs,
+                            id: r.RequestID,
+                            vendorName: r.VendorName,
+                            eventDate: r.EventDate,
+                            eventTime: r.EventTime,
+                            budget: r.Budget,
+                            location: r.EventLocation,
+                            status: normReqStatus(r),
+                            vendorProfileId: r.VendorProfileID,
+                            expiresAt: r.ExpiresAt
+                        });
+                    });
+
+                    // Dedupe: if a confirmed booking exists for same vendor/date, drop the approved request
+                    try {
+                        const bookingKey = new Set(items.filter(i => i.type === 'booking')
+                            .map(i => `${i.vendorProfileId || ''}|${i.eventDate ? new Date(i.eventDate).toDateString() : ''}`));
+                        for (let i = items.length - 1; i >= 0; i--) {
+                            const it = items[i];
+                            if (it.type === 'request' && it.status === 'approved') {
+                                const key = `${it.vendorProfileId || ''}|${it.eventDate ? new Date(it.eventDate).toDateString() : ''}`;
+                                if (bookingKey.has(key)) {
+                                    items.splice(i, 1);
+                                }
+                            }
+                        }
+                    } catch(_) {}
+
+                    // Optional filter
+                    if (statusFilter && statusFilter !== 'all') {
+                        const keep = (it) => {
+                            const s = it.status;
+                            if (statusFilter === 'pending') return (it.type === 'request' && s === 'pending') || (it.type === 'booking' && s === 'pending');
+                            if (statusFilter === 'accepted') return (it.type === 'request' && s === 'approved') || (it.type === 'booking' && (s === 'confirmed' || s === 'paid'));
+                            if (statusFilter === 'declined') return (it.type === 'request' && s === 'declined') || (it.type === 'booking' && (s === 'cancelled' || s === 'rejected' || s === 'declined'));
+                            if (statusFilter === 'expired') return (it.type === 'request' && s === 'expired');
+                            return true;
+                        };
+                        for (let i = items.length - 1; i >= 0; i--) if (!keep(items[i])) items.splice(i, 1);
+                    }
+
+                    // Sort most recent first
+                    items.sort((a, b) => b.sortTs - a.sortTs);
+
+                    if (!items.length) {
+                        container.innerHTML = '<p>No activity yet.</p>';
+                        return;
+                    }
+
+                    // Render
+                    const html = items.map(it => {
+                        const eventDate = it.eventDate ? new Date(it.eventDate) : null;
+                        const month = eventDate ? eventDate.toLocaleDateString('en-US', { month: 'short' }) : '—';
+                        const day = eventDate ? eventDate.getDate() : '—';
+                        const weekday = eventDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '—';
+                        if (it.type === 'booking') {
+                            const isConfirmed = it.status === 'confirmed' || it.status === 'paid';
+                            let actionButtons = '';
+                            if (isConfirmed) {
+                                if (it.isPaid) {
+                                    actionButtons = `<span class="btn btn-success btn-sm" style="margin-left: 10px; cursor: default;">✓ Paid</span>`;
+                                } else if (it.isDepositOnly) {
+                                    actionButtons = `<button class="btn btn-warning btn-sm" onclick="initiatePayment('${it.id}', ${Number(it.totalAmount || 0)}, ${it.vendorProfileId})" style="margin-left: 10px;">Pay Balance</button>`;
+                                } else {
+                                    actionButtons = `<button class="btn btn-primary btn-sm" onclick="initiatePayment('${it.id}', ${Number(it.totalAmount || 0)}, ${it.vendorProfileId})" style="margin-left: 10px;">Pay Now</button>`;
+                                }
+                            }
+                            return `
+                            <div class="booking-item">
+                                <div class="booking-date-section">
+                                    <div class="booking-month">${month}</div>
+                                    <div class="booking-day">${day}</div>
+                                    <div class="booking-weekday">${weekday}</div>
+                                </div>
+                                <div class="booking-info">
+                                    <div class="booking-client"><i class="fas fa-store" style="color:#6b7280;font-size:12px;"></i><span class="booking-client-name">${it.vendorName || 'Vendor'}</span></div>
+                                    <div class="booking-service-row"><span class="booking-service">Confirmed Booking</span></div>
+                                    ${it.totalAmount ? `<div class="booking-price-row"><i class="fas fa-dollar-sign" style="color:#6b7280;font-size:12px;"></i><span class="booking-price">$${Number(it.totalAmount).toLocaleString()}</span></div>` : ''}
+                                </div>
+                                <div class="booking-actions">
+                                    <span class="request-status ${it.status}" style="margin-right:12px;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:500;text-transform:capitalize;">${it.isPaid ? 'Paid' : (it.status === 'confirmed' ? 'Accepted' : it.status)}</span>
+                                    ${actionButtons}
+                                </div>
+                            </div>`;
+                        } else {
+                            let hoursRemaining = 0;
+                            try {
+                                const now = new Date();
+                                const exp = it.expiresAt ? new Date(it.expiresAt) : null;
+                                if (exp) {
+                                    const diffMs = exp.getTime() - now.getTime();
+                                    hoursRemaining = Math.max(0, Math.ceil(diffMs / (1000*60*60)));
+                                }
+                            } catch {}
+                            const statusMap = { pending:'Pending', approved:'Accepted', declined:'Declined', expired:'Expired' };
+                            return `
+                            <div class="booking-item">
+                                <div class="booking-date-section">
+                                    <div class="booking-month">${month}</div>
+                                    <div class="booking-day">${day}</div>
+                                    <div class="booking-weekday">${weekday}</div>
+                                </div>
+                                <div class="booking-info">
+                                    <div class="booking-client"><i class="fas fa-store" style="color:#6b7280;font-size:12px;"></i><span class="booking-client-name">${it.vendorName || 'Vendor'}</span></div>
+                                    <div class="booking-service-row"><span class="booking-service">Event Service Request</span></div>
+                                    <div class="booking-time-row"><i class="fas fa-hourglass-half" style="color:#6b7280;font-size:12px;"></i><span class="booking-time">${hoursRemaining > 0 ? `${hoursRemaining} ${hoursRemaining === 1 ? 'hour' : 'hours'} remaining` : 'Timer expired'}</span></div>
+                                    ${it.budget ? `<div class="booking-price-row"><i class="fas fa-dollar-sign" style="color:#6b7280;font-size:12px;"></i><span class="booking-price">$${Number(it.budget).toLocaleString()}</span></div>` : ''}
+                                </div>
+                                <div class="booking-actions">
+                                    <span class="request-status ${it.status}" style="margin-right:12px;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:500;text-transform:capitalize;">${statusMap[it.status] || 'Pending'}</span>
+                                </div>
+                            </div>`;
+                        }
+                    }).join('');
+                    container.innerHTML = html;
+                } catch (e) {
+                    console.error('renderUnifiedClientAll error:', e);
+                    container.innerHTML = '<p style="color:var(--accent);">Failed to render bookings.</p>';
                 }
             }
 
