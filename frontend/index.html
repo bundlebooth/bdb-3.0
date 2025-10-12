@@ -22,6 +22,9 @@
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <!-- Add Chart.js for analytics graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Invoice PDF libs -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Add Select2 for enhanced dropdowns -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -5266,6 +5269,7 @@
                         <ul class="dashboard-menu">
                             <li><a href="#" class="active" data-section="dashboard">Dashboard</a></li>
                             <li><a href="#" data-section="bookings">Bookings</a></li>
+                            <li><a href="#" data-section="invoices">Invoices</a></li>
                             <!-- Requests merged into Bookings; hide legacy link -->
                             <li style="display:none;"><a href="#" data-section="requests">My Requests</a></li>
                             <li><a href="#" data-section="favorites">Favorites</a></li>
@@ -5335,6 +5339,14 @@
                                         <div id="expired-bookings-list"><p>No expired items.</p></div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        <div id="invoices-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <div class="booking-header">
+                                    <h2 class="dashboard-card-title">Invoices</h2>
+                                </div>
+                                <div id="client-invoices-list"><p>Loading invoices...</p></div>
                             </div>
                         </div>
                         <div id="favorites-section" style="display: none;">
@@ -5416,6 +5428,7 @@
                         <ul class="dashboard-menu">
                             <li><a href="#" class="active" data-section="vendor-dashboard">Dashboard</a></li>
                             <li><a href="#" data-section="vendor-requests">Bookings</a></li>
+                            <li><a href="#" data-section="vendor-invoices">Invoices</a></li>
                             <li><a href="#" data-section="vendor-services">Services</a></li>
                             <li><a href="#" data-section="vendor-messages">Messages</a></li>
                             <li><a href="#" data-section="vendor-reviews">Reviews</a></li>
@@ -5465,6 +5478,14 @@
                                     <button class="tab-btn" data-status="expired">Expired</button>
                                 </div>
                                 <div id="vendor-pending-requests"><p>Loading pending requests...</p></div>
+                            </div>
+                        </div>
+                        <div id="vendor-invoices-section" style="display: none;">
+                            <div class="dashboard-card">
+                                <div class="booking-header">
+                                    <h2 class="dashboard-card-title">Invoices</h2>
+                                </div>
+                                <div id="vendor-invoices-list"><p>Loading invoices...</p></div>
                             </div>
                         </div>
                         <div id="vendor-services-section" style="display: none;">
@@ -6954,6 +6975,29 @@
     </script>
     <script async="" defer="" crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
 
+    <!-- Invoice Modal -->
+    <div id="invoice-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width: 920px; width: 95%; display:flex; flex-direction:column; max-height: 90vh;">
+        <div class="modal-header">
+          <h3 id="invoice-modal-title">Invoice</h3>
+          <span class="close-modal" id="invoice-close-btn">×</span>
+        </div>
+        <div class="modal-body" style="overflow:auto;">
+          <div id="invoice-print-area" style="background:white; padding: 24px; border-radius: 8px;">
+            <div id="invoice-loading" style="text-align:center; color:#6b7280; padding: 24px;">
+              <i class="fas fa-spinner fa-spin" style="font-size:22px;"></i>
+              <div style="margin-top:8px;">Loading invoice...</div>
+            </div>
+            <div id="invoice-content" style="display:none;"></div>
+          </div>
+        </div>
+        <div class="modal-footer" style="display:flex; gap:.5rem; justify-content:flex-end; padding: 12px 16px; border-top:1px solid var(--border);">
+          <button class="btn btn-outline" id="invoice-refresh-btn">Refresh</button>
+          <button class="btn btn-primary" id="invoice-download-btn"><i class="fas fa-file-download" style="margin-right:8px;"></i>Download PDF</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Application Script -->
     <script>
         // API base URL (global constant)
@@ -6969,6 +7013,252 @@
         
         // Global variables
         let currentUser = null;
+        // Invoice state and helpers
+        let lastInvoiceBookingId = null;
+        let lastInvoiceData = null;
+        async function openInvoiceModal(bookingId) {
+            try {
+                lastInvoiceBookingId = bookingId;
+                const modal = document.getElementById('invoice-modal');
+                if (modal) modal.style.display = 'flex';
+                const content = document.getElementById('invoice-content');
+                const loading = document.getElementById('invoice-loading');
+                if (content) { content.style.display = 'none'; content.innerHTML = ''; }
+                if (loading) loading.style.display = 'block';
+                const closeBtn = document.getElementById('invoice-close-btn');
+                if (closeBtn && !closeBtn._wired) { closeBtn._wired = true; closeBtn.addEventListener('click', () => { modal.style.display = 'none'; }); }
+                window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+                const refreshBtn = document.getElementById('invoice-refresh-btn');
+                if (refreshBtn && !refreshBtn._wired) { refreshBtn._wired = true; refreshBtn.addEventListener('click', () => openInvoiceModal(lastInvoiceBookingId)); }
+                const dlBtn = document.getElementById('invoice-download-btn');
+                if (dlBtn && !dlBtn._wired) { dlBtn._wired = true; dlBtn.addEventListener('click', downloadInvoicePDF); }
+                if (!currentUser || !currentUser.id) { throw new Error('Please log in to view invoices.'); }
+                // Prefer persisted invoices API, fallback to legacy bookings invoice builder
+                const primaryUrl = `${API_BASE_URL}/invoices/booking/${bookingId}?userId=${currentUser.id}`;
+                let resp = await fetch(primaryUrl, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+                let data = null;
+                const ct = resp.headers.get('content-type') || '';
+                if (resp.ok && ct.includes('application/json')) {
+                    data = await resp.json();
+                } else {
+                    const fallbackUrl = `${API_BASE_URL}/bookings/${bookingId}/invoice?userId=${currentUser.id}`;
+                    resp = await fetch(fallbackUrl, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+                    const fct = resp.headers.get('content-type') || '';
+                    if (!resp.ok || !fct.includes('application/json')) {
+                        const txt = await resp.text().catch(() => '');
+                        throw new Error('Invoice endpoint not available on server. ' + (txt ? `Server says: ${txt}` : ''));
+                    }
+                    data = await resp.json();
+                }
+                if (!data || !data.success) throw new Error((data && data.message) || 'Failed to load invoice');
+                let inv = data.invoice;
+                // If using persisted invoices shape, adapt to UI contract expected by renderInvoice
+                if (inv && !inv.lineItems && inv.items) {
+                    inv = (function adaptPersistedInvoiceToUI(p) {
+                        const items = Array.isArray(p.items) ? p.items : [];
+                        const sum = (filter) => items.filter(filter).reduce((s, it) => s + Number(it.Amount || it.lineTotal || 0), 0);
+                        const servicesSubtotal = +(sum(it => (it.ItemType || '').toLowerCase() === 'service' && (it.IsPayable === true || it.IsPayable === 1))).toFixed(2);
+                        const expensesTotal = +(sum(it => (it.ItemType || '').toLowerCase() === 'expense' && (it.IsPayable === true || it.IsPayable === 1))).toFixed(2);
+                        const subtotal = Number(p.Subtotal || (servicesSubtotal + expensesTotal));
+                        const platformFee = Number(p.PlatformFee || 0);
+                        const processingFees = Number(p.StripeFee || 0);
+                        const tax = Number(p.TaxAmount || 0);
+                        const platformFeePercent = subtotal > 0 ? +((platformFee / subtotal) * 100).toFixed(1) : 0;
+                        const grandTotal = +(subtotal + platformFee + processingFees + tax).toFixed(2);
+                        const lineItems = items.map(it => ({
+                            type: it.ItemType,
+                            name: it.Title,
+                            quantity: Number(it.Quantity || 1),
+                            unitPrice: Number(it.UnitPrice || 0),
+                            lineTotal: Number(it.Amount || 0)
+                        }));
+                        return {
+                            invoiceNumber: p.InvoiceNumber,
+                            issuedAt: p.IssueDate || p.IssueDateTime || p.CreatedAt || new Date().toISOString(),
+                            bookingId: p.BookingID,
+                            eventDate: (p.booking && p.booking.EventDate) || null,
+                            status: (p.booking && p.booking.Status) || p.Status || '',
+                            currency: p.Currency || 'USD',
+                            viewerRole: '',
+                            billFrom: { name: (p.booking && p.booking.VendorName) || 'Vendor', email: '', phone: '' },
+                            billTo:   { name: (p.booking && p.booking.ClientName) || 'Client', email: '', phone: '' },
+                            client: { id: p.UserID, name: (p.booking && p.booking.ClientName) || '' },
+                            vendor: { vendorProfileId: p.VendorProfileID, name: (p.booking && p.booking.VendorName) || '' },
+                            lineItems,
+                            totals: {
+                                servicesSubtotal,
+                                expensesTotal,
+                                subtotal,
+                                platformFeePercent,
+                                platformFee,
+                                processingFees,
+                                processingFeesSource: 'recorded',
+                                grandTotal,
+                                totalPaid: 0,
+                                balanceDue: Math.max(0, grandTotal)
+                            },
+                            payments: []
+                        };
+                    })(inv);
+                }
+                lastInvoiceData = inv;
+                renderInvoice(inv);
+                if (loading) loading.style.display = 'none';
+                if (content) content.style.display = 'block';
+            } catch (e) {
+                console.error('openInvoiceModal error:', e);
+                const loading = document.getElementById('invoice-loading');
+                if (loading) loading.innerHTML = `<div style="color:#b91c1c;">${(e && e.message) || 'Failed to load invoice'}</div>`;
+            }
+        }
+        function renderInvoice(inv) {
+            const el = document.getElementById('invoice-content');
+            if (!el || !inv) return;
+            const issued = new Date(inv.issuedAt);
+            const eventD = inv.eventDate ? new Date(inv.eventDate) : null;
+            const money = (n) => `$${Number(n || 0).toFixed(2)}`;
+            const paymentsHtml = (Array.isArray(inv.payments) && inv.payments.length)
+                ? `<div style="margin-top:8px;">${inv.payments.map(p => `
+                        <div style="display:flex;justify-content:space-between;font-size:.92rem;padding:6px 0;border-bottom:1px dashed var(--border);">
+                          <span>${new Date(p.CreatedAt).toLocaleString()} • ${p.Currency || 'USD'}</span>
+                          <span>Paid ${money(p.Amount)} ${Number(p.FeeAmount||0)>0?`<span style='color:#6b7280'>(Fees: ${money(p.FeeAmount)})</span>`:''}</span>
+                        </div>`).join('')}</div>`
+                : `<div style="color:#6b7280;">No payments recorded yet.</div>`;
+            const rows = (inv.lineItems || []).map((li, idx) => `
+                <tr>
+                  <td style="padding:8px 10px;">${idx+1}</td>
+                  <td style="padding:8px 10px;">${(li.name || '').replace(/</g,'&lt;')}</td>
+                  <td style="padding:8px 10px; text-align:center;">${li.quantity || 1}</td>
+                  <td style="padding:8px 10px; text-align:right;">${money(li.unitPrice)}</td>
+                  <td style="padding:8px 10px; text-align:right; font-weight:600;">${money(li.lineTotal)}</td>
+                </tr>`).join('');
+            const pfLabel = `Platform fee (${Number(inv.totals.platformFeePercent || 0)}%)`;
+            const procSource = inv.totals.processingFeesSource === 'recorded' ? 'from Stripe' : 'estimated';
+            el.innerHTML = `
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+                <div>
+                  <div style="font-size:1.25rem;font-weight:700;">${inv.billFrom?.name || 'Vendor'}</div>
+                  <div style="font-size:.95rem;color:#6b7280;">${inv.billFrom?.email || ''}${inv.billFrom?.phone?` • ${inv.billFrom.phone}`:''}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:1.4rem;font-weight:800;">INVOICE</div>
+                  <div style="color:#6b7280;">${inv.invoiceNumber}</div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+                <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:12px;">
+                  <div style="font-weight:700;margin-bottom:6px;">Bill To</div>
+                  <div>${inv.billTo?.name || ''}</div>
+                  <div style="color:#6b7280;">${inv.billTo?.email || ''}${inv.billTo?.phone?` • ${inv.billTo.phone}`:''}</div>
+                </div>
+                <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:12px;">
+                  <div style="display:flex;justify-content:space-between;">
+                    <div>
+                      <div style="color:#6b7280;">Issued</div>
+                      <div>${issued.toLocaleDateString()}</div>
+                    </div>
+                    <div>
+                      <div style="color:#6b7280;">Event Date</div>
+                      <div>${eventD ? eventD.toLocaleDateString() : '-'}</div>
+                    </div>
+                    <div>
+                      <div style="color:#6b7280;">Status</div>
+                      <div style="text-transform:capitalize;">${inv.status || '-'}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:16px;">
+                <table style="width:100%; border-collapse:collapse; border:1px solid var(--border);">
+                  <thead>
+                    <tr style="background:#f3f4f6; text-align:left;">
+                      <th style="padding:10px; width:48px;">#</th>
+                      <th style="padding:10px;">Item</th>
+                      <th style="padding:10px; text-align:center; width:90px;">Qty</th>
+                      <th style="padding:10px; text-align:right; width:120px;">Unit</th>
+                      <th style="padding:10px; text-align:right; width:140px;">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows || '<tr><td colspan="5" style="padding:12px; text-align:center; color:#6b7280;">No items</td></tr>'}
+                  </tbody>
+                </table>
+              </div>
+              <div style="display:grid; grid-template-columns: 1fr 360px; gap: 16px; margin-top:16px;">
+                <div>
+                  <div style="font-weight:700; margin-bottom:6px;">Payments</div>
+                  ${paymentsHtml}
+                </div>
+                <div style="border:1px solid var(--border); border-radius:8px; padding:12px; background:#f9fafb;">
+                  <div style="display:flex; justify-content:space-between; padding:6px 0;">
+                    <span>Services Subtotal</span><strong>${money(inv.totals.servicesSubtotal)}</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; padding:6px 0;">
+                    <span>Expenses</span><strong>${money(inv.totals.expensesTotal)}</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; padding:6px 0; border-top:1px dashed var(--border); margin-top:6px;">
+                    <span>Subtotal</span><strong>${money(inv.totals.subtotal)}</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; padding:6px 0;">
+                    <span>${pfLabel}</span><strong>${money(inv.totals.platformFee)}</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; padding:6px 0;">
+                    <span>Processing fees <span style="color:#6b7280; font-weight:400;">(${procSource})</span></span><strong>${money(inv.totals.processingFees)}</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; padding:8px 0; border-top:2px solid #e5e7eb; margin-top:6px; font-size:1.05rem;">
+                    <span>Grand Total</span><strong>${money(inv.totals.grandTotal)}</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; padding:6px 0;">
+                    <span>Total Paid</span><strong>${money(inv.totals.totalPaid)}</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; padding:8px 0;">
+                    <span>Balance Due</span><strong style="color: var(--primary);">${money(inv.totals.balanceDue)}</strong>
+                  </div>
+                </div>
+              </div>
+            `;
+        }
+        async function downloadInvoicePDF() {
+            try {
+                const area = document.getElementById('invoice-print-area');
+                if (!area) return;
+                const { jsPDF } = window.jspdf || {};
+                if (!window.html2canvas || !jsPDF) { alert('PDF libraries not loaded.'); return; }
+                const canvas = await html2canvas(area, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'pt', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const imgWidth = pageWidth - 40;
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                if (imgHeight <= pageHeight - 40) {
+                    pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
+                } else {
+                    let remainingHeight = imgHeight;
+                    let imgPosition = 0;
+                    const pageCanvas = document.createElement('canvas');
+                    const pageCtx = pageCanvas.getContext('2d');
+                    const ratio = imgWidth / canvas.width;
+                    const sliceHeight = (pageHeight - 40) / ratio;
+                    pageCanvas.width = canvas.width;
+                    pageCanvas.height = sliceHeight;
+                    while (remainingHeight > 0) {
+                        pageCtx.clearRect(0,0,pageCanvas.width,pageCanvas.height);
+                        pageCtx.drawImage(canvas, 0, imgPosition, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+                        const pageImgData = pageCanvas.toDataURL('image/png');
+                        pdf.addImage(pageImgData, 'PNG', 20, 20, imgWidth, pageHeight - 40);
+                        remainingHeight -= (pageHeight - 40);
+                        imgPosition += sliceHeight;
+                        if (remainingHeight > 0) pdf.addPage();
+                    }
+                }
+                const fileName = (lastInvoiceData?.invoiceNumber || `invoice-${lastInvoiceBookingId}`) + '.pdf';
+                pdf.save(fileName);
+            } catch (e) {
+                console.error('downloadInvoicePDF error:', e);
+                alert('Failed to generate PDF');
+            }
+        }
         
         // Ensure Step 3 vendor list matches the map height exactly
         function syncVendorPanelHeight() {
@@ -7151,7 +7441,208 @@
                     document.body.prepend(container);
                 }
             }
+
+            // Load client invoices (all accepted/approved/paid bookings)
+            async function loadClientInvoices() {
+                const container = document.getElementById('client-invoices-list');
+                if (container) container.innerHTML = '<p>Loading invoices...</p>';
+                if (!currentUser || !currentUser.id) {
+                    if (container) container.innerHTML = '<p>Please log in to view invoices.</p>';
+                    return;
+                }
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (!resp.ok) throw new Error('Failed to fetch bookings');
+                    const bookings = await resp.json();
+                    const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
+                        const s = (b.Status || '').toString().toLowerCase();
+                        return s === 'confirmed' || s === 'paid' || s === 'approved';
+                    }).sort((a,b) => new Date(b.EventDate) - new Date(a.EventDate));
+                    renderInvoicesList(accepted, container, 'client');
+                } catch (e) {
+                    console.error('loadClientInvoices error:', e);
+                    if (container) container.innerHTML = `<p style="color:var(--accent);">${e.message || 'Failed to load invoices'}</p>`;
+                }
+            }
+
+            // Load vendor invoices (bookings for vendor profile)
+            async function loadVendorInvoices(vendorProfileId) {
+                const container = document.getElementById('vendor-invoices-list');
+                if (container) container.innerHTML = '<p>Loading invoices...</p>';
+                if (!vendorProfileId) {
+                    if (container) container.innerHTML = '<p>Vendor profile not found.</p>';
+                    return;
+                }
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (!resp.ok) throw new Error('Failed to fetch vendor bookings');
+                    const bookings = await resp.json();
+                    const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
+                        const s = (b.Status || '').toString().toLowerCase();
+                        return s === 'confirmed' || s === 'paid' || s === 'approved';
+                    }).sort((a,b) => new Date(b.EventDate) - new Date(a.EventDate));
+                    renderInvoicesList(accepted, container, 'vendor');
+                } catch (e) {
+                    console.error('loadVendorInvoices error:', e);
+                    if (container) container.innerHTML = `<p style="color:var(--accent);">${e.message || 'Failed to load invoices'}</p>`;
+                }
+            }
+
+            // Render invoice list cards
+            function renderInvoicesList(bookings, container, viewerRole) {
+                if (!container) return;
+                container.innerHTML = '';
+                if (!Array.isArray(bookings) || bookings.length === 0) {
+                    container.innerHTML = '<p>No invoices available.</p>';
+                    return;
+                }
+                const html = bookings.map(b => {
+                    const eventDate = new Date(b.EventDate);
+                    const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
+                    const day = eventDate.getDate();
+                    const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
+                    const name = viewerRole === 'vendor' ? (b.ClientName || 'Client') : (b.VendorName || 'Vendor');
+                    const total = (b.TotalAmount != null) ? `$${Number(b.TotalAmount).toFixed(2)}` : '';
+                    const status = (b.Status || '').toString().toLowerCase();
+                    return `
+                        <div class="booking-item">
+                            <div class="booking-date-section">
+                                <div class="booking-month">${month}</div>
+                                <div class="booking-day">${day}</div>
+                                <div class="booking-weekday">${weekday}</div>
+                            </div>
+                            <div class="booking-info">
+                                <div class="booking-client"><i class="fas fa-store" style="color:#6b7280;font-size:12px;"></i><span class="booking-client-name">${name}</span></div>
+                                <div class="booking-service-row"><span class="booking-service">Confirmed Booking</span></div>
+                                ${total ? `<div class="booking-price-row"><i class=\"fas fa-dollar-sign\" style=\"color:#6b7280;font-size:12px;\"></i><span class=\"booking-price\">${total}</span></div>` : ''}
+                            </div>
+                            <div class="booking-actions">
+                                <span class="request-status ${status}" style="margin-right:12px;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:500;text-transform:capitalize;">${status === 'confirmed' ? 'Accepted' : status}</span>
+                                <button class="btn btn-outline btn-sm" onclick="openInvoiceModal('${b.BookingID}')">View</button>
+                                <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="downloadInvoiceForBooking('${b.BookingID}')">Download</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                container.innerHTML = html;
+            }
+
+            // Convenience: open invoice then download as PDF
+            async function downloadInvoiceForBooking(bookingId) {
+                try {
+                    await openInvoiceModal(bookingId);
+                    // Give the UI a moment to render then download
+                    setTimeout(() => { try { downloadInvoicePDF(); } catch(_) {} }, 350);
+                } catch (e) {
+                    alert(e?.message || 'Failed to download invoice');
+                }
+            }
             return container;
+        }
+
+        // Invoices: global functions moved to top-level scope (not nested inside other functions)
+        // Load client invoices (all accepted/approved/paid bookings)
+        async function loadClientInvoices() {
+            const container = document.getElementById('client-invoices-list');
+            if (container) container.innerHTML = '<p>Loading invoices...</p>';
+            if (!currentUser || !currentUser.id) {
+                if (container) container.innerHTML = '<p>Please log in to view invoices.</p>';
+                return;
+            }
+            try {
+                const resp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (!resp.ok) throw new Error('Failed to fetch bookings');
+                const bookings = await resp.json();
+                const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
+                    const s = (b.Status || '').toString().toLowerCase();
+                    return s === 'confirmed' || s === 'paid' || s === 'approved';
+                }).sort((a,b) => new Date(b.EventDate) - new Date(a.EventDate));
+                renderInvoicesList(accepted, container, 'client');
+            } catch (e) {
+                console.error('loadClientInvoices error:', e);
+                if (container) container.innerHTML = `<p style="color:var(--accent);">${e.message || 'Failed to load invoices'}</p>`;
+            }
+        }
+
+        // Load vendor invoices (bookings for vendor profile)
+        async function loadVendorInvoices(vendorProfileId) {
+            const container = document.getElementById('vendor-invoices-list');
+            if (container) container.innerHTML = '<p>Loading invoices...</p>';
+            if (!vendorProfileId) {
+                if (container) container.innerHTML = '<p>Vendor profile not found.</p>';
+                return;
+            }
+            try {
+                const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (!resp.ok) throw new Error('Failed to fetch vendor bookings');
+                const bookings = await resp.json();
+                const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
+                    const s = (b.Status || '').toString().toLowerCase();
+                    return s === 'confirmed' || s === 'paid' || s === 'approved';
+                }).sort((a,b) => new Date(b.EventDate) - new Date(a.EventDate));
+                renderInvoicesList(accepted, container, 'vendor');
+            } catch (e) {
+                console.error('loadVendorInvoices error:', e);
+                if (container) container.innerHTML = `<p style="color:var(--accent);">${e.message || 'Failed to load invoices'}</p>`;
+            }
+        }
+
+        // Render invoice list cards
+        function renderInvoicesList(bookings, container, viewerRole) {
+            if (!container) return;
+            container.innerHTML = '';
+            if (!Array.isArray(bookings) || bookings.length === 0) {
+                container.innerHTML = '<p>No invoices available.</p>';
+                return;
+            }
+            const html = bookings.map(b => {
+                const eventDate = new Date(b.EventDate);
+                const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
+                const day = eventDate.getDate();
+                const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
+                const name = viewerRole === 'vendor' ? (b.ClientName || 'Client') : (b.VendorName || 'Vendor');
+                const total = (b.TotalAmount != null) ? `$${Number(b.TotalAmount).toFixed(2)}` : '';
+                const status = (b.Status || '').toString().toLowerCase();
+                return `
+                    <div class="booking-item">
+                        <div class="booking-date-section">
+                            <div class="booking-month">${month}</div>
+                            <div class="booking-day">${day}</div>
+                            <div class="booking-weekday">${weekday}</div>
+                        </div>
+                        <div class="booking-info">
+                            <div class="booking-client"><i class="fas fa-store" style="color:#6b7280;font-size:12px;"></i><span class="booking-client-name">${name}</span></div>
+                            <div class="booking-service-row"><span class="booking-service">Confirmed Booking</span></div>
+                            ${total ? `<div class=\"booking-price-row\"><i class=\"fas fa-dollar-sign\" style=\"color:#6b7280;font-size:12px;\"></i><span class=\"booking-price\">${total}</span></div>` : ''}
+                        </div>
+                        <div class="booking-actions">
+                            <span class="request-status ${status}" style="margin-right:12px;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:500;text-transform:capitalize;">${status === 'confirmed' ? 'Accepted' : status}</span>
+                            <button class="btn btn-outline btn-sm" onclick="openInvoiceModal('${b.BookingID}')">View</button>
+                            <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="downloadInvoiceForBooking('${b.BookingID}')">Download</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            container.innerHTML = html;
+        }
+
+        // Convenience: open invoice then download as PDF
+        async function downloadInvoiceForBooking(bookingId) {
+            try {
+                await openInvoiceModal(bookingId);
+                // Give the UI a moment to render then download
+                setTimeout(() => { try { downloadInvoicePDF(); } catch(_) {} }, 350);
+            } catch (e) {
+                alert(e?.message || 'Failed to download invoice');
+            }
         }
 
         function getUserIdFromToken() {
@@ -21277,6 +21768,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } else if (section === 'bookings') {
                         await loadAllUserBookings();
                         setupBookingTabs();
+                    } else if (section === 'invoices') {
+                        await loadClientInvoices();
                     } else if (section === 'favorites') {
                         await loadUserFavoritesDashboard();
                     } else if (section === 'messages') {
@@ -21990,6 +22483,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         // Initialize vendor request tabs and load with current filters
                         try { setupVendorRequestTabs(); } catch (_) {}
                         await loadVendorRequests(vendorReqFilters.direction, vendorReqFilters.status);
+                    } else if (section === 'vendor-invoices') {
+                        await loadVendorInvoices(vendorProfileId);
                     } else if (section === 'vendor-services') {
                         await loadVendorServices(vendorProfileId);
                     } else if (section === 'vendor-messages') {
@@ -22522,6 +23017,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         // Add chat button for confirmed/paid bookings
                         if (booking.Status === 'confirmed' || booking.Status === 'paid') {
                             actionButtons += `<button class="btn btn-outline" onclick="openBookingChat('${booking.BookingID}')" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Chat</button>`;
+                            actionButtons += `<button class="btn btn-outline" onclick="openInvoiceModal('${booking.BookingID}')" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Invoice</button>`;
                         }
                         
                         bookingItem.innerHTML = `
@@ -22667,6 +23163,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     actionButtons = `<button class="btn btn-primary btn-sm" onclick="initiatePayment('${it.id}', ${Number(it.totalAmount || 0)}, ${it.vendorProfileId})" style="margin-left: 10px;">Pay Now</button>`;
                                 }
                             }
+                            actionButtons += `<button class="btn btn-outline btn-sm" onclick="openInvoiceModal('${it.id}')" style="margin-left: 10px;">Invoice</button>`;
                             return `
                             <div class="booking-item">
                                 <div class="booking-date-section">
