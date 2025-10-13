@@ -1888,10 +1888,12 @@
             height: 100%;
             min-height: 0;
         }
+        #dashboard-modal .modal-content { overflow: hidden; }
         #dashboard-modal .dashboard-content {
             height: 100%;
             min-height: 0; /* allow child to compute height within modal */
             overflow-y: auto;
+            overflow-x: hidden; /* prevent horizontal scroll within modal content */
             padding-bottom: 2.5rem; /* ensure bottom fields are not clipped */
         }
         #dashboard-modal .dashboard-sidebar {
@@ -2014,6 +2016,7 @@
             padding: 1.5rem;
             margin-bottom: 1.5rem;
             box-shadow: var(--shadow);
+            overflow: hidden; /* clip inner content to rounded corners */
         }
 
         .dashboard-card-title {
@@ -3568,6 +3571,7 @@
         .kpi-content { display:flex; flex-direction: column; }
         .kpi-value { font-size: 1.6rem; font-weight: 700; line-height: 1; }
         .kpi-label { color: var(--text-light); font-size: 0.9rem; }
+        .kpi-card.kpi-click { cursor: pointer; }
 
         /* Calendar tile inside KPI row */
         .kpi-card.calendar-tile {
@@ -3623,22 +3627,38 @@
         }
         .overview-grid {
             display: grid;
-            grid-template-columns: 2fr 1.2fr;
-            gap: 1.5rem;
+            grid-template-columns: 1fr minmax(320px, 420px);
+            gap: 1.25rem;
+            align-items: start;
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
         }
-        @media (max-width: 900px) {
+        .overview-grid > * { min-width: 0; }
+        @media (max-width: 1200px) {
             .overview-grid { grid-template-columns: 1fr; }
         }
 
         /* Message preview styles */
-        .message-preview-list { display: flex; flex-direction: column; gap: 10px; }
-        .message-preview-item { display:flex; align-items: center; gap: 12px; padding: 10px 12px; border:1px solid var(--border); border-radius: 10px; background:#fff; transition: background .2s; cursor: pointer; }
+        .message-preview-list { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 100%; }
+        .message-preview-item { display:flex; align-items: center; gap: 12px; padding: 10px 12px; border:1px solid var(--border); border-radius: 10px; background:#fff; transition: background .2s; cursor: pointer; overflow: hidden; width: 100%; max-width: 100%; }
         .message-preview-item:hover { background:#f8fafc; }
         .preview-avatar { width:36px; height:36px; border-radius: 8px; background:#eef2ff; color:#4f46e5; display:flex; align-items:center; justify-content:center; font-weight:700; }
-        .preview-content { flex:1; min-width: 0; }
-        .preview-name { font-weight:600; color:#111827; }
+        .preview-content { flex: 1 1 auto; min-width: 0; }
+        .preview-name { font-weight:600; color:#111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .preview-snippet { color:#6b7280; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .preview-time { color:#9ca3af; font-size:.8rem; margin-left:8px; }
+        .preview-time { color:#9ca3af; font-size:.8rem; margin-left:8px; white-space: nowrap; flex: 0 0 auto; max-width: 84px; overflow: hidden; text-overflow: ellipsis; }
+        #client-recent-messages,
+        #vendor-recent-messages { max-width: 100%; overflow-x: hidden; }
+
+        .dashboard-fixed-list { max-height: 360px; overflow-y: auto; }
+        .dashboard-fixed-list .empty-state { height: 100%; display:flex; align-items:center; justify-content:center; color: var(--text-light); }
+
+        #upcoming-bookings.dashboard-fixed-list,
+        #vendor-recent-bookings.dashboard-fixed-list {
+            max-height: 360px;
+            overflow-y: auto;
+        }
 
         .dashboard-card-title-row { display:flex; align-items:center; justify-content: space-between; margin-bottom: 1rem; }
 
@@ -5337,14 +5357,14 @@
                             <div class="overview-grid">
                                 <div class="dashboard-card">
                                     <h2 class="dashboard-card-title">Recent Bookings</h2>
-                                    <div id="upcoming-bookings"><p>Loading upcoming bookings...</p></div>
+                                    <div id="upcoming-bookings" class="dashboard-fixed-list"><p class="empty-state">Loading recent bookings...</p></div>
                                 </div>
                                 <div class="dashboard-card">
                                     <div class="dashboard-card-title-row">
                                         <h2 class="dashboard-card-title">Recent Messages</h2>
                                         <button class="btn btn-outline" id="open-all-messages-btn-client" style="padding:.5rem .9rem;">Open Messages</button>
                                     </div>
-                                    <div id="client-recent-messages" class="message-preview-list"><p>Loading recent messages...</p></div>
+                                    <div id="client-recent-messages" class="message-preview-list dashboard-fixed-list"><p class="empty-state">Loading recent messages...</p></div>
                                 </div>
                             </div>
                         </div>
@@ -5495,14 +5515,14 @@
                             <div class="overview-grid">
                                 <div class="dashboard-card">
                                     <h2 class="dashboard-card-title">Recent Bookings</h2>
-                                    <div id="vendor-recent-bookings"><p>Loading recent bookings...</p></div>
+                                    <div id="vendor-recent-bookings" class="dashboard-fixed-list"><p class="empty-state">Loading recent bookings...</p></div>
                                 </div>
                                 <div class="dashboard-card">
                                     <div class="dashboard-card-title-row">
                                         <h2 class="dashboard-card-title">Recent Messages</h2>
                                         <button class="btn btn-outline" id="open-all-messages-btn" style="padding:.5rem .9rem;">Open Messages</button>
                                     </div>
-                                    <div id="vendor-recent-messages" class="message-preview-list"><p>Loading recent messages...</p></div>
+                                    <div id="vendor-recent-messages" class="message-preview-list dashboard-fixed-list"><p class="empty-state">Loading recent messages...</p></div>
                                 </div>
                             </div>
                         </div>
@@ -22349,28 +22369,28 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 container.innerHTML = `
                     <div class="kpi-grid two-col">
-                        <div class="kpi-card">
+                        <div class="kpi-card kpi-click" data-target="bookings" data-kpi="upcoming">
                             <div class="kpi-icon bookings"><i class="fas fa-calendar-check"></i></div>
                             <div class="kpi-content">
                                 <div class="kpi-value">${kpis.upcoming || 0}</div>
                                 <div class="kpi-label">Upcoming Bookings</div>
                             </div>
                         </div>
-                        <div class="kpi-card">
+                        <div class="kpi-card kpi-click" data-target="bookings" data-kpi="pending">
                             <div class="kpi-icon requests"><i class="fas fa-paper-plane"></i></div>
                             <div class="kpi-content">
                                 <div class="kpi-value">${kpis.pendingRequests || 0}</div>
                                 <div class="kpi-label">Pending Requests</div>
                             </div>
                         </div>
-                        <div class="kpi-card">
+                        <div class="kpi-card kpi-click" data-target="favorites" data-kpi="favorites">
                             <div class="kpi-icon favorites"><i class="fas fa-heart"></i></div>
                             <div class="kpi-content">
                                 <div class="kpi-value">${kpis.favorites || 0}</div>
                                 <div class="kpi-label">Favorites Saved</div>
                             </div>
                         </div>
-                        <div class="kpi-card">
+                        <div class="kpi-card kpi-click" data-target="messages" data-kpi="messages">
                             <div class="kpi-icon messages"><i class="fas fa-envelope"></i></div>
                             <div class="kpi-content">
                                 <div class="kpi-value">${kpis.unreadMessages || 0}</div>
@@ -22386,6 +22406,41 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         </div>
                     </div>
                 `;
+
+                try {
+                    const go = (section, after) => {
+                        try { displayUserDashboard('client', section); } catch(_) {}
+                        if (after) {
+                            let tries = 0;
+                            const i = setInterval(() => {
+                                tries++;
+                                after();
+                                if (tries > 30) clearInterval(i);
+                            }, 120);
+                            setTimeout(() => clearInterval(i), 4000);
+                        }
+                    };
+                    container.querySelectorAll('.kpi-card.kpi-click').forEach(card => {
+                        card.addEventListener('click', () => {
+                            const target = card.getAttribute('data-target');
+                            const k = card.getAttribute('data-kpi');
+                            if (target === 'bookings') {
+                                go('bookings', () => {
+                                    if (k === 'pending') {
+                                        const btn = document.querySelector('#bookings-section .booking-tabs button[data-tab="pending"]');
+                                        if (btn) btn.click();
+                                    }
+                                    if (k === 'upcoming') {
+                                        const btn = document.querySelector('#bookings-section .booking-tabs button[data-tab="accepted"]');
+                                        if (btn) btn.click();
+                                    }
+                                });
+                            } else if (target) {
+                                go(target);
+                            }
+                        });
+                    });
+                } catch(_) {}
             }
 
             // Lightweight recent messages preview for client dashboard overview
@@ -22424,7 +22479,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const container = document.getElementById('client-recent-messages');
                 if (!container) return;
                 if (!items || items.length === 0) {
-                    container.innerHTML = '<p>No recent messages.</p>';
+                    container.innerHTML = '<div class="empty-state">No recent messages.</div>';
                     return;
                 }
                 container.innerHTML = '';
@@ -22505,7 +22560,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         container.appendChild(bookingItem);
                     });
                 } else {
-                    container.innerHTML = '<p>No upcoming bookings.</p>';
+                    container.innerHTML = '<div class="empty-state">No upcoming bookings.</div>';
                 }
             }
 
@@ -22969,7 +23024,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     card.className = 'dashboard-card';
                     card.innerHTML = `
                         <h2 class="dashboard-card-title">Recent Bookings</h2>
-                        <div id="vendor-recent-bookings"><p>Loading recent bookings...</p></div>
+                        <div id="vendor-recent-bookings" class="dashboard-fixed-list"><p class="empty-state">Loading recent bookings...</p></div>
                     `;
                     section.appendChild(card);
                 }
@@ -23016,7 +23071,29 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                         // Render only if containers exist (extra safety across unified DOM)
                         if (document.getElementById('vendor-stats')) {
-                            renderVendorStats(dashboardData.stats);
+                            const now = new Date();
+                            const upcomingCount = Array.isArray(dashboardData.recentBookings)
+                                ? dashboardData.recentBookings.filter(b => {
+                                    try {
+                                        const d = new Date(b.EventDate);
+                                        const s = (b.Status || '').toString().toLowerCase();
+                                        return !isNaN(d) && d >= now && (s === 'approved' || s === 'accepted' || s === 'confirmed' || s === 'paid');
+                                    } catch { return false; }
+                                  }).length
+                                : 0;
+                            let pendingCount = 0;
+                            try {
+                                const qs = new URLSearchParams({ direction: 'inbound', status: 'pending' }).toString();
+                                const url = `${API_BASE_URL}/bookings/vendor/${vendorProfileId}/requests?${qs}`;
+                                const pResp = await fetch(url, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+                                if (pResp.ok) {
+                                    const j = await pResp.json();
+                                    pendingCount = (j.requests || []).length;
+                                }
+                            } catch(_) {}
+                            const avgRating = (() => { const s = dashboardData.stats || {}; const v = s.averageRating ?? s.AvgRating ?? 0; const n = parseFloat(v); return isNaN(n) ? 0 : n; })();
+                            const unreadMsgs = dashboardData.unreadMessages || 0;
+                            renderVendorStats({ upcoming: upcomingCount, pendingRequests: pendingCount, avgRating: avgRating, unreadMessages: unreadMsgs });
                         }
                         if (document.getElementById('vendor-recent-bookings')) {
                             renderVendorRecentBookings(dashboardData.recentBookings);
@@ -23386,7 +23463,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
-            function renderVendorStats(stats) {
+            function renderVendorStats(kpis) {
                 const container = document.getElementById('vendor-stats');
                 if (!container) return;
                 try {
@@ -23398,34 +23475,39 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const day = now.getDate();
                 const year = now.getFullYear();
 
+                const upcoming = (kpis && (kpis.upcoming ?? kpis.UpcomingBookings)) || 0;
+                const pending = (kpis && (kpis.pendingRequests ?? kpis.PendingRequests)) || 0;
+                const avg = (() => { const val = kpis && (kpis.avgRating ?? kpis.AvgRating ?? kpis.averageRating ?? kpis.average_rating); const n = parseFloat(val); return isNaN(n) ? 0 : n; })();
+                const unread = (kpis && (kpis.unreadMessages ?? kpis.UnreadMessages)) || 0;
+
                 container.innerHTML = `
                     <div class="kpi-grid two-col">
-                        <div class="kpi-card">
+                        <div class="kpi-card kpi-click" data-target="vendor-requests" data-kpi="upcoming">
                             <div class="kpi-icon bookings"><i class="fas fa-calendar-check"></i></div>
                             <div class="kpi-content">
-                                <div class="kpi-value">${stats.TotalBookings || 0}</div>
-                                <div class="kpi-label">Total Bookings</div>
+                                <div class="kpi-value">${upcoming}</div>
+                                <div class="kpi-label">Upcoming Bookings</div>
                             </div>
                         </div>
-                        <div class="kpi-card">
-                            <div class="kpi-icon reviews"><i class="fas fa-star"></i></div>
+                        <div class="kpi-card kpi-click" data-target="vendor-requests" data-kpi="pending">
+                            <div class="kpi-icon requests"><i class="fas fa-paper-plane"></i></div>
                             <div class="kpi-content">
-                                <div class="kpi-value">${stats.TotalReviews || 0}</div>
-                                <div class="kpi-label">Total Reviews</div>
+                                <div class="kpi-value">${pending}</div>
+                                <div class="kpi-label">Pending Requests</div>
                             </div>
                         </div>
-                        <div class="kpi-card">
+                        <div class="kpi-card kpi-click" data-target="vendor-reviews">
                             <div class="kpi-icon rating"><i class="fas fa-star-half-alt"></i></div>
                             <div class="kpi-content">
-                                <div class="kpi-value">${(stats.AvgRating || 0).toFixed(1)}</div>
+                                <div class="kpi-value">${avg.toFixed(1)}</div>
                                 <div class="kpi-label">Average Rating</div>
                             </div>
                         </div>
-                        <div class="kpi-card">
-                            <div class="kpi-icon favorites"><i class="fas fa-heart"></i></div>
+                        <div class="kpi-card kpi-click" data-target="vendor-messages">
+                            <div class="kpi-icon messages"><i class="fas fa-envelope"></i></div>
                             <div class="kpi-content">
-                                <div class="kpi-value">${stats.TotalFavorites || 0}</div>
-                                <div class="kpi-label">Total Favorites</div>
+                                <div class="kpi-value">${unread}</div>
+                                <div class="kpi-label">Unread Messages</div>
                             </div>
                         </div>
                     </div>
@@ -23437,6 +23519,40 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         </div>
                     </div>
                 `;
+
+                try {
+                    const go = (section, after) => {
+                        try { displayUserDashboard('vendor', section); } catch(_) {}
+                        if (after) {
+                            let tries = 0;
+                            const i = setInterval(() => {
+                                tries++;
+                                after();
+                                if (tries > 30) clearInterval(i);
+                            }, 120);
+                            setTimeout(() => clearInterval(i), 4000);
+                        }
+                    };
+                    container.querySelectorAll('.kpi-card.kpi-click').forEach(card => {
+                        card.addEventListener('click', () => {
+                            const target = card.getAttribute('data-target');
+                            const k = card.getAttribute('data-kpi');
+                            if (target === 'vendor-requests') {
+                                go('vendor-requests', () => {
+                                    if (k === 'pending') {
+                                        const btn = document.querySelector('#vendor-requests-section .requests-filter-tabs .tab-btn[data-status="pending"]');
+                                        if (btn) btn.click();
+                                    } else if (k === 'upcoming') {
+                                        const btn = document.querySelector('#vendor-requests-section .requests-filter-tabs .tab-btn[data-status="approved"]');
+                                        if (btn) btn.click();
+                                    }
+                                });
+                            } else if (target) {
+                                go(target);
+                            }
+                        });
+                    });
+                } catch(_) {}
             }
             function renderVendorRecentBookings(bookings) {
                 const container = document.getElementById('vendor-recent-bookings');
@@ -23503,7 +23619,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         container.appendChild(bookingItem);
                     });
                 } else {
-                    container.innerHTML = '<p>No recent bookings found.</p>';
+                    container.innerHTML = '<div class="empty-state">No recent bookings found.</div>';
                 }
             }
 
@@ -23543,7 +23659,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const container = document.getElementById('vendor-recent-messages');
                 if (!container) return;
                 if (!items || items.length === 0) {
-                    container.innerHTML = '<p>No recent messages.</p>';
+                    container.innerHTML = '<div class="empty-state">No recent messages.</div>';
                     return;
                 }
                 container.innerHTML = '';
