@@ -14,6 +14,26 @@ function isStripeConfigured() {
          !process.env.STRIPE_PUBLISHABLE_KEY.includes('placeholder');
 }
 
+async function existsRecentTransaction({ bookingId, amount, externalId = null, minutes = 180 }) {
+  try {
+    const pool = await poolPromise;
+    const req = pool.request();
+    req.input('BookingID', sql.Int, bookingId);
+    req.input('Amount', sql.Decimal(10,2), Math.round(Number(amount || 0) * 100) / 100);
+    req.input('Ext', sql.NVarChar(100), externalId || null);
+    req.input('Minutes', sql.Int, minutes);
+    const q = await req.query(`
+      SELECT TOP 1 TransactionID
+      FROM Transactions
+      WHERE BookingID = @BookingID AND Status = 'succeeded' AND (
+        (StripeChargeID IS NOT NULL AND @Ext IS NOT NULL AND StripeChargeID = @Ext)
+        OR (ABS(Amount - @Amount) < 0.01 AND CreatedAt > DATEADD(minute, -@Minutes, GETDATE()))
+      )
+    `);
+    return q.recordset.length > 0;
+  } catch (_) { return false; }
+}
+
 function estimateProcessingFee(amount) {
   try {
     const pct = parseFloat(process.env.STRIPE_PROC_FEE_PERCENT || process.env.STRIPE_FEE_PERCENT || '2.9') / 100;
@@ -900,15 +920,18 @@ router.get('/verify-session', async (req, res) => {
       const binfo = await pool.request().input('BookingID', sql.Int, bookingId)
         .query('SELECT UserID, VendorProfileID, TotalAmount FROM Bookings WHERE BookingID = @BookingID');
       const row = binfo.recordset[0] || {};
-      await recordTransaction({
-        bookingId,
-        userId: row.UserID,
-        vendorProfileId: row.VendorProfileID,
-        amount: row.TotalAmount,
-        currency: 'USD',
-        stripeChargeId: paymentIntentId,
-        description: 'Stripe Payment (verified)'
-      });
+      const exists = await existsRecentTransaction({ bookingId, amount: row.TotalAmount, externalId: paymentIntentId, minutes: 240 });
+      if (!exists) {
+        await recordTransaction({
+          bookingId,
+          userId: row.UserID,
+          vendorProfileId: row.VendorProfileID,
+          amount: row.TotalAmount,
+          currency: 'USD',
+          stripeChargeId: paymentIntentId,
+          description: 'Stripe Payment (verified)'
+        });
+      }
       if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') {
         try { await invoicesRouter.upsertInvoiceForBooking(await poolPromise, bookingId, { forceRegenerate: true }); } catch (_) {}
       }
@@ -988,15 +1011,18 @@ router.get('/verify-intent', async (req, res) => {
       const binfo = await pool.request().input('BookingID', sql.Int, bookingId)
         .query('SELECT UserID, VendorProfileID, TotalAmount FROM Bookings WHERE BookingID = @BookingID');
       const row = binfo.recordset[0] || {};
-      await recordTransaction({
-        bookingId,
-        userId: row.UserID,
-        vendorProfileId: row.VendorProfileID,
-        amount: row.TotalAmount,
-        currency: 'USD',
-        stripeChargeId: paymentIntentId,
-        description: 'Stripe Payment (verified)'
-      });
+      const exists = await existsRecentTransaction({ bookingId, amount: row.TotalAmount, externalId: paymentIntentId, minutes: 240 });
+      if (!exists) {
+        await recordTransaction({
+          bookingId,
+          userId: row.UserID,
+          vendorProfileId: row.VendorProfileID,
+          amount: row.TotalAmount,
+          currency: 'USD',
+          stripeChargeId: paymentIntentId,
+          description: 'Stripe Payment (verified)'
+        });
+      }
       if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') {
         try { await invoicesRouter.upsertInvoiceForBooking(await poolPromise, bookingId, { forceRegenerate: true }); } catch (_) {}
       }
@@ -1079,15 +1105,18 @@ const webhook = async (req, res) => {
               const binfo = await pool.request().input('BookingID', sql.Int, bookingId)
                 .query('SELECT UserID, VendorProfileID, TotalAmount FROM Bookings WHERE BookingID = @BookingID');
               const row = binfo.recordset[0] || {};
-              await recordTransaction({
-                bookingId,
-                userId: row.UserID,
-                vendorProfileId: row.VendorProfileID,
-                amount: row.TotalAmount,
-                currency: 'USD',
-                stripeChargeId: paymentIntent.id,
-                description: 'Stripe Payment (webhook PI)'
-              });
+              const exists = await existsRecentTransaction({ bookingId, amount: row.TotalAmount, externalId: paymentIntent.id, minutes: 240 });
+              if (!exists) {
+                await recordTransaction({
+                  bookingId,
+                  userId: row.UserID,
+                  vendorProfileId: row.VendorProfileID,
+                  amount: row.TotalAmount,
+                  currency: 'USD',
+                  stripeChargeId: paymentIntent.id,
+                  description: 'Stripe Payment (webhook PI)'
+                });
+              }
               if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') {
                 try { await invoicesRouter.upsertInvoiceForBooking(await poolPromise, bookingId, { forceRegenerate: true }); } catch (_) {}
               }
@@ -1204,16 +1233,19 @@ const webhook = async (req, res) => {
               const fee = typeof charge.balance_transaction === 'object' && charge.balance_transaction?.fee
                 ? (charge.balance_transaction.fee / 100)
                 : null;
-              await recordTransaction({
-                bookingId: bookingIdFromCharge,
-                userId: row.UserID,
-                vendorProfileId: row.VendorProfileID,
-                amount: (charge.amount / 100),
-                currency: charge.currency?.toUpperCase() || 'USD',
-                stripeChargeId: charge.id,
-                description: 'Stripe Charge',
-                feeAmount: fee
-              });
+              const exists = await existsRecentTransaction({ bookingId: bookingIdFromCharge, amount: (charge.amount/100), externalId: charge.id, minutes: 240 });
+              if (!exists) {
+                await recordTransaction({
+                  bookingId: bookingIdFromCharge,
+                  userId: row.UserID,
+                  vendorProfileId: row.VendorProfileID,
+                  amount: (charge.amount / 100),
+                  currency: charge.currency?.toUpperCase() || 'USD',
+                  stripeChargeId: charge.id,
+                  description: 'Stripe Charge',
+                  feeAmount: fee
+                });
+              }
               if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') {
                 try { await invoicesRouter.upsertInvoiceForBooking(await poolPromise, bookingIdFromCharge, { forceRegenerate: true }); } catch (_) {}
               }
