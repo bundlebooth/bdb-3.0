@@ -964,6 +964,10 @@
             background-color: #ffffff;
             border-bottom: 1px solid var(--border);
         }
+        #booking-modal .modal-header h3 {
+            color: var(--text-light);
+            font-weight: 600;
+        }
         /* Card look for progress and step sections to mirror dashboard cards */
         #booking-modal .booking-progress,
         #booking-modal .booking-step {
@@ -4621,21 +4625,22 @@
         }
         
         .booking-progress .step-indicator {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-light);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            background-color: var(--secondary);
+            transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            border-radius: 9999px;
-            background: #f8fafc;
-            color: var(--text);
-            border: 1px solid var(--border);
-            padding: 0.4rem 0.75rem;
-            font-size: 0.9rem;
         }
         .booking-progress .step-indicator .step-number {
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: #000;
+            background: var(--text-light);
             color: #fff;
             display: inline-flex;
             align-items: center;
@@ -4659,18 +4664,18 @@
             line-height: 1;
             margin-right: 0.5rem;
         }
-        #booking-modal .step-number-badge { background: #000; color: #fff; }
+        #booking-modal .step-number-badge { background: var(--text-light); color: #fff; }
         .booking-progress .step-indicator .step-label {
             font-weight: 500;
         }
         .booking-progress .step-indicator.active {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(94, 114, 228, 0.12);
+            color: var(--primary);
+            background-color: rgba(94, 114, 228, 0.1);
+            font-weight: 600;
         }
         .booking-progress .step-indicator.completed {
-            background: var(--primary);
             color: #fff;
-            border-color: var(--primary);
+            background-color: var(--primary);
         }
         @media (max-width: 768px) {
             .booking-progress .step-indicator { font-size: 0.8rem; padding: 0.25rem 0.5rem; }
