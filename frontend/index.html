@@ -6591,16 +6591,24 @@
                 </div>
 
                 <!-- Two-Factor Verification (hidden by default) -->
-                <div id="twofa-form" style="display: none;">
+                <div id="twofa-form" style="display: none; flex-direction: column;">
                     <div style="margin-bottom: 1rem; color: var(--text-light); font-size: 0.95rem;">
-                        Enter the 6-digit code we sent to your email.
+                        Enter the 6-digit code we sent to your email: <strong id="twofa-email"></strong>
                     </div>
                     <div style="margin-bottom: 1rem;">
                         <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Verification Code</label>
-                        <input type="text" id="twofa-code" inputmode="numeric" maxlength="6" placeholder="123456" style="letter-spacing: 6px; text-align: center; width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                        <div id="twofa-code-inputs" style="display: flex; justify-content: space-between; gap: 0.5rem;">
+                            <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit 1" style="width: 44px; height: 48px; text-align: center; font-size: 1.25rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                            <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit 2" style="width: 44px; height: 48px; text-align: center; font-size: 1.25rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                            <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit 3" style="width: 44px; height: 48px; text-align: center; font-size: 1.25rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                            <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit 4" style="width: 44px; height: 48px; text-align: center; font-size: 1.25rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                            <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit 5" style="width: 44px; height: 48px; text-align: center; font-size: 1.25rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                            <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" placeholder="_" aria-label="Digit 6" style="width: 44px; height: 48px; text-align: center; font-size: 1.25rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                            <input type="hidden" id="twofa-code" value="">
+                        </div>
                     </div>
                     <button class="btn btn-primary" id="verify-2fa-btn" style="width: 100%; margin-bottom: 0.75rem;">Verify</button>
-                    <div style="display: flex; justify-content: space-between; gap: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; gap: 0.75rem; margin-top: auto;">
                         <button class="btn btn-outline" id="resend-2fa-btn" style="flex: 1;">Resend Code</button>
                         <button class="btn btn-outline" id="back-to-login-btn" style="flex: 1;">Back</button>
                     </div>
@@ -7113,7 +7121,7 @@
                 if (dlBtn && !dlBtn._wired) { dlBtn._wired = true; dlBtn.addEventListener('click', downloadInvoicePDF); }
                 if (!currentUser || !currentUser.id) { throw new Error('Please log in to view invoices.'); }
                 // Prefer persisted invoices API, fallback to legacy bookings invoice builder
-                const primaryUrl = `${API_BASE_URL}/invoices/booking/${bookingId}?userId=${currentUser.id}`;
+                const primaryUrl = `${API_BASE_URL}/invoices/booking/${bookingId}?regenerate=1&userId=${currentUser.id}`;
                 let resp = await fetch(primaryUrl, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
                 let data = null;
                 const ct = resp.headers.get('content-type') || '';
@@ -7143,7 +7151,9 @@
                         const processingFees = Number(p.StripeFee || 0);
                         const tax = Number(p.TaxAmount || 0);
                         const platformFeePercent = subtotal > 0 ? +((platformFee / subtotal) * 100).toFixed(1) : 0;
-                        const grandTotal = +(subtotal + platformFee + processingFees + tax).toFixed(2);
+                        const feesIncluded = true;
+                        const paymentsTotal = +((Array.isArray(p.payments) ? p.payments : []).reduce((s, r) => s + Number(r.Amount || r.amount || 0), 0)).toFixed(2);
+                        const grandTotal = +(subtotal + (platformFee + processingFees) + tax).toFixed(2);
                         const lineItems = items.map(it => ({
                             type: it.ItemType,
                             name: it.Title,
@@ -7151,12 +7161,15 @@
                             unitPrice: Number(it.UnitPrice || 0),
                             lineTotal: Number(it.Amount || 0)
                         }));
+                        let statusText = (p.Status || '').toString().toLowerCase();
+                        if (!statusText && p.booking) statusText = (p.booking.Status || '').toString().toLowerCase();
+                        if (statusText !== 'paid' && (paymentsTotal + 0.01 >= grandTotal)) statusText = 'paid';
                         return {
                             invoiceNumber: p.InvoiceNumber,
                             issuedAt: p.IssueDate || p.IssueDateTime || p.CreatedAt || new Date().toISOString(),
                             bookingId: p.BookingID,
                             eventDate: (p.booking && p.booking.EventDate) || null,
-                            status: (p.booking && p.booking.Status) || p.Status || '',
+                            status: statusText || '',
                             currency: p.Currency || 'USD',
                             viewerRole: '',
                             billFrom: { name: (p.booking && p.booking.VendorName) || 'Vendor', email: '', phone: '' },
@@ -7173,10 +7186,10 @@
                                 processingFees,
                                 processingFeesSource: 'recorded',
                                 grandTotal,
-                                totalPaid: 0,
-                                balanceDue: Math.max(0, grandTotal)
+                                totalPaid: paymentsTotal,
+                                balanceDue: Math.max(0, +(grandTotal - paymentsTotal).toFixed(2))
                             },
-                            payments: []
+                            payments: Array.isArray(p.payments) ? p.payments : []
                         };
                     })(inv);
                 }
@@ -7587,6 +7600,7 @@
                     const name = viewerRole === 'vendor' ? (b.ClientName || 'Client') : (b.VendorName || 'Vendor');
                     const total = (b.TotalAmount != null) ? `$${Number(b.TotalAmount).toFixed(2)}` : '';
                     const status = (b.Status || '').toString().toLowerCase();
+                    const paid = (b.FullAmountPaid === true || b.FullAmountPaid === 1);
                     return `
                         <div class="booking-item">
                             <div class="booking-date-section">
@@ -7597,10 +7611,10 @@
                             <div class="booking-info">
                                 <div class="booking-client"><i class="fas fa-store" style="color:#6b7280;font-size:12px;"></i><span class="booking-client-name">${name}</span></div>
                                 <div class="booking-service-row"><span class="booking-service">Confirmed Booking</span></div>
-                                ${total ? `<div class="booking-price-row"><i class=\"fas fa-dollar-sign\" style=\"color:#6b7280;font-size:12px;\"></i><span class=\"booking-price\">${total}</span></div>` : ''}
+                                ${total ? `<div class=\"booking-price-row\"><i class=\"fas fa-dollar-sign\" style=\"color:#6b7280;font-size:12px;\"></i><span class=\"booking-price\">${total}</span></div>` : ''}
                             </div>
                             <div class="booking-actions">
-                                <span class="request-status ${status}" style="margin-right:12px;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:500;text-transform:capitalize;">${status === 'confirmed' ? 'Accepted' : status}</span>
+                                <span class="request-status ${paid ? 'paid' : status}" style="margin-right:12px;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:500;text-transform:capitalize;">${paid ? 'Paid' : (status === 'confirmed' ? 'Accepted' : status)}</span>
                                 <button class="btn btn-outline btn-sm" onclick="openInvoiceModal('${b.BookingID}')">View</button>
                                 <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="downloadInvoiceForBooking('${b.BookingID}')">Download</button>
                             </div>
@@ -9451,6 +9465,21 @@
                     }
                 }
 
+                let displayAmount = Number(amount) || 0;
+                try {
+                    if (window.currentUser && currentUser.id) {
+                        const invResp = await fetch(`${API_BASE_URL}/invoices/booking/${bookingId}?regenerate=1&userId=${currentUser.id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+                        if (invResp.ok) {
+                            const invData = await invResp.json();
+                            if (invData && invData.success && invData.invoice) {
+                                const inv = invData.invoice;
+                                if (typeof inv.TotalAmount !== 'undefined') displayAmount = Number(inv.TotalAmount || 0);
+                                else if (inv.totals && typeof inv.totals.grandTotal !== 'undefined') displayAmount = Number(inv.totals.grandTotal || 0);
+                            }
+                        }
+                    }
+                } catch (_) {}
+
                 // Create PaymentIntent for in-app modal flow (with fallback to legacy endpoint)
                 let resp = await fetch(`${API_BASE_URL}/payments/payment-intent`, {
                     method: 'POST',
@@ -9458,7 +9487,7 @@
                     body: JSON.stringify({
                         bookingId,
                         vendorProfileId,
-                        amount,
+                        amount: displayAmount,
                         description: `Booking Payment #${bookingId}`
                     })
                 });
@@ -9500,7 +9529,7 @@
                 // Open in-app payment modal
                 openPaymentModal({
                     bookingId,
-                    amount: Number(amount) || 0,
+                    amount: Number(displayAmount) || 0,
                     clientSecret: data.clientSecret,
                     // publishableKey may not be present on legacy endpoint; fallback to global var if configured
                     publishableKey: data.publishableKey || (window && window.STRIPE_PUBLISHABLE_KEY) || null,
@@ -9986,6 +10015,64 @@ document.addEventListener('DOMContentLoaded', async function() {
             const backToLoginBtn = document.getElementById('back-to-login-btn');
             let twofaTempToken = null;
             let pendingLoginEmail = '';
+            const otpInputs = Array.from(document.querySelectorAll('#twofa-form .otp-digit'));
+
+            function updateTwoFACodeHidden() {
+                const hidden = document.getElementById('twofa-code');
+                if (!hidden) return;
+                hidden.value = otpInputs.map(i => (i.value || '').replace(/\D/g, '')).join('');
+            }
+
+            function clearTwoFAOtp() {
+                otpInputs.forEach(i => i.value = '');
+                updateTwoFACodeHidden();
+            }
+
+            function focusFirstTwoFAOtp() {
+                if (otpInputs.length) otpInputs[0].focus();
+            }
+
+            // OTP inputs behavior (auto-advance, backspace, paste)
+            otpInputs.forEach((input, idx) => {
+                input.addEventListener('input', (e) => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    e.target.value = val.slice(-1);
+                    if (e.target.value && idx < otpInputs.length - 1) {
+                        otpInputs[idx + 1].focus();
+                        otpInputs[idx + 1].select?.();
+                    }
+                    updateTwoFACodeHidden();
+                });
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Backspace') {
+                        if (!input.value && idx > 0) {
+                            otpInputs[idx - 1].focus();
+                            otpInputs[idx - 1].value = '';
+                            updateTwoFACodeHidden();
+                            e.preventDefault();
+                        }
+                    } else if (e.key === 'ArrowLeft' && idx > 0) {
+                        otpInputs[idx - 1].focus();
+                        e.preventDefault();
+                    } else if (e.key === 'ArrowRight' && idx < otpInputs.length - 1) {
+                        otpInputs[idx + 1].focus();
+                        e.preventDefault();
+                    } else if (e.key === 'Enter') {
+                        verify2FABtn?.click();
+                    }
+                });
+            });
+
+            document.getElementById('twofa-form')?.addEventListener('paste', (e) => {
+                const text = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+                const digits = text.replace(/\D/g, '').slice(0, otpInputs.length).split('');
+                if (digits.length) {
+                    e.preventDefault();
+                    otpInputs.forEach((inp, i) => { inp.value = digits[i] || ''; });
+                    updateTwoFACodeHidden();
+                    if (digits.length === otpInputs.length) verify2FABtn?.focus();
+                }
+            });
 
             // Dashboard elements (unified menu and container)
             const clientDashboardContainer = document.getElementById('dashboard-container');
@@ -21591,26 +21678,127 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Show login view in profile modal
             function showLoginView() {
-                loginForm.style.display = 'block';
-                signupForm.style.display = 'none';
-                loggedInView.style.display = 'none';
-                const twofaFormEl = document.getElementById('twofa-form');
-                if (twofaFormEl) twofaFormEl.style.display = 'none';
-                document.getElementById('profile-modal-title').textContent = 'Welcome to VenueVue';
-                // Clear form fields
+                const titleEl = document.getElementById('profile-modal-title');
+                const twofaVisible = twofaForm && window.getComputedStyle(twofaForm).display !== 'none';
+
+                if (twofaVisible) {
+                    const container = profileModal.querySelector('.modal-body');
+                    if (container) container.style.position = 'relative';
+
+                    loginForm.style.display = 'block';
+                    loginForm.style.position = 'absolute';
+                    loginForm.style.left = '0';
+                    loginForm.style.right = '0';
+                    loginForm.style.transform = 'translateX(-24px)';
+                    loginForm.style.opacity = '0';
+
+                    twofaForm.style.position = 'absolute';
+                    twofaForm.style.left = '0';
+                    twofaForm.style.right = '0';
+                    twofaForm.style.transform = 'translateX(0)';
+                    twofaForm.style.opacity = '1';
+
+                    loginForm.style.transition = 'transform 200ms ease, opacity 200ms ease';
+                    twofaForm.style.transition = 'transform 200ms ease, opacity 200ms ease';
+
+                    requestAnimationFrame(() => {
+                        loginForm.style.transform = 'translateX(0)';
+                        loginForm.style.opacity = '1';
+                        twofaForm.style.transform = 'translateX(24px)';
+                        twofaForm.style.opacity = '0';
+                    });
+
+                    setTimeout(() => {
+                        if (twofaForm) twofaForm.style.display = 'none';
+                        twofaForm.style.position = '';
+                        twofaForm.style.transition = '';
+                        twofaForm.style.transform = '';
+                        twofaForm.style.opacity = '';
+
+                        loginForm.style.position = '';
+                        loginForm.style.transition = '';
+                        loginForm.style.transform = '';
+                        loginForm.style.opacity = '';
+
+                        if (container) container.style.position = '';
+                        if (titleEl) titleEl.textContent = 'Welcome to VenueVue';
+                    }, 220);
+                } else {
+                    loginForm.style.display = 'block';
+                    signupForm.style.display = 'none';
+                    loggedInView.style.display = 'none';
+                    if (twofaForm) twofaForm.style.display = 'none';
+                    if (titleEl) titleEl.textContent = 'Welcome to VenueVue';
+                }
+
                 document.getElementById('login-email').value = '';
                 document.getElementById('login-password').value = '';
             }
 
             function showTwoFAView() {
-                loginForm.style.display = 'none';
                 signupForm.style.display = 'none';
                 loggedInView.style.display = 'none';
-                if (twofaForm) twofaForm.style.display = 'block';
+
+                const container = profileModal.querySelector('.modal-body');
+                if (container) container.style.position = 'relative';
+                // Keep the 2FA panel the same height as the login panel
+                try {
+                    const loginHeight = loginForm.scrollHeight || loginForm.getBoundingClientRect().height;
+                    if (twofaForm && loginHeight) twofaForm.style.minHeight = `${Math.ceil(loginHeight)}px`;
+                } catch (e) {}
+
+                if (twofaForm) {
+                    twofaForm.style.display = 'flex';
+                    twofaForm.style.flexDirection = 'column';
+                    twofaForm.style.position = 'absolute';
+                    twofaForm.style.left = '0';
+                    twofaForm.style.right = '0';
+                    twofaForm.style.transform = 'translateX(24px)';
+                    twofaForm.style.opacity = '0';
+                    twofaForm.style.transition = 'transform 200ms ease, opacity 200ms ease';
+                }
+
+                loginForm.style.position = 'absolute';
+                loginForm.style.left = '0';
+                loginForm.style.right = '0';
+                loginForm.style.transform = 'translateX(0)';
+                loginForm.style.opacity = '1';
+                loginForm.style.transition = 'transform 200ms ease, opacity 200ms ease';
+
+                requestAnimationFrame(() => {
+                    loginForm.style.transform = 'translateX(-24px)';
+                    loginForm.style.opacity = '0';
+                    if (twofaForm) {
+                        twofaForm.style.transform = 'translateX(0)';
+                        twofaForm.style.opacity = '1';
+                    }
+                });
+
+                setTimeout(() => {
+                    loginForm.style.display = 'none';
+                    loginForm.style.position = '';
+                    loginForm.style.transition = '';
+                    loginForm.style.transform = '';
+                    loginForm.style.opacity = '';
+
+                    if (twofaForm) {
+                        twofaForm.style.position = '';
+                        twofaForm.style.transition = '';
+                        twofaForm.style.transform = '';
+                        twofaForm.style.opacity = '';
+                    }
+
+                    if (container) container.style.position = '';
+                }, 220);
+
                 const title = document.getElementById('profile-modal-title');
                 if (title) title.textContent = 'Verify your login';
                 const codeEl = document.getElementById('twofa-code');
-                if (codeEl) codeEl.value = '';
+                if (codeEl) { codeEl.value = ''; }
+                clearTwoFAOtp();
+                focusFirstTwoFAOtp();
+                const emailEl = document.getElementById('twofa-email');
+                if (emailEl) emailEl.textContent = pendingLoginEmail || '';
             }
 
             // Show signup view in profile modal
