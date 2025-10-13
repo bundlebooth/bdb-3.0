@@ -20,7 +20,50 @@ async function getInvoiceTotalsCents(bookingId) {
   const r = pool.request();
   r.input('BookingID', sql.Int, bookingId);
   const q = await r.query(`SELECT TOP 1 InvoiceID, TotalAmount, PlatformFee, StripeFee FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC`);
-  if (!q.recordset.length) return { totalAmountCents: null, platformFeeCents: null, stripeFeeCents: null, invoiceId: null };
+  if (!q.recordset.length) {
+    // Fallback: compute totals directly from booking/services/expenses
+    const pctPlatform = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    const pctStripe = parseFloat(process.env.STRIPE_FEE_PERCENT || process.env.STRIPE_PROC_FEE_PERCENT || '2.9') / 100;
+    const fixedStripe = parseFloat(process.env.STRIPE_FEE_FIXED || process.env.STRIPE_PROC_FEE_FIXED || '0.30');
+
+    // Get booking core
+    const b = await pool.request().input('BookingID', sql.Int, bookingId)
+      .query('SELECT TOP 1 TotalAmount FROM Bookings WHERE BookingID=@BookingID');
+    const bookingTotal = Number(b.recordset[0]?.TotalAmount || 0);
+
+    // Sum services if available
+    let servicesSubtotal = 0;
+    try {
+      const bs = await pool.request().input('BookingID', sql.Int, bookingId).query(`
+        SELECT Quantity, PriceAtBooking FROM BookingServices WHERE BookingID=@BookingID
+      `);
+      if (bs.recordset.length) {
+        servicesSubtotal = bs.recordset.reduce((s, row) => s + (Number(row.Quantity || 1) * Number(row.PriceAtBooking || 0)), 0);
+      }
+    } catch (_) { /* ignore */ }
+    if (servicesSubtotal <= 0 && bookingTotal > 0) servicesSubtotal = bookingTotal;
+
+    // Sum expenses if table exists
+    let expensesTotal = 0;
+    try {
+      const ex = await pool.request().input('BookingID', sql.Int, bookingId).query(`
+        SELECT Amount FROM BookingExpenses WHERE BookingID=@BookingID
+      `);
+      expensesTotal = ex.recordset.reduce((s, row) => s + Number(row.Amount || 0), 0);
+    } catch (err) { /* table may not exist; ignore */ }
+
+    const subtotal = Math.round((servicesSubtotal + expensesTotal) * 100) / 100;
+    const platformFee = Math.round((subtotal * pctPlatform) * 100) / 100;
+    const stripeFee = Math.round(((subtotal * pctStripe) + fixedStripe) * 100) / 100;
+    const total = Math.round((subtotal + platformFee + stripeFee) * 100) / 100;
+
+    return {
+      totalAmountCents: Math.round(total * 100),
+      platformFeeCents: Math.round(platformFee * 100),
+      stripeFeeCents: Math.round(stripeFee * 100),
+      invoiceId: null
+    };
+  }
   const row = q.recordset[0];
   return {
     totalAmountCents: Math.round(Number(row.TotalAmount || 0) * 100),
@@ -642,7 +685,10 @@ router.post('/payment-intent', async (req, res) => {
 
     const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
     const invTotals2 = await getInvoiceTotalsCents(bookingId);
-    const amountCents = invTotals2.totalAmountCents || Math.round(Number(amount) * 100);
+    const amountCents = invTotals2.totalAmountCents;
+    if (!amountCents || amountCents < 50) {
+      return res.status(400).json({ success: false, message: 'Unable to compute invoice total for payment' });
+    }
     const applicationFee = (invTotals2.platformFeeCents != null) ? invTotals2.platformFeeCents : Math.round(amountCents * platformFeePercent);
 
     // Create a PaymentIntent on the platform with destination charge to the connected account
@@ -763,7 +809,10 @@ router.post('/checkout-session', async (req, res) => {
 
     const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
     const invTotals3 = await getInvoiceTotalsCents(bookingId);
-    const totalAmountCents = invTotals3.totalAmountCents || Math.round(amount * 100);
+    const totalAmountCents = invTotals3.totalAmountCents;
+    if (!totalAmountCents || totalAmountCents < 50) {
+      return res.status(400).json({ success: false, message: 'Unable to compute invoice total for checkout session' });
+    }
     const platformFee = (invTotals3.platformFeeCents != null) ? invTotals3.platformFeeCents : Math.round(totalAmountCents * platformFeePercent);
 
     // Resolve and sanitize redirect URLs
