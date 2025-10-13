@@ -3,6 +3,7 @@ const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
+const invoicesRouter = require('./invoices');
 
 // Helper function to check if Stripe is properly configured
 function isStripeConfigured() {
@@ -11,6 +12,46 @@ function isStripeConfigured() {
          process.env.STRIPE_CLIENT_ID &&
          !process.env.STRIPE_SECRET_KEY.includes('placeholder') &&
          !process.env.STRIPE_PUBLISHABLE_KEY.includes('placeholder');
+}
+
+function estimateProcessingFee(amount) {
+  try {
+    const pct = parseFloat(process.env.STRIPE_PROC_FEE_PERCENT || process.env.STRIPE_FEE_PERCENT || '2.9') / 100;
+    const fixed = parseFloat(process.env.STRIPE_PROC_FEE_FIXED || process.env.STRIPE_FEE_FIXED || '0.30');
+    const n = Number(amount || 0);
+    return Math.round(((n * pct) + fixed) * 100) / 100;
+  } catch (_) { return 0; }
+}
+
+async function recordTransaction({ bookingId, userId = null, vendorProfileId = null, amount, currency = 'USD', stripeChargeId = null, description = 'Payment', feeAmount = null }) {
+  const pool = await poolPromise;
+  const amt = Math.round(Number(amount || 0) * 100) / 100;
+  const fee = typeof feeAmount === 'number' ? Math.round(feeAmount * 100) / 100 : estimateProcessingFee(amt);
+  const net = Math.round((amt - fee) * 100) / 100;
+  // Idempotency: do not insert duplicate charge/payment intent
+  if (stripeChargeId) {
+    const exists = await pool.request()
+      .input('StripeChargeID', sql.NVarChar(100), String(stripeChargeId))
+      .query('SELECT TOP 1 TransactionID FROM Transactions WHERE StripeChargeID = @StripeChargeID');
+    if (exists.recordset.length) return exists.recordset[0].TransactionID;
+  }
+  const req = pool.request();
+  req.input('UserID', sql.Int, userId || null);
+  req.input('VendorProfileID', sql.Int, vendorProfileId || null);
+  req.input('BookingID', sql.Int, bookingId);
+  req.input('Amount', sql.Decimal(10,2), amt);
+  req.input('FeeAmount', sql.Decimal(10,2), fee);
+  req.input('NetAmount', sql.Decimal(10,2), net);
+  req.input('Currency', sql.NVarChar(3), currency || 'USD');
+  req.input('Description', sql.NVarChar(255), description || 'Payment');
+  req.input('StripeChargeID', sql.NVarChar(100), stripeChargeId || null);
+  req.input('Status', sql.NVarChar(20), 'succeeded');
+  const ins = await req.query(`
+    INSERT INTO Transactions (UserID, VendorProfileID, BookingID, Amount, FeeAmount, NetAmount, Currency, Description, StripeChargeID, Status, CreatedAt)
+    OUTPUT INSERTED.TransactionID
+    VALUES (@UserID, @VendorProfileID, @BookingID, @Amount, @FeeAmount, @NetAmount, @Currency, @Description, @StripeChargeID, @Status, GETDATE())
+  `);
+  return ins.recordset[0]?.TransactionID || null;
 }
 
 // Minimal check used for server-side operations that only require the secret key
@@ -854,6 +895,25 @@ router.get('/verify-session', async (req, res) => {
       WHERE BookingID = @BookingID
     `);
 
+    // Record a transaction row and regenerate the invoice snapshot
+    try {
+      const binfo = await pool.request().input('BookingID', sql.Int, bookingId)
+        .query('SELECT UserID, VendorProfileID, TotalAmount FROM Bookings WHERE BookingID = @BookingID');
+      const row = binfo.recordset[0] || {};
+      await recordTransaction({
+        bookingId,
+        userId: row.UserID,
+        vendorProfileId: row.VendorProfileID,
+        amount: row.TotalAmount,
+        currency: 'USD',
+        stripeChargeId: paymentIntentId,
+        description: 'Stripe Payment (verified)'
+      });
+      if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') {
+        try { await invoicesRouter.upsertInvoiceForBooking(await poolPromise, bookingId, { forceRegenerate: true }); } catch (_) {}
+      }
+    } catch (txErr) { console.warn('[VerifySession] recordTransaction error', txErr?.message); }
+
     // Also update related booking request if exists (most recent for this user/vendor)
     const bookingInfo = await pool.request()
       .input('BookingID', sql.Int, bookingId)
@@ -922,6 +982,25 @@ router.get('/verify-intent', async (req, res) => {
         UpdatedAt = GETDATE()
       WHERE BookingID = @BookingID
     `);
+
+    // Record transaction and regenerate invoice
+    try {
+      const binfo = await pool.request().input('BookingID', sql.Int, bookingId)
+        .query('SELECT UserID, VendorProfileID, TotalAmount FROM Bookings WHERE BookingID = @BookingID');
+      const row = binfo.recordset[0] || {};
+      await recordTransaction({
+        bookingId,
+        userId: row.UserID,
+        vendorProfileId: row.VendorProfileID,
+        amount: row.TotalAmount,
+        currency: 'USD',
+        stripeChargeId: paymentIntentId,
+        description: 'Stripe Payment (verified)'
+      });
+      if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') {
+        try { await invoicesRouter.upsertInvoiceForBooking(await poolPromise, bookingId, { forceRegenerate: true }); } catch (_) {}
+      }
+    } catch (txErr) { console.warn('[VerifyIntent] recordTransaction error', txErr?.message); }
 
     // Also update related booking request if exists (most recent for this user/vendor)
     const bookingInfo = await pool.request()
@@ -995,6 +1074,24 @@ const webhook = async (req, res) => {
               SET Status = @Status, FullAmountPaid = 1, StripePaymentIntentID = @StripePaymentIntentID, UpdatedAt = GETDATE()
               WHERE BookingID = @BookingID
             `);
+
+            try {
+              const binfo = await pool.request().input('BookingID', sql.Int, bookingId)
+                .query('SELECT UserID, VendorProfileID, TotalAmount FROM Bookings WHERE BookingID = @BookingID');
+              const row = binfo.recordset[0] || {};
+              await recordTransaction({
+                bookingId,
+                userId: row.UserID,
+                vendorProfileId: row.VendorProfileID,
+                amount: row.TotalAmount,
+                currency: 'USD',
+                stripeChargeId: paymentIntent.id,
+                description: 'Stripe Payment (webhook PI)'
+              });
+              if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') {
+                try { await invoicesRouter.upsertInvoiceForBooking(await poolPromise, bookingId, { forceRegenerate: true }); } catch (_) {}
+              }
+            } catch (e) { console.warn('[Webhook PI] recordTransaction error', e?.message); }
 
             // Also update related booking request if exists (most recent for this user/vendor)
             const bookingInfo = await pool.request()
@@ -1099,6 +1196,28 @@ const webhook = async (req, res) => {
               SET Status = @Status, FullAmountPaid = 1, StripePaymentIntentID = ISNULL(@StripePaymentIntentID, StripePaymentIntentID), UpdatedAt = GETDATE()
               WHERE BookingID = @BookingID
             `);
+
+            try {
+              const binfo = await pool.request().input('BookingID', sql.Int, bookingIdFromCharge)
+                .query('SELECT UserID, VendorProfileID, TotalAmount FROM Bookings WHERE BookingID = @BookingID');
+              const row = binfo.recordset[0] || {};
+              const fee = typeof charge.balance_transaction === 'object' && charge.balance_transaction?.fee
+                ? (charge.balance_transaction.fee / 100)
+                : null;
+              await recordTransaction({
+                bookingId: bookingIdFromCharge,
+                userId: row.UserID,
+                vendorProfileId: row.VendorProfileID,
+                amount: (charge.amount / 100),
+                currency: charge.currency?.toUpperCase() || 'USD',
+                stripeChargeId: charge.id,
+                description: 'Stripe Charge',
+                feeAmount: fee
+              });
+              if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') {
+                try { await invoicesRouter.upsertInvoiceForBooking(await poolPromise, bookingIdFromCharge, { forceRegenerate: true }); } catch (_) {}
+              }
+            } catch (e) { console.warn('[Webhook charge.succeeded] recordTransaction error', e?.message); }
 
             // Also update related booking request if exists (most recent for this user/vendor)
             const bookingInfo = await pool.request()
