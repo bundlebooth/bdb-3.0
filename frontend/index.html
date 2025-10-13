@@ -1931,22 +1931,65 @@
         }
 
         .dashboard-menu a {
-            display: block;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
             padding: 0.75rem 1rem;
             border-radius: var(--radius);
-            color: var(--text);
+            color: var(--text-light);
             text-decoration: none;
             transition: all 0.2s;
         }
+        .dashboard-menu a:link,
+        .dashboard-menu a:visited {
+            color: var(--text-light) !important;
+        }
+        .dashboard-menu a i {
+            width: 1.1rem;
+            text-align: center;
+            font-size: 0.95rem;
+            color: inherit;
+        }
+        .dashboard-menu a.active i { color: #fff !important; }
 
-        .dashboard-menu a:hover {
+        .dashboard-menu a,
+        .dashboard-menu a:link,
+        .dashboard-menu a:visited { color: var(--text-light) !important; }
+        .dashboard-menu a .fa,
+        .dashboard-menu a .fas,
+        .dashboard-menu a .far,
+        .dashboard-menu a .fal,
+        .dashboard-menu a .fab,
+        .dashboard-menu a i,
+        .dashboard-menu a svg { color: var(--text-light) !important; fill: var(--text-light) !important; }
+
+        .dashboard-menu a:not(.active):hover {
             background-color: var(--secondary);
+            color: var(--text) !important;
         }
+        .dashboard-menu a:not(.active):hover .fa,
+        .dashboard-menu a:not(.active):hover .fas,
+        .dashboard-menu a:not(.active):hover .far,
+        .dashboard-menu a:not(.active):hover .fal,
+        .dashboard-menu a:not(.active):hover .fab,
+        .dashboard-menu a:not(.active):hover i,
+        .dashboard-menu a:not(.active):hover svg { color: var(--text) !important; fill: var(--text) !important; }
 
-        .dashboard-menu a.active {
+        .dashboard-menu a.active,
+        .dashboard-menu a.active:link,
+        .dashboard-menu a.active:visited {
             background-color: var(--primary);
-            color: white;
+            color: #fff !important;
+            opacity: 1 !important;
         }
+        .dashboard-menu a.active .fa,
+        .dashboard-menu a.active .fas,
+        .dashboard-menu a.active .far,
+        .dashboard-menu a.active .fal,
+        .dashboard-menu a.active .fab,
+        .dashboard-menu a.active i,
+        .dashboard-menu a.active svg { color: #fff !important; fill: #fff !important; }
+        .dashboard-menu a.active * { color: #fff !important; fill: #fff !important; }
 
         .dashboard-content {
             padding: 2rem;
@@ -5267,16 +5310,16 @@
                             VenueVue
                         </div>
                         <ul class="dashboard-menu">
-                            <li><a href="#" class="active" data-section="dashboard">Dashboard</a></li>
-                            <li><a href="#" data-section="bookings">Bookings</a></li>
-                            <li><a href="#" data-section="invoices">Invoices</a></li>
+                            <li><a href="#" class="active" data-section="dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</a></li>
+                            <li><a href="#" data-section="bookings"><i class="fas fa-calendar-check"></i>Bookings</a></li>
+                            <li><a href="#" data-section="invoices"><i class="fas fa-file-invoice"></i>Invoices</a></li>
                             <!-- Requests merged into Bookings; hide legacy link -->
                             <li style="display:none;"><a href="#" data-section="requests">My Requests</a></li>
-                            <li><a href="#" data-section="favorites">Favorites</a></li>
-                            <li><a href="#" data-section="messages">Messages</a></li>
-                            <li><a href="#" data-section="reviews">My Reviews</a></li>
-                            <li><a href="#" data-section="settings">Settings</a></li>
-                            <li><a href="#" id="logout-dashboard">Log Out</a></li>
+                            <li><a href="#" data-section="favorites"><i class="fas fa-heart"></i>Favorites</a></li>
+                            <li><a href="#" data-section="messages"><i class="fas fa-comments"></i>Messages</a></li>
+                            <li><a href="#" data-section="reviews"><i class="fas fa-star"></i>My Reviews</a></li>
+                            <li><a href="#" data-section="settings"><i class="fas fa-cog"></i>Settings</a></li>
+                            <li><a href="#" id="logout-dashboard"><i class="fas fa-sign-out-alt"></i>Log Out</a></li>
                         </ul>
                     </aside>
                     <main class="dashboard-content" style="overflow-y: auto;">
@@ -5426,15 +5469,15 @@
                             VenueVue
                         </div>
                         <ul class="dashboard-menu">
-                            <li><a href="#" class="active" data-section="vendor-dashboard">Dashboard</a></li>
-                            <li><a href="#" data-section="vendor-requests">Bookings</a></li>
-                            <li><a href="#" data-section="vendor-invoices">Invoices</a></li>
-                            <li><a href="#" data-section="vendor-services">Services</a></li>
-                            <li><a href="#" data-section="vendor-messages">Messages</a></li>
-                            <li><a href="#" data-section="vendor-reviews">Reviews</a></li>
-                            <li><a href="#" data-section="vendor-analytics">Analytics</a></li>
-                            <li><a href="#" data-section="vendor-settings">Settings</a></li>
-                            <li><a href="#" id="vendor-logout">Log Out</a></li>
+                            <li><a href="#" class="active" data-section="vendor-dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</a></li>
+                            <li><a href="#" data-section="vendor-requests"><i class="fas fa-calendar-check"></i>Bookings</a></li>
+                            <li><a href="#" data-section="vendor-invoices"><i class="fas fa-file-invoice"></i>Invoices</a></li>
+                            <li><a href="#" data-section="vendor-services"><i class="fas fa-briefcase"></i>Services</a></li>
+                            <li><a href="#" data-section="vendor-messages"><i class="fas fa-comments"></i>Messages</a></li>
+                            <li><a href="#" data-section="vendor-reviews"><i class="fas fa-star"></i>Reviews</a></li>
+                            <li><a href="#" data-section="vendor-analytics"><i class="fas fa-chart-line"></i>Analytics</a></li>
+                            <li><a href="#" data-section="vendor-settings"><i class="fas fa-cog"></i>Settings</a></li>
+                            <li><a href="#" id="vendor-logout"><i class="fas fa-sign-out-alt"></i>Log Out</a></li>
                         </ul>
                     </aside>
                     <main class="dashboard-content" style="overflow-y: auto;">
