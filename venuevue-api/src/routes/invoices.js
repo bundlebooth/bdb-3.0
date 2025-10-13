@@ -17,7 +17,7 @@ async function loadBookingSnapshot(pool, bookingId) {
     SELECT TOP 1 
       b.BookingID, b.UserID, b.VendorProfileID, b.EventDate, b.EndDate, b.Status,
       b.TotalAmount, b.DepositAmount, b.DepositPaid, b.FullAmountPaid,
-      b.EventName, b.EventType, b.EventLocation, b.TimeZone,
+      b.EventName, b.EventType, b.EventLocation, b.TimeZone, b.ServiceID,
       u.Name AS ClientName, u.Email AS ClientEmail,
       vp.BusinessName AS VendorName
     FROM Bookings b
@@ -38,7 +38,29 @@ async function loadBookingSnapshot(pool, bookingId) {
     LEFT JOIN Services s ON bs.ServiceID = s.ServiceID
     WHERE bs.BookingID = @BookingID
   `);
-  const services = servicesRes.recordset || [];
+  let services = servicesRes.recordset || [];
+
+  if ((!services || services.length === 0)) {
+    try {
+      let svcName = null;
+      if (booking.ServiceID) {
+        const nameRes = await pool.request()
+          .input('ServiceID', sql.Int, booking.ServiceID)
+          .query('SELECT TOP 1 Name FROM Services WHERE ServiceID = @ServiceID');
+        svcName = nameRes.recordset[0]?.Name || null;
+      }
+      const price = toCurrency(booking.TotalAmount || 0);
+      if (price > 0) {
+        services = [{
+          BookingServiceID: null,
+          Quantity: 1,
+          PriceAtBooking: price,
+          ServiceID: booking.ServiceID || null,
+          ServiceName: svcName || 'Service'
+        }];
+      }
+    } catch (_) {}
+  }
 
   // Expenses
   let expenses = [];
@@ -316,6 +338,18 @@ async function getInvoiceCore(pool, invoiceId) {
       throw err;
     }
   }
+  // Load payments linked to the booking for this invoice
+  try {
+    const payRes = await r.query(`
+      SELECT t.Amount, t.FeeAmount, t.NetAmount, t.Currency, t.CreatedAt
+      FROM Transactions t
+      WHERE t.BookingID = (SELECT BookingID FROM Invoices WHERE InvoiceID=@InvoiceID)
+      ORDER BY t.CreatedAt ASC
+    `);
+    invoice.payments = payRes.recordset || [];
+  } catch (err) {
+    invoice.payments = [];
+  }
   // Enrich with booking/vendor/client for ease of frontend
   const bookRes = await r.query(`
     SELECT b.BookingID, b.EventDate, b.Status, b.EventName, b.EventType, b.EventLocation, b.TimeZone,
@@ -429,4 +463,6 @@ router.get('/:invoiceId', async (req, res) => {
   }
 });
 
+// Expose helper so Stripe payments webhook can regenerate invoices
+router.upsertInvoiceForBooking = upsertInvoiceForBooking;
 module.exports = router;
