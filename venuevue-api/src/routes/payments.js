@@ -503,6 +503,100 @@ router.post('/checkout', async (req, res) => {
   }
 });
 
+// 6a. CREATE PAYMENT INTENT (for in-app modal with Payment Element)
+router.post('/payment-intent', async (req, res) => {
+  try {
+    const {
+      bookingId,
+      vendorProfileId,
+      amount,
+      currency = 'usd',
+      description
+    } = req.body;
+
+    if (!isStripeConfigured()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment processing is not available. Please contact support.'
+      });
+    }
+
+    if (!bookingId || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required payment information'
+      });
+    }
+
+    // Prevent duplicate payments for already-paid bookings
+    try {
+      const pool = await poolPromise;
+      const check = await pool.request()
+        .input('BookingID', sql.Int, bookingId)
+        .query('SELECT FullAmountPaid FROM Bookings WHERE BookingID = @BookingID');
+      if (check.recordset.length === 0) {
+        return res.status(404).json({ success: false, message: 'Booking not found' });
+      }
+      const paidFlag = check.recordset[0].FullAmountPaid;
+      const alreadyPaid = paidFlag === true || paidFlag === 1;
+      if (alreadyPaid) {
+        return res.status(409).json({ success: false, message: 'This booking is already paid.' });
+      }
+    } catch (dbErr) {
+      console.warn('[PaymentIntent] Could not verify booking paid status:', dbErr?.message);
+    }
+
+    // Resolve vendor profile from input or booking
+    let resolvedVendorProfileId = vendorProfileId;
+    if (!resolvedVendorProfileId) {
+      resolvedVendorProfileId = await getVendorProfileIdFromBooking(bookingId);
+    }
+
+    const vendorStripeAccountId = await getVendorStripeAccountId(resolvedVendorProfileId);
+    if (!vendorStripeAccountId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor is not connected to Stripe. Please contact the vendor.'
+      });
+    }
+
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    const amountCents = Math.round(Number(amount) * 100);
+    const applicationFee = Math.round(amountCents * platformFeePercent);
+
+    // Create a PaymentIntent on the platform with destination charge to the connected account
+    const pi = await stripe.paymentIntents.create({
+      amount: amountCents,
+      currency,
+      description: description || `Booking Payment #${bookingId}`,
+      automatic_payment_methods: { enabled: true },
+      application_fee_amount: applicationFee,
+      transfer_data: {
+        destination: vendorStripeAccountId,
+      },
+      metadata: {
+        booking_id: bookingId,
+        vendor_profile_id: resolvedVendorProfileId,
+        platform_fee_percent: String(platformFeePercent * 100)
+      }
+    });
+
+    return res.json({
+      success: true,
+      clientSecret: pi.client_secret,
+      paymentIntentId: pi.id,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
+    });
+  } catch (error) {
+    console.error('PaymentIntent creation error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create payment intent',
+      error: error.message
+    });
+  }
+});
+
 // Helper function to get vendor profile ID from booking
 async function getVendorProfileIdFromBooking(bookingId) {
   try {
@@ -786,6 +880,75 @@ router.get('/verify-session', async (req, res) => {
   } catch (error) {
     console.error('Verify session error:', error);
     res.status(500).json({ success: false, message: 'Failed to verify session', error: error.message });
+  }
+});
+
+// 9b. VERIFY PAYMENT INTENT (Fallback if webhook is delayed)
+router.get('/verify-intent', async (req, res) => {
+  try {
+    const paymentIntentId = req.query.payment_intent || req.query.paymentIntentId;
+    if (!paymentIntentId) {
+      return res.status(400).json({ success: false, message: 'Missing payment_intent' });
+    }
+
+    if (!hasStripeSecret()) {
+      return res.status(400).json({ success: false, message: 'Stripe secret key is not configured on the API' });
+    }
+
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const status = pi?.status;
+    let bookingId = pi?.metadata?.booking_id || null;
+
+    if (!bookingId) {
+      return res.status(404).json({ success: false, message: 'Booking not found in PaymentIntent metadata' });
+    }
+
+    if (status !== 'succeeded') {
+      return res.status(400).json({ success: false, message: `PaymentIntent not paid (status: ${status})` });
+    }
+
+    // Idempotently mark booking as paid/confirmed
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('BookingID', sql.Int, bookingId);
+    request.input('Status', sql.NVarChar(20), 'confirmed');
+    request.input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId);
+    await request.query(`
+      UPDATE Bookings
+      SET 
+        Status = @Status,
+        FullAmountPaid = 1,
+        StripePaymentIntentID = ISNULL(@StripePaymentIntentID, StripePaymentIntentID),
+        UpdatedAt = GETDATE()
+      WHERE BookingID = @BookingID
+    `);
+
+    // Also update related booking request if exists (most recent for this user/vendor)
+    const bookingInfo = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .query('SELECT UserID, VendorProfileID FROM Bookings WHERE BookingID = @BookingID');
+    if (bookingInfo.recordset.length > 0) {
+      const userId = bookingInfo.recordset[0].UserID;
+      const vendorProfileId = bookingInfo.recordset[0].VendorProfileID;
+      await pool.request()
+        .input('UserID', sql.Int, userId)
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .input('StripePaymentIntentID', sql.NVarChar(100), paymentIntentId)
+        .query(`
+          UPDATE BookingRequests
+          SET Status = 'confirmed', ConfirmedAt = GETDATE(), PaymentIntentID = @StripePaymentIntentID
+          WHERE RequestID = (
+            SELECT TOP 1 RequestID FROM BookingRequests
+            WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+            ORDER BY CreatedAt DESC
+          )
+        `);
+    }
+
+    return res.json({ success: true, bookingId, paymentIntentId });
+  } catch (error) {
+    console.error('Verify intent error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to verify intent', error: error.message });
   }
 });
 
