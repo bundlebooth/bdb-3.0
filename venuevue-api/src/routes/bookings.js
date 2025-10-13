@@ -188,6 +188,7 @@ router.post('/create-payment-intent', async (req, res) => {
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
       appliedPlatformFee: paymentIntent.application_fee_amount ? paymentIntent.application_fee_amount / 100 : 0,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
     });
   } catch (err) {
     console.error('Stripe payment intent creation error:', err);
@@ -1229,6 +1230,211 @@ router.post('/confirmed', async (req, res) => {
       message: 'Failed to create confirmed booking',
       error: err.message 
     });
+  }
+});
+
+// Build and return invoice JSON for a booking
+router.get('/:id/invoice', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const requesterUserId = parseInt(req.query.userId || req.query.viewerUserId || req.query.requesterUserId || 0, 10);
+    if (!id) return res.status(400).json({ success: false, message: 'Booking ID is required' });
+    if (!requesterUserId) return res.status(400).json({ success: false, message: 'userId is required' });
+
+    const pool = await poolPromise;
+    const bookingInfoRes = await pool.request()
+      .input('BookingID', sql.Int, parseInt(id))
+      .query(`
+        SELECT b.BookingID, b.UserID AS ClientUserID, b.VendorProfileID, b.EventDate, b.EndDate, b.Status,
+               b.TotalAmount, b.DepositAmount, b.DepositPaid, b.FullAmountPaid, b.StripePaymentIntentID,
+               u.Name AS ClientName, u.Email AS ClientEmail, u.Phone AS ClientPhone,
+               vp.BusinessName AS VendorName, vp.BusinessEmail AS VendorEmail, vp.BusinessPhone AS VendorPhone,
+               vp.UserID AS VendorUserID
+        FROM Bookings b
+        JOIN Users u ON b.UserID = u.UserID
+        JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+        WHERE b.BookingID = @BookingID
+      `);
+
+    if (bookingInfoRes.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    const b = bookingInfoRes.recordset[0];
+    // Access control: only client or vendor user can view
+    if (requesterUserId !== b.ClientUserID && requesterUserId !== b.VendorUserID) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // Load services
+    const servicesRes = await pool.request()
+      .input('BookingID', sql.Int, parseInt(id))
+      .query(`
+        SELECT bs.BookingServiceID, bs.ServiceID, s.Name AS ServiceName,
+               bs.AddOnID, sa.Name AS AddOnName, bs.Quantity, bs.PriceAtBooking
+        FROM BookingServices bs
+        LEFT JOIN Services s ON bs.ServiceID = s.ServiceID
+        LEFT JOIN ServiceAddOns sa ON bs.AddOnID = sa.AddOnID
+        WHERE bs.BookingID = @BookingID
+      `);
+
+    // Load expenses (vendor-added)
+    const expensesRes = await pool.request()
+      .input('BookingID', sql.Int, parseInt(id))
+      .query(`SELECT BookingExpenseID, Title, Amount, Notes, CreatedAt FROM BookingExpenses WHERE BookingID = @BookingID ORDER BY CreatedAt`);
+
+    // Load transactions (payments)
+    const txRes = await pool.request()
+      .input('BookingID', sql.Int, parseInt(id))
+      .query(`SELECT Amount, FeeAmount, NetAmount, Currency, CreatedAt FROM Transactions WHERE BookingID = @BookingID ORDER BY CreatedAt`);
+
+    // Compute totals
+    const serviceItems = servicesRes.recordset.map(row => {
+      const name = row.ServiceName || 'Service';
+      const addOn = row.AddOnName ? ` + ${row.AddOnName}` : '';
+      const quantity = Number(row.Quantity || 1);
+      const unit = Number(row.PriceAtBooking || 0);
+      const lineTotal = +(quantity * unit).toFixed(2);
+      return { type: 'service', name: name + addOn, quantity, unitPrice: unit, lineTotal };
+    });
+    const servicesSubtotal = +serviceItems.reduce((sum, it) => sum + it.lineTotal, 0).toFixed(2);
+
+    const expenseItems = expensesRes.recordset.map(row => ({
+      type: 'expense',
+      name: row.Title,
+      quantity: 1,
+      unitPrice: +Number(row.Amount || 0).toFixed(2),
+      lineTotal: +Number(row.Amount || 0).toFixed(2),
+      notes: row.Notes || null,
+      createdAt: row.CreatedAt
+    }));
+    const expensesTotal = +expenseItems.reduce((sum, it) => sum + it.lineTotal, 0).toFixed(2);
+
+    const subtotal = +(servicesSubtotal + expensesTotal).toFixed(2);
+
+    // Fees: platform and processing
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5');
+    const platformFee = +((subtotal * (isFinite(platformFeePercent) ? platformFeePercent : 0)) / 100).toFixed(2);
+
+    const recordedProcessingFees = +txRes.recordset.reduce((sum, r) => sum + Number(r.FeeAmount || 0), 0).toFixed(2);
+    const stripePercent = parseFloat(process.env.STRIPE_PROC_FEE_PERCENT || '2.9');
+    const stripeFixed = parseFloat(process.env.STRIPE_PROC_FEE_FIXED || '0.30');
+    const estimatedProcessingFees = +((subtotal * (isFinite(stripePercent) ? stripePercent : 0) / 100) + (isFinite(stripeFixed) ? stripeFixed : 0)).toFixed(2);
+    const processingFees = recordedProcessingFees > 0 ? recordedProcessingFees : estimatedProcessingFees;
+
+    const grandTotal = +(subtotal + platformFee + processingFees).toFixed(2);
+    const totalPaid = +txRes.recordset.reduce((sum, r) => sum + Number(r.Amount || 0), 0).toFixed(2);
+    const balanceDue = Math.max(0, +(grandTotal - totalPaid).toFixed(2));
+
+    // Prepare invoice payload
+    const issuedAt = new Date();
+    const invoiceNumber = `INV-${b.BookingID}-${issuedAt.getFullYear()}${String(issuedAt.getMonth()+1).padStart(2,'0')}${String(issuedAt.getDate()).padStart(2,'0')}`;
+    const viewerRole = requesterUserId === b.VendorUserID ? 'vendor' : 'client';
+
+    const lineItems = [...serviceItems, ...expenseItems];
+
+    res.json({
+      success: true,
+      invoice: {
+        invoiceNumber,
+        issuedAt,
+        bookingId: b.BookingID,
+        eventDate: b.EventDate,
+        status: b.Status,
+        currency: (txRes.recordset[0]?.Currency) || 'USD',
+        viewerRole,
+        billFrom: { name: b.VendorName, email: b.VendorEmail, phone: b.VendorPhone },
+        billTo: { name: b.ClientName, email: b.ClientEmail, phone: b.ClientPhone },
+        client: { id: b.ClientUserID, name: b.ClientName, email: b.ClientEmail },
+        vendor: { vendorProfileId: b.VendorProfileID, name: b.VendorName, email: b.VendorEmail },
+        lineItems,
+        totals: {
+          servicesSubtotal,
+          expensesTotal,
+          subtotal,
+          platformFeePercent,
+          platformFee,
+          processingFees,
+          processingFeesSource: recordedProcessingFees > 0 ? 'recorded' : 'estimated',
+          grandTotal,
+          totalPaid,
+          balanceDue
+        },
+        payments: txRes.recordset
+      }
+    });
+  } catch (err) {
+    console.error('Invoice build error:', err);
+    res.status(500).json({ success: false, message: 'Failed to build invoice', error: err.message });
+  }
+});
+
+// List expenses for a booking (client or vendor can view)
+router.get('/:id/expenses', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const requesterUserId = parseInt(req.query.userId || 0, 10);
+    if (!id) return res.status(400).json({ success: false, message: 'Booking ID is required' });
+    if (!requesterUserId) return res.status(400).json({ success: false, message: 'userId is required' });
+
+    const pool = await poolPromise;
+    const bres = await pool.request()
+      .input('BookingID', sql.Int, parseInt(id))
+      .query(`SELECT UserID AS ClientUserID, VendorProfileID FROM Bookings WHERE BookingID = @BookingID`);
+    if (bres.recordset.length === 0) return res.status(404).json({ success: false, message: 'Booking not found' });
+    const clientId = bres.recordset[0].ClientUserID;
+    const vpid = bres.recordset[0].VendorProfileID;
+    const vuserRes = await pool.request().input('VendorProfileID', sql.Int, vpid).query(`SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
+    const vendorUserId = vuserRes.recordset[0]?.UserID || 0;
+    if (requesterUserId !== clientId && requesterUserId !== vendorUserId) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const exRes = await pool.request().input('BookingID', sql.Int, parseInt(id)).query(`SELECT BookingExpenseID, Title, Amount, Notes, CreatedAt FROM BookingExpenses WHERE BookingID = @BookingID ORDER BY CreatedAt`);
+    res.json({ success: true, expenses: exRes.recordset });
+  } catch (err) {
+    console.error('Get expenses error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get expenses', error: err.message });
+  }
+});
+
+// Add an expense (vendor-only)
+router.post('/:id/expenses', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, title, amount, notes } = req.body;
+    if (!id) return res.status(400).json({ success: false, message: 'Booking ID is required' });
+    if (!userId) return res.status(400).json({ success: false, message: 'userId is required' });
+    if (!title || typeof title !== 'string') return res.status(400).json({ success: false, message: 'Valid title required' });
+    const amt = parseFloat(amount);
+    if (!isFinite(amt) || amt <= 0) return res.status(400).json({ success: false, message: 'Valid amount required' });
+
+    const pool = await poolPromise;
+    const bres = await pool.request()
+      .input('BookingID', sql.Int, parseInt(id))
+      .query(`SELECT VendorProfileID FROM Bookings WHERE BookingID = @BookingID`);
+    if (bres.recordset.length === 0) return res.status(404).json({ success: false, message: 'Booking not found' });
+    const vendorProfileId = bres.recordset[0].VendorProfileID;
+    const vuserRes = await pool.request().input('VendorProfileID', sql.Int, vendorProfileId).query(`SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
+    const vendorUserId = vuserRes.recordset[0]?.UserID || 0;
+    if (userId !== vendorUserId) return res.status(403).json({ success: false, message: 'Only vendor can add expenses' });
+
+    const insertRes = await pool.request()
+      .input('BookingID', sql.Int, parseInt(id))
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('Title', sql.NVarChar(255), title.trim())
+      .input('Amount', sql.Decimal(10, 2), amt)
+      .input('Notes', sql.NVarChar(sql.MAX), notes || null)
+      .query(`
+        INSERT INTO BookingExpenses (BookingID, VendorProfileID, Title, Amount, Notes, CreatedAt)
+        OUTPUT INSERTED.BookingExpenseID, INSERTED.Title, INSERTED.Amount, INSERTED.Notes, INSERTED.CreatedAt
+        VALUES (@BookingID, @VendorProfileID, @Title, @Amount, @Notes, GETDATE())
+      `);
+
+    res.json({ success: true, expense: insertRes.recordset[0] });
+  } catch (err) {
+    console.error('Add expense error:', err);
+    res.status(500).json({ success: false, message: 'Failed to add expense', error: err.message });
   }
 });
 
