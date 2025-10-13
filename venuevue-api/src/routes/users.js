@@ -4,6 +4,8 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 // Helper functions for validation
 const validateEmail = (email) => {
@@ -14,6 +16,51 @@ const validateEmail = (email) => {
 const validatePassword = (password) => {
   return password && password.length >= 8;
 };
+
+async function ensureTwoFactorTable(pool) {
+  await pool.request().query(`
+    IF OBJECT_ID('dbo.UserTwoFactorCodes', 'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.UserTwoFactorCodes (
+        CodeID INT IDENTITY(1,1) PRIMARY KEY,
+        UserID INT NOT NULL,
+        CodeHash NVARCHAR(255) NOT NULL,
+        Purpose NVARCHAR(50) NOT NULL,
+        ExpiresAt DATETIME NOT NULL,
+        CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+        Attempts TINYINT NOT NULL DEFAULT 0,
+        IsUsed BIT NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IX_UserTwoFactorCodes_UserID ON dbo.UserTwoFactorCodes(UserID);
+    END
+  `);
+}
+
+function getMailer() {
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT || 587);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
+  if (!host || !user || !pass) return null;
+  return nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
+}
+
+async function sendTwoFactorCode(email, code) {
+  const transporter = getMailer();
+  if (!transporter) {
+    console.log(`2FA code for ${email}: ${code}`);
+    return;
+  }
+  const from = process.env.SMTP_FROM || 'no-reply@venuevue.app';
+  await transporter.sendMail({
+    from,
+    to: email,
+    subject: 'Your verification code',
+    text: `Your verification code is ${code}. It expires in 10 minutes.`,
+    html: `<p>Your verification code is <b>${code}</b>. It expires in 10 minutes.</p>`
+  });
+}
 
 // User Registration
 router.post('/register', async (req, res) => {
@@ -160,13 +207,35 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Generate JWT token
+    const enable2FA = String(process.env.ENABLE_2FA || 'false').toLowerCase() === 'true';
+    if (enable2FA) {
+      await ensureTwoFactorTable(pool);
+      const raw = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+      const salt = await bcrypt.genSalt(10);
+      const codeHash = await bcrypt.hash(raw, salt);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      await pool.request()
+        .input('UserID', sql.Int, user.UserID)
+        .input('CodeHash', sql.NVarChar(255), codeHash)
+        .input('Purpose', sql.NVarChar(50), 'login')
+        .input('ExpiresAt', sql.DateTime, expiresAt)
+        .query(`
+          INSERT INTO UserTwoFactorCodes (UserID, CodeHash, Purpose, ExpiresAt)
+          VALUES (@UserID, @CodeHash, @Purpose, @ExpiresAt)
+        `);
+      try { await sendTwoFactorCode(user.Email, raw); } catch (e) { console.error('2FA email error:', e.message); }
+      const tempToken = jwt.sign(
+        { id: user.UserID, email: user.Email, purpose: 'login_2fa' },
+        process.env.JWT_SECRET,
+        { expiresIn: '10m' }
+      );
+      return res.json({ success: true, twoFactorRequired: true, tempToken, message: 'Verification code sent' });
+    }
     const token = jwt.sign(
       { id: user.UserID, email: user.Email, isVendor: user.IsVendor },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
-
     res.json({
       success: true,
       userId: user.UserID,
@@ -183,6 +252,105 @@ router.post('/login', async (req, res) => {
       message: 'Login failed',
       error: err.message
     });
+  }
+});
+
+router.post('/login/verify-2fa', async (req, res) => {
+  try {
+    const { tempToken, code } = req.body;
+    if (!tempToken || !code) {
+      return res.status(400).json({ success: false, message: 'Missing token or code' });
+    }
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+    }
+    if (decoded.purpose !== 'login_2fa') {
+      return res.status(400).json({ success: false, message: 'Invalid token purpose' });
+    }
+    const pool = await poolPromise;
+    await ensureTwoFactorTable(pool);
+    const now = new Date();
+    const rec = await pool.request()
+      .input('UserID', sql.Int, decoded.id)
+      .input('Purpose', sql.NVarChar(50), 'login')
+      .query(`
+        SELECT TOP 1 CodeID, CodeHash, ExpiresAt, Attempts, IsUsed
+        FROM UserTwoFactorCodes
+        WHERE UserID = @UserID AND Purpose = @Purpose AND IsUsed = 0
+        ORDER BY CreatedAt DESC
+      `);
+    if (rec.recordset.length === 0) {
+      return res.status(400).json({ success: false, message: 'No verification code found' });
+    }
+    const row = rec.recordset[0];
+    if (new Date(row.ExpiresAt) < now) {
+      return res.status(400).json({ success: false, message: 'Code expired' });
+    }
+    if (row.Attempts >= 5) {
+      return res.status(429).json({ success: false, message: 'Too many attempts' });
+    }
+    const ok = await bcrypt.compare(String(code).trim(), row.CodeHash);
+    if (!ok) {
+      await pool.request()
+        .input('CodeID', sql.Int, row.CodeID)
+        .query('UPDATE UserTwoFactorCodes SET Attempts = Attempts + 1 WHERE CodeID = @CodeID');
+      return res.status(400).json({ success: false, message: 'Invalid code' });
+    }
+    await pool.request()
+      .input('CodeID', sql.Int, row.CodeID)
+      .query('UPDATE UserTwoFactorCodes SET IsUsed = 1, Attempts = Attempts + 1 WHERE CodeID = @CodeID');
+    const ures = await pool.request()
+      .input('UserID', sql.Int, decoded.id)
+      .query(`SELECT UserID, Name, Email, IsVendor FROM Users WHERE UserID = @UserID`);
+    if (ures.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    const u = ures.recordset[0];
+    const token = jwt.sign(
+      { id: u.UserID, email: u.Email, isVendor: u.IsVendor },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+    res.json({ success: true, userId: u.UserID, name: u.Name, email: u.Email, isVendor: u.IsVendor, token });
+  } catch (err) {
+    console.error('Verify 2FA error:', err);
+    res.status(500).json({ success: false, message: 'Verification failed', error: err.message });
+  }
+});
+
+router.post('/login/resend-2fa', async (req, res) => {
+  try {
+    const { tempToken } = req.body;
+    if (!tempToken) return res.status(400).json({ success: false, message: 'Missing token' });
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+    }
+    if (decoded.purpose !== 'login_2fa') {
+      return res.status(400).json({ success: false, message: 'Invalid token purpose' });
+    }
+    const pool = await poolPromise;
+    await ensureTwoFactorTable(pool);
+    const raw = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
+    const salt = await bcrypt.genSalt(10);
+    const codeHash = await bcrypt.hash(raw, salt);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await pool.request()
+      .input('UserID', sql.Int, decoded.id)
+      .input('CodeHash', sql.NVarChar(255), codeHash)
+      .input('Purpose', sql.NVarChar(50), 'login')
+      .input('ExpiresAt', sql.DateTime, expiresAt)
+      .query(`INSERT INTO UserTwoFactorCodes (UserID, CodeHash, Purpose, ExpiresAt) VALUES (@UserID, @CodeHash, @Purpose, @ExpiresAt)`);
+    try { await sendTwoFactorCode(decoded.email, raw); } catch (e) { console.error('2FA email error:', e.message); }
+    res.json({ success: true, message: 'Verification code resent' });
+  } catch (err) {
+    console.error('Resend 2FA error:', err);
+    res.status(500).json({ success: false, message: 'Resend failed', error: err.message });
   }
 });
 
