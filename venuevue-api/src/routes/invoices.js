@@ -140,12 +140,12 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
     const stripeFee = recordedStripeFee > 0 ? recordedStripeFee : estimateStripeFee(totalAmount || subtotal);
     const platformFee = estimatePlatformFee(totalAmount || subtotal);
 
-    // Total due shown to client excludes fees (fees are informational)
-    const totalDue = toCurrency(subtotal);
+    // Include fees in client grand total
+    const totalDue = toCurrency(subtotal + platformFee + stripeFee);
 
-    // Determine invoice status based on booking flag or payments >= subtotal
+    // Determine invoice status based on booking flag or payments >= grand total
     const totalPaid = toCurrency((snap.transactions || []).reduce((s, t) => s + Number(t.Amount || 0), 0));
-    const invStatus = ((snap.booking.FullAmountPaid === true || snap.booking.FullAmountPaid === 1) || (totalPaid + 0.01 >= subtotal)) ? 'paid' : 'issued';
+    const invStatus = ((snap.booking.FullAmountPaid === true || snap.booking.FullAmountPaid === 1) || (totalPaid + 0.01 >= totalDue)) ? 'paid' : 'issued';
 
     // Upsert Invoices
     const issueDate = new Date();
@@ -164,7 +164,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       r.input('StripeFee', sql.Decimal(10,2), stripeFee);
       r.input('TaxAmount', sql.Decimal(10,2), 0);
       r.input('TotalAmount', sql.Decimal(10,2), totalDue);
-      r.input('FeesIncludedInTotal', sql.Bit, 0);
+      r.input('FeesIncludedInTotal', sql.Bit, 1);
       r.input('SnapshotJSON', sql.NVarChar(sql.MAX), JSON.stringify({
         at: nowIso(),
         booking: snap.booking,
@@ -194,6 +194,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       r.input('PlatformFee', sql.Decimal(10,2), platformFee);
       r.input('StripeFee', sql.Decimal(10,2), stripeFee);
       r.input('TotalAmount', sql.Decimal(10,2), totalDue);
+      r.input('FeesIncludedInTotal', sql.Bit, 1);
       r.input('SnapshotJSON', sql.NVarChar(sql.MAX), JSON.stringify({
         at: nowIso(),
         booking: snap.booking,
@@ -204,7 +205,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       await r.query(`
         UPDATE Invoices
         SET IssueDate=@IssueDate, Status=@Status, Subtotal=@Subtotal, VendorExpensesTotal=@VendorExpensesTotal,
-            PlatformFee=@PlatformFee, StripeFee=@StripeFee, TotalAmount=@TotalAmount,
+            PlatformFee=@PlatformFee, StripeFee=@StripeFee, TotalAmount=@TotalAmount, FeesIncludedInTotal=@FeesIncludedInTotal,
             UpdatedAt=GETDATE(), SnapshotJSON=@SnapshotJSON
         WHERE InvoiceID=@InvoiceID;
       `);
@@ -390,6 +391,33 @@ router.get('/booking/:bookingId', async (req, res) => {
     const row = br.recordset[0];
     if (requesterUserId !== row.ClientUserID && requesterUserId !== row.VendorUserID) {
       return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+    // Optional auto-regenerate: explicit or legacy cleanup
+    const regen = String(req.query.regenerate || '0') === '1';
+    if (regen) {
+      await upsertInvoiceForBooking(pool, parseInt(bookingId, 10), { forceRegenerate: true });
+    } else {
+      // If existing invoice uses old policy or has fee_* items, regenerate once
+      const chk = await pool.request().input('BookingID', sql.Int, parseInt(bookingId, 10)).query(`
+        SELECT TOP 1 InvoiceID, FeesIncludedInTotal FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC
+      `);
+      if (chk.recordset.length) {
+        const invRow = chk.recordset[0];
+        let needsRegen = invRow.FeesIncludedInTotal === 0;
+        if (!needsRegen) {
+          try {
+            const feeItems = await pool.request().input('InvoiceID', sql.Int, invRow.InvoiceID).query(`
+              SELECT TOP 1 1 AS HasFee FROM InvoiceItems WHERE InvoiceID=@InvoiceID AND ItemType LIKE 'fee_%'
+            `);
+            needsRegen = feeItems.recordset.length > 0;
+          } catch (_) { /* ignore */ }
+        }
+        if (needsRegen) {
+          await upsertInvoiceForBooking(pool, parseInt(bookingId, 10), { forceRegenerate: true });
+        }
+      } else {
+        await upsertInvoiceForBooking(pool, parseInt(bookingId, 10), { forceRegenerate: true });
+      }
     }
     const invoice = await getInvoiceByBooking(pool, parseInt(bookingId, 10), true);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
