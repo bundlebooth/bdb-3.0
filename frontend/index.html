@@ -6527,6 +6527,22 @@
                     </div>
                 </div>
 
+                <!-- Two-Factor Verification (hidden by default) -->
+                <div id="twofa-form" style="display: none;">
+                    <div style="margin-bottom: 1rem; color: var(--text-light); font-size: 0.95rem;">
+                        Enter the 6-digit code we sent to your email.
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Verification Code</label>
+                        <input type="text" id="twofa-code" inputmode="numeric" maxlength="6" placeholder="123456" style="letter-spacing: 6px; text-align: center; width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);">
+                    </div>
+                    <button class="btn btn-primary" id="verify-2fa-btn" style="width: 100%; margin-bottom: 0.75rem;">Verify</button>
+                    <div style="display: flex; justify-content: space-between; gap: 0.75rem;">
+                        <button class="btn btn-outline" id="resend-2fa-btn" style="flex: 1;">Resend Code</button>
+                        <button class="btn btn-outline" id="back-to-login-btn" style="flex: 1;">Back</button>
+                    </div>
+                </div>
+
                 <!-- Signup Form (hidden by default) -->
                 <div id="signup-form" style="display: none;">
                     <div style="margin-bottom: 1.5rem;">
@@ -9901,6 +9917,12 @@ document.addEventListener('DOMContentLoaded', async function() {
             const facebookLoginBtn = document.getElementById('facebook-login');
             const viewDashboardBtn = document.getElementById('view-dashboard-btn');
             const accountTypeSelect = document.getElementById('account-type');
+            const twofaForm = document.getElementById('twofa-form');
+            const verify2FABtn = document.getElementById('verify-2fa-btn');
+            const resend2FABtn = document.getElementById('resend-2fa-btn');
+            const backToLoginBtn = document.getElementById('back-to-login-btn');
+            let twofaTempToken = null;
+            let pendingLoginEmail = '';
 
             // Dashboard elements (unified menu and container)
             const clientDashboardContainer = document.getElementById('dashboard-container');
@@ -17009,6 +17031,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                         const userData = await response.json();
 
+                        if (userData.twoFactorRequired) {
+                            twofaTempToken = userData.tempToken;
+                            pendingLoginEmail = email;
+                            showTwoFAView();
+                            return;
+                        }
+
+                        if (!userData.token) {
+                            throw new Error('Login failed: missing token');
+                        }
+
                         // Store the token in localStorage
                         localStorage.setItem('token', userData.token);
 
@@ -17027,6 +17060,65 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         console.error('Login error:', error);
                         alert('Login failed. ' + error.message);
                     }
+                });
+
+                // Two-Factor Verification handlers
+                verify2FABtn?.addEventListener('click', async () => {
+                    const codeEl = document.getElementById('twofa-code');
+                    const code = (codeEl?.value || '').trim();
+                    if (!code || code.length !== 6) {
+                        alert('Enter the 6-digit code');
+                        return;
+                    }
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/users/login/verify-2fa`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ tempToken: twofaTempToken, code })
+                        });
+                        if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            throw new Error(err.message || 'Verification failed');
+                        }
+                        const userData = await res.json();
+                        localStorage.setItem('token', userData.token);
+                        simulateLogin({
+                            id: userData.userId,
+                            name: userData.name || userData.email.split('@')[0],
+                            email: userData.email,
+                            avatar: userData.name ? userData.name[0].toUpperCase() : userData.email[0].toUpperCase(),
+                            isVendor: userData.isVendor || false
+                        });
+                        connectToChat();
+                        twofaTempToken = null;
+                        pendingLoginEmail = '';
+                        profileModal.style.display = 'none';
+                    } catch (e) {
+                        console.error('Verify 2FA error:', e);
+                        alert(e.message || 'Verification failed');
+                    }
+                });
+
+                resend2FABtn?.addEventListener('click', async () => {
+                    if (!twofaTempToken) { alert('Start login again.'); showLoginView(); return; }
+                    try {
+                        const res = await fetch(`${API_BASE_URL}/users/login/resend-2fa`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ tempToken: twofaTempToken })
+                        });
+                        if (!res.ok) throw new Error('Could not resend code');
+                        alert('A new code was sent to your email.');
+                    } catch (e) {
+                        console.error('Resend 2FA error:', e);
+                        alert(e.message || 'Resend failed');
+                    }
+                });
+
+                backToLoginBtn?.addEventListener('click', () => {
+                    twofaTempToken = null;
+                    pendingLoginEmail = '';
+                    showLoginView();
                 });
 
                 // Sign up with email/password
@@ -21439,10 +21531,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 loginForm.style.display = 'block';
                 signupForm.style.display = 'none';
                 loggedInView.style.display = 'none';
+                const twofaFormEl = document.getElementById('twofa-form');
+                if (twofaFormEl) twofaFormEl.style.display = 'none';
                 document.getElementById('profile-modal-title').textContent = 'Welcome to VenueVue';
                 // Clear form fields
                 document.getElementById('login-email').value = '';
                 document.getElementById('login-password').value = '';
+            }
+
+            function showTwoFAView() {
+                loginForm.style.display = 'none';
+                signupForm.style.display = 'none';
+                loggedInView.style.display = 'none';
+                if (twofaForm) twofaForm.style.display = 'block';
+                const title = document.getElementById('profile-modal-title');
+                if (title) title.textContent = 'Verify your login';
+                const codeEl = document.getElementById('twofa-code');
+                if (codeEl) codeEl.value = '';
             }
 
             // Show signup view in profile modal
