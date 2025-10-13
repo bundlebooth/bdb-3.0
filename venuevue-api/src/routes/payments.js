@@ -1239,4 +1239,21 @@ router.get('/booking/:bookingId/status', async (req, res) => {
   }
 });
 
+// 0. REDIRECT LANDING PAGE FOR STRIPE CONFIRMATION
+router.get('/redirect-complete', (req, res) => {
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Payment Complete</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.5;padding:24px;max-width:680px;margin:40px auto;color:#111827}</style></head><body><h2>Payment confirmation received</h2><p>You can safely return to the app.</p></body></html>`;
+  res.set('Content-Type', 'text/html').send(html);
+});
+
+// 0a. PUBLIC CONFIG: expose Stripe publishable key for frontend
+router.get('/config', (req, res) => {
+  try {
+    const key = process.env.STRIPE_PUBLISHABLE_KEY || '';
+    const valid = !!key && !key.includes('placeholder');
+    res.json({ success: valid, publishableKey: valid ? key : null });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Failed to load config' });
+  }
+});
+
 module.exports = { router, webhook };
