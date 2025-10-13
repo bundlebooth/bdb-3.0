@@ -2411,6 +2411,43 @@
             animation: slideIn 0.3s ease;
         }
 
+        @keyframes bannerSlideDown {
+            from { transform: translateY(-10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .app-banner {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 40px);
+            max-width: 900px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            background: #ffffff;
+            color: var(--text);
+            z-index: 10002;
+            animation: bannerSlideDown .2s ease;
+        }
+        .app-banner--success { border-color: #10b98133; background: #ecfdf5; color: #065f46; }
+        .app-banner--error { border-color: #ef444433; background: #fef2f2; color: #991b1b; }
+        .app-banner--info, .app-banner--notice { border-color: #3b82f633; background: #eff6ff; color: #1e40af; }
+        .app-banner__title { font-weight: 600; }
+        .app-banner__icon { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; }
+        .app-banner__close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: inherit;
+        }
+
         /* Notifications Modal Styles */
         .notification-tab {
             transition: all 0.2s ease;
@@ -7429,63 +7466,11 @@
         
         // Global utility functions
         function showSuccess(message) {
-            // Create or update success notification
-            let notification = document.getElementById('global-notification');
-            if (!notification) {
-                notification = document.createElement('div');
-                notification.id = 'global-notification';
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    background: #10b981;
-                    color: white;
-                    padding: 1rem 1.5rem;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    z-index: 10000;
-                    font-weight: 500;
-                `;
-                document.body.appendChild(notification);
-            }
-            notification.textContent = message;
-            notification.style.background = '#10b981';
-            notification.style.display = 'block';
-            
-            // Auto-hide after 3 seconds
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 3000);
+            showBanner(message, 'success');
         }
         
         function showGlobalError(message) {
-            // Create or update error notification
-            let notification = document.getElementById('global-notification');
-            if (!notification) {
-                notification = document.createElement('div');
-                notification.id = 'global-notification';
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    background: #ef4444;
-                    color: white;
-                    padding: 1rem 1.5rem;
-                    border-radius: 8px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                    z-index: 10000;
-                    font-weight: 500;
-                `;
-                document.body.appendChild(notification);
-            }
-            notification.textContent = message;
-            notification.style.background = '#ef4444';
-            notification.style.display = 'block';
-            
-            // Auto-hide after 5 seconds for errors
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 5000);
+            showBanner(message, 'error');
         }
         
         // Helper function to get vendor profile ID
@@ -9059,37 +9044,69 @@
         
         // Show toast notification
         function showNotificationToast(title, message) {
-            const toast = document.createElement('div');
-            toast.className = 'notification-toast';
-            toast.style.cssText = `
-                position: fixed;
-                top: 80px;
-                right: 20px;
-                background: white;
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                padding: 1rem;
-                box-shadow: var(--shadow);
-                z-index: 10001;
-                max-width: 300px;
-                animation: slideIn 0.3s ease;
-            `;
-            
-            toast.innerHTML = `
-                <div style="font-weight: 600; margin-bottom: 0.5rem;">${title}</div>
-                <div style="font-size: 0.9rem; color: var(--text-light);">${message}</div>
-                <button onclick="this.parentElement.remove()" style="position: absolute; top: 5px; right: 10px; background: none; border: none; font-size: 1.2rem; cursor: pointer;">&times;</button>
-            `;
-            
-            document.body.appendChild(toast);
-            
-            // Auto-remove after 5 seconds
-            setTimeout(() => {
-                if (toast.parentElement) {
-                    toast.remove();
-                }
-            }, 5000);
+            const sourceText = [title, message].filter(Boolean).join(' ');
+            showBanner(message, detectBannerVariant(sourceText), title || undefined);
         }
+
+        function showBanner(message, variant = 'info', title) {
+            try {
+                const existing = document.getElementById('app-banner');
+                if (existing) existing.remove();
+            } catch {}
+
+            const banner = document.createElement('div');
+            banner.id = 'app-banner';
+            const normalizedVariant = (variant === 'notice') ? 'info' : variant;
+            banner.className = `app-banner app-banner--${normalizedVariant}`;
+            const safeMsg = (typeof message === 'string') ? message : (message && message.message) || String(message);
+            const heading = title || (normalizedVariant === 'error' ? 'Error' : (normalizedVariant === 'success' ? 'Success' : 'Notice'));
+            banner.setAttribute('role', 'alert');
+            banner.setAttribute('aria-live', 'assertive');
+            banner.innerHTML = `
+                <span class="app-banner__icon" aria-hidden="true">${getBannerIcon(normalizedVariant)}</span>
+                <div class="app-banner__title">${heading}</div>
+                <div style="flex:1;">${safeMsg}</div>
+                <button class="app-banner__close" aria-label="Close">&times;</button>
+            `;
+            banner.querySelector('.app-banner__close').addEventListener('click', () => banner.remove());
+            document.body.appendChild(banner);
+
+            setTimeout(() => { if (banner.parentElement) banner.remove(); }, 5000);
+        }
+
+        function getBannerIcon(variant) {
+            if (variant === 'success') {
+                return `<svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.707a1 1 0 00-1.414-1.414L9 10.172 7.707 8.879a1 1 0 10-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>`;
+            }
+            if (variant === 'error') {
+                return `<svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>`;
+            }
+            return `<svg viewBox="0 0 20 20" fill="currentColor" width="20" height="20"><path fill-rule="evenodd" d="M18 10A8 8 0 11.001 10 8 8 0 0118 10zM9 8a1 1 0 112 0v5a1 1 0 11-2 0V8zm1-3a1.25 1.25 0 100 2.5A1.25 1.25 0 0010 5z" clip-rule="evenodd"/></svg>`;
+        }
+
+        function detectBannerVariant(msg) {
+            try {
+                const t = String((typeof msg === 'string') ? msg : (msg && msg.message) || msg).toLowerCase();
+                if (t.includes('error') || t.includes('failed') || t.includes('unable') || t.includes('cannot')) return 'error';
+                if (
+                    t.includes('success') || t.includes('saved') || t.includes('welcome') || t.includes('processed') ||
+                    t.includes('approved') || t.includes('accepted') || t.includes('confirmed') || t.includes('completed') || t.includes('paid')
+                ) return 'success';
+                if (t.includes('declined') || t.includes('cancelled') || t.includes('canceled') || t.includes('notice') || t.includes('reminder') || t.includes('pending')) return 'notice';
+                return 'info';
+            } catch { return 'info'; }
+        }
+
+        (function initAlertOverride(){
+            const nativeAlert = window.alert ? window.alert.bind(window) : null;
+            window.alert = function(message) {
+                try {
+                    showBanner(message, detectBannerVariant(message));
+                } catch (e) {
+                    if (nativeAlert) nativeAlert(message);
+                }
+            };
+        })();
 
         // Notifications Dropdown Functions
         function showNotificationsDropdown(buttonElement) {
@@ -9796,7 +9813,7 @@
                     createLocalNotification(currentUser.id, 'booking_declined', 'Booking Request Declined', `Your booking request has been declined. ${reason ? 'Reason: ' + reason : ''}`);
                 }
                 
-                showSuccess('Request declined.');
+                showBanner('Request declined.', 'notice');
                 
                 // Keep current filter; refresh list in background to reconcile
                 if (typeof syncVendorRequestTabStates === 'function') { try { syncVendorRequestTabStates(); } catch (_) {} }
