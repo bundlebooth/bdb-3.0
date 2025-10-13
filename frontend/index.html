@@ -9339,7 +9339,7 @@
         async function initiatePayment(bookingId, amount, vendorProfileId) {
             const prevTextBtns = Array.from(document.querySelectorAll(`button[onclick*="initiatePayment('${bookingId}'"]`));
             prevTextBtns.forEach(b => { b.dataset.prev = b.innerText; b.innerText = 'Checking...'; b.disabled = true; });
-            
+
             try {
                 // First, check if booking is already paid
                 const statusResp = await fetch(`${API_BASE_URL}/payments/booking/${bookingId}/status`);
@@ -9347,23 +9347,22 @@
                     const statusData = await statusResp.json();
                     if (statusData.success && statusData.isPaid) {
                         alert('This booking has already been paid for.');
-                        prevTextBtns.forEach(b => { 
-                            b.innerText = 'Already Paid'; 
-                            b.disabled = true; 
+                        prevTextBtns.forEach(b => {
+                            b.innerText = 'Already Paid';
+                            b.disabled = true;
                             b.style.backgroundColor = '#28a745';
                             b.style.color = 'white';
                         });
-                        // Refresh the bookings list to update UI
                         if (typeof loadAllUserBookings === 'function') {
                             await loadAllUserBookings();
                         }
                         return;
                     }
                 }
-                
+
                 prevTextBtns.forEach(b => { b.innerText = 'Processing...'; });
-                
-                // Ensure vendor is connected before creating checkout session
+
+                // Ensure vendor is connected before creating intent
                 if (vendorProfileId) {
                     const connected = await checkVendorStripeStatus(vendorProfileId, false);
                     if (!connected) {
@@ -9373,37 +9372,61 @@
                     }
                 }
 
-                // Create checkout session with destination charges
-                const resp = await fetch(`${API_BASE_URL}/payments/checkout-session`, {
+                // Create PaymentIntent for in-app modal flow (with fallback to legacy endpoint)
+                let resp = await fetch(`${API_BASE_URL}/payments/payment-intent`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        bookingId, 
+                    body: JSON.stringify({
+                        bookingId,
                         vendorProfileId,
                         amount,
-                        description: `Booking Payment #${bookingId}`,
-                        successUrl: `${window.location.origin}/booking-success?booking_id=${bookingId}`,
-                        cancelUrl: `${window.location.origin}/booking-cancelled?booking_id=${bookingId}`
+                        description: `Booking Payment #${bookingId}`
                     })
                 });
-                
-                const data = await resp.json();
-                if (!resp.ok || !data.success) {
-                    throw new Error(data.message || 'Failed to create checkout session');
+
+                // Fallback: older API may not have /payments/payment-intent
+                if (resp.status === 404) {
+                    resp = await fetch(`${API_BASE_URL}/bookings/create-payment-intent`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            bookingId,
+                            vendorProfileId,
+                            amount,
+                            description: `Booking Payment #${bookingId}`
+                        })
+                    });
                 }
-                
-                if (data.url) {
-                    // Redirect to Stripe Checkout
-                    window.location.href = data.url;
-                    return;
-                } else if (data.sessionId) {
-                    // Alternative: use Stripe.js to redirect
-                    const stripe = Stripe(window.STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder');
-                    await stripe.redirectToCheckout({ sessionId: data.sessionId });
-                    return;
+
+                // Try to parse JSON; show useful error if server returned HTML/text
+                let data;
+                try {
+                    const ct = (resp.headers.get('content-type') || '').toLowerCase();
+                    if (ct.includes('application/json')) {
+                        data = await resp.json();
+                    } else {
+                        const text = await resp.text();
+                        try { data = JSON.parse(text); } catch (_) {
+                            throw new Error(`API error (${resp.status}): ${text.slice(0, 200)}`);
+                        }
+                    }
+                } catch (parseErr) {
+                    throw parseErr;
                 }
-                
-                throw new Error('No checkout URL or session ID received');
+
+                if (!resp.ok || !data.clientSecret) {
+                    throw new Error((data && (data.message || data.error)) || 'Failed to create payment intent');
+                }
+
+                // Open in-app payment modal
+                openPaymentModal({
+                    bookingId,
+                    amount: Number(amount) || 0,
+                    clientSecret: data.clientSecret,
+                    // publishableKey may not be present on legacy endpoint; fallback to global var if configured
+                    publishableKey: data.publishableKey || (window && window.STRIPE_PUBLISHABLE_KEY) || null,
+                    paymentIntentId: data.paymentIntentId
+                });
             } catch (e) {
                 console.error('Payment initiation failed:', e);
                 alert(`Payment failed: ${e.message}`);
@@ -9411,11 +9434,11 @@
             }
         }
         
-        // Open payment modal
-        function openPaymentModal(bookingId, clientSecret, amount) {
-            // Create payment modal
+        // Open payment modal (Stripe Payment Element, no full-page redirect)
+        function openPaymentModal({ bookingId, clientSecret, amount, publishableKey, paymentIntentId }) {
             const modal = document.createElement('div');
-            modal.className = 'modal-overlay';
+            modal.id = 'payment-modal';
+            modal.className = 'modal';
             modal.innerHTML = `
                 <div class="modal-content" style="max-width: 500px;">
                     <div class="modal-header">
@@ -9425,63 +9448,103 @@
                     <div class="modal-body">
                         <div class="payment-summary">
                             <h4>Payment Summary</h4>
-                            <div class="payment-amount">Total: $${amount.toFixed(2)}</div>
+                            <div class="payment-amount">Total: $${Number(amount || 0).toFixed(2)}</div>
                         </div>
                         <div id="payment-element" style="margin: 20px 0;"></div>
                         <button id="submit-payment" class="btn btn-primary" style="width: 100%;">Pay Now</button>
+                        <div id="payment-error" style="color:#b91c1c;margin-top:10px;display:none;"></div>
                     </div>
                 </div>
             `;
-            
+
             document.body.appendChild(modal);
-            
+
             // Initialize Stripe Elements if available
             if (window.Stripe) {
-                const stripe = Stripe('pk_test_your_publishable_key'); // Replace with actual key
+                const key = publishableKey || window.STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder';
+                const stripe = Stripe(key);
                 const elements = stripe.elements({ clientSecret });
                 const paymentElement = elements.create('payment');
                 paymentElement.mount('#payment-element');
-                
-                document.getElementById('submit-payment').addEventListener('click', async () => {
-                    const { error } = await stripe.confirmPayment({
+
+                const submitBtn = document.getElementById('submit-payment');
+                const errEl = document.getElementById('payment-error');
+                submitBtn.addEventListener('click', async () => {
+                    submitBtn.disabled = true;
+                    const prev = submitBtn.innerText; submitBtn.innerText = 'Processing...';
+                    errEl.style.display = 'none'; errEl.textContent = '';
+                    const { error, paymentIntent } = await stripe.confirmPayment({
                         elements,
-                        confirmParams: {
-                            return_url: window.location.href
+                        redirect: 'if_required',
+                        // Stripe requires an http(s) URL; use API origin landing page
+                        confirmParams: { 
+                            return_url: (() => {
+                                try { return new URL(API_BASE_URL).origin + '/api/payments/redirect-complete'; }
+                                catch (_) { return 'https://bdb-3-0-venuevue-api.onrender.com/api/payments/redirect-complete'; }
+                            })()
                         }
                     });
-                    
+
                     if (error) {
-                        showGlobalError(`Payment failed: ${error.message}`);
-                    } else {
-                        // Payment successful
-                        await updateBookingPaymentStatus(bookingId, 'paid');
-                        showSuccess('Payment completed successfully!');
-                        closePaymentModal();
-                        
-                        // Refresh bookings
-                        if (typeof loadAllUserBookings === 'function') {
-                            await loadAllUserBookings();
+                        errEl.textContent = `Payment failed: ${error.message}`;
+                        errEl.style.display = 'block';
+                        submitBtn.disabled = false; submitBtn.innerText = prev;
+                        return;
+                    }
+
+                    // Verify on backend and update booking status
+                    try {
+                        const piId = (paymentIntent && paymentIntent.id) || paymentIntentId;
+                        let verifyResp = await fetch(`${API_BASE_URL}/payments/verify-intent?payment_intent=${encodeURIComponent(piId)}`);
+                        if (verifyResp.status === 404) {
+                            // Fallback: use legacy booking payment confirm endpoint
+                            verifyResp = await fetch(`${API_BASE_URL}/bookings/${encodeURIComponent(bookingId)}/payment`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                                },
+                                body: JSON.stringify({ paymentIntentId: piId, amount: Number(amount || 0) })
+                            });
                         }
+                        let verifyData;
+                        const vct = (verifyResp.headers.get('content-type') || '').toLowerCase();
+                        if (vct.includes('application/json')) {
+                            verifyData = await verifyResp.json();
+                        } else {
+                            const text = await verifyResp.text();
+                            try { verifyData = JSON.parse(text); } catch (_) { verifyData = { success: verifyResp.ok, message: text }; }
+                        }
+                        if (!verifyResp.ok || (verifyData && verifyData.success === false)) {
+                            throw new Error((verifyData && (verifyData.message || verifyData.error)) || 'Failed to verify payment');
+                        }
+                        if (typeof showSuccess === 'function') {
+                            showSuccess('Payment completed successfully! Your booking has been confirmed.');
+                        }
+                        closePaymentModal();
+                        if (typeof loadAllUserBookings === 'function') {
+                            try { await loadAllUserBookings(); } catch (_) {}
+                        }
+                    } catch (verr) {
+                        errEl.textContent = `Payment verification failed: ${verr.message}`;
+                        errEl.style.display = 'block';
+                        submitBtn.disabled = false; submitBtn.innerText = prev;
                     }
                 });
             } else {
-                // Fallback for demo purposes
-                document.getElementById('submit-payment').addEventListener('click', async () => {
-                    await updateBookingPaymentStatus(bookingId, 'paid');
-                    showSuccess('Payment completed successfully!');
-                    closePaymentModal();
-                    
-                    // Refresh bookings
-                    if (typeof loadAllUserBookings === 'function') {
-                        await loadAllUserBookings();
-                    }
+                // Fallback: no Stripe.js loaded
+                const submitBtn = document.getElementById('submit-payment');
+                submitBtn.addEventListener('click', () => {
+                    const errEl = document.getElementById('payment-error');
+                    errEl.textContent = 'Stripe.js failed to load. Please refresh and try again.';
+                    errEl.style.display = 'block';
                 });
             }
         }
         
         // Close payment modal
         function closePaymentModal() {
-            const modal = document.querySelector('.modal-overlay');
+            const modal = document.getElementById('payment-modal');
             if (modal) {
                 modal.remove();
             }
