@@ -14,6 +14,22 @@ function isStripeConfigured() {
          !process.env.STRIPE_PUBLISHABLE_KEY.includes('placeholder');
 }
 
+async function getInvoiceTotalsCents(bookingId) {
+  const pool = await poolPromise;
+  try { if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') { await invoicesRouter.upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true }); } } catch (_) {}
+  const r = pool.request();
+  r.input('BookingID', sql.Int, bookingId);
+  const q = await r.query(`SELECT TOP 1 InvoiceID, TotalAmount, PlatformFee, StripeFee FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC`);
+  if (!q.recordset.length) return { totalAmountCents: null, platformFeeCents: null, stripeFeeCents: null, invoiceId: null };
+  const row = q.recordset[0];
+  return {
+    totalAmountCents: Math.round(Number(row.TotalAmount || 0) * 100),
+    platformFeeCents: Math.round(Number(row.PlatformFee || 0) * 100),
+    stripeFeeCents: Math.round(Number(row.StripeFee || 0) * 100),
+    invoiceId: row.InvoiceID
+  };
+}
+
 async function existsRecentTransaction({ bookingId, amount, externalId = null, minutes = 180 }) {
   try {
     const pool = await poolPromise;
@@ -512,23 +528,26 @@ router.post('/checkout', async (req, res) => {
 
     // Calculate platform fee (configurable via environment variable; default 5%)
     const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
-    // amount is expected in dollars; convert to cents before applying percent
-    const platformFeeCents = Math.round(Math.round(amount * 100) * platformFeePercent);
+    const invTotals1 = await getInvoiceTotalsCents(bookingId);
+    const platformFeeCents = (invTotals1.platformFeeCents != null) ? invTotals1.platformFeeCents : Math.round(Math.round(amount * 100) * platformFeePercent);
+    const applicationFeeCents = platformFeeCents; // platform collects only its fee; processing fee is covered by higher charge amount
+    const chargeAmountCents = invTotals1.totalAmountCents || Math.round(amount * 100);
 
     // Create destination charge
     const charge = await stripe.charges.create({
-      amount: Math.round(amount * 100), // Convert to cents
+      amount: chargeAmountCents,
       currency: currency,
       source: paymentMethodId,
       description: description || `Booking payment for booking #${bookingId}`,
-      application_fee_amount: platformFeeCents,
+      application_fee_amount: applicationFeeCents,
       destination: {
         account: vendorStripeAccountId,
       },
       metadata: {
         booking_id: bookingId,
         vendor_profile_id: vendorProfileId,
-        platform_fee_percent: (platformFeePercent * 100).toString()
+        platform_fee_percent: (platformFeePercent * 100).toString(),
+        invoice_id: invTotals1.invoiceId || ''
       }
     });
 
@@ -622,8 +641,9 @@ router.post('/payment-intent', async (req, res) => {
     }
 
     const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
-    const amountCents = Math.round(Number(amount) * 100);
-    const applicationFee = Math.round(amountCents * platformFeePercent);
+    const invTotals2 = await getInvoiceTotalsCents(bookingId);
+    const amountCents = invTotals2.totalAmountCents || Math.round(Number(amount) * 100);
+    const applicationFee = (invTotals2.platformFeeCents != null) ? invTotals2.platformFeeCents : Math.round(amountCents * platformFeePercent);
 
     // Create a PaymentIntent on the platform with destination charge to the connected account
     const pi = await stripe.paymentIntents.create({
@@ -638,7 +658,8 @@ router.post('/payment-intent', async (req, res) => {
       metadata: {
         booking_id: bookingId,
         vendor_profile_id: resolvedVendorProfileId,
-        platform_fee_percent: String(platformFeePercent * 100)
+        platform_fee_percent: String(platformFeePercent * 100),
+        invoice_id: invTotals2.invoiceId || ''
       }
     });
 
@@ -741,7 +762,9 @@ router.post('/checkout-session', async (req, res) => {
     }
 
     const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
-    const platformFee = Math.round(Math.round(amount * 100) * platformFeePercent);
+    const invTotals3 = await getInvoiceTotalsCents(bookingId);
+    const totalAmountCents = invTotals3.totalAmountCents || Math.round(amount * 100);
+    const platformFee = (invTotals3.platformFeeCents != null) ? invTotals3.platformFeeCents : Math.round(totalAmountCents * platformFeePercent);
 
     // Resolve and sanitize redirect URLs
     let successRedirect = resolveToHttpUrl(successUrl, '/booking-success', req);
@@ -771,7 +794,7 @@ router.post('/checkout-session', async (req, res) => {
           product_data: {
             name: description || `Booking Payment #${bookingId}`,
           },
-          unit_amount: Math.round(amount * 100),
+          unit_amount: totalAmountCents,
         },
         quantity: 1,
       }],
@@ -785,7 +808,8 @@ router.post('/checkout-session', async (req, res) => {
         },
         metadata: {
           booking_id: bookingId,
-          vendor_profile_id: vendorProfileId
+          vendor_profile_id: vendorProfileId,
+          invoice_id: invTotals3.invoiceId || ''
         }
       }
     });
@@ -920,13 +944,14 @@ router.get('/verify-session', async (req, res) => {
       const binfo = await pool.request().input('BookingID', sql.Int, bookingId)
         .query('SELECT UserID, VendorProfileID, TotalAmount FROM Bookings WHERE BookingID = @BookingID');
       const row = binfo.recordset[0] || {};
-      const exists = await existsRecentTransaction({ bookingId, amount: row.TotalAmount, externalId: paymentIntentId, minutes: 240 });
+      const paidAmount = ((pi && typeof pi.amount_received === 'number') ? pi.amount_received : (pi && typeof pi.amount === 'number' ? pi.amount : 0)) / 100;
+      const exists = await existsRecentTransaction({ bookingId, amount: paidAmount || row.TotalAmount, externalId: paymentIntentId, minutes: 240 });
       if (!exists) {
         await recordTransaction({
           bookingId,
           userId: row.UserID,
           vendorProfileId: row.VendorProfileID,
-          amount: row.TotalAmount,
+          amount: paidAmount || row.TotalAmount,
           currency: 'USD',
           stripeChargeId: paymentIntentId,
           description: 'Stripe Payment (verified)'
@@ -1011,13 +1036,14 @@ router.get('/verify-intent', async (req, res) => {
       const binfo = await pool.request().input('BookingID', sql.Int, bookingId)
         .query('SELECT UserID, VendorProfileID, TotalAmount FROM Bookings WHERE BookingID = @BookingID');
       const row = binfo.recordset[0] || {};
-      const exists = await existsRecentTransaction({ bookingId, amount: row.TotalAmount, externalId: paymentIntentId, minutes: 240 });
+      const paidAmount = ((pi && typeof pi.amount_received === 'number') ? pi.amount_received : (pi && typeof pi.amount === 'number' ? pi.amount : 0)) / 100;
+      const exists = await existsRecentTransaction({ bookingId, amount: paidAmount, externalId: paymentIntentId, minutes: 240 });
       if (!exists) {
         await recordTransaction({
           bookingId,
           userId: row.UserID,
           vendorProfileId: row.VendorProfileID,
-          amount: row.TotalAmount,
+          amount: paidAmount,
           currency: 'USD',
           stripeChargeId: paymentIntentId,
           description: 'Stripe Payment (verified)'
