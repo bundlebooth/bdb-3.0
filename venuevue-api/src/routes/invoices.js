@@ -82,14 +82,25 @@ async function loadBookingSnapshot(pool, bookingId) {
     }
   }
 
-  // Stripe fees if recorded (Transactions.FeeAmount)
   const txRes = await request.query(`
-    SELECT FeeAmount, Amount, CreatedAt
+    SELECT StripeChargeID, FeeAmount, Amount, CreatedAt
     FROM Transactions
     WHERE BookingID = @BookingID AND Status = 'succeeded'
-    ORDER BY CreatedAt DESC
+    ORDER BY CreatedAt ASC
   `);
-  const transactions = txRes.recordset || [];
+  let transactions = txRes.recordset || [];
+  if (transactions && transactions.length > 0) {
+    const seen = new Set();
+    const dedup = [];
+    for (const t of transactions) {
+      const d = new Date(t.CreatedAt);
+      const key = (t.StripeChargeID && String(t.StripeChargeID)) || (`${toCurrency(t.Amount)}@${d.getUTCFullYear()}-${(d.getUTCMonth()+1).toString().padStart(2,'0')}-${d.getUTCDate().toString().padStart(2,'0')}T${d.getUTCHours().toString().padStart(2,'0')}:${d.getUTCMinutes().toString().padStart(2,'0')}`);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      dedup.push(t);
+    }
+    transactions = dedup;
+  }
 
   return { booking, services, expenses, transactions };
 }
@@ -129,8 +140,12 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
     const stripeFee = recordedStripeFee > 0 ? recordedStripeFee : estimateStripeFee(totalAmount || subtotal);
     const platformFee = estimatePlatformFee(totalAmount || subtotal);
 
-    // Total due: services + expenses (fees are informational by default)
-    const totalDue = subtotal;
+    // Total due shown to client excludes fees (fees are informational)
+    const totalDue = toCurrency(subtotal);
+
+    // Determine invoice status based on booking flag or payments >= subtotal
+    const totalPaid = toCurrency((snap.transactions || []).reduce((s, t) => s + Number(t.Amount || 0), 0));
+    const invStatus = ((snap.booking.FullAmountPaid === true || snap.booking.FullAmountPaid === 1) || (totalPaid + 0.01 >= subtotal)) ? 'paid' : 'issued';
 
     // Upsert Invoices
     const issueDate = new Date();
@@ -141,7 +156,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       r.input('InvoiceNumber', sql.NVarChar(50), invNumber);
       r.input('IssueDate', sql.DateTime, issueDate);
       r.input('DueDate', sql.DateTime, issueDate); // same day unless later extended
-      r.input('Status', sql.NVarChar(20), 'issued');
+      r.input('Status', sql.NVarChar(20), invStatus);
       r.input('Currency', sql.NVarChar(3), 'USD');
       r.input('Subtotal', sql.Decimal(10,2), subtotal);
       r.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
@@ -173,6 +188,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       // Update
       r.input('InvoiceID', sql.Int, invoiceId);
       r.input('IssueDate', sql.DateTime, issueDate);
+      r.input('Status', sql.NVarChar(20), invStatus);
       r.input('Subtotal', sql.Decimal(10,2), subtotal);
       r.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
       r.input('PlatformFee', sql.Decimal(10,2), platformFee);
@@ -187,7 +203,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       }));
       await r.query(`
         UPDATE Invoices
-        SET IssueDate=@IssueDate, Subtotal=@Subtotal, VendorExpensesTotal=@VendorExpensesTotal,
+        SET IssueDate=@IssueDate, Status=@Status, Subtotal=@Subtotal, VendorExpensesTotal=@VendorExpensesTotal,
             PlatformFee=@PlatformFee, StripeFee=@StripeFee, TotalAmount=@TotalAmount,
             UpdatedAt=GETDATE(), SnapshotJSON=@SnapshotJSON
         WHERE InvoiceID=@InvoiceID;
@@ -198,7 +214,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       }
     }
 
-    // Insert items (services, expenses, and fee-notes) if the table exists
+    // Insert items (services and expenses only) if the table exists
     let itemsTableAvailable = true;
     try {
       await new sql.Request(tx).query('SELECT TOP 0 1 AS ok FROM InvoiceItems');
@@ -250,38 +266,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
         `);
       }
 
-      // Fees as non-payable informational lines
-      const feePlatformReq = new sql.Request(tx);
-      await feePlatformReq
-        .input('InvoiceID', sql.Int, invoiceId)
-        .input('ItemType', sql.NVarChar(50), 'fee_platform')
-        .input('RefID', sql.Int, null)
-        .input('Title', sql.NVarChar(255), 'Platform fee (info)')
-        .input('Description', sql.NVarChar(sql.MAX), null)
-        .input('Quantity', sql.Decimal(10,2), 1)
-        .input('UnitPrice', sql.Decimal(10,2), platformFee)
-        .input('Amount', sql.Decimal(10,2), platformFee)
-        .input('IsPayable', sql.Bit, 0)
-        .query(`
-          INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
-          VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable)
-        `);
-
-      const feeStripeReq = new sql.Request(tx);
-      await feeStripeReq
-        .input('InvoiceID', sql.Int, invoiceId)
-        .input('ItemType', sql.NVarChar(50), 'fee_stripe')
-        .input('RefID', sql.Int, null)
-        .input('Title', sql.NVarChar(255), 'Stripe processing fee (info)')
-        .input('Description', sql.NVarChar(sql.MAX), null)
-        .input('Quantity', sql.Decimal(10,2), 1)
-        .input('UnitPrice', sql.Decimal(10,2), stripeFee)
-        .input('Amount', sql.Decimal(10,2), stripeFee)
-        .input('IsPayable', sql.Bit, 0)
-        .query(`
-          INSERT INTO InvoiceItems (InvoiceID, ItemType, RefID, Title, Description, Quantity, UnitPrice, Amount, IsPayable)
-          VALUES (@InvoiceID, @ItemType, @RefID, @Title, @Description, @Quantity, @UnitPrice, @Amount, @IsPayable)
-        `);
+      // No fee_* items inserted; fees are summarized in invoice totals only.
     }
 
     await tx.commit();
@@ -341,12 +326,22 @@ async function getInvoiceCore(pool, invoiceId) {
   // Load payments linked to the booking for this invoice
   try {
     const payRes = await r.query(`
-      SELECT t.Amount, t.FeeAmount, t.NetAmount, t.Currency, t.CreatedAt
+      SELECT t.StripeChargeID, t.Amount, t.FeeAmount, t.NetAmount, t.Currency, t.CreatedAt
       FROM Transactions t
       WHERE t.BookingID = (SELECT BookingID FROM Invoices WHERE InvoiceID=@InvoiceID)
       ORDER BY t.CreatedAt ASC
     `);
-    invoice.payments = payRes.recordset || [];
+    const rows = payRes.recordset || [];
+    const seen = new Set();
+    const dedup = [];
+    for (const t of rows) {
+      const d = new Date(t.CreatedAt);
+      const key = (t.StripeChargeID && String(t.StripeChargeID)) || (`${toCurrency(t.Amount)}@${d.getUTCFullYear()}-${(d.getUTCMonth()+1).toString().padStart(2,'0')}-${d.getUTCDate().toString().padStart(2,'0')}T${d.getUTCHours().toString().padStart(2,'0')}:${d.getUTCMinutes().toString().padStart(2,'0')}`);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      dedup.push(t);
+    }
+    invoice.payments = dedup;
   } catch (err) {
     invoice.payments = [];
   }
