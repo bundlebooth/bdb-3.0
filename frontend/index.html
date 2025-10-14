@@ -7552,7 +7552,63 @@
         }
         
         function showGlobalError(message) {
-            showBanner(message, 'error');
+            try {
+                // If any modal is visible, render the error inside that modal instead of the main page
+                const modal = getVisibleModal();
+                if (modal) {
+                    renderModalError(modal, message);
+                } else {
+                    showBanner(message, 'error');
+                }
+            } catch (_) {
+                // Fallback to global banner on any unexpected error
+                showBanner(message, 'error');
+            }
+        }
+
+        // Resolve the first visible modal (booking, vendor setup, dashboard, invoice, etc.)
+        function getVisibleModal() {
+            try {
+                const ids = ['booking-modal', 'vendor-registration-modal', 'dashboard-modal', 'invoice-modal', 'profile-modal', 'chat-modal'];
+                for (const id of ids) {
+                    const el = document.getElementById(id);
+                    if (!el) continue;
+                    const display = (el.style && el.style.display) ? el.style.display : (window.getComputedStyle ? getComputedStyle(el).display : '');
+                    if (display && display !== 'none') return el;
+                }
+                // Fallback: any .modal currently displayed
+                const any = Array.from(document.querySelectorAll('.modal')).find(m => getComputedStyle(m).display !== 'none');
+                return any || null;
+            } catch { return null; }
+        }
+
+        // Render a styled error block inside the provided modal's body
+        function renderModalError(modalEl, message) {
+            if (!modalEl) return;
+            const containerId = `${modalEl.id || 'modal'}-error-container`;
+            let container = document.getElementById(containerId);
+            if (!container) {
+                container = document.createElement('div');
+                container.id = containerId;
+                const modalBody = modalEl.querySelector('.modal-body') || modalEl;
+                modalBody.insertBefore(container, modalBody.firstChild);
+            }
+            const safeMsg = (typeof message === 'string') ? message : (message && message.message) || String(message);
+            container.innerHTML = `
+                <div class="alert alert-error" style="margin-bottom: 1rem; padding: 0.75rem; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: 8px; color: var(--accent);">
+                    <strong>Error:</strong> ${safeMsg}
+                </div>
+            `;
+        }
+
+        // Clear any modal-scoped error container content
+        function clearModalError(modalEl) {
+            try {
+                if (!modalEl) return;
+                const cid = `${modalEl.id || 'modal'}-error-container`;
+                const container = document.getElementById(cid);
+                if (container) container.innerHTML = '';
+            } catch {}
         }
         
         // Helper function to get vendor profile ID
@@ -9173,6 +9229,17 @@
 
         function showBanner(message, variant = 'info', title) {
             try {
+                const normalizedVariant = (variant === 'notice') ? 'info' : variant;
+                if (normalizedVariant === 'error' && typeof getVisibleModal === 'function') {
+                    const modal = getVisibleModal();
+                    if (modal && typeof renderModalError === 'function') {
+                        renderModalError(modal, message);
+                        return;
+                    }
+                }
+            } catch {}
+
+            try {
                 const existing = document.getElementById('app-banner');
                 if (existing) existing.remove();
             } catch {}
@@ -9224,7 +9291,12 @@
             const nativeAlert = window.alert ? window.alert.bind(window) : null;
             window.alert = function(message) {
                 try {
-                    showBanner(message, detectBannerVariant(message));
+                    const variant = detectBannerVariant(message);
+                    if (variant === 'error' && typeof showGlobalError === 'function') {
+                        showGlobalError(message);
+                    } else {
+                        showBanner(message, variant);
+                    }
                 } catch (e) {
                     if (nativeAlert) nativeAlert(message);
                 }
@@ -11948,6 +12020,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             async function openBookingModal() {
                 const bookingModal = document.getElementById('booking-modal');
                 window.bookingState.reset();
+                // Clear any prior errors before showing modal
+                try { if (typeof clearBookingError === 'function') clearBookingError(); } catch {}
+                try { if (typeof clearModalError === 'function') clearModalError(bookingModal); } catch {}
                 updateBookingStep(1);
                 bookingModal.style.display = 'flex';
                 
@@ -12212,6 +12287,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 // Clear any countdown timers
                 Object.values(bookingState.countdownTimers).forEach(timer => clearInterval(timer));
+
+                // Clear any modal-scoped errors
+                try { if (typeof clearBookingError === 'function') clearBookingError(); } catch {}
+                try { if (typeof clearModalError === 'function') clearModalError(bookingModal); } catch {}
             }
 
             function ensureBookingAnimationsCSS() {
@@ -12272,6 +12351,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             function updateBookingStep(step) {
                 ensureBookingAnimationsCSS();
+                // Clear any existing booking/modal error when changing steps
+                try { if (typeof clearBookingError === 'function') clearBookingError(); } catch {}
+                try { const m = document.getElementById('booking-modal'); if (typeof clearModalError === 'function' && m) clearModalError(m); } catch {}
                 // Simple, stable show/hide to avoid layout jumps
                 for (let i = 1; i <= 5; i++) {
                     const stepElement = document.getElementById(`booking-step-${i}`);
@@ -14267,6 +14349,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                     return count + serviceVendors.length;
                 }, 0);
 
+                // Transparent fee estimates for client
+                const platformFeePercent = (typeof window !== 'undefined' && window.PLATFORM_FEE_PERCENT != null)
+                    ? Number(window.PLATFORM_FEE_PERCENT) : 8; // default 8%
+                const applicationFee = +(totalCost * (platformFeePercent / 100)).toFixed(2);
+                const stripeFee = +((totalCost * 0.029) + (0.30 * totalVendorCount)).toFixed(2); // 2.9% + $0.30 per vendor charge
+                const grandTotal = +(totalCost + applicationFee + stripeFee).toFixed(2);
+                const fmt = (n) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
                 // Build Step 3-style horizontal cards for selected vendors
                 const vendorCardsHTML = `
                     <div style="margin-bottom: 2rem;">
@@ -14299,10 +14389,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 transition: none !important;
                                 animation: none !important;
                             }
-                            #selected-vendor-horizontal-cards *:hover,
-                            #selected-vendor-horizontal-cards *:focus,
-                            #selected-vendor-horizontal-cards *:active,
-                            #selected-vendor-horizontal-cards *:focus-visible {
+                            #selected-vendor-horizontal-cards .selected-vendor-card-left *:hover,
+                            #selected-vendor-horizontal-cards .selected-vendor-card-left *:focus,
+                            #selected-vendor-horizontal-cards .selected-vendor-card-left *:active,
+                            #selected-vendor-horizontal-cards .selected-vendor-card-left *:focus-visible {
                                 transform: none !important;
                                 box-shadow: none !important;
                                 filter: none !important;
@@ -14334,6 +14424,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                             #selected-vendor-horizontal-cards a:active {
                                 color: inherit !important;
                                 text-decoration: none !important;
+                            }
+                            /* Ensure Send Request button keeps primary color and does not disappear on hover */
+                            #selected-vendor-horizontal-cards .selected-vendor-actions-right .btn-send-request,
+                            #selected-vendor-horizontal-cards .selected-vendor-actions-right .btn-send-request:hover,
+                            #selected-vendor-horizontal-cards .selected-vendor-actions-right .btn-send-request:focus {
+                                background: var(--primary) !important;
+                                color: #ffffff !important;
+                                border: 1px solid var(--primary) !important;
                             }
                         </style>
 
@@ -14450,8 +14548,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                                                 By clicking '<strong>Send Request</strong>', you agree that your information will be shared with the vendor. Please see our <a href="#" style="color: var(--primary); text-decoration: none;">Privacy Policy</a> and <a href="#" style="color: var(--primary); text-decoration: none;">Terms of Use</a> for details.
                                             </div>
                                             <button onclick="sendBookingRequest('${vendorId}', '${uniqueIndex}', '${serviceId}')"
-                                                class="btn-send-request"
-                                                style="background:#3498db; color:white; border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; cursor:pointer;">
+                                                class="btn btn-primary btn-send-request"
+                                                style="border:none; padding:0.6rem 1rem; border-radius:8px; font-weight:600; cursor:pointer;">
                                                 <i class="fas fa-paper-plane" style="margin-right:0.4rem;"></i>Send Request for ${serviceName}
                                             </button>
                                             <div class="request-status" id="request-status-${uniqueIndex}" style="display:none; padding:0.6rem; border-radius:8px;"></div>
@@ -14467,10 +14565,28 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                         <!-- Summary Footer -->
                         <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 12px; padding: 1.5rem; text-align: center; margin-top:1rem;">
-                            <div style="font-size: 1.2rem; font-weight: 700; color: #2c3e50; margin-bottom: 0.5rem;">
-                                Total Estimated Cost: <span style="color: #27ae60;">$${Math.round(totalCost).toLocaleString()}</span>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #2c3e50; margin-bottom: 0.75rem;">Estimated Cost Breakdown</div>
+                            <div style="display:flex; justify-content:center;">
+                                <div style="display:inline-block; width:100%; max-width:520px; text-align:left;">
+                                    <div style="display:flex; justify-content:space-between; padding:6px 0;">
+                                        <span>Services Subtotal</span>
+                                        <strong>$${fmt(totalCost)}</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; padding:6px 0;">
+                                        <span>Application fee (${platformFeePercent}%)</span>
+                                        <strong>$${fmt(applicationFee)}</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; padding:6px 0;">
+                                        <span>Processing fees <span style="color:#6b7280; font-weight:400;">(from Stripe)</span></span>
+                                        <strong>$${fmt(stripeFee)}</strong>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-top:2px solid #e5e7eb; margin-top:6px; font-size:1.05rem;">
+                                        <span>Estimated Grand Total</span>
+                                        <strong style="color:#27ae60;">$${fmt(grandTotal)}</strong>
+                                    </div>
+                                </div>
                             </div>
-                            <div style="font-size: 0.9rem; color: var(--text-light);">
+                            <div style="font-size: 0.9rem; color: var(--text-light); margin-top: 0.5rem;">
                                 ${totalVendorCount} vendor${totalVendorCount !== 1 ? 's' : ''} selected across ${Object.keys(globalBookingState.selectedVendorsByService || {}).length} service${Object.keys(globalBookingState.selectedVendorsByService || {}).length !== 1 ? 's' : ''}
                             </div>
                         </div>
@@ -18186,6 +18302,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             function showSetupStep(step) {
+                // Clear any previous setup modal error
+                try { const m = document.getElementById('vendor-registration-modal'); if (typeof clearModalError === 'function' && m) clearModalError(m); } catch {}
                 // Hide all steps
                 document.querySelectorAll('.setup-step').forEach(stepEl => {
                     stepEl.style.display = 'none';
@@ -21090,9 +21208,31 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Show error message
             function showError(message) {
-                vendorGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--accent)">${message}</div>`;
-                resultsTitle.textContent = "Error";
-                resultsCount.textContent = message;
+                try {
+                    // If a modal is open, render the error inside the modal instead of the main page
+                    if (typeof getVisibleModal === 'function') {
+                        const modal = getVisibleModal();
+                        if (modal) {
+                            if (modal.id === 'booking-modal' && typeof showBookingError === 'function') {
+                                showBookingError(message);
+                            } else if (typeof renderModalError === 'function') {
+                                renderModalError(modal, message);
+                            }
+                            return;
+                        }
+                    }
+                } catch (_) { /* ignore and fallback below */ }
+
+                // Fallback: update main page vendor results area
+                if (typeof vendorGrid !== 'undefined' && vendorGrid) {
+                    vendorGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--accent)">${message}</div>`;
+                }
+                if (typeof resultsTitle !== 'undefined' && resultsTitle) {
+                    resultsTitle.textContent = "Error";
+                }
+                if (typeof resultsCount !== 'undefined' && resultsCount) {
+                    resultsCount.textContent = String(message);
+                }
             }
 
             // Show dedicated vendor profile page
@@ -22545,6 +22685,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Show the dashboard modal
                 const dashboardModal = document.getElementById('dashboard-modal');
                 dashboardModal.style.display = 'flex';
+                try { if (typeof clearModalError === 'function') clearModalError(dashboardModal); } catch {}
                 document.body.style.overflow = 'hidden';
 
                 // Ensure unified dashboard container is visible
