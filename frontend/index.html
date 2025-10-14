@@ -6829,11 +6829,11 @@
                 <!-- Progress Bar -->
                 <div class="booking-progress" style="margin-bottom: 2rem;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
-                        <span class="step-indicator active" id="booking-step-indicator-1"><span class="step-number">1</span><span class="step-label">Services</span></span>
+                        <span class="step-indicator active" id="booking-step-indicator-1"><span class="step-number">1</span><span class="step-label">Categories</span></span>
                         <span class="step-indicator" id="booking-step-indicator-2"><span class="step-number">2</span><span class="step-label">Details</span></span>
-                        <span class="step-indicator" id="booking-step-indicator-3"><span class="step-number">3</span><span class="step-label">Vendors</span></span>
-                        <span class="step-indicator" id="booking-step-indicator-4"><span class="step-number">4</span><span class="step-label">Requests</span></span>
-                        <span class="step-indicator" id="booking-step-indicator-5"><span class="step-number">5</span><span class="step-label">Review</span></span>
+                        <span class="step-indicator" id="booking-step-indicator-3"><span class="step-number">3</span><span class="step-label">Services</span></span>
+                        <span class="step-indicator" id="booking-step-indicator-4"><span class="step-number">4</span><span class="step-label">Vendors</span></span>
+                        <span class="step-indicator" id="booking-step-indicator-5"><span class="step-number">5</span><span class="step-label">Requests</span></span>
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="booking-progress-fill" style="width: 20%;"></div>
@@ -6842,7 +6842,7 @@
 
                 <!-- Step 1: Service Selection -->
                 <div class="booking-step" id="booking-step-1" style="display: block;">
-                    <h4 class="form-section-title"><span class="step-number-badge">1</span>Select Your Services</h4>
+                    <h4 class="form-section-title"><span class="step-number-badge">1</span>Select Categories</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Choose the service categories you need for your event.</p>
                     
                     <div class="service-categories" id="service-categories">
@@ -6864,8 +6864,6 @@
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Enter your event information. You will select services in the next step.</p>
 
                     <div class="form-group" style="margin-bottom: 2rem;">
-                        <h5 style="margin-bottom: 1rem; color: var(--primary-color);"><i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>Event Details</h5>
-                        <div id="booking-process-label" style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 0.75rem;">Booking Now › Event Details</div>
                         <div class="form-row">
                             <div class="form-col">
                                 <div class="form-group">
@@ -6982,7 +6980,7 @@
 
                 <!-- Step 3: Selecting Service -->
                 <div class="booking-step" id="booking-step-3" style="display: none;">
-                    <h4 class="form-section-title"><span class="step-number-badge">3</span>Selecting Service</h4>
+                    <h4 class="form-section-title"><span class="step-number-badge">3</span>Select Services</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Choose from available services and set individual budgets.</p>
 
                     <div class="form-group" style="margin-bottom: 2rem;">
@@ -12376,7 +12374,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
                 // Title
                 const modalTitle = document.getElementById('booking-modal-title');
-                const stepTitles = { 1: 'Select Categories', 2: 'Event Details', 3: 'Select Services', 4: 'Choose Vendors', 5: 'Review Requests' };
+                const stepTitles = { 1: 'Select Categories', 2: 'Event Details', 3: 'Select Services', 4: 'Available Vendors', 5: 'Booking Requests' };
                 if (modalTitle) modalTitle.innerHTML = `<span class="step-number-badge">${step}</span>Step ${step} of 5: ${stepTitles[step] || 'Book Your Event'}`;
                 // State
                 window.bookingState.currentStep = step;
@@ -12517,7 +12515,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Modal close functionality
                 document.querySelector('#booking-modal .close-modal')?.addEventListener('click', closeBookingModal);
                 document.getElementById('booking-modal')?.addEventListener('click', (e) => {
-                    if (e.target.id === 'booking-modal') closeBookingModal();
+                    if (e.target.id === 'booking-modal') return;
                 });
 
                 // Notification tabs
@@ -14363,8 +14361,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Build Step 3-style horizontal cards for selected vendors
                 const vendorCardsHTML = `
                     <div style="margin-bottom: 2rem;">
-                        <h5 style="margin: 0 0 1.5rem 0; color: #2c3e50; font-weight: 600; font-size: 1.3rem;">Selected Vendors - Send Booking Requests</h5>
-
                         <!-- Per-vendor special requests are now in each card's right panel -->
 
                         <!-- Review-only styling: disable vendor card hover animations within this area -->
@@ -28255,11 +28251,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Add event listener for closing booking modal
                 const bookingModal = document.getElementById('booking-modal');
                 if (bookingModal) {
-                    bookingModal.addEventListener('click', function(e) {
-                        if (e.target === bookingModal) {
-                            closeBookingModal();
-                        }
-                    });
+                    bookingModal.addEventListener('click', function(e) {});
                 }
                 
                 // Add event listeners for booking step navigation
