@@ -6865,6 +6865,7 @@
 
                     <div class="form-group" style="margin-bottom: 2rem;">
                         <h5 style="margin-bottom: 1rem; color: var(--primary-color);"><i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>Event Details</h5>
+                        <div id="booking-process-label" style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 0.75rem;">Booking Now › Event Details</div>
                         <div class="form-row">
                             <div class="form-col">
                                 <div class="form-group">
@@ -6985,8 +6986,7 @@
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Choose from available services and set individual budgets.</p>
 
                     <div class="form-group" style="margin-bottom: 2rem;">
-                        <h5 style="margin-bottom: 1rem; color: var(--primary-color);">📋 Select Specific Services</h5>
-                        <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1rem;">Choose from available services in your selected categories and set individual budgets.</p>
+                        
 
                         <div id="predefined-services-loading" style="text-align: center; padding: 2rem; display: none;">
                             <div class="spinner"></div>
@@ -12382,6 +12382,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 window.bookingState.currentStep = step;
                 if (step === 4) updateSearchCriteriaSummary();
                 if (step === 2 || step === 3) setTimeout(drawTimeline, 0);
+                const mc = document.querySelector('#booking-modal .modal-content');
+                if (mc) { try { mc.scrollTo({ top: 0, behavior: 'smooth' }); } catch { mc.scrollTop = 0; } }
             }
 
             // Function to update search criteria summary
@@ -12777,7 +12779,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     <div id="selected-services-display" style="display: none;">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
                             <h6 style="color: var(--primary-color); margin: 0;">Selected Services & Budgets</h6>
-                            <span id="selected-services-count" style="font-size: 0.85rem; color: var(--text-light); background: #eef2ff; padding: 0.25rem 0.5rem; border-radius: 999px;">
+                            <span id="booking-selected-services-count" style="font-size: 0.85rem; color: var(--text-light); background: #eef2ff; padding: 0.25rem 0.5rem; border-radius: 999px;">
                                 0 selected
                             </span>
                         </div>
@@ -12949,7 +12951,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             function renderSelectedServices() {
                 const selectedServicesDisplay = document.getElementById('selected-services-display');
                 const selectedServicesItems = document.getElementById('selected-services-items');
-                const selectedServicesCount = document.getElementById('selected-services-count');
+                const selectedServicesCount = document.getElementById('booking-selected-services-count');
                 
                 if (bookingState.selectedPredefinedServices.length === 0) {
                     selectedServicesDisplay.style.display = 'none';
@@ -13082,7 +13084,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Budget input listeners
                 document.querySelectorAll('.service-budget-input').forEach(input => {
                     input.addEventListener('input', (e) => {
-                        const serviceId = parseInt(e.target.dataset.serviceId);
+                        const serviceId = e.target.dataset.serviceId;
                         const value = Math.max(Math.min(10000, parseInt(e.target.value) || 0));
                         
                         updateServiceBudget(serviceId, value);
@@ -13093,13 +13095,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Start/End time listeners
                 document.querySelectorAll('.service-start-time').forEach(input => {
                     input.addEventListener('change', (e) => {
-                        const serviceId = parseInt(e.target.dataset.serviceId);
+                        const serviceId = e.target.dataset.serviceId;
                         updateServiceTime(serviceId, 'startTime', e.target.value);
                     });
                 });
                 document.querySelectorAll('.service-end-time').forEach(input => {
                     input.addEventListener('change', (e) => {
-                        const serviceId = parseInt(e.target.dataset.serviceId);
+                        const serviceId = e.target.dataset.serviceId;
                         updateServiceTime(serviceId, 'endTime', e.target.value);
                     });
                 });
@@ -13107,7 +13109,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Remove button listeners
                 document.querySelectorAll('.remove-service-btn').forEach(button => {
                     button.addEventListener('click', (e) => {
-                        const serviceId = parseInt(e.target.dataset.serviceId);
+                        const btn = e.currentTarget;
+                        const serviceId = btn.dataset.serviceId;
                         removeSelectedService(serviceId);
                     });
                 });
@@ -13115,7 +13118,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Remove selected service
             function removeSelectedService(serviceId) {
-                window.bookingState.selectedPredefinedServices = bookingState.selectedPredefinedServices.filter(s => s.id !== serviceId);
+                window.bookingState.selectedPredefinedServices = bookingState.selectedPredefinedServices.filter(s => String(s.id) !== String(serviceId));
                 renderSelectedServices();
                 updateFindVendorsButton();
                 updateDropdownCounts();
@@ -13191,7 +13194,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Update individual service budget
             function updateServiceBudget(serviceId, budget) {
-                const service = bookingState.selectedPredefinedServices.find(s => s.id === serviceId);
+                const service = bookingState.selectedPredefinedServices.find(s => String(s.id) === String(serviceId));
                 if (service) {
                     service.budget = Math.max(1, Math.min(10000, budget));
                     updateSelectedServicesSummary();
@@ -13200,7 +13203,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Update service duration
             function updateServiceDuration(serviceId, duration) {
-                const service = bookingState.selectedPredefinedServices.find(s => s.id === serviceId);
+                const service = bookingState.selectedPredefinedServices.find(s => String(s.id) === String(serviceId));
                 if (service) {
                     service.duration = Math.max(15, Math.min(480, duration));
                 }
@@ -13208,7 +13211,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Update service start/end time and recompute duration
             function updateServiceTime(serviceId, field, value) {
-                const service = bookingState.selectedPredefinedServices.find(s => s.id === serviceId);
+                const service = bookingState.selectedPredefinedServices.find(s => String(s.id) === String(serviceId));
                 if (!service) return;
                 service[field] = value;
                 // If both times present, compute duration
