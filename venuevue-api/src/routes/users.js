@@ -4,7 +4,7 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
+const { sendTwoFactorCode } = require('../services/email');
 const crypto = require('crypto');
 
 // Helper functions for validation
@@ -34,32 +34,6 @@ async function ensureTwoFactorTable(pool) {
       CREATE INDEX IX_UserTwoFactorCodes_UserID ON dbo.UserTwoFactorCodes(UserID);
     END
   `);
-}
-
-function getMailer() {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
-  if (!host || !user || !pass) return null;
-  return nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
-}
-
-async function sendTwoFactorCode(email, code) {
-  const transporter = getMailer();
-  if (!transporter) {
-    console.log(`2FA code for ${email}: ${code}`);
-    return;
-  }
-  const from = process.env.SMTP_FROM || 'no-reply@venuevue.app';
-  await transporter.sendMail({
-    from,
-    to: email,
-    subject: 'Your verification code',
-    text: `Your verification code is ${code}. It expires in 10 minutes.`,
-    html: `<p>Your verification code is <b>${code}</b>. It expires in 10 minutes.</p>`
-  });
 }
 
 // User Registration
