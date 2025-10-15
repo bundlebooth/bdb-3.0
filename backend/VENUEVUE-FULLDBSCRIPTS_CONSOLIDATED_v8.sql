@@ -948,6 +948,10 @@ SELECT
     b.FullAmountPaid,
     b.AttendeeCount,
     b.SpecialRequests,
+    b.EventLocation,
+    b.EventName,
+    b.EventType,
+    b.TimeZone,
     (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS ServiceImage,
     (SELECT COUNT(*) FROM Messages m JOIN Conversations c ON m.ConversationID = c.ConversationID 
       WHERE c.BookingID = b.BookingID AND m.IsRead = 0 AND m.SenderID != b.UserID) AS UnreadMessages
@@ -976,6 +980,10 @@ SELECT
     b.FullAmountPaid,
     b.AttendeeCount,
     b.SpecialRequests,
+    b.EventLocation,
+    b.EventName,
+    b.EventType,
+    b.TimeZone,
     (SELECT COUNT(*) FROM Messages m JOIN Conversations c ON m.ConversationID = c.ConversationID 
       WHERE c.BookingID = b.BookingID AND m.IsRead = 0 AND m.SenderID = b.UserID) AS UnreadMessages,
     (SELECT TOP 1 r.Rating FROM Reviews r WHERE r.BookingID = b.BookingID) AS ReviewRating
@@ -3393,6 +3401,10 @@ BEGIN
         v.BusinessPhone AS VendorPhone,
         b.EventDate,
         b.EndDate,
+        b.EventLocation,
+        b.EventName,
+        b.EventType,
+        b.TimeZone,
         b.Status,
         b.TotalAmount,
         b.DepositAmount,
