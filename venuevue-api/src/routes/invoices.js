@@ -436,7 +436,8 @@ router.get('/user/:userId', async (req, res) => {
     const r = pool.request();
     r.input('UserID', sql.Int, parseInt(userId, 10));
     const result = await r.query(`
-      SELECT i.*, b.EventDate, b.Status AS BookingStatus, vp.BusinessName AS VendorName
+      SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone,
+             b.Status AS BookingStatus, vp.BusinessName AS VendorName
       FROM Invoices i
       INNER JOIN Bookings b ON i.BookingID = b.BookingID
       LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
@@ -458,7 +459,8 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
     const r = pool.request();
     r.input('VendorProfileID', sql.Int, parseInt(vendorProfileId, 10));
     const result = await r.query(`
-      SELECT i.*, b.EventDate, b.Status AS BookingStatus, u.Name AS ClientName
+      SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone,
+             b.Status AS BookingStatus, u.Name AS ClientName
       FROM Invoices i
       INNER JOIN Bookings b ON i.BookingID = b.BookingID
       LEFT JOIN Users u ON b.UserID = u.UserID
