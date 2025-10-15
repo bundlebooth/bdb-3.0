@@ -939,6 +939,7 @@ SELECT
     vp.BusinessName AS VendorName,
     b.ServiceID,
     s.Name AS ServiceName,
+    sc.Name AS ServiceCategory,
     b.EventDate,
     b.EndDate,
     b.Status,
@@ -957,7 +958,8 @@ SELECT
       WHERE c.BookingID = b.BookingID AND m.IsRead = 0 AND m.SenderID != b.UserID) AS UnreadMessages
 FROM Bookings b
 JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-JOIN Services s ON b.ServiceID = s.ServiceID;
+JOIN Services s ON b.ServiceID = s.ServiceID
+JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID;
 GO
 
 -- Vendor bookings view
@@ -971,6 +973,7 @@ SELECT
     u.Phone AS ClientPhone,
     b.ServiceID,
     s.Name AS ServiceName,
+    sc.Name AS ServiceCategory,
     b.EventDate,
     b.EndDate,
     b.Status,
@@ -989,7 +992,8 @@ SELECT
     (SELECT TOP 1 r.Rating FROM Reviews r WHERE r.BookingID = b.BookingID) AS ReviewRating
 FROM Bookings b
 JOIN Users u ON b.UserID = u.UserID
-JOIN Services s ON b.ServiceID = s.ServiceID;
+JOIN Services s ON b.ServiceID = s.ServiceID
+JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID;
 GO
 
 -- User favorites view
@@ -3431,6 +3435,7 @@ BEGIN
         bs.BookingServiceID,
         bs.ServiceID,
         s.Name AS ServiceName,
+        s.DurationMinutes,
         bs.AddOnID,
         sa.Name AS AddOnName,
         bs.Quantity,
