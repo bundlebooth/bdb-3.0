@@ -17,7 +17,7 @@ async function loadBookingSnapshot(pool, bookingId) {
     SELECT TOP 1 
       b.BookingID, b.UserID, b.VendorProfileID, b.EventDate, b.EndDate, b.Status,
       b.TotalAmount, b.DepositAmount, b.DepositPaid, b.FullAmountPaid,
-      b.EventName, b.EventType, b.EventLocation, b.TimeZone, b.ServiceID,
+      b.EventName, b.EventType, b.EventLocation, b.TimeZone, b.AttendeeCount, b.ServiceID,
       u.Name AS ClientName, u.Email AS ClientEmail,
       vp.BusinessName AS VendorName
     FROM Bookings b
@@ -348,7 +348,7 @@ async function getInvoiceCore(pool, invoiceId) {
   }
   // Enrich with booking/vendor/client for ease of frontend
   const bookRes = await r.query(`
-    SELECT b.BookingID, b.EventDate, b.EndDate, b.Status, b.EventName, b.EventType, b.EventLocation, b.TimeZone,
+    SELECT b.BookingID, b.EventDate, b.EndDate, b.Status, b.EventName, b.EventType, b.EventLocation, b.TimeZone, b.AttendeeCount,
            u.Name AS ClientName, u.Email AS ClientEmail, vp.BusinessName AS VendorName
     FROM Bookings b
     LEFT JOIN Users u ON b.UserID=u.UserID
@@ -436,7 +436,7 @@ router.get('/user/:userId', async (req, res) => {
     const r = pool.request();
     r.input('UserID', sql.Int, parseInt(userId, 10));
     const result = await r.query(`
-      SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone,
+      SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone, b.AttendeeCount,
              b.Status AS BookingStatus, vp.BusinessName AS VendorName
       FROM Invoices i
       INNER JOIN Bookings b ON i.BookingID = b.BookingID
@@ -444,7 +444,75 @@ router.get('/user/:userId', async (req, res) => {
       WHERE i.UserID = @UserID
       ORDER BY i.IssueDate DESC
     `);
-    res.json({ success: true, invoices: result.recordset });
+    const filled = [];
+    for (const row of (result.recordset || [])) {
+      try {
+        const out = { ...row };
+        const snap = typeof row.SnapshotJSON === 'string' ? JSON.parse(row.SnapshotJSON) : (row.SnapshotJSON || {});
+        const b = snap.booking || {};
+        // Backfill from snapshot
+        if (!out.EventName) out.EventName = b.EventName || b.eventName || null;
+        if (!out.EventType) out.EventType = b.EventType || b.eventType || null;
+        if (!out.EventLocation) out.EventLocation = b.EventLocation || b.eventLocation || null;
+        if (!out.TimeZone) out.TimeZone = b.TimeZone || b.timeZone || null;
+        if (out.AttendeeCount == null) out.AttendeeCount = (b.AttendeeCount != null ? b.AttendeeCount : b.attendeeCount != null ? b.attendeeCount : null);
+        // Compute EndDate from services if missing
+        if ((!out.EndDate || String(out.EndDate).trim() === '') && out.EventDate) {
+          const svc = Array.isArray(snap.services) ? snap.services : [];
+          const maxMin = svc.reduce((m, s) => {
+            const v = s && s.DurationMinutes != null ? parseInt(s.DurationMinutes) : NaN;
+            return isNaN(v) ? m : Math.max(m, v);
+          }, 0);
+          if (maxMin > 0) {
+            const startMs = new Date(out.EventDate).getTime();
+            out.EndDate = new Date(startMs + maxMin * 60000);
+          }
+        }
+        // If still missing core fields, try BookingRequests fallback (latest for this user/vendor)
+        if (!out.EventName || !out.EventType || !out.EventLocation || out.AttendeeCount == null || !out.TimeZone || (!out.EndDate && out.EventDate)) {
+          try {
+            const brRes = await pool.request()
+              .input('UserID', sql.Int, out.UserID)
+              .input('VendorProfileID', sql.Int, out.VendorProfileID)
+              .query(`
+                SELECT TOP 1 EventName, EventType, EventLocation, TimeZone, AttendeeCount, EventDate AS ReqEventDate,
+                               CONVERT(VARCHAR(8), EventTime, 108) AS EventTime,
+                               CONVERT(VARCHAR(8), EventEndTime, 108) AS EventEndTime,
+                               CreatedAt
+                FROM BookingRequests
+                WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+                ORDER BY CreatedAt DESC
+              `);
+            if (brRes.recordset.length) {
+              const br = brRes.recordset[0];
+              if (!out.EventName) out.EventName = br.EventName || out.EventName;
+              if (!out.EventType) out.EventType = br.EventType || out.EventType;
+              if (!out.EventLocation) out.EventLocation = br.EventLocation || out.EventLocation;
+              if (!out.TimeZone) out.TimeZone = br.TimeZone || out.TimeZone;
+              if (out.AttendeeCount == null) out.AttendeeCount = (br.AttendeeCount != null ? br.AttendeeCount : out.AttendeeCount);
+              if ((!out.EndDate || String(out.EndDate).trim() === '') && out.EventDate && (br.EventEndTime || br.EventTime)) {
+                const base = new Date(out.EventDate);
+                if (br.EventEndTime) {
+                  const [hh, mm] = String(br.EventEndTime).split(':');
+                  base.setHours(parseInt(hh || '0', 10), parseInt(mm || '0', 10), 0, 0);
+                  out.EndDate = base;
+                } else if (br.EventTime) {
+                  // fallback: +60 minutes from start time
+                  const [sh, sm] = String(br.EventTime).split(':');
+                  const start = new Date(out.EventDate);
+                  start.setHours(parseInt(sh || '0', 10), parseInt(sm || '0', 10), 0, 0);
+                  out.EndDate = new Date(start.getTime() + 60 * 60000);
+                }
+              }
+            }
+          } catch (_) { /* ignore */ }
+        }
+        filled.push(out);
+      } catch (_) {
+        filled.push(row);
+      }
+    }
+    res.json({ success: true, invoices: filled });
   } catch (err) {
     console.error('List user invoices error:', err);
     res.status(500).json({ success: false, message: 'Failed to list invoices', error: err.message });
@@ -459,7 +527,7 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
     const r = pool.request();
     r.input('VendorProfileID', sql.Int, parseInt(vendorProfileId, 10));
     const result = await r.query(`
-      SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone,
+      SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone, b.AttendeeCount,
              b.Status AS BookingStatus, u.Name AS ClientName
       FROM Invoices i
       INNER JOIN Bookings b ON i.BookingID = b.BookingID
@@ -467,7 +535,71 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
       WHERE i.VendorProfileID = @VendorProfileID
       ORDER BY i.IssueDate DESC
     `);
-    res.json({ success: true, invoices: result.recordset });
+    const filled = [];
+    for (const row of (result.recordset || [])) {
+      try {
+        const out = { ...row };
+        const snap = typeof row.SnapshotJSON === 'string' ? JSON.parse(row.SnapshotJSON) : (row.SnapshotJSON || {});
+        const b = snap.booking || {};
+        if (!out.EventName) out.EventName = b.EventName || b.eventName || null;
+        if (!out.EventType) out.EventType = b.EventType || b.eventType || null;
+        if (!out.EventLocation) out.EventLocation = b.EventLocation || b.eventLocation || null;
+        if (!out.TimeZone) out.TimeZone = b.TimeZone || b.timeZone || null;
+        if (out.AttendeeCount == null) out.AttendeeCount = (b.AttendeeCount != null ? b.AttendeeCount : b.attendeeCount != null ? b.attendeeCount : null);
+        if ((!out.EndDate || String(out.EndDate).trim() === '') && out.EventDate) {
+          const svc = Array.isArray(snap.services) ? snap.services : [];
+          const maxMin = svc.reduce((m, s) => {
+            const v = s && s.DurationMinutes != null ? parseInt(s.DurationMinutes) : NaN;
+            return isNaN(v) ? m : Math.max(m, v);
+          }, 0);
+          if (maxMin > 0) {
+            const startMs = new Date(out.EventDate).getTime();
+            out.EndDate = new Date(startMs + maxMin * 60000);
+          }
+        }
+        if (!out.EventName || !out.EventType || !out.EventLocation || out.AttendeeCount == null || !out.TimeZone || (!out.EndDate && out.EventDate)) {
+          try {
+            const brRes = await pool.request()
+              .input('UserID', sql.Int, out.UserID)
+              .input('VendorProfileID', sql.Int, out.VendorProfileID)
+              .query(`
+                SELECT TOP 1 EventName, EventType, EventLocation, TimeZone, AttendeeCount, EventDate AS ReqEventDate,
+                               CONVERT(VARCHAR(8), EventTime, 108) AS EventTime,
+                               CONVERT(VARCHAR(8), EventEndTime, 108) AS EventEndTime,
+                               CreatedAt
+                FROM BookingRequests
+                WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+                ORDER BY CreatedAt DESC
+              `);
+            if (brRes.recordset.length) {
+              const br = brRes.recordset[0];
+              if (!out.EventName) out.EventName = br.EventName || out.EventName;
+              if (!out.EventType) out.EventType = br.EventType || out.EventType;
+              if (!out.EventLocation) out.EventLocation = br.EventLocation || out.EventLocation;
+              if (!out.TimeZone) out.TimeZone = br.TimeZone || out.TimeZone;
+              if (out.AttendeeCount == null) out.AttendeeCount = (br.AttendeeCount != null ? br.AttendeeCount : out.AttendeeCount);
+              if ((!out.EndDate || String(out.EndDate).trim() === '') && out.EventDate && (br.EventEndTime || br.EventTime)) {
+                const base = new Date(out.EventDate);
+                if (br.EventEndTime) {
+                  const [hh, mm] = String(br.EventEndTime).split(':');
+                  base.setHours(parseInt(hh || '0', 10), parseInt(mm || '0', 10), 0, 0);
+                  out.EndDate = base;
+                } else if (br.EventTime) {
+                  const [sh, sm] = String(br.EventTime).split(':');
+                  const start = new Date(out.EventDate);
+                  start.setHours(parseInt(sh || '0', 10), parseInt(sm || '0', 10), 0, 0);
+                  out.EndDate = new Date(start.getTime() + 60 * 60000);
+                }
+              }
+            }
+          } catch (_) { /* ignore */ }
+        }
+        filled.push(out);
+      } catch (_) {
+        filled.push(row);
+      }
+    }
+    res.json({ success: true, invoices: filled });
   } catch (err) {
     console.error('List vendor invoices error:', err);
     res.status(500).json({ success: false, message: 'Failed to list invoices', error: err.message });
