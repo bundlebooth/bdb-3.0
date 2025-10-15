@@ -996,6 +996,53 @@ JOIN Services s ON b.ServiceID = s.ServiceID
 JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID;
 GO
 
+CREATE OR ALTER VIEW vw_InvoicesList AS
+SELECT 
+    i.InvoiceID,
+    i.InvoiceNumber,
+    i.IssueDate,
+    i.DueDate,
+    i.Status AS InvoiceStatus,
+    i.Currency,
+    i.Subtotal,
+    i.VendorExpensesTotal,
+    i.PlatformFee,
+    i.StripeFee,
+    i.TaxAmount,
+    i.TotalAmount, -- invoice total
+    i.BookingID,
+    b.UserID,
+    i.VendorProfileID,
+    b.Status AS Status, -- booking status (kept as Status for UI compatibility)
+    b.FullAmountPaid,
+    b.EventDate,
+    b.EndDate,
+    b.EventLocation,
+    b.EventName,
+    b.EventType,
+    b.TimeZone,
+    b.AttendeeCount,
+    vp.BusinessName AS VendorName,
+    u.Name AS ClientName,
+    u.Email AS ClientEmail,
+    COALESCE(
+        (
+            SELECT STRING_AGG(x.ServiceName, ', ')
+            FROM (
+                SELECT DISTINCT s2.Name AS ServiceName
+                FROM BookingServices bs
+                JOIN Services s2 ON s2.ServiceID = bs.ServiceID
+                WHERE bs.BookingID = b.BookingID
+            ) x
+        ),
+        (SELECT s3.Name FROM Services s3 WHERE s3.ServiceID = b.ServiceID)
+    ) AS ServicesSummary
+FROM Invoices i
+JOIN Bookings b ON i.BookingID = b.BookingID
+LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+LEFT JOIN Users u ON b.UserID = u.UserID;
+GO
+
 -- User favorites view
 CREATE OR ALTER VIEW vw_UserFavorites AS
 SELECT 
