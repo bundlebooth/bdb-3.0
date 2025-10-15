@@ -435,16 +435,42 @@ router.get('/user/:userId', async (req, res) => {
     const pool = await poolPromise;
     const r = pool.request();
     r.input('UserID', sql.Int, parseInt(userId, 10));
-    const result = await r.query(`
-      SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone,
-             b.Status AS BookingStatus, vp.BusinessName AS VendorName
-      FROM Invoices i
-      INNER JOIN Bookings b ON i.BookingID = b.BookingID
-      LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-      WHERE i.UserID = @UserID
-      ORDER BY i.IssueDate DESC
-    `);
-    res.json({ success: true, invoices: result.recordset });
+    let rows;
+    try {
+      const q1 = `
+        SELECT * FROM vw_InvoicesList
+        WHERE UserID = @UserID
+        ORDER BY IssueDate DESC
+      `;
+      const r1 = await r.query(q1);
+      rows = r1.recordset;
+    } catch (viewErr) {
+      const q2 = `
+        SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone,
+               b.Status AS Status, b.FullAmountPaid, vp.BusinessName AS VendorName, u.Name AS ClientName, u.Email AS ClientEmail,
+               COALESCE(
+                 (
+                   SELECT STRING_AGG(x.ServiceName, ', ')
+                   FROM (
+                     SELECT DISTINCT s2.Name AS ServiceName
+                     FROM BookingServices bs
+                     JOIN Services s2 ON s2.ServiceID = bs.ServiceID
+                     WHERE bs.BookingID = b.BookingID
+                   ) x
+                 ),
+                 (SELECT s3.Name FROM Services s3 WHERE s3.ServiceID = b.ServiceID)
+               ) AS ServicesSummary
+        FROM Invoices i
+        INNER JOIN Bookings b ON i.BookingID = b.BookingID
+        LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+        LEFT JOIN Users u ON b.UserID = u.UserID
+        WHERE i.UserID = @UserID
+        ORDER BY i.IssueDate DESC
+      `;
+      const r2 = await r.query(q2);
+      rows = r2.recordset;
+    }
+    res.json({ success: true, invoices: rows });
   } catch (err) {
     console.error('List user invoices error:', err);
     res.status(500).json({ success: false, message: 'Failed to list invoices', error: err.message });
@@ -458,16 +484,41 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
     const pool = await poolPromise;
     const r = pool.request();
     r.input('VendorProfileID', sql.Int, parseInt(vendorProfileId, 10));
-    const result = await r.query(`
-      SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone,
-             b.Status AS BookingStatus, u.Name AS ClientName
-      FROM Invoices i
-      INNER JOIN Bookings b ON i.BookingID = b.BookingID
-      LEFT JOIN Users u ON b.UserID = u.UserID
-      WHERE i.VendorProfileID = @VendorProfileID
-      ORDER BY i.IssueDate DESC
-    `);
-    res.json({ success: true, invoices: result.recordset });
+    let rows;
+    try {
+      const q1 = `
+        SELECT * FROM vw_InvoicesList
+        WHERE VendorProfileID = @VendorProfileID
+        ORDER BY IssueDate DESC
+      `;
+      const r1 = await r.query(q1);
+      rows = r1.recordset;
+    } catch (viewErr) {
+      const q2 = `
+        SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone,
+               b.Status AS Status, b.FullAmountPaid, u.Name AS ClientName,
+               COALESCE(
+                 (
+                   SELECT STRING_AGG(x.ServiceName, ', ')
+                   FROM (
+                     SELECT DISTINCT s2.Name AS ServiceName
+                     FROM BookingServices bs
+                     JOIN Services s2 ON s2.ServiceID = bs.ServiceID
+                     WHERE bs.BookingID = b.BookingID
+                   ) x
+                 ),
+                 (SELECT s3.Name FROM Services s3 WHERE s3.ServiceID = b.ServiceID)
+               ) AS ServicesSummary
+        FROM Invoices i
+        INNER JOIN Bookings b ON i.BookingID = b.BookingID
+        LEFT JOIN Users u ON b.UserID = u.UserID
+        WHERE i.VendorProfileID = @VendorProfileID
+        ORDER BY i.IssueDate DESC
+      `;
+      const r2 = await r.query(q2);
+      rows = r2.recordset;
+    }
+    res.json({ success: true, invoices: rows });
   } catch (err) {
     console.error('List vendor invoices error:', err);
     res.status(500).json({ success: false, message: 'Failed to list invoices', error: err.message });
