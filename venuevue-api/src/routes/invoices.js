@@ -124,6 +124,18 @@ router.get('/booking/:bookingId', async (req, res) => {
       billTo: { name: b.ClientName || 'Client', email: b.ClientEmail || '' },
       client: { id: b.UserID, name: b.ClientName || '' },
       vendor: { vendorProfileId: b.VendorProfileID, name: b.VendorName || '' },
+      // Expose booking fields so frontend invoices table can populate event columns
+      booking: {
+        BookingID: b.BookingID,
+        EventDate: b.EventDate,
+        EndDate: b.EndDate || null,
+        EventLocation: b.EventLocation || '',
+        EventName: b.EventName || '',
+        EventType: b.EventType || '',
+        TimeZone: b.TimeZone || '',
+        AttendeeCount: b.AttendeeCount != null ? Number(b.AttendeeCount) : null,
+        Status: b.Status
+      },
       lineItems,
       totals: {
         servicesSubtotal,
