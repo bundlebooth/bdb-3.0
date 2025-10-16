@@ -33,6 +33,7 @@
     <style>
         :root {
             --primary: #5e72e4;
+            --primary-dark: #4c60d3;
             --secondary: #f7fafc;
             --surface-bg: white;
             --accent: #ff6b6b;
@@ -9114,44 +9115,68 @@
             console.log('Local notification created successfully');
         }
         
-        // Update notification badges
+        // Update notification badges (robust: works even before currentUser is hydrated)
         async function updateNotificationBadges() {
-            if (!currentUser) return;
-            
             try {
-                // Try to get unread count from API first
-                const response = await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}/unread-count`, {
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                // Resolve userId from currentUser or JWT
+                let userId = currentUser?.id;
+                if (!userId) {
+                    const token = localStorage.getItem('token');
+                    if (token && token.split('.').length === 3 && window.atob) {
+                        try { const payload = JSON.parse(atob(token.split('.')[1])); userId = payload.userId || payload.id; } catch (_) {}
                     }
-                });
-                
-                let unreadCount = 0;
-                if (response.ok) {
-                    const data = await response.json();
-                    unreadCount = data.unreadCount || 0;
-                } else {
-                    // Fallback to local notifications
-                    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-                    unreadCount = notifications.filter(n => 
-                        (n.userId === currentUser.id || n.userId === currentUser.vendorProfileId) && !n.isRead && !n.read
-                    ).length;
                 }
-                
-                document.querySelectorAll('[id$="-notifications-badge"]').forEach(badge => {
+
+                let unreadCount = 0;
+                let BASE = '';
+                try {
+                    if (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) {
+                        BASE = API_BASE_URL;
+                    } else if (window.API_BASE_URL && /^https?:/i.test(String(window.API_BASE_URL))) {
+                        BASE = window.API_BASE_URL;
+                    } else {
+                        const loc = window.location;
+                        if (loc && /^https?:/i.test(loc.protocol)) BASE = `${loc.protocol}//${loc.host}/api`;
+                    }
+                } catch (_) {}
+                if (userId && BASE) {
+                    const response = await fetch(`${BASE}/notifications/user/${userId}/unread-count`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        unreadCount = data.unreadCount || 0;
+                    }
+                }
+
+                // Fallback to local notifications if API/userId missing or count is 0
+                if (!userId || unreadCount === 0) {
+                    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+                    const uid = userId || currentUser?.id || currentUser?.vendorProfileId;
+                    if (uid) {
+                        unreadCount = notifications.filter(n => (n.userId === uid) && !n.isRead && !n.read).length;
+                    }
+                }
+
+                document.querySelectorAll('#notifications-badge, [id$="-notifications-badge"]').forEach(badge => {
                     setCircularBadge(badge, unreadCount);
                 });
+
+                // Ensure dashboard notification icons are visible when there are unread items
+                try {
+                    const dashBtn = document.getElementById('dashboard-notifications-btn');
+                    const vendorBtn = document.getElementById('vendor-notifications-btn');
+                    if (dashBtn) dashBtn.style.display = unreadCount > 0 ? 'inline-block' : dashBtn.style.display;
+                    if (vendorBtn) vendorBtn.style.display = unreadCount > 0 ? 'inline-block' : vendorBtn.style.display;
+                } catch (_) {}
             } catch (error) {
-                console.error('Error updating notification badges:', error);
-                // Fallback to local notifications
-                const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-                const unreadCount = notifications.filter(n => 
-                    (n.userId === currentUser.id || n.userId === currentUser.vendorProfileId) && !n.isRead && !n.read
-                ).length;
-                
-                document.querySelectorAll('[id$="-notifications-badge"]').forEach(badge => {
-                    setCircularBadge(badge, unreadCount);
-                });
+                // Silent fallback — avoid console noise in production
+                try {
+                    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+                    const uid = currentUser?.id || currentUser?.vendorProfileId;
+                    const unreadCount = uid ? notifications.filter(n => (n.userId === uid) && !n.isRead && !n.read).length : 0;
+                    document.querySelectorAll('#notifications-badge, [id$="-notifications-badge"]').forEach(badge => setCircularBadge(badge, unreadCount));
+                } catch (_) {}
             }
         }
 
@@ -9192,17 +9217,17 @@
 
         // Initialize header badges on load
         document.addEventListener('DOMContentLoaded', () => {
-            updateNotificationBadges();
-            updateFavoritesBadge();
-            updateMessagesBadge();
-
-            // Ensure API_BASE_URL fallback if not set
+            // Ensure API_BASE_URL fallback if not set BEFORE fetching counts
             if (!window.API_BASE_URL) {
                 try {
                     const loc = window.location;
                     window.API_BASE_URL = `${loc.protocol}//${loc.host}/api`;
                 } catch (_) { /* ignore */ }
             }
+
+            updateNotificationBadges();
+            updateFavoritesBadge();
+            updateMessagesBadge();
 
             // If a prior navigation set this flag, open dashboard messages immediately
             try {
@@ -9472,6 +9497,8 @@
                 const isUnread = activeTab ? activeTab.dataset.tab === 'unread' : false;
                 window.loadNotifications(isUnread);
             }
+
+            // Mark all read button handler is set up in loadNotifications function
         }
 
         function hideNotificationsDropdown() {
@@ -9565,26 +9592,274 @@
                 const isUnread = !notification.IsRead && !notification.isRead;
                 const createdAt = new Date(notification.CreatedAt || notification.createdAt);
                 const timeAgo = getTimeAgo(createdAt);
+                const nid = notification.NotificationID || notification.id || '';
+                const ntype = notification.Type || notification.type || '';
+                const rtype = notification.RelatedType || notification.relatedType || '';
+                const rid = notification.RelatedID || notification.relatedId || '';
+                const actionUrl = notification.ActionURL || notification.actionUrl || '';
                 
                 return `
-                    <div class="notification-item ${isUnread ? 'unread' : ''}" 
-                         onclick="markNotificationAsRead(${notification.NotificationID || notification.id})">
+                    <div class="notification-item ${isUnread ? 'unread' : ''}"
+                         data-nid="${nid}"
+                         data-type="${ntype}"
+                         data-related-type="${rtype}"
+                         data-related-id="${rid}"
+                         data-action-url="${actionUrl}"
+                         style="cursor: pointer;">
                         <div class="notification-title">${notification.Title || notification.title}</div>
                         <div class="notification-message">${notification.Message || notification.message}</div>
                         <div class="notification-meta">
-                            <span class="notification-type ${notification.Type || notification.type}">${notification.Type || notification.type}</span>
+                            <span class="notification-type ${ntype}">${ntype}</span>
                             <span>${timeAgo}</span>
                         </div>
                     </div>
                 `;
             }).join('');
+            
+            // Add click event listeners to notification items
+            document.querySelectorAll('.notification-item').forEach(item => {
+                item.addEventListener('click', onNotificationItemClick);
+            });
+        }
+
+        function onNotificationItemClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('Notification click event triggered'); // Debug log
+            
+            const el = e.currentTarget || (e.target && e.target.closest && e.target.closest('.notification-item'));
+            if (!el) {
+                console.error('No notification element found');
+                return;
+            }
+            
+            const id = el.getAttribute('data-nid');
+            console.log('Notification ID:', id);
+            
+            // Mark notification as read
+            if (id) { 
+                try { 
+                    markNotificationAsRead(id); 
+                    // Update the UI immediately
+                    el.classList.remove('unread');
+                    console.log('Marked notification as read:', id);
+                    const activeTabEl = document.querySelector('.notification-tab.active');
+                    if (activeTabEl && activeTabEl.dataset.tab === 'unread') {
+                        const list = document.getElementById('notifications-list');
+                        el.remove();
+                        if (list && list.querySelectorAll('.notification-item').length === 0) {
+                            list.innerHTML = `
+                    <div class="empty-notifications">
+                        <i class="fas fa-bell-slash"></i>
+                        <p>No notifications found</p>
+                    </div>
+                `;
+                        }
+                    }
+                } catch(error) {
+                    console.error('Error marking notification as read:', error);
+                } 
+            }
+            
+            // Collect notification data for navigation
+            const data = {
+                id: id,
+                type: el.getAttribute('data-type') || '',
+                relatedType: el.getAttribute('data-related-type') || '',
+                relatedId: el.getAttribute('data-related-id') || '',
+                actionUrl: el.getAttribute('data-action-url') || ''
+            };
+            
+            console.log('Notification clicked with data:', data); // Debug log
+            
+            // Hide dropdown first, then navigate
+            try { 
+                hideNotificationsDropdown(); 
+                console.log('Notification dropdown hidden');
+            } catch(error) {
+                console.error('Error hiding dropdown:', error);
+            }
+            
+            // Small delay to ensure dropdown is hidden before navigation
+            setTimeout(() => {
+                console.log('Starting navigation for notification:', data);
+                navigateBasedOnNotification(data);
+            }, 100);
+        }
+
+        function navigateBasedOnNotification(n) {
+            console.log('Navigating based on notification:', n); // Debug log
+            
+            const rawType = (n.type || '').toLowerCase();
+            const relatedType = (n.relatedType || '').toLowerCase();
+            const actionUrl = n.actionUrl || '';
+            
+            // Check if displayUserDashboard function exists
+            if (!(window && typeof window.displayUserDashboard === 'function')) {
+                console.error('displayUserDashboard function not found');
+                alert('Dashboard function not available. Please refresh the page.');
+                return;
+            }
+            
+            // Ensure currentUser is available
+            if (!window.currentUser) {
+                console.error('Current user not available for navigation');
+                alert('User information not available. Please refresh the page.');
+                return;
+            }
+            
+            try {
+                if (actionUrl) {
+                    const isFull = /^https?:/i.test(actionUrl);
+                    try {
+                        const u = new URL(actionUrl, window.location.origin);
+                        const sectionParam = (u.searchParams.get('section') || '').trim() || (u.hash ? u.hash.replace('#','').trim() : '');
+                        const modeParam = (u.searchParams.get('mode') || '').trim();
+                        if (sectionParam) {
+                            const modeSel = sectionParam.startsWith('vendor-') ? 'vendor' : (modeParam === 'vendor' ? 'vendor' : (modeParam === 'client' ? 'client' : (typeof resolvePreferredMode === 'function' ? resolvePreferredMode() : ((window.currentUser && window.currentUser.isVendor) ? 'vendor' : 'client'))));
+                            console.log('Opening dashboard with mode:', modeSel, 'section:', sectionParam);
+                            window.displayUserDashboard(modeSel, sectionParam);
+                            return;
+                        }
+                    } catch (err) {
+                        console.error('Error parsing action URL:', err);
+                    }
+                    if (isFull) { window.open(actionUrl, '_blank'); return; }
+                    if (actionUrl.startsWith('#')) {
+                        const sec = actionUrl.slice(1);
+                        const modeSel = sec.startsWith('vendor-') ? 'vendor' : (typeof resolvePreferredMode === 'function' ? resolvePreferredMode() : ((window.currentUser && window.currentUser.isVendor) ? 'vendor' : 'client'));
+                        console.log('Opening dashboard with mode:', modeSel, 'section:', sec);
+                        window.displayUserDashboard(modeSel, sec);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error('Error handling action URL:', err);
+            }
+            
+            const prefMode = (typeof resolvePreferredMode === 'function') ? resolvePreferredMode() : ((window.currentUser && window.currentUser.isVendor) ? 'vendor' : 'client');
+            const typeCombo = `${rawType}|${relatedType}`;
+            
+            function routeFor(t) {
+                if (!t) return null;
+                if (t.includes('new_request') || t.includes('booking_request') || t.includes('request_received') || t.includes('request_new')) return { mode: 'vendor', section: 'vendor-requests' };
+                if (t === 'request_approved' || t.includes('booking_confirmed')) return { mode: (prefMode === 'vendor' ? 'vendor' : 'client'), section: (prefMode === 'vendor' ? 'vendor-invoices' : 'invoices') };
+                if (t === 'request_declined' || t.includes('booking_cancelled') || t.includes('booking_canceled')) return { mode: (prefMode === 'vendor' ? 'vendor' : 'client'), section: (prefMode === 'vendor' ? 'vendor-requests' : 'bookings') };
+                if (t.includes('invoice') || t.includes('payment') || t.includes('paid') || t.includes('payout') || t.includes('stripe')) return { mode: (prefMode === 'vendor' ? 'vendor' : 'client'), section: (prefMode === 'vendor' ? 'vendor-invoices' : 'invoices') };
+                if (t.includes('message') || t.includes('chat')) return { mode: (prefMode === 'vendor' ? 'vendor' : 'client'), section: (prefMode === 'vendor' ? 'vendor-messages' : 'messages') };
+                if (t.includes('review')) return { mode: (prefMode === 'vendor' ? 'vendor' : 'client'), section: (prefMode === 'vendor' ? 'vendor-requests' : 'bookings') };
+                if (t.includes('booking') || t.includes('request') || t.includes('approval') || t.includes('confirm') || t.includes('application') || t.includes('applications') || t.includes('applciation')) return { mode: (prefMode === 'vendor' ? 'vendor' : 'client'), section: (prefMode === 'vendor' ? 'vendor-requests' : 'bookings') };
+                return null;
+            }
+            
+            const mapped = routeFor(rawType) || routeFor(relatedType) || routeFor(typeCombo);
+            if (mapped) {
+                console.log('Mapped route - mode:', mapped.mode, 'section:', mapped.section);
+                try {
+                    window.displayUserDashboard(mapped.mode, mapped.section);
+                    console.log('Successfully navigated to dashboard:', mapped.mode, mapped.section);
+                } catch (error) {
+                    console.error('Error navigating to dashboard:', error);
+                    alert('Failed to open dashboard. Please try again.');
+                }
+                return;
+            }
+            
+            const vendorTypeHints = ['new_request', 'request_new', 'request_received', 'vendor', 'payout', 'stripe'];
+            const clientTypeHints = ['request_approved', 'approval', 'approved', 'invoice', 'payment', 'paid', 'booking', 'review', 'confirmed', 'confirm'];
+            const vendorTargeted = vendorTypeHints.some(k => rawType.includes(k)) || vendorTypeHints.some(k => relatedType.includes(k));
+            const clientTargeted = clientTypeHints.some(k => rawType.includes(k)) || clientTypeHints.some(k => relatedType.includes(k));
+            const targetMode = (clientTargeted ? 'client' : (vendorTargeted ? 'vendor' : prefMode));
+            const isVendor = (targetMode === 'vendor');
+            
+            if (rawType.includes('message') || relatedType.includes('message') || rawType === 'chat_initiated') {
+                const mode = isVendor ? 'vendor' : 'client';
+                const section = mode === 'vendor' ? 'vendor-messages' : 'messages';
+                console.log('Message notification - mode:', mode, 'section:', section);
+                try {
+                    window.displayUserDashboard(mode, section);
+                    console.log('Successfully navigated to messages:', mode, section);
+                } catch (error) {
+                    console.error('Error navigating to messages:', error);
+                    alert('Failed to open messages. Please try again.');
+                }
+                return;
+            }
+            
+            if (relatedType.includes('booking') || rawType.includes('booking') || rawType.includes('request') || relatedType.includes('request') || rawType.includes('approved') || rawType.includes('confirm') || rawType.includes('application') || rawType.includes('applications') || rawType.includes('applciation') || relatedType.includes('application') || relatedType.includes('applications') || relatedType.includes('applciation')) {
+                const mode = isVendor ? 'vendor' : 'client';
+                const section = isVendor ? 'vendor-requests' : 'bookings';
+                console.log('Booking/Request notification - mode:', mode, 'section:', section);
+                try {
+                    window.displayUserDashboard(mode, section);
+                    console.log('Successfully navigated to bookings/requests:', mode, section);
+                } catch (error) {
+                    console.error('Error navigating to bookings/requests:', error);
+                    alert('Failed to open bookings/requests. Please try again.');
+                }
+                return;
+            }
+            
+            if (rawType.includes('invoice') || rawType.includes('payment') || relatedType.includes('invoice') || relatedType.includes('payment')) {
+                const mode = isVendor ? 'vendor' : 'client';
+                const section = mode === 'vendor' ? 'vendor-invoices' : 'invoices';
+                console.log('Invoice/Payment notification - mode:', mode, 'section:', section);
+                try {
+                    window.displayUserDashboard(mode, section);
+                    console.log('Successfully navigated to invoices:', mode, section);
+                } catch (error) {
+                    console.error('Error navigating to invoices:', error);
+                    alert('Failed to open invoices. Please try again.');
+                }
+                return;
+            }
+            
+            // Default fallback
+            const mode = isVendor ? 'vendor' : 'client';
+            const section = mode === 'vendor' ? 'vendor-dashboard' : 'dashboard';
+            console.log('Default notification navigation - mode:', mode, 'section:', section);
+            try {
+                window.displayUserDashboard(mode, section);
+                console.log('Successfully navigated to default dashboard:', mode, section);
+            } catch (error) {
+                console.error('Error navigating to default dashboard:', error);
+                alert('Failed to open dashboard. Please try again.');
+            }
+        }
+  
+        function resolvePreferredMode() {
+            try {
+                // 1) Use explicit UI toggle state if available
+                if (typeof isVendorMode !== 'undefined') return isVendorMode ? 'vendor' : 'client';
+            } catch (_) {}
+            try {
+                // 2) Use persisted preference
+                const stored = localStorage.getItem('isVendorMode');
+                if (stored === 'true' || stored === true) return 'vendor';
+                if (stored === 'false' || stored === false) return 'client';
+            } catch (_) {}
+            // 3) Fallback to currentUser role
+            if (window.currentUser && window.currentUser.isVendor) return 'vendor';
+            return 'client';
         }
 
         async function markNotificationAsRead(notificationId) {
             if (!notificationId) return;
             
             try {
-                const response = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
+                let BASE = '';
+                try {
+                    if (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) {
+                        BASE = API_BASE_URL;
+                    } else if (window.API_BASE_URL && /^https?:/i.test(String(window.API_BASE_URL))) {
+                        BASE = window.API_BASE_URL;
+                    } else {
+                        const loc = window.location; 
+                        if (loc && /^https?:/i.test(loc.protocol)) BASE = `${loc.protocol}//${loc.host}/api`;
+                    }
+                } catch (_) {}
+                const response = await fetch(`${BASE}/notifications/${notificationId}/read`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -9592,12 +9867,20 @@
                 });
                 
                 if (response.ok) {
-                    // Update UI
-                    const notificationItem = document.querySelector(`[onclick="markNotificationAsRead(${notificationId})"]`);
+                    const notificationItem = document.querySelector(`.notification-item[data-nid="${notificationId}"]`);
                     if (notificationItem) {
                         notificationItem.classList.remove('unread');
                     }
                     updateNotificationBadges();
+                } else {
+                    const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+                    const notification = notifications.find(n => n.id === notificationId);
+                    if (notification) {
+                        notification.isRead = true;
+                        notification.read = true;
+                        localStorage.setItem('notifications', JSON.stringify(notifications));
+                        updateNotificationBadges();
+                    }
                 }
             } catch (error) {
                 console.error('Error marking notification as read:', error);
@@ -9613,36 +9896,88 @@
         }
 
         async function markAllNotificationsAsRead() {
-            if (!currentUser) return;
+            console.log('Mark All Read clicked'); // Debug log
             
-            try {
-                const response = await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}/read-all`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+            let userId = currentUser?.id;
+            if (!userId) {
+                try {
+                    const token = localStorage.getItem('token');
+                    if (token && token.split('.').length === 3 && window.atob) {
+                        const base64Url = token.split('.')[1];
+                        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                        const padded = base64 + '==='.slice((base64.length + 3) % 4);
+                        const payload = JSON.parse(atob(padded));
+                        userId = payload.userId || payload.id || payload.sub || null;
                     }
-                });
-                
-                if (response.ok) {
-                    // Reload notifications
-                    const activeTab = document.querySelector('.notification-tab.active').dataset.tab;
-                    loadNotifications(activeTab === 'unread');
-                    updateNotificationBadges();
+                } catch (_) {}
+            }
+            
+            console.log('User ID for mark all read:', userId);
+            
+            // First update the UI immediately
+            try {
+                document.querySelectorAll('.notification-item.unread').forEach(el => el.classList.remove('unread'));
+                const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+                const uid = userId || currentUser?.id || null;
+                const vid = currentUser?.vendorProfileId;
+                notifications.forEach(n => { if ((uid && n.userId === uid) || (vid && n.userId === vid) || !n.userId) { n.isRead = true; n.read = true; } });
+                localStorage.setItem('notifications', JSON.stringify(notifications));
+                // Hide read notifications in dropdown for this session
+                window.__hideReadNotifications = true;
+                updateNotificationBadges();
+            } catch (_) {}
+            
+            // Make API call to backend
+            try {
+                let BASE = '';
+                try {
+                    if (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) {
+                        BASE = API_BASE_URL;
+                    } else if (window.API_BASE_URL && /^https?:/i.test(String(window.API_BASE_URL))) {
+                        BASE = window.API_BASE_URL;
+                    } else {
+                        const loc = window.location;
+                        if (loc && /^https?:/i.test(loc.protocol)) BASE = `${loc.protocol}//${loc.host}/api`;
+                    }
+                } catch (_) {}
+                if (userId && BASE) {
+                    await fetch(`${BASE}/notifications/user/${userId}/read-all`, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        }
+                    });
                 }
             } catch (error) {
-                console.error('Error marking all notifications as read:', error);
-                // Update local storage as fallback
-                const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
-                notifications.forEach(n => {
-                    if (n.userId === currentUser.id) {
-                        n.isRead = true;
-                    }
-                });
-                localStorage.setItem('notifications', JSON.stringify(notifications));
-                updateNotificationBadges();
-                const activeTab = document.querySelector('.notification-tab.active').dataset.tab;
-                loadNotifications(activeTab === 'unread');
+                console.warn('Mark all read API failed, using local fallback:', error);
             }
+            
+            // Refresh the notifications display to clear them from view
+            try {
+                // Switch to Unread tab to ensure cleared view
+                document.querySelectorAll('.notification-tab').forEach(t => t.classList.remove('active'));
+                const unreadTab = document.querySelector('.notification-tab[data-tab="unread"]');
+                if (unreadTab) unreadTab.classList.add('active');
+
+                // Clear current list immediately for better UX
+                const listEl = document.getElementById('notifications-list');
+                if (listEl) {
+                    listEl.innerHTML = `
+                    <div class="empty-notifications">
+                        <i class="fas fa-bell-slash"></i>
+                        <p>No notifications found</p>
+                    </div>
+                `;
+                }
+
+                // Reload unread to keep state consistent
+                if (typeof loadNotifications === 'function') {
+                    loadNotifications(true);
+                }
+                
+                // Update badges to reflect the changes
+                updateNotificationBadges();
+            } catch (_) {}
         }
 
         function getTimeAgo(date) {
@@ -15824,7 +16159,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Load notifications
             async function loadNotifications(isUnreadOnly = false) {
-                if (!currentUser) return;
+                console.log('loadNotifications called with isUnreadOnly:', isUnreadOnly);
+                
+                if (!currentUser) {
+                    console.log('No current user, skipping notification load');
+                    return;
+                }
 
                 const listEl = document.getElementById('notifications-list');
                 if (listEl) {
@@ -15838,35 +16178,64 @@ document.addEventListener('DOMContentLoaded', async function() {
                 try {
                     let url = `${API_BASE_URL}/notifications/user/${currentUser.id}`;
                     if (isUnreadOnly) url += `?unreadOnly=true`;
+                    console.log('Fetching notifications from:', url);
+                    
                     const response = await fetch(url, {
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('token')}`
                         }
                     });
 
+                    console.log('Notifications API response status:', response.status);
+                    
                     if (response.ok) {
                         const data = await response.json();
-                        const items = Array.isArray(data) ? data : (data.notifications || []);
+                        console.log('Notifications API data:', data);
+                        let items = Array.isArray(data) ? data : (data.notifications || []);
+                        const hideRead = !!window.__hideReadNotifications || isUnreadOnly;
+                        if (hideRead) {
+                            items = items.filter(n => !(n.IsRead || n.isRead || n.read));
+                        }
+                        console.log('Notifications items to display:', items.length);
                         displayNotifications(items);
                         updateNotificationBadges();
                     } else {
+                        console.log('API failed, using localStorage fallback');
                         const all = JSON.parse(localStorage.getItem('notifications') || '[]').filter(n => (n.userId === currentUser.id || n.userId === currentUser.vendorProfileId));
-                        const items = isUnreadOnly ? all.filter(n => !n.isRead && !n.read) : all;
+                        const hideRead = !!window.__hideReadNotifications || isUnreadOnly;
+                        const items = hideRead ? all.filter(n => !(n.isRead || n.read || n.IsRead)) : all;
+                        console.log('LocalStorage notifications:', items.length);
                         displayNotifications(items);
                         updateNotificationBadges();
                     }
                 } catch (error) {
                     console.error('Error loading notifications, using local fallback:', error);
                     const all = JSON.parse(localStorage.getItem('notifications') || '[]').filter(n => (n.userId === currentUser.id || n.userId === currentUser.vendorProfileId));
-                    const items = isUnreadOnly ? all.filter(n => !n.isRead && !n.read) : all;
+                    const hideRead = !!window.__hideReadNotifications || isUnreadOnly;
+                    const items = hideRead ? all.filter(n => !(n.isRead || n.read || n.IsRead)) : all;
+                    console.log('Error fallback notifications:', items.length);
                     displayNotifications(items);
                     updateNotificationBadges();
                 }
 
                 const markAllBtn = document.getElementById('mark-all-read');
                 if (markAllBtn && !markAllBtn.__bound) {
-                    markAllBtn.addEventListener('click', markAllNotificationsAsRead);
+                    console.log('Binding mark all read button');
+                    markAllBtn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Mark all read button clicked');
+                        try {
+                            await markAllNotificationsAsRead();
+                        } catch (error) {
+                            console.error('Error marking all notifications as read:', error);
+                        }
+                    });
                     markAllBtn.__bound = true;
+                } else if (markAllBtn) {
+                    console.log('Mark all read button already bound');
+                } else {
+                    console.log('Mark all read button not found');
                 }
             }
             window.loadNotifications = loadNotifications;
@@ -22605,12 +22974,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             const budgetNote = (totalBudget > 0 && hasServiceAmounts && totalBudget !== subtotal)
                                 ? `<div style=\"margin-top:6px;color:#6b7280;font-size:12px;\">Budget provided: ${money(totalBudget)}</div>`
                                 : '';
-                            const box = `<div class=\"price-breakdown\" style=\"border:1px solid var(--border);border-radius:8px;padding:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04);\">
-                                <div style=\"font-weight:600;margin-bottom:6px;\">Price breakdown</div>
-                                ${rows.join('')}
-                                ${totalRow}
-                                ${budgetNote}
-                            </div>`;
+                            const box = `<div class=\"price-breakdown\" style=\"border:1px solid var(--border);border-radius:8px;padding:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04);\">`
+                                + `\n                                <div style=\"font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px;\"><i class=\"fas fa-receipt\" style=\"color:#6b7280;\"></i><span>Price breakdown</span></div>`
+                                + `\n                                ${rows.join('')}`
+                                + `\n                                ${totalRow}`
+                                + `\n                                ${budgetNote}`
+                                + `\n                            </div>`;
                             detailsRows.push(`<div class=\"request-detail-row\" style=\"grid-column: span 2;\">${box}</div>`);
                         }
                     } catch(_) {}
@@ -22707,11 +23076,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const dateText = inf.querySelector('.booking-date') ? inf.querySelector('.booking-date').textContent : '';
                         const timeText = inf.querySelector('.booking-time') ? inf.querySelector('.booking-time').textContent : '';
                         overviewHtml = `
-                          <div style="line-height:1.45;">
+                          <div style="line-height:1.5;">
                             ${name ? `<div style=\"font-weight:700;font-size:18px;color:#111827;\">${name}</div>` : ''}
-                            ${service ? `<div style=\"margin-top:2px;color:#111827;\">${service}</div>` : ''}
-                            ${location ? `<div style=\"margin-top:6px;color:#6b7280;\">${location}</div>` : ''}
-                            ${(dateText || timeText) ? `<div style=\"margin-top:6px;color:#374151;\">${[dateText,timeText].filter(Boolean).join(' • ')}</div>` : ''}
+                            ${service ? `<div style=\"margin-top:6px;color:#111827;display:flex;align-items:center;gap:8px;\"><i class=\"fas fa-briefcase\" style=\"color:#6b7280;font-size:12px;\"></i><span>${service}</span></div>` : ''}
+                            ${location ? `<div style=\"margin-top:6px;color:#6b7280;display:flex;align-items:center;gap:8px;\"><i class=\"fas fa-map-marker-alt\" style=\"font-size:12px;\"></i><span>${location}</span></div>` : ''}
+                            ${(dateText || timeText) ? `<div style=\"margin-top:6px;color:#374151;display:flex;align-items:center;gap:8px;\"><i class=\"fas fa-calendar-alt\" style=\"color:#6b7280;font-size:12px;\"></i><span>${dateText}</span></div>` : ''}
+                            ${timeText ? `<div style=\"margin-top:4px;color:#374151;display:flex;align-items:center;gap:8px;\"><i class=\"fas fa-clock\" style=\"color:#6b7280;font-size:12px;\"></i><span>${timeText}</span></div>` : ''}
                           </div>`;
                     }
                     let priceBoxHtml = '';
@@ -22728,17 +23098,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (m && m[1]) totalDisplay = m[1];
                         priceBoxHtml = priceBoxHtml.replace('dashed', 'solid');
                     }
+                    let pill = '';
                     const headerStatus = document.getElementById('booking-details-status-slot');
-                    if (headerStatus) {
-                        let pill = '';
-                        if (statusWrap) {
-                            const el = statusWrap.querySelector('.request-status-badge') || statusWrap.querySelector('.request-status');
-                            pill = el ? el.outerHTML : '';
-                        }
-                        headerStatus.innerHTML = `${pill}`;
+                    if (statusWrap) {
+                        const el = statusWrap.querySelector('.request-status-badge') || statusWrap.querySelector('.request-status');
+                        pill = el ? el.outerHTML : '';
                     }
+                    if (headerStatus) headerStatus.innerHTML = '';
                     content.innerHTML = `
-                        <div style="padding:8px 4px 0;">${overviewHtml || '<div style=\"color:#6b7280;\">No summary available.</div>'}</div>
+                        <div class="booking-details-header" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:8px 4px 0;">
+                            <div style="flex:1;min-width:0;">${overviewHtml || '<div style=\"color:#6b7280;\">No summary available.</div>'}</div>
+                            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+                                ${pill || ''}
+                                ${totalDisplay ? `<div style=\"display:flex;align-items:center;gap:8px;font-weight:700;color:#111827;\"><i class=\"fas fa-dollar-sign\" style=\"color:#6b7280;font-size:12px;\"></i><span>${totalDisplay}</span></div>` : ''}
+                            </div>
+                        </div>
                         <div class="request-details" style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">${cleanDetailsHtml}</div>
                         ${priceBoxHtml ? `<div style=\"margin-top:16px;\">${priceBoxHtml.replace('dashed','solid')}</div>` : ''}
                     `;
@@ -23105,6 +23479,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Update current displayed mode tracker
                 currentDashboardMode = isVendorMode;
             }
+            try { window.displayUserDashboard = displayUserDashboard; window.displayVendorDashboard = displayVendorDashboard; } catch (e) {}
 
             // Client Dashboard Data Loading
             async function loadClientDashboardData(section) {
@@ -23477,220 +23852,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                         </span>
                                     </div>
                                     ${shortDesc ? `<div class="vendor-description" style="margin:.5rem 0 0.25rem;color:var(--text-light);font-size:.95rem;line-height:1.4;">${shortDesc}</div>` : ''}
-                                    <div class="vendor-footer">
-                                        <div class="vendor-price" style="font-weight:600;">${priceDisplay ? `<span>Starting from</span> ${priceDisplay}` : ''}</div>
-                                        <div class="vendor-actions">
-                                            <button class="btn btn-outline save-btn" data-id="${vendorId}">Save</button>
-                                            <button class="btn btn-primary view-btn" data-id="${vendorId}">View</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                    container.innerHTML = cardsHtml;
-                    // Wire up actions to match main cards
-                    try { setupVendorCardEventListeners(); } catch {}
-                } else {
-                    container.innerHTML = '<p>No recent favorites.</p>';
-                }
-            }
-
-            function setupBookingTabs() {
-                const tabs = document.querySelectorAll('.booking-tab');
-                const tabContents = document.querySelectorAll('.booking-tab-content');
-                
-                tabs.forEach(tab => {
-                    tab.addEventListener('click', () => {
-                        // Remove active class from all tabs and contents
-                        tabs.forEach(t => t.classList.remove('active'));
-                        tabContents.forEach(content => content.classList.remove('active'));
-                        
-                        // Add active class to clicked tab
-                        tab.classList.add('active');
-                        
-                        // Show corresponding content
-                        const tabName = tab.getAttribute('data-tab');
-                        const content = document.getElementById(`${tabName}-bookings`);
-                        if (content) {
-                            content.classList.add('active');
-                        }
-                    });
-                });
-            }
-
-            async function loadAllUserBookings() {
-                const allContainer = document.getElementById('all-bookings-list');
-                const pendingContainer = document.getElementById('pending-bookings-list');
-                const acceptedContainer = document.getElementById('completed-bookings');
-                const declinedContainer = document.getElementById('declined-bookings-list');
-                const expiredContainer = document.getElementById('expired-bookings-list');
-                
-                if (allContainer) allContainer.innerHTML = '<p>Loading...</p>';
-                if (pendingContainer) pendingContainer.innerHTML = '<p>Loading...</p>';
-                if (acceptedContainer) acceptedContainer.innerHTML = '<p>Loading...</p>';
-                if (declinedContainer) declinedContainer.innerHTML = '<p>Loading...</p>';
-                if (expiredContainer) expiredContainer.innerHTML = '<p>Loading...</p>';
-                
-                // Ensure we have a currentUser (rehydrate from storage if needed)
-                if (!currentUser || !currentUser.id) {
-                    try {
-                        if (typeof getCurrentUser === 'function') {
-                            const stored = getCurrentUser();
-                            if (stored) currentUser = stored;
-                        }
-                    } catch (e) { /* no-op */ }
-                }
-                if (!currentUser || !currentUser.id) {
-                    if (allContainer) allContainer.innerHTML = '<p>Please log in to view your bookings.</p>';
-                    if (acceptedContainer) acceptedContainer.innerHTML = '<p>Please log in to view accepted bookings.</p>';
-                    return;
-                }
-                
-                try {
-                    const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                    });
-                    if (!response.ok) throw new Error('Failed to fetch all bookings');
-                    const bookings = await response.json();
-                    // Also fetch user's booking requests to merge into unified "All"
-                    let requests = [];
-                    try {
-                        const reqResp = await fetch(`${API_BASE_URL}/bookings/requests/${currentUser.id}`, {
-                            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                        });
-                        if (reqResp.ok) {
-                            const reqData = await reqResp.json();
-                            requests = reqData.requests || [];
-                        }
-                    } catch (e) { console.warn('Failed to fetch user requests for unified list:', e); }
-                    
-                    // Categorize bookings
-                    const pending = bookings.filter(b => b.Status === 'pending');
-                    const confirmed = bookings.filter(b => b.Status === 'confirmed');
-                    const declined = bookings.filter(b => b.Status === 'declined');
-                    const paid = bookings.filter(b => b.FullAmountPaid === true || b.FullAmountPaid === 1);
-
-                    // Update counts for tabs
-                    const allCountEl = document.querySelector('#all-bookings .booking-count');
-                    const pendingCountEl = document.querySelector('#pending-bookings .booking-count');
-                    const acceptedCountEl = document.querySelector('#accepted-bookings .booking-count');
-                    const declinedCountEl = document.querySelector('#declined-bookings .booking-count');
-                    const expiredCountEl = document.querySelector('#expired-bookings .booking-count');
-                    const normReq = (r) => {
-                        let s = (r.Status||r.status||'pending').toString().toLowerCase();
-                        if (s==='accepted') s='approved';
-                        if (s==='pending' && r.ExpiresAt) { const exp = new Date(r.ExpiresAt); if (!isNaN(exp) && exp <= new Date()) s='expired'; }
-                        return s;
-                    };
-                    const allItemsCount = (Array.isArray(bookings)?bookings.length:0) + (Array.isArray(requests)?requests.length:0);
-                    const pendingCount = (()=>{
-                        let c=0; (bookings||[]).forEach(b=>{ if((b.Status||'').toLowerCase()==='pending') c++; }); (requests||[]).forEach(r=>{ if(normReq(r)==='pending') c++; }); return c; })();
-                    const acceptedCount = (()=>{
-                        let c=0; (bookings||[]).forEach(b=>{ const s=(b.Status||'').toLowerCase(); if(s==='confirmed'||s==='paid') c++; }); (requests||[]).forEach(r=>{ if(normReq(r)==='approved') c++; }); return c; })();
-                    const declinedCount = (()=>{
-                        let c=0; (bookings||[]).forEach(b=>{ const s=(b.Status||'').toLowerCase(); if(s==='cancelled'||s==='rejected'||s==='declined') c++; }); (requests||[]).forEach(r=>{ if(normReq(r)==='declined') c++; }); return c; })();
-                    const expiredCount = (()=>{ let c=0; (requests||[]).forEach(r=>{ if(normReq(r)==='expired') c++; }); return c; })();
-                    if (allCountEl) allCountEl.textContent = `${allItemsCount} items`;
-                    if (pendingCountEl) pendingCountEl.textContent = `${pendingCount} requests`;
-                    if (acceptedCountEl) acceptedCountEl.textContent = `${acceptedCount} items`;
-                    if (declinedCountEl) declinedCountEl.textContent = `${declinedCount} items`;
-                    if (expiredCountEl) expiredCountEl.textContent = `${expiredCount} items`;
-
-                    // Render unified lists
-                    if (allContainer) renderUnifiedClientAll(bookings, requests, allContainer, 'all');
-                    if (pendingContainer) renderUnifiedClientAll(bookings, requests, pendingContainer, 'pending');
-                    if (acceptedContainer) renderUnifiedClientAll(bookings, requests, acceptedContainer, 'accepted');
-                    if (declinedContainer) renderUnifiedClientAll(bookings, requests, declinedContainer, 'declined');
-                    if (expiredContainer) renderUnifiedClientAll(bookings, requests, expiredContainer, 'expired');
-                    
-                } catch (error) {
-                    console.error('Error loading all user bookings:', error);
-                    if (allContainer) allContainer.innerHTML = `<p style="color:var(--accent);">Failed to load bookings: ${error.message}</p>`;
-                    if (pendingContainer) pendingContainer.innerHTML = `<p style="color:var(--accent);">Failed to load pending items.</p>`;
-                    if (acceptedContainer) acceptedContainer.innerHTML = `<p style="color:var(--accent);">Failed to load accepted items.</p>`;
-                    if (declinedContainer) declinedContainer.innerHTML = `<p style="color:var(--accent);">Failed to load declined items.</p>`;
-                    if (expiredContainer) expiredContainer.innerHTML = `<p style="color:var(--accent);">Failed to load expired items.</p>`;
-                }
-            }
-
-
-
-            async function loadUserFavoritesDashboard() {
-                const container = document.getElementById('saved-favorites');
-                container.innerHTML = '<p>Loading saved favorites...</p>';
-                try {
-                    const response = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                    });
-                    if (!response.ok) throw new Error('Failed to fetch user favorites');
-                    const favorites = await response.json();
-                    renderFavoritesList(favorites, container);
-                } catch (error) {
-                    console.error('Error loading user favorites:', error);
-                    container.innerHTML = `<p style="color:var(--accent);">Failed to load favorites: ${error.message}</p>`;
-                }
-            }
-
-            function renderFavoritesList(favorites, container) {
-                container.innerHTML = '';
-                // Ensure same grid layout as main vendor grid
-                try { container.classList.add('vendor-grid'); } catch {}
-                if (favorites && favorites.length > 0) {
-                    const cardsHtml = favorites.map(vendor => {
-                        const imageUrl = vendor.PortfolioImage || vendor.FeaturedImageURL || vendor.ImageURL || vendor.imageUrl || vendor.image || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
-                        const businessName = vendor.VendorName || vendor.BusinessName || vendor.name || 'Vendor';
-                        const isFavorite = true; // favorites list by definition
-                        const rawPrice = vendor.startingPrice ?? vendor.MinPriceNumeric ?? vendor.MinPrice ?? vendor.price ?? vendor.Price ?? vendor.minPrice ?? vendor.starting_price ?? vendor.price;
-                        let priceDisplay = '';
-                        if (rawPrice !== undefined && rawPrice !== null && rawPrice !== '') {
-                            if (typeof rawPrice === 'number') priceDisplay = `$${Math.round(rawPrice)}`;
-                            else if (typeof rawPrice === 'string') {
-                                const trimmed = rawPrice.trim();
-                                priceDisplay = trimmed.startsWith('$') ? trimmed : `$${trimmed}`;
-                            }
-                        }
-                        const descText = (vendor.Bio || vendor.bio || vendor.BusinessDescription || vendor.businessDescription || vendor.Description || vendor.description || vendor.About || vendor.about || '').toString();
-                        const shortDesc = descText.length > 140 ? `${descText.slice(0, 140)}…` : descText;
-                        const ratingRaw = vendor.averageRating ?? vendor.rating ?? '4.5';
-                        const ratingValue = (() => { const r = parseFloat(ratingRaw); return isNaN(r) ? 4.5 : r; })();
-                        const reviewCount = (() => {
-                            if (vendor.totalReviews != null) return vendor.totalReviews;
-                            if (vendor.reviewCount != null) return vendor.reviewCount;
-                            if (typeof ratingRaw === 'string') { const m = ratingRaw.match(/\((\d+)\)/); if (m) return parseInt(m[1]); }
-                            return 0;
-                        })();
-                        const locCity = vendor.City || vendor.city || '';
-                        const locState = vendor.State || vendor.state || '';
-                        const locationText = (vendor.location && vendor.location.trim()) || [locCity, locState].filter(Boolean).join(', ');
-                        const vendorId = vendor.VendorProfileID || vendor.id;
-                        const badges = [];
-                        if (vendor.isPremium) badges.push('<span class="vendor-badge premium">Premium</span>');
-                        if (vendor.isEcoFriendly) badges.push('<span class="vendor-badge eco">Eco-Friendly</span>');
-                        if (vendor.isAwardWinning) badges.push('<span class="vendor-badge award">Award Winner</span>');
-
-                        return `
-                            <div class="vendor-card">
-                                <div class="vendor-image">
-                                    <img src="${imageUrl}" alt="${businessName}" 
-                                         style="width:100%;height:100%;object-fit:cover;"
-                                         onerror="this.src='https://placehold.co/800x600/e2e8f0/718096?text=No+Image'">
-                                    <div class="vendor-favorite ${isFavorite ? 'active' : ''}" data-id="${vendorId}"><i class="fas fa-heart"></i></div>
-                                    <div class="vendor-badges" style="position: absolute; bottom: 8px; left: 8px; display: flex; gap: 6px;">
-                                        ${badges.join('')}
-                                    </div>
-                                </div>
-                                <div class="vendor-details">
-                                    <h3 class="vendor-name" style="font-size:1.1rem;">${businessName}</h3>
-                                    <div class="vendor-location" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-                                        <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${locationText || 'Location unavailable'}</span>
-                                        <span style="color:#6b7280;">•</span>
-                                        <span style="display:flex;align-items:center;gap:.5rem;">
-                                            <span style="color:#f59e0b;font-size:.9rem;">${'★'.repeat(Math.floor(ratingValue))}${'☆'.repeat(5-Math.floor(ratingValue))}</span>
-                                            <span style="font-size:.85rem;color:#6b7280;">${ratingValue.toFixed(1)} (${reviewCount})</span>
-                                        </span>
-                                    </div>
-                                    ${shortDesc ? `<div class=\"vendor-description\" style=\"margin:.5rem 0 0.25rem;color:var(--text-light);font-size:.95rem;line-height:1.4;\">${shortDesc}</div>` : ''}
                                     <div class="vendor-footer">
                                         <div class="vendor-price" style="font-weight:600;">${priceDisplay ? `<span>Starting from</span> ${priceDisplay}` : ''}</div>
                                         <div class="vendor-actions">
@@ -24946,7 +25107,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     ? `<div style=\"margin-top:6px;color:#6b7280;font-size:12px;\">Budget provided: ${money(totalBudget)}</div>`
                                     : '';
                                 const box = `<div class=\"price-breakdown\" style=\"border:1px solid var(--border);border-radius:8px;padding:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04);\">
-                                    <div style=\"font-weight:600;margin-bottom:6px;\">Price breakdown</div>
+                                    <div style=\"font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px;\"><i class=\"fas fa-receipt\" style=\"color:#6b7280;\"></i><span>Price breakdown</span></div>
                                     ${rows.join('')}
                                     ${totalRow}
                                     ${budgetNote}
