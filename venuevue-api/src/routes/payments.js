@@ -19,12 +19,13 @@ async function getInvoiceTotalsCents(bookingId) {
   try { if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') { await invoicesRouter.upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true }); } } catch (_) {}
   const r = pool.request();
   r.input('BookingID', sql.Int, bookingId);
-  const q = await r.query(`SELECT TOP 1 InvoiceID, TotalAmount, PlatformFee, StripeFee FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC`);
+  const q = await r.query(`SELECT TOP 1 InvoiceID, Subtotal, TaxAmount, TotalAmount, PlatformFee, StripeFee FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC`);
   if (!q.recordset.length) {
     // Fallback: compute totals directly from booking/services/expenses
     const pctPlatform = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
     const pctStripe = parseFloat(process.env.STRIPE_FEE_PERCENT || process.env.STRIPE_PROC_FEE_PERCENT || '2.9') / 100;
     const fixedStripe = parseFloat(process.env.STRIPE_FEE_FIXED || process.env.STRIPE_PROC_FEE_FIXED || '0.30');
+    const pctTax = parseFloat(process.env.TAX_PERCENT || '0') / 100;
 
     // Get booking core
     const b = await pool.request().input('BookingID', sql.Int, bookingId)
@@ -54,13 +55,16 @@ async function getInvoiceTotalsCents(bookingId) {
 
     const subtotal = Math.round((servicesSubtotal + expensesTotal) * 100) / 100;
     const platformFee = Math.round((subtotal * pctPlatform) * 100) / 100;
+    const taxAmount = Math.round(((subtotal + platformFee) * pctTax) * 100) / 100;
     const stripeFee = Math.round(((subtotal * pctStripe) + fixedStripe) * 100) / 100;
-    const total = Math.round((subtotal + platformFee + stripeFee) * 100) / 100;
+    const total = Math.round((subtotal + platformFee + taxAmount) * 100) / 100;
 
     return {
       totalAmountCents: Math.round(total * 100),
       platformFeeCents: Math.round(platformFee * 100),
       stripeFeeCents: Math.round(stripeFee * 100),
+      subtotalCents: Math.round(subtotal * 100),
+      taxCents: Math.round(taxAmount * 100),
       invoiceId: null
     };
   }
@@ -69,6 +73,8 @@ async function getInvoiceTotalsCents(bookingId) {
     totalAmountCents: Math.round(Number(row.TotalAmount || 0) * 100),
     platformFeeCents: Math.round(Number(row.PlatformFee || 0) * 100),
     stripeFeeCents: Math.round(Number(row.StripeFee || 0) * 100),
+    subtotalCents: Math.round(Number(row.Subtotal || 0) * 100),
+    taxCents: Math.round(Number(row.TaxAmount || 0) * 100),
     invoiceId: row.InvoiceID
   };
 }
@@ -310,6 +316,75 @@ router.get('/connect/onboard/:vendorProfileId', async (req, res) => {
       message: 'Failed to generate onboarding URL',
       error: error.message
     });
+  }
+});
+
+// 10a. GET STRIPE RECEIPT/INVOICE URL FOR A BOOKING
+router.get('/receipt/:bookingId', async (req, res) => {
+  try {
+    const bookingId = parseInt(req.params.bookingId, 10);
+    if (!Number.isInteger(bookingId)) {
+      return res.status(400).json({ success: false, message: 'Invalid bookingId' });
+    }
+    if (!hasStripeSecret()) {
+      return res.status(400).json({ success: false, message: 'Stripe is not configured' });
+    }
+
+    const pool = await poolPromise;
+    const r = pool.request();
+    r.input('BookingID', sql.Int, bookingId);
+    const qb = await r.query(`SELECT TOP 1 StripePaymentIntentID FROM Bookings WHERE BookingID=@BookingID`);
+    if (!qb.recordset.length) return res.status(404).json({ success: false, message: 'Booking not found' });
+
+    const piId = qb.recordset[0]?.StripePaymentIntentID || null;
+    let pi = null;
+    let charge = null;
+    let receiptUrl = null;
+
+    if (piId) {
+      pi = await stripe.paymentIntents.retrieve(piId, { expand: ['charges.data.balance_transaction'] });
+      const ch = pi?.charges?.data && pi.charges.data.length ? pi.charges.data[0] : null;
+      if (ch) {
+        charge = ch;
+        receiptUrl = ch.receipt_url || null;
+      }
+    }
+
+    if (!receiptUrl) {
+      const tx = await pool.request()
+        .input('BookingID', sql.Int, bookingId)
+        .query(`SELECT TOP 1 StripeChargeID FROM Transactions WHERE BookingID=@BookingID AND Status='succeeded' ORDER BY CreatedAt DESC`);
+      const chId = tx.recordset[0]?.StripeChargeID || null;
+      if (chId) {
+        charge = await stripe.charges.retrieve(chId);
+        receiptUrl = charge?.receipt_url || null;
+      }
+    }
+
+    const md = (pi && pi.metadata) || (charge && charge.metadata) || {};
+    const breakdown = {
+      subtotal_cents: md.subtotal_cents ? parseInt(md.subtotal_cents, 10) : null,
+      platform_fee_cents: md.platform_fee_cents ? parseInt(md.platform_fee_cents, 10) : null,
+      tax_cents: md.tax_cents ? parseInt(md.tax_cents, 10) : null,
+      total_cents: md.total_cents ? parseInt(md.total_cents, 10) : null,
+      tax_percent: md.tax_percent ? parseFloat(md.tax_percent) : null,
+    };
+
+    return res.json({
+      success: !!receiptUrl,
+      bookingId,
+      paymentIntentId: pi?.id || (charge?.payment_intent || null),
+      chargeId: charge?.id || null,
+      amount: (typeof (pi?.amount_received) === 'number' ? pi.amount_received : (typeof (charge?.amount) === 'number' ? charge.amount : null))?.valueOf() != null
+        ? ((pi?.amount_received ?? charge?.amount) / 100)
+        : null,
+      currency: (pi?.currency || charge?.currency || 'usd').toUpperCase(),
+      receiptUrl: receiptUrl,
+      breakdown
+    });
+  } catch (error) {
+    console.error('Receipt retrieval error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch receipt', error: error.message });
   }
 });
 
@@ -575,6 +650,7 @@ router.post('/checkout', async (req, res) => {
     const platformFeeCents = (invTotals1.platformFeeCents != null) ? invTotals1.platformFeeCents : Math.round(Math.round(amount * 100) * platformFeePercent);
     const applicationFeeCents = platformFeeCents; // platform collects only its fee; processing fee is covered by higher charge amount
     const chargeAmountCents = invTotals1.totalAmountCents || Math.round(amount * 100);
+    const taxPercentRaw = parseFloat(process.env.TAX_PERCENT || '0');
 
     // Create destination charge
     const charge = await stripe.charges.create({
@@ -590,7 +666,12 @@ router.post('/checkout', async (req, res) => {
         booking_id: bookingId,
         vendor_profile_id: vendorProfileId,
         platform_fee_percent: (platformFeePercent * 100).toString(),
-        invoice_id: invTotals1.invoiceId || ''
+        invoice_id: invTotals1.invoiceId || '',
+        subtotal_cents: String(invTotals1.subtotalCents || 0),
+        platform_fee_cents: String(platformFeeCents),
+        tax_cents: String(invTotals1.taxCents || 0),
+        total_cents: String(chargeAmountCents),
+        tax_percent: String(Number.isFinite(taxPercentRaw) ? taxPercentRaw : 0)
       }
     });
 
@@ -690,6 +771,7 @@ router.post('/payment-intent', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Unable to compute invoice total for payment' });
     }
     const applicationFee = (invTotals2.platformFeeCents != null) ? invTotals2.platformFeeCents : Math.round(amountCents * platformFeePercent);
+    const taxPercentRaw2 = parseFloat(process.env.TAX_PERCENT || '0');
 
     // Create a PaymentIntent on the platform with destination charge to the connected account
     const pi = await stripe.paymentIntents.create({
@@ -705,7 +787,12 @@ router.post('/payment-intent', async (req, res) => {
         booking_id: bookingId,
         vendor_profile_id: resolvedVendorProfileId,
         platform_fee_percent: String(platformFeePercent * 100),
-        invoice_id: invTotals2.invoiceId || ''
+        invoice_id: invTotals2.invoiceId || '',
+        subtotal_cents: String(invTotals2.subtotalCents || 0),
+        platform_fee_cents: String(applicationFee),
+        tax_cents: String(invTotals2.taxCents || 0),
+        total_cents: String(amountCents),
+        tax_percent: String(Number.isFinite(taxPercentRaw2) ? taxPercentRaw2 : 0)
       }
     });
 
@@ -814,6 +901,7 @@ router.post('/checkout-session', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Unable to compute invoice total for checkout session' });
     }
     const platformFee = (invTotals3.platformFeeCents != null) ? invTotals3.platformFeeCents : Math.round(totalAmountCents * platformFeePercent);
+    const taxPercentRaw3 = parseFloat(process.env.TAX_PERCENT || '0');
 
     // Resolve and sanitize redirect URLs
     let successRedirect = resolveToHttpUrl(successUrl, '/booking-success', req);
@@ -858,7 +946,12 @@ router.post('/checkout-session', async (req, res) => {
         metadata: {
           booking_id: bookingId,
           vendor_profile_id: vendorProfileId,
-          invoice_id: invTotals3.invoiceId || ''
+          invoice_id: invTotals3.invoiceId || '',
+          subtotal_cents: String(invTotals3.subtotalCents || 0),
+          platform_fee_cents: String(platformFee),
+          tax_cents: String(invTotals3.taxCents || 0),
+          total_cents: String(totalAmountCents),
+          tax_percent: String(Number.isFinite(taxPercentRaw3) ? taxPercentRaw3 : 0)
         }
       }
     });
