@@ -139,20 +139,21 @@ router.put('/:notificationId/read', async (req, res) => {
 router.put('/user/:userId/read-all', async (req, res) => {
   try {
     const { userId } = req.params;
-        
-    const pool = await sql.connect();
-    await pool.request()
-        .input('userId', sql.Int, userId)
-        .query(`
-            UPDATE Notifications 
-            SET IsRead = 1, ReadAt = GETDATE()
-            WHERE UserID = @userId AND IsRead = 0
-        `);
-        
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('UserID', sql.Int, parseInt(userId, 10));
+
+    await request.query(`
+      UPDATE Notifications 
+      SET IsRead = 1, ReadAt = GETDATE()
+      WHERE UserID = @UserID AND IsRead = 0
+    `);
+
     res.json({ success: true, message: 'All notifications marked as read' });
   } catch (error) {
     console.error('Error marking all notifications as read:', error);
-    res.status(500).json({ error: 'Failed to mark notifications as read' });
+    res.status(500).json({ success: false, error: 'Failed to mark notifications as read' });
   }
 });
 
