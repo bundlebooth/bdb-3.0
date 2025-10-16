@@ -7892,6 +7892,15 @@
                     .ta-right{text-align:right;}
                     .ta-center{text-align:center;}
                     .nowrap{white-space:nowrap;}
+                    .inv-actions{display:inline-flex;align-items:center;gap:4px;}
+                    .inv-actions .btn{margin:0;}
+                    /* Freeze first column (Actions) */
+                    .invoices-table th:first-child, .invoices-table td:first-child { position: sticky; left: 0; }
+                    .invoices-table thead th:first-child { z-index: 3; }
+                    .invoices-table tbody td:first-child { z-index: 2; box-shadow: 2px 0 0 var(--border, #e5e7eb); }
+                    .invoices-table tbody tr:nth-child(odd) td:first-child { background: var(--secondary, #fff); }
+                    .invoices-table tbody tr:nth-child(even) td:first-child { background: #fbfdff; }
+                    .invoices-table tbody tr:hover td:first-child { background: #f3f4f6; }
                 `;
                 document.head.appendChild(style);
                 window._invoicesTableCSSApplied = true;
@@ -8026,6 +8035,16 @@
                     })();
                     return `
                         <tr>
+                            <td class="nowrap ta-center" style="white-space:nowrap;">
+                                <div class="inv-actions">
+                                    <button class="btn btn-outline btn-sm" title="View invoice" aria-label="View invoice" onclick="openInvoiceModal('${b.BookingID}')">
+                                        <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" title="Download PDF" aria-label="Download PDF" onclick="downloadInvoiceForBooking('${b.BookingID}')">
+                                        <i class="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </td>
                             <td data-invnum="${b.BookingID}" class="nowrap" style="white-space:nowrap;color:#111827;">${invNum}</td>
                             <td class="nowrap" style="white-space:nowrap;color:#374151;">${dateStr}</td>
                             <td class="nowrap" style="white-space:nowrap;color:#111827;">${name}</td>
@@ -8038,14 +8057,6 @@
                             <td class="nowrap" style="white-space:nowrap;text-transform:capitalize;color:#374151;">${statusLabel || ''}</td>
                             <td class="ta-right nowrap" style="white-space:nowrap;color:#111827;">${total}</td>
                             <td data-invdue="${b.BookingID}" class="ta-right nowrap" style="white-space:nowrap;color:#374151;">${due}</td>
-                            <td class="nowrap" style="white-space:nowrap;">
-                                <button class="btn btn-outline btn-sm" title="View invoice" aria-label="View invoice" onclick="openInvoiceModal('${b.BookingID}')">
-                                    <i class="fa-solid fa-eye" aria-hidden="true"></i>
-                                </button>
-                                <button class="btn btn-primary btn-sm" title="Download PDF" aria-label="Download PDF" style="margin-left:8px;" onclick="downloadInvoiceForBooking('${b.BookingID}')">
-                                    <i class="fa-solid fa-download" aria-hidden="true"></i>
-                                </button>
-                            </td>
                         </tr>
                     `;
                 }).join('');
@@ -8055,6 +8066,7 @@
                         <table role="table" aria-label="Invoices" class="invoices-table">
                             <thead>
                                 <tr>
+                                    <th class="ta-center">Actions</th>
                                     <th data-sort="invoice" class="sortable">Invoice #</th>
                                     <th data-sort="date" class="sortable">Date</th>
                                     <th data-sort="name" class="sortable">Client</th>
@@ -8067,7 +8079,6 @@
                                     <th data-sort="status" class="sortable">Status</th>
                                     <th data-sort="amount" class="sortable ta-right">Amount</th>
                                     <th data-sort="due" class="sortable ta-right">Due Date</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
