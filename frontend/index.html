@@ -2029,6 +2029,54 @@
             margin-bottom: 1rem;
         }
 
+        /* Dashboard text color normalization to dark grey within modal */
+        #dashboard-modal { --text: #475569; color: var(--text) !important; }
+        #dashboard-modal .dashboard-container,
+        #dashboard-modal .dashboard-container h1,
+        #dashboard-modal .dashboard-container h2,
+        #dashboard-modal .dashboard-container h3,
+        #dashboard-modal .dashboard-container h4,
+        #dashboard-modal .dashboard-container h5,
+        #dashboard-modal .dashboard-container h6,
+        #dashboard-modal .dashboard-container p,
+        #dashboard-modal .dashboard-container .booking-day,
+        #dashboard-modal .dashboard-container .booking-client-name,
+        #dashboard-modal .dashboard-container .notification-title,
+        #dashboard-modal .dashboard-container .vendor-title,
+        #dashboard-modal .dashboard-container .preview-name,
+        #dashboard-modal .dashboard-container .btn-danger,
+        #dashboard-modal .dashboard-container .dropdown-header h5,
+        #dashboard-modal .dashboard-container .profile-dropdown .header .info .name,
+        #dashboard-modal .dashboard-container .profile-dropdown .menu a { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container .profile-dropdown .menu a:hover { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:#111827"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:#1f2937"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: #111827"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: #1f2937"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:#374151"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: #374151"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:#000"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:#000000"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: #000"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: #000000"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:black"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: black"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: rgb(0, 0, 0)"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:rgb(0,0,0)"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: rgb(17, 24, 39)"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:rgb(17,24,39)"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: rgb(31, 41, 55)"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:rgb(31,41,55)"] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: rgb(17 24 39 / "] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:rgb(17 24 39 / "] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color: rgb(31 41 55 / "] { color: var(--text) !important; }
+        #dashboard-modal .dashboard-container [style*="color:rgb(31 41 55 / "] { color: var(--text) !important; }
+        #dashboard-modal #dashboard-title,
+        #dashboard-modal .dashboard-card-title,
+        #dashboard-modal .dashboard-sidebar .logo,
+        #dashboard-modal .dashboard-sidebar .logo * { color: var(--text) !important; }
+        #dashboard-modal .modal-header h3 { color: var(--text) !important; }
+
         /* New Booking Interface Styles */
         .booking-header {
             margin-bottom: 1.5rem;
@@ -5489,9 +5537,6 @@
                         </div>
                         <div id="bookings-section" style="display: none;">
                             <div class="dashboard-card">
-                                <div class="booking-header">
-                                    <h2 class="dashboard-card-title">Bookings</h2>
-                                </div>
                                 <div class="booking-tabs">
                                     <button class="booking-tab active" data-tab="all">All</button>
                                     <button class="booking-tab" data-tab="pending">Pending</button>
@@ -5525,21 +5570,16 @@
                         </div>
                         <div id="invoices-section" style="display: none;">
                             <div class="dashboard-card">
-                                <div class="booking-header">
-                                    <h2 class="dashboard-card-title">Invoices</h2>
-                                </div>
                                 <div id="client-invoices-list"><p>Loading invoices...</p></div>
                             </div>
                         </div>
                         <div id="favorites-section" style="display: none;">
                             <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Saved Favorites</h2>
                                 <div class="vendor-grid" id="saved-favorites"><p>Loading saved favorites...</p></div>
                             </div>
                         </div>
                         <div id="messages-section" style="display: none;">
                             <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Messages</h2>
                                 <div class="chat-container">
                                     <div class="chat-messages" id="dashboard-chat-messages"><p>Loading messages...</p></div>
                                     <div class="chat-input">
@@ -5551,7 +5591,6 @@
                         </div>
                         <div id="requests-section" style="display: none;">
                             <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">My Requests</h2>
                                 <div class="requests-filter-tabs">
                                     <button class="tab-btn active" data-filter="all">All Requests</button>
                                     <button class="tab-btn" data-filter="pending">Pending</button>
@@ -5564,7 +5603,6 @@
                         </div>
                         <div id="reviews-section" style="display: none;">
                             <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">My Reviews</h2>
                                 <div id="user-reviews"><p>Loading your reviews...</p></div>
                             </div>
                         </div>
@@ -5647,12 +5685,9 @@
                         </div>
                         <div id="vendor-requests-section" style="display: none;">
                             <div class="dashboard-card">
-                                <div class="booking-header">
-                                    <h2 class="dashboard-card-title">Bookings</h2>
-                                </div>
                                 <!-- Direction tabs removed per UI preference -->
                                 <!-- Status filter tabs -->
-                                <div class="requests-filter-tabs" id="vendor-request-status-tabs" style="margin-top: .5rem;">
+                                <div class="requests-filter-tabs" id="vendor-requests-tabs" style="margin-bottom:.8rem;">
                                     <button class="tab-btn active" data-status="all">All</button>
                                     <button class="tab-btn" data-status="pending">Pending</button>
                                     <button class="tab-btn" data-status="approved">Accepted</button>
@@ -5664,15 +5699,11 @@
                         </div>
                         <div id="vendor-invoices-section" style="display: none;">
                             <div class="dashboard-card">
-                                <div class="booking-header">
-                                    <h2 class="dashboard-card-title">Invoices</h2>
-                                </div>
                                 <div id="vendor-invoices-list"><p>Loading invoices...</p></div>
                             </div>
                         </div>
                         <div id="vendor-services-section" style="display: none;">
                             <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Payment Setup</h2>
                                 <div id="stripe-connect-setup">
                                     <div class="stripe-setup-card" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px; background: #fafafa;">
                                         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
@@ -5694,13 +5725,11 @@
                                 </div>
                             </div>
                             <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Manage Services</h2>
                                 <div class="services-section" id="vendor-services"><p>Loading services...</p></div>
                             </div>
                         </div>
                         <div id="vendor-messages-section" style="display: none;">
                             <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Messages</h2>
                                 <div class="chat-container" style="height: 500px;">
                                     <div class="chat-messages" id="vendor-all-chat-messages"><p>Loading all messages...</p></div>
                                     <div class="chat-input">
@@ -5712,13 +5741,11 @@
                         </div>
                         <div id="vendor-reviews-section" style="display: none;">
                             <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Customer Reviews</h2>
                                 <div id="vendor-reviews"><p>Loading customer reviews...</p></div>
                             </div>
                         </div>
                         <div id="vendor-analytics-section" style="display: none;">
                             <div class="dashboard-card">
-                                <h2 class="dashboard-card-title">Performance Analytics</h2>
                                 <div id="analytics-charts" class="analytics-charts"><p>Loading analytics data...</p></div>
                             </div>
                         </div>
@@ -7768,19 +7795,31 @@
                 return;
             }
             try {
-                const resp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
+                // Primary: fetch invoices directly
+                const resp1 = await fetch(`${API_BASE_URL}/invoices/user/${currentUser.id}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
-                if (!resp.ok) throw new Error('Failed to fetch bookings');
-                const bookings = await resp.json();
-                const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
-                    const s = (b.Status || '').toString().toLowerCase();
-                    return s === 'confirmed' || s === 'paid' || s === 'approved';
-                }).sort((a,b) => new Date(b.EventDate) - new Date(a.EventDate));
-                renderInvoicesList(accepted, container, 'client');
+                if (!resp1.ok) throw new Error('Failed to fetch invoices');
+                const data = await resp1.json();
+                const invoices = Array.isArray(data?.invoices) ? data.invoices : [];
+                renderInvoicesList(invoices, container, 'client');
             } catch (e) {
-                console.error('loadClientInvoices error:', e);
-                if (container) container.innerHTML = `<p style="color:var(--accent);">${e.message || 'Failed to load invoices'}</p>`;
+                // Fallback: legacy bookings-based list
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (!resp.ok) throw new Error('Failed to fetch bookings');
+                    const bookings = await resp.json();
+                    const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
+                        const s = (b.Status || '').toString().toLowerCase();
+                        return s === 'confirmed' || s === 'paid' || s === 'approved';
+                    }).sort((a,b) => new Date(b.EventDate) - new Date(a.EventDate));
+                    renderInvoicesList(accepted, container, 'client');
+                } catch (e2) {
+                    console.error('loadClientInvoices error:', e2);
+                    if (container) container.innerHTML = `<p style="color:var(--accent);">${(e2 && e2.message) || 'Failed to load invoices'}</p>`;
+                }
             }
         }
 
@@ -7793,19 +7832,31 @@
                 return;
             }
             try {
-                const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
+                // Primary: fetch invoices directly
+                const resp1 = await fetch(`${API_BASE_URL}/invoices/vendor/${vendorProfileId}`, {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
-                if (!resp.ok) throw new Error('Failed to fetch vendor bookings');
-                const bookings = await resp.json();
-                const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
-                    const s = (b.Status || '').toString().toLowerCase();
-                    return s === 'confirmed' || s === 'paid' || s === 'approved';
-                }).sort((a,b) => new Date(b.EventDate) - new Date(a.EventDate));
-                renderInvoicesList(accepted, container, 'vendor');
+                if (!resp1.ok) throw new Error('Failed to fetch vendor invoices');
+                const data = await resp1.json();
+                const invoices = Array.isArray(data?.invoices) ? data.invoices : [];
+                renderInvoicesList(invoices, container, 'vendor');
             } catch (e) {
-                console.error('loadVendorInvoices error:', e);
-                if (container) container.innerHTML = `<p style="color:var(--accent);">${e.message || 'Failed to load invoices'}</p>`;
+                // Fallback: legacy bookings-based list
+                try {
+                    const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (!resp.ok) throw new Error('Failed to fetch vendor bookings');
+                    const bookings = await resp.json();
+                    const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
+                        const s = (b.Status || '').toString().toLowerCase();
+                        return s === 'confirmed' || s === 'paid' || s === 'approved';
+                    }).sort((a,b) => new Date(b.EventDate) - new Date(a.EventDate));
+                    renderInvoicesList(accepted, container, 'vendor');
+                } catch (e2) {
+                    console.error('loadVendorInvoices error:', e2);
+                    if (container) container.innerHTML = `<p style="color:var(--accent);">${(e2 && e2.message) || 'Failed to load invoices'}</p>`;
+                }
             }
         }
 
@@ -7831,7 +7882,7 @@
                 style.id = 'invoices-table-css';
                 style.textContent = `
                     .invoices-table{border-collapse:collapse;width:100%;}
-                    .invoices-table th,.invoices-table td{padding:10px 12px;border:1px solid var(--border, #e5e7eb); background: var(--secondary, #fff);} 
+                    .invoices-table th,.invoices-table td{padding:6px 8px;border:1px solid var(--border, #e5e7eb); background: var(--secondary, #fff);} 
                     .invoices-table thead th{background:#f9fafb;color:#374151;font-weight:600;position:sticky;top:0;z-index:1;}
                     .invoices-table tbody tr:nth-child(even) td{background:#fbfdff;}
                     .invoices-table tbody tr:hover td{background:#f3f4f6;}
@@ -7855,7 +7906,7 @@
             container.innerHTML = `
                 <div class="invoices-toolbar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap;">
                     <div style="display:flex;gap:8px;align-items:center;">
-                        <input id="${listId}-search" type="text" placeholder="Search by name, status, invoice #, event" style="padding:8px 10px;border:1px solid var(--border, #e5e7eb);border-radius:6px;min-width:260px;">
+                        <input id="${listId}-search" type="text" placeholder="Search by name, status, invoice #, service" style="padding:8px 10px;border:1px solid var(--border, #e5e7eb);border-radius:6px;min-width:260px;">
                         <button id="${listId}-clear" class="btn btn-outline btn-sm">Clear</button>
                     </div>
                     <div id="${listId}-count" style="color:#6b7280;font-size:.9rem;"></div>
@@ -7889,14 +7940,14 @@
                     const q = normalize(state.search);
                     arr = arr.filter(b => {
                         const name = state.viewerRole === 'vendor' ? (b.ClientName || '') : (b.VendorName || '');
-                        const status = b.Status || '';
-                        const invNum = state.meta[b.BookingID]?.invoiceNumber || '';
-                        const svc = state.meta[b.BookingID]?.servicesSummary || '';
-                        const evn = state.meta[b.BookingID]?.eventName || '';
-                        const typ = state.meta[b.BookingID]?.eventType || '';
-                        const loc = state.meta[b.BookingID]?.eventLocation || '';
-                        const tz = state.meta[b.BookingID]?.timeZone || '';
-                        const guests = (state.meta[b.BookingID]?.attendeeCount != null) ? String(state.meta[b.BookingID]?.attendeeCount) : '';
+                        const status = b.InvoiceStatus || b.Status || '';
+                        const invNum = state.meta[b.BookingID]?.invoiceNumber || b.InvoiceNumber || '';
+                        const svc = state.meta[b.BookingID]?.servicesSummary || b.ServicesSummary || '';
+                        const evn = state.meta[b.BookingID]?.eventName || b.EventName || '';
+                        const typ = state.meta[b.BookingID]?.eventType || b.EventType || '';
+                        const loc = state.meta[b.BookingID]?.eventLocation || b.EventLocation || '';
+                        const tz = state.meta[b.BookingID]?.timeZone || b.TimeZone || '';
+                        const guests = (state.meta[b.BookingID]?.attendeeCount != null) ? String(state.meta[b.BookingID]?.attendeeCount) : ((b.AttendeeCount!=null)? String(b.AttendeeCount) : '');
                         return normalize(name).includes(q) || normalize(status).includes(q) || normalize(invNum).includes(q) || normalize(svc).includes(q) || normalize(evn).includes(q) || normalize(typ).includes(q) || normalize(loc).includes(q) || normalize(tz).includes(q) || normalize(guests).includes(q);
                     });
                 }
@@ -7906,25 +7957,27 @@
                     const av = key === 'date' ? new Date(a.EventDate || 0) :
                                key === 'amount' ? Number(a.TotalAmount || 0) :
                                key === 'name' ? normalize(state.viewerRole === 'vendor' ? (a.ClientName||'') : (a.VendorName||'')) :
-                               key === 'status' ? normalize(a.Status || '') :
-                               key === 'booking' ? normalize([
-                                   state.meta[a.BookingID]?.eventName,
-                                   state.meta[a.BookingID]?.servicesSummary,
-                                   state.meta[a.BookingID]?.eventLocation
-                               ].filter(Boolean).join(' ')) :
-                               key === 'invoice' ? (state.meta[a.BookingID]?.invoiceNumber || '') :
-                               key === 'due' ? new Date(state.meta[a.BookingID]?.dueDate || 0) : new Date(a.EventDate || 0);
+                               key === 'status' ? normalize(a.InvoiceStatus || a.Status || '') :
+                               key === 'service' ? normalize(state.meta[a.BookingID]?.servicesSummary || a.ServicesSummary || '') :
+                               key === 'time' ? new Date(a.EventDate || 0) :
+                               key === 'type' ? normalize(state.meta[a.BookingID]?.eventType || a.EventType || '') :
+                               key === 'tz' ? normalize(state.meta[a.BookingID]?.timeZone || a.TimeZone || '') :
+                               key === 'location' ? normalize(state.meta[a.BookingID]?.eventLocation || a.EventLocation || '') :
+                               key === 'guests' ? Number((state.meta[a.BookingID]?.attendeeCount != null) ? state.meta[a.BookingID]?.attendeeCount : (a.AttendeeCount != null ? a.AttendeeCount : -1)) :
+                               key === 'invoice' ? (state.meta[a.BookingID]?.invoiceNumber || a.InvoiceNumber || '') :
+                               key === 'due' ? new Date(state.meta[a.BookingID]?.dueDate || a.DueDate || 0) : new Date(a.EventDate || 0);
                     const bv = key === 'date' ? new Date(b.EventDate || 0) :
                                key === 'amount' ? Number(b.TotalAmount || 0) :
                                key === 'name' ? normalize(state.viewerRole === 'vendor' ? (b.ClientName||'') : (b.VendorName||'')) :
-                               key === 'status' ? normalize(b.Status || '') :
-                               key === 'booking' ? normalize([
-                                   state.meta[b.BookingID]?.eventName,
-                                   state.meta[b.BookingID]?.servicesSummary,
-                                   state.meta[b.BookingID]?.eventLocation
-                               ].filter(Boolean).join(' ')) :
-                               key === 'invoice' ? (state.meta[b.BookingID]?.invoiceNumber || '') :
-                               key === 'due' ? new Date(state.meta[b.BookingID]?.dueDate || 0) : new Date(b.EventDate || 0);
+                               key === 'status' ? normalize(b.InvoiceStatus || b.Status || '') :
+                               key === 'service' ? normalize(state.meta[b.BookingID]?.servicesSummary || b.ServicesSummary || '') :
+                               key === 'time' ? new Date(b.EventDate || 0) :
+                               key === 'type' ? normalize(state.meta[b.BookingID]?.eventType || b.EventType || '') :
+                               key === 'tz' ? normalize(state.meta[b.BookingID]?.timeZone || b.TimeZone || '') :
+                               key === 'location' ? normalize(state.meta[b.BookingID]?.eventLocation || b.EventLocation || '') :
+                               key === 'guests' ? Number((state.meta[b.BookingID]?.attendeeCount != null) ? state.meta[b.BookingID]?.attendeeCount : (b.AttendeeCount != null ? b.AttendeeCount : -1)) :
+                               key === 'invoice' ? (state.meta[b.BookingID]?.invoiceNumber || b.InvoiceNumber || '') :
+                               key === 'due' ? new Date(state.meta[b.BookingID]?.dueDate || b.DueDate || 0) : new Date(b.EventDate || 0);
                     if (av < bv) return -1*dir;
                     if (av > bv) return 1*dir;
                     return 0;
@@ -7949,36 +8002,49 @@
                     const dateStr = eventDate ? formatDate(eventDate) : '';
                     const name = state.viewerRole === 'vendor' ? (b.ClientName || 'Client') : (b.VendorName || 'Vendor');
                     const total = (b.TotalAmount != null) ? `$${Number(b.TotalAmount).toFixed(2)}` : '';
-                    const status = (b.Status || '').toString().toLowerCase();
-                    const statusLabel = status === 'confirmed' ? 'Accepted' : (status.charAt(0).toUpperCase() + status.slice(1));
+                    const statusRaw = (b.InvoiceStatus || b.Status || '').toString().toLowerCase();
+                    const statusLabel = statusRaw === 'confirmed' ? 'Accepted' : (statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1));
                     const meta = state.meta[b.BookingID] || {};
-                    const invNum = meta.invoiceNumber || '—';
-                    const due = meta.dueDate ? formatDate(meta.dueDate) : '—';
-                    const svc = meta.servicesSummary || '—';
-                    const timeTxt = meta.eventTimeText || '';
-                    const evn = meta.eventName || '';
-                    const typ = meta.eventType || '';
-                    const loc = meta.eventLocation || '';
-                    const tz = meta.timeZone || '';
-                    const guests = (meta.attendeeCount != null) ? `${meta.attendeeCount} guests` : '';
+                    const invNum = meta.invoiceNumber || b.InvoiceNumber || '—';
+                    const due = meta.dueDate ? formatDate(meta.dueDate) : (b.DueDate ? formatDate(b.DueDate) : '—');
+                    const svc = meta.servicesSummary || b.ServicesSummary || '—';
+                    const typ = meta.eventType || b.EventType || '';
+                    const loc = meta.eventLocation || b.EventLocation || '';
+                    const tz = meta.timeZone || b.TimeZone || '';
+                    const guests = (meta.attendeeCount != null) ? `${meta.attendeeCount} guests` : ((b.AttendeeCount!=null)? `${b.AttendeeCount} guests` : '');
+                    const timeTxt = meta.eventTimeText || (() => {
+                        if (b.EventDate) {
+                            try {
+                                const bd = new Date(b.EventDate);
+                                const ed = b.EndDate ? new Date(b.EndDate) : null;
+                                const t1 = bd.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                                const t2 = ed ? ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+                                return t2 ? `${t1} – ${t2}` : `${t1}`;
+                            } catch { return ''; }
+                        }
+                        return '';
+                    })();
                     return `
                         <tr>
-                            <td class="nowrap" style="color:#374151;">${dateStr}</td>
-                            <td style="color:#111827;">${name}</td>
-                            <td data-invbook="${b.BookingID}">
-                                <div style="line-height:1.1;">
-                                    <div style="font-weight:600;color:#111827;">${evn || svc}</div>
-                                    <div style="color:#6b7280;">${[timeTxt, typ, tz].filter(Boolean).join(' • ')}</div>
-                                    <div style="color:#6b7280;">${[loc, evn ? svc : ''].filter(Boolean).join(' • ')}${guests ? ((loc || evn) ? ' • ' : '') + guests : ''}</div>
-                                </div>
-                            </td>
-                            <td style="text-transform:capitalize;color:#374151;">${statusLabel || ''}</td>
-                            <td class="ta-right" style="color:#111827;">${total}</td>
-                            <td data-invnum="${b.BookingID}" style="color:#111827;">${invNum}</td>
-                            <td data-invdue="${b.BookingID}" class="ta-right nowrap" style="color:#374151;">${due}</td>
-                            <td class="ta-right nowrap">
-                                <button class="btn btn-outline btn-sm" onclick="openInvoiceModal('${b.BookingID}')">View</button>
-                                <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="downloadInvoiceForBooking('${b.BookingID}')">Download</button>
+                            <td data-invnum="${b.BookingID}" class="nowrap" style="white-space:nowrap;color:#111827;">${invNum}</td>
+                            <td class="nowrap" style="white-space:nowrap;color:#374151;">${dateStr}</td>
+                            <td class="nowrap" style="white-space:nowrap;color:#111827;">${name}</td>
+                            <td data-invsvc="${b.BookingID}" class="nowrap" style="white-space:nowrap;color:#111827;">${svc}</td>
+                            <td data-invtime="${b.BookingID}" class="nowrap" style="white-space:nowrap;color:#6b7280;">${timeTxt}</td>
+                            <td data-invtype="${b.BookingID}" class="nowrap" style="white-space:nowrap;color:#6b7280;">${typ}</td>
+                            <td data-invtz="${b.BookingID}" class="nowrap" style="white-space:nowrap;color:#6b7280;">${tz}</td>
+                            <td data-invloc="${b.BookingID}" class="nowrap" style="white-space:nowrap;color:#6b7280;">${loc}</td>
+                            <td data-invguests="${b.BookingID}" class="ta-right nowrap" style="white-space:nowrap;color:#6b7280;">${(meta.attendeeCount!=null)? meta.attendeeCount : (b.AttendeeCount!=null? b.AttendeeCount : '')}</td>
+                            <td class="nowrap" style="white-space:nowrap;text-transform:capitalize;color:#374151;">${statusLabel || ''}</td>
+                            <td class="ta-right nowrap" style="white-space:nowrap;color:#111827;">${total}</td>
+                            <td data-invdue="${b.BookingID}" class="ta-right nowrap" style="white-space:nowrap;color:#374151;">${due}</td>
+                            <td class="nowrap" style="white-space:nowrap;">
+                                <button class="btn btn-outline btn-sm" title="View invoice" aria-label="View invoice" onclick="openInvoiceModal('${b.BookingID}')">
+                                    <i class="fa-solid fa-eye" aria-hidden="true"></i>
+                                </button>
+                                <button class="btn btn-primary btn-sm" title="Download PDF" aria-label="Download PDF" style="margin-left:8px;" onclick="downloadInvoiceForBooking('${b.BookingID}')">
+                                    <i class="fa-solid fa-download" aria-hidden="true"></i>
+                                </button>
                             </td>
                         </tr>
                     `;
@@ -7989,14 +8055,19 @@
                         <table role="table" aria-label="Invoices" class="invoices-table">
                             <thead>
                                 <tr>
+                                    <th data-sort="invoice" class="sortable">Invoice #</th>
                                     <th data-sort="date" class="sortable">Date</th>
-                                    <th data-sort="name" class="sortable">${state.viewerRole === 'vendor' ? 'Client' : 'Vendor'}</th>
-                                    <th data-sort="booking" class="sortable">Booking</th>
+                                    <th data-sort="name" class="sortable">Client</th>
+                                    <th data-sort="service" class="sortable">Service</th>
+                                    <th data-sort="time" class="sortable">Time</th>
+                                    <th data-sort="type" class="sortable">Type</th>
+                                    <th data-sort="tz" class="sortable">Timezone</th>
+                                    <th data-sort="location" class="sortable">Location</th>
+                                    <th data-sort="guests" class="sortable ta-right">Guests</th>
                                     <th data-sort="status" class="sortable">Status</th>
                                     <th data-sort="amount" class="sortable ta-right">Amount</th>
-                                    <th data-sort="invoice" class="sortable">Invoice #</th>
-                                    <th data-sort="due" class="sortable ta-right">Due date</th>
-                                    <th class="ta-right">Actions</th>
+                                    <th data-sort="due" class="sortable ta-right">Due Date</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -8019,7 +8090,6 @@
                     });
                 });
 
-                // Prefetch invoice metadata (Invoice # / Due date)
                 prefetchMeta(list);
 
                 // Update header sort indicators
@@ -8027,7 +8097,33 @@
             }
 
             async function prefetchMeta(list){
-                // Fetch for first 50 rows not in cache OR with incomplete meta to limit load
+                // Seed meta from list rows if available; then fetch remaining minimal set
+                list.forEach(b => {
+                    const existing = state.meta[b.BookingID];
+                    if (!existing) {
+                        const seeded = {
+                            invoiceNumber: b.InvoiceNumber,
+                            dueDate: b.DueDate ? new Date(b.DueDate) : null,
+                            servicesSummary: b.ServicesSummary,
+                            eventName: b.EventName,
+                            eventType: b.EventType,
+                            eventLocation: b.EventLocation,
+                            timeZone: b.TimeZone,
+                            attendeeCount: b.AttendeeCount,
+                            eventTimeText: (function(){
+                                try{
+                                    const bd = b.EventDate ? new Date(b.EventDate) : null;
+                                    const ed = b.EndDate ? new Date(b.EndDate) : null;
+                                    if (!bd) return '';
+                                    const t1 = bd.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                                    const t2 = ed ? ed.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
+                                    return t2 ? `${t1} – ${t2}` : `${t1}`;
+                                } catch { return ''; }
+                            })()
+                        };
+                        state.meta[b.BookingID] = seeded;
+                    }
+                });
                 const toFetch = list.filter(b => {
                     const m = state.meta[b.BookingID];
                     if (!m) return true;
@@ -8035,24 +8131,28 @@
                     const missingEvent = !m.eventName && !m.eventLocation && !m.eventType;
                     const missingServices = !m.servicesSummary;
                     return missingInvoice || missingEvent || missingServices;
-                }).slice(0, 50);
+                }).slice(0, 20);
                 for (const b of toFetch) {
                     try {
                         const meta = await tryFetchInvoiceMeta(b.BookingID);
                         if (meta) {
-                            state.meta[b.BookingID] = meta;
+                            state.meta[b.BookingID] = { ...state.meta[b.BookingID], ...meta };
                             const numCell = container.querySelector(`[data-invnum='${b.BookingID}']`);
                             const dueCell = container.querySelector(`[data-invdue='${b.BookingID}']`);
-                            const bookCell = container.querySelector(`[data-invbook='${b.BookingID}']`);
-                            if (numCell) numCell.textContent = meta.invoiceNumber || '—';
-                            if (dueCell) dueCell.textContent = meta.dueDate ? formatDate(meta.dueDate) : '—';
-                            if (bookCell) bookCell.innerHTML = `
-                                <div style="line-height:1.1;">
-                                    <div style="font-weight:600;color:#111827;">${meta.eventName || meta.servicesSummary || '—'}</div>
-                                    <div style="color:#6b7280;">${[meta.eventTimeText || '', meta.eventType || '', meta.timeZone || ''].filter(Boolean).join(' • ')}</div>
-                                    <div style="color:#6b7280;">${[meta.eventLocation || '', meta.eventName ? (meta.servicesSummary || '') : ''].filter(Boolean).join(' • ')}${(meta.attendeeCount!=null)? ((meta.eventLocation||meta.eventName)? ' • ' : '') + meta.attendeeCount + ' guests' : ''}</div>
-                                </div>
-                            `;
+                            const svcCell = container.querySelector(`[data-invsvc='${b.BookingID}']`);
+                            const timeCell = container.querySelector(`[data-invtime='${b.BookingID}']`);
+                            const typeCell = container.querySelector(`[data-invtype='${b.BookingID}']`);
+                            const tzCell = container.querySelector(`[data-invtz='${b.BookingID}']`);
+                            const locCell = container.querySelector(`[data-invloc='${b.BookingID}']`);
+                            const guestsCell = container.querySelector(`[data-invguests='${b.BookingID}']`);
+                            if (numCell) numCell.textContent = state.meta[b.BookingID].invoiceNumber || '—';
+                            if (dueCell) dueCell.textContent = state.meta[b.BookingID].dueDate ? formatDate(state.meta[b.BookingID].dueDate) : '—';
+                            if (svcCell) svcCell.textContent = state.meta[b.BookingID].servicesSummary || state.meta[b.BookingID].eventName || '—';
+                            if (timeCell) timeCell.textContent = state.meta[b.BookingID].eventTimeText || '';
+                            if (typeCell) typeCell.textContent = state.meta[b.BookingID].eventType || '';
+                            if (tzCell) tzCell.textContent = state.meta[b.BookingID].timeZone || '';
+                            if (locCell) locCell.textContent = state.meta[b.BookingID].eventLocation || '';
+                            if (guestsCell) guestsCell.textContent = (state.meta[b.BookingID].attendeeCount!=null) ? state.meta[b.BookingID].attendeeCount : '';
                         }
                     } catch(_) {}
                 }
