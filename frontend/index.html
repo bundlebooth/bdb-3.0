@@ -7229,6 +7229,26 @@
       </div>
     </div>
 
+    <!-- Booking Details Modal -->
+    <div id="booking-details-modal" class="modal" style="display:none;">
+      <div class="modal-content" style="max-width: 760px; width: 95%; display:flex; flex-direction:column; max-height: 90vh;">
+        <div class="modal-header">
+          <h3 id="booking-details-title">Event Details</h3>
+          <div id="booking-details-status-slot" style="margin-left:auto; display:flex; align-items:center; gap:8px; position:relative;"></div>
+          <span class="close-modal" id="booking-details-close">×</span>
+        </div>
+        <div class="modal-body" style="overflow:auto;">
+          <div id="booking-details-content"></div>
+        </div>
+        <div class="modal-footer" style="display:flex; gap:.5rem; justify-content:flex-end; padding: 12px 16px; border-top:1px solid var(--border);">
+          <button class="btn-accept" id="booking-details-accept-btn" style="display:none;">Accept</button>
+          <button class="btn-decline" id="booking-details-decline-btn" style="display:none;">Decline</button>
+          <button class="btn btn-primary" id="booking-details-reply-btn">Reply</button>
+          <button class="btn btn-outline" id="booking-details-close-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Application Script -->
     <script>
         // API base URL (global constant)
@@ -22541,10 +22561,41 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (request.SpecialRequests) pushRow('Special Requests', request.SpecialRequests, true);
                     pushRow('Respond By', expiresStr);
                     pushRow('Requested On', createdAtStr);
+                    // Price breakdown (from services or total budget)
+                    try {
+                        const money = (n) => `$${Number(n || 0).toLocaleString()}`;
+                        const items = Array.isArray(servicesList) ? servicesList : [];
+                        let rows = [];
+                        let subtotal = 0;
+                        items.forEach(s => {
+                            const name = (typeof getServiceName === 'function' ? getServiceName(s) : (s.ServiceName||s.Name||s.Title||'Service'));
+                            const amt = Number(s.budget ?? s.Budget ?? s.Price ?? s.BasePrice ?? s.FixedPrice ?? 0);
+                            if (amt > 0) {
+                                subtotal += amt;
+                                rows.push(`<div style=\"display:flex;justify-content:space-between;padding:4px 0;\"><span>${name}</span><strong>${money(amt)}</strong></div>`);
+                            }
+                        });
+                        const totalBudget = Number(request.Budget || 0);
+                        const hasServiceAmounts = subtotal > 0 && rows.length > 0;
+                        if (hasServiceAmounts || totalBudget > 0) {
+                            const total = hasServiceAmounts ? subtotal : totalBudget;
+                            const totalRow = `<div style=\"display:flex;justify-content:space-between;padding:6px 0;border-top:1px dashed var(--border);margin-top:6px;\"><span>Total</span><strong>${money(total)}</strong></div>`;
+                            const budgetNote = (totalBudget > 0 && hasServiceAmounts && totalBudget !== subtotal)
+                                ? `<div style=\"margin-top:6px;color:#6b7280;font-size:12px;\">Budget provided: ${money(totalBudget)}</div>`
+                                : '';
+                            const box = `<div class=\"price-breakdown\" style=\"border:1px solid var(--border);border-radius:8px;padding:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04);\">
+                                <div style=\"font-weight:600;margin-bottom:6px;\">Price breakdown</div>
+                                ${rows.join('')}
+                                ${totalRow}
+                                ${budgetNote}
+                            </div>`;
+                            detailsRows.push(`<div class=\"request-detail-row\" style=\"grid-column: span 2;\">${box}</div>`);
+                        }
+                    } catch(_) {}
                     const detailsHtml = detailsRows.join('');
 
                     return `
-                    <div class="booking-item has-details" data-request-id="${request.RequestID}">
+                    <div class="booking-item has-details" data-request-id="${request.RequestID}" data-user-id="${request.UserID || ''}">
                         <div class="booking-date-section">
                             <div class="booking-month">${month}</div>
                             <div class="booking-day">${day}</div>
@@ -22577,7 +22628,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 </div>
                                 ${isPending ? `<div class="request-deadline-note" style="font-size:12px; color:#6b7280; text-align:right;">${hoursRemaining > 0 ? `${hoursRemaining} ${hoursRemaining === 1 ? 'hour' : 'hours'} remaining` : 'Timer expired'}</div>` : ''}
                             </div>
-                            ${detailsHtml ? `<button class="link-btn" onclick="toggleVendorDetails(this)" style="margin-top:2px;">More info</button>` : ''}
+                            ${detailsHtml ? `<button class="link-btn" onclick="openBookingDetails(this)" style="margin-top:2px;">More info</button>` : ''}
                             <div class="actions-row" style="display:flex; align-items:center; gap:6px;">
                                 ${(direction === 'inbound' && isPending) ? `<button class="btn-accept" onclick="approveRequest(${request.RequestID})">Accept</button>` : ''}
                                 ${(direction === 'inbound' && isPending) ? `<button class="btn-decline" onclick="declineRequest(${request.RequestID})">Decline</button>` : ''}
@@ -22612,6 +22663,162 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     btn.textContent = isCollapsed ? 'More info' : 'Less info';
                 } catch (e) {
                     console.error('toggleVendorDetails error:', e);
+                }
+            }
+            
+            window.openBookingDetails = function(btn) {
+                try {
+                    const item = btn.closest('.booking-item');
+                    const modal = document.getElementById('booking-details-modal');
+                    const content = document.getElementById('booking-details-content');
+                    const titleEl = document.getElementById('booking-details-title');
+                    if (!modal || !content) return;
+                    const info = item ? item.querySelector('.booking-info') : null;
+                    const statusWrap = item ? item.querySelector('.status-col') : null;
+                    const details = item ? item.querySelector('.request-details') : null;
+                    let overviewHtml = '';
+                    if (info) {
+                        const inf = info.cloneNode(true);
+                        const name = inf.querySelector('.booking-client-name') ? inf.querySelector('.booking-client-name').textContent : '';
+                        const service = inf.querySelector('.booking-service') ? inf.querySelector('.booking-service').textContent : '';
+                        const location = inf.querySelector('.booking-location') ? inf.querySelector('.booking-location').textContent : '';
+                        const dateText = inf.querySelector('.booking-date') ? inf.querySelector('.booking-date').textContent : '';
+                        const timeText = inf.querySelector('.booking-time') ? inf.querySelector('.booking-time').textContent : '';
+                        overviewHtml = `
+                          <div style="line-height:1.45;">
+                            ${name ? `<div style=\"font-weight:700;font-size:18px;color:#111827;\">${name}</div>` : ''}
+                            ${service ? `<div style=\"margin-top:2px;color:#111827;\">${service}</div>` : ''}
+                            ${location ? `<div style=\"margin-top:6px;color:#6b7280;\">${location}</div>` : ''}
+                            ${(dateText || timeText) ? `<div style=\"margin-top:6px;color:#374151;\">${[dateText,timeText].filter(Boolean).join(' • ')}</div>` : ''}
+                          </div>`;
+                    }
+                    let priceBoxHtml = '';
+                    let cleanDetailsHtml = '<div style="color:#6b7280;">No additional details.</div>';
+                    if (details) {
+                        const clone = details.cloneNode(true);
+                        const pb = clone.querySelector('.price-breakdown');
+                        if (pb) { priceBoxHtml = pb.outerHTML; pb.remove(); }
+                        cleanDetailsHtml = clone.innerHTML;
+                    }
+                    let totalDisplay = '';
+                    if (priceBoxHtml) {
+                        const m = priceBoxHtml.match(/<span>Total<\\\/span>\s*<strong>(.*?)<\\\/strong>/);
+                        if (m && m[1]) totalDisplay = m[1];
+                        priceBoxHtml = priceBoxHtml.replace('dashed', 'solid');
+                    }
+                    const headerStatus = document.getElementById('booking-details-status-slot');
+                    if (headerStatus) {
+                        let pill = '';
+                        if (statusWrap) {
+                            const el = statusWrap.querySelector('.request-status-badge') || statusWrap.querySelector('.request-status');
+                            pill = el ? el.outerHTML : '';
+                        }
+                        headerStatus.innerHTML = `${pill}`;
+                    }
+                    content.innerHTML = `
+                        <div style="padding:8px 4px 0;">${overviewHtml || '<div style=\"color:#6b7280;\">No summary available.</div>'}</div>
+                        <div class="request-details" style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">${cleanDetailsHtml}</div>
+                        ${priceBoxHtml ? `<div style=\"margin-top:16px;\">${priceBoxHtml.replace('dashed','solid')}</div>` : ''}
+                    `;
+                    const closeIcon = document.getElementById('booking-details-close');
+                    if (closeIcon && !closeIcon._wired) { closeIcon._wired = true; closeIcon.addEventListener('click', () => { modal.style.display = 'none'; }); }
+                    const closeBtn = document.getElementById('booking-details-close-btn');
+                    if (closeBtn && !closeBtn._wired) { closeBtn._wired = true; closeBtn.addEventListener('click', () => { modal.style.display = 'none'; }); }
+                    // No header popover; price breakdown is rendered at bottom
+                    // Wire Reply button for vendors
+                    const replyBtn = document.getElementById('booking-details-reply-btn');
+                    if (replyBtn) {
+                        const isVendor = !!(window.currentUser && currentUser.isVendor);
+                        const reqId = item?.dataset?.requestId;
+                        const clientUserId = item?.dataset?.userId;
+                        replyBtn.style.display = (isVendor && reqId) ? 'inline-flex' : 'none';
+                        if (!replyBtn._wired) {
+                            replyBtn._wired = true;
+                            replyBtn.addEventListener('click', async () => {
+                                try {
+                                    if (!reqId) return;
+                                    if (!isVendor) { alert('Only vendors can reply to requests.'); return; }
+                                    const vendorProfileId = await getVendorProfileId();
+                                    let targetUserId = clientUserId || null;
+                                    if (!targetUserId) {
+                                        // Try to resolve from details markup if not provided
+                                        try { targetUserId = item?.getAttribute('data-user-id') || null; } catch (_) {}
+                                    }
+                                    if (!targetUserId) { alert('Cannot determine client user for this request.'); return; }
+                                    const msg = prompt('Write your reply to the client:');
+                                    if (!msg || !msg.trim()) return;
+                                    // 1) Check for existing conversation
+                                    let convId = null;
+                                    try {
+                                        const chk = await fetch(`${API_BASE_URL}/messages/conversation/check`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
+                                            body: JSON.stringify({ userId: Number(targetUserId), vendorProfileId: Number(vendorProfileId) })
+                                        });
+                                        if (chk.ok) {
+                                            const cd = await chk.json();
+                                            convId = cd.conversationId || null;
+                                        }
+                                    } catch(_) {}
+                                    // 2) Create if needed (without initialMessage to avoid wrong sender attribution)
+                                    if (!convId) {
+                                        const create = await fetch(`${API_BASE_URL}/messages/conversation`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
+                                            body: JSON.stringify({ userId: Number(targetUserId), vendorProfileId: Number(vendorProfileId), requestId: Number(reqId) })
+                                        });
+                                        if (!create.ok) throw new Error('Failed to start conversation');
+                                        const cr = await create.json();
+                                        convId = cr?.conversation?.ConversationID || cr?.conversationId || null;
+                                        if (!convId) throw new Error('Conversation not created');
+                                    }
+                                    // 3) Send vendor message
+                                    const send = await fetch(`${API_BASE_URL}/messages`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
+                                        body: JSON.stringify({ conversationId: Number(convId), senderId: Number(currentUser.id), content: msg.trim() })
+                                    });
+                                    if (!send.ok) throw new Error('Failed to send reply');
+                                    if (typeof showSuccess === 'function') { showSuccess('Reply sent to client.'); }
+                                    // Optionally open Messages view
+                                    if (typeof displayUserDashboard === 'function') {
+                                        const mode = (window.currentUser && currentUser.isVendor) ? 'vendor' : 'client';
+                                        const section = (mode === 'vendor') ? 'vendor-messages' : 'messages';
+                                        displayUserDashboard(mode, section);
+                                    }
+                                } catch (err) {
+                                    console.error('Reply failed:', err);
+                                    alert('Failed to send reply. Please try again.');
+                                }
+                            });
+                        }
+                    }
+                    // Wire Approve/Decline buttons for vendors if available
+                    const acceptBtn = document.getElementById('booking-details-accept-btn');
+                    const declineBtn = document.getElementById('booking-details-decline-btn');
+                    if (acceptBtn && declineBtn) {
+                        const isVendor = !!(window.currentUser && currentUser.isVendor);
+                        const reqId = item?.dataset?.requestId;
+                        const hasCardApprove = !!(item && item.querySelector('.btn-accept'));
+                        const showDecision = isVendor && reqId && hasCardApprove;
+                        acceptBtn.style.display = showDecision ? 'inline-flex' : 'none';
+                        declineBtn.style.display = showDecision ? 'inline-flex' : 'none';
+                        if (showDecision) {
+                            if (!acceptBtn._wired) {
+                                acceptBtn._wired = true;
+                                acceptBtn.addEventListener('click', async () => { try { await approveRequest(Number(reqId)); } catch(e) { console.error(e); } });
+                            }
+                            if (!declineBtn._wired) {
+                                declineBtn._wired = true;
+                                declineBtn.addEventListener('click', async () => { try { await declineRequest(Number(reqId)); } catch(e) { console.error(e); } });
+                            }
+                        }
+                    }
+                    window.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+                    if (titleEl) titleEl.textContent = 'Event Details';
+                    modal.style.display = 'flex';
+                } catch (e) {
+                    console.error('openBookingDetails error:', e);
                 }
             }
             
@@ -24631,7 +24838,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             pushRow('Time Zone', it.timeZone);
                             pushRow('Attendees', it.attendeeCount);
                             pushRow('Requested On', it.createdAt ? new Date(it.createdAt).toLocaleString() : '');
-                            moreInfoBtn = detailsRows.length ? `<button class=\"link-btn\" onclick=\"toggleVendorDetails(this)\" style=\"margin-top:2px;\">More info</button>` : '';
+                            moreInfoBtn = detailsRows.length ? `<button class=\"link-btn\" onclick=\"openBookingDetails(this)\" style=\"margin-top:2px;\">More info</button>` : '';
                         } else {
                             // Client view of requests sent to vendors - match vendor card
                             let hoursRemaining = 0;
@@ -24684,10 +24891,48 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             if (it.specialRequests) pushRow('Special Requests', it.specialRequests, true);
                             pushRow('Respond By', it.expiresAt ? new Date(it.expiresAt).toLocaleString() : '');
                             pushRow('Requested On', it.createdAt ? new Date(it.createdAt).toLocaleString() : '');
-                            moreInfoBtn = detailsRows.length ? `<button class=\"link-btn\" onclick=\"toggleVendorDetails(this)\" style=\"margin-top:2px;\">More info</button>` : '';
+                            moreInfoBtn = detailsRows.length ? `<button class=\"link-btn\" onclick=\"openBookingDetails(this)\" style=\"margin-top:2px;\">More info</button>` : '';
                         }
 
-                        const detailsHtml = detailsRows.join('');
+                        // Price breakdown (client view of requests)
+                        let priceBreakdownBlock = '';
+                        try {
+                            const money = (n) => `$${Number(n || 0).toLocaleString()}`;
+                            let svc = [];
+                            if (typeof it.servicesRaw === 'string') {
+                                const parsed = JSON.parse(it.servicesRaw);
+                                svc = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.services) ? parsed.services : []);
+                            } else if (Array.isArray(it.servicesRaw)) {
+                                svc = it.servicesRaw;
+                            }
+                            let rows = [];
+                            let subtotal = 0;
+                            svc.forEach(s => {
+                                const name = (s.ServiceName||s.Name||s.name||s.service||s.Service||s.Title||s.title||'Service');
+                                const amt = Number(s.budget ?? s.Budget ?? s.Price ?? s.BasePrice ?? s.FixedPrice ?? 0);
+                                if (amt > 0) {
+                                    subtotal += amt;
+                                    rows.push(`<div style=\"display:flex;justify-content:space-between;padding:4px 0;\"><span>${name}</span><strong>${money(amt)}</strong></div>`);
+                                }
+                            });
+                            const totalBudget = Number(it.budget || 0);
+                            const hasServiceAmounts = subtotal > 0 && rows.length > 0;
+                            if (hasServiceAmounts || totalBudget > 0) {
+                                const total = hasServiceAmounts ? subtotal : totalBudget;
+                                const totalRow = `<div style=\"display:flex;justify-content:space-between;padding:6px 0;border-top:1px dashed var(--border);margin-top:6px;\"><span>Total</span><strong>${money(total)}</strong></div>`;
+                                const budgetNote = (totalBudget > 0 && hasServiceAmounts && totalBudget !== subtotal)
+                                    ? `<div style=\"margin-top:6px;color:#6b7280;font-size:12px;\">Budget provided: ${money(totalBudget)}</div>`
+                                    : '';
+                                const box = `<div class=\"price-breakdown\" style=\"border:1px solid var(--border);border-radius:8px;padding:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04);\">
+                                    <div style=\"font-weight:600;margin-bottom:6px;\">Price breakdown</div>
+                                    ${rows.join('')}
+                                    ${totalRow}
+                                    ${budgetNote}
+                                </div>`;
+                                priceBreakdownBlock = `<div class=\"request-detail-row\" style=\"grid-column: span 2;\">${box}</div>`;
+                            }
+                        } catch(_) {}
+                        const detailsHtml = detailsRows.join('') + priceBreakdownBlock;
                         const middleInfoHtml = `
                             <div class=\"booking-client\" style=\"gap:6px; margin-bottom: 0;\"><i class=\"fas fa-store\" style=\"color:#6b7280;font-size:12px;\"></i><span class=\"booking-client-name\" style=\"font-size:16px; font-weight:700; color:#111827;\">${it.vendorName || 'Vendor'}</span></div>
                             ${displayService ? `<div class=\"booking-service-row\"><span class=\"booking-service\">${displayService}</span></div>` : ''}
