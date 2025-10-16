@@ -3,6 +3,7 @@ const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const invoicesRouter = require('./invoices');
 
 // Create a new booking
 router.post('/', async (req, res) => {
@@ -116,9 +117,8 @@ router.post('/:id/payment', async (req, res) => {
 router.post('/create-payment-intent', async (req, res) => {
   try {
     const { amount, currency = 'usd', vendorProfileId, bookingId, description } = req.body;
-
-    if (!amount) {
-      return res.status(400).json({ success: false, message: 'Amount is required' });
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: 'bookingId is required' });
     }
 
     // Resolve vendor profile ID from request or booking
@@ -153,12 +153,16 @@ router.post('/create-payment-intent', async (req, res) => {
         });
       }
 
-      // Calculate platform fee (default 5%) in cents
-      const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
-      const platformFee = Math.round(Math.round(amount * 100) * platformFeePercent);
+      // Ensure invoice exists and compute totals (subtotal + platform + tax)
+      try { if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') { await invoicesRouter.upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true }); } } catch (_) {}
+      const invRes = await pool.request().input('BookingID', sql.Int, bookingId)
+        .query(`SELECT TOP 1 InvoiceID, TotalAmount, PlatformFee, Subtotal, TaxAmount FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC`);
+      const invRow = invRes.recordset[0] || {};
+      const amountCents = Math.round(Number(invRow.TotalAmount != null ? invRow.TotalAmount : amount) * 100);
+      const platformFee = Math.round(Number(invRow.PlatformFee || 0) * 100);
 
       paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount * 100),
+        amount: amountCents,
         currency: currency,
         description: description || (bookingId ? `Booking Payment #${bookingId}` : undefined),
         application_fee_amount: platformFee,
@@ -168,7 +172,11 @@ router.post('/create-payment-intent', async (req, res) => {
         metadata: {
           booking_id: bookingId || null,
           vendor_profile_id: resolvedVendorProfileId,
-          platform_fee_percent: (platformFeePercent * 100).toString()
+          invoice_id: invRow.InvoiceID || '',
+          subtotal_cents: String(Math.round(Number(invRow.Subtotal || 0) * 100)),
+          platform_fee_cents: String(platformFee),
+          tax_cents: String(Math.round(Number(invRow.TaxAmount || 0) * 100)),
+          total_cents: String(amountCents)
         },
       });
     } else {
