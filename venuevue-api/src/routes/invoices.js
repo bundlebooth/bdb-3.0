@@ -446,9 +446,26 @@ router.get('/user/:userId', async (req, res) => {
       rows = r1.recordset;
     } catch (viewErr) {
       const q2 = `
-        SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone,
+        SELECT i.*,
+               COALESCE(
+                 CASE WHEN svc.ServiceStartTime IS NOT NULL AND br.EventDate IS NOT NULL
+                      THEN CAST(CONVERT(VARCHAR(10), br.EventDate, 120) + ' ' + CONVERT(VARCHAR(8), svc.ServiceStartTime, 108) AS DATETIME) END,
+                 b.EventDate,
+                 CASE WHEN br.EventDate IS NOT NULL THEN CAST(CONVERT(VARCHAR(10), br.EventDate, 120) + ' ' + ISNULL(CONVERT(VARCHAR(8), br.EventTime, 108), '00:00:00') AS DATETIME) ELSE NULL END
+               ) AS EventDate,
+               COALESCE(
+                 CASE WHEN svc.ServiceEndTime IS NOT NULL AND br.EventDate IS NOT NULL
+                      THEN CAST(CONVERT(VARCHAR(10), br.EventDate, 120) + ' ' + CONVERT(VARCHAR(8), svc.ServiceEndTime, 108) AS DATETIME) END,
+                 b.EndDate,
+                 CASE WHEN br.EventDate IS NOT NULL THEN CAST(CONVERT(VARCHAR(10), br.EventDate, 120) + ' ' + ISNULL(CONVERT(VARCHAR(8), br.EventEndTime, 108), ISNULL(CONVERT(VARCHAR(8), br.EventTime, 108), '00:00:00')) AS DATETIME) ELSE NULL END
+               ) AS EndDate,
+               COALESCE(b.EventLocation, br.EventLocation) AS EventLocation,
+               COALESCE(b.EventName, br.EventName) AS EventName,
+               COALESCE(b.EventType, br.EventType) AS EventType,
+               COALESCE(b.TimeZone, br.TimeZone) AS TimeZone,
                b.Status AS Status, b.FullAmountPaid, vp.BusinessName AS VendorName, u.Name AS ClientName, u.Email AS ClientEmail,
                COALESCE(
+                 svc.ServiceNames,
                  (
                    SELECT STRING_AGG(x.ServiceName, ', ')
                    FROM (
@@ -462,6 +479,39 @@ router.get('/user/:userId', async (req, res) => {
                ) AS ServicesSummary
         FROM Invoices i
         INNER JOIN Bookings b ON i.BookingID = b.BookingID
+        LEFT JOIN BookingRequests br
+          ON br.PaymentIntentID = b.StripePaymentIntentID
+         AND br.UserID = b.UserID
+         AND br.VendorProfileID = b.VendorProfileID
+        OUTER APPLY (
+          SELECT 
+            MIN(TRY_CONVERT(time, COALESCE(
+              JSON_VALUE(js.value, '$.startTime'),
+              JSON_VALUE(js.value, '$.timeStart'),
+              JSON_VALUE(js.value, '$.start'),
+              JSON_VALUE(js.value, '$.StartTime'),
+              JSON_VALUE(js.value, '$.eventStart'),
+              JSON_VALUE(js.value, '$.start_time')
+            ))) AS ServiceStartTime,
+            MAX(TRY_CONVERT(time, COALESCE(
+              JSON_VALUE(js.value, '$.endTime'),
+              JSON_VALUE(js.value, '$.timeEnd'),
+              JSON_VALUE(js.value, '$.end'),
+              JSON_VALUE(js.value, '$.EndTime'),
+              JSON_VALUE(js.value, '$.eventEnd'),
+              JSON_VALUE(js.value, '$.end_time')
+            ))) AS ServiceEndTime,
+            STRING_AGG(
+              COALESCE(
+                JSON_VALUE(js.value, '$.serviceName'),
+                JSON_VALUE(js.value, '$.name'),
+                JSON_VALUE(js.value, '$.Name'),
+                JSON_VALUE(js.value, '$.service.name'),
+                JSON_VALUE(js.value, '$.title')
+              ), ', '
+            ) AS ServiceNames
+          FROM OPENJSON(br.Services) js
+        ) svc
         LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
         LEFT JOIN Users u ON b.UserID = u.UserID
         WHERE i.UserID = @UserID
@@ -495,9 +545,26 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
       rows = r1.recordset;
     } catch (viewErr) {
       const q2 = `
-        SELECT i.*, b.EventDate, b.EndDate, b.EventLocation, b.EventName, b.EventType, b.TimeZone,
+        SELECT i.*,
+               COALESCE(
+                 CASE WHEN svc.ServiceStartTime IS NOT NULL AND br.EventDate IS NOT NULL
+                      THEN CAST(CONVERT(VARCHAR(10), br.EventDate, 120) + ' ' + CONVERT(VARCHAR(8), svc.ServiceStartTime, 108) AS DATETIME) END,
+                 b.EventDate,
+                 CASE WHEN br.EventDate IS NOT NULL THEN CAST(CONVERT(VARCHAR(10), br.EventDate, 120) + ' ' + ISNULL(CONVERT(VARCHAR(8), br.EventTime, 108), '00:00:00') AS DATETIME) ELSE NULL END
+               ) AS EventDate,
+               COALESCE(
+                 CASE WHEN svc.ServiceEndTime IS NOT NULL AND br.EventDate IS NOT NULL
+                      THEN CAST(CONVERT(VARCHAR(10), br.EventDate, 120) + ' ' + CONVERT(VARCHAR(8), svc.ServiceEndTime, 108) AS DATETIME) END,
+                 b.EndDate,
+                 CASE WHEN br.EventDate IS NOT NULL THEN CAST(CONVERT(VARCHAR(10), br.EventDate, 120) + ' ' + ISNULL(CONVERT(VARCHAR(8), br.EventEndTime, 108), ISNULL(CONVERT(VARCHAR(8), br.EventTime, 108), '00:00:00')) AS DATETIME) ELSE NULL END
+               ) AS EndDate,
+               COALESCE(b.EventLocation, br.EventLocation) AS EventLocation,
+               COALESCE(b.EventName, br.EventName) AS EventName,
+               COALESCE(b.EventType, br.EventType) AS EventType,
+               COALESCE(b.TimeZone, br.TimeZone) AS TimeZone,
                b.Status AS Status, b.FullAmountPaid, u.Name AS ClientName,
                COALESCE(
+                 svc.ServiceNames,
                  (
                    SELECT STRING_AGG(x.ServiceName, ', ')
                    FROM (
@@ -511,6 +578,39 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
                ) AS ServicesSummary
         FROM Invoices i
         INNER JOIN Bookings b ON i.BookingID = b.BookingID
+        LEFT JOIN BookingRequests br
+          ON br.PaymentIntentID = b.StripePaymentIntentID
+         AND br.UserID = b.UserID
+         AND br.VendorProfileID = b.VendorProfileID
+        OUTER APPLY (
+          SELECT 
+            MIN(TRY_CONVERT(time, COALESCE(
+              JSON_VALUE(js.value, '$.startTime'),
+              JSON_VALUE(js.value, '$.timeStart'),
+              JSON_VALUE(js.value, '$.start'),
+              JSON_VALUE(js.value, '$.StartTime'),
+              JSON_VALUE(js.value, '$.eventStart'),
+              JSON_VALUE(js.value, '$.start_time')
+            ))) AS ServiceStartTime,
+            MAX(TRY_CONVERT(time, COALESCE(
+              JSON_VALUE(js.value, '$.endTime'),
+              JSON_VALUE(js.value, '$.timeEnd'),
+              JSON_VALUE(js.value, '$.end'),
+              JSON_VALUE(js.value, '$.EndTime'),
+              JSON_VALUE(js.value, '$.eventEnd'),
+              JSON_VALUE(js.value, '$.end_time')
+            ))) AS ServiceEndTime,
+            STRING_AGG(
+              COALESCE(
+                JSON_VALUE(js.value, '$.serviceName'),
+                JSON_VALUE(js.value, '$.name'),
+                JSON_VALUE(js.value, '$.Name'),
+                JSON_VALUE(js.value, '$.service.name'),
+                JSON_VALUE(js.value, '$.title')
+              ), ', '
+            ) AS ServiceNames
+          FROM OPENJSON(br.Services) js
+        ) svc
         LEFT JOIN Users u ON b.UserID = u.UserID
         WHERE i.VendorProfileID = @VendorProfileID
         ORDER BY i.IssueDate DESC
