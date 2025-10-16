@@ -139,9 +139,11 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
     const recordedStripeFee = toCurrency((snap.transactions || []).reduce((sum, t) => sum + Number(t.FeeAmount || 0), 0));
     const stripeFee = recordedStripeFee > 0 ? recordedStripeFee : estimateStripeFee(totalAmount || subtotal);
     const platformFee = estimatePlatformFee(totalAmount || subtotal);
+    const taxPercent = parseFloat(process.env.TAX_PERCENT || '0') / 100;
+    const taxAmount = toCurrency((subtotal + platformFee) * taxPercent);
 
     // Include fees in client grand total
-    const totalDue = toCurrency(subtotal + platformFee + stripeFee);
+    const totalDue = toCurrency(subtotal + platformFee + taxAmount);
 
     // Determine invoice status based on booking flag or payments >= grand total
     const totalPaid = toCurrency((snap.transactions || []).reduce((s, t) => s + Number(t.Amount || 0), 0));
@@ -162,7 +164,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       r.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
       r.input('PlatformFee', sql.Decimal(10,2), platformFee);
       r.input('StripeFee', sql.Decimal(10,2), stripeFee);
-      r.input('TaxAmount', sql.Decimal(10,2), 0);
+      r.input('TaxAmount', sql.Decimal(10,2), taxAmount);
       r.input('TotalAmount', sql.Decimal(10,2), totalDue);
       r.input('FeesIncludedInTotal', sql.Bit, 1);
       r.input('SnapshotJSON', sql.NVarChar(sql.MAX), JSON.stringify({
@@ -193,6 +195,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       r.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
       r.input('PlatformFee', sql.Decimal(10,2), platformFee);
       r.input('StripeFee', sql.Decimal(10,2), stripeFee);
+      r.input('TaxAmount', sql.Decimal(10,2), taxAmount);
       r.input('TotalAmount', sql.Decimal(10,2), totalDue);
       r.input('FeesIncludedInTotal', sql.Bit, 1);
       r.input('SnapshotJSON', sql.NVarChar(sql.MAX), JSON.stringify({
@@ -205,7 +208,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       await r.query(`
         UPDATE Invoices
         SET IssueDate=@IssueDate, Status=@Status, Subtotal=@Subtotal, VendorExpensesTotal=@VendorExpensesTotal,
-            PlatformFee=@PlatformFee, StripeFee=@StripeFee, TotalAmount=@TotalAmount, FeesIncludedInTotal=@FeesIncludedInTotal,
+            PlatformFee=@PlatformFee, StripeFee=@StripeFee, TaxAmount=@TaxAmount, TotalAmount=@TotalAmount, FeesIncludedInTotal=@FeesIncludedInTotal,
             UpdatedAt=GETDATE(), SnapshotJSON=@SnapshotJSON
         WHERE InvoiceID=@InvoiceID;
       `);
@@ -272,7 +275,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
 
     await tx.commit();
 
-    return { invoiceId, totals: { servicesSubtotal, expensesTotal, subtotal, platformFee, stripeFee, totalDue } };
+    return { invoiceId, totals: { servicesSubtotal, expensesTotal, subtotal, platformFee, stripeFee, taxAmount, totalDue } };
   } catch (err) {
     try { await tx.rollback(); } catch {}
     throw err;
