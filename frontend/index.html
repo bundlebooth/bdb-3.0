@@ -9467,7 +9467,11 @@
             dropdown.style.top = top + 'px';
             dropdown.style.display = 'block';
             
-            loadNotifications();
+            if (typeof window.loadNotifications === 'function') {
+                const activeTab = document.querySelector('.notification-tab.active');
+                const isUnread = activeTab ? activeTab.dataset.tab === 'unread' : false;
+                window.loadNotifications(isUnread);
+            }
         }
 
         function hideNotificationsDropdown() {
@@ -15819,35 +15823,53 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
 
             // Load notifications
-            async function loadNotifications() {
+            async function loadNotifications(isUnreadOnly = false) {
                 if (!currentUser) return;
 
+                const listEl = document.getElementById('notifications-list');
+                if (listEl) {
+                    listEl.innerHTML = `
+                        <div class="loading-notifications">
+                            <i class="fas fa-spinner fa-spin"></i> Loading notifications...
+                        </div>
+                    `;
+                }
+
                 try {
-                    const response = await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}?unreadOnly=true`, {
+                    let url = `${API_BASE_URL}/notifications/user/${currentUser.id}`;
+                    if (isUnreadOnly) url += `?unreadOnly=true`;
+                    const response = await fetch(url, {
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('token')}`
                         }
                     });
 
                     if (response.ok) {
-                        const notifications = await response.json();
-                        const unreadCount = notifications.length;
-
-                        // Update notifications badge
-                        document.querySelectorAll('.badge').forEach(badge => {
-                            if (badge.id === 'notifications-badge' || badge.id === 'dashboard-notifications-badge' || badge.id === 'vendor-notifications-badge' || !badge.id) {
-                                badge.textContent = unreadCount;
-                            }
-                        });
+                        const data = await response.json();
+                        const items = Array.isArray(data) ? data : (data.notifications || []);
+                        displayNotifications(items);
+                        updateNotificationBadges();
                     } else {
-                        // Fallback: Load from localStorage
+                        const all = JSON.parse(localStorage.getItem('notifications') || '[]').filter(n => (n.userId === currentUser.id || n.userId === currentUser.vendorProfileId));
+                        const items = isUnreadOnly ? all.filter(n => !n.isRead && !n.read) : all;
+                        displayNotifications(items);
                         updateNotificationBadges();
                     }
                 } catch (error) {
                     console.error('Error loading notifications, using local fallback:', error);
+                    const all = JSON.parse(localStorage.getItem('notifications') || '[]').filter(n => (n.userId === currentUser.id || n.userId === currentUser.vendorProfileId));
+                    const items = isUnreadOnly ? all.filter(n => !n.isRead && !n.read) : all;
+                    displayNotifications(items);
                     updateNotificationBadges();
                 }
+
+                const markAllBtn = document.getElementById('mark-all-read');
+                if (markAllBtn && !markAllBtn.__bound) {
+                    markAllBtn.addEventListener('click', markAllNotificationsAsRead);
+                    markAllBtn.__bound = true;
+                }
             }
+            window.loadNotifications = loadNotifications;
 
             // Initialize Stripe
             function initializeStripe() {
