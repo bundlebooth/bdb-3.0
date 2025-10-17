@@ -733,6 +733,166 @@ router.get('/map', async (req, res) => {
   }
 });
 
+// Search vendors by multiple categories and return sectioned results
+router.get('/search-by-categories', async (req, res) => {
+  try {
+    const {
+      categories,           // comma-separated list, e.g. "Music/DJ,Catering"
+      category,             // single category fallback
+      minPrice,
+      maxPrice,
+      isPremium,
+      isEcoFriendly,
+      isAwardWinning,
+      latitude,
+      longitude,
+      radiusMiles,
+      pageNumber,
+      pageSize,
+      sortBy,
+      includeImages,
+      budgetType,           // 'total' | 'per_person'
+      pricingModel,         // 'time_based' | 'fixed_based'
+      fixedPricingType      // 'fixed_price' | 'per_attendee'
+    } = req.query;
+
+    // Normalize incoming categories into an array
+    let categoryList = [];
+    if (categories && typeof categories === 'string') {
+      categoryList = categories
+        .split(',')
+        .map(s => {
+          try { return decodeURIComponent(s).trim(); } catch { return s.trim(); }
+        })
+        .filter(Boolean);
+    } else if (category && typeof category === 'string') {
+      try { categoryList = [decodeURIComponent(category).trim()]; }
+      catch { categoryList = [category.trim()]; }
+    }
+
+    // Expand combined labels like "Music/DJ" and map friendly labels to DB values
+    if (categoryList.length > 0) {
+      const expanded = [];
+      for (let raw of categoryList) {
+        const label = (raw || '').trim();
+        if (!label) continue;
+        const parts = label.includes('/') ? label.split('/').map(s => s.trim()).filter(Boolean) : [label];
+        for (let p of parts) {
+          const lower = p.toLowerCase();
+          if (lower === 'video') { expanded.push('Videography'); continue; }
+          if (lower === 'photo') { expanded.push('Photo'); expanded.push('Photography'); continue; }
+          if (lower === 'venues') { expanded.push('Venue'); expanded.push('Hotel'); continue; }
+          if (lower === 'decorations') { expanded.push('Decor'); expanded.push('Florist'); continue; }
+          expanded.push(p);
+        }
+      }
+      // Deduplicate and replace categoryList
+      categoryList = Array.from(new Set(expanded));
+    }
+
+    if (categoryList.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Provide 'category' or 'categories' query parameter"
+      });
+    }
+
+    const pool = await poolPromise;
+
+    // Helper to fetch one category using sp_SearchVendors and map results like the main /vendors endpoint
+    async function fetchCategory(cat) {
+      const request = new sql.Request(pool);
+      request.input('SearchTerm', sql.NVarChar(100), null);
+      request.input('Category', sql.NVarChar(50), cat);
+      request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
+      request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
+      request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
+      request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
+      request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
+      request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
+      request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
+      request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
+      request.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
+      request.input('PageSize', sql.Int, pageSize ? parseInt(pageSize) : 10);
+      request.input('SortBy', sql.NVarChar(50), sortBy || 'recommended');
+      request.input('BudgetType', sql.NVarChar(20), budgetType || null);
+      request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
+      request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
+
+      const r = await request.execute('sp_SearchVendors');
+
+      let vendors = r.recordset.map(vendor => ({
+        id: vendor.id,
+        vendorProfileId: vendor.VendorProfileID || vendor.id,
+        name: vendor.name || '',
+        type: vendor.type || '',
+        location: vendor.location || '',
+        description: vendor.description || '',
+        price: vendor.price,
+        startingPrice: vendor.MinPriceNumeric ?? vendor.MinPrice,
+        startingServiceName: vendor.StartingServiceName || vendor.MinServiceName || null,
+        priceLevel: vendor.priceLevel,
+        rating: vendor.rating,
+        reviewCount: vendor.ReviewCount,
+        averageRating: vendor.rating ? parseFloat(vendor.rating) : null,
+        totalReviews: vendor.ReviewCount ?? 0,
+        favoriteCount: vendor.FavoriteCount,
+        bookingCount: vendor.BookingCount,
+        image: vendor.image || '',
+        capacity: vendor.Capacity,
+        rooms: vendor.Rooms,
+        isPremium: vendor.IsPremium,
+        isEcoFriendly: vendor.IsEcoFriendly,
+        isAwardWinning: vendor.IsAwardWinning,
+        region: vendor.Region || '',
+        categories: vendor.Categories || '',
+        services: vendor.services ? JSON.parse(vendor.services) : [],
+        reviews: vendor.reviews ? JSON.parse(vendor.reviews) : [],
+        address: vendor.Address || '',
+        city: vendor.City || '',
+        state: vendor.State || '',
+        country: vendor.Country || '',
+        postalCode: vendor.PostalCode || '',
+        latitude: vendor.Latitude || null,
+        longitude: vendor.Longitude || null
+      }));
+
+      if (includeImages !== 'false') {
+        const batchSize = 5;
+        const enhanced = [];
+        for (let i = 0; i < vendors.length; i += batchSize) {
+          const batch = vendors.slice(i, i + batchSize);
+          const eb = await Promise.all(batch.map(v => enhanceVendorWithImages(v, pool)));
+          enhanced.push(...eb);
+        }
+        vendors = enhanced;
+      }
+
+      return {
+        category: cat,
+        vendors,
+        totalCount: r.recordset.length > 0 ? r.recordset[0].TotalCount : vendors.length
+      };
+    }
+
+    const sections = await Promise.all(categoryList.map(fetchCategory));
+
+    res.json({
+      success: true,
+      sections,
+      categories: categoryList
+    });
+
+  } catch (err) {
+    console.error('search-by-categories error:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to search vendors by categories',
+      error: err.message 
+    });
+  }
+});
+
 // Register new vendor
 router.post('/register', upload.array('images', 5), async (req, res) => {
   try {
