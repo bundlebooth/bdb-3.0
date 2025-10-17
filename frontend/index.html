@@ -16007,10 +16007,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                 state.currentCategory = category.id;
                 const params = new URLSearchParams(window.location.search);
                 if (state.currentCategory === 'all') {
-                    params.delete('category');
+                    params.set('category', 'all');
                     params.delete('categories');
                 } else {
                     params.set('category', buildCategoryParamFromKey(state.currentCategory));
+                    params.delete('categories');
                 }
                 const qs = params.toString();
                 const url = qs ? `${location.pathname}?${qs}` : location.pathname;
@@ -28258,13 +28259,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 try {
                     console.log('Loading vendors from API...');
                     const params = new URLSearchParams(window.location.search);
-                    const hasCategoryQuery = params.has('category') || params.has('categories');
+                    const categoryParam = params.get('category');
+                    const categoriesParam = params.get('categories');
+                    const hasCategoryQuery = (!!categoryParam && categoryParam !== '') || (!!categoriesParam && categoriesParam !== '');
+                    const isAll = categoryParam && decodeURIComponent(categoryParam).toLowerCase() === 'all';
                     let url = `${API_BASE_URL}/vendors`;
-                    if (hasCategoryQuery) {
+                    if (hasCategoryQuery && !isAll) {
                         // Preserve only category params for backend and allow future filter expansions
                         const qp = new URLSearchParams();
-                        if (params.has('category')) qp.set('category', params.get('category'));
-                        if (params.has('categories')) qp.set('categories', params.get('categories'));
+                        if (categoryParam) qp.set('category', categoryParam);
+                        if (categoriesParam) qp.set('categories', categoriesParam);
                         url = `${API_BASE_URL}/vendors/search-by-categories?${qp.toString()}`;
                     }
 
