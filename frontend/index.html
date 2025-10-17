@@ -12437,7 +12437,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 showVendorSkeletons(8);
 
                 try {
-                    // Load vendors data from API
+                    // Sync category from URL, then load vendors
+                    try { initCategoryFromUrl(); } catch {}
                     await loadVendors();
 
                     // Hide skeletons once loaded
@@ -15993,7 +15994,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         state.categories.forEach(category => {
             const categoryItem = document.createElement('div');
             categoryItem.className = 'category-item';
-            if (category.id === 'all') categoryItem.classList.add('active');
+            if (category.id === state.currentCategory || (state.currentCategory === 'all' && category.id === 'all')) categoryItem.classList.add('active');
             categoryItem.dataset.category = category.id;
 
             // Add icon element above label
@@ -16001,15 +16002,20 @@ document.addEventListener('DOMContentLoaded', async function() {
             categoryItem.innerHTML = `${iconHtml}<span>${category.name}</span>`;
 
             categoryItem.addEventListener('click', () => {
-                // Update active category
                 document.querySelectorAll('.category-item').forEach(item => item.classList.remove('active'));
                 categoryItem.classList.add('active');
-
-                // Set current category
                 state.currentCategory = category.id;
-
-                // Filter vendors
-                filterVendors();
+                const params = new URLSearchParams(window.location.search);
+                if (state.currentCategory === 'all') {
+                    params.delete('category');
+                    params.delete('categories');
+                } else {
+                    params.set('category', buildCategoryParamFromKey(state.currentCategory));
+                }
+                const qs = params.toString();
+                const url = qs ? `${location.pathname}?${qs}` : location.pathname;
+                history.pushState({}, '', url);
+                loadVendors();
             });
 
             categoriesListInner.appendChild(categoryItem);
@@ -16083,6 +16089,65 @@ document.addEventListener('DOMContentLoaded', async function() {
                 };
                 return typeMap[type] || type.toLowerCase();
             }
+
+            function buildCategoryParamFromKey(key) {
+                switch ((key || '').toLowerCase()) {
+                    case 'music': return 'Music/DJ';
+                    case 'photo': return 'Photo/Video';
+                    case 'decor': return 'Decorations';
+                    case 'venue': return 'Venues';
+                    case 'transport': return 'Transportation';
+                    case 'catering': return 'Catering';
+                    case 'entertainment': return 'Entertainment';
+                    case 'planner': return 'Planners';
+                    case 'fashion': return 'Fashion';
+                    case 'stationery': return 'Stationery';
+                    case 'beauty': return 'Beauty';
+                    case 'cake': return 'Cake';
+                    case 'experiences': return 'Experiences';
+                    default: return key;
+                }
+            }
+
+            function deriveKeyFromCategoryParam(label) {
+                const v = decodeURIComponent(label || '').toLowerCase();
+                if (v === 'music/dj' || v === 'music' || v === 'dj') return 'music';
+                if (v === 'photo/video' || v === 'photo' || v === 'photography' || v === 'videography') return 'photo';
+                if (v === 'venues' || v === 'venue' || v === 'hotel') return 'venue';
+                if (v === 'decorations' || v === 'decor' || v === 'florist') return 'decor';
+                if (v === 'transportation') return 'transport';
+                if (v === 'catering') return 'catering';
+                if (v === 'entertainment') return 'entertainment';
+                if (v === 'planners' || v === 'planner') return 'planner';
+                if (v === 'beauty') return 'beauty';
+                if (v === 'cake') return 'cake';
+                if (v === 'experiences') return 'experiences';
+                if (v === 'fashion') return 'fashion';
+                if (v === 'stationery') return 'stationery';
+                return 'all';
+            }
+
+            function initCategoryFromUrl() {
+                const params = new URLSearchParams(window.location.search);
+                let key = 'all';
+                if (params.has('category')) key = deriveKeyFromCategoryParam(params.get('category'));
+                else if (params.has('categories')) {
+                    const first = (params.get('categories') || '').split(',')[0];
+                    if (first) key = deriveKeyFromCategoryParam(first);
+                }
+                state.currentCategory = key;
+                try {
+                    document.querySelectorAll('.category-item').forEach(el => {
+                        const match = el.dataset.category === key || (key === 'all' && el.dataset.category === 'all');
+                        el.classList.toggle('active', !!match);
+                    });
+                } catch {}
+            }
+
+            window.addEventListener('popstate', () => {
+                initCategoryFromUrl();
+                loadVendors();
+            });
 
             // Check for existing user session
             async function checkAuthStatus() {
@@ -28192,24 +28257,48 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             async function loadVendors() {
                 try {
                     console.log('Loading vendors from API...');
-                    const response = await fetch(`${API_BASE_URL}/vendors`);
-                    
+                    const params = new URLSearchParams(window.location.search);
+                    const hasCategoryQuery = params.has('category') || params.has('categories');
+                    let url = `${API_BASE_URL}/vendors`;
+                    if (hasCategoryQuery) {
+                        // Preserve only category params for backend and allow future filter expansions
+                        const qp = new URLSearchParams();
+                        if (params.has('category')) qp.set('category', params.get('category'));
+                        if (params.has('categories')) qp.set('categories', params.get('categories'));
+                        url = `${API_BASE_URL}/vendors/search-by-categories?${qp.toString()}`;
+                    }
+
+                    const response = await fetch(url);
                     if (!response.ok) {
                         const errorText = await response.text();
                         console.error('API Response Error:', response.status, errorText);
                         throw new Error(`Failed to fetch vendors: ${response.status} - ${errorText}`);
                     }
-                    
                     const data = await response.json();
                     console.log('Raw API response:', data);
-                    
-                    // Handle backend response format: { vendors: [...], totalCount: number }
-                    const vendors = data.vendors || [];
-                    const totalCount = data.totalCount || vendors.length;
-                    
+
+                    let vendors = [];
+                    let totalCount = 0;
+                    if (hasCategoryQuery && Array.isArray(data.sections)) {
+                        vendors = data.sections.flatMap(s => s?.vendors || []);
+                        // Deduplicate vendors by profile ID or id
+                        const seen = new Set();
+                        const unique = [];
+                        for (const v of vendors) {
+                            const k = v.vendorProfileId || v.VendorProfileID || v.id;
+                            if (k == null) { unique.push(v); continue; }
+                            if (!seen.has(k)) { seen.add(k); unique.push(v); }
+                        }
+                        vendors = unique;
+                        totalCount = vendors.length;
+                    } else {
+                        vendors = data.vendors || [];
+                        totalCount = data.totalCount || vendors.length;
+                    }
+
                     console.log(`API returned ${vendors.length} vendors, totalCount: ${totalCount}`);
-                    
-                    // Store vendors in state, normalizing primary category -> navbar category id
+
+                    // Normalize vendors and map their primary category to navbar key
                     const normalizedVendors = vendors.map(v => {
                         const primary = v.type || v.PrimaryCategory || ((v.categories || v.Categories || '').split(',')[0] || '').trim();
                         const categoryKey = mapTypeToCategory(primary);
@@ -28218,24 +28307,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                     state.vendors = normalizedVendors;
                     state.filteredVendors = normalizedVendors;
-                    
-                    // Clear the static HTML and render dynamic vendors
+
                     if (vendorGrid) {
-                        vendorGrid.innerHTML = ''; // Clear static content
+                        vendorGrid.innerHTML = '';
                         renderVendors();
                     }
-                    
                     updatePagination();
                     updateMetadata({ total: totalCount });
-                    // Attempt geolocation after initial render to personalize results
                     tryInitGeolocation();
-                    
                     console.log(`Successfully loaded and rendered ${vendors.length} vendors`);
-                    
                 } catch (error) {
                     console.error('Error loading vendors:', error);
-                    
-                    // Show error message in vendor grid
                     if (vendorGrid) {
                         vendorGrid.innerHTML = `
                             <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--accent);">
