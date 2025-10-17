@@ -5319,16 +5319,9 @@
                     <div id="map-view"></div>
                 </div>
             </div>
-
-            <div class="pagination" id="pagination" style="display: flex; justify-content: center; align-items: center; gap: 0.5rem; margin: 2rem 0;">
-                <div class="page-btn" id="prev-page">«</div>
-                <div class="page-btn active">1</div>
-                <div class="page-btn">2</div>
-                <div class="page-btn">3</div>
-                <div class="page-btn">4</div>
-                <div class="page-btn">5</div>
-                <div class="page-btn">6</div>
-                <div class="page-btn" id="next-page">»</div>
+            <div id="load-more-wrapper" style="display:flex; justify-content:center; align-items:center; margin: 2rem 0;">
+                <button class="btn btn-outline" id="load-more-btn">Load more</button>
+                <span id="load-more-spinner" style="display:none; margin-left:8px; color: var(--text-light);"><i class="fas fa-spinner fa-spin"></i></span>
             </div>
         </main>
     </div>
@@ -10601,6 +10594,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // New properties for dynamic map functionality
                 originalSearchResults: [],
                 isLoadingVendors: false,
+                serverPageNumber: 1,
+                serverPageSize: 24,
+                serverTotalCount: 0,
                 mapMoveTimeout: null,
                 initialMapBounds: null,
                 lastMapBounds: null,
@@ -10640,6 +10636,25 @@ document.addEventListener('DOMContentLoaded', async function() {
             const notificationsBtn = document.getElementById('notifications-btn');
             const profileBtn = document.getElementById('profile-btn');
             const filterResetBtns = document.querySelectorAll('.filter-reset');
+            const loadMoreWrapper = document.getElementById('load-more-wrapper');
+            const loadMoreBtn = document.getElementById('load-more-btn');
+            const loadMoreSpinner = document.getElementById('load-more-spinner');
+
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', async () => {
+                    if (state.isLoadingVendors) return;
+                    state.isLoadingVendors = true;
+                    try { if (loadMoreSpinner) loadMoreSpinner.style.display = 'inline-block'; } catch {}
+                    try { loadMoreBtn.disabled = true; } catch {}
+                    try {
+                        await loadVendors({ append: true });
+                    } finally {
+                        state.isLoadingVendors = false;
+                        try { if (loadMoreSpinner) loadMoreSpinner.style.display = 'none'; } catch {}
+                        try { loadMoreBtn.disabled = false; } catch {}
+                    }
+                });
+            }
 
             // Sidebar collapse helpers
             function applySidebarState(collapsed) {
@@ -17764,7 +17779,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const mapBtnNew = document.getElementById('btn-view-map');
                 const mapEl = document.getElementById('map-view');
                 const gridEl = document.getElementById('vendor-grid');
-                const paginationEl = document.getElementById('pagination');
+                const paginationEl = document.getElementById('load-more-wrapper');
                 const horizEl = document.getElementById('main-horizontal-cards');
 
                 if (listBtnNew && mapBtnNew && mapEl && gridEl) {
@@ -17877,21 +17892,25 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     filterVendors();
                 });
 
-                // Pagination
-                prevPageBtn.addEventListener('click', () => {
-                    if (state.currentPage > 1) {
-                        state.currentPage--;
-                        renderVendors();
-                    }
-                });
+                // Legacy pagination (no-op when controls not present)
+                if (prevPageBtn) {
+                    prevPageBtn.addEventListener('click', () => {
+                        if (state.currentPage > 1) {
+                            state.currentPage--;
+                            renderVendors();
+                        }
+                    });
+                }
 
-                nextPageBtn.addEventListener('click', () => {
-                    const totalPages = Math.ceil(state.filteredVendors.length / state.vendorsPerPage);
-                    if (state.currentPage < totalPages) {
-                        state.currentPage++;
-                        renderVendors();
-                    }
-                });
+                if (nextPageBtn) {
+                    nextPageBtn.addEventListener('click', () => {
+                        const totalPages = Math.ceil(state.filteredVendors.length / state.vendorsPerPage);
+                        if (state.currentPage < totalPages) {
+                            state.currentPage++;
+                            renderVendors();
+                        }
+                    });
+                }
 
                 // User nav buttons
                 wishlistBtn.addEventListener('click', () => {
@@ -21728,51 +21747,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Update pagination controls
             function updatePagination() {
-                const totalPages = Math.ceil(state.filteredVendors.length / state.vendorsPerPage);
-
-                if (totalPages <= 1) {
-                    pagination.style.display = 'none';
-                    return;
-                }
-
-                pagination.style.display = 'flex';
-
-                // Clear existing page buttons (except prev/next)
-                const pageBtns = pagination.querySelectorAll('.page-btn:not(#prev-page):not(#next-page)');
-                pageBtns.forEach(btn => btn.remove());
-
-                // Add page buttons
-                for (let i = 1; i <= totalPages; i++) {
-                    const pageBtn = document.createElement('div');
-                    pageBtn.className = `page-btn ${i === state.currentPage ? 'active' : ''}`;
-                    pageBtn.textContent = i;
-                    pageBtn.setAttribute('role', 'button');
-                    pageBtn.tabIndex = 0;
-                    pageBtn.addEventListener('click', () => {
-                        state.currentPage = i;
-                        renderVendors();
-                    });
-                    pageBtn.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            state.currentPage = i;
-                            renderVendors();
-                        }
-                    });
-
-                    pagination.insertBefore(pageBtn, nextPageBtn);
-                }
-
-                // Update prev/next button states
-                const isPrevDisabled = state.currentPage === 1;
-                const isNextDisabled = state.currentPage === totalPages;
-                prevPageBtn.classList.toggle('disabled', isPrevDisabled);
-                nextPageBtn.classList.toggle('disabled', isNextDisabled);
-                // Apply inline styles to make disabled state obvious and unclickable
-                prevPageBtn.style.opacity = isPrevDisabled ? '0.5' : '1';
-                prevPageBtn.style.pointerEvents = isPrevDisabled ? 'none' : 'auto';
-                nextPageBtn.style.opacity = isNextDisabled ? '0.5' : '1';
-                nextPageBtn.style.pointerEvents = isNextDisabled ? 'none' : 'auto';
+                // Control Load More visibility and label
+                if (!loadMoreWrapper) return;
+                const isMap = document.body.classList.contains('map-active');
+                const loaded = state.filteredVendors.length;
+                const total = state.serverTotalCount || loaded;
+                const hasMore = loaded < total;
+                loadMoreWrapper.style.display = isMap ? 'none' : (hasMore ? 'flex' : 'none');
+                const btn = document.getElementById('load-more-btn');
+                if (btn) btn.textContent = hasMore ? 'Load more' : 'No more results';
             }
 
             // Update metadata in header
@@ -27397,10 +27380,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function renderVendors() {
                 if (!vendorGrid) return;
                 
-                const vendorsToShow = state.filteredVendors.slice(
-                    (state.currentPage - 1) * state.vendorsPerPage,
-                    state.currentPage * state.vendorsPerPage
-                );
+                const vendorsToShow = state.filteredVendors;
 
                 if (vendorsToShow.length === 0) {
                     vendorGrid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--text-light);">No vendors found matching your criteria.</div>';
@@ -28187,41 +28167,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 setActive(initial);
             })();
 
-            // Update pagination
+            // Update pagination (unified Load More control)
             function updatePagination() {
-                const totalPages = Math.ceil(state.filteredVendors.length / state.vendorsPerPage);
-                
-                // Debug logging
-                console.log('Pagination Debug:', {
-                    filteredVendorsCount: state.filteredVendors.length,
-                    vendorsPerPage: state.vendorsPerPage,
-                    totalPages: totalPages,
-                    currentPage: state.currentPage
-                });
-                
-                if (prevPageBtn) {
-                    prevPageBtn.disabled = state.currentPage <= 1;
-                }
-                if (nextPageBtn) {
-                    nextPageBtn.disabled = state.currentPage >= totalPages;
-                }
-                
-                // Update page info if exists
-                const pageInfo = document.querySelector('.page-info');
-                if (pageInfo) {
-                    pageInfo.textContent = `Page ${state.currentPage} of ${totalPages}`;
-                }
-                
-                // Update numbered page buttons visibility and state
-                document.querySelectorAll('.page-btn:not(#prev-page):not(#next-page)').forEach((btn, index) => {
-                    const pageNum = index + 1;
-                    if (pageNum <= totalPages) {
-                        btn.style.display = 'block';
-                        btn.classList.toggle('active', pageNum === state.currentPage);
-                    } else {
-                        btn.style.display = 'none';
-                    }
-                });
+                const wrapper = document.getElementById('load-more-wrapper');
+                if (!wrapper) return;
+                const isMap = document.body.classList.contains('map-active');
+                const loaded = state.filteredVendors.length;
+                const total = state.serverTotalCount || loaded;
+                const hasMore = loaded < total;
+                wrapper.style.display = isMap ? 'none' : (hasMore ? 'flex' : 'none');
+                const btn = document.getElementById('load-more-btn');
+                if (btn) btn.textContent = hasMore ? 'Load more' : 'No more results';
             }
 
             // Filter vendors based on current filters
@@ -28255,7 +28211,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Load vendors from API
-            async function loadVendors() {
+            async function loadVendors(options = {}) {
+                const append = !!options.append;
                 try {
                     console.log('Loading vendors from API...');
                     const params = new URLSearchParams(window.location.search);
@@ -28263,12 +28220,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const categoriesParam = params.get('categories');
                     const hasCategoryQuery = (!!categoryParam && categoryParam !== '') || (!!categoriesParam && categoriesParam !== '');
                     const isAll = categoryParam && decodeURIComponent(categoryParam).toLowerCase() === 'all';
-                    let url = `${API_BASE_URL}/vendors`;
+                    // Determine next server page
+                    const nextPage = append ? (state.serverPageNumber + 1) : 1;
+                    let url = `${API_BASE_URL}/vendors?pageNumber=${nextPage}&pageSize=${state.serverPageSize}`;
                     if (hasCategoryQuery && !isAll) {
                         // Preserve only category params for backend and allow future filter expansions
                         const qp = new URLSearchParams();
                         if (categoryParam) qp.set('category', categoryParam);
                         if (categoriesParam) qp.set('categories', categoriesParam);
+                        qp.set('pageNumber', String(nextPage));
+                        qp.set('pageSize', String(state.serverPageSize));
                         url = `${API_BASE_URL}/vendors/search-by-categories?${qp.toString()}`;
                     }
 
@@ -28294,7 +28255,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             if (!seen.has(k)) { seen.add(k); unique.push(v); }
                         }
                         vendors = unique;
-                        totalCount = vendors.length;
+                        // Sum section totals when available; fallback to vendor length
+                        try {
+                            totalCount = data.sections.reduce((acc, s) => acc + (s?.totalCount || (s?.vendors?.length || 0)), 0);
+                        } catch { totalCount = vendors.length; }
                     } else {
                         vendors = data.vendors || [];
                         totalCount = data.totalCount || vendors.length;
@@ -28309,8 +28273,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         return { ...v, category: categoryKey || '' };
                     });
 
-                    state.vendors = normalizedVendors;
-                    state.filteredVendors = normalizedVendors;
+                    if (append) {
+                        // Merge with existing and dedupe
+                        const merged = [...(state.vendors || []), ...normalizedVendors];
+                        const byId = new Map();
+                        for (const v of merged) {
+                            const key = v.vendorProfileId || v.VendorProfileID || v.id;
+                            byId.set(String(key || Math.random()), v);
+                        }
+                        state.vendors = Array.from(byId.values());
+                    } else {
+                        state.vendors = normalizedVendors;
+                    }
+                    // Apply current filters
+                    try { filterVendors(); } catch { state.filteredVendors = state.vendors.slice(); renderVendors(); }
+                    // Update server paging trackers
+                    state.serverPageNumber = nextPage;
+                    state.serverTotalCount = totalCount;
 
                     if (vendorGrid) {
                         vendorGrid.innerHTML = '';
