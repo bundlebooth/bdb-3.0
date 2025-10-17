@@ -10647,6 +10647,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     try { if (loadMoreSpinner) loadMoreSpinner.style.display = 'inline-block'; } catch {}
                     try { loadMoreBtn.disabled = true; } catch {}
                     try {
+                        try { appendVendorSkeletons(8); } catch {}
                         await loadVendors({ append: true });
                     } finally {
                         state.isLoadingVendors = false;
@@ -10655,6 +10656,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                 });
             }
+
 
             // Sidebar collapse helpers
             function applySidebarState(collapsed) {
@@ -12250,9 +12252,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                     .vendor-grid.skeleton-active {
                         /* mirror main vendor-grid columns and spacing */
                         display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(clamp(260px, 28vw, 380px), 1fr));
+                        grid-template-columns: repeat(auto-fit, minmax(340px, 480px));
                         gap: 1.5rem;
                         align-items: stretch;
+                        justify-content: center;
                     }
                     @media (max-width: 640px) {
                         .vendor-grid.skeleton-active {
@@ -12264,9 +12267,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                         display: flex;
                         flex-direction: column;
                         background: #fff;
-                        border: 1px solid rgba(0, 0, 0, 0.04);
+                        border: none;
                         border-radius: 16px;
-                        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+                        box-shadow: none;
                         overflow: hidden;
                     }
                     .skeleton-thumb {
@@ -12276,17 +12279,35 @@ document.addEventListener('DOMContentLoaded', async function() {
                         position: relative;
                         overflow: hidden;
                     }
+                    .skeleton-fav {
+                        position: absolute;
+                        top: 12px;
+                        right: 12px;
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 9999px;
+                        background: rgba(255,255,255,0.95);
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                    }
                     .skeleton-content {
                         display: grid;
                         gap: 10px;
-                        padding: 12px 14px 14px;
+                        padding: 1rem;
                         align-content: start;
                     }
                     .skeleton-line { height: 12px; border-radius: 6px; background: var(--skeleton-base, #f0f2f5); position: relative; overflow: hidden; }
+                    .skeleton-line.xs { height: 10px; width: 90px; }
                     .skeleton-line.sm { height: 10px; width: 55%; }
                     .skeleton-line.md { height: 12px; width: 75%; }
                     .skeleton-line.lg { height: 14px; width: 40%; }
+                    .skeleton-title { height: 16px; width: 60%; border-radius: 6px; background: var(--skeleton-base, #f0f2f5); position: relative; overflow: hidden; }
+                    .skeleton-chip { height: 10px; border-radius: 9999px; background: var(--skeleton-base, #f0f2f5); position: relative; overflow: hidden; }
+                    .skeleton-chip.xs { width: 60px; }
+                    .skeleton-chip.sm { width: 80px; }
+                    .skeleton-chip.md { width: 100px; }
+                    .skeleton-dot { width: 6px; height: 6px; border-radius: 9999px; background: var(--skeleton-base, #e5e7eb); }
                     .skeleton-pill { height: 40px; width: 160px; border-radius: 12px; background: var(--skeleton-base, #f0f2f5); position: relative; overflow: hidden; }
+                    .skeleton-price { height: 16px; width: 72px; border-radius: 6px; background: #e9f0ff; position: relative; overflow: hidden; }
                     .skeleton-featurebar {
                         margin: 6px 0 6px;
                         height: 44px;
@@ -12295,31 +12316,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                         position: relative;
                         overflow: hidden;
                     }
-                    .skeleton-featurebar::before {
-                        content: "";
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        bottom: 0;
-                        width: 3px;
-                        background: #3498db;
-                        opacity: .9;
-                    }
-                    .skeleton-button-row {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 10px;
-                        margin-top: 8px;
-                    }
-                    .skeleton-btn {
-                        height: 40px;
-                        border-radius: 12px;
-                        background: var(--skeleton-base, #f0f2f5);
-                        position: relative;
-                        overflow: hidden;
-                    }
+                    .skeleton-featurebar::before { display: none; }
+                    .skeleton-button-row { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 8px; }
+                    .skeleton-ghost-btn { height: 16px; width: 48px; border-radius: 8px; background: var(--skeleton-base, #f0f2f5); position: relative; overflow: hidden; }
+                    .skeleton-primary-btn { height: 36px; width: 80px; border-radius: 12px; background: var(--skeleton-base, #e5e7eb); position: relative; overflow: hidden; }
                     /* Shimmer */
-                    .skeleton-thumb::after, .skeleton-line::after, .skeleton-pill::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.6) 50%, rgba(255,255,255,0) 100%); transform: translateX(-100%); animation: vv-shimmer 1.2s infinite; }
+                    .skeleton-thumb::after, .skeleton-line::after, .skeleton-pill::after, .skeleton-price::after, .skeleton-chip::after, .skeleton-ghost-btn::after, .skeleton-primary-btn::after, .skeleton-fav::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.6) 50%, rgba(255,255,255,0) 100%); transform: translateX(-100%); animation: vv-shimmer 1.2s infinite; }
                     @keyframes vv-shimmer { 100% { transform: translateX(100%); } }
                 `;
                 document.head.appendChild(style);
@@ -12337,14 +12339,25 @@ document.addEventListener('DOMContentLoaded', async function() {
                         <div class="skeleton-card" aria-hidden="true">
                             <div class="skeleton-thumb"></div>
                             <div class="skeleton-content">
+                                <div style="display:grid; grid-template-columns: 1fr; gap:8px;">
+                                    <div class="skeleton-title"></div>
+                                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                        <div class="skeleton-chip sm"></div>
+                                        <div class="skeleton-dot"></div>
+                                        <div class="skeleton-chip xs"></div>
+                                        <div class="skeleton-dot"></div>
+                                        <div class="skeleton-chip xs"></div>
+                                    </div>
+                                </div>
                                 <div class="skeleton-line md"></div>
-                                <div class="skeleton-line sm"></div>
-                                <div class="skeleton-line md"></div>
-                                <div class="skeleton-featurebar"></div>
-                                <div class="skeleton-line lg" style="margin-top:4px;"></div>
+                                <div class="skeleton-line md" style="width: 65%;"></div>
+                                <div class="skeleton-starting-row" style="display:flex; align-items:center; gap:8px;">
+                                    <div class="skeleton-line xs" style="width: 110px;"></div>
+                                    <div class="skeleton-price"></div>
+                                </div>
                                 <div class="skeleton-button-row">
-                                    <div class="skeleton-btn"></div>
-                                    <div class="skeleton-btn"></div>
+                                    <div class="skeleton-ghost-btn"></div>
+                                    <div class="skeleton-primary-btn"></div>
                                 </div>
                             </div>
                         </div>
@@ -12361,6 +12374,43 @@ document.addEventListener('DOMContentLoaded', async function() {
                     grid.removeAttribute('data-skeleton');
                     grid.classList.remove('skeleton-active');
                 }
+            }
+
+            // Append skeleton placeholders to end of the vendor grid while fetching more
+            function appendVendorSkeletons(count = 8) {
+                const grid = document.getElementById('vendor-grid');
+                if (!grid) return;
+                let html = '';
+                for (let i = 0; i < count; i++) {
+                    html += `
+                        <div class="skeleton-card" data-append-skeleton="1" aria-hidden="true">
+                            <div class="skeleton-thumb"></div>
+                            <div class="skeleton-content">
+                                <div style="display:grid; grid-template-columns: 1fr; gap:8px;">
+                                    <div class="skeleton-title"></div>
+                                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                        <div class="skeleton-chip sm"></div>
+                                        <div class="skeleton-dot"></div>
+                                        <div class="skeleton-chip xs"></div>
+                                        <div class="skeleton-dot"></div>
+                                        <div class="skeleton-chip xs"></div>
+                                    </div>
+                                </div>
+                                <div class="skeleton-line md"></div>
+                                <div class="skeleton-line md" style="width: 65%;"></div>
+                                <div class="skeleton-starting-row" style="display:flex; align-items:center; gap:8px;">
+                                    <div class="skeleton-line xs" style="width: 110px;"></div>
+                                    <div class="skeleton-price"></div>
+                                </div>
+                                <div class="skeleton-button-row">
+                                    <div class="skeleton-ghost-btn"></div>
+                                    <div class="skeleton-primary-btn"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                grid.insertAdjacentHTML('beforeend', html);
             }
 
             // Check for Stripe Connect redirect parameters
@@ -17688,78 +17738,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
-            // Skeleton loader for sidebar during map loading
+            // Skeleton loader for sidebar during map loading (unified with grid skeletons)
             function showSidebarSkeletonLoader() {
                 const vendorGrid = document.getElementById('vendor-grid');
                 if (!vendorGrid) return;
-
-                // Store original content
-                if (!vendorGrid.dataset.originalContent) {
-                    vendorGrid.dataset.originalContent = vendorGrid.innerHTML;
-                }
-
-                // Create skeleton cards
-                const skeletonHTML = Array(6).fill(0).map(() => `
-                    <div class="vendor-card skeleton-card" style="
-                        background: #f8f9fa;
-                        border: 1px solid #e9ecef;
-                        border-radius: 12px;
-                        padding: 1rem;
-                        margin-bottom: 1rem;
-                        animation: skeleton-pulse 1.5s ease-in-out infinite alternate;
-                    ">
-                        <div style="
-                            width: 100%;
-                            height: 200px;
-                            background: #dee2e6;
-                            border-radius: 8px;
-                            margin-bottom: 1rem;
-                        "></div>
-                        <div style="
-                            width: 70%;
-                            height: 20px;
-                            background: #dee2e6;
-                            border-radius: 4px;
-                            margin-bottom: 0.5rem;
-                        "></div>
-                        <div style="
-                            width: 50%;
-                            height: 16px;
-                            background: #dee2e6;
-                            border-radius: 4px;
-                            margin-bottom: 0.5rem;
-                        "></div>
-                        <div style="
-                            width: 40%;
-                            height: 16px;
-                            background: #dee2e6;
-                            border-radius: 4px;
-                        "></div>
-                    </div>
-                `).join('');
-
-                vendorGrid.innerHTML = skeletonHTML;
-
-                // Add skeleton animation CSS if not already added
-                if (!document.getElementById('skeleton-styles')) {
-                    const style = document.createElement('style');
-                    style.id = 'skeleton-styles';
-                    style.textContent = `
-                        @keyframes skeleton-pulse {
-                            0% { opacity: 1; }
-                            100% { opacity: 0.6; }
-                        }
-                    `;
-                    document.head.appendChild(style);
-                }
+                if (vendorGrid.getAttribute('data-skeleton') === '1') return; // already active
+                // Use unified skeleton implementation so visuals match vendor cards
+                showVendorSkeletons(8);
             }
 
             function hideSidebarSkeletonLoader() {
-                const vendorGrid = document.getElementById('vendor-grid');
-                if (!vendorGrid || !vendorGrid.dataset.originalContent) return;
-
-                // Don't restore original content, let the normal render function handle it
-                // The renderVendors() function will be called after this
+                // Use unified hide to remove skeleton state only
+                hideVendorSkeletons();
             }
 
             // Helper function to generate random coordinates (for demo)
