@@ -1490,6 +1490,10 @@ BEGIN
             SIN(RADIANS(' + CAST(@Latitude AS NVARCHAR(20)) + ')) * SIN(RADIANS(v.Latitude))
         ) AS DistanceMiles';
     END
+    ELSE
+    BEGIN
+        SET @DistanceCalculation = ', NULL AS DistanceMiles';
+    END
     
     -- Build dynamic SQL for sorting
     DECLARE @SortExpression NVARCHAR(100);
@@ -1615,6 +1619,7 @@ BEGIN
     )
     SELECT 
         VendorProfileID AS id,
+        VendorProfileID,
         BusinessName AS name,
         DisplayName,
         PrimaryCategory AS type,
