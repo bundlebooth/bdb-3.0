@@ -845,6 +845,7 @@ router.get('/search-by-categories', async (req, res) => {
         isEcoFriendly: vendor.IsEcoFriendly,
         isAwardWinning: vendor.IsAwardWinning,
         region: vendor.Region || '',
+        distanceMiles: vendor.DistanceMiles,
         categories: vendor.Categories || '',
         services: vendor.services ? JSON.parse(vendor.services) : [],
         reviews: vendor.reviews ? JSON.parse(vendor.reviews) : [],
