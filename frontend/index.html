@@ -21569,23 +21569,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return true;
                 });
 
-                // Handle location filter
+                // Handle location filter - backend already filters by distance radius when coordinates are provided
+                state.filteredVendors = filtered;
+                
                 let locationMessage = '';
                 if (useCurrentLocation && state.userLocation && within50Miles) {
-                    // For demo purposes, we'll simulate nearby vendors by filtering the first few
-                    const nearbyVendors = filtered.slice(0, 3);
-                    if (nearbyVendors.length > 0) {
-                        filtered = nearbyVendors;
-                        locationMessage = `${filtered.length} vendors available near you`;
-                    } else {
-                        // If no nearby vendors, show ALL vendors that match other filters
-                        locationMessage = "No vendors near you. Showing all available vendors.";
-                    }
+                    locationMessage = `${filtered.length} vendors available within 50 miles`;
                 } else {
                     locationMessage = `${filtered.length} vendors available`;
                 }
-
-                state.filteredVendors = filtered;
                 resultsCount.textContent = locationMessage;
 
                 // Apply sorting
@@ -21631,11 +21623,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         });
                         break;
                     case 'nearest':
-                        if (state.userLocation) {
-                            // In a real app, we would calculate distance properly
-                            // For demo, we'll just shuffle the array
-                            state.filteredVendors.sort(() => Math.random() - 0.5);
-                        }
+                        // Sort by actual distance from user location (calculated by backend)
+                        state.filteredVendors.sort((a, b) => {
+                            const distA = a.distanceMiles ?? a.DistanceMiles ?? 999999;
+                            const distB = b.distanceMiles ?? b.DistanceMiles ?? 999999;
+                            return distA - distB;
+                        });
                         break;
                     case 'rating':
                         state.filteredVendors.sort((a, b) => {
@@ -27433,6 +27426,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const locCity = vendor.City || vendor.city || '';
                     const locState = vendor.State || vendor.state || '';
                     const locationText = (vendor.location && vendor.location.trim()) || [locCity, locState].filter(Boolean).join(', ');
+                    
+                    // Distance display when available
+                    const distanceMiles = vendor.distanceMiles ?? vendor.DistanceMiles;
+                    const distanceHTML = (distanceMiles !== null && distanceMiles !== undefined) ? 
+                        `<span style="color:#6b7280;">•</span>
+                         <span style="color:#059669;font-size:.85rem;"><i class="fas fa-location-arrow" style="margin-right:0.25rem;"></i>${distanceMiles.toFixed(1)} mi</span>` : '';
 
                     return `
                         <div class="vendor-card">
@@ -27449,6 +27448,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <h3 class="vendor-name" style="font-size:1.1rem;">${vendor.BusinessName || vendor.name}</h3>
                                 <div class="vendor-location" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                                     <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${locationText || 'Location unavailable'}</span>
+                                    ${distanceHTML}
                                     <span style="color:#6b7280;">•</span>
                                     <span style="display:flex;align-items:center;gap:.5rem;">
                                         <span style="color:#f59e0b;font-size:.9rem;">${'★'.repeat(Math.floor(ratingValue))}${'☆'.repeat(5-Math.floor(ratingValue))}</span>
@@ -28178,8 +28178,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         return false;
                     }
                     
-                    // Location filter
-                    if (state.filters.location) {
+                    // Location filter - only apply text-based filter if we DON'T have user coordinates
+                    // When we have coordinates, backend already filters by distance radius
+                    const hasUserCoords = (state.userLocation?.lat && state.userLocation?.lng) || (state.userCoords?.lat && state.userCoords?.lon);
+                    if (state.filters.location && !hasUserCoords) {
                         const location = state.filters.location.toLowerCase();
                         const vendorLocation = `${vendor.City || ''} ${vendor.State || ''}`.toLowerCase();
                         if (!vendorLocation.includes(location)) {
@@ -28212,6 +28214,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const isAll = categoryParam && decodeURIComponent(categoryParam).toLowerCase() === 'all';
                     // Determine next server page
                     const nextPage = append ? (state.serverPageNumber + 1) : 1;
+                    
+                    // Get user location for distance-based sorting
+                    const userLat = state.userLocation?.lat || state.userCoords?.lat;
+                    const userLng = state.userLocation?.lng || state.userCoords?.lon;
+                    const hasUserLocation = userLat && userLng;
+                    
+                    // Determine sort method - default to 'nearest' if user has location
+                    const sortBy = sortSelect?.value || (hasUserLocation ? 'nearest' : 'recommended');
+                    
                     let url = `${API_BASE_URL}/vendors?pageNumber=${nextPage}&pageSize=${state.serverPageSize}`;
                     if (hasCategoryQuery && !isAll) {
                         // Preserve only category params for backend and allow future filter expansions
@@ -28220,7 +28231,37 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (categoriesParam) qp.set('categories', categoriesParam);
                         qp.set('pageNumber', String(nextPage));
                         qp.set('pageSize', String(state.serverPageSize));
+                        
+                        // Add location parameters for distance-based sorting
+                        if (hasUserLocation) {
+                            qp.set('latitude', String(userLat));
+                            qp.set('longitude', String(userLng));
+                            qp.set('radiusMiles', '50');
+                        }
+                        
+                        // Add sort parameter
+                        if (sortBy) {
+                            qp.set('sortBy', sortBy);
+                        }
+                        
                         url = `${API_BASE_URL}/vendors/search-by-categories?${qp.toString()}`;
+                    } else {
+                        // Add location and sort parameters to default vendor search
+                        const qp = new URLSearchParams();
+                        qp.set('pageNumber', String(nextPage));
+                        qp.set('pageSize', String(state.serverPageSize));
+                        
+                        if (hasUserLocation) {
+                            qp.set('latitude', String(userLat));
+                            qp.set('longitude', String(userLng));
+                            qp.set('radiusMiles', '50');
+                        }
+                        
+                        if (sortBy) {
+                            qp.set('sortBy', sortBy);
+                        }
+                        
+                        url = `${API_BASE_URL}/vendors?${qp.toString()}`;
                     }
 
                     const response = await fetch(url);
@@ -28260,7 +28301,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const normalizedVendors = vendors.map(v => {
                         const primary = v.type || v.PrimaryCategory || ((v.categories || v.Categories || '').split(',')[0] || '').trim();
                         const categoryKey = mapTypeToCategory(primary);
-                        return { ...v, category: categoryKey || '' };
+                        return { 
+                            ...v, 
+                            category: categoryKey || '',
+                            // Preserve distance from backend for sorting
+                            distanceMiles: v.distanceMiles || v.DistanceMiles || null
+                        };
                     });
 
                     if (append) {
