@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>VenueVue - Event Booking Platform</title>
+    <title>PlanHive - Event Booking Platform</title>
     <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎪</text></svg>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Google Maps API with Places API (New) -->
@@ -5174,8 +5174,7 @@
     <!-- Main App View -->
     <header class="header">
         <div class="logo" style="cursor: pointer;">
-            <i class="fas fa-star" style="color: var(--primary); margin-right: 0.5rem;"></i>
-            VenueVue
+            <img src="planhive_logo.svg" alt="PlanHive" style="height: 50px; width: auto;">
         </div>
 
         <div class="search-container">
@@ -5507,9 +5506,8 @@
                 <!-- Client Dashboard -->
                 <div class="dashboard-container" id="dashboard-container" style="display: none; height: 100%;">
                     <aside class="dashboard-sidebar">
-                        <div class="logo" style="padding: 1rem 0; border-bottom: 1px solid var(--border);">
-                            <span>🎉</span>
-                            VenueVue
+                        <div class="logo" style="padding: 1rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center;">
+                            <img src="planhive_logo.svg" alt="PlanHive" style="height: 40px; width: auto;">
                         </div>
                         <ul class="dashboard-menu">
                             <li><a href="#" class="active" data-section="dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</a></li>
@@ -5656,9 +5654,8 @@
                 <!-- Vendor Dashboard -->
                 <div class="dashboard-container" id="vendor-dashboard-container" style="display: none; height: 100%;">
                     <aside class="dashboard-sidebar">
-                        <div class="logo" style="padding: 1rem 0; border-bottom: 1px solid var(--border);">
-                            <span>🎉</span>
-                            VenueVue
+                        <div class="logo" style="padding: 1rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center;">
+                            <img src="planhive_logo.svg" alt="PlanHive" style="height: 40px; width: auto;">
                         </div>
                         <ul class="dashboard-menu">
                             <li><a href="#" class="active" data-section="vendor-dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</a></li>
@@ -6701,7 +6698,7 @@
     <div id="location-permission" class="location-permission" style="display: none;">
         <div class="location-content">
             <h3>Find Vendors Near You</h3>
-            <p>VenueVue would like to access your location to show vendors near you.</p>
+            <p>PlanHive would like to access your location to show vendors near you.</p>
             <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1.5rem;">
                 <button class="btn btn-outline" id="deny-location">Not Now</button>
                 <button class="btn btn-primary" id="allow-location">
@@ -22603,14 +22600,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         loginForm.style.opacity = '';
 
                         if (container) container.style.position = '';
-                        if (titleEl) titleEl.textContent = 'Welcome to VenueVue';
+                        if (titleEl) titleEl.textContent = 'Welcome to PlanHive';
                     }, 220);
                 } else {
                     loginForm.style.display = 'block';
                     signupForm.style.display = 'none';
                     loggedInView.style.display = 'none';
                     if (twofaForm) twofaForm.style.display = 'none';
-                    if (titleEl) titleEl.textContent = 'Welcome to VenueVue';
+                    if (titleEl) titleEl.textContent = 'Welcome to PlanHive';
                 }
 
                 document.getElementById('login-email').value = '';
@@ -34289,8 +34286,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         <div class="vv-wrap">
             <div class="vv-brand">
                 <div class="vv-logo">
-                    <i class="fas fa-star" style="color: var(--primary);"></i>
-                    <span>VenueVue</span>
+                    <img src="planhive_logo.svg" alt="PlanHive" style="height: 45px; width: auto;">
                 </div>
                 <div class="vv-tagline">Get the app and plan on the go</div>
                 <div class="vv-badges">
@@ -34303,7 +34299,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         <span>App Store</span>
                     </a>
                 </div>
-                <div style="color: var(--text-light); font-size: 0.9rem;">© 2025 VenueVue. All rights reserved.</div>
+                <div style="color: var(--text-light); font-size: 0.9rem;">© 2025 PlanHive. All rights reserved.</div>
             </div>
 
             <div class="vv-col">
