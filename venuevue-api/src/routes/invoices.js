@@ -137,13 +137,13 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
 
     // Fees
     const recordedStripeFee = toCurrency((snap.transactions || []).reduce((sum, t) => sum + Number(t.FeeAmount || 0), 0));
-    const stripeFee = recordedStripeFee > 0 ? recordedStripeFee : estimateStripeFee(totalAmount || subtotal);
+    const stripeFee = recordedStripeFee > 0 ? recordedStripeFee : estimateStripeFee(subtotal);
     const platformFee = estimatePlatformFee(totalAmount || subtotal);
     const taxPercent = parseFloat(process.env.TAX_PERCENT || '0') / 100;
     const taxAmount = toCurrency((subtotal + platformFee) * taxPercent);
 
     // Include fees in client grand total
-    const totalDue = toCurrency(subtotal + platformFee + taxAmount);
+    const totalDue = toCurrency(subtotal + platformFee + taxAmount + stripeFee);
 
     // Determine invoice status based on booking flag or payments >= grand total
     const totalPaid = toCurrency((snap.transactions || []).reduce((s, t) => s + Number(t.Amount || 0), 0));
