@@ -57,7 +57,7 @@ async function getInvoiceTotalsCents(bookingId) {
     const platformFee = Math.round((subtotal * pctPlatform) * 100) / 100;
     const taxAmount = Math.round(((subtotal + platformFee) * pctTax) * 100) / 100;
     const stripeFee = Math.round(((subtotal * pctStripe) + fixedStripe) * 100) / 100;
-    const total = Math.round((subtotal + platformFee + taxAmount) * 100) / 100;
+    const total = Math.round((subtotal + platformFee + taxAmount + stripeFee) * 100) / 100;
 
     return {
       totalAmountCents: Math.round(total * 100),
