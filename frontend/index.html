@@ -28219,6 +28219,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const append = !!options.append;
                 try {
                     console.log('Loading vendors from API...');
+                    
+                    // Show skeleton cards when loading fresh (not appending)
+                    if (!append) {
+                        showVendorSkeletons(8);
+                    }
+                    
                     const params = new URLSearchParams(window.location.search);
                     const categoryParam = params.get('category');
                     const categoriesParam = params.get('categories');
@@ -28343,12 +28349,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         vendorGrid.innerHTML = '';
                         renderVendors();
                     }
+                    
+                    // Hide skeleton cards after rendering complete
+                    hideVendorSkeletons();
+                    
                     updatePagination();
                     updateMetadata({ total: totalCount });
                     tryInitGeolocation();
                     console.log(`Successfully loaded and rendered ${vendors.length} vendors`);
                 } catch (error) {
                     console.error('Error loading vendors:', error);
+                    
+                    // Hide skeleton cards on error
+                    hideVendorSkeletons();
+                    
                     if (vendorGrid) {
                         vendorGrid.innerHTML = `
                             <div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--accent);">
