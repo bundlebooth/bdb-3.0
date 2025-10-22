@@ -1325,8 +1325,8 @@ router.get('/:id/invoice', async (req, res) => {
     const platformFee = +((subtotal * (isFinite(platformFeePercent) ? platformFeePercent : 0)) / 100).toFixed(2);
 
     const recordedProcessingFees = +txRes.recordset.reduce((sum, r) => sum + Number(r.FeeAmount || 0), 0).toFixed(2);
-    const stripePercent = parseFloat(process.env.STRIPE_PROC_FEE_PERCENT || process.env.STRIPE_FEE_PERCENT || '2.9');
-    const stripeFixed = parseFloat(process.env.STRIPE_PROC_FEE_FIXED || process.env.STRIPE_FEE_FIXED || '0.30');
+    const stripePercent = parseFloat(process.env.STRIPE_PROC_FEE_PERCENT || '2.9');
+    const stripeFixed = parseFloat(process.env.STRIPE_PROC_FEE_FIXED || '0.30');
     const estimatedProcessingFees = +((subtotal * (isFinite(stripePercent) ? stripePercent : 0) / 100) + (isFinite(stripeFixed) ? stripeFixed : 0)).toFixed(2);
     const processingFees = recordedProcessingFees > 0 ? recordedProcessingFees : estimatedProcessingFees;
 
