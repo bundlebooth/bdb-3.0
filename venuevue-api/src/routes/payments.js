@@ -22,7 +22,7 @@ async function getInvoiceTotalsCents(bookingId) {
   const q = await r.query(`SELECT TOP 1 InvoiceID, Subtotal, TaxAmount, TotalAmount, PlatformFee, StripeFee FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC`);
   if (!q.recordset.length) {
     // Fallback: compute totals directly from booking/services/expenses
-    const pctPlatform = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    const pctPlatform = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8') / 100;
     const pctStripe = parseFloat(process.env.STRIPE_FEE_PERCENT || process.env.STRIPE_PROC_FEE_PERCENT || '2.9') / 100;
     const fixedStripe = parseFloat(process.env.STRIPE_FEE_FIXED || process.env.STRIPE_PROC_FEE_FIXED || '0.30');
     const pctTax = parseFloat(process.env.TAX_PERCENT || '0') / 100;
@@ -651,8 +651,8 @@ router.post('/checkout', async (req, res) => {
       });
     }
 
-    // Calculate platform fee (configurable via environment variable; default 5%)
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    // Calculate platform fee (configurable via environment variable; default 8%)
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8') / 100;
     const invTotals1 = await getInvoiceTotalsCents(bookingId);
     const platformFeeCents = (invTotals1.platformFeeCents != null) ? invTotals1.platformFeeCents : Math.round(Math.round(amount * 100) * platformFeePercent);
     const applicationFeeCents = platformFeeCents; // platform collects only its fee; processing fee is covered by higher charge amount
@@ -771,7 +771,7 @@ router.post('/payment-intent', async (req, res) => {
       });
     }
 
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8') / 100;
     const invTotals2 = await getInvoiceTotalsCents(bookingId);
     const amountCents = invTotals2.totalAmountCents;
     if (!amountCents || amountCents < 50) {
@@ -901,7 +901,7 @@ router.post('/checkout-session', async (req, res) => {
       });
     }
 
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8') / 100;
     const invTotals3 = await getInvoiceTotalsCents(bookingId);
     const totalAmountCents = invTotals3.totalAmountCents;
     if (!totalAmountCents || totalAmountCents < 50) {
