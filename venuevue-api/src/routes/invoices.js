@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
-const { computeFees } = require('../config/billing');
 
 // Helpers
 function toCurrency(n) {
@@ -107,13 +106,14 @@ async function loadBookingSnapshot(pool, bookingId) {
 }
 
 function estimateStripeFee(totalAmount) {
-  const fees = computeFees({ subtotal: Number(totalAmount || 0), vendorCount: 1, includeTax: false });
-  return toCurrency(fees.stripeFee);
+  const pct = parseFloat(process.env.STRIPE_FEE_PERCENT || '2.9') / 100;
+  const fixed = parseFloat(process.env.STRIPE_FEE_FIXED || '0.30');
+  return toCurrency((Number(totalAmount || 0) * pct) + fixed);
 }
 
 function estimatePlatformFee(totalAmount) {
-  const fees = computeFees({ subtotal: Number(totalAmount || 0), vendorCount: 1, includeTax: false });
-  return toCurrency(fees.platformFee);
+  const pct = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+  return toCurrency(Number(totalAmount || 0) * pct);
 }
 
 async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
@@ -135,11 +135,16 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
     const expensesTotal = toCurrency((snap.expenses || []).reduce((sum, e) => sum + Number(e.Amount || 0), 0));
     const subtotal = toCurrency(servicesSubtotal + expensesTotal);
 
-    // Fees computed centrally for consistency across app
-    const { platformFee, stripeFee, taxAmount, grandTotal } = computeFees({ subtotal, vendorCount: 1, includeTax: true });
+    // Fees
+    // For client-facing consistency, always estimate processing fee from subtotal (pre-payment)
+    // rather than using recorded Stripe fees (which are assessed on the charged amount).
+    const stripeFee = estimateStripeFee(subtotal);
+    const platformFee = estimatePlatformFee(subtotal);
+    const taxPercent = parseFloat(process.env.TAX_PERCENT || '0') / 100;
+    const taxAmount = toCurrency((subtotal + platformFee) * taxPercent);
 
     // Include fees in client grand total
-    const totalDue = toCurrency(grandTotal);
+    const totalDue = toCurrency(subtotal + platformFee + taxAmount + stripeFee);
 
     // Determine invoice status based on booking flag or payments >= grand total
     const totalPaid = toCurrency((snap.transactions || []).reduce((s, t) => s + Number(t.Amount || 0), 0));
