@@ -139,7 +139,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
     // For client-facing consistency, always estimate processing fee from subtotal (pre-payment)
     // rather than using recorded Stripe fees (which are assessed on the charged amount).
     const stripeFee = estimateStripeFee(subtotal);
-    const platformFee = estimatePlatformFee(totalAmount || subtotal);
+    const platformFee = estimatePlatformFee(subtotal);
     const taxPercent = parseFloat(process.env.TAX_PERCENT || '0') / 100;
     const taxAmount = toCurrency((subtotal + platformFee) * taxPercent);
 
@@ -160,7 +160,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       r.input('IssueDate', sql.DateTime, issueDate);
       r.input('DueDate', sql.DateTime, issueDate); // same day unless later extended
       r.input('Status', sql.NVarChar(20), invStatus);
-      r.input('Currency', sql.NVarChar(3), 'USD');
+      r.input('Currency', sql.NVarChar(3), 'CAD');
       r.input('Subtotal', sql.Decimal(10,2), subtotal);
       r.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
       r.input('PlatformFee', sql.Decimal(10,2), platformFee);
@@ -192,6 +192,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       r.input('InvoiceID', sql.Int, invoiceId);
       r.input('IssueDate', sql.DateTime, issueDate);
       r.input('Status', sql.NVarChar(20), invStatus);
+      r.input('Currency', sql.NVarChar(3), 'CAD');
       r.input('Subtotal', sql.Decimal(10,2), subtotal);
       r.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
       r.input('PlatformFee', sql.Decimal(10,2), platformFee);
@@ -208,7 +209,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       }));
       await r.query(`
         UPDATE Invoices
-        SET IssueDate=@IssueDate, Status=@Status, Subtotal=@Subtotal, VendorExpensesTotal=@VendorExpensesTotal,
+        SET IssueDate=@IssueDate, Status=@Status, Currency=@Currency, Subtotal=@Subtotal, VendorExpensesTotal=@VendorExpensesTotal,
             PlatformFee=@PlatformFee, StripeFee=@StripeFee, TaxAmount=@TaxAmount, TotalAmount=@TotalAmount, FeesIncludedInTotal=@FeesIncludedInTotal,
             UpdatedAt=GETDATE(), SnapshotJSON=@SnapshotJSON
         WHERE InvoiceID=@InvoiceID;
