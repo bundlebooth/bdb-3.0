@@ -4,6 +4,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const invoicesRouter = require('./invoices');
+const { computeFees, getBillingConfig } = require('../config/billing');
 
 // Helper function to check if Stripe is properly configured
 function isStripeConfigured() {
@@ -22,10 +23,7 @@ async function getInvoiceTotalsCents(bookingId) {
   const q = await r.query(`SELECT TOP 1 InvoiceID, Subtotal, TaxAmount, TotalAmount, PlatformFee, StripeFee FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC`);
   if (!q.recordset.length) {
     // Fallback: compute totals directly from booking/services/expenses
-    const pctPlatform = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
-    const pctStripe = parseFloat(process.env.STRIPE_FEE_PERCENT || process.env.STRIPE_PROC_FEE_PERCENT || '2.9') / 100;
-    const fixedStripe = parseFloat(process.env.STRIPE_FEE_FIXED || process.env.STRIPE_PROC_FEE_FIXED || '0.30');
-    const pctTax = parseFloat(process.env.TAX_PERCENT || '0') / 100;
+    const cfg = getBillingConfig();
 
     // Get booking core
     const b = await pool.request().input('BookingID', sql.Int, bookingId)
@@ -54,10 +52,11 @@ async function getInvoiceTotalsCents(bookingId) {
     } catch (err) { /* table may not exist; ignore */ }
 
     const subtotal = Math.round((servicesSubtotal + expensesTotal) * 100) / 100;
-    const platformFee = Math.round((subtotal * pctPlatform) * 100) / 100;
-    const taxAmount = Math.round(((subtotal + platformFee) * pctTax) * 100) / 100;
-    const stripeFee = Math.round(((subtotal * pctStripe) + fixedStripe) * 100) / 100;
-    const total = Math.round((subtotal + platformFee + taxAmount + stripeFee) * 100) / 100;
+    const fees = computeFees({ subtotal, vendorChargeCount: 1 });
+    const platformFee = fees.platformFee;
+    const taxAmount = fees.taxAmount;
+    const stripeFee = fees.stripeFee;
+    const total = fees.grandTotal;
 
     return {
       totalAmountCents: Math.round(total * 100),
@@ -101,10 +100,9 @@ async function existsRecentTransaction({ bookingId, amount, externalId = null, m
 
 function estimateProcessingFee(amount) {
   try {
-    const pct = parseFloat(process.env.STRIPE_PROC_FEE_PERCENT || process.env.STRIPE_FEE_PERCENT || '2.9') / 100;
-    const fixed = parseFloat(process.env.STRIPE_PROC_FEE_FIXED || process.env.STRIPE_FEE_FIXED || '0.30');
     const n = Number(amount || 0);
-    return Math.round(((n * pct) + fixed) * 100) / 100;
+    const fees = computeFees({ subtotal: n, vendorChargeCount: 1 });
+    return Math.round((fees.stripeFee) * 100) / 100;
   } catch (_) { return 0; }
 }
 
@@ -651,8 +649,8 @@ router.post('/checkout', async (req, res) => {
       });
     }
 
-    // Calculate platform fee (configurable via environment variable; default 5%)
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    // Calculate platform fee using centralized config
+    const platformFeePercent = (getBillingConfig().platformPct || 0) / 100;
     const invTotals1 = await getInvoiceTotalsCents(bookingId);
     const platformFeeCents = (invTotals1.platformFeeCents != null) ? invTotals1.platformFeeCents : Math.round(Math.round(amount * 100) * platformFeePercent);
     const applicationFeeCents = platformFeeCents; // platform collects only its fee; processing fee is covered by higher charge amount
@@ -771,7 +769,7 @@ router.post('/payment-intent', async (req, res) => {
       });
     }
 
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    const platformFeePercent = (getBillingConfig().platformPct || 0) / 100;
     const invTotals2 = await getInvoiceTotalsCents(bookingId);
     const amountCents = invTotals2.totalAmountCents;
     if (!amountCents || amountCents < 50) {
@@ -901,7 +899,7 @@ router.post('/checkout-session', async (req, res) => {
       });
     }
 
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+    const platformFeePercent = (getBillingConfig().platformPct || 0) / 100;
     const invTotals3 = await getInvoiceTotalsCents(bookingId);
     const totalAmountCents = invTotals3.totalAmountCents;
     if (!totalAmountCents || totalAmountCents < 50) {
