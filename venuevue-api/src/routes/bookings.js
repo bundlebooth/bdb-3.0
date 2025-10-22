@@ -4,7 +4,6 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const invoicesRouter = require('./invoices');
-const { computeFees, getBillingConfig } = require('../config/billing');
 
 // Create a new booking
 router.post('/', async (req, res) => {
@@ -1321,12 +1320,14 @@ router.get('/:id/invoice', async (req, res) => {
 
     const subtotal = +(servicesSubtotal + expensesTotal).toFixed(2);
 
-    // Fees: platform and processing (centralized)
-    const fees = computeFees({ subtotal, vendorChargeCount: 1 });
-    const platformFeePercent = fees.platformFeePercent;
-    const platformFee = +(fees.platformFee).toFixed(2);
+    // Fees: platform and processing
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5');
+    const platformFee = +((subtotal * (isFinite(platformFeePercent) ? platformFeePercent : 0)) / 100).toFixed(2);
+
     const recordedProcessingFees = +txRes.recordset.reduce((sum, r) => sum + Number(r.FeeAmount || 0), 0).toFixed(2);
-    const estimatedProcessingFees = +(fees.stripeFee).toFixed(2);
+    const stripePercent = parseFloat(process.env.STRIPE_PROC_FEE_PERCENT || '2.9');
+    const stripeFixed = parseFloat(process.env.STRIPE_PROC_FEE_FIXED || '0.30');
+    const estimatedProcessingFees = +((subtotal * (isFinite(stripePercent) ? stripePercent : 0) / 100) + (isFinite(stripeFixed) ? stripeFixed : 0)).toFixed(2);
     const processingFees = recordedProcessingFees > 0 ? recordedProcessingFees : estimatedProcessingFees;
 
     const grandTotal = +(subtotal + platformFee + processingFees).toFixed(2);
