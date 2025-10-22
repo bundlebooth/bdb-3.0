@@ -108,7 +108,14 @@ function estimateProcessingFee(amount) {
   } catch (_) { return 0; }
 }
 
-async function recordTransaction({ bookingId, userId = null, vendorProfileId = null, amount, currency = 'USD', stripeChargeId = null, description = 'Payment', feeAmount = null }) {
+function getStripeCurrency() {
+  try {
+    const c = (process.env.STRIPE_CURRENCY || 'cad').toLowerCase();
+    return (c === 'cad' || c === 'usd' || c === 'eur' || c === 'gbp') ? c : 'cad';
+  } catch (_) { return 'cad'; }
+}
+
+async function recordTransaction({ bookingId, userId = null, vendorProfileId = null, amount, currency = 'CAD', stripeChargeId = null, description = 'Payment', feeAmount = null }) {
   const pool = await poolPromise;
   const amt = Math.round(Number(amount || 0) * 100) / 100;
   const fee = typeof feeAmount === 'number' ? Math.round(feeAmount * 100) / 100 : estimateProcessingFee(amt);
@@ -127,7 +134,7 @@ async function recordTransaction({ bookingId, userId = null, vendorProfileId = n
   req.input('Amount', sql.Decimal(10,2), amt);
   req.input('FeeAmount', sql.Decimal(10,2), fee);
   req.input('NetAmount', sql.Decimal(10,2), net);
-  req.input('Currency', sql.NVarChar(3), currency || 'USD');
+  req.input('Currency', sql.NVarChar(3), (currency || getStripeCurrency().toUpperCase()).toUpperCase());
   req.input('Description', sql.NVarChar(255), description || 'Payment');
   req.input('StripeChargeID', sql.NVarChar(100), stripeChargeId || null);
   req.input('Status', sql.NVarChar(20), 'succeeded');
@@ -596,7 +603,7 @@ router.post('/checkout', async (req, res) => {
       bookingId, 
       vendorProfileId, 
       amount, 
-      currency = 'usd',
+      currency = 'cad',
       description,
       customerEmail 
     } = req.body;
@@ -714,7 +721,7 @@ router.post('/payment-intent', async (req, res) => {
       bookingId,
       vendorProfileId,
       amount,
-      currency = 'usd',
+      currency = 'cad',
       description
     } = req.body;
 
@@ -838,7 +845,7 @@ router.post('/checkout-session', async (req, res) => {
     const { 
       bookingId, 
       amount, 
-      currency = 'usd',
+      currency = 'cad',
       description,
       successUrl,
       cancelUrl 
@@ -1089,12 +1096,13 @@ router.get('/verify-session', async (req, res) => {
       const paidAmount = ((pi && typeof pi.amount_received === 'number') ? pi.amount_received : (pi && typeof pi.amount === 'number' ? pi.amount : 0)) / 100;
       const exists = await existsRecentTransaction({ bookingId, amount: paidAmount || row.TotalAmount, externalId: paymentIntentId, minutes: 240 });
       if (!exists) {
+        const txnCurrency = (pi && typeof pi.currency === 'string' && pi.currency) ? pi.currency.toUpperCase() : 'CAD';
         await recordTransaction({
           bookingId,
           userId: row.UserID,
           vendorProfileId: row.VendorProfileID,
           amount: paidAmount || row.TotalAmount,
-          currency: 'USD',
+          currency: txnCurrency,
           stripeChargeId: paymentIntentId,
           description: 'Stripe Payment (verified)'
         });
@@ -1181,12 +1189,13 @@ router.get('/verify-intent', async (req, res) => {
       const paidAmount = ((pi && typeof pi.amount_received === 'number') ? pi.amount_received : (pi && typeof pi.amount === 'number' ? pi.amount : 0)) / 100;
       const exists = await existsRecentTransaction({ bookingId, amount: paidAmount, externalId: paymentIntentId, minutes: 240 });
       if (!exists) {
+        const txnCurrency = (pi && typeof pi.currency === 'string' && pi.currency) ? pi.currency.toUpperCase() : 'CAD';
         await recordTransaction({
           bookingId,
           userId: row.UserID,
           vendorProfileId: row.VendorProfileID,
           amount: paidAmount,
-          currency: 'USD',
+          currency: txnCurrency,
           stripeChargeId: paymentIntentId,
           description: 'Stripe Payment (verified)'
         });
@@ -1280,7 +1289,7 @@ const webhook = async (req, res) => {
                   userId: row.UserID,
                   vendorProfileId: row.VendorProfileID,
                   amount: row.TotalAmount,
-                  currency: 'USD',
+                  currency: (pi && typeof pi.currency === 'string' && pi.currency) ? pi.currency.toUpperCase() : 'CAD',
                   stripeChargeId: paymentIntent.id,
                   description: 'Stripe Payment (webhook PI)'
                 });
@@ -1408,7 +1417,7 @@ const webhook = async (req, res) => {
                   userId: row.UserID,
                   vendorProfileId: row.VendorProfileID,
                   amount: (charge.amount / 100),
-                  currency: charge.currency?.toUpperCase() || 'USD',
+                  currency: (charge && typeof charge.currency === 'string' && charge.currency) ? charge.currency.toUpperCase() : 'CAD',
                   stripeChargeId: charge.id,
                   description: 'Stripe Charge',
                   feeAmount: fee
