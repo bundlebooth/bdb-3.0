@@ -23,8 +23,8 @@ async function getInvoiceTotalsCents(bookingId) {
   if (!q.recordset.length) {
     // Fallback: compute totals directly from booking/services/expenses
     const pctPlatform = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8') / 100;
-    const pctStripe = parseFloat(process.env.STRIPE_FEE_PERCENT || process.env.STRIPE_PROC_FEE_PERCENT || '2.9') / 100;
-    const fixedStripe = parseFloat(process.env.STRIPE_FEE_FIXED || process.env.STRIPE_PROC_FEE_FIXED || '0.30');
+    const pctStripe = parseFloat(process.env.STRIPE_PROC_FEE_PERCENT || process.env.STRIPE_FEE_PERCENT || '2.9') / 100;
+    const fixedStripe = parseFloat(process.env.STRIPE_PROC_FEE_FIXED || process.env.STRIPE_FEE_FIXED || '0.30');
     const pctTax = parseFloat(process.env.TAX_PERCENT || '0') / 100;
 
     // Get booking core
@@ -651,7 +651,7 @@ router.post('/checkout', async (req, res) => {
       });
     }
 
-    // Calculate platform fee (configurable via environment variable; default 8%)
+    // Calculate platform fee (configurable via environment variable; default 5%)
     const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8') / 100;
     const invTotals1 = await getInvoiceTotalsCents(bookingId);
     const platformFeeCents = (invTotals1.platformFeeCents != null) ? invTotals1.platformFeeCents : Math.round(Math.round(amount * 100) * platformFeePercent);
