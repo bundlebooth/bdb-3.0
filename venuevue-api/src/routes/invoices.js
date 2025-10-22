@@ -106,8 +106,8 @@ async function loadBookingSnapshot(pool, bookingId) {
 }
 
 function estimateStripeFee(totalAmount) {
-  const pct = parseFloat(process.env.STRIPE_FEE_PERCENT || '2.9') / 100;
-  const fixed = parseFloat(process.env.STRIPE_FEE_FIXED || '0.30');
+  const pct = parseFloat(process.env.STRIPE_FEE_PERCENT || process.env.STRIPE_PROC_FEE_PERCENT || '2.9') / 100;
+  const fixed = parseFloat(process.env.STRIPE_FEE_FIXED || process.env.STRIPE_PROC_FEE_FIXED || '0.30');
   return toCurrency((Number(totalAmount || 0) * pct) + fixed);
 }
 
@@ -160,7 +160,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       r.input('IssueDate', sql.DateTime, issueDate);
       r.input('DueDate', sql.DateTime, issueDate); // same day unless later extended
       r.input('Status', sql.NVarChar(20), invStatus);
-      r.input('Currency', sql.NVarChar(3), 'CAD');
+      r.input('Currency', sql.NVarChar(3), (process.env.STRIPE_CURRENCY || process.env.CURRENCY || 'CAD').toUpperCase());
       r.input('Subtotal', sql.Decimal(10,2), subtotal);
       r.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
       r.input('PlatformFee', sql.Decimal(10,2), platformFee);
@@ -192,7 +192,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       r.input('InvoiceID', sql.Int, invoiceId);
       r.input('IssueDate', sql.DateTime, issueDate);
       r.input('Status', sql.NVarChar(20), invStatus);
-      r.input('Currency', sql.NVarChar(3), 'CAD');
+      r.input('Currency', sql.NVarChar(3), (process.env.STRIPE_CURRENCY || process.env.CURRENCY || 'CAD').toUpperCase());
       r.input('Subtotal', sql.Decimal(10,2), subtotal);
       r.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
       r.input('PlatformFee', sql.Decimal(10,2), platformFee);
