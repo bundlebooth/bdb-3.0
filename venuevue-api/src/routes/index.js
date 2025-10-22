@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { getBillingConfig } = require('../config/billing');
 
 // Simple welcome message for the root URL
 router.get('/', (req, res) => {
@@ -18,12 +19,17 @@ router.get('/', (req, res) => {
 // Config endpoint to serve frontend configuration including API keys
 router.get('/config', (req, res) => {
   try {
+    const b = getBillingConfig();
     res.json({
       status: 'success',
       data: {
         googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
-        // Add other frontend config as needed
-        apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3000/api'
+        apiBaseUrl: process.env.API_BASE_URL || 'http://localhost:3000/api',
+        PLATFORM_FEE_PERCENT: b.platformPct,
+        STRIPE_PROC_FEE_PERCENT: b.stripePct,
+        STRIPE_PROC_FEE_FIXED: b.stripeFixed,
+        TAX_PERCENT: b.taxPct,
+        CURRENCY: (b.currency || 'cad').toUpperCase()
       }
     });
   } catch (error) {
