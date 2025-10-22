@@ -136,8 +136,9 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
     const subtotal = toCurrency(servicesSubtotal + expensesTotal);
 
     // Fees
-    const recordedStripeFee = toCurrency((snap.transactions || []).reduce((sum, t) => sum + Number(t.FeeAmount || 0), 0));
-    const stripeFee = recordedStripeFee > 0 ? recordedStripeFee : estimateStripeFee(subtotal);
+    // For client-facing consistency, always estimate processing fee from subtotal (pre-payment)
+    // rather than using recorded Stripe fees (which are assessed on the charged amount).
+    const stripeFee = estimateStripeFee(subtotal);
     const platformFee = estimatePlatformFee(totalAmount || subtotal);
     const taxPercent = parseFloat(process.env.TAX_PERCENT || '0') / 100;
     const taxAmount = toCurrency((subtotal + platformFee) * taxPercent);
