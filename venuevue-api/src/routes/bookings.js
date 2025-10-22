@@ -4,7 +4,6 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const invoicesRouter = require('./invoices');
-const { getBillingConfig } = require('../config/billing');
 
 // Create a new booking
 router.post('/', async (req, res) => {
@@ -117,7 +116,7 @@ router.post('/:id/payment', async (req, res) => {
 // Create a Stripe Payment Intent (client-side)
 router.post('/create-payment-intent', async (req, res) => {
   try {
-    const { amount, currency = 'cad', vendorProfileId, bookingId, description } = req.body;
+    const { amount, currency = 'usd', vendorProfileId, bookingId, description } = req.body;
     if (!bookingId) {
       return res.status(400).json({ success: false, message: 'bookingId is required' });
     }
