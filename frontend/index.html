@@ -10502,6 +10502,44 @@ document.addEventListener('DOMContentLoaded', async function() {
             // API base URL
             const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
 
+            // Fetch payment configuration (platform fee, Stripe fees, etc.) - NO FALLBACKS
+            try {
+                const configRes = await fetch(`${API_BASE_URL}/payments/config`);
+                if (configRes.ok) {
+                    const config = await configRes.json();
+                    if (config.success) {
+                        // Store values directly from environment variables - no defaults
+                        window.PLATFORM_FEE_PERCENT = config.platformFeePercent;
+                        window.STRIPE_PROC_FEE_PERCENT = config.stripeProcFeePercent;
+                        window.STRIPE_PROC_FEE_FIXED = config.stripeProcFeeFixed;
+                        window.TAX_PERCENT = config.taxPercent;
+                        window.STRIPE_CURRENCY = config.currency;
+                        window.CONFIG_LOADED = true;
+                        console.log('✅ Payment config loaded from environment:', config);
+                        
+                        // Warn if environment variables are not set (will be NaN)
+                        if (isNaN(config.platformFeePercent)) {
+                            console.error('⚠️ PLATFORM_FEE_PERCENT is not set in Render environment!');
+                        }
+                        if (isNaN(config.stripeProcFeePercent)) {
+                            console.error('⚠️ STRIPE_PROC_FEE_PERCENT is not set in Render environment!');
+                        }
+                        if (isNaN(config.stripeProcFeeFixed)) {
+                            console.error('⚠️ STRIPE_PROC_FEE_FIXED is not set in Render environment!');
+                        }
+                    } else {
+                        console.error('❌ Payment config fetch failed: config.success is false');
+                        window.CONFIG_LOADED = false;
+                    }
+                } else {
+                    console.error('❌ Payment config fetch failed:', configRes.status);
+                    window.CONFIG_LOADED = false;
+                }
+            } catch (err) {
+                console.error('❌ Failed to fetch payment config:', err);
+                window.CONFIG_LOADED = false;
+            }
+
             // Handle Stripe Checkout return URLs for success/cancel
             try {
                 const url = new URL(window.location.href);
@@ -14887,12 +14925,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                     return count + serviceVendors.length;
                 }, 0);
 
-                // Transparent fee estimates for client
-                const platformFeePercent = (typeof window !== 'undefined' && window.PLATFORM_FEE_PERCENT != null)
-                    ? Number(window.PLATFORM_FEE_PERCENT) : 8; // default 8%
-                const applicationFee = +(totalCost * (platformFeePercent / 100)).toFixed(2);
-                const stripeFee = +((totalCost * 0.029) + (0.30 * totalVendorCount)).toFixed(2); // 2.9% + $0.30 per vendor charge
-                const grandTotal = +(totalCost + applicationFee + stripeFee).toFixed(2);
+                // Transparent fee estimates for client - use environment config ONLY
+                const platformFeePercent = Number(window.PLATFORM_FEE_PERCENT);
+                const stripeProcFeePercent = Number(window.STRIPE_PROC_FEE_PERCENT);
+                const stripeProcFeeFixed = Number(window.STRIPE_PROC_FEE_FIXED);
+                
+                // Calculate fees using environment values
+                const platformFee = +(totalCost * (platformFeePercent / 100)).toFixed(2);
+                const stripeFee = +((totalCost * (stripeProcFeePercent / 100)) + (stripeProcFeeFixed * totalVendorCount)).toFixed(2);
+                const grandTotal = +(totalCost + platformFee + stripeFee).toFixed(2);
                 const fmt = (n) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                 // Build Step 3-style horizontal cards for selected vendors
@@ -15109,8 +15150,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                                         <strong>$${fmt(totalCost)}</strong>
                                     </div>
                                     <div style="display:flex; justify-content:space-between; padding:6px 0;">
-                                        <span>Application fee (${platformFeePercent}%)</span>
-                                        <strong>$${fmt(applicationFee)}</strong>
+                                        <span>Platform fee (${platformFeePercent}%)</span>
+                                        <strong>$${fmt(platformFee)}</strong>
                                     </div>
                                     <div style="display:flex; justify-content:space-between; padding:6px 0;">
                                         <span>Processing fees <span style="color:#6b7280; font-weight:400;">(from Stripe)</span></span>
