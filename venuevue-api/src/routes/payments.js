@@ -1578,8 +1578,30 @@ router.get('/config', (req, res) => {
   try {
     const key = process.env.STRIPE_PUBLISHABLE_KEY || '';
     const valid = !!key && !key.includes('placeholder');
-    res.json({ success: valid, publishableKey: valid ? key : null });
+
+    // Read directly from environment variables - NO FALLBACK DEFAULTS
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT);
+    const stripeProcFeePercent = parseFloat(process.env.STRIPE_PROC_FEE_PERCENT || process.env.STRIPE_FEE_PERCENT);
+    const stripeProcFeeFixed = parseFloat(process.env.STRIPE_PROC_FEE_FIXED || process.env.STRIPE_FEE_FIXED);
+    const taxPercent = parseFloat(process.env.TAX_PERCENT);
+    const currency = (process.env.STRIPE_CURRENCY || 'cad').toLowerCase();
+
+    console.log('📊 Config endpoint called - Environment variables:');
+    console.log('   PLATFORM_FEE_PERCENT:', process.env.PLATFORM_FEE_PERCENT, '→', platformFeePercent);
+    console.log('   STRIPE_PROC_FEE_PERCENT:', process.env.STRIPE_PROC_FEE_PERCENT, '→', stripeProcFeePercent);
+    console.log('   STRIPE_PROC_FEE_FIXED:', process.env.STRIPE_PROC_FEE_FIXED, '→', stripeProcFeeFixed);
+
+    res.json({
+      success: true,
+      publishableKey: valid ? key : null,
+      platformFeePercent,
+      stripeProcFeePercent,
+      stripeProcFeeFixed,
+      taxPercent,
+      currency
+    });
   } catch (e) {
+    console.error('❌ Config endpoint error:', e);
     res.status(500).json({ success: false, message: 'Failed to load config' });
   }
 });
