@@ -3823,6 +3823,156 @@
             color: var(--primary);
         }
 
+        /* Categorized Settings Layout */
+        .settings-category {
+            margin-bottom: 2.5rem;
+        }
+
+        .settings-category-title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+        }
+
+        .settings-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .settings-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .settings-card-icon {
+            width: 40px;
+            height: 40px;
+            background: #f7f7f9;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .settings-card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .settings-card-description {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* Settings Modal */
+        .settings-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            animation: fadeIn 0.2s;
+        }
+
+        .settings-modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-modal {
+            background: white;
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s;
+        }
+
+        .settings-modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .settings-modal-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .settings-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 0.5rem;
+            line-height: 1;
+        }
+
+        .settings-modal-close:hover {
+            color: var(--text);
+        }
+
+        .settings-modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .settings-modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
         .request-card {
             background: white;
             border-radius: var(--radius);
@@ -5145,6 +5295,179 @@
             font-size: 14px;
         }
 
+        /* Settings Cards Layout */
+        .settings-category {
+            margin-bottom: 3rem;
+        }
+
+        .settings-category-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text);
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .settings-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .settings-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Business Profile Panel Styles */
+        .panels-container {
+            margin-top: 2rem;
+            width: 100%;
+        }
+        
+        .panels-container > [id$="-panel"] {
+            width: 100%;
+        }
+
+        .settings-card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .settings-card-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0;
+            color: var(--text);
+        }
+
+        .settings-card-description {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* Settings Modal */
+        .settings-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 1rem;
+        }
+
+        .settings-modal-overlay.active {
+            display: flex;
+        }
+
+        .settings-modal {
+            background: white;
+            border-radius: var(--radius);
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .settings-modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .settings-modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .settings-modal-close {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .settings-modal-close:hover {
+            color: var(--text);
+        }
+
+        .settings-modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .settings-modal-body .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .settings-modal-body .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .settings-modal-body label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .settings-modal-body input[type="text"],
+        .settings-modal-body input[type="email"],
+        .settings-modal-body input[type="tel"],
+        .settings-modal-body input[type="password"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+        }
+
+        .settings-modal-body input:disabled {
+            background: var(--secondary);
+            cursor: not-allowed;
+        }
+
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .messaging-widget {
@@ -5620,31 +5943,37 @@
                             </div>
                         </div>
                         <div id="settings-section" style="display: none;">
-                            <div class="settings-tabs">
-                                <button class="tab-btn active" data-target="client-settings-account">Account</button>
-                                <button class="tab-btn" data-target="client-settings-password">Password</button>
-                            </div>
-                            <div class="settings-panels">
-                                <div id="client-settings-account" class="settings-panel active">
-                                    <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Account Settings</h2>
-                                        <form id="profile-form">
-                                            <div class="form-group"><label for="profile-name">Full Name</label><input type="text" id="profile-name"></div>
-                                            <div class="form-group"><label for="profile-email">Email</label><input type="email" id="profile-email" disabled=""></div>
-                                            <div class="form-group"><label for="profile-phone">Phone Number</label><input type="tel" id="profile-phone"></div>
-                                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                                        </form>
+                            <!-- Personal Settings Category -->
+                            <div class="settings-category">
+                                <h2 class="settings-category-title">Personal settings</h2>
+                                <div class="settings-grid">
+                                    <div class="settings-card" data-settings-modal="personal-details">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Personal details</h3>
+                                        <p class="settings-card-description">Contact information, password, authentication methods and your active sessions.</p>
+                                    </div>
+                                    <div class="settings-card" data-settings-modal="communication-preferences">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-envelope"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Communication preferences</h3>
+                                        <p class="settings-card-description">Customise the emails, SMS, and push notifications you receive.</p>
                                     </div>
                                 </div>
-                                <div id="client-settings-password" class="settings-panel">
-                                    <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Change Password</h2>
-                                        <form id="password-form">
-                                            <div class="form-group"><label for="current-password">Current Password</label><input type="password" id="current-password"></div>
-                                            <div class="form-group"><label for="new-password">New Password</label><input type="password" id="new-password"></div>
-                                            <div class="form-group"><label for="confirm-password">Confirm New Password</label><input type="password" id="confirm-password"></div>
-                                            <button type="submit" class="btn btn-primary">Update Password</button>
-                                        </form>
+                            </div>
+
+                            <!-- Account Settings Category -->
+                            <div class="settings-category">
+                                <h2 class="settings-category-title">Account settings</h2>
+                                <div class="settings-grid">
+                                    <div class="settings-card" data-settings-modal="security">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Security</h3>
+                                        <p class="settings-card-description">Manage your account security, authorised apps, and shared resources.</p>
                                     </div>
                                 </div>
                             </div>
@@ -5662,6 +5991,7 @@
                             <li><a href="#" data-section="vendor-requests"><i class="fas fa-calendar-check"></i>Bookings</a></li>
                             <li><a href="#" data-section="vendor-invoices"><i class="fas fa-file-invoice"></i>Invoices</a></li>
                             <li><a href="#" data-section="vendor-services"><i class="fas fa-briefcase"></i>Services</a></li>
+                            <li><a href="#" data-section="vendor-business-profile"><i class="fas fa-building"></i>Business Profile</a></li>
                             <li><a href="#" data-section="vendor-messages"><i class="fas fa-comments"></i>Messages</a></li>
                             <li><a href="#" data-section="vendor-reviews"><i class="fas fa-star"></i>Reviews</a></li>
                             <li><a href="#" data-section="vendor-analytics"><i class="fas fa-chart-line"></i>Analytics</a></li>
@@ -5761,39 +6091,101 @@
                                 <div id="analytics-charts" class="analytics-charts"><p>Loading analytics data...</p></div>
                             </div>
                         </div>
-                        <div id="vendor-settings-section" style="display: none;">
-                            <div class="settings-tabs">
-                                <button class="tab-btn active" data-target="vendor-profile-panel">Business Basics</button>
-                                <button class="tab-btn" data-target="vendor-location-panel">Location Information</button>
-                                <button class="tab-btn" data-target="vendor-additional-details-panel">Additional Details</button>
-                                <button class="tab-btn" data-target="vendor-social-panel">Social Media</button>
-                                <button class="tab-btn" data-target="vendor-services-panel">Services & Packages</button>
-                                <button class="tab-btn" data-target="vendor-faqs-panel">FAQ Section</button>
-                                <button class="tab-btn" data-target="vendor-photos-panel">Gallery & Media</button>
-                                <button class="tab-btn" data-target="vendor-availability-panel">Availability & Scheduling</button>
-                            </div>
-                            <div class="settings-panels">
-                                <div id="vendor-profile-panel" class="settings-panel active">
-                                    <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Business Profile</h2>
-                                        <form id="vendor-profile-form">
-                                            <div class="form-group"><label for="vendor-name">Business Name <span style="color:red;">*</span></label><input type="text" id="vendor-name" required></div>
-                                            <div class="form-group"><label for="vendor-display-name">Display Name (for public listing)</label><input type="text" id="vendor-display-name" placeholder="Public listing name"></div>
-                                            <div class="form-group"><label for="vendor-email">Business Email <span style="color:red;">*</span></label><input type="email" id="vendor-email" required></div>
-                                            <div class="form-group"><label for="vendor-phone">Business Phone <span style="color:red;">*</span></label><input type="tel" id="vendor-phone" required></div>
-                                            <div class="form-group"><label for="vendor-website">Website URL</label><input type="url" id="vendor-website"></div>
-                                            <div class="form-group"><label for="vendor-years-in-business">Years in Business</label><input type="number" id="vendor-years-in-business" min="0"></div>
-                                            <div class="form-group"><label for="vendor-description">Business Description <span style="color:red;">*</span></label><textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);" required></textarea></div>
-                                            <div class="form-group"><label for="vendor-tagline">Tagline (short description)</label><input type="text" id="vendor-tagline" placeholder="Short description"></div>
-                                            <div class="form-group"><label for="vendor-category">Primary Category <span style="color:red;">*</span></label><select id="vendor-category" required></select></div>
-                                            <div class="form-group"><label for="vendor-additional-categories">Additional Categories</label><select id="vendor-additional-categories" multiple></select></div>
-                                            <button type="submit" class="btn btn-primary">Save Changes</button>
-                                        </form>
+                        <div id="vendor-business-profile-section" style="display: none;">
+                            <!-- Business Profile Categories -->
+                            <div class="settings-category">
+                                <h2 class="settings-category-title">Business Profile Management</h2>
+                                <div class="settings-grid">
+                                    <div class="settings-card" data-panel="vendor-profile-panel">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-building"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Business Information</h3>
+                                        <p class="settings-card-description">Update your business details, categories, and description</p>
+                                    </div>
+                                    <div class="settings-card" data-panel="vendor-location-panel">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Location & Service Areas</h3>
+                                        <p class="settings-card-description">Set your business address and areas you serve</p>
+                                    </div>
+                                    <div class="settings-card" data-panel="vendor-additional-details-panel">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-list-ul"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Additional Details</h3>
+                                        <p class="settings-card-description">Answer category-specific questions</p>
+                                    </div>
+                                    <div class="settings-card" data-panel="vendor-services-panel">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-briefcase"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Services & Packages</h3>
+                                        <p class="settings-card-description">Manage your offerings and service packages</p>
+                                    </div>
+                                    <div class="settings-card" data-panel="vendor-photos-panel">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-images"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Gallery & Media</h3>
+                                        <p class="settings-card-description">Upload and manage your business photos</p>
+                                    </div>
+                                    <div class="settings-card" data-panel="vendor-social-panel">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-share-alt"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Social Media & Booking</h3>
+                                        <p class="settings-card-description">Connect your social profiles and booking link</p>
+                                    </div>
+                                    <div class="settings-card" data-panel="vendor-faqs-panel">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-question-circle"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">FAQs</h3>
+                                        <p class="settings-card-description">Create frequently asked questions</p>
+                                    </div>
+                                    <div class="settings-card" data-panel="vendor-availability-panel">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-clock"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Availability & Hours</h3>
+                                        <p class="settings-card-description">Set your business hours and availability</p>
                                     </div>
                                 </div>
-                                <div id="vendor-location-panel" class="settings-panel">
-                                    <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Location</h2>
+                                
+                                <!-- Panels Container -->
+                                <div class="panels-container">
+                                    <!-- Business Information Panel -->
+                                    <div id="vendor-profile-panel" style="display: none;">
+                                        <button class="btn btn-outline back-to-menu-btn" style="margin-bottom: 1rem;">
+                                            <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
+                                        </button>
+                                <div class="dashboard-card">
+                                    <h2 class="dashboard-card-title">Business Information</h2>
+                                    <form id="vendor-profile-form">
+                                        <div class="form-group"><label for="vendor-name">Business Name <span style="color:red;">*</span></label><input type="text" id="vendor-name" required></div>
+                                        <div class="form-group"><label for="vendor-display-name">Display Name (for public listing)</label><input type="text" id="vendor-display-name" placeholder="Public listing name"></div>
+                                        <div class="form-group"><label for="vendor-email">Business Email <span style="color:red;">*</span></label><input type="email" id="vendor-email" required></div>
+                                        <div class="form-group"><label for="vendor-phone">Business Phone <span style="color:red;">*</span></label><input type="tel" id="vendor-phone" required></div>
+                                        <div class="form-group"><label for="vendor-website">Website URL</label><input type="url" id="vendor-website"></div>
+                                        <div class="form-group"><label for="vendor-years-in-business">Years in Business</label><input type="number" id="vendor-years-in-business" min="0"></div>
+                                        <div class="form-group"><label for="vendor-description">Business Description <span style="color:red;">*</span></label><textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);" required></textarea></div>
+                                        <div class="form-group"><label for="vendor-tagline">Tagline (short description)</label><input type="text" id="vendor-tagline" placeholder="Short description"></div>
+                                        <div class="form-group"><label for="vendor-category">Primary Category <span style="color:red;">*</span></label><select id="vendor-category" required></select></div>
+                                        <div class="form-group"><label for="vendor-additional-categories">Additional Categories</label><select id="vendor-additional-categories" multiple></select></div>
+                                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <!-- Location & Service Areas Panel -->
+                            <div id="vendor-location-panel" style="display: none;">
+                                <button class="btn btn-outline back-to-menu-btn" style="margin-bottom: 1rem;">
+                                    <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
+                                </button>
+                                <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Location & Service Areas</h2>
                                         <form id="vendor-location-form">
                                             <div class="form-group"><label for="loc-address">Street Address</label><input type="text" id="loc-address"></div>
                                             <div class="form-group"><label for="loc-city">City</label><input type="text" id="loc-city"></div>
@@ -5815,20 +6207,30 @@
                                             </div>
                                             <button type="submit" class="btn btn-primary">Save Location</button>
                                         </form>
-                                    </div>
                                 </div>
-                                <div id="vendor-additional-details-panel" class="settings-panel">
-                                    <div class="dashboard-card">
+                            </div>
+                            
+                            <!-- Additional Details Panel -->
+                            <div id="vendor-additional-details-panel" style="display: none;">
+                                <button class="btn btn-outline back-to-menu-btn" style="margin-bottom: 1rem;">
+                                    <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
+                                </button>
+                                <div class="dashboard-card">
                                         <h2 class="dashboard-card-title">Additional Details</h2>
                                         <form id="vendor-additional-details-form">
                                             <div id="additional-questions-container"><p>Loading questions...</p></div>
                                             <button type="submit" class="btn btn-primary">Save Answers</button>
                                         </form>
-                                    </div>
                                 </div>
-                                <div id="vendor-social-panel" class="settings-panel">
-                                    <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Social & Booking</h2>
+                            </div>
+                            
+                            <!-- Social Media & Booking Panel -->
+                            <div id="vendor-social-panel" style="display: none;">
+                                <button class="btn btn-outline back-to-menu-btn" style="margin-bottom: 1rem;">
+                                    <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
+                                </button>
+                                <div class="dashboard-card">
+                                        <h2 class="dashboard-card-title">Social Media & Booking</h2>
                                         <form id="vendor-social-form">
                                             <div class="form-group"><label for="booking-link">Booking Link</label><input type="url" id="booking-link" placeholder="https://..."></div>
 
@@ -5898,10 +6300,15 @@
 
                                             <button type="submit" class="btn btn-primary">Save Social</button>
                                         </form>
-                                    </div>
                                 </div>
-                                <div id="vendor-services-panel" class="settings-panel">
-                                    <div class="dashboard-card">
+                            </div>
+                            
+                            <!-- Services & Packages Panel -->
+                            <div id="vendor-services-panel" style="display: none;">
+                                <button class="btn btn-outline back-to-menu-btn" style="margin-bottom: 1rem;">
+                                    <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
+                                </button>
+                                <div class="dashboard-card">
                                         <h2 class="dashboard-card-title">Services</h2>
                                         <div id="vendor-settings-services-loading" style="text-align: center; padding: 2rem; color: var(--text-light);">
                                             <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
@@ -5931,21 +6338,30 @@
                                             <h6 style="margin-bottom: 0.5rem;">No predefined services available</h6>
                                             <p style="margin: 0;">No services match your business categories. Update your categories in Business Profile.</p>
                                         </div>
-                                    </div>
                                 </div>
-                                <!-- Packages panel removed -->
-                                <div id="vendor-faqs-panel" class="settings-panel">
-                                    <div class="dashboard-card">
+                            </div>
+                            
+                            <!-- FAQs Panel -->
+                            <div id="vendor-faqs-panel" style="display: none;">
+                                <button class="btn btn-outline back-to-menu-btn" style="margin-bottom: 1rem;">
+                                    <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
+                                </button>
+                                <div class="dashboard-card">
                                         <h2 class="dashboard-card-title">FAQs</h2>
                                         <div id="faqs-list"></div>
                                         <div style="margin-top: 1rem;">
                                             <button id="add-faq-btn" class="btn btn-outline">Add FAQ</button>
                                             <button id="save-faqs-btn" class="btn btn-primary" style="margin-left: 0.5rem;">Save FAQs</button>
                                         </div>
-                                    </div>
                                 </div>
-                                <div id="vendor-photos-panel" class="settings-panel">
-                                    <div class="dashboard-card">
+                            </div>
+                            
+                            <!-- Gallery & Media Panel -->
+                            <div id="vendor-photos-panel" style="display: none;">
+                                <button class="btn btn-outline back-to-menu-btn" style="margin-bottom: 1rem;">
+                                    <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
+                                </button>
+                                <div class="dashboard-card">
                                         <h2 class="dashboard-card-title">Business Photos</h2>
                                         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="vendor-photos"><p>No photos uploaded.</p></div>
                                         <button class="btn btn-outline" id="upload-photos-btn">Upload Photos</button>
@@ -5954,20 +6370,75 @@
                                             <div class="form-group" style="margin:0;"><label for="image-caption-input">Caption (optional)</label><input type="text" id="image-caption-input"></div>
                                             <div class="form-group" style="margin:0;display:flex;gap:.5rem;align-items:center;"><label><input type="checkbox" id="image-primary-checkbox"> Primary</label><button class="btn btn-primary" type="button" id="add-photo-url-btn">Add</button></div>
                                         </div>
-                                    </div>
                                 </div>
-                                <div id="vendor-availability-panel" class="settings-panel">
-                                    <div class="dashboard-card">
+                            </div>
+                            
+                            <!-- Availability & Hours Panel -->
+                            <div id="vendor-availability-panel" style="display: none;">
+                                <button class="btn btn-outline back-to-menu-btn" style="margin-bottom: 1rem;">
+                                    <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
+                                </button>
+                                <div class="dashboard-card">
                                         <h2 class="dashboard-card-title">Availability Settings</h2>
                                         <div id="business-hours-container" style="margin-top:1rem;"></div>
                                         <button class="btn btn-primary" id="save-business-hours-btn" style="margin-top:.5rem;">Save Business Hours</button>
+                                </div>
+                            </div>
+                            <!-- Verification & Legal panel removed -->
+                                </div><!-- Close panels-container -->
+                            </div><!-- Close settings-category -->
+                        </div><!-- Close vendor-business-profile-section -->
+                        <div id="vendor-settings-section" style="display: none;">
+                            <!-- Personal Settings Category -->
+                            <div class="settings-category">
+                                <h2 class="settings-category-title">Personal settings</h2>
+                                <div class="settings-grid">
+                                    <div class="settings-card" data-settings-modal="vendor-personal-details">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Personal details</h3>
+                                        <p class="settings-card-description">Contact information, password, authentication methods and your active sessions.</p>
+                                    </div>
+                                    <div class="settings-card" data-settings-modal="vendor-communication-preferences">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-envelope"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Communication preferences</h3>
+                                        <p class="settings-card-description">Customise the emails, SMS, and push notifications you receive.</p>
                                     </div>
                                 </div>
-                                <!-- Verification & Legal panel removed -->
+                            </div>
+
+                            <!-- Account Settings Category -->
+                            <div class="settings-category">
+                                <h2 class="settings-category-title">Account settings</h2>
+                                <div class="settings-grid">
+                                    <div class="settings-card" data-settings-modal="vendor-security">
+                                        <div class="settings-card-icon">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Security</h3>
+                                        <p class="settings-card-description">Manage your account security, authorised apps, and shared resources.</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </main>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modals -->
+    <div id="settings-modal-overlay" class="settings-modal-overlay">
+        <div class="settings-modal">
+            <div class="settings-modal-header">
+                <h2 id="settings-modal-title">Settings</h2>
+                <button class="settings-modal-close">&times;</button>
+            </div>
+            <div class="settings-modal-body" id="settings-modal-content">
+                <!-- Dynamic content will be loaded here -->
             </div>
         </div>
     </div>
@@ -23368,11 +23839,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 setupSettingsTabs(section, null);
             }
 
-            // Vendor settings tabs with lazy-loading for each panel
+            // Vendor business profile tabs with lazy-loading for each panel
             let vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, availability: false };
-            function setupVendorSettingsTabs(vendorProfileId) {
-                const section = document.getElementById('vendor-settings-section');
+            function setupVendorBusinessProfileTabs(vendorProfileId) {
+                const section = document.getElementById('vendor-business-profile-section');
                 vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, availability: false };
+                
+                // Initialize panel toggle handlers
+                setTimeout(() => {
+                    console.log('Calling initBusinessProfilePanels from setupVendorBusinessProfileTabs');
+                    initBusinessProfilePanels(vendorProfileId);
+                }, 100);
+                
                 setupSettingsTabs(section, async (targetId) => {
                     if (targetId === 'vendor-location-panel' && !vendorSettingsLoaded.location) {
                         await loadVendorLocation(vendorProfileId);
@@ -23403,6 +23881,115 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         vendorSettingsLoaded.availability = true;
                     }
                 });
+            }
+
+            // Panel Toggle Handlers for Business Profile
+            function initBusinessProfilePanels(vendorProfileId) {
+                const cards = document.querySelectorAll('.settings-card[data-panel]');
+                console.log('Found', cards.length, 'cards with data-panel attribute');
+                
+                cards.forEach(card => {
+                    // Remove any existing handlers to avoid duplicates
+                    const newCard = card.cloneNode(true);
+                    card.parentNode.replaceChild(newCard, card);
+                    
+                    newCard.addEventListener('click', function() {
+                        const panelId = this.getAttribute('data-panel');
+                        console.log('Card clicked, panelId:', panelId);
+                        const panel = document.getElementById(panelId);
+                        console.log('Panel found:', !!panel);
+                        
+                        if (panel) {
+                            // Hide all other panels in the same section
+                            const allPanels = document.querySelectorAll('#vendor-business-profile-section [id$="-panel"]');
+                            console.log('Found', allPanels.length, 'total panels');
+                            allPanels.forEach(p => {
+                                if (p.id !== panelId) {
+                                    p.style.display = 'none';
+                                }
+                            });
+                            
+                            // Navigation-style: hide grid, show only the panel
+                            if (panel.style.display === 'none' || !panel.style.display) {
+                                // Hide the grid and category title
+                                const categoryTitle = document.querySelector('#vendor-business-profile-section .settings-category-title');
+                                const grid = document.querySelector('#vendor-business-profile-section .settings-grid');
+                                if (categoryTitle) categoryTitle.style.display = 'none';
+                                if (grid) grid.style.display = 'none';
+                                
+                                panel.style.display = 'block';
+                                console.log('Panel opened:', panelId);
+                                
+                                // Load data if needed (reuse existing lazy loading logic)
+                                if (panelId === 'vendor-profile-panel' && !vendorSettingsLoaded.profile) {
+                                    loadVendorProfileDetails(vendorProfileId);
+                                    vendorSettingsLoaded.profile = true;
+                                }
+                                if (panelId === 'vendor-location-panel' && !vendorSettingsLoaded.location) {
+                                    loadVendorLocation(vendorProfileId);
+                                    vendorSettingsLoaded.location = true;
+                                }
+                                if (panelId === 'vendor-additional-details-panel' && !vendorSettingsLoaded.additionalDetails) {
+                                    loadVendorAdditionalDetails(vendorProfileId);
+                                    vendorSettingsLoaded.additionalDetails = true;
+                                }
+                                if (panelId === 'vendor-services-panel' && !vendorSettingsLoaded.services) {
+                                    loadVendorServicesSettings(vendorProfileId);
+                                    vendorSettingsLoaded.services = true;
+                                }
+                                if (panelId === 'vendor-social-panel' && !vendorSettingsLoaded.social) {
+                                    loadVendorSocial(vendorProfileId);
+                                    vendorSettingsLoaded.social = true;
+                                }
+                                if (panelId === 'vendor-faqs-panel' && !vendorSettingsLoaded.faqs) {
+                                    loadVendorFaqs(vendorProfileId);
+                                    vendorSettingsLoaded.faqs = true;
+                                }
+                                if (panelId === 'vendor-photos-panel' && !vendorSettingsLoaded.photos) {
+                                    loadVendorImages(vendorProfileId);
+                                    vendorSettingsLoaded.photos = true;
+                                }
+                                if (panelId === 'vendor-availability-panel' && !vendorSettingsLoaded.availability) {
+                                    loadVendorAvailability(vendorProfileId);
+                                    vendorSettingsLoaded.availability = true;
+                                }
+                            } else {
+                                panel.style.display = 'none';
+                                console.log('Panel closed:', panelId);
+                            }
+                        } else {
+                            console.error('Panel not found:', panelId);
+                        }
+                    });
+                });
+                
+                // Back to Menu button handlers
+                const backButtons = document.querySelectorAll('.back-to-menu-btn');
+                backButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        
+                        // Hide all panels
+                        const allPanels = document.querySelectorAll('#vendor-business-profile-section [id$="-panel"]');
+                        allPanels.forEach(p => p.style.display = 'none');
+                        
+                        // Show the grid and category title
+                        const categoryTitle = document.querySelector('#vendor-business-profile-section .settings-category-title');
+                        const grid = document.querySelector('#vendor-business-profile-section .settings-grid');
+                        if (categoryTitle) categoryTitle.style.display = 'block';
+                        if (grid) grid.style.display = 'grid';
+                        
+                        console.log('Returned to Business Profile menu');
+                    });
+                });
+            }
+
+            // Initialize on DOMContentLoaded
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initBusinessProfilePanels);
+            } else {
+                // DOM is already loaded, run immediately
+                initBusinessProfilePanels();
             }
 
             // Backward compatibility for legacy calls
@@ -23633,8 +24220,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } else if (section === 'reviews') {
                         await loadUserReviews();
                     } else if (section === 'settings') {
-                        await loadUserProfileDetails();
-                        setupClientSettingsTabs();
+                        // Load client settings cards - no additional data needed
+                        // Settings are now managed via modal cards instead of tabs
                     }
                 } catch (error) {
                     console.error('Error loading client dashboard:', error);
@@ -24561,9 +25148,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         await loadAllVendorReviews(vendorProfileId);
                     } else if (section === 'vendor-analytics') {
                         await loadVendorAnalytics(vendorProfileId);
-                    } else if (section === 'vendor-settings') {
+                    } else if (section === 'vendor-business-profile') {
                         await loadVendorProfileDetails(vendorProfileId);
-                        setupVendorSettingsTabs(vendorProfileId);
+                        setupVendorBusinessProfileTabs(vendorProfileId);
+                    } else if (section === 'vendor-settings') {
+                        // Load vendor settings cards - no additional data needed
                     }
                 } catch (error) {
                     console.error('Error loading vendor dashboard:', error);
@@ -34398,6 +34987,290 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     allElements.forEach(el => console.log('  -', el.id, el));
                 }
             }, 1000);
+        });
+
+        // Settings Modal Handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const modalOverlay = document.getElementById('settings-modal-overlay');
+            const modalTitle = document.getElementById('settings-modal-title');
+            const modalContent = document.getElementById('settings-modal-content');
+            const closeBtn = document.querySelector('.settings-modal-close');
+
+            // Close modal handlers
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeSettingsModal);
+            }
+            if (modalOverlay) {
+                modalOverlay.addEventListener('click', (e) => {
+                    if (e.target === modalOverlay) {
+                        closeSettingsModal();
+                    }
+                });
+            }
+
+            function closeSettingsModal() {
+                if (modalOverlay) {
+                    modalOverlay.classList.remove('active');
+                }
+            }
+
+            // Handle settings card clicks
+            document.addEventListener('click', (e) => {
+                const card = e.target.closest('.settings-card');
+                if (!card) return;
+
+                const modalType = card.dataset.settingsModal;
+                if (!modalType) return;
+
+                openSettingsModal(modalType);
+            });
+
+            function openSettingsModal(type) {
+                if (!modalOverlay || !modalTitle || !modalContent) return;
+
+                // Set title and content based on type
+                const modalData = getModalContent(type);
+                modalTitle.textContent = modalData.title;
+                modalContent.innerHTML = modalData.content;
+
+                // Show modal
+                modalOverlay.classList.add('active');
+
+                // Setup form handlers
+                setupModalFormHandlers(type);
+            }
+
+            function getModalContent(type) {
+                const isVendor = type.startsWith('vendor-');
+                
+                switch(type) {
+                    case 'personal-details':
+                    case 'vendor-personal-details':
+                        return {
+                            title: 'Personal details',
+                            content: `
+                                <form id="personal-details-form">
+                                    <div class="form-group">
+                                        <label for="modal-name">Full Name</label>
+                                        <input type="text" id="modal-name" value="${currentUser?.name || ''}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="modal-email">Email</label>
+                                        <input type="email" id="modal-email" value="${currentUser?.email || ''}" disabled>
+                                        <small style="color: var(--text-light); display: block; margin-top: 0.25rem;">Email cannot be changed</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="modal-phone">Phone Number</label>
+                                        <input type="tel" id="modal-phone" value="${currentUser?.phone || ''}">
+                                    </div>
+                                    <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--primary);">Password</h3>
+                                    <div class="form-group">
+                                        <label for="modal-current-password">Current Password</label>
+                                        <input type="password" id="modal-current-password">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="modal-new-password">New Password</label>
+                                        <input type="password" id="modal-new-password">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="modal-confirm-password">Confirm New Password</label>
+                                        <input type="password" id="modal-confirm-password">
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem;">
+                                        <button type="button" class="btn btn-outline" onclick="document.querySelector('.settings-modal-close').click()">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                                    </div>
+                                </form>
+                            `
+                        };
+                    
+                    case 'communication-preferences':
+                    case 'vendor-communication-preferences':
+                        return {
+                            title: 'Communication preferences',
+                            content: `
+                                <form id="communication-preferences-form">
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Choose which emails, SMS, and push notifications you'd like to receive.</p>
+                                    
+                                    <h3 style="margin-bottom: 1rem; color: var(--primary);">Email Notifications</h3>
+                                    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem;">
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                            <input type="checkbox" checked>
+                                            <span>Booking confirmations and updates</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                            <input type="checkbox" checked>
+                                            <span>New messages from ${isVendor ? 'clients' : 'vendors'}</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                            <input type="checkbox" checked>
+                                            <span>Payment receipts and invoices</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                            <input type="checkbox">
+                                            <span>Marketing and promotional emails</span>
+                                        </label>
+                                    </div>
+
+                                    <h3 style="margin-bottom: 1rem; color: var(--primary);">SMS Notifications</h3>
+                                    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem;">
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                            <input type="checkbox" checked>
+                                            <span>Booking reminders (24 hours before)</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                            <input type="checkbox">
+                                            <span>New message alerts</span>
+                                        </label>
+                                    </div>
+
+                                    <h3 style="margin-bottom: 1rem; color: var(--primary);">Push Notifications</h3>
+                                    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem;">
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                            <input type="checkbox" checked>
+                                            <span>Real-time booking updates</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                            <input type="checkbox" checked>
+                                            <span>New messages</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                            <input type="checkbox">
+                                            <span>Payment notifications</span>
+                                        </label>
+                                    </div>
+
+                                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem;">
+                                        <button type="button" class="btn btn-outline" onclick="document.querySelector('.settings-modal-close').click()">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Save Preferences</button>
+                                    </div>
+                                </form>
+                            `
+                        };
+                    
+                    case 'security':
+                    case 'vendor-security':
+                        return {
+                            title: 'Security',
+                            content: `
+                                <div>
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">Manage your account security settings and connected applications.</p>
+                                    
+                                    <h3 style="margin-bottom: 1rem; color: var(--primary);">Two-Factor Authentication</h3>
+                                    <div style="padding: 1rem; background: var(--secondary); border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 2rem;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <p style="font-weight: 500; margin-bottom: 0.25rem;">Two-factor authentication is disabled</p>
+                                                <p style="color: var(--text-light); font-size: 0.875rem;">Add an extra layer of security to your account</p>
+                                            </div>
+                                            <button class="btn btn-primary">Enable</button>
+                                        </div>
+                                    </div>
+
+                                    <h3 style="margin-bottom: 1rem; color: var(--primary);">Active Sessions</h3>
+                                    <div style="padding: 1rem; background: var(--secondary); border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 2rem;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                            <div>
+                                                <p style="font-weight: 500; margin-bottom: 0.25rem;"><i class="fas fa-desktop" style="margin-right: 0.5rem;"></i>Current session</p>
+                                                <p style="color: var(--text-light); font-size: 0.875rem;">Active now</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <h3 style="margin-bottom: 1rem; color: var(--primary);">Connected Apps</h3>
+                                    <div style="padding: 1rem; background: var(--secondary); border-radius: var(--radius); border: 1px solid var(--border);">
+                                        <p style="color: var(--text-light);">No connected applications</p>
+                                    </div>
+
+                                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.5rem;">
+                                        <button type="button" class="btn btn-outline" onclick="document.querySelector('.settings-modal-close').click()">Close</button>
+                                    </div>
+                                </div>
+                            `
+                        };
+                    
+                    default:
+                        return {
+                            title: 'Settings',
+                            content: '<p>Settings content not found.</p>'
+                        };
+                }
+            }
+
+            function setupModalFormHandlers(type) {
+                // Personal details form
+                const personalForm = document.getElementById('personal-details-form');
+                if (personalForm) {
+                    personalForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const name = document.getElementById('modal-name').value;
+                        const phone = document.getElementById('modal-phone').value;
+                        const currentPassword = document.getElementById('modal-current-password').value;
+                        const newPassword = document.getElementById('modal-new-password').value;
+                        const confirmPassword = document.getElementById('modal-confirm-password').value;
+
+                        try {
+                            // Update profile info
+                            const updateData = { name, phone };
+                            const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                },
+                                body: JSON.stringify(updateData)
+                            });
+
+                            if (!response.ok) throw new Error('Failed to update profile');
+
+                            // Update password if provided
+                            if (newPassword) {
+                                if (newPassword !== confirmPassword) {
+                                    alert('New passwords do not match');
+                                    return;
+                                }
+                                if (!currentPassword) {
+                                    alert('Current password is required to set a new password');
+                                    return;
+                                }
+
+                                const passResponse = await fetch(`${API_BASE_URL}/users/${currentUser.id}/password`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                    },
+                                    body: JSON.stringify({ currentPassword, newPassword })
+                                });
+
+                                if (!passResponse.ok) {
+                                    const error = await passResponse.json();
+                                    throw new Error(error.message || 'Failed to update password');
+                                }
+                            }
+
+                            alert('Profile updated successfully');
+                            currentUser.name = name;
+                            currentUser.phone = phone;
+                            closeSettingsModal();
+                        } catch (error) {
+                            console.error('Error updating profile:', error);
+                            alert(error.message || 'Failed to update profile');
+                        }
+                    });
+                }
+
+                // Communication preferences form
+                const commForm = document.getElementById('communication-preferences-form');
+                if (commForm) {
+                    commForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        // TODO: Save notification preferences to backend
+                        alert('Notification preferences saved successfully');
+                        closeSettingsModal();
+                    });
+                }
+            }
         });
     </script>
 
