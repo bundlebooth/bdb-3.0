@@ -1321,7 +1321,7 @@ router.get('/:id/invoice', async (req, res) => {
     const subtotal = +(servicesSubtotal + expensesTotal).toFixed(2);
 
     // Fees: platform and processing
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '8');
+    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5');
     const platformFee = +((subtotal * (isFinite(platformFeePercent) ? platformFeePercent : 0)) / 100).toFixed(2);
 
     const recordedProcessingFees = +txRes.recordset.reduce((sum, r) => sum + Number(r.FeeAmount || 0), 0).toFixed(2);
