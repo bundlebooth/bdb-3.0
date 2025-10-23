@@ -1351,15 +1351,6 @@
             box-shadow: 0 0 0 3px rgba(94, 114, 228, 0.1);
         }
 
-        .predefined-service-card.selected::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background-color: var(--primary);
-        }
 
         .service-card-header {
             display: flex;
@@ -1377,22 +1368,44 @@
         }
 
         .service-card-check {
-            width: 20px;
-            height: 20px;
-            border: 2px solid var(--border);
-            border-radius: 4px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
             flex-shrink: 0;
             margin-left: 1rem;
+            background-color: #f1f5f9;
+            color: #64748b;
+            font-size: 0.85rem;
         }
 
         .predefined-service-card.selected .service-card-check {
-            background-color: var(--primary);
-            border-color: var(--primary);
+            background-color: #22c55e;
             color: white;
+        }
+        
+        .remove-service-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #f1f5f9;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+            margin-left: 0.5rem;
+        }
+        
+        .remove-service-btn:hover {
+            background-color: #fee2e2;
+            color: #ef4444;
         }
 
         .service-card-description {
@@ -6323,11 +6336,6 @@
 
                                             <div id="vendor-settings-services-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 2rem;"></div>
 
-                                            <div id="vendor-settings-selected-summary" style="display: none; margin-top: 2rem; padding: 1.5rem; background-color: var(--secondary); border-radius: var(--radius); border: 1px solid var(--border);">
-                                                <h6 style="margin: 0 0 1rem 0; color: var(--primary);">Selected Services Summary</h6>
-                                                <div id="vendor-settings-selected-list"></div>
-                                            </div>
-
                                             <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
                                                 <button class="btn btn-primary" id="vendor-settings-save-services">Save Services</button>
                                             </div>
@@ -6665,14 +6673,6 @@
                         
                         <div id="predefined-services-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
                             <!-- Predefined services will be loaded here -->
-                        </div>
-                        
-                        <!-- Selected Services Summary -->
-                        <div id="selected-services-summary" style="display: none; margin-top: 2rem; padding: 1.5rem; background-color: var(--secondary); border-radius: var(--radius); border: 1px solid var(--border);">
-                            <h6 style="margin: 0 0 1rem 0; color: var(--primary);">Selected Services Summary</h6>
-                            <div id="selected-services-list">
-                                <!-- Selected services will be listed here -->
-                            </div>
                         </div>
                     </div>
                     
@@ -7509,12 +7509,6 @@
                         <div id="no-services-message" style="text-align: center; padding: 2rem; color: var(--text-light); display: none;">
                             <p>No services available for your selected categories. Please go back and select different categories.</p>
                         </div>
-                    </div>
-
-                    <div id="selected-services-summary" style="display: none; margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border-radius: 8px; border-left: 4px solid var(--primary-color);">
-                        <h6 style="margin-bottom: 0.5rem; color: var(--primary-color);">Selected Services Summary</h6>
-                        <div id="selected-services-list"></div>
-                        <div style="margin-top: 0.5rem; font-weight: 600;">Total Budget: $<span id="total-services-budget">0</span></div>
                     </div>
 
                     <!-- Timeline (visible in Step 3) -->
@@ -11718,17 +11712,13 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 <span style="font-size:0.7rem; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:999px; font-weight:600;">${service.category || ''}</span>
                             </h6>
                             <div class="service-card-check" style="margin-left:auto;">
-                                <i class="fas fa-check" style="font-size: 0.8rem;"></i>
+                                <i class="fas fa-check"></i>
                             </div>
-                            <button type="button" class="remove-service-btn" aria-label="Remove" title="Remove" style="margin-left:0.5rem; background:none; border:none; color:#94a3b8; cursor:pointer;">
+                            <button type="button" class="remove-service-btn" aria-label="Remove" title="Remove">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
                         <div class="service-card-description">${service.description || 'Professional service offering'}</div>
-                        <div class="service-card-details">
-                            <div class="service-card-duration"><i class="fas fa-clock"></i><span>Custom Duration</span></div>
-                            <div style="color: var(--primary); font-weight: 500;"><i class="fas fa-tag"></i><span>${service.category || ''}</span></div>
-                        </div>
                         <div class="vendor-customization-form">
                             <h6 style="margin: 0 0 1rem 0; color: var(--primary); font-size: 0.9rem;">Customize Your Service</h6>
                             <div class="form-row-inline">
@@ -13917,13 +13907,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                         
                         <div class="service-card-description">
                             ${service.description || 'Professional service for your event'}
-                        </div>
-                        
-                        <div class="service-card-details">
-                            <div class="service-card-duration">
-                                <i class="fas fa-clock"></i>
-                                <span>Custom Duration</span>
-                            </div>
                         </div>
                         
                         <div class="service-budget-form" style="display: ${isSelected ? 'block' : 'none'}; margin-top: 1rem; padding: 1rem; background: #f8faff; border-radius: 6px; border: 1px solid #e2e8f0;">
@@ -19877,26 +19860,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <span style="font-size:0.7rem; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:999px; font-weight:600;">${service.category}</span>
                         </h6>
                         <div class="service-card-check" style="margin-left:auto;">
-                            <i class="fas fa-check" style="font-size: 0.8rem;"></i>
+                            <i class="fas fa-check"></i>
                         </div>
-                        <button type="button" class="remove-service-btn" aria-label="Remove" title="Remove" style="margin-left:0.5rem; background:none; border:none; color:#94a3b8; cursor:pointer;">
+                        <button type="button" class="remove-service-btn" aria-label="Remove" title="Remove">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
                     
                     <div class="service-card-description">
                         ${service.description || 'Professional service offering'}
-                    </div>
-                    
-                    <div class="service-card-details">
-                        <div class="service-card-duration">
-                            <i class="fas fa-clock"></i>
-                            <span>Custom Duration</span>
-                        </div>
-                        <div style="color: var(--primary); font-weight: 500;">
-                            <i class="fas fa-tag"></i>
-                            <span>${service.category}</span>
-                        </div>
                     </div>
                     
                     <div class="vendor-customization-form">
