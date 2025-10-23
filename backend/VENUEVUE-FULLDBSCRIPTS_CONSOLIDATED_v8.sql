@@ -953,7 +953,10 @@ SELECT
     b.EventName,
     b.EventType,
     b.TimeZone,
+    b.CreatedAt,
+    b.UpdatedAt,
     (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS ServiceImage,
+    (SELECT TOP 1 c.ConversationID FROM Conversations c WHERE c.BookingID = b.BookingID) AS ConversationID,
     (SELECT COUNT(*) FROM Messages m JOIN Conversations c ON m.ConversationID = c.ConversationID 
       WHERE c.BookingID = b.BookingID AND m.IsRead = 0 AND m.SenderID != b.UserID) AS UnreadMessages
 FROM Bookings b
