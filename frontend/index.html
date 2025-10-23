@@ -23726,37 +23726,149 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const endTime = new Date(eventDate.getTime() + 90 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                         timeStr = `${startTime} - ${endTime}`;
                     }
+
+                    // Build details rows - matching vendor dashboard
+                    const detailsRows = [];
+                    const pushRow = (label, value, full = false) => {
+                        if (value && value !== '—' && value !== null && value !== undefined && value !== '') {
+                            detailsRows.push(`<div class="request-detail-row" ${full ? 'style="grid-column: span 2;"' : ''}><span class="request-detail-label">${label}</span><span class="request-detail-value">${value}</span></div>`);
+                        }
+                    };
+
+                    // Add detail rows in same order as vendor dashboard
+                    if (booking.EventName) pushRow('Event Name', booking.EventName);
+                    if (booking.EventType) pushRow('Event', booking.EventType);
+                    if (booking.TimeZone) pushRow('Time Zone', booking.TimeZone);
+                    if (booking.AttendeeCount) pushRow('Attendees', booking.AttendeeCount);
+                    
+                    // Service start/end times if available
+                    if (booking.ServiceStartTime && booking.ServiceEndTime) {
+                        const serviceTimeRange = `${booking.ServiceStartTime} – ${booking.ServiceEndTime}`;
+                        pushRow('Service Time', serviceTimeRange);
+                    }
+                    
+                    if (booking.SpecialRequests) pushRow('Special Requests', booking.SpecialRequests, true);
+                    
+                    // Respond By (expiry date) if available
+                    if (booking.ExpiresAt || booking.RespondBy) {
+                        const expiresStr = new Date(booking.ExpiresAt || booking.RespondBy).toLocaleString();
+                        pushRow('Respond By', expiresStr);
+                    }
+                    
+                    // Requested On (creation date)
+                    if (booking.CreatedAt || booking.Created) {
+                        pushRow('Requested On', new Date(booking.CreatedAt || booking.Created).toLocaleString());
+                    }
+                    
+                    // Price breakdown matching vendor dashboard format
+                    try {
+                        const money = (n) => `$${Number(n || 0).toLocaleString()}`;
+                        const items = booking.Services && Array.isArray(booking.Services) ? booking.Services : [];
+                        let rows = [];
+                        let subtotal = 0;
+                        
+                        items.forEach(svc => {
+                            const svcName = svc.ServiceName || svc.Name || svc.Title || 'Service';
+                            const amt = Number(svc.Price || svc.Budget || svc.BasePrice || svc.FixedPrice || 0);
+                            if (amt > 0) {
+                                subtotal += amt;
+                                rows.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>${svcName}</span><strong>${money(amt)}</strong></div>`);
+                            }
+                        });
+                        
+                        const totalBudget = Number(booking.TotalAmount || booking.Budget || 0);
+                        const hasServiceAmounts = subtotal > 0 && rows.length > 0;
+                        
+                        if (hasServiceAmounts || totalBudget > 0) {
+                            const total = hasServiceAmounts ? subtotal : totalBudget;
+                            const totalRow = `<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px dashed var(--border);margin-top:6px;"><span>Total</span><strong>${money(total)}</strong></div>`;
+                            const budgetNote = (totalBudget > 0 && hasServiceAmounts && totalBudget !== subtotal)
+                                ? `<div style="margin-top:6px;color:#6b7280;font-size:12px;">Budget provided: ${money(totalBudget)}</div>`
+                                : '';
+                            const box = `<div class="price-breakdown" style="border:1px solid var(--border);border-radius:8px;padding:12px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.04);">`
+                                + `\n                                <div style="font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:8px;"><i class="fas fa-receipt" style="color:#6b7280;"></i><span>Price breakdown</span></div>`
+                                + `\n                                ${rows.join('')}`
+                                + `\n                                ${totalRow}`
+                                + `\n                                ${budgetNote}`
+                                + `\n                            </div>`;
+                            detailsRows.push(`<div class="request-detail-row" style="grid-column: span 2;">${box}</div>`);
+                        }
+                    } catch(_) {}
+                    
+                    const detailsHtml = detailsRows.join('');
+                    const moreInfoBtn = detailsHtml ? `<button class="link-btn" onclick="openBookingDetails(this)" style="margin-top:2px;">More info</button>` : '';
+
+                    // Status badge configuration
+                    const s = (booking._status || '').toString().toLowerCase();
+                    const bookingStatusMap = {
+                        pending:  { icon: 'fa-clock',        color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)', label: 'Pending' },
+                        confirmed:{ icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Confirmed' },
+                        accepted: { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Accepted' },
+                        approved: { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Accepted' },
+                        paid:     { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Paid' },
+                        cancelled:{ icon: 'fa-times-circle', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', label: 'Cancelled' },
+                        declined: { icon: 'fa-times-circle', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', label: 'Declined' }
+                    };
+                    const status = isPaid ? 'paid' : s;
+                    const statusCfg = bookingStatusMap[status] || bookingStatusMap.pending;
+                    const statusBadgeHtml = `<div class="request-status-badge" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:12px;background:${statusCfg.bg};color:#111827;border:1px solid ${statusCfg.color};"><i class="fas ${statusCfg.icon}" style="color:${statusCfg.color};"></i><span>${statusCfg.label}</span></div>`;
+
+                    // Action buttons
                     let actionButtons = '';
-                    const s = (booking._status || '').toString();
-                    if (s === 'confirmed' || s === 'accepted' || s === 'approved' || isPaid) {
-                        if (isPaid) {
-                            actionButtons = `<button class="btn-paid">✓ Paid</button>`;
-                        } else if (isDepositOnly) {
+                    if (s === 'confirmed' || s === 'accepted' || s === 'approved') {
+                        if (isDepositOnly) {
                             actionButtons = `<button class="btn-pay-now" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount || 0}, ${booking.VendorProfileID})">Pay Balance</button>`;
-                        } else {
+                        } else if (!isPaid) {
                             actionButtons = `<button class="btn-pay-now" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount || 0}, ${booking.VendorProfileID})">Pay Now</button>`;
                         }
-                        actionButtons += `<a href="#" class="link-btn" onclick="openInvoiceModal('${booking.BookingID}')" style="margin-left: 10px;">Invoice</a>`;
                     }
-                    const statusText = isPaid ? 'Paid' : (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
+                    // Add Chat and Invoice buttons for confirmed/paid bookings
+                    if (s === 'confirmed' || s === 'accepted' || s === 'approved' || isPaid) {
+                        if (booking.ConversationID) {
+                            actionButtons += `<button class="btn btn-outline" onclick="openChatForRequest(${booking.ConversationID})" style="padding: 6px 12px; border-radius: 8px; font-size: 13px;">Chat</button>`;
+                        }
+                        actionButtons += `<button class="btn btn-outline" onclick="openInvoiceModal('${booking.BookingID}')" style="padding: 6px 12px; border-radius: 8px; font-size: 13px;">Invoice</button>`;
+                    }
+
                     return `
-                        <div class="booking-item">
+                        <div class="booking-item has-details">
                             <div class="booking-date-section">
                                 <div class="booking-month">${month || ''}</div>
                                 <div class="booking-day">${day || ''}</div>
                                 <div class="booking-weekday">${weekday || ''}</div>
                             </div>
                             <div class="booking-info">
-                                <div class="booking-client"><i class="fas fa-store" style="color:#6b7280;font-size:12px;"></i><span class="booking-client-name">${booking.VendorName || 'Vendor'}</span></div>
+                                <div class="booking-client" style="gap:6px; margin-bottom: 0;">
+                                    <span class="booking-client-name" style="font-size:16px; font-weight:700; color:#111827;">${booking.VendorName || 'Vendor'}</span>
+                                </div>
                                 <div class="booking-service-row"><span class="booking-service">${booking.ServiceName || 'Booking'}</span></div>
-                                <div class="booking-time-row"><i class="fas fa-clock" style="color:#6b7280;font-size:12px;"></i><span class="booking-time">${timeStr || ''}</span></div>
-                                ${booking.TotalAmount ? `<div class=\"booking-price-row\"><i class=\"fas fa-dollar-sign\" style=\"color:#6b7280;font-size:12px;\"></i><span class=\"booking-price\">$${Number(booking.TotalAmount).toLocaleString()}</span></div>` : ''}
-                                ${booking.Location ? `<div class=\"booking-location-row\"><i class=\"fas fa-map-marker-alt\" style=\"color:#6b7280;font-size:12px;\"></i><span class=\"booking-location\">${booking.Location}</span></div>` : ''}
-                                ${statusText ? `<div class=\"booking-status\" style=\"font-size:12px;color:#6b7280;\">${statusText}</div>` : ''}
+                                ${booking.Location ? `<div class="booking-location-row">
+                                    <i class="fas fa-map-marker-alt" style="color:#6b7280;font-size:12px;"></i>
+                                    <span class="booking-location" title="${booking.Location}" style="max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: bottom;">${booking.Location}</span>
+                                </div>` : ''}
+                                ${eventDate ? `<div class="booking-date-row">
+                                    <i class="fas fa-calendar-alt" style="color:#6b7280;font-size:12px;"></i>
+                                    <span class="booking-date">${eventDate.toLocaleDateString()}</span>
+                                </div>` : ''}
+                                ${timeStr ? `<div class="booking-time-row">
+                                    <i class="fas fa-clock" style="color:#6b7280;font-size:12px;"></i>
+                                    <span class="booking-time">${timeStr}</span>
+                                </div>` : ''}
+                                ${booking.TotalAmount ? `<div class="booking-price-row">
+                                    <i class="fas fa-dollar-sign" style="color:#6b7280;font-size:12px;"></i>
+                                    <span class="booking-price">$${Number(booking.TotalAmount).toLocaleString()}</span>
+                                </div>` : ''}
                             </div>
-                            <div class="booking-actions">
-                                ${actionButtons}
+                            <div class="booking-actions" style="display:flex; flex-direction:column; align-items:flex-end; gap:12px; padding-right:10px;">
+                                <div class="status-col" style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin:8px 10px 8px 0; padding:2px 0;">
+                                    ${statusBadgeHtml}
+                                </div>
+                                ${moreInfoBtn}
+                                <div class="actions-row" style="display:flex; align-items:center; gap:6px;">
+                                    ${actionButtons}
+                                </div>
                             </div>
+                            ${detailsHtml ? `<div class="request-details collapsed">${detailsHtml}</div>` : ''}
                         </div>
                     `;
                 }).join('');
@@ -25055,7 +25167,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (bookings && bookings.length > 0) {
                     bookings.forEach(booking => {
                         const bookingItem = document.createElement('div');
-                        bookingItem.className = 'booking-item';
+                        bookingItem.className = 'booking-item has-details';
                         const vendorOrClientName = isVendorMode ? booking.ClientName : booking.VendorName;
                         
                         // Compute payment status from flags returned by API
@@ -25082,24 +25194,53 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         });
                         const timeStr = `${startTime} - ${endTime}`;
 
+                        // Build details rows
+                        const detailsRows = [];
+                        const pushRow = (label, value, full = false) => {
+                            if (value && value !== '—' && value !== null && value !== undefined && value !== '') {
+                                detailsRows.push(`<div class="request-detail-row" ${full ? 'style="grid-column: span 2;"' : ''}><span class="request-detail-label">${label}</span><span class="request-detail-value">${value}</span></div>`);
+                            }
+                        };
+
+                        // Add detail rows
+                        if (booking.EventName) pushRow('Event Name', booking.EventName);
+                        if (booking.EventType) pushRow('Event', booking.EventType);
+                        if (booking.TimeZone) pushRow('Time Zone', booking.TimeZone);
+                        if (booking.AttendeeCount) pushRow('Attendees', booking.AttendeeCount);
+                        if (booking.SpecialRequests) pushRow('Special Requests', booking.SpecialRequests, true);
+                        if (booking.CreatedAt) pushRow('Created On', new Date(booking.CreatedAt).toLocaleString());
+                        
+                        const detailsHtml = detailsRows.join('');
+                        const moreInfoBtn = detailsHtml ? `<button class="link-btn" onclick="openBookingDetails(this)" style="margin-top:2px;">More info</button>` : '';
+
+                        // Status badge
+                        const bookingStatusMap = {
+                            pending:  { icon: 'fa-clock',        color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.12)', label: 'Pending' },
+                            confirmed:{ icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Confirmed' },
+                            paid:     { icon: 'fa-check-circle', color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)', label: 'Paid' },
+                            cancelled:{ icon: 'fa-times-circle', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', label: 'Cancelled' },
+                            declined: { icon: 'fa-times-circle', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.12)', label: 'Declined' }
+                        };
+                        const status = (booking.Status || 'pending').toLowerCase();
+                        const statusCfg = bookingStatusMap[status] || bookingStatusMap.pending;
+                        const statusBadgeHtml = `<div class="request-status-badge" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:12px;background:${statusCfg.bg};color:#111827;border:1px solid ${statusCfg.color};"><i class="fas ${statusCfg.icon}" style="color:${statusCfg.color};"></i><span>${statusCfg.label}</span></div>`;
+
                         // Determine action buttons based on booking status and payment
                         let actionButtons = '';
-                        if (booking.Status === 'pending') {
-                            actionButtons = '';
-                        } else if (booking.Status === 'confirmed') {
-                            if (isPaid) {
-                                actionButtons = `<button class="btn-paid">✓ Paid</button>`;
-                            } else if (isDepositOnly) {
+                        if (booking.Status === 'confirmed') {
+                            if (isDepositOnly) {
                                 actionButtons = `<button class="btn-pay-now" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount}, ${booking.VendorProfileID})">Pay Balance</button>`;
-                            } else {
+                            } else if (!isPaid) {
                                 actionButtons = `<button class="btn-pay-now" onclick="initiatePayment('${booking.BookingID}', ${booking.TotalAmount}, ${booking.VendorProfileID})">Pay Now</button>`;
                             }
                         }
                         
-                        // Add chat button for confirmed/paid bookings
-                        if (booking.Status === 'confirmed' || booking.Status === 'paid') {
-                            actionButtons += `<button class="btn btn-outline" onclick="openBookingChat('${booking.BookingID}')" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Chat</button>`;
-                            actionButtons += `<button class="btn btn-outline" onclick="openInvoiceModal('${booking.BookingID}')" style="margin-left: 8px; padding: 8px 16px; border-radius: 8px;">Invoice</button>`;
+                        // Add chat and invoice buttons for confirmed/paid bookings (no Paid button - status badge shows payment status)
+                        if (booking.Status === 'confirmed' || booking.Status === 'paid' || isPaid) {
+                            if (booking.ConversationID) {
+                                actionButtons += `<button class="btn btn-outline" onclick="openChatForRequest(${booking.ConversationID})" style="padding: 6px 12px; border-radius: 8px; font-size: 13px;">Chat</button>`;
+                            }
+                            actionButtons += `<button class="btn btn-outline" onclick="openInvoiceModal('${booking.BookingID}')" style="padding: 6px 12px; border-radius: 8px; font-size: 13px;">Invoice</button>`;
                         }
                         
                         bookingItem.innerHTML = `
@@ -25109,12 +25250,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <div class="booking-weekday">${weekday}</div>
                             </div>
                             <div class="booking-info">
-                                <div class="booking-client">
-                                    <i class="fas fa-user" style="color: #6b7280; font-size: 12px;"></i>
-                                    <span class="booking-client-name">${vendorOrClientName}</span>
+                                <div class="booking-client" style="gap:6px; margin-bottom: 0;">
+                                    ${isVendorMode ? '<i class="fas fa-user" style="color: #6b7280; font-size: 12px;"></i>' : '<i class="fas fa-store" style="color: #6b7280; font-size: 12px;"></i>'}
+                                    <span class="booking-client-name" style="font-size:16px; font-weight:700; color:#111827;">${vendorOrClientName}</span>
                                 </div>
                                 <div class="booking-service-row">
                                     <span class="booking-service">${booking.ServiceName || 'Event Service'}</span>
+                                </div>
+                                ${booking.Location ? `<div class="booking-location-row">
+                                    <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
+                                    <span class="booking-location" title="${booking.Location}" style="max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; vertical-align: bottom;">${booking.Location}</span>
+                                </div>` : ''}
+                                <div class="booking-date-row">
+                                    <i class="fas fa-calendar-alt" style="color: #6b7280; font-size: 12px;"></i>
+                                    <span class="booking-date">${eventDate.toLocaleDateString()}</span>
                                 </div>
                                 <div class="booking-time-row">
                                     <i class="fas fa-clock" style="color: #6b7280; font-size: 12px;"></i>
@@ -25124,14 +25273,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     <i class="fas fa-dollar-sign" style="color: #6b7280; font-size: 12px;"></i>
                                     <span class="booking-price">$${booking.TotalAmount.toFixed(2)}</span>
                                 </div>` : ''}
-                                ${booking.Location ? `<div class="booking-location-row">
-                                    <i class="fas fa-map-marker-alt" style="color: #6b7280; font-size: 12px;"></i>
-                                    <span class="booking-location">${booking.Location}</span>
-                                </div>` : ''}
                             </div>
-                            <div class="booking-actions">
-                                ${actionButtons}
+                            <div class="booking-actions" style="display:flex; flex-direction:column; align-items:flex-end; gap:12px; padding-right:10px;">
+                                <div class="status-col" style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; margin:8px 10px 8px 0; padding:2px 0;">
+                                    ${statusBadgeHtml}
+                                </div>
+                                ${moreInfoBtn}
+                                <div class="actions-row" style="display:flex; align-items:center; gap:6px;">
+                                    ${actionButtons}
+                                </div>
                             </div>
+                            ${detailsHtml ? `<div class="request-details collapsed">${detailsHtml}</div>` : ''}
                         `;
                         container.appendChild(bookingItem);
                     });
