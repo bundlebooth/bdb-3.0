@@ -385,9 +385,8 @@ router.get('/', async (req, res) => {
     request.input('BudgetType', sql.NVarChar(20), budgetType || null);
     request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
     request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
-    // TODO: Uncomment after database stored procedure is updated
-    // request.input('Region', sql.NVarChar(50), region || null);
-    // request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
+    request.input('Region', sql.NVarChar(50), region || null);
+    request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
     // Note: Do NOT pass EventDate/Start/End here. sp_SearchVendors does not accept them.
 
     const result = await request.execute('sp_SearchVendors');
@@ -825,9 +824,8 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('BudgetType', sql.NVarChar(20), budgetType || null);
       request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
       request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
-      // TODO: Uncomment after database stored procedure is updated
-      // request.input('Region', sql.NVarChar(50), region || null);
-      // request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
+      request.input('Region', sql.NVarChar(50), region || null);
+      request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
 
       const r = await request.execute('sp_SearchVendors');
 
