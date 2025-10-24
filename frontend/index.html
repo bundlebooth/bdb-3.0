@@ -13270,6 +13270,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 try {
                     // Sync category from URL, then load vendors
                     try { initCategoryFromUrl(); } catch {}
+                    // Apply filters from URL before loading
+                    try { applyFiltersFromUrl(); } catch {}
                     await loadVendors();
 
                     // Hide skeletons once loaded
@@ -16974,6 +16976,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             window.addEventListener('popstate', () => {
                 initCategoryFromUrl();
+                applyFiltersFromUrl();
                 loadVendors();
             });
 
@@ -18574,8 +18577,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 });
             }
 
-            // Sorting
-            sortSelect.addEventListener('change', sortVendors);
+            // Sorting - reload from backend with new sort order
+            sortSelect.addEventListener('change', () => {
+                loadVendors();
+            });
 
                 // Filter resets
                 filterResetBtns.forEach(btn => {
@@ -22217,148 +22222,99 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
 
-            // Filter vendors based on current filters
-            function filterVendors() {
-                // Get search term
-                const searchTerm = searchInput.value.toLowerCase();
-
-                // Get filter values
-                const selectedTypes = [];
-                document.querySelectorAll('.filter-section input[type="checkbox"]:checked').forEach(checkbox => {
-                    if (checkbox.id !== 'current-location' && checkbox.id !== 'within50') {
-                        selectedTypes.push(checkbox.id);
-                    }
-                });
-
-                const priceLevelFilter = document.getElementById('price-level-filter') ? document.getElementById('price-level-filter').value : '';
-                const useCurrentLocation = document.getElementById('current-location').checked;
-                const within50Miles = document.getElementById('within50').checked;
-                const startDate = document.getElementById('start-date').value;
-                const endDate = document.getElementById('end-date').value;
-                const region = document.getElementById('region-select').value;
-
-                // First apply all filters EXCEPT location
-                let filtered = state.vendors.filter(vendor => {
-                    // Category filter
-                    if (state.currentCategory !== 'all' && vendor.category !== state.currentCategory) {
-                        return false;
-                    }
-
-                    // Search term (vendor name, location, or services)
-                    if (searchTerm) {
-                        const nameMatch = vendor.name.toLowerCase().includes(searchTerm);
-                        const locationMatch = vendor.location.toLowerCase().includes(searchTerm);
-                        let serviceMatch = false;
-
-                        if (vendor.services) {
-                            serviceMatch = vendor.services.some(category =>
-                                category.services.some(service =>
-                                    service.name.toLowerCase().includes(searchTerm) ||
-                                    service.description.toLowerCase().includes(searchTerm))
-                            );
-                        }
-
-                        if (!nameMatch && !locationMatch && !serviceMatch) {
-                            return false;
-                        }
-                    }
-
-
-                    // Vendor type
-                    const vendorType = vendor.type?.toLowerCase() || 'independent';
-                    if (selectedTypes.length > 0 && !selectedTypes.includes(vendorType)) {
-                        return false;
-                    }
-
-                    // Price level filter
-                    if (priceLevelFilter) {
-                        const vendorPriceLevel = vendor.priceLevel || vendor.PriceLevel || '$$';
-                        if (vendorPriceLevel !== priceLevelFilter) return false;
-                    }
-
-                    // Popular filters
-                    if (state.filters.popular.length > 0) {
-                        if (state.filters.popular.includes('premium') && !vendor.isPremium) return false;
-                        if (state.filters.popular.includes('eco-friendly') && !vendor.isEcoFriendly) return false;
-                        if (state.filters.popular.includes('award-winning') && !vendor.isAwardWinning) return false;
-                    }
-
-                    // Date and time availability filter
-                    const eventDateInput = document.getElementById('event-date');
-                    const eventStartTimeInput = document.getElementById('event-start-time');
-                    const eventEndTimeInput = document.getElementById('event-end-time');
-                    
-                    if (eventDateInput && eventDateInput.value && eventStartTimeInput && eventEndTimeInput) {
-                        const eventDate = new Date(eventDateInput.value);
-                        const eventDayOfWeek = eventDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-                        const eventStartTime = eventStartTimeInput.value;
-                        const eventEndTime = eventEndTimeInput.value;
-                        
-                        console.log('Filtering vendor:', vendor.name, 'for date:', eventDateInput.value, 'day:', eventDayOfWeek, 'time:', eventStartTime, '-', eventEndTime);
-                        
-                        // Check if vendor has business hours data
-                        if (vendor.businessHours && Array.isArray(vendor.businessHours)) {
-                            console.log('Vendor business hours:', vendor.businessHours);
-                            
-                            // Find schedule for the event day
-                            const daySchedule = vendor.businessHours.find(h => h.DayOfWeek === eventDayOfWeek);
-                            console.log('Day schedule for day', eventDayOfWeek, ':', daySchedule);
-                            
-                            if (!daySchedule || !daySchedule.IsAvailable) {
-                                console.log('Vendor', vendor.name, 'is closed on day', eventDayOfWeek);
-                                return false; // Vendor is closed on this day
-                            }
-                            
-                            // Check if event time falls within business hours
-                            if (eventStartTime && eventEndTime) {
-                                const businessStart = daySchedule.OpenTime;
-                                const businessEnd = daySchedule.CloseTime;
-                                
-                                console.log('Business hours:', businessStart, '-', businessEnd, 'vs Event time:', eventStartTime, '-', eventEndTime);
-                                
-                                if (eventStartTime < businessStart || eventEndTime > businessEnd) {
-                                    console.log('Vendor', vendor.name, 'event time is outside business hours');
-                                    return false; // Event time is outside business hours
-                                }
-                            }
-                        } else {
-                            console.log('Vendor', vendor.name, 'has no business hours data');
-                        }
-                    }
-
-                    // Region filter
-                    if (region && vendor.region !== region) {
-                        return false;
-                    }
-
-                    return true;
-                });
-
-                // Handle location filter - backend already filters by distance radius when coordinates are provided
-                state.filteredVendors = filtered;
+            // Build URL query parameters from current filter state
+            function buildFilterParams() {
+                const params = new URLSearchParams(window.location.search);
                 
-                let locationMessage = '';
-                if (useCurrentLocation && state.userLocation && within50Miles) {
-                    locationMessage = `${filtered.length} vendors available within 50 miles`;
-                } else {
-                    locationMessage = `${filtered.length} vendors available`;
+                // Get current filter values
+                const searchTerm = searchInput?.value || '';
+                const region = document.getElementById('region-select')?.value || '';
+                const priceLevel = document.getElementById('price-level-filter')?.value || '';
+                
+                // Popular filters (premium, eco-friendly, award-winning)
+                const isPremium = state.filters.popular.includes('premium');
+                const isEcoFriendly = state.filters.popular.includes('eco-friendly');
+                const isAwardWinning = state.filters.popular.includes('award-winning');
+                
+                // Update URL params
+                if (searchTerm) params.set('search', searchTerm);
+                else params.delete('search');
+                
+                if (region) params.set('region', region);
+                else params.delete('region');
+                
+                if (priceLevel) params.set('priceLevel', priceLevel);
+                else params.delete('priceLevel');
+                
+                if (isPremium) params.set('isPremium', 'true');
+                else params.delete('isPremium');
+                
+                if (isEcoFriendly) params.set('isEcoFriendly', 'true');
+                else params.delete('isEcoFriendly');
+                
+                if (isAwardWinning) params.set('isAwardWinning', 'true');
+                else params.delete('isAwardWinning');
+                
+                return params;
+            }
+            
+            // Apply filters from URL parameters on page load
+            function applyFiltersFromUrl() {
+                const params = new URLSearchParams(window.location.search);
+                
+                // Apply search term
+                const searchTerm = params.get('search');
+                if (searchTerm && searchInput) {
+                    searchInput.value = searchTerm;
                 }
-                resultsCount.textContent = locationMessage;
-
-                // Apply sorting
-                sortVendors(false);
-
-                // Reset to first page
-                state.currentPage = 1;
-
-                // Update UI
-                updateMetadata({ total: state.filteredVendors.length });
-                renderVendors();
-
-                // Update map if in map view
-                if (state.map) {
-                    // updateMapMarkers(); // DISABLED - causing marker bouncing
+                
+                // Apply region filter
+                const region = params.get('region');
+                const regionSelect = document.getElementById('region-select');
+                if (region && regionSelect) {
+                    regionSelect.value = region;
+                    state.filters.region = region;
                 }
+                
+                // Apply price level filter
+                const priceLevel = params.get('priceLevel');
+                const priceLevelFilter = document.getElementById('price-level-filter');
+                if (priceLevel && priceLevelFilter) {
+                    priceLevelFilter.value = priceLevel;
+                }
+                
+                // Apply popular filters
+                const isPremium = params.get('isPremium') === 'true';
+                const isEcoFriendly = params.get('isEcoFriendly') === 'true';
+                const isAwardWinning = params.get('isAwardWinning') === 'true';
+                
+                state.filters.popular = [];
+                if (isPremium) state.filters.popular.push('premium');
+                if (isEcoFriendly) state.filters.popular.push('eco-friendly');
+                if (isAwardWinning) state.filters.popular.push('award-winning');
+                
+                // Update UI for popular filters
+                trendingTags.forEach(tag => {
+                    const filter = tag.dataset.filter;
+                    if (state.filters.popular.includes(filter)) {
+                        tag.classList.add('active');
+                    } else {
+                        tag.classList.remove('active');
+                    }
+                });
+            }
+
+            // Filter vendors - now triggers backend search instead of client-side filtering
+            function filterVendors() {
+                // Build filter params and update URL
+                const params = buildFilterParams();
+                
+                // Update URL without page reload (using replaceState to avoid history spam)
+                const url = params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname;
+                history.replaceState({}, '', url);
+                
+                // Trigger backend search with filters
+                loadVendors();
             }
 
             // Sort vendors
@@ -29712,8 +29668,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
-            // Filter vendors based on current filters
-            function filterVendors() {
+            // Simple client-side filter for already-loaded vendors (used after loadVendors completes)
+            function applyClientSideFilters() {
                 state.filteredVendors = state.vendors.filter(vendor => {
                     // Category filter
                     if (state.currentCategory !== 'all' && vendor.category !== state.currentCategory) {
@@ -29771,6 +29727,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     // Determine sort method - default to 'nearest' if user has location
                     const sortBy = sortSelect?.value || (hasUserLocation ? 'nearest' : 'recommended');
                     
+                    // Get filter values from URL/UI
+                    const searchTerm = params.get('search') || '';
+                    const region = params.get('region') || '';
+                    const priceLevel = params.get('priceLevel') || '';
+                    const isPremium = params.get('isPremium') === 'true';
+                    const isEcoFriendly = params.get('isEcoFriendly') === 'true';
+                    const isAwardWinning = params.get('isAwardWinning') === 'true';
+                    
                     let url = `${API_BASE_URL}/vendors?pageNumber=${nextPage}&pageSize=${state.serverPageSize}`;
                     if (hasCategoryQuery && !isAll) {
                         // Preserve only category params for backend and allow future filter expansions
@@ -29792,6 +29756,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             qp.set('sortBy', sortBy);
                         }
                         
+                        // Add filter parameters
+                        if (searchTerm) qp.set('searchTerm', searchTerm);
+                        if (region) qp.set('region', region);
+                        if (priceLevel) qp.set('priceLevel', priceLevel);
+                        if (isPremium) qp.set('isPremium', 'true');
+                        if (isEcoFriendly) qp.set('isEcoFriendly', 'true');
+                        if (isAwardWinning) qp.set('isAwardWinning', 'true');
+                        
                         url = `${API_BASE_URL}/vendors/search-by-categories?${qp.toString()}`;
                     } else {
                         // Add location and sort parameters to default vendor search
@@ -29808,6 +29780,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (sortBy) {
                             qp.set('sortBy', sortBy);
                         }
+                        
+                        // Add filter parameters
+                        if (searchTerm) qp.set('searchTerm', searchTerm);
+                        if (region) qp.set('region', region);
+                        if (priceLevel) qp.set('priceLevel', priceLevel);
+                        if (isPremium) qp.set('isPremium', 'true');
+                        if (isEcoFriendly) qp.set('isEcoFriendly', 'true');
+                        if (isAwardWinning) qp.set('isAwardWinning', 'true');
                         
                         url = `${API_BASE_URL}/vendors?${qp.toString()}`;
                     }
@@ -29869,8 +29849,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } else {
                         state.vendors = normalizedVendors;
                     }
-                    // Apply current filters
-                    try { filterVendors(); } catch { state.filteredVendors = state.vendors.slice(); renderVendors(); }
+                    // Apply client-side filters (mainly for category filtering)
+                    try { applyClientSideFilters(); } catch { state.filteredVendors = state.vendors.slice(); renderVendors(); }
                     // Update server paging trackers
                     state.serverPageNumber = nextPage;
                     state.serverTotalCount = totalCount;
