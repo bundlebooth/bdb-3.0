@@ -953,7 +953,10 @@ SELECT
     b.EventName,
     b.EventType,
     b.TimeZone,
+    b.CreatedAt,
+    b.UpdatedAt,
     (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS ServiceImage,
+    (SELECT TOP 1 c.ConversationID FROM Conversations c WHERE c.BookingID = b.BookingID) AS ConversationID,
     (SELECT COUNT(*) FROM Messages m JOIN Conversations c ON m.ConversationID = c.ConversationID 
       WHERE c.BookingID = b.BookingID AND m.IsRead = 0 AND m.SenderID != b.UserID) AS UnreadMessages
 FROM Bookings b
@@ -7341,12 +7344,420 @@ TOTAL FEATURES:
 THIS SCRIPT IS NOW 100% PRODUCTION-READY! 🚀
 */
 
+-- ==============================================
+-- VENDOR FEATURES/QUESTIONNAIRE SYSTEM
+-- Allows vendors to select features that describe their services
+-- Organized by category with icons for visual display
+-- ==============================================
+
+-- Master table for vendor feature categories
+CREATE TABLE VendorFeatureCategories (
+    CategoryID INT PRIMARY KEY IDENTITY(1,1),
+    CategoryName NVARCHAR(100) NOT NULL UNIQUE,
+    CategoryIcon NVARCHAR(50), -- Lucide icon name
+    DisplayOrder INT DEFAULT 0,
+    IsActive BIT DEFAULT 1,
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+GO
+
+-- Master table for vendor features organized by category
+CREATE TABLE VendorFeatures (
+    FeatureID INT PRIMARY KEY IDENTITY(1,1),
+    CategoryID INT FOREIGN KEY REFERENCES VendorFeatureCategories(CategoryID),
+    FeatureName NVARCHAR(100) NOT NULL,
+    FeatureDescription NVARCHAR(500),
+    FeatureIcon NVARCHAR(50), -- Lucide icon name
+    DisplayOrder INT DEFAULT 0,
+    IsActive BIT DEFAULT 1,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT UC_CategoryFeature UNIQUE (CategoryID, FeatureName)
+);
+GO
+
+-- Junction table for vendor feature selections
+CREATE TABLE VendorSelectedFeatures (
+    VendorFeatureSelectionID INT PRIMARY KEY IDENTITY(1,1),
+    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID) ON DELETE CASCADE,
+    FeatureID INT FOREIGN KEY REFERENCES VendorFeatures(FeatureID),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT UC_VendorFeature UNIQUE (VendorProfileID, FeatureID)
+);
+GO
+
+-- Indexes for performance
+CREATE INDEX IX_VendorFeatures_CategoryID ON VendorFeatures(CategoryID);
+CREATE INDEX IX_VendorSelectedFeatures_VendorProfileID ON VendorSelectedFeatures(VendorProfileID);
+CREATE INDEX IX_VendorSelectedFeatures_FeatureID ON VendorSelectedFeatures(FeatureID);
+GO
+
+-- Stored procedure to get all feature categories
+CREATE OR ALTER PROCEDURE sp_GetVendorFeatureCategories
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        CategoryID,
+        CategoryName,
+        CategoryIcon,
+        DisplayOrder,
+        IsActive,
+        CreatedAt
+    FROM VendorFeatureCategories
+    WHERE IsActive = 1
+    ORDER BY DisplayOrder, CategoryName;
+END
+GO
+
+-- Stored procedure to get features by category
+CREATE OR ALTER PROCEDURE sp_GetVendorFeaturesByCategory
+    @CategoryKey NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        f.FeatureID,
+        f.CategoryID,
+        f.FeatureName,
+        f.FeatureDescription,
+        f.FeatureIcon,
+        f.DisplayOrder,
+        f.IsActive,
+        c.CategoryName,
+        c.CategoryIcon AS CategoryIconName
+    FROM VendorFeatures f
+    JOIN VendorFeatureCategories c ON f.CategoryID = c.CategoryID
+    WHERE f.IsActive = 1 
+        AND c.IsActive = 1
+        AND (@CategoryKey IS NULL OR c.CategoryName = @CategoryKey)
+    ORDER BY f.DisplayOrder, f.FeatureName;
+END
+GO
+
+-- Stored procedure to get all features grouped by category
+CREATE OR ALTER PROCEDURE sp_GetAllVendorFeaturesGrouped
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        c.CategoryID,
+        c.CategoryName,
+        c.CategoryName AS CategoryKey,
+        NULL AS CategoryDescription,
+        c.CategoryIcon,
+        c.DisplayOrder AS CategoryOrder,
+        f.FeatureID,
+        f.FeatureName,
+        f.FeatureName AS FeatureKey,
+        f.FeatureDescription,
+        f.FeatureIcon,
+        f.DisplayOrder AS FeatureOrder
+    FROM VendorFeatureCategories c
+    LEFT JOIN VendorFeatures f ON c.CategoryID = f.CategoryID AND f.IsActive = 1
+    WHERE c.IsActive = 1
+    ORDER BY c.DisplayOrder, c.CategoryName, f.DisplayOrder, f.FeatureName;
+END
+GO
+
+-- Stored procedure to get vendor's selected features
+CREATE OR ALTER PROCEDURE sp_GetVendorSelectedFeatures
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        vsf.VendorFeatureSelectionID,
+        vsf.VendorProfileID,
+        vsf.FeatureID,
+        f.FeatureName,
+        f.FeatureName AS FeatureKey,
+        f.FeatureDescription,
+        f.FeatureIcon,
+        c.CategoryID,
+        c.CategoryName,
+        c.CategoryName AS CategoryKey,
+        c.CategoryIcon,
+        vsf.CreatedAt AS SelectedAt
+    FROM VendorSelectedFeatures vsf
+    JOIN VendorFeatures f ON vsf.FeatureID = f.FeatureID
+    JOIN VendorFeatureCategories c ON f.CategoryID = c.CategoryID
+    WHERE vsf.VendorProfileID = @VendorProfileID
+        AND f.IsActive = 1
+        AND c.IsActive = 1
+    ORDER BY c.DisplayOrder, f.DisplayOrder;
+END
+GO
+
+-- Stored procedure to save vendor's feature selections (replaces all existing selections)
+CREATE OR ALTER PROCEDURE sp_SaveVendorFeatureSelections
+    @VendorProfileID INT,
+    @FeatureIds NVARCHAR(MAX) -- Comma-separated list of feature IDs
+AS
+BEGIN
+    SET NOCOUNT ON;
+    BEGIN TRY
+        BEGIN TRANSACTION;
+        
+        -- Delete existing selections for this vendor
+        DELETE FROM VendorSelectedFeatures
+        WHERE VendorProfileID = @VendorProfileID;
+        
+        -- Insert new selections if FeatureIds is not empty
+        IF @FeatureIds IS NOT NULL AND LEN(@FeatureIds) > 0
+        BEGIN
+            INSERT INTO VendorSelectedFeatures (VendorProfileID, FeatureID)
+            SELECT @VendorProfileID, CAST(value AS INT)
+            FROM STRING_SPLIT(@FeatureIds, ',')
+            WHERE RTRIM(value) <> '';
+        END
+        
+        COMMIT TRANSACTION;
+        
+        -- Get count of selections
+        DECLARE @SelectionCount INT;
+        SELECT @SelectionCount = COUNT(*) 
+        FROM VendorSelectedFeatures 
+        WHERE VendorProfileID = @VendorProfileID;
+        
+        SELECT 'success' AS Status, 'Feature selections saved successfully' AS Message, @SelectionCount AS SelectionCount;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+        SELECT 'error' AS Status, ERROR_MESSAGE() AS Message, 0 AS SelectionCount;
+    END CATCH
+END
+GO
+
+-- Stored procedure to get vendor's feature summary (count per category)
+CREATE OR ALTER PROCEDURE sp_GetVendorFeatureSummary
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        c.CategoryID,
+        c.CategoryName,
+        c.CategoryIcon,
+        COUNT(vsf.FeatureID) AS FeatureCount
+    FROM VendorFeatureCategories c
+    LEFT JOIN VendorFeatures f ON c.CategoryID = f.CategoryID AND f.IsActive = 1
+    LEFT JOIN VendorSelectedFeatures vsf ON f.FeatureID = vsf.FeatureID AND vsf.VendorProfileID = @VendorProfileID
+    WHERE c.IsActive = 1
+    GROUP BY c.CategoryID, c.CategoryName, c.CategoryIcon, c.DisplayOrder
+    ORDER BY c.DisplayOrder;
+END
+GO
+
+-- Insert feature categories
+INSERT INTO VendorFeatureCategories (CategoryName, CategoryIcon, DisplayOrder) VALUES
+('Venue Features', 'building-2', 1),
+('Photography & Video', 'camera', 2),
+('Music & Entertainment', 'music', 3),
+('Catering & Bar', 'utensils', 4),
+('Floral & Decor', 'flower-2', 5),
+('Event Services', 'party-popper', 6),
+('Transportation', 'car', 7),
+('Special Features', 'sparkles', 8),
+('Event Planning', 'clipboard-list', 9);
+GO
+
+-- Insert venue features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    -- Venue Features
+    ('Indoor Ceremony Space', 'Climate-controlled indoor ceremony area', 'church', 1),
+    ('Outdoor Ceremony Space', 'Beautiful outdoor ceremony setting', 'trees', 2),
+    ('On-Site Catering', 'Professional catering services available', 'chef-hat', 3),
+    ('Wheelchair Accessible', 'Full accessibility for all guests', 'accessibility', 4),
+    ('Parking Available', 'Convenient on-site parking', 'car-front', 5),
+    ('Sound System Included', 'Professional audio equipment', 'speaker', 6),
+    ('WiFi Available', 'Complimentary high-speed internet', 'wifi', 7),
+    ('Garden/Outdoor Space', 'Scenic outdoor areas for photos', 'trees', 8),
+    ('Scenic Views', 'Stunning panoramic views', 'eye', 9),
+    ('Dance Floor', 'Dedicated space for dancing', 'disc', 10),
+    ('Stage/Platform', 'Elevated stage for performances', 'presentation', 11),
+    ('Private Dressing Rooms', 'Comfortable preparation areas', 'door-closed', 12),
+    ('Overnight Accommodations', 'On-site lodging available', 'bed', 13),
+    ('Airport Shuttle', 'Transportation to/from airport', 'plane', 14),
+    ('Vendor Preferred List', 'Curated list of trusted vendors', 'users', 15),
+    ('Exclusive Use', 'Private venue rental', 'camera-off', 16),
+    ('Power Backup', 'Generator for uninterrupted service', 'zap', 17)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Venue Features';
+GO
+
+-- Insert photography & video features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Engagement Session', 'Pre-wedding photo session included', 'heart', 1),
+    ('Second Photographer', 'Additional photographer for coverage', 'camera', 2),
+    ('Photo Booth', 'Fun interactive photo booth', 'images', 3),
+    ('Same-Day Edit', 'Quick highlight video on wedding day', 'zap', 4),
+    ('Drone Footage', 'Aerial photography and video', 'plane', 5),
+    ('Photo Albums', 'Professional printed albums', 'book-open', 6),
+    ('Digital Downloads', 'High-resolution digital files', 'file', 7),
+    ('Online Gallery', 'Private online viewing gallery', 'images', 8),
+    ('Print Rights', 'Full rights to print photos', 'printer', 9),
+    ('Cinematic Video', 'Movie-style wedding film', 'film', 10),
+    ('Live Streaming', 'Stream ceremony to remote guests', 'radio', 11)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Photography & Video';
+GO
+
+-- Insert music & entertainment features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Live Band', 'Professional live music performance', 'guitar', 1),
+    ('DJ Services', 'Professional DJ and MC', 'disc', 2),
+    ('Ceremony Music', 'Music for ceremony and processional', 'music', 3),
+    ('Sound Equipment', 'Professional audio system', 'speaker', 4),
+    ('Lighting Package', 'Mood and dance floor lighting', 'lightbulb', 5),
+    ('Microphones', 'Wireless microphones for speeches', 'mic', 6),
+    ('Music Requests', 'Custom playlist and requests', 'list-music', 7),
+    ('Cocktail Hour Music', 'Entertainment during cocktail hour', 'glass-water', 8),
+    ('Karaoke', 'Interactive karaoke setup', 'mic-vocal', 9),
+    ('String Quartet', 'Classical music ensemble', 'music', 10),
+    ('Acoustic Guitarist', 'Solo acoustic performance', 'guitar', 11)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Music & Entertainment';
+GO
+
+-- Insert catering & bar features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Full Bar Service', 'Complete bar with bartenders', 'wine', 1),
+    ('Signature Cocktails', 'Custom craft cocktails', 'glass-water', 2),
+    ('Wine Service', 'Curated wine selection', 'wine', 3),
+    ('Beer Selection', 'Craft and domestic beers', 'beer', 4),
+    ('Non-Alcoholic Options', 'Mocktails and soft drinks', 'glass-water', 5),
+    ('Buffet Style', 'Self-service buffet setup', 'utensils', 6),
+    ('Plated Dinner', 'Formal served dinner', 'utensils-crossed', 7),
+    ('Family Style', 'Shared platters at tables', 'users', 8),
+    ('Cocktail Hour Appetizers', 'Passed hors d''oeuvres', 'arrow-right-circle', 9),
+    ('Dessert Bar', 'Variety of desserts', 'cake', 10),
+    ('Coffee & Tea Service', 'Hot beverage station', 'coffee', 11),
+    ('Vegan Options', 'Plant-based menu choices', 'leaf', 12),
+    ('Gluten-Free Options', 'Gluten-free menu available', 'wheat-off', 13),
+    ('Kids Menu', 'Special children''s meals', 'baby', 14),
+    ('Late Night Snacks', 'Evening food service', 'scroll-text', 15),
+    ('Cake Cutting Service', 'Professional cake service', 'cake', 16)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Catering & Bar';
+GO
+
+-- Insert floral & decor features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Bridal Bouquet', 'Custom bridal bouquet', 'flower', 1),
+    ('Ceremony Flowers', 'Altar and aisle arrangements', 'flower-2', 2),
+    ('Reception Centerpieces', 'Table centerpiece designs', 'flower', 3),
+    ('Boutonnieres', 'Flowers for groomsmen', 'flower', 4),
+    ('Corsages', 'Wrist and pin corsages', 'flower', 5),
+    ('Arch/Chuppah Decor', 'Ceremony structure florals', 'hexagon', 6),
+    ('Aisle Decorations', 'Aisle markers and petals', 'rainbow', 7),
+    ('Sweetheart Table Decor', 'Head table arrangements', 'heart', 8),
+    ('Uplighting', 'Ambient wall lighting', 'lamp', 9),
+    ('Draping', 'Fabric ceiling treatments', 'cloud', 10),
+    ('Linens & Napkins', 'Table linens and napkins', 'layers', 11),
+    ('Chiavari Chairs', 'Elegant chair rentals', 'armchair', 12),
+    ('Charger Plates', 'Decorative plate chargers', 'circle', 13),
+    ('Candles & Votives', 'Ambient candle lighting', 'flame', 14),
+    ('Signage', 'Welcome and directional signs', 'signpost', 15),
+    ('Table Numbers', 'Numbered table markers', 'trending-up', 16)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Floral & Decor';
+GO
+
+-- Insert event services features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, v.DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Day-of Coordination', 'Professional event coordination', 'clipboard-check', 1),
+    ('Full Planning Service', 'Complete wedding planning', 'clipboard-list', 2),
+    ('Vendor Coordination', 'Liaison with all vendors', 'users-round', 3),
+    ('Timeline Creation', 'Detailed event timeline', 'calendar-days', 4),
+    ('Setup & Breakdown', 'Event setup and cleanup', 'hand', 5),
+    ('Rehearsal Coordination', 'Wedding rehearsal management', 'calendar-check', 6),
+    ('Guest Services', 'Concierge for guests', 'users', 7),
+    ('Officiant Services', 'Licensed officiant available', 'handshake', 8),
+    ('Budget Management', 'Financial planning assistance', 'dollar-sign', 9)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Event Services';
+GO
+
+-- Insert transportation features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Limousine Service', 'Luxury limo transportation', 'car', 1),
+    ('Vintage Car Rental', 'Classic car for photos', 'car-front', 2),
+    ('Guest Shuttle', 'Transportation for guests', 'bus', 3),
+    ('Valet Parking', 'Professional valet service', 'key-round', 4),
+    ('Trolley Service', 'Charming trolley transport', 'bus-front', 5)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Transportation';
+GO
+
+-- Insert special features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Sparkler Send-Off', 'Sparklers for grand exit', 'sparkles', 1),
+    ('Fireworks Display', 'Professional fireworks show', 'flame-kindling', 2),
+    ('Ice Sculpture', 'Custom ice sculptures', 'flame', 3),
+    ('Champagne Tower', 'Elegant champagne display', 'wine', 4),
+    ('Cigar Bar', 'Premium cigar station', 'flame', 5),
+    ('Kids Entertainment', 'Activities for children', 'gamepad-2', 6),
+    ('Pet Services', 'Accommodations for pets', 'heart', 7),
+    ('Cultural Ceremony', 'Traditional ceremony elements', 'drama', 8),
+    ('Magic/Entertainer', 'Professional entertainment', 'wand', 9)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Special Features';
+GO
+
+-- Insert event planning features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Unlimited Meetings', 'Unlimited planning consultations', 'calendar-check', 1),
+    ('Design Consultation', 'Professional design advice', 'palette', 2),
+    ('Vendor Recommendations', 'Curated vendor suggestions', 'users', 3),
+    ('Contract Review', 'Legal contract assistance', 'file', 4),
+    ('RSVP Management', 'Guest response tracking', 'clipboard-check', 5),
+    ('Seating Chart', 'Table assignment planning', 'map-pin', 6),
+    ('Digital Tools Access', 'Online planning platform', 'wifi', 7),
+    ('Emergency Kit', 'Day-of emergency supplies', 'hand', 8)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Event Planning';
+GO
+
 PRINT '============================================='
 PRINT 'VenueVue v4 PRODUCTION DATABASE COMPLETE'
 PRINT '============================================='
 PRINT 'Enhanced with:'
 PRINT '✅ Full Cloudinary image support'
 PRINT '✅ Category questions system (91+ questions)'
+PRINT '✅ Vendor Features/Questionnaire (130+ features)'
 PRINT '✅ Production-grade error handling'
 PRINT '✅ Complete API compatibility'
 PRINT '✅ All v4 functionality preserved & enhanced'
