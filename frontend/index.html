@@ -6157,7 +6157,6 @@
                             <li><a href="#" class="active" data-section="vendor-dashboard"><i class="fas fa-tachometer-alt"></i>Dashboard</a></li>
                             <li><a href="#" data-section="vendor-requests"><i class="fas fa-calendar-check"></i>Bookings</a></li>
                             <li><a href="#" data-section="vendor-invoices"><i class="fas fa-file-invoice"></i>Invoices</a></li>
-                            <li><a href="#" data-section="vendor-services"><i class="fas fa-briefcase"></i>Services</a></li>
                             <li><a href="#" data-section="vendor-business-profile"><i class="fas fa-building"></i>Business Profile</a></li>
                             <li><a href="#" data-section="vendor-messages"><i class="fas fa-comments"></i>Messages</a></li>
                             <li><a href="#" data-section="vendor-reviews"><i class="fas fa-star"></i>Reviews</a></li>
@@ -6209,32 +6208,6 @@
                         <div id="vendor-invoices-section" style="display: none;">
                             <div class="dashboard-card">
                                 <div id="vendor-invoices-list"><p>Loading invoices...</p></div>
-                            </div>
-                        </div>
-                        <div id="vendor-services-section" style="display: none;">
-                            <div class="dashboard-card">
-                                <div id="stripe-connect-setup">
-                                    <div class="stripe-setup-card" style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px; background: #fafafa;">
-                                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                                            <div style="width: 40px; height: 40px; background: #635bff; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                                <i class="fab fa-stripe" style="color: white; font-size: 20px;"></i>
-                                            </div>
-                                            <div>
-                                                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1f2937;">Stripe Connect</h3>
-                                                <p style="margin: 0; font-size: 14px; color: #6b7280;">Connect your bank account to receive payments</p>
-                                            </div>
-                                        </div>
-                                        <div id="stripe-status-display">
-                                            <div class="loading-spinner" style="text-align: center; padding: 20px;">
-                                                <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #6b7280;"></i>
-                                                <p style="margin: 8px 0 0 0; color: #6b7280;">Checking connection status...</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="dashboard-card">
-                                <div class="services-section" id="vendor-services"><p>Loading services...</p></div>
                             </div>
                         </div>
                         <div id="vendor-messages-section" style="display: none;">
@@ -6318,6 +6291,13 @@
                                         </div>
                                         <h3 class="settings-card-title">Availability & Hours</h3>
                                         <p class="settings-card-description">Set your business hours and availability</p>
+                                    </div>
+                                    <div class="settings-card" data-panel="vendor-stripe-panel">
+                                        <div class="settings-card-icon">
+                                            <i class="fab fa-stripe"></i>
+                                        </div>
+                                        <h3 class="settings-card-title">Stripe Setup</h3>
+                                        <p class="settings-card-description">Connect your Stripe account to receive payments</p>
                                     </div>
                                 </div>
                                 
@@ -6558,6 +6538,27 @@
                                         <h2 class="dashboard-card-title">Availability Settings</h2>
                                         <div id="business-hours-container" style="margin-top:1rem;"></div>
                                         <button class="btn btn-primary" id="save-business-hours-btn" style="margin-top:.5rem;">Save Business Hours</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Stripe Setup Panel -->
+                            <div id="vendor-stripe-panel" style="display: none;">
+                                <button class="btn btn-outline back-to-menu-btn" style="margin-bottom: 1rem;">
+                                    <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
+                                </button>
+                                <div class="dashboard-card">
+                                    <h2 class="dashboard-card-title">Stripe Connect</h2>
+                                    <p style="color: var(--text-light); margin-bottom: 2rem;">
+                                        Connect your Stripe account to accept payments from customers.
+                                    </p>
+                                    
+                                    <!-- Stripe Status Display -->
+                                    <div id="stripe-status-display">
+                                        <div style="text-align: center; padding: 40px 20px;">
+                                            <i class="fas fa-spinner fa-spin" style="font-size: 32px; color: var(--primary); margin-bottom: 16px;"></i>
+                                            <p style="margin: 0; color: var(--text-light);">Checking connection status...</p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             <!-- Verification & Legal panel removed -->
@@ -12828,7 +12829,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Valid sections per mode
             const CLIENT_SECTIONS = new Set(['dashboard','bookings','requests','favorites','messages','reviews','settings']);
-            const VENDOR_SECTIONS = new Set(['vendor-dashboard','vendor-requests','vendor-services','vendor-messages','vendor-reviews','vendor-analytics','vendor-settings']);
+            const VENDOR_SECTIONS = new Set(['vendor-dashboard','vendor-requests','vendor-messages','vendor-reviews','vendor-analytics','vendor-settings','vendor-business-profile','vendor-invoices']);
 
             function persistActiveSection(mode, section) {
                 try {
@@ -23980,10 +23981,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Vendor business profile tabs with lazy-loading for each panel
-            let vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, availability: false };
+            let vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, availability: false, stripe: false };
             function setupVendorBusinessProfileTabs(vendorProfileId) {
                 const section = document.getElementById('vendor-business-profile-section');
-                vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, availability: false };
+                vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, availability: false, stripe: false };
                 
                 // Initialize panel toggle handlers
                 setTimeout(() => {
@@ -24019,6 +24020,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (targetId === 'vendor-availability-panel' && !vendorSettingsLoaded.availability) {
                         await loadVendorAvailability(vendorProfileId);
                         vendorSettingsLoaded.availability = true;
+                    }
+                    if (targetId === 'vendor-stripe-panel' && !vendorSettingsLoaded.stripe) {
+                        await loadStripeConnectStatus(vendorProfileId);
+                        vendorSettingsLoaded.stripe = true;
                     }
                 });
             }
@@ -24093,6 +24098,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     loadVendorAvailability(vendorProfileId);
                                     vendorSettingsLoaded.availability = true;
                                 }
+                                if (panelId === 'vendor-stripe-panel' && !vendorSettingsLoaded.stripe) {
+                                    loadStripeConnectStatus(vendorProfileId);
+                                    vendorSettingsLoaded.stripe = true;
+                                }
                             } else {
                                 panel.style.display = 'none';
                                 console.log('Panel closed:', panelId);
@@ -24129,22 +24138,44 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // =============================================
             let vendorQuestionnaireData = null;
             let selectedFeatureIds = new Set();
+            let currentVendorProfileId = null; // Store vendorProfileId globally for save operation
+            let currentVendorProfileData = null; // Store vendor profile data
 
             // Helper function to get vendor's selected categories
             function getVendorCategories() {
                 const categories = [];
                 
-                // Try to get from vendorData (for existing vendors viewing dashboard)
-                if (window.vendorData) {
-                    if (vendorData.PrimaryCategory) {
-                        categories.push(vendorData.PrimaryCategory);
-                    }
-                    if (vendorData.AdditionalCategories && vendorData.AdditionalCategories.length > 0) {
-                        categories.push(...vendorData.AdditionalCategories);
+                // Try to get from stored profile data (for existing vendors viewing dashboard)
+                if (currentVendorProfileData) {
+                    if (currentVendorProfileData.Categories) {
+                        // Categories is a comma-separated string like "photography,videography"
+                        const cats = currentVendorProfileData.Categories.split(',').map(c => c.trim().toLowerCase());
+                        categories.push(...cats);
                     }
                 }
                 
-                // Fallback: try to get from form inputs (during registration or editing)
+                // Fallback: try to get from form inputs in the Business Profile panel
+                const vendorCategorySelect = document.getElementById('vendor-category');
+                const vendorAdditionalCategoriesSelect = document.getElementById('vendor-additional-categories');
+                
+                if (vendorCategorySelect && vendorCategorySelect.value && vendorCategorySelect.value !== 'Loading...') {
+                    if (!categories.includes(vendorCategorySelect.value)) {
+                        categories.push(vendorCategorySelect.value);
+                    }
+                }
+                
+                if (vendorAdditionalCategoriesSelect) {
+                    const additionalSelected = Array.from(vendorAdditionalCategoriesSelect.selectedOptions || [])
+                        .map(option => option.value)
+                        .filter(val => val && val !== 'Loading...');
+                    additionalSelected.forEach(cat => {
+                        if (cat && !categories.includes(cat)) {
+                            categories.push(cat);
+                        }
+                    });
+                }
+                
+                // Additional fallback: try registration form inputs (during registration)
                 const primaryCategorySelect = document.getElementById('primary-category');
                 const additionalCategoriesSelect = document.getElementById('additional-categories');
                 
@@ -24164,6 +24195,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                 }
                 
+                console.log('getVendorCategories result:', categories);
                 return categories;
             }
 
@@ -24173,6 +24205,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const container = document.getElementById('vendor-questionnaire-container');
                     const saveBtn = document.getElementById('save-vendor-questionnaire');
 
+                    // Store vendorProfileId globally for save operation
+                    currentVendorProfileId = vendorProfileId;
+
                     // Show loading state
                     container.innerHTML = `
                         <div class="questionnaire-loading">
@@ -24180,6 +24215,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <p>Loading questionnaire...</p>
                         </div>
                     `;
+
+                    // Load vendor profile data to get categories
+                    if (vendorProfileId) {
+                        try {
+                            const profileResponse = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/profile-details`, {
+                                headers: {
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                }
+                            });
+                            if (profileResponse.ok) {
+                                currentVendorProfileData = await profileResponse.json();
+                                console.log('Loaded vendor profile data:', currentVendorProfileData);
+                            }
+                        } catch (profileError) {
+                            console.warn('Could not load vendor profile data:', profileError);
+                        }
+                    }
 
                     // Fetch all features grouped by category
                     const response = await fetch(`${API_BASE_URL}/vendor-features/all-grouped`, {
@@ -24239,21 +24291,37 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 // Get vendor's selected categories from their profile
                 const vendorCategories = getVendorCategories();
+                console.log('Vendor categories for filtering:', vendorCategories);
                 
                 // Filter categories based on applicableVendorCategories
                 const filteredCategories = vendorQuestionnaireData.filter(category => {
+                    // If no vendor categories loaded yet, show categories marked as 'all' only
+                    if (!vendorCategories || vendorCategories.length === 0) {
+                        return !category.applicableVendorCategories || category.applicableVendorCategories === 'all';
+                    }
+                    
                     if (!category.applicableVendorCategories) return true; // Show if no filter specified
                     if (category.applicableVendorCategories === 'all') return true; // Show if applies to all
                     
                     // Check if any of the vendor's categories match the applicable categories
                     const applicableList = category.applicableVendorCategories.split(',').map(c => c.trim().toLowerCase());
-                    return vendorCategories.some(vendorCat => applicableList.includes(vendorCat.toLowerCase()));
+                    const hasMatch = vendorCategories.some(vendorCat => applicableList.includes(vendorCat.toLowerCase()));
+                    
+                    console.log(`Category: ${category.categoryName}, Applicable: ${category.applicableVendorCategories}, Match: ${hasMatch}`);
+                    return hasMatch;
                 });
 
+                console.log('Filtered categories:', filteredCategories.map(c => c.categoryName));
+
                 if (filteredCategories.length === 0) {
+                    const categoriesText = vendorCategories.length > 0 
+                        ? `for your selected categories (${vendorCategories.join(', ')})`
+                        : 'for your profile';
                     container.innerHTML = `
                         <div style="text-align: center; padding: 2rem; color: var(--text-light);">
-                            <p>No questionnaire available for your selected vendor categories.</p>
+                            <i class="fas fa-info-circle" style="font-size: 2rem; color: var(--primary); margin-bottom: 1rem;"></i>
+                            <p>No questionnaire features available ${categoriesText}.</p>
+                            <p style="font-size: 0.9rem; margin-top: 0.5rem;">Please make sure you have set your primary category in Business Information.</p>
                         </div>
                     `;
                     return;
@@ -24449,10 +24517,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     saveBtn.disabled = true;
                     saveBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Saving...';
 
-                    // Get vendor profile ID
-                    const vendorProfileId = currentUser?.vendorProfileId;
+                    // Get vendor profile ID from stored global variable
+                    const vendorProfileId = currentVendorProfileId;
                     if (!vendorProfileId) {
-                        throw new Error('Vendor profile ID not found');
+                        throw new Error('Vendor profile ID not found. Please reload the page.');
                     }
 
                     const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
@@ -24481,7 +24549,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 } catch (error) {
                     console.error('Error saving questionnaire:', error);
-                    alert('Failed to save selections. Please try again.');
+                    alert('Failed to save selections. ' + error.message);
                     saveBtn.innerHTML = originalBtnText;
                     saveBtn.disabled = false;
                 }
@@ -25649,8 +25717,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         await loadVendorRequests(vendorReqFilters.direction, vendorReqFilters.status);
                     } else if (section === 'vendor-invoices') {
                         await loadVendorInvoices(vendorProfileId);
-                    } else if (section === 'vendor-services') {
-                        await loadVendorServices(vendorProfileId);
                     } else if (section === 'vendor-messages') {
                         await loadConversations('vendor-messages-section', 'vendor-all-chat-input', 'vendor-all-send-btn');
                     } else if (section === 'vendor-reviews') {
@@ -26728,9 +26794,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             async function loadVendorServices(vendorProfileId) {
-                // Load Stripe Connect status first
-                await loadStripeConnectStatus(vendorProfileId);
-                
                 const container = document.getElementById('vendor-services');
                 container.innerHTML = '<p>Loading services...</p>';
                 try {
