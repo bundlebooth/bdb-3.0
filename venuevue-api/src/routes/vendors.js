@@ -351,6 +351,7 @@ router.get('/', async (req, res) => {
       predefinedServices,
       eventLocation,
       mapBounds,
+      priceLevel,
       // unified pricing-aware search params
       budgetType, // 'total' | 'per_person'
       pricingModel, // 'time_based' | 'fixed_based'
@@ -383,6 +384,7 @@ router.get('/', async (req, res) => {
     request.input('BudgetType', sql.NVarChar(20), budgetType || null);
     request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
     request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
+    request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
     // Note: Do NOT pass EventDate/Start/End here. sp_SearchVendors does not accept them.
 
     const result = await request.execute('sp_SearchVendors');
@@ -751,6 +753,8 @@ router.get('/search-by-categories', async (req, res) => {
       pageSize,
       sortBy,
       includeImages,
+      region,
+      priceLevel,
       budgetType,           // 'total' | 'per_person'
       pricingModel,         // 'time_based' | 'fixed_based'
       fixedPricingType      // 'fixed_price' | 'per_attendee'
@@ -818,6 +822,8 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('BudgetType', sql.NVarChar(20), budgetType || null);
       request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
       request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
+      request.input('Region', sql.NVarChar(50), region || null);
+      request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
 
       const r = await request.execute('sp_SearchVendors');
 
