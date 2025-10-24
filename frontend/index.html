@@ -9244,6 +9244,18 @@
 
         async function startStripeOnboarding(vendorProfileId) {
             try {
+                // Validate vendorProfileId
+                if (!vendorProfileId) {
+                    console.error('startStripeOnboarding: vendorProfileId is undefined, attempting to fetch...');
+                    vendorProfileId = await getVendorProfileId().catch(() => null);
+                    if (!vendorProfileId) {
+                        alert('Unable to identify your vendor profile. Please try logging out and back in.');
+                        return;
+                    }
+                }
+                
+                console.log('Starting Stripe onboarding for vendor:', vendorProfileId);
+                
                 // Show loading state
                 const connectBtn = document.querySelector('#stripe-connect-btn');
                 if (connectBtn) {
@@ -9300,6 +9312,12 @@
 
         async function checkVendorStripeStatus(vendorProfileId, showBannerIfDisconnected = true) {
             try {
+                // Validate vendorProfileId
+                if (!vendorProfileId) {
+                    console.warn('checkVendorStripeStatus: vendorProfileId is undefined');
+                    return false;
+                }
+                
                 const resp = await fetch(`${API_BASE_URL}/payments/connect/status/${vendorProfileId}`);
                 const data = await resp.json();
                 
@@ -24022,7 +24040,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         vendorSettingsLoaded.availability = true;
                     }
                     if (targetId === 'vendor-stripe-panel' && !vendorSettingsLoaded.stripe) {
-                        await loadStripeConnectStatus(vendorProfileId);
+                        let vId = vendorProfileId;
+                        if (!vId) {
+                            vId = await getVendorProfileId().catch(() => null);
+                        }
+                        if (vId) {
+                            await loadStripeConnectStatus(vId);
+                        }
                         vendorSettingsLoaded.stripe = true;
                     }
                 });
@@ -24099,7 +24123,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     vendorSettingsLoaded.availability = true;
                                 }
                                 if (panelId === 'vendor-stripe-panel' && !vendorSettingsLoaded.stripe) {
-                                    loadStripeConnectStatus(vendorProfileId);
+                                    // Ensure vendorProfileId is available
+                                    (async () => {
+                                        let vId = vendorProfileId;
+                                        if (!vId) {
+                                            vId = await getVendorProfileId().catch(() => null);
+                                        }
+                                        if (vId) {
+                                            await loadStripeConnectStatus(vId);
+                                        } else {
+                                            console.error('Could not get vendorProfileId for Stripe panel');
+                                        }
+                                    })();
                                     vendorSettingsLoaded.stripe = true;
                                 }
                             } else {
@@ -26819,6 +26854,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const statusDisplay = document.getElementById('stripe-status-display');
                 if (!statusDisplay) return;
 
+                // Validate vendorProfileId
+                if (!vendorProfileId) {
+                    console.error('loadStripeConnectStatus: vendorProfileId is undefined');
+                    statusDisplay.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 12px; padding: 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px;">
+                            <i class="fas fa-exclamation-circle" style="color: #dc2626; font-size: 20px;"></i>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #991b1b; margin-bottom: 4px;">Configuration Error</div>
+                                <div style="font-size: 14px; color: #b91c1c;">Unable to load vendor profile. Please try logging out and back in.</div>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
                 try {
                     const response = await fetch(`${API_BASE_URL}/payments/connect/status/${vendorProfileId}`);
                     const data = await response.json();
@@ -26832,11 +26882,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     <div style="font-weight: 600; color: #15803d; margin-bottom: 4px;">Connected & Ready</div>
                                     <div style="font-size: 14px; color: #166534;">Your Stripe account is connected and ready to receive payments. ${data.mock ? '(Mock mode - Connect not enabled on server)' : ''}</div>
                                 </div>
-                                <button onclick="refreshStripeStatus(${vendorProfileId})" class="btn btn-outline" style="white-space: nowrap;">
+                                <button id="stripe-refresh-btn" class="btn btn-outline" style="white-space: nowrap;">
                                     <i class="fas fa-sync-alt"></i> Refresh
                                 </button>
                             </div>
                         `;
+                        document.getElementById('stripe-refresh-btn')?.addEventListener('click', () => refreshStripeStatus(vendorProfileId));
                     } else if (data.success && data.connected && !data.charges_enabled) {
                         // Connected but not ready for charges
                         statusDisplay.innerHTML = `
@@ -26849,11 +26900,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                         <strong>Next steps:</strong> Complete bank details, business verification, and tax information in Stripe.
                                     </div>
                                 </div>
-                                <button onclick="continueStripeOnboarding(${vendorProfileId})" class="btn btn-primary" style="white-space: nowrap;">
+                                <button id="stripe-continue-btn" class="btn btn-primary" style="white-space: nowrap;">
                                     <i class="fab fa-stripe"></i> Complete Setup
                                 </button>
                             </div>
                         `;
+                        document.getElementById('stripe-continue-btn')?.addEventListener('click', () => continueStripeOnboarding(vendorProfileId));
                     } else {
                         // Not connected
                         statusDisplay.innerHTML = `
@@ -26863,11 +26915,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     <div style="font-weight: 600; color: #991b1b; margin-bottom: 4px;">Not Connected</div>
                                     <div style="font-size: 14px; color: #b91c1c;">Connect your Stripe account to start receiving payments from customers. We automatically handle the 10% platform fee.</div>
                                 </div>
-                                <button onclick="startStripeOnboarding(${vendorProfileId})" class="btn btn-primary">
+                                <button id="stripe-connect-settings-btn" class="btn btn-primary">
                                     <i class="fab fa-stripe"></i> Connect with Stripe
                                 </button>
                             </div>
                         `;
+                        document.getElementById('stripe-connect-settings-btn')?.addEventListener('click', () => startStripeOnboarding(vendorProfileId));
                     }
                 } catch (error) {
                     console.error('Error loading Stripe status:', error);
@@ -26878,11 +26931,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <div style="font-weight: 600; color: #991b1b; margin-bottom: 4px;">Connection Error</div>
                                 <div style="font-size: 14px; color: #b91c1c;">Unable to check Stripe connection status. Please try again later.</div>
                             </div>
-                            <button onclick="refreshStripeStatus(${vendorProfileId})" class="btn btn-outline">
+                            <button id="stripe-retry-btn" class="btn btn-outline">
                                 <i class="fas fa-sync-alt"></i> Retry
                             </button>
                         </div>
                     `;
+                    document.getElementById('stripe-retry-btn')?.addEventListener('click', () => refreshStripeStatus(vendorProfileId));
                 }
             }
 
