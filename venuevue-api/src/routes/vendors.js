@@ -1563,7 +1563,8 @@ router.post('/setup/step1-business-basics', async (req, res) => {
       tagline,
       yearsInBusiness,
       primaryCategory,
-      additionalCategories
+      additionalCategories,
+      priceLevel
     } = req.body;
 
     // Validation (description optional)
@@ -1587,6 +1588,7 @@ router.post('/setup/step1-business-basics', async (req, res) => {
     updateRequest.input('BusinessDescription', sql.NVarChar, (businessDescription && businessDescription.trim().length > 0) ? businessDescription : null);
     updateRequest.input('Tagline', sql.NVarChar, tagline || null);
     updateRequest.input('YearsInBusiness', sql.Int, yearsInBusiness || null);
+    updateRequest.input('PriceLevel', sql.NVarChar, priceLevel || '$$');
     
     await updateRequest.query(`
       UPDATE VendorProfiles 
@@ -1594,6 +1596,7 @@ router.post('/setup/step1-business-basics', async (req, res) => {
           BusinessEmail = @BusinessEmail, BusinessPhone = @BusinessPhone,
           Website = @Website, BusinessDescription = @BusinessDescription,
           Tagline = @Tagline, YearsInBusiness = @YearsInBusiness,
+          PriceLevel = @PriceLevel,
           UpdatedAt = GETDATE()
       WHERE VendorProfileID = @VendorProfileID
     `);
