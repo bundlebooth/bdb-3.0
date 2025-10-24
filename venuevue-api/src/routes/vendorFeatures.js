@@ -75,6 +75,7 @@ router.get('/all-grouped', async (req, res) => {
           categoryKey: row.CategoryKey,
           categoryDescription: row.CategoryDescription,
           categoryIcon: row.CategoryIcon,
+          applicableVendorCategories: row.ApplicableVendorCategories,
           categoryOrder: row.CategoryOrder,
           features: []
         };
