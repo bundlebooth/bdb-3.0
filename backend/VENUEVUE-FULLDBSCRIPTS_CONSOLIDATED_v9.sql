@@ -1717,10 +1717,10 @@ BEGIN
             N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), 
               @IsPremium BIT, @IsEcoFriendly BIT, @IsAwardWinning BIT, @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), 
               @RadiusMiles INT, @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20),
-              @EventDateRaw NVARCHAR(50), @EventStartRaw NVARCHAR(20), @EventEndRaw NVARCHAR(20)',
+              @EventDateRaw NVARCHAR(50), @EventStartRaw NVARCHAR(20), @EventEndRaw NVARCHAR(20), @Region NVARCHAR(50), @PriceLevel NVARCHAR(10)',
             @SearchTerm, @Category, @MinPrice, @MaxPrice, @IsPremium, @IsEcoFriendly, @IsAwardWinning, 
             @Latitude, @Longitude, @RadiusMiles, @BudgetType, @PricingModelFilter, @FixedPricingTypeFilter,
-            @EventDateRaw, @EventStartRaw, @EventEndRaw
+            @EventDateRaw, @EventStartRaw, @EventEndRaw, @Region, @PriceLevel
     END TRY
     BEGIN CATCH
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
