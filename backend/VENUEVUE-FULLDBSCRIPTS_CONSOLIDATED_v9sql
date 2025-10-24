@@ -7355,6 +7355,7 @@ CREATE TABLE VendorFeatureCategories (
     CategoryID INT PRIMARY KEY IDENTITY(1,1),
     CategoryName NVARCHAR(100) NOT NULL UNIQUE,
     CategoryIcon NVARCHAR(50), -- Lucide icon name
+    ApplicableVendorCategories NVARCHAR(500), -- Comma-separated list of applicable vendor categories (e.g., 'beauty,cake,catering' or 'all')
     DisplayOrder INT DEFAULT 0,
     IsActive BIT DEFAULT 1,
     CreatedAt DATETIME DEFAULT GETDATE()
@@ -7448,6 +7449,7 @@ BEGIN
         c.CategoryName AS CategoryKey,
         NULL AS CategoryDescription,
         c.CategoryIcon,
+        c.ApplicableVendorCategories,
         c.DisplayOrder AS CategoryOrder,
         f.FeatureID,
         f.FeatureName,
@@ -7555,16 +7557,16 @@ END
 GO
 
 -- Insert feature categories
-INSERT INTO VendorFeatureCategories (CategoryName, CategoryIcon, DisplayOrder) VALUES
-('Venue Features', 'building-2', 1),
-('Photography & Video', 'camera', 2),
-('Music & Entertainment', 'music', 3),
-('Catering & Bar', 'utensils', 4),
-('Floral & Decor', 'flower-2', 5),
-('Event Services', 'party-popper', 6),
-('Transportation', 'car', 7),
-('Special Features', 'sparkles', 8),
-('Event Planning', 'clipboard-list', 9);
+INSERT INTO VendorFeatureCategories (CategoryName, CategoryIcon, ApplicableVendorCategories, DisplayOrder) VALUES
+('Venue Features', 'building-2', 'venue', 1),
+('Photography & Video', 'camera', 'photography,videography', 2),
+('Music & Entertainment', 'music', 'dj,music,entertainment', 3),
+('Catering & Bar', 'utensils', 'catering,bartender', 4),
+('Floral & Decor', 'flower-2', 'florist,decor', 5),
+('Event Services', 'party-popper', 'all', 6),
+('Transportation', 'car', 'transportation', 7),
+('Special Features', 'sparkles', 'all', 8),
+('Event Planning', 'clipboard-list', 'planning', 9);
 GO
 
 -- Insert venue features
