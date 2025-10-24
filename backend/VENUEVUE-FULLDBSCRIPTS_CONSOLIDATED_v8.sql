@@ -7391,6 +7391,51 @@ CREATE INDEX IX_VendorSelectedFeatures_VendorProfileID ON VendorSelectedFeatures
 CREATE INDEX IX_VendorSelectedFeatures_FeatureID ON VendorSelectedFeatures(FeatureID);
 GO
 
+-- Stored procedure to get all feature categories
+CREATE OR ALTER PROCEDURE sp_GetVendorFeatureCategories
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        CategoryID,
+        CategoryName,
+        CategoryIcon,
+        DisplayOrder,
+        IsActive,
+        CreatedAt
+    FROM VendorFeatureCategories
+    WHERE IsActive = 1
+    ORDER BY DisplayOrder, CategoryName;
+END
+GO
+
+-- Stored procedure to get features by category
+CREATE OR ALTER PROCEDURE sp_GetVendorFeaturesByCategory
+    @CategoryKey NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        f.FeatureID,
+        f.CategoryID,
+        f.FeatureName,
+        f.FeatureDescription,
+        f.FeatureIcon,
+        f.DisplayOrder,
+        f.IsActive,
+        c.CategoryName,
+        c.CategoryIcon AS CategoryIconName
+    FROM VendorFeatures f
+    JOIN VendorFeatureCategories c ON f.CategoryID = c.CategoryID
+    WHERE f.IsActive = 1 
+        AND c.IsActive = 1
+        AND (@CategoryKey IS NULL OR c.CategoryName = @CategoryKey)
+    ORDER BY f.DisplayOrder, f.FeatureName;
+END
+GO
+
 -- Stored procedure to get all features grouped by category
 CREATE OR ALTER PROCEDURE sp_GetAllVendorFeaturesGrouped
 AS
@@ -7400,13 +7445,16 @@ BEGIN
     SELECT 
         c.CategoryID,
         c.CategoryName,
+        c.CategoryName AS CategoryKey,
+        NULL AS CategoryDescription,
         c.CategoryIcon,
-        c.DisplayOrder AS CategoryDisplayOrder,
+        c.DisplayOrder AS CategoryOrder,
         f.FeatureID,
         f.FeatureName,
+        f.FeatureName AS FeatureKey,
         f.FeatureDescription,
         f.FeatureIcon,
-        f.DisplayOrder AS FeatureDisplayOrder
+        f.DisplayOrder AS FeatureOrder
     FROM VendorFeatureCategories c
     LEFT JOIN VendorFeatures f ON c.CategoryID = f.CategoryID AND f.IsActive = 1
     WHERE c.IsActive = 1
@@ -7426,12 +7474,14 @@ BEGIN
         vsf.VendorProfileID,
         vsf.FeatureID,
         f.FeatureName,
+        f.FeatureName AS FeatureKey,
         f.FeatureDescription,
         f.FeatureIcon,
         c.CategoryID,
         c.CategoryName,
+        c.CategoryName AS CategoryKey,
         c.CategoryIcon,
-        vsf.CreatedAt
+        vsf.CreatedAt AS SelectedAt
     FROM VendorSelectedFeatures vsf
     JOIN VendorFeatures f ON vsf.FeatureID = f.FeatureID
     JOIN VendorFeatureCategories c ON f.CategoryID = c.CategoryID
@@ -7466,13 +7516,41 @@ BEGIN
         END
         
         COMMIT TRANSACTION;
-        SELECT 1 AS Success, 'Feature selections saved successfully' AS Message;
+        
+        -- Get count of selections
+        DECLARE @SelectionCount INT;
+        SELECT @SelectionCount = COUNT(*) 
+        FROM VendorSelectedFeatures 
+        WHERE VendorProfileID = @VendorProfileID;
+        
+        SELECT 'success' AS Status, 'Feature selections saved successfully' AS Message, @SelectionCount AS SelectionCount;
     END TRY
     BEGIN CATCH
         IF @@TRANCOUNT > 0
             ROLLBACK TRANSACTION;
-        SELECT 0 AS Success, ERROR_MESSAGE() AS Message;
+        SELECT 'error' AS Status, ERROR_MESSAGE() AS Message, 0 AS SelectionCount;
     END CATCH
+END
+GO
+
+-- Stored procedure to get vendor's feature summary (count per category)
+CREATE OR ALTER PROCEDURE sp_GetVendorFeatureSummary
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        c.CategoryID,
+        c.CategoryName,
+        c.CategoryIcon,
+        COUNT(vsf.FeatureID) AS FeatureCount
+    FROM VendorFeatureCategories c
+    LEFT JOIN VendorFeatures f ON c.CategoryID = f.CategoryID AND f.IsActive = 1
+    LEFT JOIN VendorSelectedFeatures vsf ON f.FeatureID = vsf.FeatureID AND vsf.VendorProfileID = @VendorProfileID
+    WHERE c.IsActive = 1
+    GROUP BY c.CategoryID, c.CategoryName, c.CategoryIcon, c.DisplayOrder
+    ORDER BY c.DisplayOrder;
 END
 GO
 
