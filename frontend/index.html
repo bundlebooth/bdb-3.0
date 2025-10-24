@@ -5848,9 +5848,27 @@
                     <div id="map-view"></div>
                 </div>
             </div>
-            <div id="load-more-wrapper" style="display:flex; justify-content:center; align-items:center; margin: 2rem 0;">
-                <button class="btn btn-outline" id="load-more-btn">Load more</button>
-                <span id="load-more-spinner" style="display:none; margin-left:8px; color: var(--text-light);"><i class="fas fa-spinner fa-spin"></i></span>
+            <div id="load-more-wrapper" style="display:flex; justify-content:center; align-items:center; margin: 3rem 0 2rem 0;">
+                <button class="btn" id="load-more-btn" style="
+                    background-color: #5e72e4;
+                    color: white;
+                    border: none;
+                    padding: 0.875rem 2.5rem;
+                    font-size: 1rem;
+                    font-weight: 500;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 8px rgba(94, 114, 228, 0.2);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    min-width: 140px;
+                " onmouseover="if(!this.disabled){this.style.backgroundColor='#4a5acf'; this.style.boxShadow='0 4px 12px rgba(94, 114, 228, 0.3)'; this.style.transform='translateY(-1px)'}" onmouseout="if(!this.disabled){this.style.backgroundColor='#5e72e4'; this.style.boxShadow='0 2px 8px rgba(94, 114, 228, 0.2)'; this.style.transform='translateY(0)'}">
+                    <i class="fas fa-spinner fa-spin" id="load-more-spinner" style="display:none;"></i>
+                    <span id="load-more-text">Load More</span>
+                </button>
             </div>
         </main>
     </div>
@@ -11371,7 +11389,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 loadMoreBtn.addEventListener('click', async () => {
                     if (state.isLoadingVendors) return;
                     state.isLoadingVendors = true;
+                    const btnText = document.getElementById('load-more-text');
                     try { if (loadMoreSpinner) loadMoreSpinner.style.display = 'inline-block'; } catch {}
+                    try { if (btnText) btnText.textContent = 'Loading...'; } catch {}
                     try { loadMoreBtn.disabled = true; } catch {}
                     try {
                         try { appendVendorSkeletons(8); } catch {}
@@ -11379,6 +11399,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                     } finally {
                         state.isLoadingVendors = false;
                         try { if (loadMoreSpinner) loadMoreSpinner.style.display = 'none'; } catch {}
+                        try { if (btnText) btnText.textContent = 'Load More'; } catch {}
                         try { loadMoreBtn.disabled = false; } catch {}
                     }
                 });
@@ -22440,7 +22461,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const hasMore = loaded < total;
                 loadMoreWrapper.style.display = isMap ? 'none' : (hasMore ? 'flex' : 'none');
                 const btn = document.getElementById('load-more-btn');
-                if (btn) btn.textContent = hasMore ? 'Load more' : 'No more results';
+                const btnText = document.getElementById('load-more-text');
+                if (btn && btnText) {
+                    btnText.textContent = hasMore ? 'Load More' : 'No More Results';
+                    if (!hasMore) {
+                        btn.style.backgroundColor = '#e5e7eb';
+                        btn.style.color = '#6b7280';
+                        btn.style.cursor = 'not-allowed';
+                        btn.style.boxShadow = 'none';
+                        btn.disabled = true;
+                    } else {
+                        btn.style.backgroundColor = '#5e72e4';
+                        btn.style.color = 'white';
+                        btn.style.cursor = 'pointer';
+                        btn.style.boxShadow = '0 2px 8px rgba(94, 114, 228, 0.2)';
+                        btn.disabled = false;
+                    }
+                }
             }
 
             // Update metadata in header
@@ -29606,7 +29643,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const hasMore = loaded < total;
                 wrapper.style.display = isMap ? 'none' : (hasMore ? 'flex' : 'none');
                 const btn = document.getElementById('load-more-btn');
-                if (btn) btn.textContent = hasMore ? 'Load more' : 'No more results';
+                const btnText = document.getElementById('load-more-text');
+                if (btn && btnText) {
+                    btnText.textContent = hasMore ? 'Load More' : 'No More Results';
+                    if (!hasMore) {
+                        btn.style.backgroundColor = '#e5e7eb';
+                        btn.style.color = '#6b7280';
+                        btn.style.cursor = 'not-allowed';
+                        btn.style.boxShadow = 'none';
+                        btn.disabled = true;
+                    } else {
+                        btn.style.backgroundColor = '#5e72e4';
+                        btn.style.color = 'white';
+                        btn.style.cursor = 'pointer';
+                        btn.style.boxShadow = '0 2px 8px rgba(94, 114, 228, 0.2)';
+                        btn.disabled = false;
+                    }
+                }
             }
 
             // Filter vendors based on current filters
