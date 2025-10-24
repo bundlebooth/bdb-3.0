@@ -209,7 +209,7 @@ CREATE TABLE VendorProfiles (
     IsPremium BIT DEFAULT 0,
     IsEcoFriendly BIT DEFAULT 0,
     IsAwardWinning BIT DEFAULT 0,
-    PriceLevel NVARCHAR(10) DEFAULT '$$',
+    PriceLevel NVARCHAR(20) DEFAULT '$$', -- Supports: $, $$, $$$, $$$$, Inexpensive, Moderate, Expensive, Luxury
     Capacity INT,
     Rooms INT,
     FeaturedImageURL NVARCHAR(255),
