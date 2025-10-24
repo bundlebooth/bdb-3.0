@@ -1474,7 +1474,9 @@ CREATE OR ALTER   PROCEDURE [dbo].[sp_SearchVendors]
     @FixedPricingTypeFilter NVARCHAR(20) = NULL, -- 'fixed_price' | 'per_attendee'
     @EventDateRaw NVARCHAR(50) = NULL,
     @EventStartRaw NVARCHAR(20) = NULL,
-    @EventEndRaw NVARCHAR(20) = NULL
+    @EventEndRaw NVARCHAR(20) = NULL,
+    @Region NVARCHAR(50) = NULL, -- 'north' | 'south' | 'midwest' | 'west' | 'other'
+    @PriceLevel NVARCHAR(10) = NULL -- '$' | '$$' | '$$$'
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1581,8 +1583,18 @@ BEGIN
         AND (@IsPremium IS NULL OR v.IsPremium = @IsPremium)
         AND (@IsEcoFriendly IS NULL OR v.IsEcoFriendly = @IsEcoFriendly)
         AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
+        AND (@PriceLevel IS NULL OR v.PriceLevel = @PriceLevel)
         AND (@MinPrice IS NULL OR MinSvc.MinPrice >= @MinPrice)
-        AND (@MaxPrice IS NULL OR MinSvc.MinPrice <= @MaxPrice)'
+        AND (@MaxPrice IS NULL OR MinSvc.MinPrice <= @MaxPrice)
+        AND (@Region IS NULL OR 
+            CASE 
+                WHEN v.Latitude BETWEEN 35.0 AND 45.0 AND v.Longitude BETWEEN -80.0 AND -70.0 THEN ''north''
+                WHEN v.Latitude BETWEEN 30.0 AND 35.0 AND v.Longitude BETWEEN -85.0 AND -75.0 THEN ''south''
+                WHEN v.Latitude BETWEEN 38.0 AND 42.0 AND v.Longitude BETWEEN -90.0 AND -80.0 THEN ''midwest''
+                WHEN v.Latitude BETWEEN 32.0 AND 40.0 AND v.Longitude BETWEEN -120.0 AND -100.0 THEN ''west''
+                ELSE ''other''
+            END = @Region
+        )'
 
     -- Add business hours availability filter when all event params present
     IF @EventDateRaw IS NOT NULL AND @EventStartRaw IS NOT NULL AND @EventEndRaw IS NOT NULL
@@ -7751,6 +7763,33 @@ CROSS APPLY (VALUES
     ('Emergency Kit', 'Day-of emergency supplies', 'hand', 8)
 ) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
 WHERE c.CategoryName = 'Event Planning';
+GO
+
+-- =============================================
+-- ALTER STATEMENT: Add PriceLevel Constraint
+-- =============================================
+
+-- Drop existing constraint if it exists
+IF EXISTS (SELECT * FROM sys.check_constraints WHERE name = 'CK_VendorProfiles_PriceLevel')
+BEGIN
+    ALTER TABLE VendorProfiles DROP CONSTRAINT CK_VendorProfiles_PriceLevel;
+END;
+GO
+
+-- Add CHECK constraint to ensure only valid price levels
+ALTER TABLE VendorProfiles
+ADD CONSTRAINT CK_VendorProfiles_PriceLevel
+CHECK (PriceLevel IN ('$', '$$', '$$$', '$$$$'));
+GO
+
+-- Update any invalid price levels to default '$$'
+UPDATE VendorProfiles
+SET PriceLevel = '$$'
+WHERE PriceLevel NOT IN ('$', '$$', '$$$', '$$$$')
+   OR PriceLevel IS NULL;
+GO
+
+PRINT '✅ PriceLevel constraint added successfully';
 GO
 
 PRINT '============================================='
