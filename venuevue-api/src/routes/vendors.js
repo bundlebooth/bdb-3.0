@@ -351,6 +351,7 @@ router.get('/', async (req, res) => {
       predefinedServices,
       eventLocation,
       mapBounds,
+      region,
       priceLevel,
       // unified pricing-aware search params
       budgetType, // 'total' | 'per_person'
@@ -384,6 +385,7 @@ router.get('/', async (req, res) => {
     request.input('BudgetType', sql.NVarChar(20), budgetType || null);
     request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
     request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
+    request.input('Region', sql.NVarChar(50), region || null);
     request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
     // Note: Do NOT pass EventDate/Start/End here. sp_SearchVendors does not accept them.
 
