@@ -6457,7 +6457,7 @@
                                             <i class="fas fa-images"></i>
                                         </div>
                                         <h3 class="settings-card-title">Gallery & Media</h3>
-                                        <p class="settings-card-description">Upload and manage your business photos</p>
+                                        <p class="settings-card-description">Manage business photos and organize into albums</p>
                                     </div>
                                     <div class="settings-card" data-panel="vendor-social-panel">
                                         <div class="settings-card-icon">
@@ -6504,7 +6504,7 @@
                                             <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                         </button>
                                 <div class="dashboard-card">
-                                    <h2 class="dashboard-card-title">Business Information</h2>
+                                    <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-building"></i></span> Business Information</h2>
                                     <form id="vendor-profile-form">
                                         <div class="form-group"><label for="vendor-name">Business Name <span style="color:red;">*</span></label><input type="text" id="vendor-name" required></div>
                                         <div class="form-group"><label for="vendor-display-name">Display Name (for public listing)</label><input type="text" id="vendor-display-name" placeholder="Public listing name"></div>
@@ -6538,7 +6538,7 @@
                                     <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                 </button>
                                 <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Location & Service Areas</h2>
+                                        <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-map-marker-alt"></i></span> Location & Service Areas</h2>
                                         <form id="vendor-location-form">
                                             <div class="form-group"><label for="loc-address">Street Address</label><input type="text" id="loc-address"></div>
                                             <div class="form-group"><label for="loc-city">City</label><input type="text" id="loc-city"></div>
@@ -6569,7 +6569,7 @@
                                     <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                 </button>
                                 <div class="dashboard-card">
-                                    <h2 class="dashboard-card-title">Vendor Setup Questionnaire</h2>
+                                    <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-clipboard-check"></i></span> Vendor Setup Questionnaire</h2>
                                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">
                                         Select the features and services that apply to your business. This helps clients understand what you offer.
                                     </p>
@@ -6597,7 +6597,7 @@
                                     <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                 </button>
                                 <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Social Media & Booking</h2>
+                                        <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-share-alt"></i></span> Social Media & Booking</h2>
                                         <form id="vendor-social-form">
                                             <div class="form-group"><label for="booking-link">Booking Link</label><input type="url" id="booking-link" placeholder="https://..."></div>
 
@@ -6676,7 +6676,7 @@
                                     <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                 </button>
                                 <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Services</h2>
+                                        <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-briefcase"></i></span> Services</h2>
                                         <div id="vendor-settings-services-loading" style="text-align: center; padding: 2rem; color: var(--text-light);">
                                             <i class="fas fa-spinner fa-spin" style="font-size: 1.5rem; margin-bottom: 0.5rem;"></i>
                                             <p>Loading available services...</p>
@@ -6709,7 +6709,7 @@
                                     <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                 </button>
                                 <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">FAQs</h2>
+                                        <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-question-circle"></i></span> FAQs</h2>
                                         <div id="faqs-list"></div>
                                         <div style="margin-top: 1rem;">
                                             <button id="add-faq-btn" class="btn btn-outline">Add FAQ</button>
@@ -6724,14 +6724,62 @@
                                     <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                 </button>
                                 <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Business Photos</h2>
-                                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="vendor-photos"><p>No photos uploaded.</p></div>
-                                        <button class="btn btn-outline" id="upload-photos-btn">Upload Photos</button>
-                                        <div style="margin-top:1rem;display:grid;grid-template-columns:1fr 1fr auto;gap:.5rem;align-items:end;">
-                                            <div class="form-group" style="margin:0;"><label for="image-url-input">Add Image by URL</label><input type="url" id="image-url-input" placeholder="https://..."></div>
-                                            <div class="form-group" style="margin:0;"><label for="image-caption-input">Caption (optional)</label><input type="text" id="image-caption-input"></div>
-                                            <div class="form-group" style="margin:0;display:flex;gap:.5rem;align-items:center;"><label><input type="checkbox" id="image-primary-checkbox"> Primary</label><button class="btn btn-primary" type="button" id="add-photo-url-btn">Add</button></div>
+                                    <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;">
+                                            <i class="fas fa-images"></i>
+                                        </span> 
+                                        Gallery & Media
+                                    </h2>
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+                                        Manage your business photos and organize them into themed albums
+                                    </p>
+                                    
+                                    <!-- Business Photos Section -->
+                                    <div style="margin-bottom: 3rem;">
+                                        <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                            <i class="fas fa-images"></i> Business Photos
+                                        </h3>
+                                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;" id="vendor-photos">
+                                            <p>No photos uploaded.</p>
                                         </div>
+                                        <button class="btn btn-outline" id="upload-photos-btn">
+                                            <i class="fas fa-upload"></i> Upload Photos
+                                        </button>
+                                        <div style="margin-top:1rem;display:grid;grid-template-columns:1fr 1fr auto;gap:.5rem;align-items:end;">
+                                            <div class="form-group" style="margin:0;">
+                                                <label for="image-url-input">Add Image by URL</label>
+                                                <input type="url" id="image-url-input" placeholder="https://...">
+                                            </div>
+                                            <div class="form-group" style="margin:0;">
+                                                <label for="image-caption-input">Caption (optional)</label>
+                                                <input type="text" id="image-caption-input">
+                                            </div>
+                                            <div class="form-group" style="margin:0;display:flex;gap:.5rem;align-items:center;">
+                                                <label><input type="checkbox" id="image-primary-checkbox"> Primary</label>
+                                                <button class="btn btn-primary" type="button" id="add-photo-url-btn">Add</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Photo Albums Section -->
+                                    <div style="border-top: 2px solid var(--border); padding-top: 2rem;">
+                                        <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                            <i class="fas fa-folder-open"></i> Photo Albums
+                                        </h3>
+                                        <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+                                            Organize your work into themed albums to showcase different types of events, projects, or styles. Albums help potential clients browse your portfolio easily.
+                                        </p>
+                                        
+                                        <!-- Albums List -->
+                                        <div id="portfolio-albums-list" style="margin-bottom: 2rem;">
+                                            <p style="text-align: center; color: var(--text-light); padding: 2rem;">Loading albums...</p>
+                                        </div>
+                                        
+                                        <!-- Create Album Button -->
+                                        <button class="btn btn-primary" id="create-album-btn">
+                                            <i class="fas fa-plus"></i> Create New Album
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -6741,7 +6789,7 @@
                                     <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                 </button>
                                 <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title">Availability Settings</h2>
+                                        <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-clock"></i></span> Availability Settings</h2>
                                         <div id="business-hours-container" style="margin-top:1rem;"></div>
                                         <button class="btn btn-primary" id="save-business-hours-btn" style="margin-top:.5rem;">Save Business Hours</button>
                                 </div>
@@ -6753,7 +6801,7 @@
                                     <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                 </button>
                                 <div class="dashboard-card">
-                                    <h2 class="dashboard-card-title">Stripe Connect</h2>
+                                    <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fab fa-stripe"></i></span> Stripe Connect</h2>
                                     <p style="color: var(--text-light); margin-bottom: 2rem;">
                                         Connect your Stripe account to accept payments from customers.
                                     </p>
@@ -6774,7 +6822,7 @@
                                     <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                 </button>
                                 <div class="dashboard-card">
-                                    <h2 class="dashboard-card-title">Popular Filters</h2>
+                                    <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-tags"></i></span> Popular Filters</h2>
                                     <p style="color: var(--text-light); margin-bottom: 2rem;">
                                         Enable special badges and filters that help clients find your business when browsing. These filters appear in search results and improve your visibility.
                                     </p>
@@ -23644,6 +23692,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 </div>
                             </div>
                             ` : ''}
+                            
+                            <!-- Portfolio Section -->
+                            <div id="vendor-portfolio-section" style="margin-bottom: 2rem;">
+                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Portfolio</h2>
+                                <div id="vendor-portfolio-albums-container">
+                                    <p style="color: var(--text-light); text-align: center; padding: 2rem;">Loading portfolio...</p>
+                                </div>
+                            </div>
 
                             <!-- Reviews Section -->
                             <div style="margin-bottom: 2rem;">
@@ -23723,6 +23779,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // FIXED: Populate gallery immediately with images from API response
                 console.log('🖼️ Populating gallery with images from API response:', details.images);
                 populateVendorGallery(details.images || []);
+                
+                // Load portfolio albums for this vendor
+                loadPublicPortfolioAlbums(profile.VendorProfileID);
 
                 vendorProfilePage.querySelector('#open-chat-btn').addEventListener('click', () => {
                     // Simple chat functionality - you can replace this with your actual chat system
@@ -24691,10 +24750,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Vendor business profile tabs with lazy-loading for each panel
-            let vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, availability: false, stripe: false, popularFilters: false };
+            let vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, portfolio: false, availability: false, stripe: false, popularFilters: false };
             function setupVendorBusinessProfileTabs(vendorProfileId) {
                 const section = document.getElementById('vendor-business-profile-section');
-                vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, availability: false, stripe: false, popularFilters: false };
+                vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, portfolio: false, availability: false, stripe: false, popularFilters: false };
                 
                 // Initialize panel toggle handlers
                 setTimeout(() => {
@@ -24723,9 +24782,22 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         await loadVendorFaqs(vendorProfileId);
                         vendorSettingsLoaded.faqs = true;
                     }
-                    if (targetId === 'vendor-photos-panel' && !vendorSettingsLoaded.photos) {
-                        await loadVendorImages(vendorProfileId);
-                        vendorSettingsLoaded.photos = true;
+                    if (targetId === 'vendor-photos-panel') {
+                        if (!vendorSettingsLoaded.photos) {
+                            await loadVendorImages(vendorProfileId);
+                            await loadPortfolioAlbums(vendorProfileId);
+                            vendorSettingsLoaded.photos = true;
+                            vendorSettingsLoaded.portfolio = true;
+                        }
+                        // Always setup the create album button when panel is shown
+                        const createAlbumBtn = document.getElementById('create-album-btn');
+                        console.log('Setting up create album button in panel switch:', createAlbumBtn);
+                        if (createAlbumBtn) {
+                            createAlbumBtn.onclick = () => {
+                                console.log('Create album button clicked');
+                                showAlbumEditModal();
+                            };
+                        }
                     }
                     if (targetId === 'vendor-availability-panel' && !vendorSettingsLoaded.availability) {
                         await loadVendorAvailability(vendorProfileId);
@@ -24810,9 +24882,24 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     loadVendorFaqs(vendorProfileId);
                                     vendorSettingsLoaded.faqs = true;
                                 }
-                                if (panelId === 'vendor-photos-panel' && !vendorSettingsLoaded.photos) {
-                                    loadVendorImages(vendorProfileId);
-                                    vendorSettingsLoaded.photos = true;
+                                if (panelId === 'vendor-photos-panel') {
+                                    if (!vendorSettingsLoaded.photos) {
+                                        loadVendorImages(vendorProfileId);
+                                        loadPortfolioAlbums(vendorProfileId);
+                                        vendorSettingsLoaded.photos = true;
+                                        vendorSettingsLoaded.portfolio = true;
+                                    }
+                                    // Always setup the create album button when panel is shown
+                                    setTimeout(() => {
+                                        const createAlbumBtn = document.getElementById('create-album-btn');
+                                        console.log('Setting up create album button (back button):', createAlbumBtn);
+                                        if (createAlbumBtn) {
+                                            createAlbumBtn.onclick = () => {
+                                                console.log('Create album button clicked');
+                                                showAlbumEditModal();
+                                            };
+                                        }
+                                    }, 100);
                                 }
                                 if (panelId === 'vendor-availability-panel' && !vendorSettingsLoaded.availability) {
                                     loadVendorAvailability(vendorProfileId);
@@ -26826,8 +26913,24 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (targetId === 'vendor-faqs-panel' && !vendorSettingsLoaded.faqs && typeof loadVendorFAQs === 'function') {
                             loadVendorFAQs(vendorProfileId); vendorSettingsLoaded.faqs = true;
                         }
-                        if (targetId === 'vendor-photos-panel' && !vendorSettingsLoaded.photos && typeof loadVendorImages === 'function') {
-                            loadVendorImages(vendorProfileId); vendorSettingsLoaded.photos = true;
+                        if (targetId === 'vendor-photos-panel') {
+                            if (!vendorSettingsLoaded.photos && typeof loadVendorImages === 'function') {
+                                loadVendorImages(vendorProfileId);
+                                if (typeof loadPortfolioAlbums === 'function') loadPortfolioAlbums(vendorProfileId);
+                                vendorSettingsLoaded.photos = true;
+                                vendorSettingsLoaded.portfolio = true;
+                            }
+                            // Always setup the create album button when panel is shown
+                            setTimeout(() => {
+                                const createAlbumBtn = document.getElementById('create-album-btn');
+                                console.log('Setting up create album button (manual activate):', createAlbumBtn);
+                                if (createAlbumBtn) {
+                                    createAlbumBtn.onclick = () => {
+                                        console.log('Create album button clicked');
+                                        showAlbumEditModal();
+                                    };
+                                }
+                            }, 100);
                         }
                         if (targetId === 'vendor-location-panel' && !vendorSettingsLoaded.location && typeof loadVendorLocation === 'function') {
                             loadVendorLocation(vendorProfileId); vendorSettingsLoaded.location = true;
@@ -28279,6 +28382,617 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     };
                 }
             }
+
+            // =============================================
+            // PORTFOLIO ALBUMS FUNCTIONS
+            // =============================================
+            
+            async function loadPortfolioAlbums(vendorProfileId) {
+                const container = document.getElementById('portfolio-albums-list');
+                container.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 2rem;">Loading albums...</p>';
+                
+                try {
+                    if (!vendorProfileId) {
+                        vendorProfileId = currentUser?.vendorProfileId || await getVendorProfileId();
+                    }
+                    if (!vendorProfileId) throw new Error('Missing vendor profile ID');
+
+                    const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (!response.ok) throw new Error('Failed to fetch albums');
+                    const data = await response.json();
+                    const albums = data.albums || [];
+                    
+                    if (albums.length === 0) {
+                        container.innerHTML = `
+                            <div style="text-align: center; padding: 3rem 1rem; background: var(--secondary); border-radius: var(--radius); border: 2px dashed var(--border);">
+                                <i class="fas fa-folder-open" style="font-size: 3rem; color: var(--text-light); margin-bottom: 1rem;"></i>
+                                <p style="color: var(--text-light); margin: 0; font-size: 1.1rem;">No albums yet</p>
+                                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.9rem;">Create your first portfolio album to showcase your work</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+                            ${albums.map(album => `
+                                <div class="portfolio-album-card" style="background: var(--secondary); border-radius: var(--radius); border: 2px solid var(--border); overflow: hidden; cursor: pointer; transition: all 0.3s ease;">
+                                    <div style="position: relative; padding-top: 66%; background: var(--bg-dark);">
+                                        ${album.CoverImageURL ? 
+                                            `<img src="${album.CoverImageURL}" alt="${album.AlbumName}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">` : 
+                                            `<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-folder-open" style="font-size: 3rem; color: var(--text-light); opacity: 0.5;"></i>
+                                            </div>`
+                                        }
+                                        <div style="position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(0,0,0,0.7); padding: 0.25rem 0.75rem; border-radius: 1rem; color: white; font-size: 0.85rem;">
+                                            <i class="fas fa-images"></i> ${album.ImageCount || 0}
+                                        </div>
+                                    </div>
+                                    <div style="padding: 1rem;">
+                                        <h4 style="margin: 0 0 0.5rem; color: var(--text); font-size: 1.1rem;">${album.AlbumName}</h4>
+                                        ${album.AlbumDescription ? 
+                                            `<p style="margin: 0 0 1rem; color: var(--text-light); font-size: 0.9rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${album.AlbumDescription}</p>` : 
+                                            ''
+                                        }
+                                        <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                                            <button class="btn btn-sm btn-primary" onclick="openAlbumImages(${album.AlbumID})" style="flex: 1;">
+                                                <i class="fas fa-eye"></i> View
+                                            </button>
+                                            <button class="btn btn-sm btn-outline" onclick="editAlbum(${album.AlbumID})" title="Edit Album">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline" onclick="deleteAlbum(${album.AlbumID})" title="Delete Album" style="color: var(--accent);">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } catch (error) {
+                    console.error('Error loading portfolio albums:', error);
+                    container.innerHTML = `<p style="color: var(--accent); text-align: center; padding: 2rem;">Failed to load albums: ${error.message}</p>`;
+                }
+                
+                // Setup create album button event listener
+                const createAlbumBtn = document.getElementById('create-album-btn');
+                console.log('Setting up create album button:', createAlbumBtn);
+                if (createAlbumBtn) {
+                    createAlbumBtn.onclick = () => {
+                        console.log('Create album button clicked');
+                        showAlbumEditModal();
+                    };
+                }
+            }
+            
+            async function openAlbumImages(albumId) {
+                const vendorProfileId = currentUser?.vendorProfileId || await getVendorProfileId();
+                if (!vendorProfileId) return alert('Missing vendor profile ID');
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/${albumId}/images`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (!response.ok) throw new Error('Failed to fetch album images');
+                    const data = await response.json();
+                    const images = data.images || [];
+                    
+                    // Find the album to get its name
+                    const albumsResponse = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    const albumsData = await albumsResponse.json();
+                    const album = (albumsData.albums || []).find(a => a.AlbumID === albumId);
+                    
+                    // Create modal
+                    const modal = document.createElement('div');
+                    modal.className = 'modal';
+                    modal.style.display = 'flex';
+                    modal.innerHTML = `
+                        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+                            <div class="modal-header">
+                                <h2 style="margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+                                    <i class="fas fa-folder-open"></i> 
+                                    ${album ? album.AlbumName : 'Album'}
+                                    <span style="font-size: 0.9rem; color: var(--text-light); font-weight: normal;">(${images.length} ${images.length === 1 ? 'image' : 'images'})</span>
+                                </h2>
+                                <button class="modal-close">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                <button class="btn btn-primary" onclick="uploadImagesToAlbum(${albumId})" style="margin-bottom: 1.5rem;">
+                                    <i class="fas fa-upload"></i> Upload Images
+                                </button>
+                                
+                                ${images.length === 0 ? `
+                                    <div style="text-align: center; padding: 3rem; background: var(--secondary); border-radius: var(--radius); border: 2px dashed var(--border);">
+                                        <i class="fas fa-images" style="font-size: 3rem; color: var(--text-light); margin-bottom: 1rem;"></i>
+                                        <p style="color: var(--text-light); margin: 0;">No images in this album yet</p>
+                                    </div>
+                                ` : `
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;" id="album-images-grid">
+                                        ${images.map(img => `
+                                            <div style="position: relative; aspect-ratio: 1; background: var(--bg-dark); border-radius: var(--radius); overflow: hidden; border: 2px solid var(--border);">
+                                                <img src="${img.ImageURL}" alt="${img.Caption || ''}" style="width: 100%; height: 100%; object-fit: cover;">
+                                                ${img.Caption ? `<div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 0.5rem; font-size: 0.85rem;">${img.Caption}</div>` : ''}
+                                                <button onclick="deletePortfolioImage(${img.PortfolioImageID}, ${albumId})" 
+                                                    style="position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(255,0,0,0.9); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                                    <i class="fas fa-trash" style="font-size: 0.75rem;"></i>
+                                                </button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                    
+                    modal.querySelector('.modal-close').onclick = () => {
+                        document.body.removeChild(modal);
+                    };
+                    modal.onclick = (e) => {
+                        if (e.target === modal) document.body.removeChild(modal);
+                    };
+                } catch (error) {
+                    console.error('Error opening album:', error);
+                    alert('Failed to load album images: ' + error.message);
+                }
+            }
+            
+            window.openAlbumImages = openAlbumImages;
+            
+            async function editAlbum(albumId) {
+                const vendorProfileId = currentUser?.vendorProfileId || await getVendorProfileId();
+                if (!vendorProfileId) return alert('Missing vendor profile ID');
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    const data = await response.json();
+                    const album = (data.albums || []).find(a => a.AlbumID === albumId);
+                    
+                    if (!album) throw new Error('Album not found');
+                    
+                    showAlbumEditModal(album);
+                } catch (error) {
+                    console.error('Error loading album for edit:', error);
+                    alert('Failed to load album: ' + error.message);
+                }
+            }
+            
+            window.editAlbum = editAlbum;
+            
+            function showAlbumEditModal(album = null) {
+                console.log('showAlbumEditModal called with:', album);
+                const modal = document.createElement('div');
+                modal.className = 'modal';
+                modal.style.display = 'flex';
+                modal.innerHTML = `
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h2 style="margin: 0;"><i class="fas fa-folder-${album ? 'edit' : 'plus'}"></i> ${album ? 'Edit' : 'Create'} Album</h2>
+                            <button class="modal-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="album-form">
+                                <div class="form-group">
+                                    <label for="album-name">Album Name *</label>
+                                    <input type="text" id="album-name" required value="${album ? album.AlbumName : ''}" placeholder="e.g., Weddings 2024">
+                                </div>
+                                <div class="form-group">
+                                    <label for="album-description">Description</label>
+                                    <textarea id="album-description" rows="3" placeholder="Brief description of this album">${album ? (album.AlbumDescription || '') : ''}</textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="album-cover-url">Cover Image</label>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <input type="url" id="album-cover-url" value="${album ? (album.CoverImageURL || '') : ''}" placeholder="Paste URL or upload...">
+                                        <button type="button" class="btn btn-outline" id="upload-cover-btn" style="white-space: nowrap;">
+                                            <i class="fas fa-upload"></i> Upload
+                                        </button>
+                                    </div>
+                                    ${album && album.CoverImageURL ? `
+                                        <div style="margin-top: 0.5rem;">
+                                            <img src="${album.CoverImageURL}" style="max-width: 100%; height: 120px; object-fit: cover; border-radius: var(--radius); border: 2px solid var(--border);">
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="checkbox" id="album-public" ${!album || album.IsPublic ? 'checked' : ''}>
+                                    <label for="album-public" style="margin: 0;">Make album public (visible to clients)</label>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; margin-top: 1.5rem;">
+                                    <button type="submit" class="btn btn-primary" style="flex: 1;">
+                                        <i class="fas fa-save"></i> ${album ? 'Update' : 'Create'} Album
+                                    </button>
+                                    <button type="button" class="btn btn-outline modal-close">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Handle cover image upload
+                const uploadCoverBtn = modal.querySelector('#upload-cover-btn');
+                if (uploadCoverBtn) {
+                    uploadCoverBtn.onclick = async () => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        
+                        input.onchange = async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            
+                            try {
+                                uploadCoverBtn.disabled = true;
+                                uploadCoverBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                                
+                                const url = await uploadImageToCloudinary(file, 'album-cover');
+                                document.getElementById('album-cover-url').value = url;
+                                
+                                uploadCoverBtn.disabled = false;
+                                uploadCoverBtn.innerHTML = '<i class="fas fa-upload"></i> Upload';
+                                
+                                // Show preview
+                                const coverUrlInput = document.getElementById('album-cover-url');
+                                const previewContainer = coverUrlInput.parentElement.nextElementSibling;
+                                if (previewContainer) {
+                                    previewContainer.innerHTML = `<img src="${url}" style="max-width: 100%; height: 120px; object-fit: cover; border-radius: var(--radius); border: 2px solid var(--border);">`;
+                                } else {
+                                    const preview = document.createElement('div');
+                                    preview.style.marginTop = '0.5rem';
+                                    preview.innerHTML = `<img src="${url}" style="max-width: 100%; height: 120px; object-fit: cover; border-radius: var(--radius); border: 2px solid var(--border);">`;
+                                    coverUrlInput.parentElement.parentElement.appendChild(preview);
+                                }
+                            } catch (error) {
+                                console.error('Error uploading cover image:', error);
+                                alert('Failed to upload cover image: ' + error.message);
+                                uploadCoverBtn.disabled = false;
+                                uploadCoverBtn.innerHTML = '<i class="fas fa-upload"></i> Upload';
+                            }
+                        };
+                        
+                        input.click();
+                    };
+                }
+                
+                const form = modal.querySelector('#album-form');
+                form.onsubmit = async (e) => {
+                    e.preventDefault();
+                    
+                    const vendorProfileId = currentUser?.vendorProfileId || await getVendorProfileId();
+                    if (!vendorProfileId) return alert('Missing vendor profile ID');
+                    
+                    const albumData = {
+                        albumId: album ? album.AlbumID : null,
+                        albumName: document.getElementById('album-name').value.trim(),
+                        albumDescription: document.getElementById('album-description').value.trim(),
+                        coverImageURL: document.getElementById('album-cover-url').value.trim() || null,
+                        isPublic: document.getElementById('album-public').checked
+                    };
+                    
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/upsert`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: JSON.stringify(albumData)
+                        });
+                        
+                        if (!response.ok) throw new Error('Failed to save album');
+                        
+                        document.body.removeChild(modal);
+                        await loadPortfolioAlbums(vendorProfileId);
+                    } catch (error) {
+                        console.error('Error saving album:', error);
+                        alert('Failed to save album: ' + error.message);
+                    }
+                };
+                
+                const closeButtons = modal.querySelectorAll('.modal-close');
+                closeButtons.forEach(btn => {
+                    btn.onclick = () => document.body.removeChild(modal);
+                });
+                modal.onclick = (e) => {
+                    if (e.target === modal) document.body.removeChild(modal);
+                };
+            }
+            
+            async function deleteAlbum(albumId) {
+                if (!confirm('Are you sure you want to delete this album? All images in this album will also be deleted. This cannot be undone.')) return;
+                
+                const vendorProfileId = currentUser?.vendorProfileId || await getVendorProfileId();
+                if (!vendorProfileId) return alert('Missing vendor profile ID');
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/${albumId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to delete album');
+                    
+                    await loadPortfolioAlbums(vendorProfileId);
+                } catch (error) {
+                    console.error('Error deleting album:', error);
+                    alert('Failed to delete album: ' + error.message);
+                }
+            }
+            
+            window.deleteAlbum = deleteAlbum;
+            
+            async function deletePortfolioImage(imageId, albumId) {
+                if (!confirm('Are you sure you want to delete this image?')) return;
+                
+                const vendorProfileId = currentUser?.vendorProfileId || await getVendorProfileId();
+                if (!vendorProfileId) return alert('Missing vendor profile ID');
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/images/${imageId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to delete image');
+                    
+                    // Reload the album images modal
+                    document.querySelector('.modal-close').click();
+                    await openAlbumImages(albumId);
+                    await loadPortfolioAlbums(vendorProfileId);
+                } catch (error) {
+                    console.error('Error deleting image:', error);
+                    alert('Failed to delete image: ' + error.message);
+                }
+            }
+            
+            window.deletePortfolioImage = deletePortfolioImage;
+            
+            async function uploadImagesToAlbum(albumId) {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.multiple = true;
+                input.accept = 'image/*';
+                
+                input.onchange = async (e) => {
+                    const files = Array.from(e.target.files);
+                    if (files.length === 0) return;
+                    
+                    const vendorProfileId = currentUser?.vendorProfileId || await getVendorProfileId();
+                    if (!vendorProfileId) return alert('Missing vendor profile ID');
+                    
+                    try {
+                        // Show loading indicator
+                        const loadingDiv = document.createElement('div');
+                        loadingDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: white; padding: 2rem; border-radius: var(--radius); z-index: 10000; text-align: center;';
+                        loadingDiv.innerHTML = `<i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i><p>Uploading ${files.length} image(s)...</p>`;
+                        document.body.appendChild(loadingDiv);
+                        
+                        // Upload to Cloudinary
+                        const uploadPromises = files.map(file => uploadImageToCloudinary(file, 'portfolio'));
+                        const uploadedUrls = await Promise.all(uploadPromises);
+                        
+                        if (!uploadedUrls.length) throw new Error('No images were uploaded');
+                        
+                        // Save each image to the album
+                        for (let i = 0; i < uploadedUrls.length; i++) {
+                            const payload = {
+                                imageUrl: uploadedUrls[i],
+                                caption: files[i]?.name || null,
+                                displayOrder: i
+                            };
+                            
+                            const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/${albumId}/images`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                                },
+                                body: JSON.stringify(payload)
+                            });
+                            
+                            if (!response.ok) throw new Error('Failed to add image to album');
+                        }
+                        
+                        document.body.removeChild(loadingDiv);
+                        document.querySelector('.modal-close').click();
+                        await openAlbumImages(albumId);
+                        await loadPortfolioAlbums(vendorProfileId);
+                    } catch (error) {
+                        console.error('Error uploading images to album:', error);
+                        alert('Failed to upload images: ' + error.message);
+                        const loadingDiv = document.querySelector('div[style*="position: fixed"]');
+                        if (loadingDiv) document.body.removeChild(loadingDiv);
+                    }
+                };
+                
+                input.click();
+            }
+            
+            window.uploadImagesToAlbum = uploadImagesToAlbum;
+            window.showAlbumEditModal = showAlbumEditModal;
+            
+            // Wire up create album button
+            document.addEventListener('DOMContentLoaded', () => {
+                const createAlbumBtn = document.getElementById('create-album-btn');
+                if (createAlbumBtn) {
+                    createAlbumBtn.onclick = () => showAlbumEditModal();
+                }
+            });
+            
+            // PUBLIC PORTFOLIO VIEWING FUNCTIONS
+            // =============================================
+            
+            async function loadPublicPortfolioAlbums(vendorProfileId) {
+                const container = document.getElementById('vendor-portfolio-albums-container');
+                if (!container) return;
+                
+                container.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 2rem;">Loading portfolio...</p>';
+                
+                try {
+                    if (!vendorProfileId) {
+                        container.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No portfolio available</p>';
+                        return;
+                    }
+
+                    const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/public`);
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            container.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No portfolio albums to display</p>';
+                            return;
+                        }
+                        throw new Error('Failed to fetch albums');
+                    }
+                    const data = await response.json();
+                    const albums = data.albums || [];
+                    
+                    if (albums.length === 0) {
+                        container.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">No portfolio albums to display</p>';
+                        return;
+                    }
+                    
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem;">
+                            ${albums.map(album => `
+                                <div class="portfolio-album-card" style="background: var(--secondary); border-radius: var(--radius); border: 2px solid var(--border); overflow: hidden; cursor: pointer; transition: all 0.3s ease;" onclick="openPublicAlbumImages(${album.AlbumID}, ${vendorProfileId})">
+                                    <div style="position: relative; padding-top: 66%; background: var(--bg-dark);">
+                                        ${album.CoverImageURL ? 
+                                            `<img src="${album.CoverImageURL}" alt="${album.AlbumName}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;">` : 
+                                            `<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-folder-open" style="font-size: 3rem; color: var(--text-light); opacity: 0.5;"></i>
+                                            </div>`
+                                        }
+                                        <div style="position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(0,0,0,0.7); padding: 0.25rem 0.75rem; border-radius: 1rem; color: white; font-size: 0.85rem;">
+                                            <i class="fas fa-images"></i> ${album.ImageCount || 0}
+                                        </div>
+                                    </div>
+                                    <div style="padding: 1rem;">
+                                        <h4 style="margin: 0 0 0.5rem; color: var(--text); font-size: 1.1rem;">${album.AlbumName}</h4>
+                                        ${album.AlbumDescription ? 
+                                            `<p style="margin: 0; color: var(--text-light); font-size: 0.9rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${album.AlbumDescription}</p>` : 
+                                            ''
+                                        }
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } catch (error) {
+                    console.error('Error loading public portfolio albums:', error);
+                    container.innerHTML = '<p style="color: var(--text-light); text-align: center; padding: 2rem;">Unable to load portfolio</p>';
+                }
+            }
+            
+            async function openPublicAlbumImages(albumId, vendorProfileId) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/${albumId}/images/public`);
+                    if (!response.ok) throw new Error('Failed to fetch album images');
+                    const data = await response.json();
+                    const images = data.images || [];
+                    
+                    // Get album info
+                    const albumsResponse = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/public`);
+                    const albumsData = await albumsResponse.json();
+                    const album = (albumsData.albums || []).find(a => a.AlbumID === albumId);
+                    
+                    // Create modal
+                    const modal = document.createElement('div');
+                    modal.className = 'modal';
+                    modal.style.display = 'flex';
+                    modal.innerHTML = `
+                        <div class="modal-content" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
+                            <div class="modal-header">
+                                <h2 style="margin: 0; display: flex; align-items: center; gap: 0.75rem;">
+                                    <i class="fas fa-folder-open"></i> 
+                                    ${album ? album.AlbumName : 'Album'}
+                                    <span style="font-size: 0.9rem; color: var(--text-light); font-weight: normal;">(${images.length} ${images.length === 1 ? 'image' : 'images'})</span>
+                                </h2>
+                                <button class="modal-close">&times;</button>
+                            </div>
+                            <div class="modal-body">
+                                ${album && album.AlbumDescription ? `
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">${album.AlbumDescription}</p>
+                                ` : ''}
+                                
+                                ${images.length === 0 ? `
+                                    <div style="text-align: center; padding: 3rem; background: var(--secondary); border-radius: var(--radius); border: 2px dashed var(--border);">
+                                        <i class="fas fa-images" style="font-size: 3rem; color: var(--text-light); margin-bottom: 1rem;"></i>
+                                        <p style="color: var(--text-light); margin: 0;">No images in this album</p>
+                                    </div>
+                                ` : `
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+                                        ${images.map((img, index) => `
+                                            <div style="position: relative; aspect-ratio: 1; background: var(--bg-dark); border-radius: var(--radius); overflow: hidden; border: 2px solid var(--border); cursor: pointer;" onclick="openImageLightbox(${index}, ${JSON.stringify(images.map(i => i.ImageURL))})">
+                                                <img src="${img.ImageURL}" alt="${img.Caption || ''}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                                ${img.Caption ? `<div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); color: white; padding: 1rem 0.75rem 0.5rem; font-size: 0.85rem;">${img.Caption}</div>` : ''}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.body.appendChild(modal);
+                    
+                    modal.querySelector('.modal-close').onclick = () => {
+                        document.body.removeChild(modal);
+                    };
+                    modal.onclick = (e) => {
+                        if (e.target === modal) document.body.removeChild(modal);
+                    };
+                } catch (error) {
+                    console.error('Error opening public album:', error);
+                    alert('Failed to load album images');
+                }
+            }
+            
+            function openImageLightbox(startIndex, imageUrls) {
+                let currentIndex = startIndex;
+                
+                const lightbox = document.createElement('div');
+                lightbox.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+                
+                function updateImage() {
+                    lightbox.innerHTML = `
+                        <button onclick="event.stopPropagation(); this.parentElement.remove();" style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.2); border: none; color: white; font-size: 2rem; width: 3rem; height: 3rem; border-radius: 50%; cursor: pointer; z-index: 10001;">&times;</button>
+                        ${currentIndex > 0 ? `<button onclick="event.stopPropagation(); window.lightboxPrev();" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.2); border: none; color: white; font-size: 2rem; width: 3rem; height: 3rem; border-radius: 50%; cursor: pointer; z-index: 10001;">‹</button>` : ''}
+                        ${currentIndex < imageUrls.length - 1 ? `<button onclick="event.stopPropagation(); window.lightboxNext();" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.2); border: none; color: white; font-size: 2rem; width: 3rem; height: 3rem; border-radius: 50%; cursor: pointer; z-index: 10001;">›</button>` : ''}
+                        <img src="${imageUrls[currentIndex]}" style="max-width: 90%; max-height: 90%; object-fit: contain;">
+                        <div style="position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: white; padding: 0.5rem 1rem; border-radius: 1rem; font-size: 0.9rem;">${currentIndex + 1} / ${imageUrls.length}</div>
+                    `;
+                }
+                
+                window.lightboxNext = () => {
+                    if (currentIndex < imageUrls.length - 1) {
+                        currentIndex++;
+                        updateImage();
+                    }
+                };
+                
+                window.lightboxPrev = () => {
+                    if (currentIndex > 0) {
+                        currentIndex--;
+                        updateImage();
+                    }
+                };
+                
+                lightbox.onclick = () => lightbox.remove();
+                updateImage();
+                document.body.appendChild(lightbox);
+            }
+            
+            window.openPublicAlbumImages = openPublicAlbumImages;
+            window.openImageLightbox = openImageLightbox;
 
             async function loadVendorAvailability(vendorProfileId) {
                 const calendarEl = document.getElementById('vendor-availability-calendar');
@@ -33953,10 +34667,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Show left button if there's overflow content (always visible when scrolling is needed)
             leftBtn.style.display = hasOverflow ? 'flex' : 'none';
             rightBtn.style.display = canScrollRight ? 'flex' : 'none';
-            
-            // Update indicator position on scroll
-            const activeItem = document.querySelector('.category-item.active');
-            if (activeItem) updateCategoryIndicator(activeItem);
         }
         
         // Function to update tab navigation button visibility
