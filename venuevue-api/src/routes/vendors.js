@@ -338,6 +338,7 @@ router.get('/', async (req, res) => {
       category, 
       minPrice, 
       maxPrice, 
+      minRating,
       isPremium,
       isEcoFriendly,
       isAwardWinning,
@@ -372,6 +373,7 @@ router.get('/', async (req, res) => {
     request.input('Category', sql.NVarChar(50), category || null);
     request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
     request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
+    request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
     request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
     request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
     request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
@@ -745,6 +747,7 @@ router.get('/search-by-categories', async (req, res) => {
       category,             // single category fallback
       minPrice,
       maxPrice,
+      minRating,
       isPremium,
       isEcoFriendly,
       isAwardWinning,
@@ -812,6 +815,7 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('Category', sql.NVarChar(50), cat);
       request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
       request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
+      request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
       request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
       request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
       request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
