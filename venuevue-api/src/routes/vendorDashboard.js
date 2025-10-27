@@ -1143,4 +1143,215 @@ router.post('/:id/popular-filters', async (req, res) => {
   }
 });
 
+// =============================================
+// PORTFOLIO ALBUMS ROUTES
+// =============================================
+
+// Get all albums for a vendor
+router.get('/:id/portfolio/albums', async (req, res) => {
+  try {
+    const { id } = req.params; // VendorProfileID
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.execute('sp_GetVendorPortfolioAlbums');
+    res.json({ success: true, albums: result.recordset });
+  } catch (err) {
+    console.error('Get portfolio albums error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get albums', error: err.message });
+  }
+});
+
+// Get images for a specific album
+router.get('/:id/portfolio/albums/:albumId/images', async (req, res) => {
+  try {
+    const { id, albumId } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('AlbumID', sql.Int, parseInt(albumId));
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.execute('sp_GetAlbumImages');
+    res.json({ success: true, images: result.recordset });
+  } catch (err) {
+    console.error('Get album images error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get album images', error: err.message });
+  }
+});
+
+// Create or update album
+router.post('/:id/portfolio/albums/upsert', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { albumId, albumName, albumDescription, coverImageURL, cloudinaryPublicId, isPublic, displayOrder } = req.body;
+
+    if (!albumName || albumName.trim().length === 0) {
+      return res.status(400).json({ success: false, message: 'Album name is required' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('AlbumID', sql.Int, albumId || null);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    request.input('AlbumName', sql.NVarChar(100), albumName.trim());
+    request.input('AlbumDescription', sql.NVarChar(500), albumDescription || null);
+    request.input('CoverImageURL', sql.NVarChar(500), coverImageURL || null);
+    request.input('CloudinaryPublicId', sql.NVarChar(200), cloudinaryPublicId || null);
+    request.input('IsPublic', sql.Bit, isPublic !== false);
+    request.input('DisplayOrder', sql.Int, displayOrder || 0);
+
+    const result = await request.execute('sp_UpsertPortfolioAlbum');
+    res.json({ success: true, albumId: result.recordset[0].AlbumID });
+  } catch (err) {
+    console.error('Upsert album error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save album', error: err.message });
+  }
+});
+
+// Add image to album
+router.post('/:id/portfolio/albums/:albumId/images', async (req, res) => {
+  try {
+    const { id, albumId } = req.params;
+    const { imageUrl, cloudinaryPublicId, cloudinaryUrl, cloudinarySecureUrl, caption, displayOrder } = req.body;
+
+    if (!imageUrl) {
+      return res.status(400).json({ success: false, message: 'Image URL is required' });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('AlbumID', sql.Int, parseInt(albumId));
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    request.input('ImageURL', sql.NVarChar(500), imageUrl);
+    request.input('CloudinaryPublicId', sql.NVarChar(200), cloudinaryPublicId || null);
+    request.input('CloudinaryUrl', sql.NVarChar(500), cloudinaryUrl || null);
+    request.input('CloudinarySecureUrl', sql.NVarChar(500), cloudinarySecureUrl || null);
+    request.input('Caption', sql.NVarChar(255), caption || null);
+    request.input('DisplayOrder', sql.Int, displayOrder || 0);
+
+    const result = await request.execute('sp_AddPortfolioImage');
+    res.json({ success: true, portfolioImageId: result.recordset[0].PortfolioImageID });
+  } catch (err) {
+    console.error('Add portfolio image error:', err);
+    res.status(500).json({ success: false, message: 'Failed to add image to album', error: err.message });
+  }
+});
+
+// Delete album image
+router.delete('/:id/portfolio/images/:portfolioImageId', async (req, res) => {
+  try {
+    const { id, portfolioImageId } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('PortfolioImageID', sql.Int, parseInt(portfolioImageId));
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.execute('sp_DeletePortfolioImage');
+    if (result.recordset[0].Success) {
+      res.json({ success: true, message: 'Image deleted successfully' });
+    } else {
+      res.status(400).json({ success: false, message: 'Image not found or access denied' });
+    }
+  } catch (err) {
+    console.error('Delete portfolio image error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete image', error: err.message });
+  }
+});
+
+// Delete album
+router.delete('/:id/portfolio/albums/:albumId', async (req, res) => {
+  try {
+    const { id, albumId } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('AlbumID', sql.Int, parseInt(albumId));
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.execute('sp_DeletePortfolioAlbum');
+    if (result.recordset[0].Success) {
+      res.json({ success: true, message: 'Album deleted successfully' });
+    } else {
+      res.status(400).json({ success: false, message: 'Album not found or access denied' });
+    }
+  } catch (err) {
+    console.error('Delete album error:', err);
+    res.status(500).json({ success: false, message: 'Failed to delete album', error: err.message });
+  }
+});
+
+// =============================================
+// PUBLIC PORTFOLIO VIEWING ROUTES (No Auth Required)
+// =============================================
+
+// Get public albums for a vendor
+router.get('/:id/portfolio/albums/public', async (req, res) => {
+  try {
+    const { id } = req.params; // VendorProfileID
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    
+    // Get only public albums
+    const result = await request.query(`
+      SELECT 
+        pa.AlbumID,
+        pa.AlbumName,
+        pa.AlbumDescription,
+        pa.CoverImageURL,
+        pa.DisplayOrder,
+        pa.CreatedAt,
+        (SELECT COUNT(*) FROM PortfolioImages WHERE AlbumID = pa.AlbumID) as ImageCount
+      FROM PortfolioAlbums pa
+      WHERE pa.VendorProfileID = @VendorProfileID 
+        AND pa.IsPublic = 1
+      ORDER BY pa.DisplayOrder, pa.CreatedAt DESC
+    `);
+    
+    res.json({ success: true, albums: result.recordset });
+  } catch (err) {
+    console.error('Get public portfolio albums error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get public albums', error: err.message });
+  }
+});
+
+// Get images for a public album
+router.get('/:id/portfolio/albums/:albumId/images/public', async (req, res) => {
+  try {
+    const { id, albumId } = req.params;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    request.input('AlbumID', sql.Int, parseInt(albumId));
+    
+    // Verify album is public and belongs to vendor
+    const albumCheck = await request.query(`
+      SELECT IsPublic FROM PortfolioAlbums 
+      WHERE AlbumID = @AlbumID AND VendorProfileID = @VendorProfileID
+    `);
+    
+    if (albumCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Album not found' });
+    }
+    
+    if (!albumCheck.recordset[0].IsPublic) {
+      return res.status(403).json({ success: false, message: 'This album is private' });
+    }
+    
+    // Get images
+    const result = await request.query(`
+      SELECT 
+        PortfolioImageID,
+        ImageURL,
+        Caption,
+        DisplayOrder,
+        CreatedAt
+      FROM PortfolioImages
+      WHERE AlbumID = @AlbumID
+      ORDER BY DisplayOrder, CreatedAt
+    `);
+    
+    res.json({ success: true, images: result.recordset });
+  } catch (err) {
+    console.error('Get public album images error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get album images', error: err.message });
+  }
+});
+
 module.exports = router;
