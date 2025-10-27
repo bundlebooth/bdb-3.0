@@ -276,6 +276,42 @@ CREATE TABLE VendorSocialMedia (
 );
 GO
 
+-- Vendor Portfolio Albums
+CREATE TABLE [dbo].[VendorPortfolioAlbums] (
+    [AlbumID] INT IDENTITY(1,1) NOT NULL,
+    [VendorProfileID] INT NOT NULL,
+    [AlbumName] NVARCHAR(100) NOT NULL,
+    [AlbumDescription] NVARCHAR(500) NULL,
+    [CoverImageURL] NVARCHAR(500) NULL,
+    [CloudinaryPublicId] NVARCHAR(200) NULL,
+    [IsPublic] BIT NOT NULL DEFAULT 1,
+    [DisplayOrder] INT NOT NULL DEFAULT 0,
+    [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    [UpdatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    CONSTRAINT [PK_VendorPortfolioAlbums] PRIMARY KEY ([AlbumID]),
+    CONSTRAINT [FK_VendorPortfolioAlbums_VendorProfiles] FOREIGN KEY ([VendorProfileID]) REFERENCES [VendorProfiles]([VendorProfileID])
+);
+GO
+
+-- Vendor Portfolio Album Images
+CREATE TABLE [dbo].[VendorPortfolioImages] (
+    [PortfolioImageID] INT IDENTITY(1,1) NOT NULL,
+    [AlbumID] INT NOT NULL,
+    [VendorProfileID] INT NOT NULL,
+    [ImageURL] NVARCHAR(500) NOT NULL,
+    [CloudinaryPublicId] NVARCHAR(200) NULL,
+    [CloudinaryUrl] NVARCHAR(500) NULL,
+    [CloudinarySecureUrl] NVARCHAR(500) NULL,
+    [CloudinaryTransformations] NVARCHAR(MAX) NULL,
+    [Caption] NVARCHAR(255) NULL,
+    [DisplayOrder] INT NOT NULL DEFAULT 0,
+    [CreatedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+    CONSTRAINT [PK_VendorPortfolioImages] PRIMARY KEY ([PortfolioImageID]),
+    CONSTRAINT [FK_VendorPortfolioImages_Albums] FOREIGN KEY ([AlbumID]) REFERENCES [VendorPortfolioAlbums]([AlbumID]) ON DELETE CASCADE,
+    CONSTRAINT [FK_VendorPortfolioImages_VendorProfiles] FOREIGN KEY ([VendorProfileID]) REFERENCES [VendorProfiles]([VendorProfileID])
+);
+GO
+
 -- Vendor categories (multi-select)
 CREATE TABLE VendorCategories (
     VendorCategoryID INT PRIMARY KEY IDENTITY(1,1),
@@ -4988,6 +5024,203 @@ BEGIN
     ELSE
     BEGIN
         RAISERROR('Image not found or does not belong to this vendor.', 16, 1);
+        SELECT 0 AS Success;
+    END
+END;
+GO
+
+-- =============================================
+-- PORTFOLIO ALBUMS STORED PROCEDURES
+-- =============================================
+
+-- Get all albums for a vendor
+CREATE OR ALTER PROCEDURE sp_GetVendorPortfolioAlbums
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        a.AlbumID,
+        a.VendorProfileID,
+        a.AlbumName,
+        a.AlbumDescription,
+        a.CoverImageURL,
+        a.CloudinaryPublicId,
+        a.IsPublic,
+        a.DisplayOrder,
+        a.CreatedAt,
+        a.UpdatedAt,
+        (SELECT COUNT(*) FROM VendorPortfolioImages WHERE AlbumID = a.AlbumID) AS ImageCount
+    FROM VendorPortfolioAlbums a
+    WHERE a.VendorProfileID = @VendorProfileID
+    ORDER BY a.DisplayOrder, a.CreatedAt DESC;
+END;
+GO
+
+-- Get album images
+CREATE OR ALTER PROCEDURE sp_GetAlbumImages
+    @AlbumID INT,
+    @VendorProfileID INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Verify ownership if VendorProfileID is provided
+    IF @VendorProfileID IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM VendorPortfolioAlbums 
+        WHERE AlbumID = @AlbumID AND VendorProfileID = @VendorProfileID
+    )
+    BEGIN
+        RAISERROR('Album not found or access denied.', 16, 1);
+        RETURN;
+    END
+    
+    SELECT 
+        PortfolioImageID,
+        AlbumID,
+        VendorProfileID,
+        ImageURL,
+        CloudinaryPublicId,
+        CloudinaryUrl,
+        CloudinarySecureUrl,
+        Caption,
+        DisplayOrder,
+        CreatedAt
+    FROM VendorPortfolioImages
+    WHERE AlbumID = @AlbumID
+    ORDER BY DisplayOrder, CreatedAt;
+END;
+GO
+
+-- Create or update album
+CREATE OR ALTER PROCEDURE sp_UpsertPortfolioAlbum
+    @AlbumID INT = NULL,
+    @VendorProfileID INT,
+    @AlbumName NVARCHAR(100),
+    @AlbumDescription NVARCHAR(500) = NULL,
+    @CoverImageURL NVARCHAR(500) = NULL,
+    @CloudinaryPublicId NVARCHAR(200) = NULL,
+    @IsPublic BIT = 1,
+    @DisplayOrder INT = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    IF @AlbumID IS NULL OR @AlbumID = 0
+    BEGIN
+        -- Create new album
+        INSERT INTO VendorPortfolioAlbums (
+            VendorProfileID, AlbumName, AlbumDescription, CoverImageURL, 
+            CloudinaryPublicId, IsPublic, DisplayOrder, CreatedAt, UpdatedAt
+        )
+        VALUES (
+            @VendorProfileID, @AlbumName, @AlbumDescription, @CoverImageURL,
+            @CloudinaryPublicId, @IsPublic, @DisplayOrder, GETUTCDATE(), GETUTCDATE()
+        );
+        
+        SELECT SCOPE_IDENTITY() AS AlbumID;
+    END
+    ELSE
+    BEGIN
+        -- Update existing album
+        UPDATE VendorPortfolioAlbums
+        SET 
+            AlbumName = @AlbumName,
+            AlbumDescription = @AlbumDescription,
+            CoverImageURL = @CoverImageURL,
+            CloudinaryPublicId = @CloudinaryPublicId,
+            IsPublic = @IsPublic,
+            DisplayOrder = @DisplayOrder,
+            UpdatedAt = GETUTCDATE()
+        WHERE AlbumID = @AlbumID AND VendorProfileID = @VendorProfileID;
+        
+        SELECT @AlbumID AS AlbumID;
+    END
+END;
+GO
+
+-- Add image to album
+CREATE OR ALTER PROCEDURE sp_AddPortfolioImage
+    @AlbumID INT,
+    @VendorProfileID INT,
+    @ImageURL NVARCHAR(500),
+    @CloudinaryPublicId NVARCHAR(200) = NULL,
+    @CloudinaryUrl NVARCHAR(500) = NULL,
+    @CloudinarySecureUrl NVARCHAR(500) = NULL,
+    @Caption NVARCHAR(255) = NULL,
+    @DisplayOrder INT = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Verify album ownership
+    IF NOT EXISTS (
+        SELECT 1 FROM VendorPortfolioAlbums 
+        WHERE AlbumID = @AlbumID AND VendorProfileID = @VendorProfileID
+    )
+    BEGIN
+        RAISERROR('Album not found or access denied.', 16, 1);
+        RETURN;
+    END
+    
+    INSERT INTO VendorPortfolioImages (
+        AlbumID, VendorProfileID, ImageURL, CloudinaryPublicId,
+        CloudinaryUrl, CloudinarySecureUrl, Caption, DisplayOrder, CreatedAt
+    )
+    VALUES (
+        @AlbumID, @VendorProfileID, @ImageURL, @CloudinaryPublicId,
+        @CloudinaryUrl, @CloudinarySecureUrl, @Caption, @DisplayOrder, GETUTCDATE()
+    );
+    
+    SELECT SCOPE_IDENTITY() AS PortfolioImageID;
+END;
+GO
+
+-- Delete portfolio image
+CREATE OR ALTER PROCEDURE sp_DeletePortfolioImage
+    @PortfolioImageID INT,
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    IF EXISTS (
+        SELECT 1 FROM VendorPortfolioImages 
+        WHERE PortfolioImageID = @PortfolioImageID AND VendorProfileID = @VendorProfileID
+    )
+    BEGIN
+        DELETE FROM VendorPortfolioImages WHERE PortfolioImageID = @PortfolioImageID;
+        SELECT 1 AS Success;
+    END
+    ELSE
+    BEGIN
+        RAISERROR('Image not found or access denied.', 16, 1);
+        SELECT 0 AS Success;
+    END
+END;
+GO
+
+-- Delete album (and all its images)
+CREATE OR ALTER PROCEDURE sp_DeletePortfolioAlbum
+    @AlbumID INT,
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    IF EXISTS (
+        SELECT 1 FROM VendorPortfolioAlbums 
+        WHERE AlbumID = @AlbumID AND VendorProfileID = @VendorProfileID
+    )
+    BEGIN
+        -- Images will be deleted automatically due to CASCADE
+        DELETE FROM VendorPortfolioAlbums WHERE AlbumID = @AlbumID;
+        SELECT 1 AS Success;
+    END
+    ELSE
+    BEGIN
+        RAISERROR('Album not found or access denied.', 16, 1);
         SELECT 0 AS Success;
     END
 END;
