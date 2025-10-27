@@ -209,6 +209,7 @@ CREATE TABLE VendorProfiles (
     IsPremium BIT DEFAULT 0,
     IsEcoFriendly BIT DEFAULT 0,
     IsAwardWinning BIT DEFAULT 0,
+    IsLastMinute BIT DEFAULT 0,
     PriceLevel NVARCHAR(20) DEFAULT '$$', -- Supports: $, $$, $$$, $$$$, Inexpensive, Moderate, Expensive, Luxury
     Capacity INT,
     Rooms INT,
@@ -1464,6 +1465,7 @@ CREATE OR ALTER   PROCEDURE [dbo].[sp_SearchVendors]
     @IsPremium BIT = NULL,
     @IsEcoFriendly BIT = NULL,
     @IsAwardWinning BIT = NULL,
+    @IsLastMinute BIT = NULL,
     @Latitude DECIMAL(10, 8) = NULL,
     @Longitude DECIMAL(11, 8) = NULL,
     @RadiusMiles INT = 25,
@@ -1530,6 +1532,7 @@ BEGIN
             v.IsPremium,
             v.IsEcoFriendly,
             v.IsAwardWinning,
+            v.IsLastMinute,
             v.PriceLevel,
             v.Capacity,
             v.Rooms,
@@ -1584,6 +1587,7 @@ BEGIN
         AND (@IsPremium IS NULL OR v.IsPremium = @IsPremium)
         AND (@IsEcoFriendly IS NULL OR v.IsEcoFriendly = @IsEcoFriendly)
         AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
+        AND (@IsLastMinute IS NULL OR v.IsLastMinute = @IsLastMinute)
         AND (@PriceLevel IS NULL OR v.PriceLevel = @PriceLevel)
         AND (@MinPrice IS NULL OR MinSvc.MinPrice >= @MinPrice)
         AND (@MaxPrice IS NULL OR MinSvc.MinPrice <= @MaxPrice)
@@ -1654,6 +1658,7 @@ BEGIN
         IsPremium,
         IsEcoFriendly,
         IsAwardWinning,
+        IsLastMinute,
         Capacity,
         Rooms,
         Region,
