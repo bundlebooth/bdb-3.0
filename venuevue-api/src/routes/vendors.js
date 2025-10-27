@@ -173,6 +173,87 @@ async function resolveVendorProfileId(id, pool) {
   return null;
 }
 
+// ===== SERVICE IMAGE UPLOAD ROUTES (Must be before parameterized routes) =====
+
+// Upload service image to Cloudinary
+router.post('/service-image/upload', upload.single('image'), async (req, res) => {
+  try {
+    // Ensure response is always JSON
+    res.setHeader('Content-Type', 'application/json');
+    
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'No image file provided' 
+      });
+    }
+
+    // Check if Cloudinary is configured
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      return res.status(500).json({
+        success: false,
+        message: 'Cloudinary is not configured. Please contact the administrator.'
+      });
+    }
+
+    // Upload to Cloudinary in vendor-services folder
+    const result = await cloudinaryService.uploadImage(req.file.path, {
+      folder: 'venuevue/vendor-services',
+      transformation: [
+        { width: 800, height: 600, crop: 'limit' },
+        { quality: 'auto' },
+        { fetch_format: 'auto' }
+      ]
+    });
+
+    res.json({
+      success: true,
+      imageUrl: result.secure_url,
+      publicId: result.public_id,
+      width: result.width,
+      height: result.height
+    });
+  } catch (error) {
+    console.error('Service image upload error:', error);
+    // Ensure we always return JSON even on error
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'application/json');
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to upload service image',
+        error: error.message 
+      });
+    }
+  }
+});
+
+// Delete service image from Cloudinary
+router.delete('/service-image/:publicId', async (req, res) => {
+  try {
+    const { publicId } = req.params;
+    
+    // Decode the publicId (it comes URL encoded)
+    const decodedPublicId = decodeURIComponent(publicId);
+    
+    const result = await cloudinaryService.deleteImage(decodedPublicId);
+
+    res.json({
+      success: true,
+      message: 'Image deleted successfully',
+      result
+    });
+  } catch (error) {
+    console.error('Service image delete error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to delete service image',
+      error: error.message 
+    });
+  }
+});
+
+// ===== END SERVICE IMAGE UPLOAD ROUTES =====
+
 // Get all predefined services grouped by category
 router.get('/predefined-services', async (req, res) => {
   try {
@@ -2148,6 +2229,7 @@ router.get('/:id/selected-services', async (req, res) => {
         vss.VendorPrice,
         vss.VendorDescription,
         vss.VendorDurationMinutes,
+        vss.ImageURL,
         vss.CreatedAt,
         vss.UpdatedAt
       FROM VendorSelectedServices vss
@@ -2426,12 +2508,13 @@ router.post('/setup/step3-services', async (req, res) => {
         insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
         insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
         insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
+        insertSelectedRequest.input('ImageURL', sql.NVarChar, selectedService.imageURL || null);
         
         await insertSelectedRequest.query(`
           INSERT INTO VendorSelectedServices 
-          (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, CreatedAt)
+          (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, ImageURL, CreatedAt)
           VALUES 
-          (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, GETDATE())
+          (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, @ImageURL, GETDATE())
         `);
       }
     }
