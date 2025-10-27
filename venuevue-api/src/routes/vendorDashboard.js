@@ -668,7 +668,7 @@ router.get('/:id/verification', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     const result = await request.query(`
-      SELECT LicenseNumber, InsuranceVerified, Awards, Certifications, IsEcoFriendly, IsPremium
+      SELECT LicenseNumber, InsuranceVerified, Awards, Certifications, IsEcoFriendly, IsPremium, IsAwardWinning, IsLastMinute
       FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
     `);
     if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
@@ -683,7 +683,7 @@ router.get('/:id/verification', async (req, res) => {
 router.post('/:id/verification', async (req, res) => {
   try {
     const { id } = req.params;
-    const { licenseNumber, insuranceVerified, awards, certifications, isEcoFriendly, isPremium } = req.body;
+    const { licenseNumber, insuranceVerified, awards, certifications, isEcoFriendly, isPremium, isAwardWinning, isLastMinute } = req.body;
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
@@ -693,6 +693,8 @@ router.post('/:id/verification', async (req, res) => {
     request.input('Certifications', sql.NVarChar, certifications ? JSON.stringify(certifications) : null);
     request.input('IsEcoFriendly', sql.Bit, !!isEcoFriendly);
     request.input('IsPremium', sql.Bit, !!isPremium);
+    request.input('IsAwardWinning', sql.Bit, !!isAwardWinning);
+    request.input('IsLastMinute', sql.Bit, !!isLastMinute);
     await request.query(`
       UPDATE VendorProfiles SET 
         LicenseNumber = @LicenseNumber,
@@ -701,6 +703,8 @@ router.post('/:id/verification', async (req, res) => {
         Certifications = @Certifications,
         IsEcoFriendly = @IsEcoFriendly,
         IsPremium = @IsPremium,
+        IsAwardWinning = @IsAwardWinning,
+        IsLastMinute = @IsLastMinute,
         UpdatedAt = GETDATE()
       WHERE VendorProfileID = @VendorProfileID
     `);
@@ -1089,6 +1093,53 @@ router.post('/:id/category-answers/upsert', async (req, res) => {
   } catch (err) {
     console.error('Upsert category answers error:', err);
     res.status(500).json({ success: false, message: 'Failed to save category answers', error: err.message });
+  }
+});
+
+// Popular Filters: GET
+router.get('/:id/popular-filters', async (req, res) => {
+  try {
+    const { id } = req.params; // VendorProfileID
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    const result = await request.query(`
+      SELECT IsPremium, IsEcoFriendly, IsAwardWinning, IsLastMinute
+      FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
+    `);
+    if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
+    res.json({ success: true, filters: result.recordset[0] });
+  } catch (err) {
+    console.error('Get popular filters error:', err);
+    res.status(500).json({ success: false, message: 'Failed to get popular filters', error: err.message });
+  }
+});
+
+// Popular Filters: SAVE
+router.post('/:id/popular-filters', async (req, res) => {
+  try {
+    const { id } = req.params; // VendorProfileID
+    const { isPremium, isEcoFriendly, isAwardWinning, isLastMinute } = req.body;
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, parseInt(id));
+    request.input('IsPremium', sql.Bit, !!isPremium);
+    request.input('IsEcoFriendly', sql.Bit, !!isEcoFriendly);
+    request.input('IsAwardWinning', sql.Bit, !!isAwardWinning);
+    request.input('IsLastMinute', sql.Bit, !!isLastMinute);
+    await request.query(`
+      UPDATE VendorProfiles SET 
+        IsPremium = @IsPremium,
+        IsEcoFriendly = @IsEcoFriendly,
+        IsAwardWinning = @IsAwardWinning,
+        IsLastMinute = @IsLastMinute,
+        UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    res.json({ success: true, message: 'Popular filters saved' });
+  } catch (err) {
+    console.error('Save popular filters error:', err);
+    res.status(500).json({ success: false, message: 'Failed to save popular filters', error: err.message });
   }
 });
 
