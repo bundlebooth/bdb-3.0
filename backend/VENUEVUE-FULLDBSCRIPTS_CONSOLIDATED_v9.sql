@@ -1460,6 +1460,7 @@ CREATE OR ALTER   PROCEDURE [dbo].[sp_SearchVendors]
     @Category NVARCHAR(50) = NULL,
     @MinPrice DECIMAL(10, 2) = NULL,
     @MaxPrice DECIMAL(10, 2) = NULL,
+    @MinRating DECIMAL(2, 1) = NULL,
     @IsPremium BIT = NULL,
     @IsEcoFriendly BIT = NULL,
     @IsAwardWinning BIT = NULL,
@@ -1586,6 +1587,7 @@ BEGIN
         AND (@PriceLevel IS NULL OR v.PriceLevel = @PriceLevel)
         AND (@MinPrice IS NULL OR MinSvc.MinPrice >= @MinPrice)
         AND (@MaxPrice IS NULL OR MinSvc.MinPrice <= @MaxPrice)
+        AND (@MinRating IS NULL OR (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) >= @MinRating)
         AND (@Region IS NULL OR 
             CASE 
                 WHEN v.Latitude BETWEEN 35.0 AND 45.0 AND v.Longitude BETWEEN -80.0 AND -70.0 THEN ''north''
@@ -1714,11 +1716,11 @@ BEGIN
     -- Execute the dynamic SQL
     BEGIN TRY
         EXEC sp_executesql @SQL, 
-            N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), 
+            N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), @MinRating DECIMAL(2, 1), 
               @IsPremium BIT, @IsEcoFriendly BIT, @IsAwardWinning BIT, @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), 
               @RadiusMiles INT, @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20),
               @EventDateRaw NVARCHAR(50), @EventStartRaw NVARCHAR(20), @EventEndRaw NVARCHAR(20), @Region NVARCHAR(50), @PriceLevel NVARCHAR(10)',
-            @SearchTerm, @Category, @MinPrice, @MaxPrice, @IsPremium, @IsEcoFriendly, @IsAwardWinning, 
+            @SearchTerm, @Category, @MinPrice, @MaxPrice, @MinRating, @IsPremium, @IsEcoFriendly, @IsAwardWinning, 
             @Latitude, @Longitude, @RadiusMiles, @BudgetType, @PricingModelFilter, @FixedPricingTypeFilter,
             @EventDateRaw, @EventStartRaw, @EventEndRaw, @Region, @PriceLevel
     END TRY
