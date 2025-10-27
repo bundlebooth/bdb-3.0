@@ -395,42 +395,23 @@
             color: var(--text-light);
         }
 
-        /* New Advanced Filters Section */
-        .advanced-filters {
-            margin-top: 2rem;
-            border-top: 1px solid var(--border);
-            padding-top: 1.5rem;
-        }
-
-        .advanced-toggle {
+        /* Rating filter stars */
+        .rating-filter-stars {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+        }
+        
+        .rating-filter-stars i {
+            color: #fbbf24;
             cursor: pointer;
-            margin-bottom: 1rem;
+            transition: all 0.2s;
         }
-
-        .advanced-content {
-            display: none;
+        
+        .rating-filter-stars i:hover {
+            transform: scale(1.1);
         }
-
-        .advanced-content.show {
-            display: block;
-        }
-
-        .date-picker {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .date-picker input {
-            flex: 1;
-            padding: 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-        }
-
+        
         .region-select {
             width: 100%;
             padding: 0.75rem;
@@ -5760,48 +5741,28 @@
 
             <div class="filter-section">
                 <h3 class="filter-title">
-                    Vendor Type
-                    <span class="filter-reset" id="type-reset">Reset</span>
+                    Minimum Rating
+                    <span class="filter-reset" id="rating-reset">Reset</span>
                 </h3>
-                <div class="filter-group">
-                    <div class="filter-option">
-                        <input type="checkbox" id="independent">
-                        <label for="independent">Independent</label>
-                    </div>
-                    <div class="filter-option">
-                        <input type="checkbox" id="company">
-                        <label for="company">Company</label>
-                    </div>
-                </div>
+                <select class="form-control" id="rating-filter" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
+                    <option value="">All Ratings</option>
+                    <option value="4">⭐⭐⭐⭐ 4+ Stars</option>
+                    <option value="3">⭐⭐⭐ 3+ Stars</option>
+                    <option value="2">⭐⭐ 2+ Stars</option>
+                    <option value="1">⭐ 1+ Star</option>
+                </select>
             </div>
 
-            <!-- New Advanced Filters Section -->
-            <div class="advanced-filters">
-                <div class="advanced-toggle" id="advanced-toggle">
-                    <h3 class="filter-title">Advanced Filters</h3>
-                    <span>+</span>
-                </div>
-                <div class="advanced-content" id="advanced-content">
-                    <div class="filter-section">
-                        <h3 class="filter-title">Availability</h3>
-                        <div class="date-picker">
-                            <input type="date" id="start-date" placeholder="Start date">
-                            <input type="date" id="end-date" placeholder="End date">
-                        </div>
-                    </div>
-
-                    <div class="filter-section">
-                        <h3 class="filter-title">Region</h3>
-                        <select class="region-select" id="region-select">
-                            <option value="">All Regions</option>
-                            <option value="north">Northern Region</option>
-                            <option value="south">Southern Region</option>
-                            <option value="east">Eastern Region</option>
-                            <option value="west">Western Region</option>
-                            <option value="central">Central Region</option>
-                        </select>
-                    </div>
-                </div>
+            <div class="filter-section">
+                <h3 class="filter-title">Region</h3>
+                <select class="region-select" id="region-select">
+                    <option value="">All Regions</option>
+                    <option value="north">Northern Region</option>
+                    <option value="south">Southern Region</option>
+                    <option value="east">Eastern Region</option>
+                    <option value="west">Western Region</option>
+                    <option value="central">Central Region</option>
+                </select>
             </div>
 
             <div class="trending-section">
@@ -18625,24 +18586,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                 });
 
-                // Advanced filters toggle
-                advancedToggle.addEventListener('click', () => {
-                    advancedContent.classList.toggle('show');
-                    advancedToggle.querySelector('span').textContent =
-                        advancedContent.classList.contains('show') ? '−' : '+';
-                });
-
-                // Date filters
-                document.getElementById('start-date').addEventListener('change', function() {
-                    state.filters.startDate = this.value;
-                    filterVendors();
-                });
-
-                document.getElementById('end-date').addEventListener('change', function() {
-                    state.filters.endDate = this.value;
-                    filterVendors();
-                });
-
                 // Region filter
                 document.getElementById('region-select').addEventListener('change', function() {
                     state.filters.region = this.value;
@@ -18653,6 +18596,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const priceLevelFilterEl = document.getElementById('price-level-filter');
                 if (priceLevelFilterEl) {
                     priceLevelFilterEl.addEventListener('change', function() {
+                        filterVendors();
+                    });
+                }
+
+                // Rating filter
+                const ratingFilterEl = document.getElementById('rating-filter');
+                if (ratingFilterEl) {
+                    ratingFilterEl.addEventListener('change', function() {
                         filterVendors();
                     });
                 }
@@ -22230,6 +22181,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const searchTerm = searchInput?.value || '';
                 const region = document.getElementById('region-select')?.value || '';
                 const priceLevel = document.getElementById('price-level-filter')?.value || '';
+                const minRating = document.getElementById('rating-filter')?.value || '';
                 
                 // Popular filters (premium, eco-friendly, award-winning)
                 const isPremium = state.filters.popular.includes('premium');
@@ -22245,6 +22197,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 if (priceLevel) params.set('priceLevel', priceLevel);
                 else params.delete('priceLevel');
+                
+                if (minRating) params.set('minRating', minRating);
+                else params.delete('minRating');
                 
                 if (isPremium) params.set('isPremium', 'true');
                 else params.delete('isPremium');
@@ -22281,6 +22236,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const priceLevelFilter = document.getElementById('price-level-filter');
                 if (priceLevel && priceLevelFilter) {
                     priceLevelFilter.value = priceLevel;
+                }
+                
+                // Apply rating filter
+                const minRating = params.get('minRating');
+                const ratingFilter = document.getElementById('rating-filter');
+                if (minRating && ratingFilter) {
+                    ratingFilter.value = minRating;
                 }
                 
                 // Apply popular filters
@@ -22381,16 +22343,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const priceLevelFilter = document.getElementById('price-level-filter');
                         if (priceLevelFilter) priceLevelFilter.value = '';
                         break;
-                    case 'type':
-                        const ind = document.getElementById('independent');
-                        const comp = document.getElementById('company');
-                        if (ind) ind.checked = false;
-                        if (comp) comp.checked = false;
-                        if (state.filters) {
-                            // Clear any stored type fields if present
-                            if (state.filters.type) delete state.filters.type;
-                            if (state.filters.vendorType) delete state.filters.vendorType;
-                        }
+                    case 'rating':
+                        const ratingFilter = document.getElementById('rating-filter');
+                        if (ratingFilter) ratingFilter.value = '';
                         break;
                 }
 
@@ -29731,6 +29686,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const searchTerm = params.get('search') || '';
                     const region = params.get('region') || '';
                     const priceLevel = params.get('priceLevel') || '';
+                    const minRating = params.get('minRating') || '';
                     const isPremium = params.get('isPremium') === 'true';
                     const isEcoFriendly = params.get('isEcoFriendly') === 'true';
                     const isAwardWinning = params.get('isAwardWinning') === 'true';
@@ -29760,6 +29716,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (searchTerm) qp.set('searchTerm', searchTerm);
                         if (region) qp.set('region', region);
                         if (priceLevel) qp.set('priceLevel', priceLevel);
+                        if (minRating) qp.set('minRating', minRating);
                         if (isPremium) qp.set('isPremium', 'true');
                         if (isEcoFriendly) qp.set('isEcoFriendly', 'true');
                         if (isAwardWinning) qp.set('isAwardWinning', 'true');
@@ -29785,6 +29742,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (searchTerm) qp.set('searchTerm', searchTerm);
                         if (region) qp.set('region', region);
                         if (priceLevel) qp.set('priceLevel', priceLevel);
+                        if (minRating) qp.set('minRating', minRating);
                         if (isPremium) qp.set('isPremium', 'true');
                         if (isEcoFriendly) qp.set('isEcoFriendly', 'true');
                         if (isAwardWinning) qp.set('isAwardWinning', 'true');
