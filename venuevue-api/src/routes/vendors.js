@@ -342,6 +342,7 @@ router.get('/', async (req, res) => {
       isPremium,
       isEcoFriendly,
       isAwardWinning,
+      isLastMinute,
       latitude,
       longitude,
       radiusMiles,
@@ -377,6 +378,7 @@ router.get('/', async (req, res) => {
     request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
     request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
     request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
+    request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
     request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
     request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
     request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
@@ -418,6 +420,7 @@ router.get('/', async (req, res) => {
       isPremium: vendor.IsPremium,
       isEcoFriendly: vendor.IsEcoFriendly,
       isAwardWinning: vendor.IsAwardWinning,
+      isLastMinute: vendor.IsLastMinute,
       region: vendor.Region || '',
       distanceMiles: vendor.DistanceMiles,
       categories: vendor.Categories || '',
@@ -751,6 +754,7 @@ router.get('/search-by-categories', async (req, res) => {
       isPremium,
       isEcoFriendly,
       isAwardWinning,
+      isLastMinute,
       latitude,
       longitude,
       radiusMiles,
@@ -819,6 +823,7 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
       request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
       request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
+      request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
       request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
       request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
       request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
@@ -856,6 +861,7 @@ router.get('/search-by-categories', async (req, res) => {
         isPremium: vendor.IsPremium,
         isEcoFriendly: vendor.IsEcoFriendly,
         isAwardWinning: vendor.IsAwardWinning,
+        isLastMinute: vendor.IsLastMinute,
         region: vendor.Region || '',
         distanceMiles: vendor.DistanceMiles,
         categories: vendor.Categories || '',
