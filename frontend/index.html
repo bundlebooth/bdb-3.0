@@ -180,8 +180,10 @@
             display: flex;
             align-items: center;
             position: sticky;
-            top: 60px; /* Adjust based on header height */
-            z-index: 15;
+            top: 65px; /* Positioned below the header */
+            z-index: 20;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
         .categories-list-wrapper {
@@ -256,28 +258,23 @@
             color: var(--primary);
         }
 
-        .category-item::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 10%;
-            width: 80%;
-            height: 2px;
-            background-color: var(--primary);
-            border-radius: 1px;
-            transition: width 0.3s ease, left 0.3s ease;
+        /* Animated underline indicator */
+        .categories-list-wrapper {
+            position: relative;
         }
 
-        .category-item::after {
-            content: '';
+        .category-indicator {
             position: absolute;
             bottom: 0;
-            left: 50%;
-            width: 0;
-            height: 2px;
-            background-color: var(--accent);
-            border-radius: 1px;
-            transition: width 0.3s ease, left 0.3s ease;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 1.5px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            z-index: 1;
+            opacity: 1;
         }
 
         /* New styles for scroll buttons */
@@ -5702,6 +5699,7 @@
             <button class="nav-scroll-btn left" id="scroll-left">◀</button>
             <div class="categories-list-wrapper">
                 <div class="categories-list" id="categories-list"><div class="category-item active" data-category="all"><i class="fas fa-stream"></i><span>All Categories</span></div><div class="category-item" data-category="venue"><i class="fas fa-building"></i><span>Venues</span></div><div class="category-item" data-category="photo"><i class="fas fa-camera"></i><span>Photo/Video</span></div><div class="category-item" data-category="music"><i class="fas fa-music"></i><span>Music/DJ</span></div><div class="category-item" data-category="catering"><i class="fas fa-utensils"></i><span>Catering</span></div><div class="category-item" data-category="entertainment"><i class="fas fa-theater-masks"></i><span>Entertainment</span></div><div class="category-item" data-category="experiences"><i class="fas fa-star"></i><span>Experiences</span></div><div class="category-item" data-category="decor"><i class="fas fa-ribbon"></i><span>Decorations</span></div><div class="category-item" data-category="beauty"><i class="fas fa-spa"></i><span>Beauty</span></div><div class="category-item" data-category="cake"><i class="fas fa-birthday-cake"></i><span>Cake</span></div><div class="category-item" data-category="transport"><i class="fas fa-shuttle-van"></i><span>Transportation</span></div><div class="category-item" data-category="planner"><i class="fas fa-clipboard-list"></i><span>Planners</span></div><div class="category-item" data-category="fashion"><i class="fas fa-tshirt"></i><span>Fashion</span></div><div class="category-item" data-category="stationery"><i class="fas fa-envelope"></i><span>Stationery</span></div></div>
+                <div class="category-indicator" id="category-indicator"></div>
             </div>
             <button class="nav-scroll-btn right" id="scroll-right">▶</button>
         </nav>
@@ -5768,10 +5766,10 @@
             <div class="trending-section">
                 <h3 class="filter-title">Popular Filters</h3>
                 <div class="trending-tags">
-                    <div class="trending-tag" data-filter="premium">Premium</div>
-                    <div class="trending-tag" data-filter="eco-friendly">Eco-Friendly</div>
-                    <div class="trending-tag" data-filter="award-winning">Award Winning</div>
-                    <div class="trending-tag" data-filter="last-minute">Last Minute</div>
+                    <div class="trending-tag" data-filter="premium"><i class="fas fa-crown" style="color: #FFD700; margin-right: 6px;"></i>Premium</div>
+                    <div class="trending-tag" data-filter="eco-friendly"><i class="fas fa-leaf" style="color: #22c55e; margin-right: 6px;"></i>Eco-Friendly</div>
+                    <div class="trending-tag" data-filter="award-winning"><i class="fas fa-trophy" style="color: #f59e0b; margin-right: 6px;"></i>Award Winning</div>
+                    <div class="trending-tag" data-filter="last-minute"><i class="fas fa-bolt" style="color: #3b82f6; margin-right: 6px;"></i>Last Minute</div>
                 </div>
             </div>
         </aside>
@@ -13340,6 +13338,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                     clientDashboardContainer.style.display = 'none';
                     // vendor container removed (unified dashboard)
 
+                    // Update category indicator now that the app is visible
+                    requestAnimationFrame(() => {
+                        const activeItem = document.querySelector('.category-item.active');
+                        if (activeItem) updateCategoryIndicator(activeItem);
+                    });
+
                     // Setup lightbox event listeners
                     setupLightboxEventListeners();
 
@@ -16812,6 +16816,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                     mainAppView.style.display = 'grid';
                     console.log('🏠 mainAppView shown');
                     try { renderVendorSetupReminder(); } catch (e) {}
+                    // Update category indicator
+                    requestAnimationFrame(() => {
+                        const activeItem = document.querySelector('.category-item.active');
+                        if (activeItem) updateCategoryIndicator(activeItem);
+                    });
                 } else {
                     console.error('❌ mainAppView not found');
                 }
@@ -16878,6 +16887,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             categoryItem.addEventListener('click', () => {
                 document.querySelectorAll('.category-item').forEach(item => item.classList.remove('active'));
                 categoryItem.classList.add('active');
+                updateCategoryIndicator(categoryItem);
                 state.currentCategory = category.id;
                 const params = new URLSearchParams(window.location.search);
                 if (state.currentCategory === 'all') {
@@ -16895,6 +16905,36 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             categoriesListInner.appendChild(categoryItem);
         });
+
+        // Update indicator position after categories are rendered
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const activeItem = document.querySelector('.category-item.active');
+                if (activeItem) updateCategoryIndicator(activeItem);
+            });
+        });
+    }
+
+    // Function to update the animated category indicator
+    function updateCategoryIndicator(activeItem) {
+        const indicator = document.getElementById('category-indicator');
+        if (!indicator || !activeItem) return;
+        
+        const wrapper = document.querySelector('.categories-list-wrapper');
+        const list = document.querySelector('.categories-list');
+        if (!wrapper || !list) return;
+        
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const itemRect = activeItem.getBoundingClientRect();
+        const listRect = list.getBoundingClientRect();
+        
+        // Calculate center position of the active item
+        const itemLeft = itemRect.left - listRect.left;
+        const itemCenter = itemLeft + (itemRect.width / 2);
+        // Center the fixed-width indicator (60px) under the item
+        const indicatorLeft = itemCenter - 30; // 30 = half of 60px indicator width
+        
+        indicator.style.transform = `translateX(${indicatorLeft}px)`;
     }
 
     // Helper function to get category icon HTML using Font Awesome icons
@@ -17012,10 +17052,19 @@ document.addEventListener('DOMContentLoaded', async function() {
                 }
                 state.currentCategory = key;
                 try {
+                    let activeElement = null;
                     document.querySelectorAll('.category-item').forEach(el => {
                         const match = el.dataset.category === key || (key === 'all' && el.dataset.category === 'all');
                         el.classList.toggle('active', !!match);
+                        if (match) activeElement = el;
                     });
+                    if (activeElement) {
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                updateCategoryIndicator(activeElement);
+                            });
+                        });
+                    }
                 } catch {}
             }
 
@@ -33361,6 +33410,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Show left button if there's overflow content (always visible when scrolling is needed)
             leftBtn.style.display = hasOverflow ? 'flex' : 'none';
             rightBtn.style.display = canScrollRight ? 'flex' : 'none';
+            
+            // Update indicator position on scroll
+            const activeItem = document.querySelector('.category-item.active');
+            if (activeItem) updateCategoryIndicator(activeItem);
         }
         
         // Function to update tab navigation button visibility
