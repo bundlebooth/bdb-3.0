@@ -1297,8 +1297,8 @@ router.get('/:id/portfolio/albums/public', async (req, res) => {
         pa.CoverImageURL,
         pa.DisplayOrder,
         pa.CreatedAt,
-        (SELECT COUNT(*) FROM PortfolioImages WHERE AlbumID = pa.AlbumID) as ImageCount
-      FROM PortfolioAlbums pa
+        (SELECT COUNT(*) FROM VendorPortfolioImages WHERE AlbumID = pa.AlbumID) as ImageCount
+      FROM VendorPortfolioAlbums pa
       WHERE pa.VendorProfileID = @VendorProfileID 
         AND pa.IsPublic = 1
       ORDER BY pa.DisplayOrder, pa.CreatedAt DESC
@@ -1322,7 +1322,7 @@ router.get('/:id/portfolio/albums/:albumId/images/public', async (req, res) => {
     
     // Verify album is public and belongs to vendor
     const albumCheck = await request.query(`
-      SELECT IsPublic FROM PortfolioAlbums 
+      SELECT IsPublic FROM VendorPortfolioAlbums 
       WHERE AlbumID = @AlbumID AND VendorProfileID = @VendorProfileID
     `);
     
@@ -1342,7 +1342,7 @@ router.get('/:id/portfolio/albums/:albumId/images/public', async (req, res) => {
         Caption,
         DisplayOrder,
         CreatedAt
-      FROM PortfolioImages
+      FROM VendorPortfolioImages
       WHERE AlbumID = @AlbumID
       ORDER BY DisplayOrder, CreatedAt
     `);
