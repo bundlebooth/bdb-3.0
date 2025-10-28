@@ -250,7 +250,8 @@ router.post('/conversation', async (req, res) => {
     request.input('UserID', sql.Int, userId);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('BookingID', sql.Int, bookingId || null);
-    request.input('RequestID', sql.Int, requestId || null);
+    // Note: sp_CreateConversation only accepts UserID, VendorProfileID, BookingID, and Subject
+    // RequestID is not a parameter of the stored procedure
     request.input('Subject', sql.NVarChar(255), requestId ? 'Booking Request Discussion' : 'New Conversation');
     
     // Check if a conversation already exists for this user/vendor pair
