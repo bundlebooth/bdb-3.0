@@ -24217,6 +24217,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <p style="line-height: 1.6; color: var(--text);">${profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}</p>
                             </div>
                             
+                            <!-- Vendor Setup Questionnaire Section -->
+                            <div id="vendor-profile-questionnaire-section" style="margin-bottom: 2rem;">
+                                <!-- Questionnaire will be loaded here -->
+                            </div>
+                            
                             ${(() => {
                                 console.log('🔍 Checking services condition:', details.services);
                                 console.log('🔍 Services exists:', !!details.services);
@@ -24356,9 +24361,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 // Load portfolio albums for this vendor
                 loadPublicPortfolioAlbums(profile.VendorProfileID);
+                
+                // Load vendor questionnaire for display
+                loadVendorProfileQuestionnaire(profile.VendorProfileID);
 
-                vendorProfilePage.querySelector('#open-chat-btn').addEventListener('click', () => {
-                    // Simple chat functionality - you can replace this with your actual chat system
+                vendorProfilePage.querySelector('#open-chat-btn').addEventListener('click', async () => {
+                    // Check if user is logged in
                     if (!currentUser) {
                         alert('Please log in to message this vendor.');
                         profileModal.style.display = 'flex';
@@ -24366,20 +24374,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         return;
                     }
                     
-                    // For now, show a simple contact modal or redirect to contact form
-                    const vendorName = profile.BusinessName || profile.DisplayName;
-                    const confirmed = confirm(`Would you like to start a conversation with ${vendorName}? This will open a new chat window.`);
+                    // Check if messaging widget exists
+                    if (!window.messagingWidget) {
+                        alert('Messaging feature is not available. Please refresh the page and try again.');
+                        return;
+                    }
                     
-                    if (confirmed) {
-                        // You can replace this with your actual chat initialization
-                        // For now, we'll show a placeholder message
-                        alert(`Chat feature coming soon! For now, you can contact ${vendorName} through their website or social media links.`);
-                        
-                        // Optional: Scroll to social media section
-                        const socialSection = document.querySelector('.services-section');
-                        if (socialSection) {
-                            socialSection.scrollIntoView({ behavior: 'smooth' });
-                        }
+                    // Get vendor information
+                    const vendorName = profile.BusinessName || profile.DisplayName;
+                    const vendorProfileId = profile.VendorProfileID;
+                    
+                    console.log('🚀 Initiating chat with vendor:', vendorProfileId, vendorName);
+                    
+                    // Start conversation with vendor
+                    const conversationId = await window.messagingWidget.startConversationWithVendor(vendorProfileId, vendorName);
+                    
+                    if (!conversationId) {
+                        alert('Failed to start conversation. Please try again.');
                     }
                 });
                 
@@ -25820,6 +25831,130 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 return iconMap[iconName] || 'check-circle';
             }
 
+            // =============================================
+            // VENDOR PROFILE QUESTIONNAIRE DISPLAY
+            // =============================================
+            
+            // Load and display vendor questionnaire on public profile
+            async function loadVendorProfileQuestionnaire(vendorProfileId) {
+                try {
+                    const container = document.getElementById('vendor-profile-questionnaire-section');
+                    if (!container) return;
+                    
+                    // Show loading state
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 1.5rem; color: var(--text-light);">
+                            <i class="fas fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 0.5rem;"></i>
+                            <p style="font-size: 0.9rem;">Loading features...</p>
+                        </div>
+                    `;
+                    
+                    // Fetch vendor's selected features
+                    const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`);
+                    
+                    if (!response.ok) {
+                        // Hide the section if no features found
+                        container.style.display = 'none';
+                        return;
+                    }
+                    
+                    const data = await response.json();
+                    const selectedFeatures = data.selectedFeatures || [];
+                    
+                    if (selectedFeatures.length === 0) {
+                        // Hide the section if no features selected
+                        container.style.display = 'none';
+                        return;
+                    }
+                    
+                    // Group features by category
+                    const categorizedFeatures = {};
+                    selectedFeatures.forEach(feature => {
+                        const category = feature.CategoryName || 'Other';
+                        if (!categorizedFeatures[category]) {
+                            categorizedFeatures[category] = {
+                                categoryIcon: feature.CategoryIcon,
+                                features: []
+                            };
+                        }
+                        categorizedFeatures[category].features.push(feature);
+                    });
+                    
+                    // Render questionnaire display
+                    renderVendorProfileQuestionnaire(categorizedFeatures);
+                    
+                } catch (error) {
+                    console.error('Error loading vendor profile questionnaire:', error);
+                    const container = document.getElementById('vendor-profile-questionnaire-section');
+                    if (container) {
+                        container.style.display = 'none';
+                    }
+                }
+            }
+            
+            // Render vendor questionnaire for public display
+            function renderVendorProfileQuestionnaire(categorizedFeatures) {
+                const container = document.getElementById('vendor-profile-questionnaire-section');
+                if (!container) return;
+                
+                let html = '';
+                
+                Object.keys(categorizedFeatures).forEach((categoryName, index) => {
+                    const categoryData = categorizedFeatures[categoryName];
+                    
+                    html += `
+                        <div style="display: grid; grid-template-columns: 180px 1fr; gap: 2rem; padding: 1.5rem 0; border-bottom: 1px solid #e5e7eb; align-items: start;">
+                            <div style="font-size: 1.125rem; font-weight: 600; color: #1a202c;">${categoryName}</div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem 1.5rem;">
+                    `;
+                    
+                    categoryData.features.forEach(feature => {
+                        const featureIcon = getFeatureIcon(feature.FeatureIcon);
+                        html += `
+                            <div style="display: flex; align-items: center; gap: 0.625rem;">
+                                <i class="fas fa-${featureIcon}" style="font-size: 1rem; color: #4a5568; flex-shrink: 0;"></i>
+                                <span style="font-size: 0.9375rem; color: #2d3748; line-height: 1.4;">${feature.FeatureName}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Add responsive CSS for mobile
+                html += `
+                    <style>
+                        @media (max-width: 1024px) {
+                            #vendor-profile-questionnaire-section > div {
+                                grid-template-columns: 150px 1fr !important;
+                            }
+                            #vendor-profile-questionnaire-section > div > div:nth-child(2) {
+                                grid-template-columns: repeat(2, 1fr) !important;
+                            }
+                        }
+                        @media (max-width: 768px) {
+                            #vendor-profile-questionnaire-section > div {
+                                grid-template-columns: 1fr !important;
+                                gap: 1rem !important;
+                            }
+                            #vendor-profile-questionnaire-section > div > div:nth-child(2) {
+                                grid-template-columns: repeat(2, 1fr) !important;
+                            }
+                        }
+                        @media (max-width: 640px) {
+                            #vendor-profile-questionnaire-section > div > div:nth-child(2) {
+                                grid-template-columns: 1fr !important;
+                            }
+                        }
+                    </style>
+                `;
+                
+                container.innerHTML = html;
+            }
+            
             function getFeatureIcon(iconName) {
                 const iconMap = {
                     'church': 'church',
@@ -37166,6 +37301,79 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 this.loadMessages(conversationId);
             }
 
+            async startConversationWithVendor(vendorProfileId, vendorName) {
+                try {
+                    console.log('🚀 Starting conversation with vendor:', vendorProfileId, vendorName);
+                    
+                    // Ensure user is logged in
+                    const currentUser = window.currentUser;
+                    if (!currentUser || !currentUser.id) {
+                        console.log('❌ User not logged in');
+                        return null;
+                    }
+
+                    // Check if conversation already exists
+                    console.log('🔍 Checking for existing conversation...');
+                    const checkResponse = await fetch(`${API_BASE_URL}/messages/conversation/check`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            userId: currentUser.id,
+                            vendorProfileId: vendorProfileId
+                        })
+                    });
+
+                    const checkData = await checkResponse.json();
+                    console.log('✅ Conversation check result:', checkData);
+
+                    let conversationId = checkData.conversationId;
+
+                    // If no existing conversation, create one
+                    if (!conversationId) {
+                        console.log('🆕 Creating new conversation...');
+                        const createResponse = await fetch(`${API_BASE_URL}/messages/conversation`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            },
+                            body: JSON.stringify({
+                                userId: currentUser.id,
+                                vendorProfileId: vendorProfileId
+                            })
+                        });
+
+                        const createData = await createResponse.json();
+                        console.log('✅ Conversation created:', createData);
+                        
+                        if (createData.success && createData.conversation) {
+                            conversationId = createData.conversation.ConversationID;
+                        }
+                    }
+
+                    if (conversationId) {
+                        console.log('✅ Opening chat with conversation ID:', conversationId);
+                        // Open the widget and show the chat view
+                        this.openWidget();
+                        this.showChatView(conversationId, {
+                            name: vendorName,
+                            avatar: null
+                        });
+                        return conversationId;
+                    } else {
+                        console.error('❌ Failed to get conversation ID');
+                        return null;
+                    }
+
+                } catch (error) {
+                    console.error('❌ Error starting conversation:', error);
+                    return null;
+                }
+            }
+
             async loadConversations() {
                 console.log('🚀 Loading conversations...');
                 const conversationsList = document.getElementById('conversations-list');
@@ -37828,11 +38036,37 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         console.log('✅ MessagingWidget created:', window.messagingWidget);
                         console.log('✅ MessagingWidget methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.messagingWidget)));
                         
+                        // Add global helper function to start conversations
+                        window.startChatWithVendor = async function(vendorProfileId, vendorName) {
+                            if (!window.currentUser) {
+                                alert('Please log in to message vendors.');
+                                const profileModal = document.getElementById('profile-modal');
+                                if (profileModal) {
+                                    profileModal.style.display = 'flex';
+                                    showLoginView();
+                                }
+                                return;
+                            }
+                            
+                            if (!window.messagingWidget) {
+                                alert('Messaging feature is not available. Please refresh the page and try again.');
+                                return;
+                            }
+                            
+                            console.log('🚀 Starting chat with vendor:', vendorProfileId, vendorName);
+                            const conversationId = await window.messagingWidget.startConversationWithVendor(vendorProfileId, vendorName);
+                            
+                            if (!conversationId) {
+                                alert('Failed to start conversation. Please try again.');
+                            }
+                        };
+                        
                         // Add test message to console
                         console.log('🧪 Available test functions:');
                         console.log('  - testAPI() - Test API connection');
                         console.log('  - testConversationsAPI(userId) - Test conversations endpoint');
                         console.log('  - testMessagingWidget() - Test messaging widget');
+                        console.log('  - startChatWithVendor(vendorProfileId, vendorName) - Start conversation with a vendor');
                     } catch (error) {
                         console.error('❌ Error creating MessagingWidget:', error);
                     }
