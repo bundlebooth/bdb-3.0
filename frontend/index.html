@@ -457,7 +457,7 @@
             background-color: white;
             border-radius: var(--radius);
             box-shadow: var(--shadow);
-            max-width: 900px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
@@ -5846,6 +5846,110 @@
                 font-size: 20px;
             }
         }
+
+        /* Venue Recommendation Section Styles */
+        .venue-recommendation-tab {
+            position: relative;
+        }
+
+        .venue-recommendation-tab:hover {
+            background: #374151 !important;
+            color: white !important;
+        }
+
+        .venue-recommendation-tab.active {
+            background: #1f2937 !important;
+            color: white !important;
+        }
+
+        .recommendation-venue-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            width: 280px;
+        }
+
+        .recommendation-venue-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .recommendation-venue-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            position: relative;
+        }
+
+        .recommendation-venue-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(94, 114, 228, 0.95);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            backdrop-filter: blur(4px);
+        }
+
+        .recommendation-venue-info {
+            padding: 1rem;
+        }
+
+        .recommendation-venue-name {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+            line-height: 1.4;
+        }
+
+        .recommendation-venue-rating {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .recommendation-venue-rating .stars {
+            color: #fbbf24;
+        }
+
+        .recommendation-venue-location {
+            color: #6b7280;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .scroll-arrow:hover {
+            background: #f3f4f6 !important;
+            border-color: #5e72e4 !important;
+            color: #5e72e4 !important;
+        }
+
+        .scroll-arrow:active {
+            transform: translateY(-50%) scale(0.95) !important;
+        }
+
+        /* Hide scrollbars for webkit browsers */
+        #similar-venues-grid::-webkit-scrollbar,
+        #nearby-venues-grid::-webkit-scrollbar,
+        #viewing-venues-grid::-webkit-scrollbar {
+            display: none;
+        }
     </style>
 <style id="googleidentityservice_button_styles">.qJTHM{-moz-user-select:none;color:#202124;direction:ltr;font-family:"Roboto-Regular",arial,sans-serif;font-weight:400;margin:0;overflow:hidden}.ynRLnc{left:-9999px;position:absolute;top:-9999px}.L6cTce{display:none}.bltWBb{word-break:break-all}.hSRGPd{color:#1a73e8;cursor:pointer;font-weight:500;text-decoration:none}.Bz112c-W3lGp{height:16px;width:16px}.Bz112c-E3DyYd{height:20px;width:20px}.Bz112c-r9oPif{height:24px;width:24px}.Bz112c-u2z5K{height:36px;width:36px}.Bz112c-uaxL4e{-moz-border-radius:10px;border-radius:10px}.LgbsSe-Bz112c{display:block}.S9gUrf-YoZ4jf,.S9gUrf-YoZ4jf *{border:none;margin:0;padding:0}.fFW7wc-ibnC6b>.aZ2wEe>div{border-color:#4285f4}.P1ekSe-ZMv3u>div:nth-child(1){background-color:#1a73e8!important}.P1ekSe-ZMv3u>div:nth-child(2),.P1ekSe-ZMv3u>div:nth-child(3){background-image:linear-gradient(to right,rgba(255,255,255,.7),rgba(255,255,255,.7)),linear-gradient(to right,#1a73e8,#1a73e8)!important}.haAclf{display:inline-block}.nsm7Bb-HzV7m-LgbsSe{border-radius:4px;box-sizing:border-box;transition:background-color .218s,border-color .218s;-moz-user-select:none;background-color:#fff;background-image:none;border:1px solid #dadce0;color:#3c4043;cursor:pointer;font-family:"Google Sans",arial,sans-serif;font-size:14px;height:40px;letter-spacing:0.25px;outline:none;overflow:hidden;padding:0 12px;position:relative;text-align:center;vertical-align:middle;white-space:nowrap;width:auto}@media screen and (-ms-high-contrast:active){.nsm7Bb-HzV7m-LgbsSe{border:2px solid windowText;color:windowText}}@media screen and (preferes-contrast:more){.nsm7Bb-HzV7m-LgbsSe{color:#000}}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe{font-size:14px;height:32px;letter-spacing:0.25px;padding:0 10px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe{font-size:11px;height:20px;letter-spacing:0.3px;padding:0 8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe{padding:0;width:40px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe{width:32px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe{width:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK{border-radius:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.pSzOP-SxQuSe{border-radius:16px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.purZT-SxQuSe{border-radius:10px}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc{border:none;color:#fff}.nsm7Bb-HzV7m-LgbsSe.MFS4be-v3pZbf-Ia7Qfc{background-color:#1a73e8}.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{background-color:#202124;color:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{color:#fff}}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:18px;margin-right:8px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:14px;min-width:14px;width:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:10px;min-width:10px;width:10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin-left:8px;margin-right:-4px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:10px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:4px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:3px;border-bottom-left-radius:3px;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;justify-content:center;align-items:center;background-color:#fff;height:36px;margin-left:-10px;margin-right:12px;min-width:36px;width:36px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c,.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:28px;margin-left:-8px;margin-right:10px;min-width:28px;width:28px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:16px;margin-left:-6px;margin-right:8px;min-width:16px;width:16px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:3px;margin-left:2px;margin-right:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:8px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-bN97Pc-sM5MNb{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;flex-direction:row;justify-content:space-between;flex-wrap:nowrap;height:100%;position:relative;width:100%}.nsm7Bb-HzV7m-LgbsSe .oXtfBe-l4eHX{justify-content:center}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{flex-grow:1;font-family:"Google Sans",arial,sans-serif;font-weight:500;overflow:hidden;text-overflow:ellipsis;vertical-align:top}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-weight:300}.nsm7Bb-HzV7m-LgbsSe .oXtfBe-l4eHX .nsm7Bb-HzV7m-LgbsSe-BPrWId{flex-grow:0}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-MJoBVe{transition:background-color .218s;bottom:0;left:0;position:absolute;right:0;top:0}.nsm7Bb-HzV7m-LgbsSe:hover,.nsm7Bb-HzV7m-LgbsSe:focus{box-shadow:none;border-color:rgb(210,227,252);outline:none}.nsm7Bb-HzV7m-LgbsSe:focus-within{outline:2px solid #00639b;border-color:transparent}.nsm7Bb-HzV7m-LgbsSe:hover .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(66,133,244,.08)}.nsm7Bb-HzV7m-LgbsSe:active .nsm7Bb-HzV7m-LgbsSe-MJoBVe,.nsm7Bb-HzV7m-LgbsSe:focus .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(66,133,244,.1)}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:hover .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(255,255,255,.24)}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:active .nsm7Bb-HzV7m-LgbsSe-MJoBVe,.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:focus .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(255,255,255,.32)}.nsm7Bb-HzV7m-LgbsSe .n1UuX-DkfjY{border-radius:50%;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;height:20px;margin-left:-4px;margin-right:8px;min-width:20px;width:20px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-family:"Roboto";font-size:12px;text-align:left}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .ssJRIf,.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .fmcmS{overflow:hidden;text-overflow:ellipsis}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;color:#5f6368;fill:#5f6368;font-size:11px;font-weight:400}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#e8eaed;fill:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff,.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#000;fill:#000}}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .Bz112c{height:18px;margin:-3px -3px -3px 2px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:0;border-bottom-left-radius:0;border-top-right-radius:3px;border-bottom-right-radius:3px;margin-left:12px;margin-right:-10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.L5Fo6c-sM5MNb{border:0;display:block;left:0;position:relative;top:0}.L5Fo6c-bF1uUb{-moz-border-radius:4px;border-radius:4px;bottom:0;cursor:pointer;left:0;position:absolute;right:0;top:0}.L5Fo6c-bF1uUb:focus{border:none;outline:none}sentinel{}</style><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/common.js"></script><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/util.js"></script></head>
 <body data-new-gr-c-s-check-loaded="8.932.0" data-gr-ext-installed="" style="overflow: auto;">
@@ -6171,6 +6275,84 @@
                         </div>
                     </div>
                 </div>
+
+    <!-- Full-Width Venue Recommendations (Independent from profile) -->
+    <div id="venue-recommendations-section" style="display: none; background: #f9fafb; padding: 3rem 0; margin-top: 0;">
+        <div style="max-width: 1400px; margin: 0 auto; padding: 0 2rem;">
+            <h2 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 2rem; color: #1f2937;">Explore More Venues</h2>
+            
+            <!-- Tabs -->
+            <div style="display: flex; gap: 0; border-bottom: 2px solid #e5e7eb; margin-bottom: 2rem; overflow-x: auto;">
+                <button class="venue-recommendation-tab active" data-tab="similar" 
+                        style="padding: 1rem 2rem; background: #1f2937; color: white; border: none; cursor: pointer; font-weight: 500; border-radius: 4px 4px 0 0; transition: all 0.3s; white-space: nowrap;">
+                    Similar Venues
+                </button>
+                <button class="venue-recommendation-tab" data-tab="nearby"
+                        style="padding: 1rem 2rem; background: white; color: #6b7280; border: none; cursor: pointer; font-weight: 500; border-radius: 4px 4px 0 0; transition: all 0.3s; white-space: nowrap;">
+                    Venues Nearby
+                </button>
+                <button class="venue-recommendation-tab" data-tab="viewing"
+                        style="padding: 1rem 2rem; background: white; color: #6b7280; border: none; cursor: pointer; font-weight: 500; border-radius: 4px 4px 0 0; transition: all 0.3s; white-space: nowrap;">
+                    Other Users are Currently Viewing
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="similar-venues-content" class="venue-tab-content" style="display: block;">
+                <div style="position: relative;">
+                    <button class="scroll-arrow scroll-left" data-target="similar-venues-grid" style="position: absolute; left: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <div id="similar-venues-grid" style="display: flex; gap: 1.5rem; overflow-x: auto; scroll-behavior: smooth; padding: 1rem 0; scrollbar-width: none; -ms-overflow-style: none;">
+                        <p style="text-align: center; color: #6b7280; width: 100%;">Loading similar venues...</p>
+                    </div>
+                    <button class="scroll-arrow scroll-right" data-target="similar-venues-grid" style="position: absolute; right: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="nearby-venues-content" class="venue-tab-content" style="display: none;">
+                <div style="position: relative;">
+                    <button class="scroll-arrow scroll-left" data-target="nearby-venues-grid" style="position: absolute; left: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <div id="nearby-venues-grid" style="display: flex; gap: 1.5rem; overflow-x: auto; scroll-behavior: smooth; padding: 1rem 0; scrollbar-width: none; -ms-overflow-style: none;">
+                        <p style="text-align: center; color: #6b7280; width: 100%;">Loading nearby venues...</p>
+                    </div>
+                    <button class="scroll-arrow scroll-right" data-target="nearby-venues-grid" style="position: absolute; right: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="viewing-venues-content" class="venue-tab-content" style="display: none;">
+                <div style="position: relative;">
+                    <button class="scroll-arrow scroll-left" data-target="viewing-venues-grid" style="position: absolute; left: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <div id="viewing-venues-grid" style="display: flex; gap: 1.5rem; overflow-x: auto; scroll-behavior: smooth; padding: 1rem 0; scrollbar-width: none; -ms-overflow-style: none;">
+                        <p style="text-align: center; color: #6b7280; width: 100%;">Loading popular venues...</p>
+                    </div>
+                    <button class="scroll-arrow scroll-right" data-target="viewing-venues-grid" style="position: absolute; right: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Dashboard Modal -->
     <div id="dashboard-modal" class="modal" data-no-outside-close style="display: none;">
@@ -17206,6 +17388,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (vendorProfilePage) {
                     vendorProfilePage.style.display = 'none';
                     console.log('🏠 vendorProfilePage hidden');
+                    
+                    // Hide the full-width recommendations section
+                    const recommendationsSection = document.getElementById('venue-recommendations-section');
+                    if (recommendationsSection) recommendationsSection.style.display = 'none';
                 } else {
                     console.error('❌ vendorProfilePage not found');
                 }
@@ -19219,6 +19405,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                 // Add an event listener for hash changes
                 window.addEventListener('hashchange', handleUrlChange);
+                
+                // Initialize scroll arrows for recommendation sections
+                initScrollArrows();
                 
                 // Add window load listener as backup
                 window.addEventListener('load', () => {
@@ -23229,6 +23418,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (clientDashboardContainer) clientDashboardContainer.style.display = 'none';
                 if (vendorDashboardContainer) vendorDashboardContainer.style.display = 'none';
                 if (vendorProfilePage) vendorProfilePage.style.display = 'block';
+                
+                // Show the full-width recommendations section
+                const recommendationsSection = document.getElementById('venue-recommendations-section');
+                if (recommendationsSection) recommendationsSection.style.display = 'block';
+                
                 document.body.style.overflow = 'auto';
 
                 vendorProfilePage.innerHTML = '<p style="text-align: center; margin-top: 5rem;">Loading vendor profile...</p>';
@@ -23253,6 +23447,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     console.log('🔍 Services Length:', fullVendorDetails.services ? fullVendorDetails.services.length : 'undefined');
 
                     renderVendorProfile(fullVendorDetails);
+                    
+                    // Initialize venue recommendations
+                    initializeVenueRecommendations(vendorId, fullVendorDetails);
                     
                     // Add logic for the new review form
                     const reviewForm = document.getElementById('review-form');
@@ -23345,6 +23542,375 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     `;
                     // Don't redirect to main page on error - stay on vendor profile page
                 }
+            }
+
+            // Venue Recommendation Functions
+            function initializeVenueRecommendations(vendorId, vendorData) {
+                console.log('🎯 Initializing venue recommendations for vendor:', vendorId);
+                console.log('🎯 Vendor data:', vendorData);
+                console.log('🎯 Vendor data keys:', Object.keys(vendorData));
+                console.log('🎯 Vendor data.profile:', vendorData.profile);
+                console.log('🎯 Vendor data.categories:', vendorData.categories);
+                
+                // Wait a tick to ensure DOM is ready
+                setTimeout(() => {
+                    // Set up tab click handlers
+                    const tabs = document.querySelectorAll('.venue-recommendation-tab');
+                    console.log('🎯 Found tabs:', tabs.length);
+                    
+                    if (tabs.length === 0) {
+                        console.error('❌ No recommendation tabs found in DOM!');
+                        return;
+                    }
+                    
+                    tabs.forEach(tab => {
+                        tab.addEventListener('click', () => {
+                            const tabType = tab.getAttribute('data-tab');
+                            console.log('🎯 Tab clicked:', tabType);
+                            switchRecommendationTab(tabType, vendorId, vendorData);
+                        });
+                    });
+
+                    // Load similar venues by default
+                    console.log('🎯 Loading similar venues...');
+                    loadSimilarVenues(vendorId, vendorData);
+                }, 100);
+            }
+
+            function switchRecommendationTab(tabType, vendorId, vendorData) {
+                // Update tab active state
+                const tabs = document.querySelectorAll('.venue-recommendation-tab');
+                tabs.forEach(tab => {
+                    if (tab.getAttribute('data-tab') === tabType) {
+                        tab.classList.add('active');
+                        tab.style.background = '#1f2937';
+                        tab.style.color = 'white';
+                    } else {
+                        tab.classList.remove('active');
+                        tab.style.background = 'white';
+                        tab.style.color = '#6b7280';
+                    }
+                });
+
+                // Hide all content sections
+                document.querySelectorAll('.venue-tab-content').forEach(content => {
+                    content.style.display = 'none';
+                });
+
+                // Show selected content
+                if (tabType === 'similar') {
+                    document.getElementById('similar-venues-content').style.display = 'block';
+                    loadSimilarVenues(vendorId, vendorData);
+                } else if (tabType === 'nearby') {
+                    document.getElementById('nearby-venues-content').style.display = 'block';
+                    loadNearbyVenues(vendorId, vendorData);
+                } else if (tabType === 'viewing') {
+                    document.getElementById('viewing-venues-content').style.display = 'block';
+                    loadCurrentlyViewingVenues(vendorId);
+                }
+            }
+
+            async function loadSimilarVenues(vendorId, vendorData) {
+                console.log('🎯 loadSimilarVenues called with:', { vendorId, vendorData });
+                
+                const grid = document.getElementById('similar-venues-grid');
+                if (!grid) {
+                    console.error('❌ Grid element not found: similar-venues-grid');
+                    return;
+                }
+                
+                grid.innerHTML = '<p style="text-align: center; color: #6b7280; grid-column: 1 / -1;">Loading similar venues...</p>';
+
+                try {
+                    // Get category from vendor data - try multiple approaches
+                    let category = null;
+                    
+                    // Approach 1: Check if there's a categories array (from GET /vendors/:id)
+                    if (vendorData.categories && Array.isArray(vendorData.categories) && vendorData.categories.length > 0) {
+                        // Get the primary category (IsPrimary = true) or first category
+                        const primaryCat = vendorData.categories.find(c => c.IsPrimary || c.isPrimary);
+                        category = primaryCat ? (primaryCat.CategoryName || primaryCat.categoryName) : 
+                                   (vendorData.categories[0].CategoryName || vendorData.categories[0].categoryName);
+                    }
+                    
+                    // Approach 2: Check if categories is a string (from GET /vendors search)
+                    if (!category && vendorData.categories && typeof vendorData.categories === 'string') {
+                        // Categories might be comma-separated, take the first one
+                        category = vendorData.categories.split(',')[0].trim();
+                    }
+                    
+                    // Approach 3: Check profile object for category fields
+                    if (!category && vendorData.profile) {
+                        const profile = vendorData.profile;
+                        category = profile.PrimaryCategory || profile.Category || profile.category;
+                    }
+                    
+                    // Approach 4: Check top-level category fields
+                    if (!category) {
+                        category = vendorData.PrimaryCategory || vendorData.Category || vendorData.category || 
+                                   vendorData.type || vendorData.Type;
+                    }
+                    
+                    console.log('🎯 Vendor data:', vendorData);
+                    console.log('🎯 Categories array:', vendorData.categories);
+                    console.log('🎯 Extracted category:', category);
+
+                    // If no category found, show popular venues instead
+                    let url;
+                    if (!category) {
+                        console.warn('⚠️ No category found - showing popular venues instead');
+                        url = `${API_BASE_URL}/vendors?pageSize=8&sortBy=rating`;
+                    } else {
+                        url = `${API_BASE_URL}/vendors?category=${encodeURIComponent(category)}&pageSize=8`;
+                    }
+                    
+                    console.log('🎯 Fetching similar venues from:', url);
+                    
+                    const response = await fetch(url);
+                    console.log('🎯 Response status:', response.status);
+                    
+                    if (!response.ok) throw new Error(`Failed to load similar venues: ${response.status}`);
+
+                    const data = await response.json();
+                    console.log('🎯 API Response data:', data);
+                    
+                    const allVenues = data.vendors || data.data || [];
+                    console.log('🎯 All venues:', allVenues);
+                    console.log('🎯 All venues count:', Array.isArray(allVenues) ? allVenues.length : 'NOT AN ARRAY');
+                    
+                    const venues = allVenues.filter(v => {
+                        const vId = v.VendorProfileID || v.vendorProfileId || v.id;
+                        return vId != vendorId; // Use != to handle string/number comparison
+                    });
+                    console.log('🎯 Filtered venues count:', venues.length);
+
+                    if (venues.length === 0) {
+                        grid.innerHTML = '<p style="text-align: center; color: #6b7280; grid-column: 1 / -1;">No similar venues found in this category.</p>';
+                        return;
+                    }
+
+                    renderRecommendationVenues(venues, 'similar-venues-grid');
+                } catch (error) {
+                    console.error('❌ Error loading similar venues:', error);
+                    grid.innerHTML = `<p style="text-align: center; color: #ef4444; grid-column: 1 / -1;">Error loading similar venues: ${error.message}</p>`;
+                }
+            }
+
+            async function loadNearbyVenues(vendorId, vendorData) {
+                const grid = document.getElementById('nearby-venues-grid');
+                grid.innerHTML = '<p style="text-align: center; color: #6b7280;">Loading nearby venues...</p>';
+
+                try {
+                    // Extract location from profile or top-level
+                    const profile = vendorData.profile || vendorData;
+                    const latitude = profile.Latitude || profile.latitude || vendorData.Latitude || vendorData.latitude;
+                    const longitude = profile.Longitude || profile.longitude || vendorData.Longitude || vendorData.longitude;
+
+                    console.log('🎯 Loading nearby venues for location:', { latitude, longitude });
+
+                    if (!latitude || !longitude) {
+                        grid.innerHTML = '<p style="text-align: center; color: #6b7280;">Location data not available.</p>';
+                        return;
+                    }
+
+                    const response = await fetch(
+                        `${API_BASE_URL}/vendors?latitude=${latitude}&longitude=${longitude}&radiusMiles=25&pageSize=8&sortBy=nearest`
+                    );
+                    if (!response.ok) throw new Error('Failed to load nearby venues');
+
+                    const data = await response.json();
+                    const venues = (data.data || []).filter(v => v.VendorProfileID !== vendorId);
+
+                    if (venues.length === 0) {
+                        grid.innerHTML = '<p style="text-align: center; color: #6b7280;">No nearby venues found.</p>';
+                        return;
+                    }
+
+                    renderRecommendationVenues(venues, 'nearby-venues-grid');
+                } catch (error) {
+                    console.error('Error loading nearby venues:', error);
+                    grid.innerHTML = '<p style="text-align: center; color: #ef4444;">Error loading nearby venues.</p>';
+                }
+            }
+
+            async function loadCurrentlyViewingVenues(vendorId) {
+                const grid = document.getElementById('viewing-venues-grid');
+                grid.innerHTML = '<p style="text-align: center; color: #6b7280;">Loading popular venues...</p>';
+
+                try {
+                    // Load random popular vendors (simulating "currently viewing")
+                    const response = await fetch(`${API_BASE_URL}/vendors?pageSize=8&sortBy=rating`);
+                    if (!response.ok) throw new Error('Failed to load venues');
+
+                    const data = await response.json();
+                    const venues = (data.data || []).filter(v => v.VendorProfileID !== vendorId);
+
+                    if (venues.length === 0) {
+                        grid.innerHTML = '<p style="text-align: center; color: #6b7280;">No venues available.</p>';
+                        return;
+                    }
+
+                    renderRecommendationVenues(venues, 'viewing-venues-grid');
+                } catch (error) {
+                    console.error('Error loading currently viewing venues:', error);
+                    grid.innerHTML = '<p style="text-align: center; color: #ef4444;">Error loading venues.</p>';
+                }
+            }
+
+            function renderRecommendationVenues(venues, gridId) {
+                console.log('🎨 renderRecommendationVenues called with:', { venueCount: venues.length, gridId });
+                
+                const grid = document.getElementById(gridId);
+                
+                if (!grid) {
+                    console.error('❌ Grid element not found:', gridId);
+                    return;
+                }
+                
+                if (!venues || venues.length === 0) {
+                    grid.innerHTML = '<p style="text-align: center; color: #6b7280; grid-column: 1 / -1;">No venues found.</p>';
+                    return;
+                }
+
+                console.log('🎨 Rendering venues:', venues);
+
+                const html = venues.map(venue => {
+                    const vendorId = venue.VendorProfileID || venue.vendorProfileId || venue.id;
+                    const name = venue.BusinessName || venue.businessName || venue.name || 'Unnamed Venue';
+                    const rating = venue.averageRating || venue.rating || 5.0;
+                    const reviewCount = venue.totalReviews || venue.reviewCount || 0;
+                    const city = venue.City || venue.city || '';
+                    const state = venue.State || venue.state || '';
+                    const location = [city, state].filter(Boolean).join(', ') || 'Location unavailable';
+                    const isPremium = venue.IsPremium || venue.isPremium || false;
+                    
+                    // Get primary image
+                    let imageUrl = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+                    if (venue.images && venue.images.length > 0) {
+                        imageUrl = venue.images[0].ImageURL || venue.images[0].imageUrl || venue.images[0].url || imageUrl;
+                    } else if (venue.PrimaryImageURL || venue.primaryImageURL || venue.imageUrl) {
+                        imageUrl = venue.PrimaryImageURL || venue.primaryImageURL || venue.imageUrl;
+                    }
+
+                    const stars = '★'.repeat(Math.round(rating));
+                    
+                    return `
+                        <div class="recommendation-venue-card" onclick="window.location.hash = 'vendor/${vendorId}'">
+                            <div style="position: relative;">
+                                <img src="${imageUrl}" 
+                                     alt="${name}" 
+                                     class="recommendation-venue-image"
+                                     onerror="this.src='https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'">
+                                ${isPremium ? `
+                                    <div class="recommendation-venue-badge">
+                                        <i class="fas fa-crown"></i> Premium
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="recommendation-venue-info">
+                                <div class="recommendation-venue-name">${name}</div>
+                                <div class="recommendation-venue-rating">
+                                    <span class="stars">${stars}</span>
+                                    <span style="color: #6b7280;">${rating.toFixed(1)}</span>
+                                    <span style="color: #9ca3af;">(${reviewCount})</span>
+                                </div>
+                                <div class="recommendation-venue-location">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    ${location}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                grid.innerHTML = html;
+                console.log('✅ Successfully rendered', venues.length, 'venues to grid:', gridId);
+                
+                // Re-initialize scroll arrows after rendering
+                setTimeout(() => {
+                    initScrollArrows();
+                    updateScrollArrows(gridId);
+                }, 100);
+            }
+
+            // Function to check and update scroll arrow visibility
+            function updateScrollArrows(gridId) {
+                const grid = document.getElementById(gridId);
+                if (!grid) return;
+                
+                const container = grid.parentElement;
+                const leftArrow = container.querySelector('.scroll-left');
+                const rightArrow = container.querySelector('.scroll-right');
+                
+                if (!leftArrow || !rightArrow) return;
+                
+                // Check if content is scrollable
+                const isScrollable = grid.scrollWidth > grid.clientWidth;
+                
+                if (!isScrollable) {
+                    leftArrow.style.display = 'none';
+                    rightArrow.style.display = 'none';
+                    return;
+                }
+                
+                // Show/hide arrows based on scroll position
+                const scrollLeft = grid.scrollLeft;
+                const maxScroll = grid.scrollWidth - grid.clientWidth;
+                
+                leftArrow.style.display = scrollLeft > 0 ? 'flex' : 'none';
+                rightArrow.style.display = scrollLeft < maxScroll - 5 ? 'flex' : 'none';
+            }
+
+            // Initialize scroll arrow functionality
+            function initScrollArrows() {
+                console.log('🎯 Initializing scroll arrows...');
+                
+                // Remove any existing listeners by cloning elements
+                const arrows = document.querySelectorAll('.scroll-arrow');
+                console.log('🎯 Found', arrows.length, 'scroll arrows');
+                
+                arrows.forEach((arrow, index) => {
+                    const targetId = arrow.dataset.target;
+                    console.log(`🎯 Arrow ${index}: target = ${targetId}, classes = ${arrow.className}`);
+                    
+                    // Clone to remove old listeners
+                    const newArrow = arrow.cloneNode(true);
+                    arrow.parentNode.replaceChild(newArrow, arrow);
+                    
+                    newArrow.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log('🎯 Arrow clicked! Target:', targetId);
+                        const grid = document.getElementById(targetId);
+                        if (!grid) {
+                            console.error('❌ Grid not found:', targetId);
+                            return;
+                        }
+                        
+                        const isLeft = this.classList.contains('scroll-left');
+                        const scrollAmount = grid.clientWidth * 0.8;
+                        
+                        console.log('🎯 Scrolling', isLeft ? 'left' : 'right', 'by', scrollAmount, 'px');
+                        
+                        grid.scrollBy({
+                            left: isLeft ? -scrollAmount : scrollAmount,
+                            behavior: 'smooth'
+                        });
+                        
+                        // Update arrow visibility after scroll animation
+                        setTimeout(() => updateScrollArrows(targetId), 300);
+                    });
+                });
+                
+                // Add scroll event listeners to all grids
+                ['similar-venues-grid', 'nearby-venues-grid', 'viewing-venues-grid'].forEach(gridId => {
+                    const grid = document.getElementById(gridId);
+                    if (grid) {
+                        grid.addEventListener('scroll', () => updateScrollArrows(gridId));
+                        console.log('🎯 Added scroll listener to:', gridId);
+                    }
+                });
             }
 
             // Helper function to render services with booking functionality
