@@ -1526,6 +1526,49 @@ router.get('/:id', async (req, res) => {
       availableSlotsRecordset
     ] = result.recordsets;
 
+    // Fetch vendor features (questionnaire)
+    const featuresRequest = new sql.Request(pool);
+    featuresRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const featuresResult = await featuresRequest.query(`
+      SELECT 
+        qc.CategoryName,
+        qc.CategoryIcon,
+        qf.FeatureName,
+        qf.FeatureIcon,
+        qc.DisplayOrder as CategoryOrder,
+        qf.DisplayOrder as FeatureOrder
+      FROM VendorFeatures vf
+      JOIN QuestionnaireFeatures qf ON vf.QuestionnaireFeatureID = qf.QuestionnaireFeatureID
+      JOIN QuestionnaireCategories qc ON qf.QuestionnaireCategoryID = qc.QuestionnaireCategoryID
+      WHERE vf.VendorProfileID = @VendorProfileID
+      ORDER BY qc.DisplayOrder, qf.DisplayOrder
+    `);
+
+    // Group features by category
+    const vendorFeatures = [];
+    const featuresByCategory = {};
+    
+    featuresResult.recordset.forEach(row => {
+      if (!featuresByCategory[row.CategoryName]) {
+        featuresByCategory[row.CategoryName] = {
+          categoryName: row.CategoryName,
+          categoryIcon: row.CategoryIcon,
+          categoryOrder: row.CategoryOrder,
+          features: []
+        };
+      }
+      featuresByCategory[row.CategoryName].features.push({
+        featureName: row.FeatureName,
+        featureIcon: row.FeatureIcon
+      });
+    });
+
+    // Convert to array and sort by category order
+    Object.values(featuresByCategory).forEach(category => {
+      vendorFeatures.push(category);
+    });
+    vendorFeatures.sort((a, b) => a.categoryOrder - b.categoryOrder);
+
     const vendorDetails = {
       profile: {
         ...profileRecordset[0],
@@ -1540,6 +1583,7 @@ router.get('/:id', async (req, res) => {
       businessHours: businessHoursRecordset,
       images: imagesRecordset,
       categoryAnswers: categoryAnswersRecordset,
+      vendorFeatures: vendorFeatures,
       isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
       availableSlots: availableSlotsRecordset
     };
@@ -2229,7 +2273,6 @@ router.get('/:id/selected-services', async (req, res) => {
         vss.VendorPrice,
         vss.VendorDescription,
         vss.VendorDurationMinutes,
-        vss.ImageURL,
         vss.CreatedAt,
         vss.UpdatedAt
       FROM VendorSelectedServices vss
