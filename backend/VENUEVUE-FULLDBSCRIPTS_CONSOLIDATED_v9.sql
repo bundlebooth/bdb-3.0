@@ -2954,27 +2954,28 @@ BEGIN
     -- Vendor categories (recordset 2)
     SELECT Category FROM VendorCategories WHERE VendorProfileID = @VendorProfileID ORDER BY Category;
     
-    -- Services and packages (recordset 3) - Query through ServiceCategories
+    -- Services and packages (recordset 3) - Query from VendorSelectedServices
     SELECT 
-        s.ServiceID,
-        s.Name AS ServiceName,
-        s.Name,
-        s.Description,
-        s.Price,
-        s.DurationMinutes,
-        s.MinDuration,
-        s.MaxAttendees,
-        s.RequiresDeposit,
-        s.DepositPercentage,
-        s.CancellationPolicy,
-        s.IsActive,
-        sc.Name AS CategoryName,
-        sc.CategoryID,
-        (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS PrimaryImage
-    FROM ServiceCategories sc
-    JOIN Services s ON sc.CategoryID = s.CategoryID
-    WHERE sc.VendorProfileID = @VendorProfileID AND s.IsActive = 1
-    ORDER BY sc.DisplayOrder, sc.Name, s.Name;
+        vss.VendorSelectedServiceID AS ServiceID,
+        ps.ServiceName,
+        ps.ServiceName AS Name,
+        COALESCE(vss.VendorDescription, ps.ServiceDescription) AS Description,
+        vss.VendorPrice AS Price,
+        COALESCE(vss.VendorDurationMinutes, ps.DefaultDurationMinutes) AS DurationMinutes,
+        0 AS MinDuration,
+        0 AS MaxAttendees,
+        0 AS RequiresDeposit,
+        0 AS DepositPercentage,
+        '' AS CancellationPolicy,
+        vss.IsActive,
+        ps.Category AS CategoryName,
+        0 AS CategoryID,
+        vss.ImageURL AS PrimaryImage,
+        vss.ImageURL
+    FROM VendorSelectedServices vss
+    JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+    WHERE vss.VendorProfileID = @VendorProfileID AND vss.IsActive = 1 AND ps.IsActive = 1
+    ORDER BY ps.Category, ps.DisplayOrder, ps.ServiceName;
     
     -- Vendor portfolio (recordset 4)
     SELECT PortfolioID, Title, Description, ImageURL, ProjectDate, DisplayOrder
@@ -6578,6 +6579,7 @@ BEGIN
         vss.VendorPrice,
         vss.VendorDurationMinutes,
         vss.VendorDescription,
+        vss.ImageURL,
         vss.VendorPrice AS FinalPrice,
         COALESCE(vss.VendorDurationMinutes, ps.DefaultDurationMinutes) AS FinalDurationMinutes,
         COALESCE(vss.VendorDescription, ps.ServiceDescription) AS FinalDescription
