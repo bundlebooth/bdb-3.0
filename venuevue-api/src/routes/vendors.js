@@ -2231,10 +2231,11 @@ router.get('/:id/selected-services', async (req, res) => {
         vss.VendorDurationMinutes,
         vss.ImageURL,
         vss.CreatedAt,
-        vss.UpdatedAt
+        vss.UpdatedAt,
+        vss.IsActive
       FROM VendorSelectedServices vss
       INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-      WHERE vss.VendorProfileID = @VendorProfileID
+      WHERE vss.VendorProfileID = @VendorProfileID AND vss.IsActive = 1
       ORDER BY ps.Category, ps.DisplayOrder, ps.ServiceName
     `);
     
@@ -2248,6 +2249,7 @@ router.get('/:id/selected-services', async (req, res) => {
           SELECT 
             s.LinkedPredefinedServiceID AS PredefinedServiceID,
             ps.ServiceName,
+            ps.ServiceDescription as PredefinedDescription,
             ps.Category,
             ps.DefaultDurationMinutes,
             s.Description AS VendorDescription,
@@ -2258,10 +2260,15 @@ router.get('/:id/selected-services', async (req, res) => {
               WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'per_attendee' THEN s.PricePerPerson
               ELSE s.Price
             END AS VendorPrice,
-            COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes
+            COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes,
+            s.CreatedAt,
+            s.UpdatedAt,
+            s.IsActive
           FROM Services s
           LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
-          WHERE s.VendorProfileID = @VendorProfileID AND s.LinkedPredefinedServiceID IS NOT NULL
+          WHERE s.VendorProfileID = @VendorProfileID 
+            AND s.LinkedPredefinedServiceID IS NOT NULL 
+            AND s.IsActive = 1
           ORDER BY ps.Category, ps.ServiceName
         `);
         rows = fbRes.recordset || [];
@@ -2278,7 +2285,132 @@ router.get('/:id/selected-services', async (req, res) => {
     console.error('Error fetching vendor selected services:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Failed to fetch vendor selected services' 
+      message: 'Failed to fetch vendor selected services',
+      error: error.message,
+      details: error.toString()
+    });
+  }
+});
+
+// Save or update vendor's selected services
+router.post('/:id/selected-services', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    
+    if (!vendorProfileId) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Vendor not found' 
+      });
+    }
+
+    const { selectedServices } = req.body;
+
+    if (!selectedServices || !Array.isArray(selectedServices)) {
+      return res.status(400).json({
+        success: false,
+        message: 'selectedServices array is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Delete existing selected services
+    const deleteRequest = new sql.Request(pool);
+    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    await deleteRequest.query(`
+      DELETE FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    // Insert new selected services
+    for (const service of selectedServices) {
+      const insertRequest = new sql.Request(pool);
+      insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      insertRequest.input('PredefinedServiceID', sql.Int, service.predefinedServiceId || service.PredefinedServiceID);
+      insertRequest.input('VendorPrice', sql.Decimal(10, 2), service.vendorPrice || service.price || 0);
+      insertRequest.input('VendorDescription', sql.NVarChar, service.vendorDescription || service.description || null);
+      insertRequest.input('VendorDurationMinutes', sql.Int, service.vendorDurationMinutes || service.durationMinutes || null);
+      insertRequest.input('ImageURL', sql.NVarChar, service.imageURL || service.ImageURL || null);
+      
+      await insertRequest.query(`
+        INSERT INTO VendorSelectedServices 
+        (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, ImageURL, IsActive, CreatedAt, UpdatedAt)
+        VALUES 
+        (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, @ImageURL, 1, GETDATE(), GETDATE())
+      `);
+    }
+
+    res.json({
+      success: true,
+      message: 'Selected services saved successfully',
+      count: selectedServices.length
+    });
+
+  } catch (error) {
+    console.error('Error saving vendor selected services:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save vendor selected services',
+      error: error.message
+    });
+  }
+});
+
+// Update a single selected service (useful for updating just the image)
+router.put('/:id/selected-services/:serviceId', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    
+    if (!vendorProfileId) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Vendor not found' 
+      });
+    }
+
+    const { serviceId } = req.params;
+    const { vendorPrice, vendorDescription, vendorDurationMinutes, imageURL } = req.body;
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    request.input('VendorSelectedServiceID', sql.Int, serviceId);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('VendorPrice', sql.Decimal(10, 2), vendorPrice);
+    request.input('VendorDescription', sql.NVarChar, vendorDescription || null);
+    request.input('VendorDurationMinutes', sql.Int, vendorDurationMinutes || null);
+    request.input('ImageURL', sql.NVarChar, imageURL || null);
+    
+    const result = await request.query(`
+      UPDATE VendorSelectedServices
+      SET 
+        VendorPrice = ISNULL(@VendorPrice, VendorPrice),
+        VendorDescription = @VendorDescription,
+        VendorDurationMinutes = @VendorDurationMinutes,
+        ImageURL = @ImageURL,
+        UpdatedAt = GETDATE()
+      WHERE VendorSelectedServiceID = @VendorSelectedServiceID
+        AND VendorProfileID = @VendorProfileID
+    `);
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Selected service not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Selected service updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error updating vendor selected service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update vendor selected service',
+      error: error.message
     });
   }
 });
