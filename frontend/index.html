@@ -24075,7 +24075,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     }
                     console.log('🖼️ Final processed image URL:', serviceImage);
                     
-                    // Determine icon based on category or service name
+                    // Determine icon and gradient based on category or service name
                     const getCategoryIcon = () => {
                         const catLower = (categoryName || '').toLowerCase();
                         const nameLower = (serviceName || '').toLowerCase();
@@ -24088,6 +24088,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (catLower.includes('decor') || catLower.includes('floral') || nameLower.includes('decor') || nameLower.includes('flower')) return 'fa-leaf';
                         if (catLower.includes('entertainment') || nameLower.includes('perform')) return 'fa-masks-theater';
                         if (catLower.includes('transport') || nameLower.includes('transport')) return 'fa-car';
+                        if (catLower.includes('beauty') || catLower.includes('wellness') || nameLower.includes('makeup') || nameLower.includes('spa')) return 'fa-spa';
                         return 'fa-concierge-bell';
                     };
                     
@@ -24118,135 +24119,52 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                     }
                     
-                    // Build feature list items
-                    let featuresList = '';
-                    if (serviceDescription) {
-                        // Split description by newlines or bullet points
-                        const descLines = serviceDescription.split(/\n|•/).filter(line => line.trim());
-                        descLines.forEach(line => {
-                            if (line.trim()) {
-                                featuresList += `<li style="margin-bottom: 0.5rem; color: var(--text); line-height: 1.6; display: flex; align-items: flex-start; gap: 0.5rem;">
-                                    <i class="fas fa-check-circle" style="color: var(--primary); margin-top: 0.25rem; font-size: 0.85rem;"></i>
-                                    <span>${line.trim()}</span>
-                                </li>`;
-                            }
-                        });
-                    }
-                    
-                    // Build additional details with icons
-                    let detailsList = '';
-                    if (durationText) {
-                        detailsList += `
-                            <li style="margin-bottom: 0.65rem; color: var(--text); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
-                                <i class="fas fa-clock" style="color: var(--primary); margin-top: 0.25rem;"></i>
-                                <span><strong>Duration:</strong> ${durationText}${minDuration > 0 ? ` (minimum ${minDuration} min)` : ''}</span>
-                            </li>`;
-                    }
-                    if (servicePrice > 0) {
-                        detailsList += `
-                            <li style="margin-bottom: 0.65rem; color: var(--text); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
-                                <i class="fas fa-tag" style="color: var(--primary); margin-top: 0.25rem;"></i>
-                                <span><strong>Base Rate:</strong> $${parseFloat(servicePrice).toFixed(2)}</span>
-                            </li>`;
-                    }
-                    if (serviceCapacity > 0) {
-                        detailsList += `
-                            <li style="margin-bottom: 0.65rem; color: var(--text); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
-                                <i class="fas fa-users" style="color: var(--primary); margin-top: 0.25rem;"></i>
-                                <span><strong>Maximum Capacity:</strong> ${serviceCapacity} people</span>
-                            </li>`;
-                    }
-                    if (requiresDeposit && depositPercentage > 0) {
-                        detailsList += `
-                            <li style="margin-bottom: 0.65rem; color: var(--text); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
-                                <i class="fas fa-receipt" style="color: var(--accent); margin-top: 0.25rem;"></i>
-                                <span><strong>Deposit Required:</strong> ${depositPercentage}% upfront</span>
-                            </li>`;
-                    }
-                    if (cancellationPolicy) {
-                        detailsList += `
-                            <li style="margin-bottom: 0.65rem; color: var(--text); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
-                                <i class="fas fa-info-circle" style="color: var(--text-light); margin-top: 0.25rem;"></i>
-                                <span><strong>Cancellation:</strong> ${cancellationPolicy}</span>
-                            </li>`;
-                    }
-                    
                     servicesHtml += `
-                        <div class="service-package-card" style="background: var(--surface-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"
-                             onmouseover="this.style.boxShadow='var(--shadow)'; this.style.borderColor='var(--primary)'" 
-                             onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.05)'; this.style.borderColor='var(--border)'">
+                        <div class="service-package-card" style="background: var(--surface-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 0.75rem; transition: all 0.2s;"
+                             onmouseover="this.style.borderColor='var(--primary)'" 
+                             onmouseout="this.style.borderColor='var(--border)'">
                             
-                            <div style="display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap;">
+                            <div style="display: flex; gap: 1rem; align-items: center;">
                                 <!-- Service Image -->
-                                <div style="flex-shrink: 0; width: 160px; height: 160px; overflow: hidden; border-radius: var(--radius); background: linear-gradient(135deg, var(--secondary) 0%, #f0f4f8 100%); position: relative; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;">
+                                <div style="flex-shrink: 0; width: 80px; height: 80px; overflow: hidden; border-radius: var(--radius); background: var(--secondary); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;">
                                     ${serviceImage ? 
                                         `<img src="${serviceImage}" 
                                               alt="${serviceName}" 
-                                              style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;" 
-                                              onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:var(--primary);font-size:3rem;flex-direction:column;text-align:center;padding:1rem;background:linear-gradient(135deg, var(--secondary) 0%, #f0f4f8 100%)\\'><i class=\\'fas ${serviceIcon}\\'></i></div>'"
+                                              style="width: 100%; height: 100%; object-fit: cover;" 
+                                              onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\\'fas ${serviceIcon}\\' style=\\'color:var(--primary);font-size:1.5rem;\\'></i>'"
                                               onload="console.log('✅ Service image loaded')">` 
                                         : 
-                                        `<div style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; color: var(--primary); font-size: 3rem;">
-                                            <i class="fas ${serviceIcon}"></i>
-                                        </div>`
+                                        `<i class="fas ${serviceIcon}" style="color: var(--primary); font-size: 1.5rem;"></i>`
                                     }
                                 </div>
                                 
                                 <!-- Service Details -->
-                                <div style="flex: 1; min-width: 280px;">
-                                    <!-- Header -->
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; gap: 1rem;">
-                                        <div style="flex: 1;">
-                                            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin: 0 0 0.5rem 0;">${serviceName}</h3>
-                                            ${categoryName ? `
-                                                <span style="display: inline-block; font-size: 0.75rem; padding: 0.25rem 0.625rem; background: var(--secondary); color: var(--primary); border-radius: 6px; font-weight: 500;">
-                                                    ${categoryName}
-                                                </span>
-                                            ` : ''}
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                                        <div style="flex: 1; min-width: 0;">
+                                            <h3 style="font-size: 1rem; font-weight: 600; color: var(--text); margin: 0 0 0.25rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${serviceName}</h3>
+                                            <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.8rem; color: var(--text-light);">
+                                                ${categoryName ? `<span>${categoryName}</span>` : ''}
+                                                ${durationText ? `<span><i class="fas fa-clock" style="margin-right: 0.25rem;"></i>${durationText}</span>` : ''}
+                                            </div>
                                         </div>
                                         <div style="text-align: right; flex-shrink: 0;">
-                                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); line-height: 1;">${priceDisplay}</div>
-                                            ${priceSubtext ? `<div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">${priceSubtext}</div>` : ''}
+                                            <div style="font-size: 1.15rem; font-weight: 700; color: var(--primary); white-space: nowrap;">${priceDisplay}</div>
                                         </div>
                                     </div>
-                                    
-                                    <!-- Features List -->
-                                    ${featuresList ? `
-                                    <ul style="list-style: none; margin: 0 0 1rem 0; padding: 0; line-height: 1.6;">
-                                        ${featuresList}
-                                    </ul>
-                                    ` : ''}
-                                    
-                                    <!-- Collapsible Details Section -->
-                                    ${detailsList ? `
-                                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
-                                        <div style="margin-bottom: 0.75rem;">
-                                            <button 
-                                                onclick="const details = this.parentElement.nextElementSibling; const isHidden = details.style.display === 'none'; details.style.display = isHidden ? 'block' : 'none'; this.innerHTML = isHidden ? '<i class=\\'fas fa-chevron-up\\'></i> Less details' : '<i class=\\'fas fa-chevron-down\\'></i> More details'"
-                                                style="background: none; border: none; color: var(--primary); font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 0.5rem; transition: opacity 0.2s;"
-                                                onmouseover="this.style.opacity='0.7'"
-                                                onmouseout="this.style.opacity='1'">
-                                                <i class="fas fa-chevron-down"></i> More details
-                                            </button>
-                                        </div>
-                                        <ul style="list-style: none; margin: 0; padding: 0; display: none;">
-                                            ${detailsList}
-                                        </ul>
-                                    </div>
-                                    ` : ''}
-                                    
-                                    <!-- Action Button -->
-                                    <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
-                                        <button class="btn btn-primary add-to-booking-btn" 
-                                                data-service-id="${serviceId}" 
-                                                data-service-name="${serviceName}" 
-                                                data-service-price="${servicePrice || 0}"
-                                                style="padding: 0.65rem 1.5rem; font-size: 0.9rem; font-weight: 600; background: var(--accent); border: none; color: white; border-radius: var(--radius); cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(255,107,107,0.2);"
-                                                onmouseover="this.style.background='#ff5252'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(255,107,107,0.3)'" 
-                                                onmouseout="this.style.background='var(--accent)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(255,107,107,0.2)'">
-                                            <i class="fas fa-envelope" style="margin-right: 0.5rem;"></i>Request Info
-                                        </button>
-                                    </div>
+                                </div>
+                                
+                                <!-- Action Button -->
+                                <div style="flex-shrink: 0;">
+                                    <button class="btn btn-primary add-to-booking-btn" 
+                                            data-service-id="${serviceId}" 
+                                            data-service-name="${serviceName}" 
+                                            data-service-price="${servicePrice || 0}"
+                                            style="padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 500; background: var(--primary); border: none; color: white; border-radius: var(--radius); cursor: pointer; transition: opacity 0.2s; white-space: nowrap;"
+                                            onmouseover="this.style.opacity='0.9'" 
+                                            onmouseout="this.style.opacity='1'">
+                                        <i class="fas fa-envelope" style="margin-right: 0.35rem;"></i>Request
+                                    </button>
                                 </div>
                             </div>
                         </div>
