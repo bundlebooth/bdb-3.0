@@ -6194,14 +6194,6 @@
                                 </div>
                             </div>
                             
-                            <!-- Category Services Section -->
-                            <div id="category-services-section" class="services-section" style="display: none;">
-                                <h2 class="services-title">Our Specialties</h2>
-                                <div id="category-answers-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                                    <!-- Category answers will be populated dynamically -->
-                                </div>
-                            </div>
-                            
                             <!-- FAQ Section -->
                             <div id="faq-section" class="services-section" style="display: none;">
                                 <h2 class="services-title">Frequently Asked Questions</h2>
@@ -13588,14 +13580,18 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (data.faqs && data.faqs.length > 0) {
                     html += `
                         <div class="summary-section">
-                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
-                                ❓ Frequently Asked Questions
+                            <h5 style="color: var(--text); margin-bottom: 1rem; font-weight: 600; font-size: 1.05rem;">
+                                Frequently Asked Questions
                             </h5>
-                            <div style="display: grid; gap: 1rem;">
-                                ${data.faqs.map(faq => `
-                                    <div style="padding: 1rem; background-color: white; border-radius: var(--radius); border: 1px solid var(--border);">
-                                        <div style="font-weight: 600; margin-bottom: 0.5rem;">Q: ${faq.Question}</div>
-                                        <div>A: ${faq.Answer}</div>
+                            <div style="padding: 0 0.5rem;">
+                                ${data.faqs.map((faq, idx) => `
+                                    <div style="padding: 1.25rem 0; ${idx < data.faqs.length - 1 ? 'border-bottom: 1px solid #e5e7eb;' : ''}">
+                                        <div style="font-weight: 600; color: var(--text); font-size: 0.95rem; margin-bottom: 0.5rem;">
+                                            ${faq.Question}
+                                        </div>
+                                        <div style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6;">
+                                            ${faq.Answer}
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -20414,14 +20410,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (data.faqs && data.faqs.length > 0) {
                     html += `
                         <div class="summary-section">
-                            <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
-                                ❓ Frequently Asked Questions
+                            <h5 style="color: var(--text); margin-bottom: 1rem; font-weight: 600; font-size: 1.05rem;">
+                                Frequently Asked Questions
                             </h5>
-                            <div style="display: grid; gap: 1rem;">
-                                ${data.faqs.map(faq => `
-                                    <div style="padding: 1rem; background-color: white; border-radius: var(--radius); border: 1px solid var(--border);">
-                                        <div style="font-weight: 600; margin-bottom: 0.5rem;">Q: ${faq.Question}</div>
-                                        <div>A: ${faq.Answer}</div>
+                            <div style="padding: 0 0.5rem;">
+                                ${data.faqs.map((faq, idx) => `
+                                    <div style="padding: 1.25rem 0; ${idx < data.faqs.length - 1 ? 'border-bottom: 1px solid #e5e7eb;' : ''}">
+                                        <div style="font-weight: 600; color: var(--text); font-size: 0.95rem; margin-bottom: 0.5rem;">
+                                            ${faq.Question}
+                                        </div>
+                                        <div style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6;">
+                                            ${faq.Answer}
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
@@ -24140,16 +24140,26 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 
                                 <!-- Service Details -->
                                 <div style="flex: 1; min-width: 0;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
                                         <div style="flex: 1; min-width: 0;">
-                                            <h3 style="font-size: 1rem; font-weight: 600; color: var(--text); margin: 0 0 0.25rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${serviceName}</h3>
-                                            <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.8rem; color: var(--text-light);">
-                                                ${categoryName ? `<span>${categoryName}</span>` : ''}
+                                            <h3 style="font-size: 1rem; font-weight: 600; color: var(--text); margin: 0 0 0.35rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${serviceName}</h3>
+                                            
+                                            <!-- First info row: Category & Duration -->
+                                            <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.25rem;">
+                                                ${categoryName ? `<span><i class="fas fa-tag" style="margin-right: 0.25rem;"></i>${categoryName}</span>` : ''}
                                                 ${durationText ? `<span><i class="fas fa-clock" style="margin-right: 0.25rem;"></i>${durationText}</span>` : ''}
+                                            </div>
+                                            
+                                            <!-- Second info row: Capacity, Deposit, etc -->
+                                            <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; color: var(--text-light);">
+                                                ${serviceCapacity > 0 ? `<span><i class="fas fa-users" style="margin-right: 0.25rem;"></i>Up to ${serviceCapacity}</span>` : ''}
+                                                ${requiresDeposit && depositPercentage > 0 ? `<span><i class="fas fa-receipt" style="margin-right: 0.25rem; color: var(--accent);"></i>${depositPercentage}% deposit</span>` : ''}
+                                                ${servicePrice > 0 ? `<span><i class="fas fa-dollar-sign" style="margin-right: 0.25rem;"></i>$${parseFloat(servicePrice).toFixed(2)}</span>` : ''}
                                             </div>
                                         </div>
                                         <div style="text-align: right; flex-shrink: 0;">
                                             <div style="font-size: 1.15rem; font-weight: 700; color: var(--primary); white-space: nowrap;">${priceDisplay}</div>
+                                            ${priceSubtext ? `<div style="font-size: 0.7rem; color: var(--text-light); margin-top: 0.15rem;">${priceSubtext}</div>` : ''}
                                         </div>
                                     </div>
                                 </div>
@@ -24321,20 +24331,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return answersHtml;
                 }
 
-                // Helper function to render FAQs
+                // Helper function to render FAQs - Simple and Clean
                 function renderFAQs(faqs) {
                     if (!faqs || faqs.length === 0) return '';
                     
                     let faqHtml = '';
                     faqs.forEach((faq, index) => {
                         faqHtml += `
-                            <div style="background-color: white; padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 1rem;">
-                                <h4 style="margin-bottom: 0.75rem; color: var(--primary); font-weight: 600;">
+                            <div style="padding: 1.25rem 0; ${index < faqs.length - 1 ? 'border-bottom: 1px solid #e5e7eb;' : ''}">
+                                <div style="font-weight: 600; color: var(--text); font-size: 0.95rem; margin-bottom: 0.5rem;">
                                     ${faq.Question}
-                                </h4>
-                                <p style="line-height: 1.6; color: var(--text);">
+                                </div>
+                                <div style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6;">
                                     ${faq.Answer}
-                                </p>
+                                </div>
                             </div>
                         `;
                     });
@@ -24435,21 +24445,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 return '';
                             })()}
                             
-                            ${categoryAnswers.length > 0 ? `
-                            <!-- Category Services Section -->
-                            <div style="margin-bottom: 2rem;">
-                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Our Specialties</h2>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                                    ${renderCategoryAnswers(categoryAnswers)}
-                                </div>
-                            </div>
-                            ` : ''}
                             
                             ${faqs.length > 0 ? `
                             <!-- FAQ Section -->
                             <div style="margin-bottom: 2rem;">
-                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Frequently Asked Questions</h2>
-                                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                                <h2 style="font-size: 1.15rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Frequently Asked Questions</h2>
+                                <div style="padding: 0 0.5rem;">
                                     ${renderFAQs(faqs)}
                                 </div>
                             </div>
