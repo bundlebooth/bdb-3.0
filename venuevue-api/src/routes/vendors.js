@@ -2634,13 +2634,17 @@ router.post('/setup/step3-services', async (req, res) => {
 
       // Insert new selected predefined services
       for (const selectedService of selectedPredefinedServices) {
+        const imageUrlValue = selectedService.imageURL || null;
+        console.log(`[BACKEND] Inserting service: ${selectedService.name || selectedService.predefinedServiceId}`);
+        console.log(`[BACKEND]   - imageURL received:`, imageUrlValue);
+        
         const insertSelectedRequest = new sql.Request(pool);
         insertSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         insertSelectedRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
         insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
         insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
         insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
-        insertSelectedRequest.input('ImageURL', sql.NVarChar, selectedService.imageURL || null);
+        insertSelectedRequest.input('ImageURL', sql.NVarChar, imageUrlValue);
         
         await insertSelectedRequest.query(`
           INSERT INTO VendorSelectedServices 
@@ -2648,6 +2652,8 @@ router.post('/setup/step3-services', async (req, res) => {
           VALUES 
           (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, @ImageURL, GETDATE())
         `);
+        
+        console.log(`[BACKEND]   - Inserted successfully with ImageURL:`, imageUrlValue);
       }
     }
     
