@@ -12313,6 +12313,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const saveBtn = document.getElementById('vendor-settings-save-services');
 
                 if (!loadingEl || !containerEl || !gridEl) return;
+                
+                // Validate vendorProfileId
+                if (!vendorProfileId) {
+                    console.error('loadVendorServicesSettings: vendorProfileId is required');
+                    if (loadingEl) loadingEl.style.display = 'none';
+                    if (containerEl) containerEl.innerHTML = '<p style="color: var(--accent);">Unable to load services: Vendor profile ID not found.</p>';
+                    return;
+                }
 
                 // State for settings
                 window.vendorSettingsState = window.vendorSettingsState || { selectedPredefinedServices: [] };
@@ -12593,6 +12601,40 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 imagePreview.style.display = 'block';
                                 imagePlaceholder.style.display = 'none';
                                 
+                                // Sync to state immediately if service already exists in state
+                                const serviceId = card.dataset.serviceId;
+                                console.log('=== IMAGE UPLOADED ===');
+                                console.log('Image URL:', data.imageUrl);
+                                console.log('Card dataset.serviceId:', serviceId);
+                                console.log('Card dataset.imageUrl set to:', card.dataset.imageUrl);
+                                
+                                if (serviceId && window.vendorSettingsState?.selectedPredefinedServices) {
+                                    const serviceIndex = window.vendorSettingsState.selectedPredefinedServices.findIndex(
+                                        s => String(s.id) === String(serviceId)
+                                    );
+                                    console.log('Found service at index:', serviceIndex);
+                                    if (serviceIndex !== -1) {
+                                        console.log('BEFORE UPDATE - State imageURL:', window.vendorSettingsState.selectedPredefinedServices[serviceIndex].imageURL);
+                                        window.vendorSettingsState.selectedPredefinedServices[serviceIndex].imageURL = data.imageUrl;
+                                        console.log('AFTER UPDATE - State imageURL:', window.vendorSettingsState.selectedPredefinedServices[serviceIndex].imageURL);
+                                        console.log('Updated state imageURL for service:', window.vendorSettingsState.selectedPredefinedServices[serviceIndex].name);
+                                        
+                                        // Verify it persisted
+                                        setTimeout(() => {
+                                            const checkIndex = window.vendorSettingsState.selectedPredefinedServices.findIndex(
+                                                s => String(s.id) === String(serviceId)
+                                            );
+                                            if (checkIndex !== -1) {
+                                                console.log('VERIFICATION (100ms later) - State imageURL:', window.vendorSettingsState.selectedPredefinedServices[checkIndex].imageURL);
+                                            }
+                                        }, 100);
+                                    } else {
+                                        console.warn('Service not found in state. Service will need to be re-added or state synced.');
+                                    }
+                                } else {
+                                    console.warn('State not ready or serviceId missing');
+                                }
+                                
                                 console.log('Image uploaded successfully:', data.imageUrl);
                             } else {
                                 throw new Error('Invalid response from server');
@@ -12652,6 +12694,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                 function addSettingsSelectedService(card, service) {
                     // ensure removed before add
                     removeSettingsSelectedService(service.id);
+                    
+                    // Read imageURL from card dataset if it exists (from preload or upload)
+                    const existingImageURL = card?.dataset?.imageUrl || null;
+                    console.log('=== addSettingsSelectedService CALLED ===');
+                    console.log('Service:', service.name);
+                    console.log('Card element:', card);
+                    console.log('Card.dataset.imageUrl:', card?.dataset?.imageUrl);
+                    console.log('ImageURL being set:', existingImageURL);
+                    console.trace('Call stack:');
+                    
                     const selectedService = {
                         id: service.id,
                         predefinedServiceId: service.id,
@@ -12664,6 +12716,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         vendorPrice: 0,
                         vendorDuration: service.defaultDuration || 60,
                         vendorDescription: '',
+                        imageURL: existingImageURL,
                         pricingModel: 'time_based',
                         baseDurationMinutes: service.defaultDuration || 60,
                         baseRate: null,
@@ -12734,9 +12787,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                         const minAttVal = minAttInput ? parseInt(minAttInput.value) : null;
                         const maxAttVal = maxAttInput ? parseInt(maxAttInput.value) : null;
                         const st = window.vendorSettingsState.selectedPredefinedServices[idx];
+                        const imageUrlFromCard = card.dataset.imageUrl || null;
+                        console.log('updateServiceData called for:', service.name);
+                        console.log('  - Reading imageURL from card.dataset.imageUrl:', imageUrlFromCard);
+                        console.log('  - Current state imageURL:', st.imageURL);
                         st.vendorPrice = priceValue;
                         st.vendorDuration = durationValue;
                         st.vendorDescription = descriptionValue;
+                        st.imageURL = imageUrlFromCard;
+                        console.log('  - Updated state imageURL to:', st.imageURL);
                         st.price = priceValue;
                         st.durationMinutes = durationValue;
                         st.description = descriptionValue;
@@ -12844,6 +12903,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                                             if (imagePlaceholder) {
                                                 imagePlaceholder.style.display = 'none';
                                             }
+                                            
+                                            // Sync imageURL to state immediately
+                                            const stateIdx = window.vendorSettingsState.selectedPredefinedServices.findIndex(
+                                                svc => svc.id === match.id
+                                            );
+                                            if (stateIdx !== -1) {
+                                                window.vendorSettingsState.selectedPredefinedServices[stateIdx].imageURL = s.ImageURL;
+                                                console.log('Preloaded imageURL for service:', match.name, s.ImageURL);
+                                            }
                                         }
                                         
                                         // Trigger updates to sync state/summary
@@ -12876,7 +12944,42 @@ document.addEventListener('DOMContentLoaded', async function() {
                         try {
                             const resolvedVendorId = vendorProfileId || (currentUser?.vendorProfileId) || (typeof getVendorProfileId === 'function' ? await getVendorProfileId() : null);
                             if (!resolvedVendorId) { alert('Cannot save: missing vendor profile ID'); return; }
+                            
+                            // CRITICAL: Sync all card data to state before saving
+                            const allServiceCards = gridEl.querySelectorAll('.predefined-service-card');
+                            console.log('Found', allServiceCards.length, 'service cards to sync');
+                            allServiceCards.forEach(card => {
+                                const serviceId = parseInt(card.dataset.serviceId);
+                                const imageUrl = card.dataset.imageUrl || null;
+                                if (serviceId && window.vendorSettingsState?.selectedPredefinedServices) {
+                                    const serviceIndex = window.vendorSettingsState.selectedPredefinedServices.findIndex(
+                                        s => s.id === serviceId
+                                    );
+                                    if (serviceIndex !== -1) {
+                                        // Service exists in state, update imageURL
+                                        window.vendorSettingsState.selectedPredefinedServices[serviceIndex].imageURL = imageUrl;
+                                        console.log(`Synced imageURL for service ${serviceId}:`, imageUrl);
+                                    } else {
+                                        // Service card exists but NOT in state - add it now!
+                                        console.warn(`Service ${serviceId} has a card but not in state. Adding it now...`);
+                                        const svc = (window.vendorSettingsAvailableServices || []).find(s => s.id === serviceId);
+                                        if (svc) {
+                                            addSettingsSelectedService(card, svc);
+                                            console.log(`Added service ${svc.name} to state with imageURL:`, imageUrl);
+                                        }
+                                    }
+                                }
+                            });
+                            
                             const selected = (window.vendorSettingsState.selectedPredefinedServices || []);
+                            
+                            // DEBUG: Log the state before saving
+                            console.log('=== SAVING SERVICES ===');
+                            console.log('Selected services state:', selected);
+                            selected.forEach((s, idx) => {
+                                console.log(`Service ${idx}: ${s.name}, imageURL:`, s.imageURL);
+                            });
+                            
                             // Derive service categories from current selection so Services have CategoryID
                             const serviceCategories = Array.from(new Set(selected.map(s => s.category).filter(Boolean)))
                                 .map((name, i) => ({ name, description: null, displayOrder: i }));
@@ -12888,6 +12991,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     name: s.name,
                                     description: s.vendorDescription || s.description || '',
                                     durationMinutes: s.vendorDuration || s.baseDurationMinutes || s.defaultDuration || 60,
+                                    imageURL: s.imageURL || null,
                                     pricingModel: s.pricingModel || 'time_based',
                                     baseDurationMinutes: s.baseDurationMinutes || s.vendorDuration || s.defaultDuration || 60,
                                     baseRate: s.baseRate ?? null,
@@ -12903,6 +13007,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 services: selected.map(s => ({
                                     name: s.name,
                                     description: s.vendorDescription || s.description || '',
+                                    imageURL: s.imageURL || null,
                                     // Pricing model is normalized server-side
                                     pricingModel: s.pricingModel || 'time_based',
                                     baseDurationMinutes: s.baseDurationMinutes || s.vendorDuration || s.defaultDuration || 60,
@@ -12920,6 +13025,16 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     categoryName: s.category || null
                                 }))
                             };
+                            
+                            // DEBUG: Log the actual payload being sent
+                            console.log('=== PAYLOAD TO BACKEND ===');
+                            console.log('Full body:', body);
+                            console.log('Services with imageURL:');
+                            body.selectedPredefinedServices.forEach(s => {
+                                console.log(`  - ${s.name}: ${s.imageURL || 'NULL'}`);
+                            });
+                            console.log('selectedPredefinedServices imageURLs:', body.selectedPredefinedServices.map(s => ({ name: s.name, imageURL: s.imageURL })));
+                            
                             const resp = await fetch(`${API_BASE_URL}/vendors/setup/step3-services`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
@@ -23916,8 +24031,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Helper function to render services with booking functionality
             function renderServices(services) {
                 console.log('🔍 renderServices called with:', services);
-                console.log('🔍 Services type:', typeof services);
-                console.log('🔍 Services is array:', Array.isArray(services));
                 
                 if (!services || services.length === 0) {
                     console.log('🔍 No services found or empty array');
@@ -23927,52 +24040,214 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 console.log('🔍 Rendering', services.length, 'services');
                 let servicesHtml = '';
                 services.forEach((service, index) => {
-                    console.log(`🔍 Service ${index}:`, service);
-                    console.log(`🔍 Service properties:`, Object.keys(service));
+                    console.log('🔍 Service data:', service);
                     
-                    // Try different possible property names from database
-                    const serviceName = service.ServiceName || service.Name || service.service_name || service.name || 'Unnamed Service';
-                    const servicePrice = service.Price || service.price || service.BasePrice || service.base_price || 0;
-                    const serviceDescription = service.Description || service.description || service.ServiceDescription || service.service_description || '';
-                    const serviceDuration = service.Duration || service.duration || service.EstimatedDuration || service.estimated_duration || '';
-                    const serviceCapacity = service.Capacity || service.capacity || service.MaxCapacity || service.max_capacity || '';
-                    const serviceId = service.ServiceID || service.ID || service.id || service.service_id || index;
+                    // Map service properties from database
+                    const serviceName = service.ServiceName || service.Name || 'Unnamed Service';
+                    const servicePrice = service.Price || 0;
+                    const serviceDescription = service.Description || '';
+                    const serviceDuration = service.DurationMinutes || 0;
+                    const minDuration = service.MinDuration || 0;
+                    const serviceCapacity = service.MaxAttendees || 0;
+                    const serviceId = service.ServiceID || index;
+                    const categoryName = service.CategoryName || '';
+                    const requiresDeposit = service.RequiresDeposit || false;
+                    const depositPercentage = service.DepositPercentage || 0;
+                    const cancellationPolicy = service.CancellationPolicy || '';
+                    const isActive = service.IsActive !== false;
                     
-                    console.log(`🔍 Mapped values - Name: ${serviceName}, Price: ${servicePrice}, Description: ${serviceDescription}`);
+                    // Handle image URL - check multiple possible fields and ensure proper URL format
+                    // Debug: Log all service fields to identify image field
+                    console.log('📦 Service data keys:', Object.keys(service));
+                    console.log('📦 Full service object:', service);
                     
-                    const price = servicePrice ? `$${parseFloat(servicePrice).toFixed(2)}` : 'Contact for pricing';
-                    const duration = serviceDuration ? ` • ${serviceDuration}` : '';
-                    const capacity = serviceCapacity ? ` • Up to ${serviceCapacity} people` : '';
+                    let serviceImage = service.PrimaryImage || service.ImageURL || service.image_url || service.primaryimage || '';
+                    console.log('🖼️ Original image URL:', serviceImage);
+                    
+                    // If image URL doesn't start with http, prepend API base or assume it's a path
+                    if (serviceImage && !serviceImage.startsWith('http')) {
+                        // Check if it's a Cloudinary URL or local path
+                        if (serviceImage.includes('cloudinary')) {
+                            serviceImage = 'https://' + serviceImage.replace(/^\/+/, '');
+                        } else if (serviceImage.startsWith('/')) {
+                            serviceImage = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '') + serviceImage;
+                        }
+                    }
+                    console.log('🖼️ Final processed image URL:', serviceImage);
+                    
+                    // Determine icon based on category or service name
+                    const getCategoryIcon = () => {
+                        const catLower = (categoryName || '').toLowerCase();
+                        const nameLower = (serviceName || '').toLowerCase();
+                        
+                        if (catLower.includes('photo') || nameLower.includes('photo')) return 'fa-camera';
+                        if (catLower.includes('video') || nameLower.includes('video')) return 'fa-video';
+                        if (catLower.includes('music') || catLower.includes('dj') || nameLower.includes('music') || nameLower.includes('dj')) return 'fa-music';
+                        if (catLower.includes('cater') || nameLower.includes('food') || nameLower.includes('cater')) return 'fa-utensils';
+                        if (catLower.includes('venue') || nameLower.includes('venue') || nameLower.includes('space')) return 'fa-building';
+                        if (catLower.includes('decor') || catLower.includes('floral') || nameLower.includes('decor') || nameLower.includes('flower')) return 'fa-leaf';
+                        if (catLower.includes('entertainment') || nameLower.includes('perform')) return 'fa-masks-theater';
+                        if (catLower.includes('transport') || nameLower.includes('transport')) return 'fa-car';
+                        return 'fa-concierge-bell';
+                    };
+                    
+                    const serviceIcon = getCategoryIcon();
+                    
+                    // Format pricing with more detail
+                    let priceDisplay = '';
+                    let priceSubtext = '';
+                    if (servicePrice > 0) {
+                        priceDisplay = `$${parseFloat(servicePrice).toFixed(2)}`;
+                        priceSubtext = '/ per service';
+                    } else {
+                        priceDisplay = 'Contact for pricing';
+                        priceSubtext = '';
+                    }
+                    
+                    // Format duration
+                    let durationText = '';
+                    if (serviceDuration > 0) {
+                        const hours = Math.floor(serviceDuration / 60);
+                        const mins = serviceDuration % 60;
+                        if (hours > 0 && mins > 0) {
+                            durationText = `${hours} hour${hours > 1 ? 's' : ''} ${mins} min`;
+                        } else if (hours > 0) {
+                            durationText = `${hours} hour${hours > 1 ? 's' : ''}`;
+                        } else {
+                            durationText = `${mins} minutes`;
+                        }
+                    }
+                    
+                    // Build feature list items
+                    let featuresList = '';
+                    if (serviceDescription) {
+                        // Split description by newlines or bullet points
+                        const descLines = serviceDescription.split(/\n|•/).filter(line => line.trim());
+                        descLines.forEach(line => {
+                            if (line.trim()) {
+                                featuresList += `<li style="margin-bottom: 0.5rem; color: var(--text); line-height: 1.6; display: flex; align-items: flex-start; gap: 0.5rem;">
+                                    <i class="fas fa-check-circle" style="color: var(--primary); margin-top: 0.25rem; font-size: 0.85rem;"></i>
+                                    <span>${line.trim()}</span>
+                                </li>`;
+                            }
+                        });
+                    }
+                    
+                    // Build additional details with icons
+                    let detailsList = '';
+                    if (durationText) {
+                        detailsList += `
+                            <li style="margin-bottom: 0.65rem; color: var(--text); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
+                                <i class="fas fa-clock" style="color: var(--primary); margin-top: 0.25rem;"></i>
+                                <span><strong>Duration:</strong> ${durationText}${minDuration > 0 ? ` (minimum ${minDuration} min)` : ''}</span>
+                            </li>`;
+                    }
+                    if (servicePrice > 0) {
+                        detailsList += `
+                            <li style="margin-bottom: 0.65rem; color: var(--text); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
+                                <i class="fas fa-tag" style="color: var(--primary); margin-top: 0.25rem;"></i>
+                                <span><strong>Base Rate:</strong> $${parseFloat(servicePrice).toFixed(2)}</span>
+                            </li>`;
+                    }
+                    if (serviceCapacity > 0) {
+                        detailsList += `
+                            <li style="margin-bottom: 0.65rem; color: var(--text); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
+                                <i class="fas fa-users" style="color: var(--primary); margin-top: 0.25rem;"></i>
+                                <span><strong>Maximum Capacity:</strong> ${serviceCapacity} people</span>
+                            </li>`;
+                    }
+                    if (requiresDeposit && depositPercentage > 0) {
+                        detailsList += `
+                            <li style="margin-bottom: 0.65rem; color: var(--text); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
+                                <i class="fas fa-receipt" style="color: var(--accent); margin-top: 0.25rem;"></i>
+                                <span><strong>Deposit Required:</strong> ${depositPercentage}% upfront</span>
+                            </li>`;
+                    }
+                    if (cancellationPolicy) {
+                        detailsList += `
+                            <li style="margin-bottom: 0.65rem; color: var(--text); display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem;">
+                                <i class="fas fa-info-circle" style="color: var(--text-light); margin-top: 0.25rem;"></i>
+                                <span><strong>Cancellation:</strong> ${cancellationPolicy}</span>
+                            </li>`;
+                    }
                     
                     servicesHtml += `
-                        <div class="service-card" style="background-color: white; padding: 1.5rem; border-radius: var(--radius); border: 1px solid var(--border); transition: all 0.2s; cursor: pointer;" 
-                             onmouseover="this.style.borderColor='var(--primary)'; this.style.boxShadow='var(--shadow)'" 
-                             onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='none'">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-                                <h3 class="service-name" style="font-weight: 600; margin: 0; color: var(--text);">${serviceName}</h3>
-                                <div class="service-price" style="font-weight: 600; color: var(--primary); white-space: nowrap;">${price}</div>
-                            </div>
+                        <div class="service-package-card" style="background: var(--surface-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05);"
+                             onmouseover="this.style.boxShadow='var(--shadow)'; this.style.borderColor='var(--primary)'" 
+                             onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.05)'; this.style.borderColor='var(--border)'">
                             
-                            ${serviceDescription ? `
-                            <p class="service-description" style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1rem; line-height: 1.5;">
-                                ${serviceDescription}
-                            </p>
-                            ` : ''}
-                            
-                            ${(duration || capacity) ? `
-                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem;">
-                                ${duration}${capacity}
-                            </div>
-                            ` : ''}
-                            
-                            <div class="service-actions" style="display: flex; justify-content: flex-end; gap: 0.5rem;">
-                                <button class="btn btn-outline btn-sm add-to-booking-btn" 
-                                        data-service-id="${serviceId}" 
-                                        data-service-name="${serviceName}" 
-                                        data-service-price="${servicePrice || 0}"
-                                        style="padding: 0.5rem 1rem; font-size: 0.85rem;">
-                                    Add to Booking
-                                </button>
+                            <div style="display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap;">
+                                <!-- Service Image -->
+                                <div style="flex-shrink: 0; width: 160px; height: 160px; overflow: hidden; border-radius: var(--radius); background: linear-gradient(135deg, var(--secondary) 0%, #f0f4f8 100%); position: relative; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;">
+                                    ${serviceImage ? 
+                                        `<img src="${serviceImage}" 
+                                              alt="${serviceName}" 
+                                              style="width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;" 
+                                              onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:var(--primary);font-size:3rem;flex-direction:column;text-align:center;padding:1rem;background:linear-gradient(135deg, var(--secondary) 0%, #f0f4f8 100%)\\'><i class=\\'fas ${serviceIcon}\\'></i></div>'"
+                                              onload="console.log('✅ Service image loaded')">` 
+                                        : 
+                                        `<div style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; color: var(--primary); font-size: 3rem;">
+                                            <i class="fas ${serviceIcon}"></i>
+                                        </div>`
+                                    }
+                                </div>
+                                
+                                <!-- Service Details -->
+                                <div style="flex: 1; min-width: 280px;">
+                                    <!-- Header -->
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; gap: 1rem;">
+                                        <div style="flex: 1;">
+                                            <h3 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin: 0 0 0.5rem 0;">${serviceName}</h3>
+                                            ${categoryName ? `
+                                                <span style="display: inline-block; font-size: 0.75rem; padding: 0.25rem 0.625rem; background: var(--secondary); color: var(--primary); border-radius: 6px; font-weight: 500;">
+                                                    ${categoryName}
+                                                </span>
+                                            ` : ''}
+                                        </div>
+                                        <div style="text-align: right; flex-shrink: 0;">
+                                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary); line-height: 1;">${priceDisplay}</div>
+                                            ${priceSubtext ? `<div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">${priceSubtext}</div>` : ''}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Features List -->
+                                    ${featuresList ? `
+                                    <ul style="list-style: none; margin: 0 0 1rem 0; padding: 0; line-height: 1.6;">
+                                        ${featuresList}
+                                    </ul>
+                                    ` : ''}
+                                    
+                                    <!-- Collapsible Details Section -->
+                                    ${detailsList ? `
+                                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                                        <div style="margin-bottom: 0.75rem;">
+                                            <button 
+                                                onclick="const details = this.parentElement.nextElementSibling; const isHidden = details.style.display === 'none'; details.style.display = isHidden ? 'block' : 'none'; this.innerHTML = isHidden ? '<i class=\\'fas fa-chevron-up\\'></i> Less details' : '<i class=\\'fas fa-chevron-down\\'></i> More details'"
+                                                style="background: none; border: none; color: var(--primary); font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 0.5rem; transition: opacity 0.2s;"
+                                                onmouseover="this.style.opacity='0.7'"
+                                                onmouseout="this.style.opacity='1'">
+                                                <i class="fas fa-chevron-down"></i> More details
+                                            </button>
+                                        </div>
+                                        <ul style="list-style: none; margin: 0; padding: 0; display: none;">
+                                            ${detailsList}
+                                        </ul>
+                                    </div>
+                                    ` : ''}
+                                    
+                                    <!-- Action Button -->
+                                    <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                                        <button class="btn btn-primary add-to-booking-btn" 
+                                                data-service-id="${serviceId}" 
+                                                data-service-name="${serviceName}" 
+                                                data-service-price="${servicePrice || 0}"
+                                                style="padding: 0.65rem 1.5rem; font-size: 0.9rem; font-weight: 600; background: var(--accent); border: none; color: white; border-radius: var(--radius); cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(255,107,107,0.2);"
+                                                onmouseover="this.style.background='#ff5252'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(255,107,107,0.3)'" 
+                                                onmouseout="this.style.background='var(--accent)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(255,107,107,0.2)'">
+                                            <i class="fas fa-envelope" style="margin-right: 0.5rem;"></i>Request Info
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -24233,7 +24508,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <!-- Services & Packages Section -->
                             <div style="margin-bottom: 2rem;">
                                 <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Services & Packages</h2>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                                <div>
                                     ${renderServices(details.services)}
                                 </div>
                             </div>
@@ -26087,16 +26362,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             // Initialize on DOMContentLoaded
+            // NOTE: initBusinessProfilePanels is called from setupVendorBusinessProfileTabs with vendorProfileId
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
-                    initBusinessProfilePanels();
                     // Attach save button handler after DOM is loaded
                     document.getElementById('save-vendor-questionnaire')?.addEventListener('click', saveVendorQuestionnaire);
                 });
             } else {
-                // DOM is already loaded, run immediately
-                initBusinessProfilePanels();
-                // Attach save button handler
+                // DOM is already loaded, attach save button handler immediately
                 document.getElementById('save-vendor-questionnaire')?.addEventListener('click', saveVendorQuestionnaire);
             }
 
