@@ -2954,9 +2954,10 @@ BEGIN
     -- Vendor categories (recordset 2)
     SELECT Category FROM VendorCategories WHERE VendorProfileID = @VendorProfileID ORDER BY Category;
     
-    -- Services and packages (recordset 3) - UPDATED to use direct VendorProfileID link
+    -- Services and packages (recordset 3) - Query through ServiceCategories
     SELECT 
         s.ServiceID,
+        s.Name AS ServiceName,
         s.Name,
         s.Description,
         s.Price,
@@ -2968,11 +2969,12 @@ BEGIN
         s.CancellationPolicy,
         s.IsActive,
         sc.Name AS CategoryName,
-        sc.CategoryID
-    FROM Services s
-    LEFT JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
-    WHERE s.VendorProfileID = @VendorProfileID AND s.IsActive = 1
-    ORDER BY sc.DisplayOrder, s.Name;
+        sc.CategoryID,
+        (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS PrimaryImage
+    FROM ServiceCategories sc
+    JOIN Services s ON sc.CategoryID = s.CategoryID
+    WHERE sc.VendorProfileID = @VendorProfileID AND s.IsActive = 1
+    ORDER BY sc.DisplayOrder, sc.Name, s.Name;
     
     -- Vendor portfolio (recordset 4)
     SELECT PortfolioID, Title, Description, ImageURL, ProjectDate, DisplayOrder
