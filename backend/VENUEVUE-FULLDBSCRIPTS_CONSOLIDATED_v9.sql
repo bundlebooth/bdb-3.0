@@ -6460,6 +6460,7 @@ CREATE TABLE VendorSelectedServices (
     VendorPrice DECIMAL(10, 2) NOT NULL, -- Vendor must provide price
     VendorDurationMinutes INT NULL, -- Vendor's custom duration
     VendorDescription NVARCHAR(MAX) NULL, -- Vendor's custom description
+    ImageURL NVARCHAR(500) NULL, -- Vendor's custom service image
     IsActive BIT DEFAULT 1,
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE(),
@@ -6474,6 +6475,7 @@ CREATE INDEX IX_Services_PricingModel ON Services (PricingModel);
 CREATE INDEX IX_Services_LinkedPredefinedServiceID ON Services (LinkedPredefinedServiceID);
 CREATE INDEX IX_VendorSelectedServices_VendorProfileID ON VendorSelectedServices (VendorProfileID);
 CREATE INDEX IX_VendorSelectedServices_PredefinedServiceID ON VendorSelectedServices (PredefinedServiceID);
+CREATE INDEX IX_VendorSelectedServices_ImageURL ON VendorSelectedServices (ImageURL) WHERE ImageURL IS NOT NULL;
 GO
 
 -- Create unified view for vendor pricing details using Services table
