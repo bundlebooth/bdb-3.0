@@ -6155,8 +6155,7 @@
                             <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-light); margin-bottom: 1rem; flex-wrap: wrap;">
                                 <span id="vendor-location"><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>Loading location...</span>
                                 <span id="vendor-years-business" style="display: none;"></span>
-                                <span class="review-rating" style="color: #fbbf24;">★★★★★</span>
-                                <span>(5.0) | 1 Reviews</span>
+                                <span id="vendor-rating-display" style="color: #fbbf24;">☆☆☆☆☆ <span style="color: var(--text-light);">(0 reviews)</span></span>
                             </div>
                         </div>
                          <!-- Favorite Button -->
@@ -24246,9 +24245,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const iconUrl = platformIcons[social.Platform.toLowerCase()] || 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg';
                         socialHtml += `
                             <a href="${social.URL.startsWith('http') ? social.URL : 'https://' + social.URL}" target="_blank" 
-                               style="text-decoration: none; opacity: 0.8; transition: opacity 0.2s;" 
-                               onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
-                                <img src="${iconUrl}" width="28" height="28" alt="${social.Platform}" style="border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                               style="text-decoration: none; opacity: 0.7; transition: all 0.2s;" 
+                               onmouseover="this.style.opacity='1'; this.style.transform='translateY(-2px)'" 
+                               onmouseout="this.style.opacity='0.7'; this.style.transform='translateY(0)'">
+                                <img src="${iconUrl}" width="24" height="24" alt="${social.Platform}" style="display: block; border-radius: 4px;">
                             </a>
                         `;
                     });
@@ -24257,9 +24257,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (profile.Website) {
                         socialHtml += `
                             <a href="${profile.Website.startsWith('http') ? profile.Website : 'https://' + profile.Website}" target="_blank" 
-                               style="text-decoration: none; opacity: 0.8; transition: opacity 0.2s;" 
-                               onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" width="28" height="28" alt="Website" style="border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                               style="text-decoration: none; opacity: 0.7; transition: all 0.2s;" 
+                               onmouseover="this.style.opacity='1'; this.style.transform='translateY(-2px)'" 
+                               onmouseout="this.style.opacity='0.7'; this.style.transform='translateY(0)'">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" width="24" height="24" alt="Website" style="display: block; border-radius: 4px;">
                             </a>
                         `;
                     }
@@ -24271,7 +24272,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 function renderSocialMedia(socialMedia) {
                     if (!socialMedia || socialMedia.length === 0) return '<p style="color: var(--text-light); font-style: italic;">No social media links available.</p>';
                     
-                    let socialHtml = '';
+                    let socialHtml = '<div style="display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center;">';
+                    
                     socialMedia.forEach(social => {
                         const platformIcons = {
                             'facebook': 'https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg',
@@ -24284,10 +24286,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const iconUrl = platformIcons[social.Platform.toLowerCase()] || 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg';
                         socialHtml += `
                             <a href="${social.URL.startsWith('http') ? social.URL : 'https://' + social.URL}" target="_blank" 
-                               style="text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 8px; transition: background-color 0.2s;" 
-                               onmouseover="this.style.backgroundColor='var(--secondary)'" onmouseout="this.style.backgroundColor='transparent'">
-                                <img src="${iconUrl}" width="32" height="32" alt="${social.Platform}" style="border-radius: 6px;">
-                                <span style="text-transform: capitalize; font-weight: 500;">${social.Platform}</span>
+                               style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border); transition: all 0.2s;" 
+                               onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" 
+                               onmouseout="this.style.borderColor='var(--border)'; this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                                <img src="${iconUrl}" width="20" height="20" alt="${social.Platform}" style="border-radius: 4px;">
+                                <span style="font-weight: 500; text-transform: capitalize;">${social.Platform}</span>
                             </a>
                         `;
                     });
@@ -24296,14 +24299,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (profile.Website) {
                         socialHtml += `
                             <a href="${profile.Website.startsWith('http') ? profile.Website : 'https://' + profile.Website}" target="_blank" 
-                               style="text-decoration: none; color: var(--text); display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: 8px; transition: background-color 0.2s;" 
-                               onmouseover="this.style.backgroundColor='var(--secondary)'" onmouseout="this.style.backgroundColor='transparent'">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" width="32" height="32" alt="Website" style="border-radius: 6px;">
+                               style="display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text); padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border); transition: all 0.2s;" 
+                               onmouseover="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)'" 
+                               onmouseout="this.style.borderColor='var(--border)'; this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" width="20" height="20" alt="Website" style="border-radius: 4px;">
                                 <span style="font-weight: 500;">Website</span>
                             </a>
                         `;
                     }
                     
+                    socialHtml += '</div>';
                     return socialHtml;
                 }
 
@@ -24392,14 +24397,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 
                                 <!-- Main Info Row -->
                                 <div style="display: flex; align-items: center; gap: 1.25rem; color: var(--text-light); margin-bottom: 0.75rem; flex-wrap: wrap; font-size: 0.9rem;">
-                                    <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>Location</span>
+                                    ${profile.City || profile.State ? `<span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${[profile.City, profile.State].filter(Boolean).join(', ')}</span>` : ''}
                                     ${profile.YearsInBusiness ? `<span><i class="fas fa-trophy" style="color: #fbbf24; margin-right: 0.5rem;"></i>${profile.YearsInBusiness} years in business</span>` : ''}
-                                    <span style="color: #fbbf24;">★★★★★ (5.0) • 1 Reviews</span>
+                                    <span style="color: #fbbf24;">☆☆☆☆☆ <span style="color: var(--text-light);">(0 reviews)</span></span>
                                 </div>
                                 
                                 <!-- Social Media Icons Row -->
                                 ${socialMedia.length > 0 || profile.Website ? `
-                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem;">
                                     ${renderSocialMediaIcons(socialMedia)}
                                 </div>
                                 ` : ''}
