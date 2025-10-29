@@ -2634,26 +2634,53 @@ router.post('/setup/step3-services', async (req, res) => {
 
       // Insert new selected predefined services
       for (const selectedService of selectedPredefinedServices) {
-        const imageUrlValue = selectedService.imageURL || null;
-        console.log(`[BACKEND] Inserting service: ${selectedService.name || selectedService.predefinedServiceId}`);
-        console.log(`[BACKEND]   - imageURL received:`, imageUrlValue);
-        
-        const insertSelectedRequest = new sql.Request(pool);
-        insertSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        insertSelectedRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
-        insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
-        insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
-        insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
-        insertSelectedRequest.input('ImageURL', sql.NVarChar, imageUrlValue);
-        
-        await insertSelectedRequest.query(`
-          INSERT INTO VendorSelectedServices 
-          (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, ImageURL, CreatedAt)
-          VALUES 
-          (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, @ImageURL, GETDATE())
-        `);
-        
-        console.log(`[BACKEND]   - Inserted successfully with ImageURL:`, imageUrlValue);
+        try {
+          const imageUrlValue = selectedService.imageURL || null;
+          console.log(`[BACKEND] Inserting service: ${selectedService.name || selectedService.predefinedServiceId}`);
+          console.log(`[BACKEND]   - imageURL received:`, imageUrlValue);
+          console.log(`[BACKEND]   - imageURL type:`, typeof imageUrlValue);
+          console.log(`[BACKEND]   - imageURL length:`, imageUrlValue ? imageUrlValue.length : 0);
+          
+          const insertSelectedRequest = new sql.Request(pool);
+          insertSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          insertSelectedRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
+          insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
+          insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
+          insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
+          insertSelectedRequest.input('ImageURL', sql.NVarChar, imageUrlValue);
+          
+          const insertResult = await insertSelectedRequest.query(`
+            INSERT INTO VendorSelectedServices 
+            (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, ImageURL, CreatedAt)
+            VALUES 
+            (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, @ImageURL, GETDATE())
+          `);
+          
+          console.log(`[BACKEND]   - Insert result:`, insertResult.rowsAffected);
+          
+          // VERIFY: Read back what was actually saved
+          const verifyRequest = new sql.Request(pool);
+          verifyRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          verifyRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
+          const verifyResult = await verifyRequest.query(`
+            SELECT VendorSelectedServiceID, ImageURL 
+            FROM VendorSelectedServices 
+            WHERE VendorProfileID = @VendorProfileID 
+            AND PredefinedServiceID = @PredefinedServiceID
+          `);
+          
+          if (verifyResult.recordset.length > 0) {
+            const savedImageURL = verifyResult.recordset[0].ImageURL;
+            console.log(`[BACKEND]   - VERIFICATION: ImageURL in DB:`, savedImageURL);
+            console.log(`[BACKEND]   - VERIFICATION: Match:`, savedImageURL === imageUrlValue);
+          } else {
+            console.error(`[BACKEND]   - VERIFICATION FAILED: Row not found after insert!`);
+          }
+          
+        } catch (insertError) {
+          console.error(`[BACKEND] ERROR inserting service ${selectedService.predefinedServiceId}:`, insertError);
+          throw insertError; // Re-throw to be caught by outer catch
+        }
       }
     }
     
