@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const sql = require('mssql');
+const { poolPromise, sql } = require('../config/db');
 require('dotenv').config();
 
 let transporter = null;
@@ -8,8 +8,8 @@ let transporter = null;
 function createTransporter() {
   const host = process.env.SMTP_HOST || 'smtp-relay.brevo.com';
   const port = Number(process.env.SMTP_PORT || 587);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const user = process.env.SMTP_USER || process.env.FROM_EMAIL;
+  const pass = process.env.SMTP_PASS || process.env.BREVO_API_KEY;
   const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
   if (!host || !user || !pass) return null;
   return nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
@@ -35,7 +35,7 @@ function replaceVariables(content, variables) {
 // Fetch template from database and merge components
 async function getEmailTemplate(templateKey) {
   try {
-    const pool = await sql.connect();
+    const pool = await poolPromise;
     const result = await pool.request()
       .input('TemplateKey', sql.NVarChar(50), templateKey)
       .execute('sp_GetEmailTemplate');
@@ -66,7 +66,7 @@ async function getEmailTemplate(templateKey) {
 async function getUserPreferences(userId) {
   try {
     if (!userId) return null;
-    const pool = await sql.connect();
+    const pool = await poolPromise;
     const result = await pool.request()
       .input('UserID', sql.Int, userId)
       .query('SELECT NotificationPreferences FROM Users WHERE UserID = @UserID');
@@ -105,7 +105,11 @@ async function canSendEmail(userId, emailCategory) {
 // Log email to database
 async function logEmail(templateKey, recipientEmail, recipientName, subject, status, errorMessage = null, userId = null, bookingId = null, metadata = null) {
   try {
-    const pool = await sql.connect();
+    const pool = await poolPromise;
+    if (!pool) {
+      console.log('Database not connected, skipping email log');
+      return;
+    }
     await pool.request()
       .input('TemplateKey', sql.NVarChar(50), templateKey)
       .input('RecipientEmail', sql.NVarChar(255), recipientEmail)
