@@ -1526,6 +1526,41 @@ router.get('/:id', async (req, res) => {
       availableSlotsRecordset
     ] = result.recordsets;
 
+    // Get service areas for this vendor
+    let serviceAreas = [];
+    try {
+      const serviceAreasRequest = new sql.Request(pool);
+      serviceAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      const serviceAreasResult = await serviceAreasRequest.query(`
+        SELECT 
+          VendorServiceAreaID,
+          GooglePlaceID,
+          CityName,
+          [State/Province] AS StateProvince,
+          Country,
+          Latitude,
+          Longitude,
+          ServiceRadius,
+          FormattedAddress,
+          PlaceType,
+          PostalCode,
+          TravelCost,
+          MinimumBookingAmount,
+          IsActive,
+          BoundsNortheastLat,
+          BoundsNortheastLng,
+          BoundsSouthwestLat,
+          BoundsSouthwestLng
+        FROM VendorServiceAreas 
+        WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
+        ORDER BY CityName
+      `);
+      serviceAreas = serviceAreasResult.recordset || [];
+    } catch (serviceAreasError) {
+      console.warn('Service areas query failed, using empty array:', serviceAreasError.message);
+      serviceAreas = [];
+    }
+
     const vendorDetails = {
       profile: {
         ...profileRecordset[0],
@@ -1541,7 +1576,8 @@ router.get('/:id', async (req, res) => {
       images: imagesRecordset,
       categoryAnswers: categoryAnswersRecordset,
       isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
-      availableSlots: availableSlotsRecordset
+      availableSlots: availableSlotsRecordset,
+      serviceAreas: serviceAreas
     };
 
     res.json({
