@@ -4,15 +4,59 @@ require('dotenv').config();
 
 let transporter = null;
 
-// Create Brevo SMTP transporter
+// Send email via Brevo REST API (fallback if SMTP fails)
+async function sendViaBrevoAPI(to, subject, htmlContent, textContent) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    throw new Error('BREVO_API_KEY not configured');
+  }
+
+  const fromEmail = process.env.SMTP_FROM || process.env.FROM_EMAIL || 'no-reply@bundlebooth.ca';
+  const fromName = process.env.FROM_NAME || process.env.PLATFORM_NAME || 'VenueVue';
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'api-key': apiKey
+    },
+    body: JSON.stringify({
+      sender: { name: fromName, email: fromEmail },
+      to: [{ email: to }],
+      subject: subject,
+      htmlContent: htmlContent,
+      textContent: textContent
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Brevo API error: ${response.status} - ${errorData.message || 'Unknown error'}`);
+  }
+
+  return await response.json();
+}
+
+// Create Brevo SMTP transporter (primary method)
 function createTransporter() {
   const host = process.env.SMTP_HOST || 'smtp-relay.brevo.com';
   const port = Number(process.env.SMTP_PORT || 587);
   const user = process.env.SMTP_USER || process.env.FROM_EMAIL;
-  const pass = process.env.SMTP_PASS || process.env.BREVO_API_KEY;
+  const pass = process.env.SMTP_PASS;
   const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
+  
+  // Only use SMTP if credentials are explicitly set
   if (!host || !user || !pass) return null;
-  return nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
+  
+  return nodemailer.createTransport({ 
+    host, 
+    port, 
+    secure, 
+    auth: { user, pass },
+    connectionTimeout: 5000, // 5 second timeout
+    greetingTimeout: 5000
+  });
 }
 
 function getTransporter() {
@@ -156,21 +200,44 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
     const html = replaceVariables(template.htmlContent, platformVars);
     const text = replaceVariables(template.textContent, platformVars);
 
-    // Send via Brevo
+    // Try SMTP first, fallback to API if it fails
     const t = getTransporter();
-    if (!t) {
-      console.log('Email not configured; would send:', { to: recipientEmail, subject, templateKey });
-      await logEmail(templateKey, recipientEmail, recipientName, subject, 'failed', 'SMTP not configured', userId, bookingId, metadata);
-      return;
+    let emailSent = false;
+    let lastError = null;
+
+    // Try SMTP if configured
+    if (t) {
+      try {
+        const fromAddr = process.env.SMTP_FROM || process.env.FROM_EMAIL || 'no-reply@venuevue.com';
+        await t.sendMail({ from: fromAddr, to: recipientEmail, subject, text, html });
+        emailSent = true;
+        console.log(`✅ Email sent via SMTP: ${templateKey} to ${recipientEmail}`);
+      } catch (smtpError) {
+        console.log('SMTP failed, trying Brevo API fallback:', smtpError.message);
+        lastError = smtpError;
+      }
     }
 
-    const fromAddr = process.env.SMTP_FROM || 'no-reply@venuevue.com';
-    await t.sendMail({ from: fromAddr, to: recipientEmail, subject, text, html });
-    
-    // Log success
-    await logEmail(templateKey, recipientEmail, recipientName, subject, 'sent', null, userId, bookingId, metadata);
-    
-    console.log(`✅ Email sent: ${templateKey} to ${recipientEmail}`);
+    // Fallback to Brevo REST API if SMTP failed or not configured
+    if (!emailSent) {
+      try {
+        await sendViaBrevoAPI(recipientEmail, subject, html, text);
+        emailSent = true;
+        console.log(`✅ Email sent via Brevo API: ${templateKey} to ${recipientEmail}`);
+      } catch (apiError) {
+        console.error('Brevo API also failed:', apiError.message);
+        lastError = apiError;
+      }
+    }
+
+    if (emailSent) {
+      // Log success
+      await logEmail(templateKey, recipientEmail, recipientName, subject, 'sent', null, userId, bookingId, metadata);
+    } else {
+      // Log failure
+      await logEmail(templateKey, recipientEmail, recipientName, subject, 'failed', lastError?.message || 'Email sending failed', userId, bookingId, metadata);
+      throw lastError || new Error('Email sending failed');
+    }
   } catch (error) {
     console.error('Error sending templated email:', error);
     await logEmail(templateKey, recipientEmail, recipientName, 'Error', 'failed', error.message, userId, bookingId, metadata);
@@ -181,12 +248,31 @@ async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, va
 // Direct send (for non-templated emails)
 async function sendEmail({ to, subject, text, html, from }) {
   const t = getTransporter();
-  if (!t) {
-    console.log('Email not configured; would send:', { to, subject, text });
-    return;
+  let emailSent = false;
+
+  // Try SMTP if configured
+  if (t) {
+    try {
+      const fromAddr = from || process.env.SMTP_FROM || process.env.FROM_EMAIL || 'no-reply@venuevue.com';
+      await t.sendMail({ from: fromAddr, to, subject, text, html });
+      emailSent = true;
+      console.log(`✅ Direct email sent via SMTP to ${to}`);
+      return;
+    } catch (smtpError) {
+      console.log('SMTP failed, trying Brevo API fallback:', smtpError.message);
+    }
   }
-  const fromAddr = from || process.env.SMTP_FROM || 'no-reply@venuevue.com';
-  await t.sendMail({ from: fromAddr, to, subject, text, html });
+
+  // Fallback to Brevo API
+  if (!emailSent) {
+    try {
+      await sendViaBrevoAPI(to, subject, html, text);
+      console.log(`✅ Direct email sent via Brevo API to ${to}`);
+    } catch (apiError) {
+      console.error('Email sending failed:', apiError.message);
+      throw apiError;
+    }
+  }
 }
 
 // =============================================
