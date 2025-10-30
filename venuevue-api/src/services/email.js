@@ -62,6 +62,46 @@ async function getEmailTemplate(templateKey) {
   }
 }
 
+// Get user notification preferences
+async function getUserPreferences(userId) {
+  try {
+    if (!userId) return null;
+    const pool = await sql.connect();
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query('SELECT NotificationPreferences FROM Users WHERE UserID = @UserID');
+    
+    if (result.recordset.length === 0) return null;
+    
+    const prefs = result.recordset[0].NotificationPreferences;
+    return prefs ? JSON.parse(prefs) : null;
+  } catch (error) {
+    console.error('Error fetching user preferences:', error);
+    return null;
+  }
+}
+
+// Check if user has enabled this email type
+async function canSendEmail(userId, emailCategory) {
+  // Always allow 2FA emails (security critical)
+  if (emailCategory === '2fa') return true;
+  
+  if (!userId) return true; // If no userId, send (e.g., to vendors not logged in)
+  
+  const prefs = await getUserPreferences(userId);
+  if (!prefs || !prefs.email) return true; // Default to sending if no preferences
+  
+  // Map email categories to preference keys
+  const categoryMap = {
+    'bookingUpdates': prefs.email.bookingUpdates !== false,
+    'messages': prefs.email.messages !== false,
+    'payments': prefs.email.payments !== false,
+    'marketing': prefs.email.marketing === true
+  };
+  
+  return categoryMap[emailCategory] !== false;
+}
+
 // Log email to database
 async function logEmail(templateKey, recipientEmail, recipientName, subject, status, errorMessage = null, userId = null, bookingId = null, metadata = null) {
   try {
@@ -83,8 +123,18 @@ async function logEmail(templateKey, recipientEmail, recipientName, subject, sta
 }
 
 // Send email using template
-async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, variables, userId = null, bookingId = null, metadata = null) {
+async function sendTemplatedEmail(templateKey, recipientEmail, recipientName, variables, userId = null, bookingId = null, metadata = null, emailCategory = null) {
   try {
+    // Check user preferences before sending
+    if (emailCategory && userId) {
+      const canSend = await canSendEmail(userId, emailCategory);
+      if (!canSend) {
+        console.log(`📧 Email blocked by user preferences: ${templateKey} to ${recipientEmail} (category: ${emailCategory})`);
+        await logEmail(templateKey, recipientEmail, recipientName, 'Blocked by preferences', 'pending', 'User disabled this email type', userId, bookingId, metadata);
+        return;
+      }
+    }
+
     // Auto-inject platform variables
     const platformVars = {
       platformName: process.env.PLATFORM_NAME || 'VenueVue',
@@ -140,43 +190,43 @@ async function sendEmail({ to, subject, text, html, from }) {
 // =============================================
 
 async function sendTwoFactorCode(email, code, userName = 'User', userId = null) {
-  return sendTemplatedEmail('auth_2fa', email, userName, { code, userName }, userId);
+  return sendTemplatedEmail('auth_2fa', email, userName, { code, userName }, userId, null, null, '2fa');
 }
 
-async function sendBookingRequestToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, location, budget, dashboardUrl, bookingId = null) {
+async function sendBookingRequestToVendor(vendorEmail, vendorName, clientName, serviceName, eventDate, location, budget, dashboardUrl, vendorUserId = null, bookingId = null) {
   return sendTemplatedEmail('booking_request_vendor', vendorEmail, vendorName, {
     vendorName, clientName, serviceName, eventDate, location, budget, dashboardUrl
-  }, null, bookingId);
+  }, vendorUserId, bookingId, null, 'bookingUpdates');
 }
 
 async function sendBookingAcceptedToClient(clientEmail, clientName, vendorName, serviceName, dashboardUrl, userId = null, bookingId = null) {
   return sendTemplatedEmail('booking_accepted_client', clientEmail, clientName, {
     clientName, vendorName, serviceName, dashboardUrl
-  }, userId, bookingId);
+  }, userId, bookingId, null, 'bookingUpdates');
 }
 
 async function sendBookingRejectedToClient(clientEmail, clientName, vendorName, serviceName, eventDate, searchUrl, userId = null, bookingId = null) {
   return sendTemplatedEmail('booking_rejected_client', clientEmail, clientName, {
     clientName, vendorName, serviceName, eventDate, searchUrl
-  }, userId, bookingId);
+  }, userId, bookingId, null, 'bookingUpdates');
 }
 
 async function sendMessageFromVendor(clientEmail, clientName, vendorName, messageContent, dashboardUrl, userId = null) {
   return sendTemplatedEmail('message_vendor_to_client', clientEmail, clientName, {
     clientName, vendorName, messageContent, dashboardUrl
-  }, userId);
+  }, userId, null, null, 'messages');
 }
 
-async function sendMessageFromClient(vendorEmail, vendorName, clientName, messageContent, dashboardUrl) {
+async function sendMessageFromClient(vendorEmail, vendorName, clientName, messageContent, dashboardUrl, vendorUserId = null) {
   return sendTemplatedEmail('message_client_to_vendor', vendorEmail, vendorName, {
     vendorName, clientName, messageContent, dashboardUrl
-  });
+  }, vendorUserId, null, null, 'messages');
 }
 
-async function sendPaymentReceivedToVendor(vendorEmail, vendorName, clientName, amount, serviceName, eventDate, dashboardUrl, bookingId = null) {
+async function sendPaymentReceivedToVendor(vendorEmail, vendorName, clientName, amount, serviceName, eventDate, dashboardUrl, vendorUserId = null, bookingId = null) {
   return sendTemplatedEmail('payment_received_vendor', vendorEmail, vendorName, {
     vendorName, clientName, amount, serviceName, eventDate, dashboardUrl
-  }, null, bookingId);
+  }, vendorUserId, bookingId, null, 'payments');
 }
 
 module.exports = {
