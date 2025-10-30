@@ -1124,6 +1124,8 @@
             justify-content: center;
             color: var(--text-light);
             border-radius: var(--radius);
+            border: none !important;
+            outline: none !important;
         }
 
         .gallery-item img {
@@ -1132,6 +1134,8 @@
             object-fit: cover;
             transition: transform 0.3s ease;
             border-radius: var(--radius);
+            border: none !important;
+            outline: none !important;
         }
 
         .gallery-item:hover img {
@@ -4561,12 +4565,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            border: none !important;
+            outline: none !important;
         }
 
         .gallery-item img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            border: none !important;
+            outline: none !important;
         }
 
         .gallery-item .remove-btn {
@@ -31192,6 +31200,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         mainImg.style.width = '100%';
         mainImg.style.height = '100%';
         mainImg.style.objectFit = 'cover';
+        mainImg.style.border = 'none';
+        mainImg.style.outline = 'none';
         
         // Add subtle border for placeholder images
         if (imageUrls.length === 0) {
@@ -31222,6 +31232,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             thumbImg.style.width = '100%';
             thumbImg.style.height = '100%';
             thumbImg.style.objectFit = 'cover';
+            thumbImg.style.border = 'none';
+            thumbImg.style.outline = 'none';
             
             // Add subtle border for placeholder thumbnails
             if (i >= imageUrls.length) {
@@ -32593,6 +32605,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const thumbnailImg = document.createElement('img');
                     thumbnailImg.src = imageUrl;
                     thumbnailImg.alt = `Gallery Image ${index + 1}`;
+                    thumbnailImg.style.border = 'none';
+                    thumbnailImg.style.outline = 'none';
                     thumbnailImg.onclick = () => {
                         mainImage.src = imageUrl;
                         console.log('Switched main image to:', imageUrl);
@@ -32733,6 +32747,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             thumbnailImg.style.objectFit = 'cover';
                             thumbnailImg.style.margin = '5px';
                             thumbnailImg.style.cursor = 'pointer';
+                            thumbnailImg.style.border = 'none';
+                            thumbnailImg.style.outline = 'none';
                             thumbnailImg.onclick = () => {
                                 mainImageElement.src = imageUrl;
                                 console.log('🔄 Switched to:', imageUrl);
@@ -33067,6 +33083,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const thumbImg = document.createElement('img');
                     thumbImg.src = imagesToUse[i];
                     thumbImg.alt = `Thumbnail ${i}`;
+                    thumbImg.style.border = 'none';
+                    thumbImg.style.outline = 'none';
                     
                     // FIXED: Add click handler to ONLY open lightbox (don't change main image)
                     thumbDiv.style.cursor = 'pointer';
@@ -34004,6 +34022,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         height: 100px;
                         object-fit: cover;
                         display: block;
+                        border: none;
+                        outline: none;
                     `;
 
                     const removeBtn = document.createElement('button');
