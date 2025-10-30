@@ -6114,8 +6114,12 @@
         <main class="main-content">
             <div class="content-header">
                 <div>
-                    <h1 class="results-title">Vendors in Los Angeles</h1>
-                    <p class="results-count">2 vendors available</p>
+                    <h1 class="results-title" id="results-title">
+                        <div class="skeleton-line" style="height: 32px; width: 280px; border-radius: 8px;"></div>
+                    </h1>
+                    <p class="results-count" id="results-count">
+                        <div class="skeleton-line" style="height: 16px; width: 150px; border-radius: 6px; margin-top: 8px;"></div>
+                    </p>
                 </div>
 
                 <div class="view-controls">
@@ -6137,7 +6141,9 @@
             
             <div class="results-two-col">
                 <div class="results-left">
-                    <div class="vendor-grid" id="vendor-grid"></div>
+                    <div class="vendor-grid skeleton-active" id="vendor-grid" data-skeleton="1">
+                        <!-- Initial skeleton cards will be injected here -->
+                    </div>
                     <!-- Horizontal cards container (used only in Map view) -->
                     <div id="main-horizontal-cards" class="vendor-horizontal-container" style="display:none;"></div>
                 </div>
@@ -6145,7 +6151,7 @@
                     <div id="map-view"></div>
                 </div>
             </div>
-            <div id="load-more-wrapper" style="display:flex; justify-content:center; align-items:center; margin: 3rem 0 2rem 0;">
+            <div id="load-more-wrapper" style="display:none; justify-content:center; align-items:center; margin: 3rem 0 2rem 0;">
                 <button class="btn" id="load-more-btn" style="
                     background-color: #5e72e4;
                     color: white;
@@ -13839,6 +13845,45 @@ document.addEventListener('DOMContentLoaded', async function() {
                     @keyframes vv-shimmer { 100% { transform: translateX(100%); } }
                 `;
                 document.head.appendChild(style);
+            })();
+
+            // Immediately populate skeleton cards on page load (before DOMContentLoaded)
+            (function populateInitialSkeletons() {
+                // Populate vendor skeleton cards
+                const grid = document.getElementById('vendor-grid');
+                if (grid && grid.getAttribute('data-skeleton') === '1') {
+                    let html = '';
+                    for (let i = 0; i < 8; i++) {
+                        html += `
+                            <div class="skeleton-card" aria-hidden="true">
+                                <div class="skeleton-thumb"></div>
+                                <div class="skeleton-content">
+                                    <div style="display:grid; grid-template-columns: 1fr; gap:8px;">
+                                        <div class="skeleton-title"></div>
+                                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                                            <div class="skeleton-chip sm"></div>
+                                            <div class="skeleton-dot"></div>
+                                            <div class="skeleton-chip xs"></div>
+                                            <div class="skeleton-dot"></div>
+                                            <div class="skeleton-chip xs"></div>
+                                        </div>
+                                    </div>
+                                    <div class="skeleton-line md"></div>
+                                    <div class="skeleton-line md" style="width: 65%;"></div>
+                                    <div class="skeleton-starting-row" style="display:flex; align-items:center; gap:8px;">
+                                        <div class="skeleton-line xs" style="width: 110px;"></div>
+                                        <div class="skeleton-price"></div>
+                                    </div>
+                                    <div class="skeleton-button-row">
+                                        <div class="skeleton-ghost-btn"></div>
+                                        <div class="skeleton-primary-btn"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    grid.innerHTML = html;
+                }
             })();
 
             // Show skeletons in the vendor grid while loading
@@ -23523,8 +23568,22 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const locationText = usingLocation ? "Near You" : (metadata?.location || 'Los Angeles');
                 const categoryText = state.currentCategory === 'all' ? '' : getCategoryName(state.currentCategory) + ' ';
 
-                resultsTitle.textContent = `${categoryText}Vendors in ${locationText}`;
-                resultsCount.textContent = `${state.filteredVendors.length} vendors available${usingLocation ? ' near you' : ''}`;
+                // Remove skeleton if present and set actual text
+                if (resultsTitle) {
+                    const skeletonInTitle = resultsTitle.querySelector('.skeleton-line');
+                    if (skeletonInTitle) {
+                        skeletonInTitle.remove();
+                    }
+                    resultsTitle.textContent = `${categoryText}Vendors in ${locationText}`;
+                }
+                
+                if (resultsCount) {
+                    const skeletonInCount = resultsCount.querySelector('.skeleton-line');
+                    if (skeletonInCount) {
+                        skeletonInCount.remove();
+                    }
+                    resultsCount.textContent = `${state.filteredVendors.length} vendors available${usingLocation ? ' near you' : ''}`;
+                }
             }
 
             // Show error message
@@ -31539,10 +31598,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Update metadata display
             function updateMetadata(data) {
                 if (resultsTitle) {
+                    const skeletonInTitle = resultsTitle.querySelector('.skeleton-line');
+                    if (skeletonInTitle) {
+                        skeletonInTitle.remove();
+                    }
                     const label = (state.filters && state.filters.location) || state.userLocationLabel || 'Near you';
                     resultsTitle.textContent = `Vendors in ${label}`;
                 }
                 if (resultsCount) {
+                    const skeletonInCount = resultsCount.querySelector('.skeleton-line');
+                    if (skeletonInCount) {
+                        skeletonInCount.remove();
+                    }
                     resultsCount.textContent = `${data.total || state.filteredVendors.length} vendors available`;
                 }
             }
@@ -38683,7 +38750,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         <!-- Chat Button -->
         <div id="chat-button" class="chat-button">
             <i class="fas fa-comments"></i>
-            <span id="widget-message-badge" class="widget-message-badge">0</span>
+            <span id="widget-message-badge" class="widget-message-badge" style="display: none;">0</span>
         </div>
 
         <!-- Widget Container -->
