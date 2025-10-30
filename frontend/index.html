@@ -24419,6 +24419,42 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return teamHtml;
                 }
 
+                // Helper function to render service areas
+                function renderServiceAreas(serviceAreas) {
+                    if (!serviceAreas || serviceAreas.length === 0) {
+                        return '<p style="color: var(--text-light); font-style: italic;">No service areas specified.</p>';
+                    }
+                    
+                    let areasHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.75rem;">';
+                    
+                    serviceAreas.forEach(area => {
+                        const location = [area.CityName, area.StateProvince, area.Country].filter(Boolean).join(', ');
+                        
+                        areasHtml += `
+                            <div style="background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; transition: border-color 0.2s;"
+                                 onmouseover="this.style.borderColor='var(--primary)'" 
+                                 onmouseout="this.style.borderColor='var(--border)'">
+                                <div style="font-weight: 600; color: var(--text); margin-bottom: 0.5rem; font-size: 0.95rem;">
+                                    <i class="fas fa-map-marker-alt" style="color: var(--primary); margin-right: 0.5rem; font-size: 0.85rem;"></i>${location}
+                                </div>
+                                ${area.ServiceRadius || (area.TravelCost && parseFloat(area.TravelCost) > 0) ? `
+                                    <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.8rem; color: var(--text-light);">
+                                        ${area.ServiceRadius ? `
+                                            <div><i class="fas fa-route" style="margin-right: 0.35rem; width: 12px;"></i>${area.ServiceRadius} miles radius</div>
+                                        ` : ''}
+                                        ${area.TravelCost && parseFloat(area.TravelCost) > 0 ? `
+                                            <div><i class="fas fa-dollar-sign" style="margin-right: 0.35rem; width: 12px;"></i>$${parseFloat(area.TravelCost).toFixed(2)} travel fee</div>
+                                        ` : ''}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    areasHtml += '</div>';
+                    return areasHtml;
+                }
+
                 // Build HTML for the entire page
                 let html = `
                     <!-- Back Button -->
@@ -24469,6 +24505,42 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">About Us</h2>
                                 <p style="line-height: 1.6; color: var(--text);">${profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}</p>
                             </div>
+                            
+                            ${(profile.Latitude && profile.Longitude) || (details.serviceAreas && details.serviceAreas.length > 0) ? `
+                            <!-- Location & Service Areas Section -->
+                            <div style="margin-bottom: 2rem;">
+                                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text); margin-bottom: 1rem;">Location & Service Areas</h2>
+                                
+                                ${profile.Latitude && profile.Longitude ? `
+                                <!-- Google Maps and Location -->
+                                <div style="background: white; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1rem;">
+                                    <iframe 
+                                        width="100%" 
+                                        height="350" 
+                                        frameborder="0" 
+                                        style="border:0; display: block;" 
+                                        referrerpolicy="no-referrer-when-downgrade"
+                                        src="https://maps.google.com/maps?q=${profile.Latitude},${profile.Longitude}&hl=en&z=14&output=embed"
+                                        allowfullscreen>
+                                    </iframe>
+                                    <div style="padding: 1rem; border-top: 1px solid var(--border);">
+                                        <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.25rem;">Business Location</div>
+                                        <div style="font-size: 0.95rem; color: var(--text);">
+                                            ${[profile.Address, profile.City, profile.State, profile.PostalCode, profile.Country].filter(Boolean).join(', ')}
+                                        </div>
+                                    </div>
+                                </div>
+                                ` : ''}
+                                
+                                ${details.serviceAreas && details.serviceAreas.length > 0 ? `
+                                <!-- Service Areas List -->
+                                <div>
+                                    <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--text); margin-bottom: 0.75rem;">Areas We Serve</h3>
+                                    ${renderServiceAreas(details.serviceAreas)}
+                                </div>
+                                ` : ''}
+                            </div>
+                            ` : ''}
                             
                             <!-- Vendor Setup Questionnaire Section -->
                             <div id="vendor-profile-questionnaire-section" style="margin-bottom: 2rem;">
