@@ -8038,6 +8038,206 @@ GO
 PRINT '✅ PriceLevel constraint added successfully';
 GO
 
+-- =============================================
+-- EMAIL TEMPLATE SYSTEM
+-- Fixed header/footer with dynamic body components
+-- =============================================
+
+-- Table: EmailTemplateComponents
+-- Stores reusable HTML components (header, footer, body)
+CREATE TABLE EmailTemplateComponents (
+    ComponentID INT PRIMARY KEY IDENTITY(1,1),
+    ComponentType NVARCHAR(20) NOT NULL,
+    ComponentName NVARCHAR(100) NOT NULL,
+    HtmlContent NVARCHAR(MAX) NOT NULL,
+    TextContent NVARCHAR(MAX) NULL,
+    Description NVARCHAR(500) NULL,
+    IsActive BIT DEFAULT 1,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT CK_ComponentType CHECK (ComponentType IN ('header', 'footer', 'body'))
+);
+GO
+
+CREATE INDEX IX_EmailTemplateComponents_Type ON EmailTemplateComponents(ComponentType, IsActive);
+GO
+
+-- Table: EmailTemplates
+-- Links header + body + footer components
+CREATE TABLE EmailTemplates (
+    TemplateID INT PRIMARY KEY IDENTITY(1,1),
+    TemplateKey NVARCHAR(50) UNIQUE NOT NULL,
+    TemplateName NVARCHAR(100) NOT NULL,
+    HeaderComponentID INT FOREIGN KEY REFERENCES EmailTemplateComponents(ComponentID),
+    BodyComponentID INT NOT NULL FOREIGN KEY REFERENCES EmailTemplateComponents(ComponentID),
+    FooterComponentID INT FOREIGN KEY REFERENCES EmailTemplateComponents(ComponentID),
+    Subject NVARCHAR(255) NOT NULL,
+    Category NVARCHAR(50) NULL,
+    AvailableVariables NVARCHAR(MAX) NULL,
+    IsActive BIT DEFAULT 1,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME DEFAULT GETDATE()
+);
+GO
+
+CREATE INDEX IX_EmailTemplates_Key ON EmailTemplates(TemplateKey);
+CREATE INDEX IX_EmailTemplates_Category ON EmailTemplates(Category, IsActive);
+GO
+
+-- Table: EmailLogs
+-- Tracks all emails sent
+CREATE TABLE EmailLogs (
+    EmailLogID INT PRIMARY KEY IDENTITY(1,1),
+    TemplateKey NVARCHAR(50) NULL,
+    RecipientEmail NVARCHAR(255) NOT NULL,
+    RecipientName NVARCHAR(100) NULL,
+    Subject NVARCHAR(255) NOT NULL,
+    Status NVARCHAR(20) NOT NULL DEFAULT 'sent',
+    ErrorMessage NVARCHAR(MAX) NULL,
+    UserID INT NULL FOREIGN KEY REFERENCES Users(UserID),
+    BookingID INT NULL FOREIGN KEY REFERENCES Bookings(BookingID),
+    Metadata NVARCHAR(MAX) NULL,
+    SentAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT CK_EmailStatus CHECK (Status IN ('sent', 'failed', 'pending'))
+);
+GO
+
+CREATE INDEX IX_EmailLogs_Recipient ON EmailLogs(RecipientEmail, SentAt DESC);
+CREATE INDEX IX_EmailLogs_Template ON EmailLogs(TemplateKey, SentAt DESC);
+CREATE INDEX IX_EmailLogs_Status ON EmailLogs(Status, SentAt DESC);
+CREATE INDEX IX_EmailLogs_User ON EmailLogs(UserID, SentAt DESC);
+GO
+
+-- =============================================
+-- EMAIL TEMPLATE SYSTEM - STORED PROCEDURES
+-- =============================================
+
+-- Get complete email template with merged components
+CREATE OR ALTER PROCEDURE sp_GetEmailTemplate
+    @TemplateKey NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT t.TemplateID, t.TemplateKey, t.TemplateName, t.Subject, t.Category, t.AvailableVariables,
+           h.HtmlContent AS HeaderHtml, h.TextContent AS HeaderText,
+           b.HtmlContent AS BodyHtml, b.TextContent AS BodyText,
+           f.HtmlContent AS FooterHtml, f.TextContent AS FooterText
+    FROM EmailTemplates t
+    LEFT JOIN EmailTemplateComponents h ON t.HeaderComponentID = h.ComponentID
+    INNER JOIN EmailTemplateComponents b ON t.BodyComponentID = b.ComponentID
+    LEFT JOIN EmailTemplateComponents f ON t.FooterComponentID = f.ComponentID
+    WHERE t.TemplateKey = @TemplateKey AND t.IsActive = 1 AND b.IsActive = 1
+      AND (h.IsActive = 1 OR h.ComponentID IS NULL) AND (f.IsActive = 1 OR f.ComponentID IS NULL);
+END
+GO
+
+-- Create or update email template component
+CREATE OR ALTER PROCEDURE sp_UpsertEmailTemplateComponent
+    @ComponentID INT = NULL, @ComponentType NVARCHAR(20), @ComponentName NVARCHAR(100),
+    @HtmlContent NVARCHAR(MAX), @TextContent NVARCHAR(MAX) = NULL, @Description NVARCHAR(500) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF @ComponentID IS NULL
+    BEGIN
+        INSERT INTO EmailTemplateComponents (ComponentType, ComponentName, HtmlContent, TextContent, Description)
+        VALUES (@ComponentType, @ComponentName, @HtmlContent, @TextContent, @Description);
+        SELECT SCOPE_IDENTITY() AS ComponentID;
+    END
+    ELSE
+    BEGIN
+        UPDATE EmailTemplateComponents SET ComponentType = @ComponentType, ComponentName = @ComponentName,
+               HtmlContent = @HtmlContent, TextContent = @TextContent, Description = @Description, UpdatedAt = GETDATE()
+        WHERE ComponentID = @ComponentID;
+        SELECT @ComponentID AS ComponentID;
+    END
+END
+GO
+
+-- Log sent email
+CREATE OR ALTER PROCEDURE sp_LogEmail
+    @TemplateKey NVARCHAR(50) = NULL, @RecipientEmail NVARCHAR(255), @RecipientName NVARCHAR(100) = NULL,
+    @Subject NVARCHAR(255), @Status NVARCHAR(20) = 'sent', @ErrorMessage NVARCHAR(MAX) = NULL,
+    @UserID INT = NULL, @BookingID INT = NULL, @Metadata NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO EmailLogs (TemplateKey, RecipientEmail, RecipientName, Subject, Status, ErrorMessage, UserID, BookingID, Metadata)
+    VALUES (@TemplateKey, @RecipientEmail, @RecipientName, @Subject, @Status, @ErrorMessage, @UserID, @BookingID, @Metadata);
+    SELECT SCOPE_IDENTITY() AS EmailLogID;
+END
+GO
+
+-- Get email logs with filters
+CREATE OR ALTER PROCEDURE sp_GetEmailLogs
+    @TemplateKey NVARCHAR(50) = NULL, @RecipientEmail NVARCHAR(255) = NULL, @Status NVARCHAR(20) = NULL,
+    @UserID INT = NULL, @StartDate DATETIME = NULL, @EndDate DATETIME = NULL, @PageNumber INT = 1, @PageSize INT = 50
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Offset INT = (@PageNumber - 1) * @PageSize;
+    SELECT EmailLogID, TemplateKey, RecipientEmail, RecipientName, Subject, Status, ErrorMessage, UserID, BookingID, Metadata, SentAt
+    FROM EmailLogs
+    WHERE (@TemplateKey IS NULL OR TemplateKey = @TemplateKey) AND (@RecipientEmail IS NULL OR RecipientEmail = @RecipientEmail)
+      AND (@Status IS NULL OR Status = @Status) AND (@UserID IS NULL OR UserID = @UserID)
+      AND (@StartDate IS NULL OR SentAt >= @StartDate) AND (@EndDate IS NULL OR SentAt <= @EndDate)
+    ORDER BY SentAt DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
+    SELECT COUNT(*) AS TotalCount FROM EmailLogs
+    WHERE (@TemplateKey IS NULL OR TemplateKey = @TemplateKey) AND (@RecipientEmail IS NULL OR RecipientEmail = @RecipientEmail)
+      AND (@Status IS NULL OR Status = @Status) AND (@UserID IS NULL OR UserID = @UserID)
+      AND (@StartDate IS NULL OR SentAt >= @StartDate) AND (@EndDate IS NULL OR SentAt <= @EndDate);
+END
+GO
+
+-- =============================================
+-- EMAIL TEMPLATE SYSTEM - SEED DATA
+-- =============================================
+
+-- Insert fixed header
+INSERT INTO EmailTemplateComponents (ComponentType, ComponentName, HtmlContent, TextContent, Description) VALUES ('header', 'Default Header', '<div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:40px 20px;text-align:center"><h1 style="color:white;margin:0;font-size:28px;font-weight:600">{{platformName}}</h1><p style="color:rgba(255,255,255,0.9);margin:10px 0 0;font-size:14px">Connecting you with amazing vendors</p></div>', '{{platformName}} - Connecting you with amazing vendors', 'Default header with gradient');
+
+-- Insert fixed footer
+INSERT INTO EmailTemplateComponents (ComponentType, ComponentName, HtmlContent, TextContent, Description) VALUES ('footer', 'Default Footer', '<div style="background:#f8f9fa;padding:30px 20px;text-align:center;border-top:1px solid #e9ecef"><p style="color:#6c757d;margin:0 0 10px;font-size:14px">Need help? <a href="mailto:support@{{platformUrl}}" style="color:#667eea">support@{{platformUrl}}</a></p><p style="color:#adb5bd;margin:10px 0 0;font-size:12px">© {{currentYear}} {{platformName}}. All rights reserved.</p></div>', '© {{currentYear}} {{platformName}}. Contact: support@{{platformUrl}}', 'Default footer');
+
+-- 2FA Body
+INSERT INTO EmailTemplateComponents (ComponentType, ComponentName, HtmlContent, TextContent, Description) VALUES ('body', '2FA Code', '<div style="padding:40px 20px;background:white"><h2 style="color:#333;margin:0 0 20px">Verification Code</h2><p style="color:#666;margin:0 0 20px">Hello {{userName}},</p><p style="color:#666;margin:0 0 30px">Your verification code is:</p><div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:20px;border-radius:8px;text-align:center;margin:0 0 30px"><span style="color:white;font-size:32px;font-weight:bold;letter-spacing:8px">{{code}}</span></div><p style="color:#666;margin:0">Expires in <strong>10 minutes</strong>.</p></div>', 'Your code: {{code}}. Expires in 10 minutes.', '2FA verification');
+
+-- Booking Request Body
+INSERT INTO EmailTemplateComponents (ComponentType, ComponentName, HtmlContent, TextContent, Description) VALUES ('body', 'Booking Request', '<div style="padding:40px 20px;background:white"><h2 style="color:#333;margin:0 0 20px">New Booking Request</h2><p style="color:#666;margin:0 0 20px">Hello {{vendorName}},</p><p style="color:#666;margin:0 0 30px">New request from <strong>{{clientName}}</strong>.</p><div style="background:#f8f9fa;padding:20px;border-radius:8px;border-left:4px solid #667eea;margin:0 0 30px"><h3 style="color:#333;margin:0 0 15px;font-size:16px">Event Details</h3><p style="margin:5px 0"><strong>Service:</strong> {{serviceName}}</p><p style="margin:5px 0"><strong>Date:</strong> {{eventDate}}</p><p style="margin:5px 0"><strong>Location:</strong> {{location}}</p><p style="margin:5px 0"><strong>Budget:</strong> {{budget}}</p></div><p style="text-align:center;margin:0"><a href="{{dashboardUrl}}" style="display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">View Request</a></p></div>', 'New request from {{clientName}}. Service: {{serviceName}}, Date: {{eventDate}}. View: {{dashboardUrl}}', 'Booking request for vendor');
+
+-- Booking Accepted Body
+INSERT INTO EmailTemplateComponents (ComponentType, ComponentName, HtmlContent, TextContent, Description) VALUES ('body', 'Booking Accepted', '<div style="padding:40px 20px;background:white"><h2 style="color:#28a745;margin:0 0 20px">✓ Booking Accepted!</h2><p style="color:#666;margin:0 0 20px">Hello {{clientName}},</p><p style="color:#666;margin:0 0 30px"><strong>{{vendorName}}</strong> accepted your request for <strong>{{serviceName}}</strong>!</p><div style="background:#d4edda;padding:20px;border-radius:8px;border-left:4px solid #28a745;margin:0 0 30px"><h3 style="color:#155724;margin:0 0 15px;font-size:16px">Next Steps</h3><p style="color:#155724;margin:5px 0">• Review booking details</p><p style="color:#155724;margin:5px 0">• Complete payment</p><p style="color:#155724;margin:5px 0">• Message vendor</p></div><p style="text-align:center;margin:0"><a href="{{dashboardUrl}}" style="display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">View Booking</a></p></div>', '{{vendorName}} accepted your request for {{serviceName}}! View: {{dashboardUrl}}', 'Booking accepted notification');
+
+-- Booking Rejected Body
+INSERT INTO EmailTemplateComponents (ComponentType, ComponentName, HtmlContent, TextContent, Description) VALUES ('body', 'Booking Rejected', '<div style="padding:40px 20px;background:white"><h2 style="color:#dc3545;margin:0 0 20px">Booking Update</h2><p style="color:#666;margin:0 0 20px">Hello {{clientName}},</p><p style="color:#666;margin:0 0 30px"><strong>{{vendorName}}</strong> cannot accept your request for <strong>{{serviceName}}</strong> on {{eventDate}}.</p><p style="color:#666;margin:0 0 30px">Many other vendors can help make your event amazing!</p><p style="text-align:center;margin:0"><a href="{{searchUrl}}" style="display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">Find Vendors</a></p></div>', '{{vendorName}} cannot accept your request. Find other vendors: {{searchUrl}}', 'Booking rejected notification');
+
+-- Message from Vendor Body
+INSERT INTO EmailTemplateComponents (ComponentType, ComponentName, HtmlContent, TextContent, Description) VALUES ('body', 'Message From Vendor', '<div style="padding:40px 20px;background:white"><h2 style="color:#333;margin:0 0 20px">New Message from {{vendorName}}</h2><p style="color:#666;margin:0 0 20px">Hello {{clientName}},</p><div style="background:#f8f9fa;padding:20px;border-radius:8px;border-left:4px solid #667eea;margin:0 0 30px"><p style="color:#333;margin:0">{{messageContent}}</p></div><p style="text-align:center;margin:0"><a href="{{dashboardUrl}}" style="display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">Reply</a></p></div>', 'Message from {{vendorName}}: {{messageContent}}. Reply: {{dashboardUrl}}', 'Message from vendor');
+
+-- Message from Client Body
+INSERT INTO EmailTemplateComponents (ComponentType, ComponentName, HtmlContent, TextContent, Description) VALUES ('body', 'Message From Client', '<div style="padding:40px 20px;background:white"><h2 style="color:#333;margin:0 0 20px">New Message from {{clientName}}</h2><p style="color:#666;margin:0 0 20px">Hello {{vendorName}},</p><div style="background:#f8f9fa;padding:20px;border-radius:8px;border-left:4px solid #667eea;margin:0 0 30px"><p style="color:#333;margin:0">{{messageContent}}</p></div><p style="text-align:center;margin:0"><a href="{{dashboardUrl}}" style="display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">Reply</a></p></div>', 'Message from {{clientName}}: {{messageContent}}. Reply: {{dashboardUrl}}', 'Message from client');
+
+-- Payment Received Body
+INSERT INTO EmailTemplateComponents (ComponentType, ComponentName, HtmlContent, TextContent, Description) VALUES ('body', 'Payment Received', '<div style="padding:40px 20px;background:white"><h2 style="color:#28a745;margin:0 0 20px">💰 Payment Received</h2><p style="color:#666;margin:0 0 20px">Hello {{vendorName}},</p><p style="color:#666;margin:0 0 30px">Payment from <strong>{{clientName}}</strong>.</p><div style="background:#d4edda;padding:20px;border-radius:8px;border-left:4px solid #28a745;margin:0 0 30px"><h3 style="color:#155724;margin:0 0 15px;font-size:16px">Details</h3><p style="color:#155724;margin:5px 0;font-size:20px;font-weight:600"><strong>Amount:</strong> {{amount}}</p><p style="color:#155724;margin:5px 0"><strong>Service:</strong> {{serviceName}}</p><p style="color:#155724;margin:5px 0"><strong>Event:</strong> {{eventDate}}</p></div><p style="text-align:center;margin:0"><a href="{{dashboardUrl}}" style="display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:14px 30px;text-decoration:none;border-radius:6px;font-weight:600">View Payment</a></p></div>', 'Payment received: {{amount}} for {{serviceName}}. View: {{dashboardUrl}}', 'Payment received notification');
+
+-- Link templates
+DECLARE @HeaderID INT, @FooterID INT;
+SELECT @HeaderID = ComponentID FROM EmailTemplateComponents WHERE ComponentName = 'Default Header';
+SELECT @FooterID = ComponentID FROM EmailTemplateComponents WHERE ComponentName = 'Default Footer';
+
+INSERT INTO EmailTemplates (TemplateKey, TemplateName, HeaderComponentID, BodyComponentID, FooterComponentID, Subject, Category, AvailableVariables) VALUES
+('auth_2fa', '2FA Verification', @HeaderID, (SELECT ComponentID FROM EmailTemplateComponents WHERE ComponentName = '2FA Code'), @FooterID, 'Your Verification Code', 'authentication', '["userName","code","platformName","platformUrl","currentYear"]'),
+('booking_request_vendor', 'Booking Request to Vendor', @HeaderID, (SELECT ComponentID FROM EmailTemplateComponents WHERE ComponentName = 'Booking Request'), @FooterID, 'New Booking Request', 'booking', '["vendorName","clientName","serviceName","eventDate","location","budget","dashboardUrl","platformName","platformUrl","currentYear"]'),
+('booking_accepted_client', 'Booking Accepted', @HeaderID, (SELECT ComponentID FROM EmailTemplateComponents WHERE ComponentName = 'Booking Accepted'), @FooterID, 'Your Booking Was Accepted!', 'booking', '["clientName","vendorName","serviceName","dashboardUrl","platformName","platformUrl","currentYear"]'),
+('booking_rejected_client', 'Booking Rejected', @HeaderID, (SELECT ComponentID FROM EmailTemplateComponents WHERE ComponentName = 'Booking Rejected'), @FooterID, 'Booking Request Update', 'booking', '["clientName","vendorName","serviceName","eventDate","searchUrl","platformName","platformUrl","currentYear"]'),
+('message_vendor_to_client', 'Message from Vendor', @HeaderID, (SELECT ComponentID FROM EmailTemplateComponents WHERE ComponentName = 'Message From Vendor'), @FooterID, 'New Message from {{vendorName}}', 'messaging', '["clientName","vendorName","messageContent","dashboardUrl","platformName","platformUrl","currentYear"]'),
+('message_client_to_vendor', 'Message from Client', @HeaderID, (SELECT ComponentID FROM EmailTemplateComponents WHERE ComponentName = 'Message From Client'), @FooterID, 'New Message from {{clientName}}', 'messaging', '["vendorName","clientName","messageContent","dashboardUrl","platformName","platformUrl","currentYear"]'),
+('payment_received_vendor', 'Payment Received', @HeaderID, (SELECT ComponentID FROM EmailTemplateComponents WHERE ComponentName = 'Payment Received'), @FooterID, 'Payment Received - {{amount}}', 'payment', '["vendorName","clientName","amount","serviceName","eventDate","dashboardUrl","platformName","platformUrl","currentYear"]');
+GO
+
+PRINT '✅ Email template system initialized with 7 templates';
+GO
+
 PRINT '============================================='
 PRINT 'VenueVue v4 PRODUCTION DATABASE COMPLETE'
 PRINT '============================================='
@@ -8045,6 +8245,7 @@ PRINT 'Enhanced with:'
 PRINT '✅ Full Cloudinary image support'
 PRINT '✅ Category questions system (91+ questions)'
 PRINT '✅ Vendor Features/Questionnaire (130+ features)'
+PRINT '✅ Email Template System (modular)'
 PRINT '✅ Production-grade error handling'
 PRINT '✅ Complete API compatibility'
 PRINT '✅ All v4 functionality preserved & enhanced'
