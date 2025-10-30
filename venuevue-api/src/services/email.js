@@ -6,13 +6,14 @@ let transporter = null;
 
 // Send email via Brevo REST API (fallback if SMTP fails)
 async function sendViaBrevoAPI(to, subject, htmlContent, textContent) {
-  const apiKey = process.env.BREVO_API_KEY;
+  // Try multiple env var names for Brevo API key
+  const apiKey = process.env.BREVO_API_KEY || process.env.SMTP_PASS;
   if (!apiKey) {
-    throw new Error('BREVO_API_KEY not configured');
+    throw new Error('Brevo API key not configured (need BREVO_API_KEY or SMTP_PASS)');
   }
 
   const fromEmail = process.env.SMTP_FROM || process.env.FROM_EMAIL || 'no-reply@bundlebooth.ca';
-  const fromName = process.env.FROM_NAME || process.env.PLATFORM_NAME || 'VenueVue';
+  const fromName = process.env.FROM_NAME || process.env.PLATFORM_NAME || 'Bundle Booth Entertainment';
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
