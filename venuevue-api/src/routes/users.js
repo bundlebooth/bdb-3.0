@@ -643,4 +643,102 @@ router.post('/:id/location', async (req, res) => {
   }
 });
 
+// Get user notification preferences
+router.get('/:id/notification-preferences', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+
+    const result = await request.query(`
+      SELECT NotificationPreferences 
+      FROM Users 
+      WHERE UserID = @UserID
+    `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const prefs = result.recordset[0].NotificationPreferences;
+    const preferences = prefs ? JSON.parse(prefs) : {
+      email: { bookingUpdates: true, messages: true, payments: true, marketing: false },
+      sms: { bookingReminders: true, messageAlerts: false },
+      push: { bookingUpdates: true, messages: true, payments: false }
+    };
+
+    res.json({
+      success: true,
+      preferences
+    });
+
+  } catch (err) {
+    console.error('Get notification preferences error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get notification preferences',
+      error: err.message
+    });
+  }
+});
+
+// Update user notification preferences
+router.put('/:id/notification-preferences', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email, sms, push } = req.body;
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
+
+    // Build preferences object
+    const preferences = {
+      email: email || { bookingUpdates: true, messages: true, payments: true, marketing: false },
+      sms: sms || { bookingReminders: true, messageAlerts: false },
+      push: push || { bookingUpdates: true, messages: true, payments: false }
+    };
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+    request.input('Preferences', sql.NVarChar(sql.MAX), JSON.stringify(preferences));
+
+    await request.query(`
+      UPDATE Users 
+      SET NotificationPreferences = @Preferences, UpdatedAt = GETDATE()
+      WHERE UserID = @UserID
+    `);
+
+    res.json({
+      success: true,
+      message: 'Notification preferences updated successfully',
+      preferences
+    });
+
+  } catch (err) {
+    console.error('Update notification preferences error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update notification preferences',
+      error: err.message
+    });
+  }
+});
+
 module.exports = router;
