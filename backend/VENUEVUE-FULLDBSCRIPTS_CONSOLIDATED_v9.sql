@@ -27,7 +27,7 @@ CREATE TABLE Users (
     LastLogin DATETIME,
     AuthProvider NVARCHAR(20) DEFAULT 'email',
     StripeCustomerID NVARCHAR(100),
-    NotificationPreferences NVARCHAR(MAX) DEFAULT '{"email":true,"push":true}',
+    NotificationPreferences NVARCHAR(MAX) DEFAULT '{"email":{"bookingUpdates":true,"messages":true,"payments":true,"marketing":false},"sms":{"bookingReminders":true,"messageAlerts":false},"push":{"bookingUpdates":true,"messages":true,"payments":false}}',
     IsActive BIT DEFAULT 1
 );
 GO
