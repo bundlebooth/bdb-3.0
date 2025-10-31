@@ -785,7 +785,11 @@ router.post('/:id/faqs/upsert', async (req, res) => {
     if (Array.isArray(faqs)) {
       for (let i = 0; i < faqs.length; i++) {
         const f = faqs[i];
-        if (!f?.question || !f?.answer) continue;
+        // Skip if no question, or if it's a text answer without an answer
+        if (!f?.question) continue;
+        if (f.answerType === 'text' && !f?.answer) continue;
+        // For multiple_choice, answer can be empty (options are in answerOptions)
+        
         const fReq = new sql.Request(pool);
         fReq.input('VendorProfileID', sql.Int, parseInt(id));
         fReq.input('Question', sql.NVarChar(500), f.question);
