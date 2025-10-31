@@ -3726,7 +3726,7 @@ router.get('/summary/:id', async (req, res) => {
 
     // Get business hours
     const businessHoursResult = await request.query(`
-      SELECT DayOfWeek, OpenTime, CloseTime, IsAvailable
+      SELECT DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone
       FROM VendorBusinessHours 
       WHERE VendorProfileID = @VendorProfileID
       ORDER BY DayOfWeek
