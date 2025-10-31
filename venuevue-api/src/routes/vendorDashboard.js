@@ -382,8 +382,26 @@ router.get('/:id/availability', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     const result = await request.execute('sp_GetVendorAvailability');
+    
+    // Format time values - SQL Server returns TIME as Date objects
+    const formatTime = (timeValue) => {
+      if (!timeValue) return null;
+      if (typeof timeValue === 'string') return timeValue;
+      // If it's a Date object, extract time portion
+      if (timeValue instanceof Date) {
+        return timeValue.toTimeString().split(' ')[0]; // Returns HH:MM:SS
+      }
+      return timeValue;
+    };
+    
+    const businessHours = result.recordsets[0].map(bh => ({
+      ...bh,
+      OpenTime: formatTime(bh.OpenTime),
+      CloseTime: formatTime(bh.CloseTime)
+    }));
+    
     res.json({
-      businessHours: result.recordsets[0],
+      businessHours,
       availabilityExceptions: result.recordsets[1]
     });
   } catch (err) {
