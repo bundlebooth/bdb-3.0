@@ -3730,6 +3730,23 @@ router.get('/summary/:id', async (req, res) => {
       WHERE VendorProfileID = @VendorProfileID
       ORDER BY DayOfWeek
     `);
+    
+    // Format time values - SQL Server returns TIME as Date objects
+    const formatTime = (timeValue) => {
+      if (!timeValue) return null;
+      if (typeof timeValue === 'string') return timeValue;
+      // If it's a Date object, extract time portion
+      if (timeValue instanceof Date) {
+        return timeValue.toTimeString().split(' ')[0]; // Returns HH:MM:SS
+      }
+      return timeValue;
+    };
+    
+    const businessHours = businessHoursResult.recordset.map(bh => ({
+      ...bh,
+      OpenTime: formatTime(bh.OpenTime),
+      CloseTime: formatTime(bh.CloseTime)
+    }));
 
     const summaryData = {
       basicInfo,
@@ -3739,7 +3756,7 @@ router.get('/summary/:id', async (req, res) => {
       packageCount: packagesResult.recordset[0]?.PackageCount || 0,
       imageCount: imagesResult.recordset[0]?.ImageCount || 0,
       socialMedia: socialMediaResult.recordset,
-      businessHours: businessHoursResult.recordset
+      businessHours
     };
 
     res.json({
