@@ -1561,6 +1561,25 @@ router.get('/:id', async (req, res) => {
       serviceAreas = [];
     }
 
+    // Format time values - SQL Server returns TIME as Date objects
+    const formatTime = (timeValue) => {
+      if (!timeValue) return null;
+      if (typeof timeValue === 'string') return timeValue;
+      // If it's a Date object, extract time portion
+      if (timeValue instanceof Date) {
+        return timeValue.toTimeString().split(' ')[0]; // Returns HH:MM:SS
+      }
+      return timeValue;
+    };
+    
+    const businessHours = businessHoursRecordset.map(bh => ({
+      ...bh,
+      OpenTime: formatTime(bh.OpenTime),
+      CloseTime: formatTime(bh.CloseTime)
+    }));
+    
+    console.log('Business Hours with Timezone:', businessHours.length > 0 ? businessHours[0] : 'No business hours');
+
     const vendorDetails = {
       profile: {
         ...profileRecordset[0],
@@ -1572,7 +1591,7 @@ router.get('/:id', async (req, res) => {
       faqs: faqsRecordset,
       team: teamRecordset,
       socialMedia: socialMediaRecordset,
-      businessHours: businessHoursRecordset,
+      businessHours,
       images: imagesRecordset,
       categoryAnswers: categoryAnswersRecordset,
       isFavorite: isFavoriteRecordset && isFavoriteRecordset.length > 0 ? isFavoriteRecordset[0].IsFavorite : false,
@@ -3143,11 +3162,13 @@ router.post('/setup/step10-completion', async (req, res) => {
         faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         faqRequest.input('Question', sql.NVarChar, faqs[i].question);
         faqRequest.input('Answer', sql.NVarChar, faqs[i].answer);
+        faqRequest.input('AnswerType', sql.NVarChar(50), faqs[i].answerType || 'text');
+        faqRequest.input('AnswerOptions', sql.NVarChar(sql.MAX), faqs[i].answerOptions ? JSON.stringify(faqs[i].answerOptions) : null);
         faqRequest.input('DisplayOrder', sql.Int, i);
         
         await faqRequest.query(`
-          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder)
-          VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder)
+          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder)
+          VALUES (@VendorProfileID, @Question, @Answer, @AnswerType, @AnswerOptions, @DisplayOrder)
         `);
       }
     }
@@ -4158,10 +4179,12 @@ router.post('/setup/step8-faq', async (req, res) => {
           insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
           insertRequest.input('Question', sql.NVarChar(500), faq.question);
           insertRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
+          insertRequest.input('AnswerType', sql.NVarChar(50), faq.answerType || 'text');
+          insertRequest.input('AnswerOptions', sql.NVarChar(sql.MAX), faq.answerOptions ? JSON.stringify(faq.answerOptions) : null);
           insertRequest.input('DisplayOrder', sql.Int, i + 1);
           await insertRequest.query(`
-            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
-            VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
+            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
+            VALUES (@VendorProfileID, @Question, @Answer, @AnswerType, @AnswerOptions, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
           `);
         }
       }
@@ -4231,10 +4254,12 @@ router.post('/setup/step9-completion', async (req, res) => {
           faqRequest.input('VendorProfileId', sql.Int, vendorProfileId);
           faqRequest.input('Question', sql.NVarChar(500), faq.question);
           faqRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
+          faqRequest.input('AnswerType', sql.NVarChar(50), faq.answerType || 'text');
+          faqRequest.input('AnswerOptions', sql.NVarChar(sql.MAX), faq.answerOptions ? JSON.stringify(faq.answerOptions) : null);
           faqRequest.input('DisplayOrder', sql.Int, i + 1);
           await faqRequest.query(`
-            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
-            VALUES (@VendorProfileId, @Question, @Answer, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
+            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
+            VALUES (@VendorProfileId, @Question, @Answer, @AnswerType, @AnswerOptions, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
           `);
         }
       }
