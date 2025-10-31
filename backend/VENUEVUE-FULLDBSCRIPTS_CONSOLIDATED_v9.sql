@@ -394,6 +394,8 @@ CREATE TABLE VendorFAQs (
     VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
     Question NVARCHAR(255) NOT NULL,
     Answer NVARCHAR(MAX) NOT NULL,
+    AnswerType NVARCHAR(50) DEFAULT 'text', -- 'text' or 'multiple_choice'
+    AnswerOptions NVARCHAR(MAX) NULL, -- JSON array for multiple choice options: [{"label": "Option 1", "checked": true}, ...]
     DisplayOrder INT DEFAULT 0,
     IsActive BIT DEFAULT 1,
     CreatedAt DATETIME DEFAULT GETDATE(),
