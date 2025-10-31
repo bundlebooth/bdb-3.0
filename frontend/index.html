@@ -7018,9 +7018,39 @@
                                     <i class="fas fa-arrow-left"></i> Back to Business Profile Menu
                                 </button>
                                 <div class="dashboard-card">
-                                        <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-clock"></i></span> Availability Settings</h2>
-                                        <div id="business-hours-container" style="margin-top:1rem;"></div>
-                                        <button class="btn btn-primary" id="save-business-hours-btn" style="margin-top:.5rem;">Save Business Hours</button>
+                                    <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;">
+                                            <i class="fas fa-clock"></i>
+                                        </span> 
+                                        Business Hours & Availability
+                                    </h2>
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">Set your regular business hours and timezone</p>
+                                    
+                                    <!-- Timezone Selection -->
+                                    <div style="margin-bottom: 2rem;">
+                                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); font-size: 0.9rem;">
+                                            <i class="fas fa-globe" style="color: var(--primary); margin-right: 0.5rem;"></i>
+                                            Timezone
+                                        </label>
+                                        <select id="business-timezone" style="width: 100%; padding: 0.875rem 1rem; border: 1px solid #d1d5db; border-radius: 8px; background: white; font-size: 0.95rem; color: var(--text); cursor: pointer; transition: all 0.2s; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23666%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 1rem center; background-size: 1.25rem; padding-right: 3rem;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='#d1d5db'" onfocus="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 0 0 3px rgba(79, 70, 229, 0.1)'" onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none'">
+                                            <option value="" disabled selected>Select timezone...</option>
+                                            <option value="America/St_Johns">America/St_Johns (NST) GMT -3:30</option>
+                                            <option value="America/Halifax">America/Halifax (AST) GMT -4:00</option>
+                                            <option value="America/Toronto">America/Toronto (EST) GMT -5:00</option>
+                                            <option value="America/Winnipeg">America/Winnipeg (CST) GMT -6:00</option>
+                                            <option value="America/Edmonton">America/Edmonton (MST) GMT -7:00</option>
+                                            <option value="America/Vancouver">America/Vancouver (PST) GMT -8:00</option>
+                                        </select>
+                                        <small style="color: var(--text-light); display: block; margin-top: 0.5rem; font-size: 0.85rem;">This timezone will be displayed to customers viewing your profile</small>
+                                    </div>
+                                    
+                                    <!-- Business Hours Container -->
+                                    <div id="business-hours-container" style="margin-top:1.5rem;"></div>
+                                    
+                                    <button class="btn btn-primary" id="save-business-hours-btn" style="margin-top:1.5rem; width: 100%; padding: 0.875rem;">
+                                        <i class="fas fa-save" style="margin-right: 0.5rem;"></i>
+                                        Save Business Hours
+                                    </button>
                                 </div>
                             </div>
                             
@@ -13499,6 +13529,21 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (!container || !summaryData.success) return;
 
                 const data = summaryData.data;
+                
+                // Helper function to format timezone for display
+                const formatCanadianTimezone = (timezone) => {
+                    if (!timezone) return '';
+                    const timezoneMap = {
+                        'America/St_Johns': 'America/St_Johns (NST) GMT -3:30',
+                        'America/Halifax': 'America/Halifax (AST) GMT -4:00',
+                        'America/Toronto': 'America/Toronto (EST) GMT -5:00',
+                        'America/Winnipeg': 'America/Winnipeg (CST) GMT -6:00',
+                        'America/Edmonton': 'America/Edmonton (MST) GMT -7:00',
+                        'America/Vancouver': 'America/Vancouver (PST) GMT -8:00'
+                    };
+                    return timezoneMap[timezone] || timezone;
+                };
+                
                 let html = '<div style="display: grid; gap: 1.5rem;">';
 
                 // Business Information
@@ -13602,6 +13647,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Business Hours
                 if (data.businessHours && data.businessHours.length > 0) {
                     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const timezone = data.businessHours[0]?.Timezone;
                     html += `
                         <div class="summary-section">
                             <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
@@ -13613,6 +13659,12 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     ${hours.IsAvailable ? `${hours.OpenTime} - ${hours.CloseTime}` : 'Closed'}</div>
                                 `).join('')}
                             </div>
+                            ${timezone ? `
+                                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; color: var(--text-light); font-size: 0.85rem;">
+                                    <i class="fas fa-globe" style="color: var(--primary);"></i>
+                                    <span>${formatCanadianTimezone(timezone)}</span>
+                                </div>
+                            ` : ''}
                         </div>
                     `;
                 }
@@ -20371,6 +20423,21 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 if (!container || !summaryData.success) return;
 
                 const data = summaryData.data;
+                
+                // Helper function to format timezone for display
+                const formatCanadianTimezone = (timezone) => {
+                    if (!timezone) return '';
+                    const timezoneMap = {
+                        'America/St_Johns': 'America/St_Johns (NST) GMT -3:30',
+                        'America/Halifax': 'America/Halifax (AST) GMT -4:00',
+                        'America/Toronto': 'America/Toronto (EST) GMT -5:00',
+                        'America/Winnipeg': 'America/Winnipeg (CST) GMT -6:00',
+                        'America/Edmonton': 'America/Edmonton (MST) GMT -7:00',
+                        'America/Vancouver': 'America/Vancouver (PST) GMT -8:00'
+                    };
+                    return timezoneMap[timezone] || timezone;
+                };
+                
                 let html = '<div style="display: grid; gap: 1.5rem;">';
 
                 // Business Information
@@ -20474,6 +20541,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Business Hours
                 if (data.businessHours && data.businessHours.length > 0) {
                     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const timezone = data.businessHours[0]?.Timezone;
                     html += `
                         <div class="summary-section">
                             <h5 style="color: var(--primary); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
@@ -20485,6 +20553,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     ${hours.IsAvailable ? `${hours.OpenTime} - ${hours.CloseTime}` : 'Closed'}</div>
                                 `).join('')}
                             </div>
+                            ${timezone ? `
+                                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; color: var(--text-light); font-size: 0.85rem;">
+                                    <i class="fas fa-globe" style="color: var(--primary);"></i>
+                                    <span>${formatCanadianTimezone(timezone)}</span>
+                                </div>
+                            ` : ''}
                         </div>
                     `;
                 }
@@ -24303,6 +24377,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const faqs = details.faqs || [];
                 const team = details.team || [];
 
+                // Helper function to format timezone for display
+                function formatTimezone(timezone) {
+                    if (!timezone) return '';
+                    const timezoneMap = {
+                        'America/St_Johns': 'America/St_Johns (NST) GMT -3:30',
+                        'America/Halifax': 'America/Halifax (AST) GMT -4:00',
+                        'America/Toronto': 'America/Toronto (EST) GMT -5:00',
+                        'America/Winnipeg': 'America/Winnipeg (CST) GMT -6:00',
+                        'America/Edmonton': 'America/Edmonton (MST) GMT -7:00',
+                        'America/Vancouver': 'America/Vancouver (PST) GMT -8:00'
+                    };
+                    return timezoneMap[timezone] || timezone;
+                }
+
                 // Helper function to format business hours
                 function formatBusinessHours(hours) {
                     if (!hours || hours.length === 0) return '';
@@ -24310,18 +24398,30 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                     let hoursHtml = '';
                     
+                    // Helper to format time from TIME string (HH:MM:SS)
+                    const formatTime = (timeStr) => {
+                        if (!timeStr) return '';
+                        // Handle both full datetime and time-only strings
+                        let timePart = timeStr;
+                        if (timeStr.includes('T')) {
+                            timePart = timeStr.split('T')[1];
+                        }
+                        if (timeStr.includes(' ')) {
+                            timePart = timeStr.split(' ')[1];
+                        }
+                        
+                        const [hours, minutes] = timePart.split(':');
+                        let h = parseInt(hours);
+                        const m = minutes;
+                        const ampm = h >= 12 ? 'PM' : 'AM';
+                        h = h % 12 || 12;
+                        return `${h}:${m} ${ampm}`;
+                    };
+                    
                     hours.forEach(hour => {
                         if (hour.IsAvailable) {
-                            const openTime = new Date(hour.OpenTime).toLocaleTimeString('en-US', { 
-                                hour: 'numeric', 
-                                minute: '2-digit', 
-                                hour12: true 
-                            });
-                            const closeTime = new Date(hour.CloseTime).toLocaleTimeString('en-US', { 
-                                hour: 'numeric', 
-                                minute: '2-digit', 
-                                hour12: true 
-                            });
+                            const openTime = formatTime(hour.OpenTime);
+                            const closeTime = formatTime(hour.CloseTime);
                             hoursHtml += `
                                 <div style="display: flex; justify-content: space-between; padding: 0.25rem 0;">
                                     <span style="font-weight: 500;">${dayNames[hour.DayOfWeek]}</span>
@@ -24332,7 +24432,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             hoursHtml += `
                                 <div style="display: flex; justify-content: space-between; padding: 0.25rem 0; opacity: 0.6;">
                                     <span style="font-weight: 500;">${dayNames[hour.DayOfWeek]}</span>
-                                    <span>Closed</span>
+                                    <span style="color: var(--text-light);">Closed</span>
                                 </div>
                             `;
                         }
@@ -24591,7 +24691,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                         allowfullscreen>
                                     </iframe>
                                     <div style="padding: 1rem; border-top: 1px solid var(--border);">
-                                        <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.25rem;">Business Location</div>
+                                        <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.5rem;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                                                <path d="M3 2h18v4H3z"></path>
+                                                <path d="M3 6v2c0 1.1.9 2 2 2s2-.9 2-2 .9-2 2-2 2 .9 2 2 .9 2 2 2 2-.9 2-2 .9-2 2-2 2 .9 2 2c0 1.1.9 2 2 2s2-.9 2-2V6"></path>
+                                                <path d="M5 10v12h14V10"></path>
+                                                <path d="M9 22v-6h6v6"></path>
+                                            </svg>
+                                            <span>Business Location</span>
+                                        </div>
                                         <div style="font-size: 0.95rem; color: var(--text);">
                                             ${[profile.Address, profile.City, profile.State, profile.PostalCode, profile.Country].filter(Boolean).join(', ')}
                                         </div>
@@ -24704,10 +24812,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             ${businessHours.length > 0 ? `
                             <!-- Business Hours -->
                             <div style="background: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
-                                <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Business Hours</h3>
+                                <h3 style="font-size: 1.2rem; font-weight: 600; margin: 0 0 1rem 0;">Business Hours</h3>
                                 <div style="font-size: 0.9rem;">
                                     ${formatBusinessHours(businessHours)}
                                 </div>
+                                ${businessHours[0]?.Timezone ? `
+                                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; color: var(--text-light); font-size: 0.85rem;">
+                                        <i class="fas fa-globe" style="color: var(--primary);"></i>
+                                        <span>${formatTimezone(businessHours[0].Timezone)}</span>
+                                    </div>
+                                ` : ''}
                             </div>
                             ` : ''}
 
@@ -30126,6 +30240,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const businessHours = data.businessHours || [];
                     const exceptions = data.availabilityExceptions || [];
                     lastBusinessHours = businessHours;
+                    console.log('Loaded business hours:', businessHours);
 
                     const events = [];
 
@@ -30151,8 +30266,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     // Add exceptions
                     exceptions.forEach(ex => {
                         events.push({
-                            start: ex.StartDate + (ex.StartTime ? 'T' + ex.StartTime : ''),
-                            end: ex.EndDate + (ex.EndTime ? 'T' + ex.EndTime : ''),
+                            start: ex.Date + (ex.StartTime ? 'T' + ex.StartTime : ''),
+                            end: ex.Date + (ex.EndTime ? 'T' + ex.EndTime : ''),
                             title: ex.Reason || (ex.IsAvailable ? 'Available' : 'Unavailable'),
                             color: ex.IsAvailable ? '#2196F3' : '#F44336',
                             allDay: !ex.StartTime && !ex.EndTime,
@@ -30180,8 +30295,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 const isAvailable = confirm('Is the vendor available during this exception? (OK for Yes, Cancel for No)');
                                 upsertVendorAvailabilityException(
                                     null,
-                                    info.startStr.split('T')[0],
-                                    info.endStr.split('T')[0],
+                                    info.startStr.split('T')[0], // Single date only
                                     null,
                                     null,
                                     isAvailable,
@@ -30204,28 +30318,86 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Render and save Business Hours
                 try {
                     const bhContainer = document.getElementById('business-hours-container');
+                    const timezoneSelect = document.getElementById('business-timezone');
+                    
                     if (bhContainer) {
                         const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
                         const byDay = {};
                         // Re-fetch or reuse businessHours if available in outer scope
-                        // businessHours is defined above in try block
-                        // For safety, if not available, initialize empty
                         const existing = Array.isArray(lastBusinessHours) ? lastBusinessHours : [];
-                        existing.forEach(bh => { byDay[bh.DayOfWeek] = bh; });
+                        let timezone = 'America/New_York'; // Default timezone
+                        console.log('Rendering business hours UI with data:', existing);
+                        
+                        existing.forEach(bh => { 
+                            console.log(`Day ${bh.DayOfWeek} data:`, bh);
+                            byDay[bh.DayOfWeek] = bh; 
+                            // Get timezone from first record
+                            if (bh.Timezone) {
+                                timezone = bh.Timezone;
+                            }
+                        });
+                        
+                        // Set timezone in dropdown if available
+                        if (timezoneSelect && existing.length > 0 && existing[0].Timezone) {
+                            timezoneSelect.value = existing[0].Timezone;
+                        }
+                        
                         bhContainer.innerHTML = '';
                         days.forEach((day, idx) => {
                             const bh = byDay[idx] || { HoursID: null, DayOfWeek: idx, OpenTime: '09:00:00', CloseTime: '17:00:00', IsAvailable: false };
                             const row = document.createElement('div');
-                            row.className = 'form-row';
+                            row.style.cssText = 'display: grid; grid-template-columns: 120px 1fr 1fr 60px; gap: 1rem; align-items: center; padding: 1rem; background: white; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.75rem; transition: all 0.2s;';
                             row.dataset.day = String(idx);
                             row.dataset.hoursId = bh.HoursID || '';
+                            
                             const openVal = (bh.OpenTime || '09:00:00').slice(0,5);
                             const closeVal = (bh.CloseTime || '17:00:00').slice(0,5);
+                            const isChecked = bh.IsAvailable;
+                            
+                            console.log(`${day}: OpenTime=${bh.OpenTime}, CloseTime=${bh.CloseTime}, IsAvailable=${isChecked}, openVal=${openVal}, closeVal=${closeVal}`);
+                            
                             row.innerHTML = `
-                                <div class="form-col"><div class="form-group"><label>${day}</label><input type="checkbox" class="bh-available" ${bh.IsAvailable ? 'checked' : ''}> Available</div></div>
-                                <div class="form-col"><div class="form-group"><label>Open</label><input type="time" class="bh-open" value="${openVal}"></div></div>
-                                <div class="form-col"><div class="form-group"><label>Close</label><input type="time" class="bh-close" value="${closeVal}"></div></div>
+                                <div style="font-weight: 600; color: var(--text);">${day}</div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="time" class="bh-open" value="${openVal}" ${!isChecked ? 'disabled' : ''} 
+                                           style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; width: 100%;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="time" class="bh-close" value="${closeVal}" ${!isChecked ? 'disabled' : ''} 
+                                           style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; width: 100%;">
+                                </div>
+                                <div style="display: flex; justify-content: center;">
+                                    <label style="display: flex; align-items: center; cursor: pointer; margin: 0;">
+                                        <input type="checkbox" class="bh-available" ${isChecked ? 'checked' : ''} 
+                                               style="width: 18px; height: 18px; cursor: pointer;">
+                                    </label>
+                                </div>
                             `;
+                            
+                            // Add hover effect
+                            row.onmouseenter = () => {
+                                if (!row.querySelector('.bh-available').checked) {
+                                    row.style.background = '#f8f9fa';
+                                }
+                            };
+                            row.onmouseleave = () => {
+                                row.style.background = 'white';
+                            };
+                            
+                            // Toggle time inputs based on checkbox
+                            const checkbox = row.querySelector('.bh-available');
+                            const openInput = row.querySelector('.bh-open');
+                            const closeInput = row.querySelector('.bh-close');
+                            
+                            checkbox.addEventListener('change', () => {
+                                openInput.disabled = !checkbox.checked;
+                                closeInput.disabled = !checkbox.checked;
+                                row.style.opacity = checkbox.checked ? '1' : '0.6';
+                            });
+                            
+                            // Set initial opacity
+                            row.style.opacity = isChecked ? '1' : '0.6';
+                            
                             bhContainer.appendChild(row);
                         });
 
@@ -30238,7 +30410,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                         alert('Cannot save: missing vendor profile ID');
                                         return;
                                     }
-                                    const rows = Array.from(bhContainer.querySelectorAll('.form-row'));
+                                    
+                                    // Get timezone from select
+                                    const selectedTimezone = timezoneSelect ? timezoneSelect.value : 'America/New_York';
+                                    
+                                    const rows = Array.from(bhContainer.children);
                                     for (const row of rows) {
                                         const dayOfWeek = parseInt(row.dataset.day, 10);
                                         const hoursId = row.dataset.hoursId ? parseInt(row.dataset.hoursId, 10) : null;
@@ -30264,7 +30440,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                             closeTime = `${closeRaw}:00`;
                                         }
 
-                                        const payload = { hoursId, dayOfWeek, openTime, closeTime, isAvailable };
+                                        const payload = { hoursId, dayOfWeek, openTime, closeTime, isAvailable, timezone: selectedTimezone };
                                         const resp = await fetch(`${API_BASE_URL}/vendor/${resolvedVendorId}/business-hours/upsert`, {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
@@ -30272,7 +30448,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                         });
                                         if (!resp.ok) throw new Error('Failed to save hours for ' + days[dayOfWeek]);
                                     }
-                                    alert('Business hours saved');
+                                    alert('Business hours saved successfully!');
                                     await loadVendorAvailability(resolvedVendorId);
                                 } catch (err) {
                                     console.error('Save business hours error:', err);
@@ -30286,12 +30462,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }
             }
 
-            async function upsertVendorAvailabilityException(exceptionId, startDate, endDate, startTime, endTime, isAvailable, reason) {
+            async function upsertVendorAvailabilityException(exceptionId, date, startTime, endTime, isAvailable, reason) {
                 try {
                     const payload = {
                         exceptionId: exceptionId,
-                        startDate: startDate,
-                        endDate: endDate,
+                        date: date,
                         startTime: startTime,
                         endTime: endTime,
                         isAvailable: isAvailable,
