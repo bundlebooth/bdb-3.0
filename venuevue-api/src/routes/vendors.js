@@ -2952,16 +2952,15 @@ router.post('/setup/step7-availability', async (req, res) => {
       for (const exception of availabilityExceptions) {
         const exceptionRequest = new sql.Request(pool);
         exceptionRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        exceptionRequest.input('StartDate', sql.Date, exception.startDate);
-        exceptionRequest.input('EndDate', sql.Date, exception.endDate);
+        exceptionRequest.input('Date', sql.Date, exception.date);
         exceptionRequest.input('StartTime', sql.Time, exception.startTime || null);
         exceptionRequest.input('EndTime', sql.Time, exception.endTime || null);
         exceptionRequest.input('IsAvailable', sql.Bit, exception.isAvailable);
         exceptionRequest.input('Reason', sql.NVarChar, exception.reason || null);
         
         await exceptionRequest.query(`
-          INSERT INTO VendorAvailabilityExceptions (VendorProfileID, StartDate, EndDate, StartTime, EndTime, IsAvailable, Reason)
-          VALUES (@VendorProfileID, @StartDate, @EndDate, @StartTime, @EndTime, @IsAvailable, @Reason)
+          INSERT INTO VendorAvailabilityExceptions (VendorProfileID, Date, StartTime, EndTime, IsAvailable, Reason)
+          VALUES (@VendorProfileID, @Date, @StartTime, @EndTime, @IsAvailable, @Reason)
         `);
       }
     }
