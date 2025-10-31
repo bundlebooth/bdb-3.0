@@ -396,7 +396,7 @@ router.get('/:id/availability', async (req, res) => {
 router.post('/:id/business-hours/upsert', async (req, res) => {
   try {
     const { id } = req.params; // VendorProfileID
-    const { hoursId, dayOfWeek, openTime, closeTime, isAvailable } = req.body;
+    const { hoursId, dayOfWeek, openTime, closeTime, isAvailable, timezone } = req.body;
 
     // Normalize/validate time strings to HH:mm:ss
     const normalizeTime = (t) => {
@@ -434,17 +434,39 @@ router.post('/:id/business-hours/upsert', async (req, res) => {
       resolvedHoursId = existsRes.recordset[0]?.HoursID || null;
     }
 
+    const tz = timezone || 'America/New_York';
+    
+    // Use direct SQL update/insert instead of stored procedure to include timezone
     const request = new sql.Request(pool);
     request.input('HoursID', sql.Int, resolvedHoursId);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     request.input('DayOfWeek', sql.TinyInt, dayOfWeek);
-    // Pass as VarChar to avoid driver-side TIME validation issues; SQL Server will implicitly convert to TIME
     request.input('OpenTime', sql.VarChar(8), normOpen);
     request.input('CloseTime', sql.VarChar(8), normClose);
     request.input('IsAvailable', sql.Bit, isAvailable);
+    request.input('Timezone', sql.NVarChar(100), tz);
 
-    const result = await request.execute('sp_UpsertVendorBusinessHour');
-    res.json({ success: true, hoursId: result.recordset[0].HoursID });
+    let resultHoursId;
+    if (resolvedHoursId) {
+      // Update existing
+      await request.query(`
+        UPDATE VendorBusinessHours
+        SET OpenTime = @OpenTime, CloseTime = @CloseTime, IsAvailable = @IsAvailable, 
+            Timezone = @Timezone, UpdatedAt = GETUTCDATE()
+        WHERE HoursID = @HoursID AND VendorProfileID = @VendorProfileID
+      `);
+      resultHoursId = resolvedHoursId;
+    } else {
+      // Insert new
+      const insertResult = await request.query(`
+        INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone, CreatedAt, UpdatedAt)
+        OUTPUT INSERTED.HoursID
+        VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable, @Timezone, GETUTCDATE(), GETUTCDATE())
+      `);
+      resultHoursId = insertResult.recordset[0].HoursID;
+    }
+
+    res.json({ success: true, hoursId: resultHoursId });
   } catch (err) {
     console.error('Upsert vendor business hour error:', err);
     res.status(500).json({ message: 'Failed to upsert vendor business hour', error: err.message });
