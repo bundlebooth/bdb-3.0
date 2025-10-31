@@ -5286,11 +5286,10 @@ GO
 CREATE OR ALTER PROCEDURE sp_UpsertVendorAvailabilityException
     @ExceptionID INT = NULL, -- NULL for new, ID for update
     @VendorProfileID INT,
-    @StartDate DATE,
-    @EndDate DATE,
+    @Date DATE,
     @StartTime TIME = NULL,
     @EndTime TIME = NULL,
-    @IsAvailable BIT = 1,
+    @IsAvailable BIT = 0,
     @Reason NVARCHAR(255) = NULL
 AS
 BEGIN
@@ -5298,21 +5297,20 @@ BEGIN
 
     IF @ExceptionID IS NULL -- Insert new
     BEGIN
-        INSERT INTO VendorAvailabilityExceptions (VendorProfileID, StartDate, EndDate, StartTime, EndTime, IsAvailable, Reason)
-        VALUES (@VendorProfileID, @StartDate, @EndDate, @StartTime, @EndTime, @IsAvailable, @Reason);
+        INSERT INTO VendorAvailabilityExceptions (VendorProfileID, Date, StartTime, EndTime, IsAvailable, Reason, CreatedAt, UpdatedAt)
+        VALUES (@VendorProfileID, @Date, @StartTime, @EndTime, @IsAvailable, @Reason, GETUTCDATE(), GETUTCDATE());
         SELECT SCOPE_IDENTITY() AS ExceptionID;
     END
     ELSE -- Update existing
     BEGIN
         UPDATE VendorAvailabilityExceptions
         SET
-            StartDate = @StartDate,
-            EndDate = @EndDate,
+            Date = @Date,
             StartTime = @StartTime,
             EndTime = @EndTime,
             IsAvailable = @IsAvailable,
             Reason = @Reason,
-            CreatedAt = GETDATE() -- Update timestamp for modification
+            UpdatedAt = GETUTCDATE()
         WHERE ExceptionID = @ExceptionID AND VendorProfileID = @VendorProfileID;
         SELECT @ExceptionID AS ExceptionID;
     END
