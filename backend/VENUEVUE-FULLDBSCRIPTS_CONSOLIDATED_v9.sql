@@ -4846,15 +4846,14 @@ BEGIN
     -- Availability Exceptions
     SELECT 
         ExceptionID,
-        StartDate,
-        EndDate,
+        Date,
         StartTime,
         EndTime,
         IsAvailable,
         Reason
     FROM VendorAvailabilityExceptions
     WHERE VendorProfileID = @VendorProfileID
-    ORDER BY StartDate;
+    ORDER BY Date;
 END;
 GO
 
