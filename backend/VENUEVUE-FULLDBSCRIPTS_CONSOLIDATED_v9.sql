@@ -329,6 +329,7 @@ CREATE TABLE VendorBusinessHours (
     OpenTime TIME,
     CloseTime TIME,
     IsAvailable BIT DEFAULT 1,
+    Timezone NVARCHAR(100) DEFAULT 'America/New_York', -- Vendor's timezone
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE(),
     CONSTRAINT UC_VendorDay UNIQUE (VendorProfileID, DayOfWeek)
@@ -4830,13 +4831,14 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    -- Business Hours
+    -- Business Hours (including Timezone)
     SELECT 
         HoursID,
         DayOfWeek,
         OpenTime,
         CloseTime,
-        IsAvailable
+        IsAvailable,
+        Timezone
     FROM VendorBusinessHours
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY DayOfWeek;
@@ -8327,6 +8329,22 @@ INSERT INTO EmailTemplates (TemplateKey, TemplateName, HeaderComponentID, BodyCo
 GO
 
 PRINT '✅ Email template system initialized with 7 templates';
+GO
+
+-- =============================================
+-- MIGRATION: Add Timezone to Business Hours
+-- For existing databases that need to be updated
+-- =============================================
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'VendorBusinessHours') AND name = 'Timezone')
+BEGIN
+    ALTER TABLE VendorBusinessHours
+    ADD Timezone NVARCHAR(100) DEFAULT 'America/New_York';
+    PRINT '✅ Added Timezone column to VendorBusinessHours table';
+END
+ELSE
+BEGIN
+    PRINT '⏭️  Timezone column already exists in VendorBusinessHours';
+END
 GO
 
 PRINT '============================================='
