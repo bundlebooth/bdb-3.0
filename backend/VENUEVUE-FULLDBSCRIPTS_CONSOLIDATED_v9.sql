@@ -7814,17 +7814,22 @@ BEGIN
 END
 GO
 
--- Insert feature categories
+-- Insert feature categories with dynamic applicability based on vendor types
+-- Updated to support Primary Category + Additional Categories filtering
 INSERT INTO VendorFeatureCategories (CategoryName, CategoryIcon, ApplicableVendorCategories, DisplayOrder) VALUES
 ('Venue Features', 'building-2', 'venue', 1),
-('Photography & Video', 'camera', 'photography,videography', 2),
-('Music & Entertainment', 'music', 'dj,music,entertainment', 3),
-('Catering & Bar', 'utensils', 'catering,bartender', 4),
-('Floral & Decor', 'flower-2', 'florist,decor', 5),
-('Event Services', 'party-popper', 'all', 6),
-('Transportation', 'car', 'transportation', 7),
-('Special Features', 'sparkles', 'all', 8),
-('Event Planning', 'clipboard-list', 'planning', 9);
+('Photography & Video', 'camera', 'photo', 2),
+('Music & Entertainment', 'music', 'music,entertainment', 3),
+('Catering & Bar', 'utensils', 'catering,cake', 4),
+('Floral & Decor', 'flower-2', 'decor', 5),
+('Event Services', 'party-popper', 'planner,venue', 6), -- Changed from 'all' to specific categories
+('Transportation', 'car', 'transport', 7),
+('Special Features', 'sparkles', 'venue,entertainment,experiences,catering', 8), -- Changed from 'all' to specific categories
+('Event Planning', 'clipboard-list', 'planner', 9),
+('Beauty & Fashion Services', 'sparkles', 'beauty,fashion', 10),
+('Stationery & Paper Goods', 'file', 'stationery', 11),
+('Cake & Desserts', 'cake', 'cake', 12),
+('Experience Services', 'sparkles', 'experiences', 13);
 GO
 
 -- Insert venue features
@@ -8009,6 +8014,92 @@ CROSS APPLY (VALUES
     ('Emergency Kit', 'Day-of emergency supplies', 'hand', 8)
 ) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
 WHERE c.CategoryName = 'Event Planning';
+GO
+
+-- Insert beauty & fashion services features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Bridal Hair Styling', 'Professional bridal hair services', 'scissors', 1),
+    ('Bridal Makeup', 'Full bridal makeup application', 'palette', 2),
+    ('Bridesmaids Services', 'Hair and makeup for bridesmaids', 'users', 3),
+    ('Trial Session', 'Pre-wedding trial appointment', 'calendar-check', 4),
+    ('On-Location Services', 'Travel to venue for services', 'map-pin', 5),
+    ('Airbrush Makeup', 'Professional airbrush application', 'spray-can', 6),
+    ('Lash Extensions', 'Individual lash extensions', 'eye', 7),
+    ('Nail Services', 'Manicure and pedicure', 'hand', 8),
+    ('Custom Gown Design', 'Bespoke wedding dress design', 'scissors', 9),
+    ('Alterations Included', 'Complimentary dress alterations', 'move', 10),
+    ('Accessories', 'Veils, jewelry, and accessories', 'sparkles', 11),
+    ('Groom Services', 'Grooming services for groom', 'users', 12)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Beauty & Fashion Services';
+GO
+
+-- Insert stationery & paper goods features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Save the Dates', 'Custom save the date cards', 'calendar-check', 1),
+    ('Wedding Invitations', 'Formal invitation suite', 'scroll-text', 2),
+    ('RSVP Cards', 'Response cards and envelopes', 'clipboard-check', 3),
+    ('Thank You Cards', 'Post-wedding thank you notes', 'heart', 4),
+    ('Programs & Menus', 'Ceremony programs and menu cards', 'book-open', 5),
+    ('Seating Charts', 'Custom seating chart display', 'users', 6),
+    ('Place Cards', 'Individual guest place cards', 'trending-up', 7),
+    ('Signage', 'Welcome and directional signs', 'signpost', 8),
+    ('Envelope Addressing', 'Professional calligraphy', 'scroll-text', 9),
+    ('Digital Designs', 'Digital invitation files', 'file', 10),
+    ('Custom Wax Seals', 'Personalized wax seal stamps', 'circle', 11),
+    ('Day-of Paper Goods', 'Programs, menus, and more', 'layers', 12)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Stationery & Paper Goods';
+GO
+
+-- Insert cake & desserts features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Multi-Tier Wedding Cake', 'Custom multi-layer cake', 'cake', 1),
+    ('Cake Tasting', 'Pre-wedding tasting appointment', 'coffee', 2),
+    ('Custom Design', 'Fully customized cake design', 'palette', 3),
+    ('Groom''s Cake', 'Separate cake for groom', 'cake', 4),
+    ('Cupcake Tower', 'Individual cupcake display', 'layers', 5),
+    ('Dessert Bar', 'Variety of dessert options', 'utensils', 6),
+    ('Macarons', 'French macaron tower', 'circle', 7),
+    ('Cake Delivery & Setup', 'Professional delivery and assembly', 'truck', 8),
+    ('Sugar Flowers', 'Handcrafted sugar flower decorations', 'flower', 9),
+    ('Fondant Work', 'Custom fondant designs', 'layers', 10),
+    ('Gluten-Free Options', 'Gluten-free cake available', 'wheat-off', 11),
+    ('Vegan Options', 'Plant-based cake options', 'leaf', 12),
+    ('Fresh Fruit Filling', 'Real fruit-filled layers', 'apple', 13),
+    ('Cake Topper', 'Custom cake topper included', 'crown', 14)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Cake & Desserts';
+GO
+
+-- Insert experience services features
+INSERT INTO VendorFeatures (CategoryID, FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+SELECT c.CategoryID, v.FeatureName, v.FeatureDescription, v.FeatureIcon, v.DisplayOrder
+FROM VendorFeatureCategories c
+CROSS APPLY (VALUES
+    ('Photo Booth', 'Interactive photo booth', 'camera', 1),
+    ('Virtual Reality Experience', 'VR entertainment station', 'gamepad-2', 2),
+    ('Live Artist/Painter', 'Live event painting', 'palette', 3),
+    ('Caricature Artist', 'Guest caricature drawings', 'wand', 4),
+    ('Interactive Games', 'Lawn games and activities', 'gamepad-2', 5),
+    ('Lounge Setup', 'Comfortable lounge furniture', 'armchair', 6),
+    ('Cigar Rolling Station', 'Live cigar rolling experience', 'flame', 7),
+    ('Coffee/Tea Bar', 'Specialty beverage station', 'coffee', 8),
+    ('S''mores Station', 'DIY s''mores bar', 'flame', 9),
+    ('Live Calligrapher', 'On-site calligraphy services', 'scroll-text', 10),
+    ('Fireworks Display', 'Professional fireworks show', 'flame-kindling', 11),
+    ('Sky Lantern Release', 'Coordinated lantern release', 'cloud', 12)
+) v(FeatureName, FeatureDescription, FeatureIcon, DisplayOrder)
+WHERE c.CategoryName = 'Experience Services';
 GO
 
 -- =============================================
