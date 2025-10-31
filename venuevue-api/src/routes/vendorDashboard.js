@@ -762,7 +762,7 @@ router.get('/:id/faqs', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     const result = await request.query(`
-      SELECT FAQID, Question, Answer, DisplayOrder, IsActive FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
+      SELECT FAQID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder, IsActive FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
     `);
     res.json({ success: true, faqs: result.recordset });
   } catch (err) {
@@ -789,11 +789,13 @@ router.post('/:id/faqs/upsert', async (req, res) => {
         const fReq = new sql.Request(pool);
         fReq.input('VendorProfileID', sql.Int, parseInt(id));
         fReq.input('Question', sql.NVarChar(500), f.question);
-        fReq.input('Answer', sql.NVarChar(sql.MAX), f.answer);
+        fReq.input('Answer', sql.NVarChar(sql.MAX), f.answer || '');
+        fReq.input('AnswerType', sql.NVarChar(50), f.answerType || 'text');
+        fReq.input('AnswerOptions', sql.NVarChar(sql.MAX), f.answerOptions ? JSON.stringify(f.answerOptions) : null);
         fReq.input('DisplayOrder', sql.Int, i + 1);
         await fReq.query(`
-          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
-          VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder, 1, GETDATE(), GETDATE())
+          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
+          VALUES (@VendorProfileID, @Question, @Answer, @AnswerType, @AnswerOptions, @DisplayOrder, 1, GETDATE(), GETDATE())
         `);
       }
     }
