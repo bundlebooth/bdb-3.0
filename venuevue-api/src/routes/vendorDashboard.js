@@ -497,7 +497,7 @@ router.delete('/:id/business-hours/:hoursId', async (req, res) => {
 router.post('/:id/availability-exceptions/upsert', async (req, res) => {
   try {
     const { id } = req.params; // VendorProfileID
-    const { exceptionId, startDate, endDate, startTime, endTime, isAvailable, reason } = req.body;
+    const { exceptionId, date, startTime, endTime, isAvailable, reason } = req.body;
 
     const normalizeTime = (t) => {
       if (!t) return null;
@@ -522,8 +522,7 @@ router.post('/:id/availability-exceptions/upsert', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('ExceptionID', sql.Int, exceptionId || null);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    request.input('StartDate', sql.Date, startDate);
-    request.input('EndDate', sql.Date, endDate);
+    request.input('Date', sql.Date, date);
     // Pass as VarChar for implicit TIME conversion server-side
     request.input('StartTime', sql.VarChar(8), normStart);
     request.input('EndTime', sql.VarChar(8), normEnd);
