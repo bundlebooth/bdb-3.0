@@ -3009,7 +3009,7 @@ BEGIN
     ORDER BY DisplayOrder;
 
     -- Vendor business hours (recordset 9)
-    SELECT DayOfWeek, OpenTime, CloseTime, IsAvailable
+    SELECT DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone
     FROM VendorBusinessHours
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY DayOfWeek;
