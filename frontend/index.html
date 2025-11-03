@@ -16835,6 +16835,20 @@ document.addEventListener('DOMContentLoaded', async function() {
                             return '';
                         }
 
+                        // Get primary category information
+                        const primaryCat = vendor.vendor?.PrimaryCategory || vendor.PrimaryCategory || vendor.vendor?.type || vendor.type || category || '';
+                        const categoryKey = mapTypeToCategory(primaryCat);
+                        const categoryIconHtml = getCategoryIconHtml(categoryKey);
+                        const categoryName = getCategoryName(categoryKey);
+                        
+                        // Create category badge HTML (small pill)
+                        const categoryBadgeHTML = categoryKey ? `
+                            <span style="display:inline-flex;align-items:center;gap:0.3rem;background:#5e72e4;color:white;padding:0.2rem 0.5rem;border-radius:12px;font-size:0.7rem;font-weight:500;margin-left:0.5rem;">
+                                ${categoryIconHtml}
+                                <span>${categoryName}</span>
+                            </span>
+                        ` : '';
+
                         return `
                             <div class="vendor-card" data-vendor-id="${vendorId}">
                                 <div class="vendor-image">
@@ -16849,7 +16863,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     </div>
                                 </div>
                                 <div class="vendor-details">
-                                    <h3 class="vendor-name">${businessName}</h3>
+                                    <h3 class="vendor-name">${businessName}${categoryBadgeHTML}</h3>
                                     <div class="vendor-location" style="margin: 0.5rem 0; font-size: 0.9rem; color: #666;">
                                         <span style="color: #888; margin-right: 0.5rem;">Location:</span>${location}
                                     </div>
@@ -32670,6 +32684,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         `<span style="color:#6b7280;">•</span>
                          <span style="color:#059669;font-size:.85rem;"><i class="fas fa-location-arrow" style="margin-right:0.25rem;"></i>${distanceMiles.toFixed(1)} mi</span>` : '';
 
+                    // Get primary category information
+                    const primaryCat = vendor.PrimaryCategory || vendor.primaryCategory || vendor.type || vendor.category || '';
+                    const categoryKey = mapTypeToCategory(primaryCat);
+                    const categoryIconHtml = getCategoryIconHtml(categoryKey);
+                    const categoryName = getCategoryName(categoryKey);
+                    
+                    // Create category badge HTML (small pill)
+                    const categoryBadgeHTML = categoryKey ? `
+                        <span style="display:inline-flex;align-items:center;gap:0.3rem;background:#5e72e4;color:white;padding:0.2rem 0.5rem;border-radius:12px;font-size:0.7rem;font-weight:500;margin-left:0.5rem;">
+                            ${categoryIconHtml}
+                            <span>${categoryName}</span>
+                        </span>
+                    ` : '';
+
                     return `
                         <div class="vendor-card" data-vendor-id="${vendorId}">
                             <div class="vendor-image">
@@ -32682,7 +32710,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 </div>` : ''}
                             </div>
                             <div class="vendor-details">
-                                <h3 class="vendor-name" style="font-size:1.1rem;">${vendor.BusinessName || vendor.name}</h3>
+                                <h3 class="vendor-name" style="font-size:1.1rem;">${vendor.BusinessName || vendor.name}${categoryBadgeHTML}</h3>
                                 <div class="vendor-location" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                                     <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${locationText || 'Location unavailable'}</span>
                                     ${distanceHTML}
@@ -37481,6 +37509,20 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             if (vendor.isAwardWinning || vendor.IsAwardWinning) filterBadges.push('<i class="fas fa-trophy" style="color: #f59e0b; font-size: 1rem;" title="Award Winning"></i>');
             if (vendor.isLastMinute || vendor.IsLastMinute) filterBadges.push('<i class="fas fa-bolt" style="color: #3b82f6; font-size: 1rem;" title="Last Minute Availability"></i>');
 
+            // Get primary category information
+            const primaryCat = vendor.PrimaryCategory || vendor.primaryCategory || vendor.type || vendor.category || '';
+            const categoryKey = mapTypeToCategory(primaryCat);
+            const categoryIconHtml = getCategoryIconHtml(categoryKey);
+            const categoryName = getCategoryName(categoryKey);
+            
+            // Create category badge HTML (small pill)
+            const categoryBadgeHTML = categoryKey ? `
+                <span style="display:inline-flex;align-items:center;gap:0.3rem;background:#5e72e4;color:white;padding:0.2rem 0.5rem;border-radius:12px;font-size:0.65rem;font-weight:500;margin-left:0.4rem;vertical-align:middle;">
+                    ${categoryIconHtml}
+                    <span>${categoryName}</span>
+                </span>
+            ` : '';
+
             const isReviewContext = vendor.__context === 'review';
             const cardOnClick = isReviewContext ? '' : `onclick="console.log('Card clicked!'); console.log('About to call toggleVendorSelection with:', '${vendorId}'); toggleVendorSelectionForCurrentService('${vendorId}'); console.log('toggleVendorSelection call completed');"`;
             return `
@@ -37495,7 +37537,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         <div style="margin-bottom: 0.5rem;">
                             <!-- Row 1: Name (left) + Distance pill (right) -->
                             <div style="display:grid; grid-template-columns: 1fr auto; align-items:start; column-gap:8px;">
-                                <h4 style="font-size: 1rem; margin: 0; font-weight: 600; color: #4b5563;">${businessName}</h4>
+                                <h4 style="font-size: 1rem; margin: 0; font-weight: 600; color: #4b5563; display:flex; align-items:center;">${businessName}${categoryBadgeHTML}</h4>
                                 ${distanceLabel ? `<span style="font-size: 0.8rem; color: #6b7280; background:#eef2ff; border:1px solid #c7d2fe; padding:2px 8px; border-radius:9999px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;"><i class="fas fa-location-arrow" style="font-size:0.8rem; color:#4f46e5;"></i>${distanceLabel}</span>` : ''}
                             </div>
                             <!-- Row 2: Stars/Rating/Location (left) + 'No reviews yet' (right when applicable) -->
