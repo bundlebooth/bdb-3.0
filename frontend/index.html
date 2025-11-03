@@ -7137,8 +7137,8 @@
                                         </button>
                                 <div class="dashboard-card">
                                     <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-building"></i></span> Business Information</h2>
-                                    <p style="color: var(--text-light); margin-bottom: 1.5rem; line-height: 1.6;">
-                                        Manage your business profile details that will be displayed to potential clients. Update your business name, categories, description, and pricing information to help clients find and understand your services.
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                                        Update your business name, categories, and pricing to help clients find your services.
                                     </p>
                                     <form id="vendor-profile-form">
                                         <!-- Row 1: Business Name and Display Name -->
@@ -7250,14 +7250,56 @@
                                 <div class="dashboard-card">
                                         <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-map-marker-alt"></i></span> Location & Service Areas</h2>
                                         <form id="vendor-location-form">
-                                            <div class="form-group"><label for="loc-address">Street Address</label><input type="text" id="loc-address"></div>
-                                            <div class="form-group"><label for="loc-city">City</label><input type="text" id="loc-city"></div>
-                                            <div class="form-group"><label for="loc-state">Province</label><input type="text" id="loc-state"></div>
-                                            <div class="form-group"><label for="loc-country">Country</label><input type="text" id="loc-country" placeholder="Canada"></div>
-                                            <div class="form-group"><label for="loc-postal">Postal Code</label><input type="text" id="loc-postal"></div>
+                                            <!-- Row 1: Street Address and City -->
                                             <div class="form-row">
-                                                <div class="form-col"><div class="form-group"><label for="loc-lat">Latitude</label><input type="text" id="loc-lat" readonly></div></div>
-                                                <div class="form-col"><div class="form-group"><label for="loc-lng">Longitude</label><input type="text" id="loc-lng" readonly></div></div>
+                                                <div class="form-col">
+                                                    <div class="form-group">
+                                                        <label for="loc-address">Street Address</label>
+                                                        <input type="text" id="loc-address">
+                                                    </div>
+                                                </div>
+                                                <div class="form-col">
+                                                    <div class="form-group">
+                                                        <label for="loc-city">City</label>
+                                                        <input type="text" id="loc-city">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Row 2: Province and Country -->
+                                            <div class="form-row">
+                                                <div class="form-col">
+                                                    <div class="form-group">
+                                                        <label for="loc-state">Province</label>
+                                                        <input type="text" id="loc-state">
+                                                    </div>
+                                                </div>
+                                                <div class="form-col">
+                                                    <div class="form-group">
+                                                        <label for="loc-country">Country</label>
+                                                        <input type="text" id="loc-country" placeholder="Canada">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Row 3: Postal Code and Latitude/Longitude -->
+                                            <div class="form-row">
+                                                <div class="form-col">
+                                                    <div class="form-group">
+                                                        <label for="loc-postal">Postal Code</label>
+                                                        <input type="text" id="loc-postal">
+                                                    </div>
+                                                </div>
+                                                <div class="form-col" style="display: flex; gap: 1rem;">
+                                                    <div class="form-group" style="flex: 1;">
+                                                        <label for="loc-lat">Latitude</label>
+                                                        <input type="text" id="loc-lat" readonly>
+                                                    </div>
+                                                    <div class="form-group" style="flex: 1;">
+                                                        <label for="loc-lng">Longitude</label>
+                                                        <input type="text" id="loc-lng" readonly>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="dashboard-subcard" style="margin-top:1rem;">
                                                 <h3 class="dashboard-card-title" style="font-size:1rem;">Service Areas (Cities/Regions Served) <span style="color:red;">*</span></h3>
