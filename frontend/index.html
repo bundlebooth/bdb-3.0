@@ -7137,28 +7137,106 @@
                                         </button>
                                 <div class="dashboard-card">
                                     <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-building"></i></span> Business Information</h2>
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem; line-height: 1.6;">
+                                        Manage your business profile details that will be displayed to potential clients. Update your business name, categories, description, and pricing information to help clients find and understand your services.
+                                    </p>
                                     <form id="vendor-profile-form">
-                                        <div class="form-group"><label for="vendor-name">Business Name <span style="color:red;">*</span></label><input type="text" id="vendor-name" required></div>
-                                        <div class="form-group"><label for="vendor-display-name">Display Name (for public listing)</label><input type="text" id="vendor-display-name" placeholder="Public listing name"></div>
-                                        <div class="form-group"><label for="vendor-email">Business Email <span style="color:red;">*</span></label><input type="email" id="vendor-email" required></div>
-                                        <div class="form-group"><label for="vendor-phone">Business Phone <span style="color:red;">*</span></label><input type="tel" id="vendor-phone" required></div>
-                                        <div class="form-group"><label for="vendor-website">Website URL</label><input type="url" id="vendor-website"></div>
-                                        <div class="form-group"><label for="vendor-years-in-business">Years in Business</label><input type="number" id="vendor-years-in-business" min="0"></div>
-                                        <div class="form-group"><label for="vendor-description">Business Description <span style="color:red;">*</span></label><textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);" required></textarea></div>
-                                        <div class="form-group"><label for="vendor-tagline">Tagline (short description)</label><input type="text" id="vendor-tagline" placeholder="Short description"></div>
-                                        <div class="form-group"><label for="vendor-category">Primary Category <span style="color:red;">*</span></label><select id="vendor-category" required></select></div>
-                                        <div class="form-group"><label for="vendor-additional-categories">Additional Categories</label><select id="vendor-additional-categories" multiple></select></div>
-                                        <div class="form-group">
-                                            <label for="vendor-price-level">Price Range <span style="color:red;">*</span></label>
-                                            <select id="vendor-price-level" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
-                                                <option value="">Select price range</option>
-                                                <option value="$">$ - Inexpensive</option>
-                                                <option value="$$">$$ - Moderate</option>
-                                                <option value="$$$">$$$ - Expensive</option>
-                                                <option value="$$$$">$$$$ - Luxury</option>
-                                            </select>
-                                            <small style="color: var(--text-light); font-size: 0.85rem;">This helps clients find services that match their budget</small>
+                                        <!-- Row 1: Business Name and Display Name -->
+                                        <div class="form-row">
+                                            <div class="form-col">
+                                                <div class="form-group">
+                                                    <label for="vendor-name">Business Name <span style="color:red;">*</span></label>
+                                                    <input type="text" id="vendor-name" required>
+                                                </div>
+                                            </div>
+                                            <div class="form-col">
+                                                <div class="form-group">
+                                                    <label for="vendor-display-name">Display Name (for public listing)</label>
+                                                    <input type="text" id="vendor-display-name" placeholder="Public listing name">
+                                                </div>
+                                            </div>
                                         </div>
+                                        
+                                        <!-- Row 2: Business Email and Business Phone -->
+                                        <div class="form-row">
+                                            <div class="form-col">
+                                                <div class="form-group">
+                                                    <label for="vendor-email">Business Email <span style="color:red;">*</span></label>
+                                                    <input type="email" id="vendor-email" required>
+                                                </div>
+                                            </div>
+                                            <div class="form-col">
+                                                <div class="form-group">
+                                                    <label for="vendor-phone">Business Phone <span style="color:red;">*</span></label>
+                                                    <input type="tel" id="vendor-phone" required>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Row 3: Website URL and Years in Business -->
+                                        <div class="form-row">
+                                            <div class="form-col">
+                                                <div class="form-group">
+                                                    <label for="vendor-website">Website URL</label>
+                                                    <input type="url" id="vendor-website">
+                                                </div>
+                                            </div>
+                                            <div class="form-col">
+                                                <div class="form-group">
+                                                    <label for="vendor-years-in-business">Years in Business</label>
+                                                    <input type="number" id="vendor-years-in-business" min="0">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Row 4: Business Description (Full Width) -->
+                                        <div class="form-group">
+                                            <label for="vendor-description">Business Description <span style="color:red;">*</span></label>
+                                            <textarea id="vendor-description" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius);" required></textarea>
+                                        </div>
+                                        
+                                        <!-- Row 5: Tagline and Primary Category -->
+                                        <div class="form-row">
+                                            <div class="form-col">
+                                                <div class="form-group">
+                                                    <label for="vendor-tagline">Tagline (short description)</label>
+                                                    <input type="text" id="vendor-tagline" placeholder="Short description">
+                                                </div>
+                                            </div>
+                                            <div class="form-col">
+                                                <div class="form-group">
+                                                    <label for="vendor-category">Primary Category <span style="color:red;">*</span></label>
+                                                    <select id="vendor-category" required></select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Row 6: Additional Categories and Price Range -->
+                                        <div class="form-row">
+                                            <div class="form-col">
+                                                <div class="form-group">
+                                                    <label>Additional Categories</label>
+                                                    <div id="vendor-additional-categories" style="display: flex; flex-direction: column; gap: 0.4rem; padding: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: #fafbfc; max-height: 180px; overflow-y: auto;">
+                                                        <!-- Checkboxes will be populated here -->
+                                                    </div>
+                                                    <small style="color: var(--text-light); font-size: 0.85rem; display: block; margin-top: 0.5rem;">Select all categories that apply to your business</small>
+                                                </div>
+                                            </div>
+                                            <div class="form-col">
+                                                <div class="form-group">
+                                                    <label for="vendor-price-level">Price Range <span style="color:red;">*</span></label>
+                                                    <select id="vendor-price-level" required style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
+                                                        <option value="">Select price range</option>
+                                                        <option value="$">$ - Inexpensive</option>
+                                                        <option value="$$">$$ - Moderate</option>
+                                                        <option value="$$$">$$$ - Expensive</option>
+                                                        <option value="$$$$">$$$$ - Luxury</option>
+                                                    </select>
+                                                    <small style="color: var(--text-light); font-size: 0.85rem;">This helps clients find services that match their budget</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
                                         <button type="submit" class="btn btn-primary">Save Changes</button>
                                     </form>
                                 </div>
@@ -30269,11 +30347,22 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Populate category dropdown
                 inputs.category.innerHTML = '<option value="">Select category</option>' +
                     state.categories.filter(c => c.id !== 'all').map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-                // Populate additional categories
-                inputs.additionalCategories.innerHTML = state.categories
+                
+                // Populate additional categories as checkboxes
+                const categoriesContainer = inputs.additionalCategories;
+                categoriesContainer.innerHTML = state.categories
                     .filter(c => c.id !== 'all')
-                    .map(c => `<option value="${c.id}">${c.name}</option>`)
-                    .join('');
+                    .map(c => `
+                        <label style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.5rem; background: white; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all 0.2s;" 
+                               onmouseover="this.style.background='#f0f7ff'; this.style.borderColor='var(--primary)';" 
+                               onmouseout="this.style.background='white'; this.style.borderColor='var(--border)';">
+                            <input type="checkbox" 
+                                   name="additional-category" 
+                                   value="${c.id}" 
+                                   style="width: 16px; height: 16px; cursor: pointer;">
+                            <span style="font-size: 0.875rem; color: var(--text);">${c.name}</span>
+                        </label>
+                    `).join('');
 
                 try {
                     const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/profile-details`, {
@@ -30302,14 +30391,43 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     inputs.tagline.value = profile.Tagline || '';
                     inputs.priceLevel.value = profile.PriceLevel || '$$';
 
-                    // Set selected category
+                    // Set selected categories
                     if (profile.Categories) {
-                        const primaryCategory = profile.Categories.split(',')[0].trim().toLowerCase();
+                        const categories = profile.Categories.split(',').map(c => c.trim().toLowerCase());
+                        const primaryCategory = categories[0];
+                        
+                        // Set primary category dropdown
                         const option = Array.from(inputs.category.options).find(opt => opt.value === primaryCategory);
                         if (option) {
                             option.selected = true;
                         }
+                        
+                        // Set additional category checkboxes
+                        const additionalCats = categories.slice(1); // All categories except the first (primary)
+                        const checkboxes = inputs.additionalCategories.querySelectorAll('input[type="checkbox"]');
+                        checkboxes.forEach(checkbox => {
+                            if (additionalCats.includes(checkbox.value)) {
+                                checkbox.checked = true;
+                                // Highlight checked items
+                                checkbox.closest('label').style.background = '#e8f4fd';
+                                checkbox.closest('label').style.borderColor = 'var(--primary)';
+                            }
+                        });
                     }
+                    
+                    // Add checkbox change handlers to maintain visual state
+                    const checkboxes = inputs.additionalCategories.querySelectorAll('input[type="checkbox"]');
+                    checkboxes.forEach(checkbox => {
+                        checkbox.addEventListener('change', function() {
+                            if (this.checked) {
+                                this.closest('label').style.background = '#e8f4fd';
+                                this.closest('label').style.borderColor = 'var(--primary)';
+                            } else {
+                                this.closest('label').style.background = 'white';
+                                this.closest('label').style.borderColor = 'var(--border)';
+                            }
+                        });
+                    });
 
                     // Defer heavy loads to tab activation to keep settings fast
                     const photosPanel = document.getElementById('vendor-photos-panel');
@@ -30344,8 +30462,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const tagline = inputs.tagline.value?.trim();
                         const years = inputs.yearsInBusiness.value ? parseInt(inputs.yearsInBusiness.value, 10) : null;
                         const primaryCategory = inputs.category.value?.trim();
-                        const additionalCategories = Array.from(inputs.additionalCategories.selectedOptions)
-                            .map(o => o.value)
+                        const additionalCategories = Array.from(inputs.additionalCategories.querySelectorAll('input[type="checkbox"]:checked'))
+                            .map(cb => cb.value)
                             .filter(v => v && v !== primaryCategory);
 
                         if (!name || !email || !phone || !primaryCategory) {
