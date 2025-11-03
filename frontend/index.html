@@ -24904,7 +24904,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const html = venues.map(venue => {
                     const vendorId = venue.VendorProfileID || venue.vendorProfileId || venue.id;
                     const name = venue.BusinessName || venue.businessName || venue.name || 'Unnamed Venue';
-                    const rating = venue.averageRating || venue.rating || 5.0;
+                    const rating = (() => {
+                        const r = parseFloat(venue.averageRating ?? venue.rating ?? 0);
+                        return isNaN(r) || r === 0 ? 0 : r;
+                    })();
                     const reviewCount = venue.totalReviews || venue.reviewCount || 0;
                     const city = venue.City || venue.city || '';
                     const state = venue.State || venue.state || '';
@@ -24936,11 +24939,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </div>
                             <div class="recommendation-venue-info">
                                 <div class="recommendation-venue-name">${name}</div>
+                                ${rating > 0 ? `
                                 <div class="recommendation-venue-rating">
                                     <span class="stars">${stars}</span>
                                     <span style="color: #6b7280;">${rating.toFixed(1)}</span>
                                     <span style="color: #9ca3af;">(${reviewCount})</span>
                                 </div>
+                                ` : ''}
                                 <div class="recommendation-venue-location">
                                     <i class="fas fa-map-marker-alt"></i>
                                     ${location}
@@ -28285,8 +28290,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                         const descText = (vendor.Bio || vendor.bio || vendor.BusinessDescription || vendor.businessDescription || vendor.Description || vendor.description || vendor.About || vendor.about || '').toString();
                         const shortDesc = descText.length > 140 ? `${descText.slice(0, 140)}…` : descText;
-                        const ratingRaw = vendor.averageRating ?? vendor.rating ?? '4.5';
-                        const ratingValue = (() => { const r = parseFloat(ratingRaw); return isNaN(r) ? 4.5 : r; })();
+                        const ratingRaw = vendor.averageRating ?? vendor.rating ?? 0;
+                        const ratingValue = (() => { const r = parseFloat(ratingRaw); return isNaN(r) || r === 0 ? 0 : r; })();
                         const reviewCount = (() => {
                             if (vendor.totalReviews != null) return vendor.totalReviews;
                             if (vendor.reviewCount != null) return vendor.reviewCount;
@@ -28317,11 +28322,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     <h3 class="vendor-name" style="font-size:1.1rem;">${businessName}</h3>
                                     <div class="vendor-location" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                                         <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${locationText || 'Location unavailable'}</span>
+                                        ${ratingValue > 0 ? `
                                         <span style="color:#6b7280;">•</span>
                                         <span style="display:flex;align-items:center;gap:.5rem;">
                                             <span style="color:#f59e0b;font-size:.9rem;">${'★'.repeat(Math.floor(ratingValue))}${'☆'.repeat(5-Math.floor(ratingValue))}</span>
                                             <span style="font-size:.85rem;color:#6b7280;">${ratingValue.toFixed(1)} (${reviewCount})</span>
                                         </span>
+                                        ` : ''}
                                     </div>
                                     ${shortDesc ? `<div class="vendor-description" style="margin:.5rem 0 0.25rem;color:var(--text-light);font-size:.95rem;line-height:1.4;">${shortDesc}</div>` : ''}
                                     <div class="vendor-footer">
@@ -28386,8 +28393,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         }
                         const descText = (vendor.Bio || vendor.bio || vendor.BusinessDescription || vendor.businessDescription || vendor.Description || vendor.description || vendor.About || vendor.about || '').toString();
                         const shortDesc = descText.length > 140 ? `${descText.slice(0, 140)}…` : descText;
-                        const ratingRaw = vendor.averageRating ?? vendor.rating ?? '4.5';
-                        const ratingValue = (() => { const r = parseFloat(ratingRaw); return isNaN(r) ? 4.5 : r; })();
+                        const ratingRaw = vendor.averageRating ?? vendor.rating ?? 0;
+                        const ratingValue = (() => { const r = parseFloat(ratingRaw); return isNaN(r) || r === 0 ? 0 : r; })();
                         const reviewCount = (() => {
                             if (vendor.totalReviews != null) return vendor.totalReviews;
                             if (vendor.reviewCount != null) return vendor.reviewCount;
@@ -28418,11 +28425,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                     <h3 class="vendor-name" style="font-size:1.1rem;">${businessName}</h3>
                                     <div class="vendor-location" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                                         <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${locationText || 'Location unavailable'}</span>
+                                        ${ratingValue > 0 ? `
                                         <span style="color:#6b7280;">•</span>
                                         <span style="display:flex;align-items:center;gap:.5rem;">
                                             <span style="color:#f59e0b;font-size:.9rem;">${'★'.repeat(Math.floor(ratingValue))}${'☆'.repeat(5-Math.floor(ratingValue))}</span>
                                             <span style="font-size:.85rem;color:#6b7280;">${ratingValue.toFixed(1)} (${reviewCount})</span>
                                         </span>
+                                        ` : ''}
                                     </div>
                                     ${shortDesc ? `<div class="vendor-description" style="margin:.5rem 0 0.25rem;color:var(--text-light);font-size:.95rem;line-height:1.4;">${shortDesc}</div>` : ''}
                                     <div class="vendor-footer">
@@ -32751,8 +32760,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const descText = (fullDesc || '').toString();
                     const shortDesc = descText.length > 140 ? `${descText.slice(0, 140)}…` : descText;
 
-                    // Rating and location meta
-                    const ratingValue = (() => { const r = parseFloat(vendor.averageRating ?? vendor.rating ?? 4.5); return isNaN(r) ? 4.5 : r; })();
+                    // Rating and location meta - Use only backend data, no hardcoded fallbacks
+                    const ratingValue = (() => { 
+                        const r = parseFloat(vendor.averageRating ?? vendor.rating ?? 0); 
+                        return isNaN(r) || r === 0 ? 0 : r; 
+                    })();
                     const reviewCount = vendor.totalReviews ?? vendor.reviewCount ?? 0;
                     const locCity = vendor.City || vendor.city || '';
                     const locState = vendor.State || vendor.state || '';
@@ -32794,11 +32806,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <div class="vendor-location" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                                     <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${locationText || 'Location unavailable'}</span>
                                     ${distanceHTML}
+                                    ${ratingValue > 0 ? `
                                     <span style="color:#6b7280;">•</span>
                                     <span style="display:flex;align-items:center;gap:.5rem;">
                                         <span style="color:#f59e0b;font-size:.9rem;">${'★'.repeat(Math.floor(ratingValue))}${'☆'.repeat(5-Math.floor(ratingValue))}</span>
                                         <span style="font-size:.85rem;color:#6b7280;">${ratingValue.toFixed(1)} (${reviewCount})</span>
                                     </span>
+                                    ` : ''}
                                     <span style="color:#6b7280;">•</span>
                                     ${priceLevelDisplay}
                                 </div>
@@ -32806,7 +32820,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 <div class="vendor-footer">
                                     <div class="vendor-price" style="font-weight:600;">${priceDisplay ? `<span>Starting from</span> ${priceDisplay}` : ''}</div>
                                     <div class="vendor-actions">
-                                        <button class="btn btn-outline save-btn" data-id="${vendorId}">Save</button>
+                                        <button class="btn btn-outline message-btn" data-id="${vendorId}" data-name="${(vendor.BusinessName || vendor.name || 'Vendor').replace(/"/g, '&quot;')}"><i class="fas fa-comment" style="margin-right:0.5rem;"></i>Message</button>
                                         <button class="btn btn-primary view-btn" data-id="${vendorId}">View</button>
                                     </div>
                                 </div>
@@ -32938,12 +32952,42 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                 });
 
-                // Save buttons
-                document.querySelectorAll('.save-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
+                // Message buttons - Open chat widget with vendor
+                document.querySelectorAll('.message-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
                         e.stopPropagation();
                         const vendorId = btn.dataset.id;
-                        toggleFavorite(vendorId);
+                        const vendorName = btn.dataset.name || 'Vendor';
+                        
+                        console.log('💬 Message button clicked - Vendor ID:', vendorId, 'Name:', vendorName);
+                        
+                        if (!vendorId) {
+                            alert('Unable to start conversation. Vendor ID is missing.');
+                            return;
+                        }
+                        
+                        // Check if user is logged in
+                        const token = localStorage.getItem('token');
+                        if (!token) {
+                            alert('Please log in to message vendors.');
+                            return;
+                        }
+                        
+                        try {
+                            // Start conversation with vendor using the messaging widget
+                            if (window.messagingWidget && typeof window.messagingWidget.startConversationWithVendor === 'function') {
+                                const conversationId = await window.messagingWidget.startConversationWithVendor(vendorId, vendorName);
+                                if (!conversationId) {
+                                    alert('Failed to start conversation. Please try again.');
+                                }
+                            } else {
+                                console.error('Messaging widget not available');
+                                alert('Chat feature is currently unavailable. Please try again later.');
+                            }
+                        } catch (error) {
+                            console.error('Error starting conversation:', error);
+                            alert('Failed to start conversation. Please try again.');
+                        }
                     });
                 });
             }
@@ -36584,8 +36628,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
         // Create detailed info window content for vendor
         function createVendorInfoWindowContent(vendor) {
-            const rating = vendor.averageRating || 4.5;
-            const reviewCount = vendor.totalReviews || 0;
+            // Use only backend data for ratings - no hardcoded fallbacks
+            const rating = (() => {
+                const r = parseFloat(vendor.averageRating ?? vendor.rating ?? 0);
+                return isNaN(r) || r === 0 ? 0 : r;
+            })();
+            const reviewCount = vendor.totalReviews || vendor.reviewCount || 0;
             const businessName = vendor.BusinessName || vendor.businessName || 'Unknown Business';
             
             // Get service name from multiple possible sources
@@ -36608,6 +36656,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     <h6 style="margin: 0 0 0.5rem 0; color: #1f2937; font-size: 1rem;">
                         <i class="fas fa-store"></i> ${businessName}
                     </h6>
+                    ${rating > 0 ? `
                     <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                         <div style="color: #f59e0b; font-size: 0.85rem;">
                             ${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5-Math.floor(rating))}
@@ -36616,6 +36665,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             ${rating.toFixed(1)} (${reviewCount} reviews)
                         </span>
                     </div>
+                    ` : ''}
                     <div style="background: #f8faff; border: 1px solid #e1e8f0; border-radius: 6px; padding: 0.5rem; margin: 0.5rem 0;">
                         <div style="color: #10b981; font-weight: 600; font-size: 0.9rem;">${serviceName}</div>
                         <div style="color: #059669; font-weight: 700; font-size: 1rem;">${price}</div>
@@ -37427,8 +37477,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             
             console.log('🎯 Extracted service names:', serviceNames);
             
-            const rating = vendor.averageRating || 4.5;
-            const reviewCount = vendor.totalReviews || 0;
+            // Use only backend data for ratings - no hardcoded fallbacks
+            const rating = (() => {
+                const r = parseFloat(vendor.averageRating ?? vendor.rating ?? 0);
+                return isNaN(r) || r === 0 ? 0 : r;
+            })();
+            const reviewCount = vendor.totalReviews || vendor.reviewCount || 0;
 
             // Ensure distance is calculated if missing but coords exist
             try {
@@ -37623,9 +37677,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <!-- Row 2: Stars/Rating/Location (left) + 'No reviews yet' (right when applicable) -->
                             <div style="display:grid; grid-template-columns: 1fr auto; align-items:center; margin-top: 0.25rem; column-gap:8px;">
                                 <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-                                    <div style="color: #f59e0b; font-size: 0.85rem; line-height:1;">${(reviewCount && reviewCount > 0) ? '★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating)) : '☆☆☆☆☆'}</div>
-                                    <span style="font-size: 0.8rem; color: #9ca3af; white-space:nowrap;">${(reviewCount && reviewCount > 0) ? `${rating.toFixed(1)} (${reviewCount})` : ''}</span>
+                                    ${(rating > 0) ? `
+                                    <div style="color: #f59e0b; font-size: 0.85rem; line-height:1;">${'★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating))}</div>
+                                    <span style="font-size: 0.8rem; color: #9ca3af; white-space:nowrap;">${rating.toFixed(1)} (${reviewCount})</span>
                                     ${location ? `<span style="font-size: 0.8rem; color: #9ca3af; white-space:nowrap;">• ${location}</span>` : ''}
+                                    ` : `
+                                    ${location ? `<span style="font-size: 0.8rem; color: #9ca3af; white-space:nowrap;">${location}</span>` : ''}
+                                    `}
                                 </div>
                                 <div style="font-size: 0.8rem; color: #6b7280; white-space:nowrap; text-align:right;"></div>
                             </div>
@@ -37711,7 +37769,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         });
                         break;
                     case 'rating':
-                        filteredVendors.sort((a, b) => (b.averageRating || 4.5) - (a.averageRating || 4.5));
+                        filteredVendors.sort((a, b) => {
+                            const ratingA = parseFloat(a.averageRating ?? a.rating ?? 0) || 0;
+                            const ratingB = parseFloat(b.averageRating ?? b.rating ?? 0) || 0;
+                            return ratingB - ratingA;
+                        });
                         break;
                 }
 
