@@ -25203,6 +25203,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const categoryAnswers = details.categoryAnswers || [];
                 const faqs = details.faqs || [];
                 const team = details.team || [];
+                
+                // Debug: Check what category fields are available
+                console.log('🔍 Details object:', details);
+                console.log('🔍 Profile object:', profile);
+                console.log('🔍 Categories array:', details.categories);
+                console.log('🔍 PrimaryCategory:', profile.PrimaryCategory);
+                console.log('🔍 primaryCategory:', profile.primaryCategory);
+                console.log('🔍 type:', profile.type);
+                console.log('🔍 category:', profile.category);
+                console.log('🔍 Category:', profile.Category);
 
                 // Helper function to format timezone for display
                 function formatTimezone(timezone) {
@@ -25266,6 +25276,76 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     });
                     return hoursHtml;
                 }
+
+                // Get primary category information for badge (inline helper functions)
+                // Try to get from categories array first, then fallback to profile fields
+                let primaryCat = '';
+                if (details.categories && details.categories.length > 0) {
+                    // Get the first category from the categories array
+                    const firstCategory = details.categories[0];
+                    primaryCat = firstCategory.Category || firstCategory.category || firstCategory.CategoryName || '';
+                    console.log('🔍 Using category from categories array:', primaryCat);
+                } else {
+                    // Fallback to profile fields
+                    primaryCat = profile.PrimaryCategory || profile.primaryCategory || profile.type || profile.category || '';
+                    console.log('🔍 Using category from profile:', primaryCat);
+                }
+                
+                // Map vendor type to category key
+                const typeMap = {
+                    "Photography": "photo", "Photo": "photo", "Videography": "photo", "Photo/Video": "photo",
+                    "Entertainment": "entertainment", "Music": "music", "DJ": "music", "Music/DJ": "music",
+                    "Decor": "decor", "Florist": "decor", "Decorations": "decor",
+                    "Catering": "catering", "Food": "catering",
+                    "Venue": "venue", "Hotel": "venue", "Beauty": "beauty", "Makeup": "beauty",
+                    "Hair": "beauty", "Cake": "cake", "Baker": "cake", "Transport": "transport",
+                    "Transportation": "transport", "Planner": "planner", "Coordinator": "planner",
+                    "Fashion": "fashion", "Dress": "fashion", "Stationery": "stationery",
+                    "Invitations": "stationery", "Experiences": "experiences"
+                };
+                const categoryKey = typeMap[primaryCat] || primaryCat.toLowerCase().replace(/\s+/g, '').replace(/\//g, '');
+                console.log('🔍 Category key:', categoryKey);
+                
+                // Get category icon
+                const icons = {
+                    "venue": "<i class='fas fa-building'></i>", "photo": "<i class='fas fa-camera'></i>",
+                    "photovideo": "<i class='fas fa-camera'></i>",
+                    "music": "<i class='fas fa-music'></i>", "musicdj": "<i class='fas fa-music'></i>",
+                    "catering": "<i class='fas fa-utensils'></i>",
+                    "entertainment": "<i class='fas fa-theater-masks'></i>", "experiences": "<i class='fas fa-star'></i>",
+                    "decor": "<i class='fas fa-ribbon'></i>", "decorations": "<i class='fas fa-ribbon'></i>",
+                    "beauty": "<i class='fas fa-spa'></i>",
+                    "cake": "<i class='fas fa-birthday-cake'></i>", "transport": "<i class='fas fa-shuttle-van'></i>",
+                    "transportation": "<i class='fas fa-shuttle-van'></i>",
+                    "planner": "<i class='fas fa-clipboard-list'></i>", "fashion": "<i class='fas fa-tshirt'></i>",
+                    "stationery": "<i class='fas fa-envelope'></i>"
+                };
+                const categoryIconHtml = icons[categoryKey] || "<i class='fas fa-gem'></i>";
+                
+                // Get category name
+                const names = {
+                    "venue": "Venue", "photo": "Photo/Video", "photovideo": "Photo/Video",
+                    "music": "Music/DJ", "musicdj": "Music/DJ",
+                    "catering": "Catering", "entertainment": "Entertainment", "experiences": "Experiences",
+                    "decor": "Decorations", "decorations": "Decorations",
+                    "beauty": "Beauty", "cake": "Cake",
+                    "transport": "Transportation", "transportation": "Transportation",
+                    "planner": "Planner", "fashion": "Fashion",
+                    "stationery": "Stationery"
+                };
+                const categoryName = names[categoryKey] || primaryCat || "Vendor";
+                
+                console.log('🔍 Category badge - Icon:', categoryIconHtml, 'Name:', categoryName);
+                
+                // Create category badge HTML (small pill)
+                const categoryBadgeHTML = (categoryKey || primaryCat) ? `
+                    <span style="display:inline-flex;align-items:center;gap:0.3rem;background:#5e72e4;color:white;padding:0.25rem 0.6rem;border-radius:12px;font-size:0.85rem;font-weight:500;margin-left:0.75rem;vertical-align:middle;">
+                        ${categoryIconHtml}
+                        <span>${categoryName}</span>
+                    </span>
+                ` : '';
+                
+                console.log('🔍 Category badge HTML length:', categoryBadgeHTML.length);
 
                 // Helper function to render social media links (compact version for header)
                 function renderSocialMediaIcons(socialMedia) {
@@ -25512,7 +25592,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     <div class="vendor-profile-header" style="padding: 1.5rem 0; margin-bottom: 2rem; border-bottom: 1px solid var(--border);">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem;">
                             <div class="vendor-profile-info" style="flex: 1;">
-                                <h1 style="font-size: 2.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text);">${profile.BusinessName || profile.DisplayName}</h1>
+                                <h1 style="font-size: 2.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text);">${profile.BusinessName || profile.DisplayName}${categoryBadgeHTML}</h1>
                                 <p style="font-size: 1.1rem; color: var(--primary); margin-bottom: 1rem;">${profile.Tagline || 'Professional Event Services'}</p>
                                 
                                 <!-- Main Info Row -->
