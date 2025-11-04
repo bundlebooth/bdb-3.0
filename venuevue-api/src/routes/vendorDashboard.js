@@ -165,23 +165,79 @@ router.get('/:id/setup-status', async (req, res) => {
 // Get vendor analytics
 router.get('/:id/analytics', async (req, res) => {
   try {
-    const { id } = req.params; // This 'id' is VendorProfileID for sp_GetVendorAnalytics
-    const { startDate, endDate } = req.query;
+    const { id } = req.params; // This 'id' is VendorProfileID
+    const { daysBack = 30 } = req.query;
 
     const pool = await poolPromise;
-    const request = new sql.Request(pool);
     
-    request.input('VendorProfileID', sql.Int, id);
-    request.input('StartDate', sql.Date, startDate || null);
-    request.input('EndDate', sql.Date, endDate || null);
-
-    const result = await request.execute('sp_GetVendorAnalytics');
+    // Get booking stats
+    const bookingStatsResult = await pool.request()
+      .input('VendorProfileID', sql.Int, id)
+      .query(`
+        SELECT 
+          COUNT(CASE WHEN Status = 'Completed' THEN 1 END) AS CompletedBookings,
+          COUNT(CASE WHEN Status = 'Confirmed' THEN 1 END) AS ConfirmedBookings,
+          COUNT(CASE WHEN Status = 'Pending' THEN 1 END) AS PendingBookings,
+          COUNT(CASE WHEN Status = 'Cancelled' THEN 1 END) AS CancelledBookings,
+          COUNT(*) AS TotalBookings
+        FROM Bookings
+        WHERE VendorProfileID = @VendorProfileID
+          AND EventDate >= DATEADD(DAY, -${daysBack}, GETUTCDATE())
+      `);
+    
+    // Get revenue by service
+    const revenueByServiceResult = await pool.request()
+      .input('VendorProfileID', sql.Int, id)
+      .query(`
+        SELECT 
+          s.Name AS ServiceName,
+          COUNT(b.BookingID) AS BookingCount,
+          SUM(b.TotalCost) AS TotalRevenue
+        FROM Services s
+        LEFT JOIN Bookings b ON s.ServiceID = b.ServiceID
+        WHERE s.VendorProfileID = @VendorProfileID
+          AND (b.EventDate >= DATEADD(DAY, -${daysBack}, GETUTCDATE()) OR b.EventDate IS NULL)
+        GROUP BY s.ServiceID, s.Name
+        ORDER BY TotalRevenue DESC
+      `);
+    
+    // Get revenue by month
+    const revenueByMonthResult = await pool.request()
+      .input('VendorProfileID', sql.Int, id)
+      .query(`
+        SELECT 
+          FORMAT(EventDate, 'yyyy-MM') AS Month,
+          COUNT(*) AS BookingCount,
+          SUM(TotalCost) AS TotalRevenue
+        FROM Bookings
+        WHERE VendorProfileID = @VendorProfileID
+          AND EventDate >= DATEADD(MONTH, -12, GETUTCDATE())
+        GROUP BY FORMAT(EventDate, 'yyyy-MM')
+        ORDER BY Month
+      `);
+    
+    // Get review stats
+    const reviewStatsResult = await pool.request()
+      .input('VendorProfileID', sql.Int, id)
+      .query(`
+        SELECT 
+          COUNT(*) AS TotalReviews,
+          AVG(CAST(Rating AS FLOAT)) AS AverageRating,
+          COUNT(CASE WHEN Rating = 5 THEN 1 END) AS FiveStarCount,
+          COUNT(CASE WHEN Rating = 4 THEN 1 END) AS FourStarCount,
+          COUNT(CASE WHEN Rating = 3 THEN 1 END) AS ThreeStarCount,
+          COUNT(CASE WHEN Rating = 2 THEN 1 END) AS TwoStarCount,
+          COUNT(CASE WHEN Rating = 1 THEN 1 END) AS OneStarCount
+        FROM Reviews
+        WHERE VendorProfileID = @VendorProfileID
+          AND IsApproved = 1
+      `);
     
     const analytics = {
-      bookingStats: result.recordsets[0][0],
-      revenueByService: result.recordsets[1],
-      revenueByMonth: result.recordsets[2],
-      reviewStats: result.recordsets[3][0]
+      bookingStats: bookingStatsResult.recordset[0],
+      revenueByService: revenueByServiceResult.recordset,
+      revenueByMonth: revenueByMonthResult.recordset,
+      reviewStats: reviewStatsResult.recordset[0]
     };
 
     res.json(analytics);
