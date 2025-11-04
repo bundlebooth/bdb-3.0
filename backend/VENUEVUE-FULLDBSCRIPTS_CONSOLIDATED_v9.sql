@@ -8409,6 +8409,285 @@ BEGIN
 END
 GO
 
+-- =============================================
+-- VENDOR ANALYTICS SYSTEM - Profile Visit Tracking
+-- =============================================
+
+-- Table: VendorProfileViews
+-- Tracks every profile view with timestamp and optional viewer info
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[VendorProfileViews]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[VendorProfileViews] (
+        [ViewID] INT IDENTITY(1,1) PRIMARY KEY,
+        [VendorID] INT NOT NULL,
+        [ViewerUserID] INT NULL, -- Null for anonymous/non-logged-in viewers
+        [ViewedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+        [IPAddress] VARCHAR(45) NULL, -- Support IPv4 and IPv6
+        [UserAgent] VARCHAR(500) NULL,
+        [ReferrerUrl] VARCHAR(1000) NULL,
+        [SessionID] VARCHAR(100) NULL,
+        CONSTRAINT [FK_VendorProfileViews_Vendor] FOREIGN KEY ([VendorID]) 
+            REFERENCES [dbo].[Vendors]([VendorID]) ON DELETE CASCADE,
+        CONSTRAINT [FK_VendorProfileViews_User] FOREIGN KEY ([ViewerUserID]) 
+            REFERENCES [dbo].[Users]([UserID]) ON DELETE SET NULL
+    );
+
+    -- Indexes for performance
+    CREATE INDEX [IX_VendorProfileViews_VendorID] ON [dbo].[VendorProfileViews]([VendorID]);
+    CREATE INDEX [IX_VendorProfileViews_ViewedAt] ON [dbo].[VendorProfileViews]([ViewedAt] DESC);
+    CREATE INDEX [IX_VendorProfileViews_VendorID_ViewedAt] ON [dbo].[VendorProfileViews]([VendorID], [ViewedAt] DESC);
+    CREATE INDEX [IX_VendorProfileViews_ViewerUserID] ON [dbo].[VendorProfileViews]([ViewerUserID]);
+    
+    PRINT '✅ Created VendorProfileViews table with indexes';
+END
+ELSE
+BEGIN
+    PRINT '⏭️  VendorProfileViews table already exists';
+END
+GO
+
+-- =============================================
+-- Stored Procedure: sp_TrackVendorProfileView
+-- Logs a vendor profile view
+-- =============================================
+CREATE OR ALTER PROCEDURE [dbo].[sp_TrackVendorProfileView]
+    @VendorID INT,
+    @ViewerUserID INT = NULL,
+    @IPAddress VARCHAR(45) = NULL,
+    @UserAgent VARCHAR(500) = NULL,
+    @ReferrerUrl VARCHAR(1000) = NULL,
+    @SessionID VARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Validate vendor exists
+    IF NOT EXISTS (SELECT 1 FROM Vendors WHERE VendorID = @VendorID)
+    BEGIN
+        RAISERROR('Vendor not found', 16, 1);
+        RETURN;
+    END
+
+    -- Insert the view record
+    INSERT INTO VendorProfileViews (
+        VendorID, 
+        ViewerUserID, 
+        ViewedAt, 
+        IPAddress, 
+        UserAgent, 
+        ReferrerUrl, 
+        SessionID
+    )
+    VALUES (
+        @VendorID,
+        @ViewerUserID,
+        GETUTCDATE(),
+        @IPAddress,
+        @UserAgent,
+        @ReferrerUrl,
+        @SessionID
+    );
+
+    SELECT 
+        SCOPE_IDENTITY() AS ViewID,
+        GETUTCDATE() AS ViewedAt;
+END
+GO
+
+-- =============================================
+-- Stored Procedure: sp_GetTrendingVendors
+-- Returns top trending vendors based on recent profile views
+-- =============================================
+CREATE OR ALTER PROCEDURE [dbo].[sp_GetTrendingVendors]
+    @TopN INT = 5,
+    @DaysBack INT = 7,
+    @IncludeImages BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Calculate trending vendors based on view count
+    SELECT TOP (@TopN)
+        v.VendorID,
+        v.UserID,
+        u.Name AS VendorName,
+        v.BusinessName,
+        v.Bio,
+        v.PrimaryCategory,
+        v.AdditionalCategories,
+        v.City,
+        v.State,
+        v.Country,
+        v.Latitude,
+        v.Longitude,
+        v.AverageRating,
+        v.TotalReviews,
+        v.IsPremium,
+        v.IsVerified,
+        v.ResponseTimeMinutes,
+        v.CompletedBookings,
+        COUNT(vpv.ViewID) AS ViewCount,
+        COUNT(DISTINCT vpv.ViewerUserID) AS UniqueViewers,
+        (
+            SELECT TOP 1 vi.CloudinaryPublicId
+            FROM VendorImages vi
+            WHERE vi.VendorProfileID = v.VendorID
+              AND vi.IsPrimary = 1
+              AND vi.IsActive = 1
+        ) AS PrimaryImagePublicId,
+        (
+            SELECT TOP 1 vi.CloudinaryUrl
+            FROM VendorImages vi
+            WHERE vi.VendorProfileID = v.VendorID
+              AND vi.IsPrimary = 1
+              AND vi.IsActive = 1
+        ) AS PrimaryImageUrl,
+        (
+            SELECT 
+                vi.CloudinaryPublicId,
+                vi.CloudinaryUrl,
+                vi.ImageType,
+                vi.DisplayOrder,
+                vi.Caption
+            FROM VendorImages vi
+            WHERE vi.VendorProfileID = v.VendorID
+              AND vi.IsActive = 1
+              AND @IncludeImages = 1
+            ORDER BY vi.IsPrimary DESC, vi.DisplayOrder
+            FOR JSON PATH
+        ) AS ImagesJson
+    FROM Vendors v
+    INNER JOIN Users u ON v.UserID = u.UserID
+    INNER JOIN VendorProfileViews vpv ON v.VendorID = vpv.VendorID
+    WHERE vpv.ViewedAt >= DATEADD(DAY, -@DaysBack, GETUTCDATE())
+      AND v.SetupCompleted = 1
+      AND u.IsActive = 1
+    GROUP BY 
+        v.VendorID, v.UserID, u.Name, v.BusinessName, v.Bio, v.PrimaryCategory,
+        v.AdditionalCategories, v.City, v.State, v.Country, v.Latitude, v.Longitude,
+        v.AverageRating, v.TotalReviews, v.IsPremium, v.IsVerified,
+        v.ResponseTimeMinutes, v.CompletedBookings
+    ORDER BY ViewCount DESC, UniqueViewers DESC;
+END
+GO
+
+-- =============================================
+-- Stored Procedure: sp_GetVendorAnalytics
+-- Returns analytics data for a specific vendor
+-- =============================================
+CREATE OR ALTER PROCEDURE [dbo].[sp_GetVendorAnalytics]
+    @VendorID INT,
+    @DaysBack INT = 30
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @StartDate DATETIME2 = DATEADD(DAY, -@DaysBack, GETUTCDATE());
+
+    -- Total views and unique viewers
+    SELECT 
+        COUNT(*) AS TotalViews,
+        COUNT(DISTINCT ViewerUserID) AS UniqueViewers,
+        COUNT(DISTINCT CAST(ViewedAt AS DATE)) AS DaysWithViews
+    FROM VendorProfileViews
+    WHERE VendorID = @VendorID
+      AND ViewedAt >= @StartDate;
+
+    -- Daily view breakdown
+    SELECT 
+        CAST(ViewedAt AS DATE) AS ViewDate,
+        COUNT(*) AS ViewCount,
+        COUNT(DISTINCT ViewerUserID) AS UniqueViewers
+    FROM VendorProfileViews
+    WHERE VendorID = @VendorID
+      AND ViewedAt >= @StartDate
+    GROUP BY CAST(ViewedAt AS DATE)
+    ORDER BY ViewDate;
+
+    -- Hourly distribution (shows peak viewing hours)
+    SELECT 
+        DATEPART(HOUR, ViewedAt) AS HourOfDay,
+        COUNT(*) AS ViewCount
+    FROM VendorProfileViews
+    WHERE VendorID = @VendorID
+      AND ViewedAt >= @StartDate
+    GROUP BY DATEPART(HOUR, ViewedAt)
+    ORDER BY HourOfDay;
+
+    -- Top referrers
+    SELECT TOP 10
+        CASE 
+            WHEN ReferrerUrl IS NULL OR ReferrerUrl = '' THEN 'Direct'
+            ELSE ReferrerUrl
+        END AS Referrer,
+        COUNT(*) AS ViewCount
+    FROM VendorProfileViews
+    WHERE VendorID = @VendorID
+      AND ViewedAt >= @StartDate
+    GROUP BY ReferrerUrl
+    ORDER BY ViewCount DESC;
+END
+GO
+
+-- =============================================
+-- Stored Procedure: sp_GetVendorViewTrends
+-- Returns view trends comparing different time periods
+-- =============================================
+CREATE OR ALTER PROCEDURE [dbo].[sp_GetVendorViewTrends]
+    @VendorID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Compare this week vs last week
+    DECLARE @ThisWeekStart DATETIME2 = DATEADD(DAY, -7, GETUTCDATE());
+    DECLARE @LastWeekStart DATETIME2 = DATEADD(DAY, -14, GETUTCDATE());
+    DECLARE @LastWeekEnd DATETIME2 = DATEADD(DAY, -7, GETUTCDATE());
+
+    SELECT 
+        'Last 7 Days' AS Period,
+        COUNT(*) AS ViewCount,
+        COUNT(DISTINCT ViewerUserID) AS UniqueViewers
+    FROM VendorProfileViews
+    WHERE VendorID = @VendorID
+      AND ViewedAt >= @ThisWeekStart
+    UNION ALL
+    SELECT 
+        'Previous 7 Days' AS Period,
+        COUNT(*) AS ViewCount,
+        COUNT(DISTINCT ViewerUserID) AS UniqueViewers
+    FROM VendorProfileViews
+    WHERE VendorID = @VendorID
+      AND ViewedAt >= @LastWeekStart
+      AND ViewedAt < @LastWeekEnd;
+
+    -- This month vs last month
+    DECLARE @ThisMonthStart DATETIME2 = DATEADD(DAY, -30, GETUTCDATE());
+    DECLARE @LastMonthStart DATETIME2 = DATEADD(DAY, -60, GETUTCDATE());
+    DECLARE @LastMonthEnd DATETIME2 = DATEADD(DAY, -30, GETUTCDATE());
+
+    SELECT 
+        'Last 30 Days' AS Period,
+        COUNT(*) AS ViewCount,
+        COUNT(DISTINCT ViewerUserID) AS UniqueViewers
+    FROM VendorProfileViews
+    WHERE VendorID = @VendorID
+      AND ViewedAt >= @ThisMonthStart
+    UNION ALL
+    SELECT 
+        'Previous 30 Days' AS Period,
+        COUNT(*) AS ViewCount,
+        COUNT(DISTINCT ViewerUserID) AS UniqueViewers
+    FROM VendorProfileViews
+    WHERE VendorID = @VendorID
+      AND ViewedAt >= @LastMonthStart
+      AND ViewedAt < @LastMonthEnd;
+END
+GO
+
+PRINT '✅ Vendor analytics system initialized';
+GO
+
 PRINT '============================================='
 PRINT 'VenueVue v4 PRODUCTION DATABASE COMPLETE'
 PRINT '============================================='
@@ -8417,6 +8696,7 @@ PRINT '✅ Full Cloudinary image support'
 PRINT '✅ Category questions system (91+ questions)'
 PRINT '✅ Vendor Features/Questionnaire (130+ features)'
 PRINT '✅ Email Template System (modular)'
+PRINT '✅ Vendor Analytics & Profile Visit Tracking'
 PRINT '✅ Production-grade error handling'
 PRINT '✅ Complete API compatibility'
 PRINT '✅ All v4 functionality preserved & enhanced'

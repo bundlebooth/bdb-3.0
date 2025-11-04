@@ -70,6 +70,7 @@ const vendorDashboardRouter = require('./routes/vendorDashboard');
 const uploadRouter = require('./routes/upload');
 const invoicesRouter = require('./routes/invoices');
 const vendorFeaturesRouter = require('./routes/vendorFeatures');
+const analyticsRouter = require('./routes/analytics');
 app.use('/api/users', usersRouter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/vendors', vendorsRouter);
@@ -82,6 +83,7 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/invoices', invoicesRouter);
 app.use('/api/vendor-features', vendorFeaturesRouter);
+app.use('/api/analytics', analyticsRouter);
 
 // Fixed route to handle fetching vendor conversations with consistent data format
 app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
