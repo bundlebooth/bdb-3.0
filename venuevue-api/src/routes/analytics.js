@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const sql = require('mssql');
 const { poolPromise } = require('../config/db');
-const { authenticateToken } = require('../middlewares/auth');
+const { authenticate } = require('../middlewares/auth');
 
 // =============================================
 // Track Vendor Profile View
@@ -118,7 +118,7 @@ router.get('/trending', async (req, res) => {
 // GET /api/analytics/vendor/:vendorId
 // Protected - requires authentication
 // =============================================
-router.get('/vendor/:vendorId', authenticateToken, async (req, res) => {
+router.get('/vendor/:vendorId', authenticate, async (req, res) => {
     try {
         const { vendorId } = req.params;
         const { daysBack = 30 } = req.query;
@@ -181,7 +181,7 @@ router.get('/vendor/:vendorId', authenticateToken, async (req, res) => {
 // GET /api/analytics/vendor/:vendorId/trends
 // Protected - requires authentication
 // =============================================
-router.get('/vendor/:vendorId/trends', authenticateToken, async (req, res) => {
+router.get('/vendor/:vendorId/trends', authenticate, async (req, res) => {
     try {
         const { vendorId } = req.params;
 
