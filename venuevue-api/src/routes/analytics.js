@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const sql = require('mssql');
-const { poolPromise } = require('../config/database');
+const { poolPromise } = require('../config/db');
 const { authenticateToken } = require('../middlewares/auth');
 
 // =============================================
