@@ -3287,6 +3287,29 @@
             display: none;
         }
         
+        /* Trending Vendors Carousel Scrollbar */
+        #trending-vendors-carousel {
+            scroll-behavior: smooth;
+        }
+        
+        #trending-vendors-carousel::-webkit-scrollbar {
+            height: 6px;
+        }
+        
+        #trending-vendors-carousel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        
+        #trending-vendors-carousel::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+        
+        #trending-vendors-carousel::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        
         /* Tab Navigation Buttons */
         .tab-nav-btn {
             position: absolute;
@@ -6619,6 +6642,7 @@
                     <div class="trending-tag" data-filter="last-minute"><i class="fas fa-bolt" style="color: #3b82f6; margin-right: 6px;"></i>Last Minute</div>
                 </div>
             </div>
+
         </aside>
 
         <main class="main-content">
@@ -6649,6 +6673,23 @@
             </div>
 
             
+            <!-- Trending Vendors Section - Main Page -->
+            <div id="trending-vendors-section-main" style="display: block; margin-bottom: 2rem;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 1.5rem;">
+                    <h3 style="color: white; display: flex; align-items: center; gap: 0.5rem; margin: 0 0 1rem 0; font-size: 1.5rem;">
+                        <i class="fas fa-fire" style="color: #ff6b6b;"></i>
+                        Trending Right Now
+                        <span style="font-size: 0.875rem; opacity: 0.9; margin-left: auto;">Most Viewed This Week</span>
+                    </h3>
+                    <div id="trending-vendors-carousel-main" style="display: flex; gap: 1rem; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; padding-bottom: 0.5rem; scroll-behavior: smooth;">
+                        <!-- Trending vendor cards will be populated here -->
+                        <div style="text-align: center; color: rgba(255,255,255,0.8); padding: 2rem; width: 100%; font-size: 0.9rem;">
+                            <i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Loading trending vendors...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="results-two-col">
                 <div class="results-left">
                     <div class="vendor-grid skeleton-active" id="vendor-grid" data-skeleton="1">
@@ -8996,6 +9037,23 @@
                                     <button id="tabs-scroll-right" class="tab-nav-btn tab-nav-right" style="display: none;" onclick="scrollTabs('right')">
                                         <i class="fas fa-chevron-right"></i>
                                     </button>
+                                </div>
+                                
+                                <!-- Trending Vendors Section -->
+                                <div id="trending-vendors-section" style="display: block; flex-shrink: 0; margin-bottom: 1.5rem;">
+                                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 1.25rem;">
+                                        <h3 style="color: white; display: flex; align-items: center; gap: 0.5rem; margin: 0 0 1rem 0; font-size: 1.25rem;">
+                                            <i class="fas fa-fire" style="color: #ff6b6b;"></i>
+                                            Trending Right Now
+                                            <span style="font-size: 0.875rem; opacity: 0.9; margin-left: auto;">Most Viewed This Week</span>
+                                        </h3>
+                                        <div id="trending-vendors-carousel" style="display: flex; gap: 1rem; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; padding-bottom: 0.5rem;">
+                                            <!-- Trending vendor cards will be populated here -->
+                                            <div style="text-align: center; color: rgba(255,255,255,0.8); padding: 2rem; width: 100%; font-size: 0.9rem;">
+                                                <i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Loading trending vendors...
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box; flex: 1; min-height: 0;">
@@ -15040,6 +15098,130 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Show skeleton cards immediately on page load
             showVendorSkeletons(8);
 
+            // Load and display trending vendors as horizontal carousel
+            async function loadTrendingVendors() {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/analytics/trending?topN=5&daysBack=7`);
+                    const data = await response.json();
+                    
+                    // Get both carousel elements (main page and booking page)
+                    const carouselMain = document.getElementById('trending-vendors-carousel-main');
+                    const sectionMain = document.getElementById('trending-vendors-section-main');
+                    const carousel = document.getElementById('trending-vendors-carousel');
+                    const section = document.getElementById('trending-vendors-section');
+                    
+                    if (data.success && data.vendors && data.vendors.length > 0) {
+                        // Generate HTML for trending vendor cards
+                        const vendorCardsHTML = data.vendors.map((vendor, index) => {
+                            const imageUrl = vendor.PrimaryImageUrl || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+                            const viewCount = vendor.ViewCount || 0;
+                            const rating = vendor.AverageRating || 0;
+                            const city = vendor.City || '';
+                            const state = vendor.State || '';
+                            const isPremium = vendor.IsPremium;
+                            
+                            return `
+                                <div class="trending-vendor-card" data-vendor-id="${vendor.VendorProfileID}" style="
+                                    background: white;
+                                    border-radius: 12px;
+                                    min-width: 280px;
+                                    max-width: 280px;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                                    overflow: hidden;
+                                    position: relative;
+                                " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.15)'"
+                                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'">
+                                    <div style="position: relative;">
+                                        <img src="${imageUrl}" alt="${vendor.BusinessName}" style="
+                                            width: 100%;
+                                            height: 160px;
+                                            object-fit: cover;
+                                        ">
+                                        <div style="
+                                            position: absolute;
+                                            top: 8px;
+                                            left: 8px;
+                                            background: linear-gradient(135deg, #ff6b6b, #ff5252);
+                                            color: white;
+                                            width: 32px;
+                                            height: 32px;
+                                            border-radius: 50%;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            font-size: 0.9rem;
+                                            font-weight: 700;
+                                            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                                        ">#${index + 1}</div>
+                                        ${isPremium ? `
+                                            <div style="position: absolute; top: 8px; right: 8px; background: rgba(255,215,0,0.95); color: #1a202c; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
+                                                <i class="fas fa-crown"></i> PREMIUM
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                    <div style="padding: 1rem;">
+                                        <div style="font-weight: 700; font-size: 1rem; color: #1a202c; margin-bottom: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                            ${vendor.BusinessName}
+                                        </div>
+                                        ${city || state ? `
+                                            <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.5rem;">
+                                                <i class="fas fa-map-marker-alt" style="margin-right: 0.25rem;"></i>${city}${city && state ? ', ' : ''}${state}
+                                            </div>
+                                        ` : ''}
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.75rem;">
+                                            ${rating > 0 ? `
+                                                <span style="color: #f59e0b; font-size: 0.85rem; font-weight: 600;">
+                                                    ⭐ ${rating.toFixed(1)} ${vendor.TotalReviews ? `(${vendor.TotalReviews})` : ''}
+                                                </span>
+                                            ` : '<span></span>'}
+                                            <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
+                                                <i class="fas fa-fire"></i> ${viewCount} views
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        // Populate main page carousel
+                        if (carouselMain && sectionMain) {
+                            sectionMain.style.display = 'block';
+                            carouselMain.innerHTML = vendorCardsHTML;
+                        }
+                        
+                        // Populate booking page carousel
+                        if (carousel && section) {
+                            section.style.display = 'block';
+                            carousel.innerHTML = vendorCardsHTML;
+                        }
+                        
+                        // Add click handlers to all trending vendor cards
+                        document.querySelectorAll('.trending-vendor-card').forEach(card => {
+                            card.addEventListener('click', () => {
+                                const vendorId = card.dataset.vendorId;
+                                if (vendorId) {
+                                    trackVendorView(vendorId);
+                                    const baseUrl = window.location.origin + window.location.pathname;
+                                    window.open(`${baseUrl}#/listings/${vendorId}`, '_blank');
+                                }
+                            });
+                        });
+                    } else {
+                        // Hide both sections if no data
+                        if (sectionMain) sectionMain.style.display = 'none';
+                        if (section) section.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Failed to load trending vendors:', error);
+                    const sectionMain = document.getElementById('trending-vendors-section-main');
+                    const section = document.getElementById('trending-vendors-section');
+                    if (sectionMain) sectionMain.style.display = 'none';
+                    if (section) section.style.display = 'none';
+                }
+            }
+
             // Initialize the app
             init();
 
@@ -15123,6 +15305,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                     // Setup event listeners
                     setupEventListeners();
+                    
+                    // Load trending vendors
+                    loadTrendingVendors();
 
                     // Show main app since we're not loading a direct vendor URL
                     mainAppView.style.display = 'grid';
@@ -33343,6 +33528,37 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }, { passive: true });
             }
 
+            // Track vendor profile view
+            async function trackVendorView(vendorId) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/analytics/track-view`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            vendorId: vendorId,
+                            referrerUrl: document.referrer || window.location.href,
+                            sessionId: sessionStorage.getItem('sessionId') || generateSessionId()
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        console.log('📊 Profile view tracked for vendor:', vendorId);
+                    }
+                } catch (error) {
+                    console.error('Failed to track profile view:', error);
+                    // Don't block user experience if tracking fails
+                }
+            }
+
+            // Generate session ID for analytics
+            function generateSessionId() {
+                const sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                sessionStorage.setItem('sessionId', sessionId);
+                return sessionId;
+            }
+
             // Setup event listeners for vendor cards
             function setupVendorCardEventListeners() {
                 // Favorite buttons
@@ -33372,6 +33588,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             alert('Unable to view vendor profile. Invalid or missing vendor ID. Check console for details.');
                             return;
                         }
+                        
+                        // Track the profile view
+                        trackVendorView(vendorId);
                         
                         // Open in new tab with hash-based routing
                         const baseUrl = window.location.origin + window.location.pathname;
