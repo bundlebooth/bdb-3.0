@@ -1373,8 +1373,8 @@
         
         .predefined-service-card .service-image-container {
             flex-shrink: 0;
-            width: 220px;
-            min-height: 120px;
+            width: 80px;
+            min-height: 80px;
             background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
             border-right: 1px solid var(--border);
             display: flex;
@@ -1402,54 +1402,40 @@
             display: block;
         }
         
-        .predefined-service-card .service-image-placeholder {
-            text-align: center;
-            color: #94a3b8;
-            font-size: 0.75rem;
-            padding: 1rem 0.5rem;
+        .predefined-service-card .service-image-icon {
+            width: 100%;
+            height: 100%;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .predefined-service-card .service-image-placeholder i {
+            justify-content: center;
             font-size: 2rem;
-            opacity: 0.4;
-            color: #64748b;
+            color: #8b5cf6;
+            background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
         }
         
-        .predefined-service-card .service-image-placeholder div {
-            font-weight: 500;
-        }
-        
-        .predefined-service-card .service-image-upload-btn {
+        .predefined-service-card .service-edit-btn {
             position: absolute;
-            bottom: 0.75rem;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #5e72e4;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: #8b5cf6;
             color: white;
             border: none;
             border-radius: 6px;
-            padding: 0.4rem 0.75rem;
-            font-size: 0.7rem;
-            font-weight: 600;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 500;
             cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem;
-        }
-        
-        .predefined-service-card .service-image-container:hover .service-image-upload-btn {
             display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.2s;
+            z-index: 5;
         }
         
-        .predefined-service-card .service-image-upload-btn:hover {
-            background: #4c5fd5;
-            transform: translateX(-50%) translateY(-2px);
-            box-shadow: 0 4px 12px rgba(94, 114, 228, 0.3);
+        .predefined-service-card .service-edit-btn:hover {
+            background: #7c3aed;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
         }
         
         .predefined-service-card .service-content-wrapper {
@@ -13559,114 +13545,221 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                 function createSettingsServiceCard(service) {
                     const card = document.createElement('div');
-                    card.className = 'predefined-service-card';
+                    card.className = 'service-card-simple';
                     card.dataset.serviceId = service.id;
                     card.dataset.serviceName = service.name;
                     card.dataset.serviceCategory = service.category || '';
+                    
+                    // Determine icon based on category
+                    const getCategoryIcon = () => {
+                        const catLower = (service.category || '').toLowerCase();
+                        const nameLower = (service.name || '').toLowerCase();
+                        
+                        if (catLower.includes('photo') || nameLower.includes('photo')) return 'fa-camera';
+                        if (catLower.includes('video') || nameLower.includes('video')) return 'fa-video';
+                        if (catLower.includes('music') || catLower.includes('dj') || nameLower.includes('music') || nameLower.includes('dj')) return 'fa-music';
+                        if (catLower.includes('cater') || nameLower.includes('food') || nameLower.includes('cater')) return 'fa-utensils';
+                        if (catLower.includes('venue') || nameLower.includes('venue') || nameLower.includes('space')) return 'fa-building';
+                        if (catLower.includes('decor') || catLower.includes('floral') || nameLower.includes('decor') || nameLower.includes('flower')) return 'fa-leaf';
+                        if (catLower.includes('entertainment') || nameLower.includes('perform')) return 'fa-masks-theater';
+                        if (catLower.includes('transport') || nameLower.includes('transport')) return 'fa-car';
+                        if (catLower.includes('beauty') || catLower.includes('wellness') || nameLower.includes('makeup') || nameLower.includes('spa')) return 'fa-spa';
+                        return 'fa-concierge-bell';
+                    };
+                    
+                    const serviceIcon = getCategoryIcon();
+                    
                     card.innerHTML = `
-                        <!-- Image Container -->
-                        <div class="service-image-container">
-                            <img class="service-image-preview" src="" alt="Service Image" />
-                            <div class="service-image-placeholder">
-                                <i class="fas fa-image"></i>
-                                <div>Add service image</div>
+                        <div style="display: flex; gap: 1rem; align-items: center; padding: 1rem; background: white; border: 1px solid var(--border); border-radius: 8px; transition: all 0.2s;">
+                            <!-- Service Icon/Image -->
+                            <div style="flex-shrink: 0; width: 60px; height: 60px; overflow: hidden; border-radius: 8px; background: var(--secondary); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer;" class="service-icon-container">
+                                <img class="service-image-preview" src="" alt="${service.name}" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
+                                <i class="fas ${serviceIcon} service-icon-placeholder" style="color: var(--primary); font-size: 1.5rem;"></i>
+                                <div class="service-image-loading" style="position: absolute; inset: 0; background: rgba(255,255,255,0.9); display: none; align-items: center; justify-content: center;">
+                                    <div class="spinner" style="width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite;"></div>
+                                </div>
+                                <input type="file" class="service-upload-input" accept="image/jpeg,image/png,image/jpg,image/webp" style="display: none;" />
                             </div>
-                            <button type="button" class="service-image-upload-btn">
-                                <i class="fas fa-upload"></i>
-                                Upload Image
-                            </button>
-                            <div class="service-image-loading">
-                                <div class="spinner"></div>
-                                <div style="font-size: 0.875rem; color: #64748b;">Uploading...</div>
+                            
+                            <!-- Service Details -->
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                                    <div style="flex: 1; min-width: 0;">
+                                        <h3 style="font-size: 1rem; font-weight: 600; color: var(--text); margin: 0 0 0.35rem 0;">${service.name}</h3>
+                                        
+                                        <!-- Category & Duration Row -->
+                                        <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.25rem;">
+                                            ${service.category ? `<span><i class="fas fa-tag" style="margin-right: 0.25rem;"></i>${service.category}</span>` : ''}
+                                            <span class="service-duration-display"><i class="fas fa-clock" style="margin-right: 0.25rem;"></i><span class="duration-text">${service.defaultDuration ? (service.defaultDuration >= 60 ? Math.floor(service.defaultDuration/60) + ' hour' + (service.defaultDuration >= 120 ? 's' : '') : service.defaultDuration + ' min') : 'Not set'}</span></span>
+                                        </div>
+                                        
+                                        <!-- Pricing Info Row -->
+                                        <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; color: var(--text-light);">
+                                            <span class="service-pricing-display"><i class="fas fa-dollar-sign" style="margin-right: 0.25rem;"></i><span class="pricing-text">Not configured</span></span>
+                                        </div>
+                                    </div>
+                                    <div style="text-align: right; flex-shrink: 0; display: flex; align-items: center; gap: 0.5rem;">
+                                        <button type="button" class="btn btn-outline edit-service-btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                                            <i class="fas fa-edit" style="margin-right: 0.25rem;"></i>Edit
+                                        </button>
+                                        <button type="button" class="remove-service-btn" aria-label="Remove service" title="Remove service" style="padding: 0.4rem 0.65rem; background: #fee; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <input type="file" class="service-upload-input" accept="image/jpeg,image/png,image/jpg,image/webp" />
                         </div>
                         
-                        <!-- Content Wrapper -->
-                        <div class="service-content-wrapper">
-                        <div class="service-card-header">
-                            <h6 class="service-card-title" style="display:flex; align-items:center; gap:0.35rem;">
-                                ${service.name}
-                                <span style="font-size:0.65rem; color:#64748b; background:#f1f5f9; padding:2px 5px; border-radius:999px; font-weight:600;">${service.category || ''}</span>
-                            </h6>
-                            <button type="button" class="remove-service-btn" aria-label="Remove service" title="Remove service" style="margin-left:auto;">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="service-card-description">${service.description || 'Professional service offering'}</div>
-                        <div class="vendor-customization-form">
-                            <h6 style="margin: 0 0 0.3rem 0; color: var(--primary); font-size: 0.75rem; font-weight: 600;">Customize Your Service</h6>
-                            <div class="form-row-inline" style="margin-bottom: 0.25rem;">
-                                <div class="form-group-inline">
-                                    <label>Pricing Model *</label>
-                                    <select class="vendor-pricing-model">
-                                        <option value="time_based" selected>Time-based</option>
-                                        <option value="fixed_price">Fixed Price</option>
-                                        <option value="per_attendee">Per Attendee</option>
-                                    </select>
+                        <!-- Hidden customization form (shown in modal) -->
+                        <div class="vendor-customization-form" style="display: none;">
+                            <!-- Pricing Model Section -->
+                            <div style="margin-bottom: 24px;">
+                                <label style="display: block; font-weight: 600; font-size: 12px; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    Pricing Model *
+                                </label>
+                                <select class="vendor-pricing-model" style="width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #1f2937; background: #f9fafb; cursor: pointer; transition: all 0.2s;">
+                                    <option value="time_based" selected>Time-based (Hourly)</option>
+                                    <option value="fixed_price">Fixed Price</option>
+                                    <option value="per_attendee">Per Attendee</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Time-based Fields -->
+                            <div class="vendor-time-based">
+                                <div style="margin-bottom: 24px;">
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px;">
+                                        <div>
+                                            <label style="display: block; font-weight: 600; font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+                                                Base Duration (min) *
+                                            </label>
+                                            <input type="number" class="vendor-duration-input" min="15" step="15" value="${service.defaultDuration || 60}" placeholder="60" required style="width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #1f2937; background: #f9fafb; transition: all 0.2s;">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; font-weight: 600; font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+                                                Base Rate ($) *
+                                            </label>
+                                            <input type="number" class="vendor-base-rate" min="0" step="0.01" placeholder="0.00" required style="width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #1f2937; background: #f9fafb; transition: all 0.2s;">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; font-weight: 600; font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+                                                Overtime ($/hr) *
+                                            </label>
+                                            <input type="number" class="vendor-overtime-rate" min="0" step="0.01" placeholder="0.00" required style="width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #1f2937; background: #f9fafb; transition: all 0.2s;">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="vendor-time-based" style="margin-top: 0.25rem;">
-                                <div class="form-row-inline">
-                                    <div class="form-group-inline"><label>Base Duration (min) *</label><input type="number" class="vendor-duration-input" min="15" step="15" value="${service.defaultDuration || 60}" placeholder="60" required></div>
-                                    <div class="form-group-inline"><label>Base Rate ($) *</label><input type="number" class="vendor-base-rate" min="0" step="0.01" placeholder="0.00" required></div>
-                                    <div class="form-group-inline"><label>Overtime ($/hr) *</label><input type="number" class="vendor-overtime-rate" min="0" step="0.01" placeholder="0.00" required></div>
+                            
+                            <!-- Fixed Price Section -->
+                            <div class="vendor-fixed-price-section" style="display: none;">
+                                <div style="margin-bottom: 24px;">
+                                    <label style="display: block; font-weight: 600; font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+                                        Fixed Price ($) *
+                                    </label>
+                                    <input type="number" class="vendor-fixed-price-input" min="0" step="0.01" placeholder="0.00" required style="width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #1f2937; background: #f9fafb; transition: all 0.2s;">
                                 </div>
                             </div>
-                            <div class="vendor-fixed-price-section" style="margin-top: 0.35rem; display: none;">
-                                <div class="form-row-inline">
-                                    <div class="form-group-inline"><label>Price ($) *</label><input type="number" class="vendor-fixed-price-input" min="0" step="0.01" placeholder="0.00" required></div>
+                            
+                            <!-- Per Attendee Section -->
+                            <div class="vendor-per-attendee-section" style="display: none;">
+                                <div style="margin-bottom: 24px;">
+                                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px;">
+                                        <div>
+                                            <label style="display: block; font-weight: 600; font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+                                                Price Per Person ($) *
+                                            </label>
+                                            <input type="number" class="vendor-price-per-person" min="0" step="0.01" placeholder="0.00" required style="width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #1f2937; background: #f9fafb; transition: all 0.2s;">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; font-weight: 600; font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+                                                Min Attendees *
+                                            </label>
+                                            <input type="number" class="vendor-min-attendees" min="1" step="1" placeholder="1" required style="width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #1f2937; background: #f9fafb; transition: all 0.2s;">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; font-weight: 600; font-size: 12px; color: #6b7280; margin-bottom: 8px;">
+                                                Max Attendees *
+                                            </label>
+                                            <input type="number" class="vendor-max-attendees" min="1" step="1" placeholder="10" required style="width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #1f2937; background: #f9fafb; transition: all 0.2s;">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="vendor-per-attendee-section" style="margin-top: 0.35rem; display: none;">
-                                <div class="form-row-inline">
-                                    <div class="form-group-inline"><label>Price Per Person ($) *</label><input type="number" class="vendor-price-per-person" min="0" step="0.01" placeholder="0.00" required></div>
-                                    <div class="form-group-inline"><label>Min Attendees *</label><input type="number" class="vendor-min-attendees" min="1" step="1" placeholder="1" required></div>
-                                    <div class="form-group-inline"><label>Max Attendees *</label><input type="number" class="vendor-max-attendees" min="1" step="1" placeholder="10" required></div>
-                                </div>
+                            
+                            <!-- Description Section -->
+                            <div style="margin-bottom: 0;">
+                                <label style="display: block; font-weight: 600; font-size: 12px; color: #6b7280; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    Your Description *
+                                </label>
+                                <textarea class="vendor-description-input" placeholder="Add any specific details about how you provide this service..." rows="3" required style="width: 100%; padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; color: #1f2937; background: #f9fafb; resize: vertical; min-height: 100px; font-family: inherit; transition: all 0.2s; line-height: 1.5;"></textarea>
                             </div>
-                            <div class="form-group-inline">
-                                <label>Your Description *</label>
-                                <textarea class="vendor-description-input" placeholder="Add any specific details about how you provide this service..." rows="2" required></textarea>
-                            </div>
-                        </div>
                         </div>
                     `;
-                    // select/deselect behavior (ignore clicks on inputs/remove)
-                    card.addEventListener('click', (e) => {
-                        if (e.target.closest('.vendor-customization-form input, .vendor-customization-form textarea, .vendor-customization-form select, .remove-service-btn')) return;
-                        toggleSettingsServiceSelection(card, service);
+                    
+                    // Function to update pricing display on card
+                    const updateCardPricingDisplay = () => {
+                        const pricingDisplay = card.querySelector('.pricing-text');
+                        const durationDisplay = card.querySelector('.duration-text');
+                        const stateService = window.vendorSettingsState?.selectedPredefinedServices?.find(
+                            s => String(s.id) === String(service.id)
+                        );
+                        
+                        if (!stateService) return;
+                        
+                        // Update duration
+                        if (durationDisplay && stateService.vendorDuration) {
+                            const minutes = stateService.vendorDuration;
+                            durationDisplay.textContent = minutes >= 60 
+                                ? Math.floor(minutes/60) + ' hour' + (minutes >= 120 ? 's' : '') 
+                                : minutes + ' min';
+                        }
+                        
+                        // Update pricing
+                        if (pricingDisplay) {
+                            if (stateService.pricingModel === 'time_based' && stateService.baseRate) {
+                                pricingDisplay.textContent = `$${parseFloat(stateService.baseRate).toFixed(2)} base + $${parseFloat(stateService.overtimeRatePerHour || 0).toFixed(2)}/hr overtime`;
+                            } else if (stateService.pricingModel === 'fixed_price' && stateService.fixedPrice) {
+                                pricingDisplay.textContent = `$${parseFloat(stateService.fixedPrice).toFixed(2)} fixed`;
+                            } else if (stateService.pricingModel === 'per_attendee' && stateService.pricePerPerson) {
+                                pricingDisplay.textContent = `$${parseFloat(stateService.pricePerPerson).toFixed(2)}/person`;
+                            } else {
+                                pricingDisplay.textContent = 'Not configured';
+                            }
+                        }
+                    };
+                    
+                    // Edit button handler - shows modal with customization form
+                    card.querySelector('.edit-service-btn')?.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showServiceEditModal(card, service, updateCardPricingDisplay);
                     });
-                    // remove handler
+                    
+                    // Remove handler
                     card.querySelector('.remove-service-btn')?.addEventListener('click', (e) => {
-                        e.preventDefault(); e.stopPropagation();
+                        e.preventDefault();
+                        e.stopPropagation();
                         removeSettingsSelectedService(service.id);
                         card.remove();
                         updateCount();
                         updateSummary();
                     });
                     
-                    // Cloudinary Image Upload Handler
-                    const uploadBtn = card.querySelector('.service-image-upload-btn');
+                    // Initialize pricing display
+                    setTimeout(() => updateCardPricingDisplay(), 100);
+                    
+                    // Image Upload Handler
                     const fileInput = card.querySelector('.service-upload-input');
                     const imagePreview = card.querySelector('.service-image-preview');
-                    const imagePlaceholder = card.querySelector('.service-image-placeholder');
+                    const iconPlaceholder = card.querySelector('.service-icon-placeholder');
                     const loadingOverlay = card.querySelector('.service-image-loading');
-                    const imageContainer = card.querySelector('.service-image-container');
+                    const imageContainer = card.querySelector('.service-icon-container');
                     
-                    // Click on upload button or container triggers file input
-                    uploadBtn.addEventListener('click', (e) => {
+                    // Click on icon container triggers file input
+                    imageContainer.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         fileInput.click();
-                    });
-                    
-                    imageContainer.addEventListener('click', (e) => {
-                        if (e.target === imageContainer || e.target === imagePlaceholder || e.target.closest('.service-image-placeholder')) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            fileInput.click();
-                        }
                     });
                     
                     // Handle file selection and upload to Cloudinary
@@ -13682,7 +13775,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         }
                         
                         // Show loading state
-                        loadingOverlay.classList.add('active');
+                        loadingOverlay.style.display = 'flex';
                         
                         try {
                             // Upload to Cloudinary via API
@@ -13723,10 +13816,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 card.dataset.imageUrl = data.imageUrl;
                                 card.dataset.publicId = data.publicId;
                                 
-                                // Show image preview
+                                // Show image preview and hide icon
                                 imagePreview.src = data.imageUrl;
                                 imagePreview.style.display = 'block';
-                                imagePlaceholder.style.display = 'none';
+                                iconPlaceholder.style.display = 'none';
                                 
                                 // Sync to state immediately if service already exists in state
                                 const serviceId = card.dataset.serviceId;
@@ -13771,12 +13864,218 @@ document.addEventListener('DOMContentLoaded', async function() {
                             alert('Failed to upload image: ' + error.message);
                         } finally {
                             // Hide loading state
-                            loadingOverlay.classList.remove('active');
+                            loadingOverlay.style.display = 'none';
                             fileInput.value = '';
                         }
                     });
                     
                     return card;
+                }
+
+                function showServiceEditModal(card, service, updateCallback) {
+                    // Create modal overlay
+                    const modal = document.createElement('div');
+                    modal.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(0,0,0,0.5);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 10000;
+                        padding: 20px;
+                    `;
+                    
+                    const modalContent = document.createElement('div');
+                    modalContent.style.cssText = `
+                        background: white;
+                        border-radius: 12px;
+                        max-width: 600px;
+                        width: 100%;
+                        max-height: 90vh;
+                        overflow-y: auto;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+                    `;
+                    
+                    // Get current values from state
+                    const stateService = window.vendorSettingsState?.selectedPredefinedServices?.find(
+                        s => String(s.id) === String(service.id)
+                    ) || {};
+                    
+                    modalContent.innerHTML = `
+                        <div style="padding: 20px 24px; background: white; border-bottom: 1px solid #e5e7eb;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1f2937;">
+                                    ${service.name}
+                                </h3>
+                                <button class="modal-close-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; padding: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; transition: color 0.2s;">
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="padding: 24px; background: white;">
+                            ${card.querySelector('.vendor-customization-form').outerHTML}
+                        </div>
+                        
+                        <div style="padding: 16px 24px; background: white; border-top: 1px solid #e5e7eb; border-radius: 0 0 12px 12px; display: flex; justify-content: flex-end; gap: 12px;">
+                            <button class="modal-cancel-btn" style="padding: 10px 20px; border: none; background: transparent; color: #6366f1; border-radius: 6px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 14px;">
+                                Cancel
+                            </button>
+                            <button class="modal-save-btn" style="padding: 10px 20px; border: none; background: #6366f1; color: white; border-radius: 6px; font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 14px;">
+                                Save Changes
+                            </button>
+                        </div>
+                    `;
+                    
+                    modal.appendChild(modalContent);
+                    document.body.appendChild(modal);
+                    
+                    // Get form and make it visible
+                    const form = modalContent.querySelector('.vendor-customization-form');
+                    form.style.display = 'block';
+                    
+                    // Get all form elements
+                    const durationInput = form.querySelector('.vendor-duration-input');
+                    const descriptionInput = form.querySelector('.vendor-description-input');
+                    const pricingModelSelect = form.querySelector('.vendor-pricing-model');
+                    const timeBasedSection = form.querySelector('.vendor-time-based');
+                    const fixedPriceSection = form.querySelector('.vendor-fixed-price-section');
+                    const perAttendeeSection = form.querySelector('.vendor-per-attendee-section');
+                    
+                    // Function to toggle pricing sections based on model
+                    const togglePricingSections = (val) => {
+                        if (timeBasedSection) timeBasedSection.style.display = (val === 'time_based') ? 'block' : 'none';
+                        if (fixedPriceSection) fixedPriceSection.style.display = (val === 'fixed_price') ? 'block' : 'none';
+                        if (perAttendeeSection) perAttendeeSection.style.display = (val === 'per_attendee') ? 'block' : 'none';
+                    };
+                    
+                    // Populate form with current values
+                    if (durationInput && stateService.vendorDuration) {
+                        durationInput.value = stateService.vendorDuration;
+                    }
+                    if (descriptionInput && stateService.vendorDescription) {
+                        descriptionInput.value = stateService.vendorDescription;
+                    }
+                    
+                    // Set pricing model and show correct section
+                    const currentModel = stateService.pricingModel || 'time_based';
+                    if (pricingModelSelect) {
+                        pricingModelSelect.value = currentModel;
+                        // Set up change handler
+                        pricingModelSelect.addEventListener('change', (e) => {
+                            togglePricingSections(e.target.value);
+                        });
+                    }
+                    
+                    // Initialize correct section visibility
+                    togglePricingSections(currentModel);
+                    
+                    // Populate pricing fields based on model
+                    if (stateService.pricingModel === 'time_based') {
+                        const baseRateInput = form.querySelector('.vendor-base-rate');
+                        const overtimeRateInput = form.querySelector('.vendor-overtime-rate');
+                        const minFeeInput = form.querySelector('.vendor-min-fee');
+                        if (baseRateInput) baseRateInput.value = stateService.baseRate || '';
+                        if (overtimeRateInput) overtimeRateInput.value = stateService.overtimeRatePerHour || '';
+                        if (minFeeInput) minFeeInput.value = stateService.minimumBookingFee || '';
+                    } else if (stateService.pricingModel === 'fixed_price') {
+                        const fixedPriceInput = form.querySelector('.vendor-fixed-price-input');
+                        if (fixedPriceInput) fixedPriceInput.value = stateService.fixedPrice || '';
+                    } else if (stateService.pricingModel === 'per_attendee') {
+                        const pppInput = form.querySelector('.vendor-price-per-person');
+                        const minAttInput = form.querySelector('.vendor-min-attendees');
+                        const maxAttInput = form.querySelector('.vendor-max-attendees');
+                        if (pppInput) pppInput.value = stateService.pricePerPerson || '';
+                        if (minAttInput) minAttInput.value = stateService.minimumAttendees || '';
+                        if (maxAttInput) maxAttInput.value = stateService.maximumAttendees || '';
+                    }
+                    
+                    // Close handlers
+                    const closeModal = () => {
+                        modal.style.opacity = '0';
+                        setTimeout(() => modal.remove(), 200);
+                    };
+                    
+                    modal.querySelector('.modal-close-btn').addEventListener('click', closeModal);
+                    modal.querySelector('.modal-cancel-btn').addEventListener('click', closeModal);
+                    modal.addEventListener('click', (e) => {
+                        if (e.target === modal) closeModal();
+                    });
+                    
+                    // Save handler
+                    modal.querySelector('.modal-save-btn').addEventListener('click', () => {
+                        // Copy form values back to the original card's form
+                        const originalForm = card.querySelector('.vendor-customization-form');
+                        const modalFormInputs = form.querySelectorAll('input, select, textarea');
+                        
+                        modalFormInputs.forEach(input => {
+                            const originalInput = originalForm.querySelector(`.${input.className.split(' ').join('.')}`);
+                            if (originalInput) {
+                                originalInput.value = input.value;
+                                // Trigger change event to update state
+                                originalInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                originalInput.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+                        });
+                        
+                        // Update the card's display
+                        if (updateCallback) {
+                            setTimeout(() => updateCallback(), 50);
+                        }
+                        
+                        closeModal();
+                    });
+                    
+                    // Add hover effects
+                    const closeBtn = modal.querySelector('.modal-close-btn');
+                    closeBtn.addEventListener('mouseenter', () => {
+                        closeBtn.style.color = '#374151';
+                    });
+                    closeBtn.addEventListener('mouseleave', () => {
+                        closeBtn.style.color = '#6b7280';
+                    });
+                    
+                    const cancelBtn = modal.querySelector('.modal-cancel-btn');
+                    cancelBtn.addEventListener('mouseenter', () => {
+                        cancelBtn.style.background = '#eef2ff';
+                    });
+                    cancelBtn.addEventListener('mouseleave', () => {
+                        cancelBtn.style.background = 'transparent';
+                    });
+                    
+                    const saveBtn = modal.querySelector('.modal-save-btn');
+                    saveBtn.addEventListener('mouseenter', () => {
+                        saveBtn.style.background = '#4f46e5';
+                    });
+                    saveBtn.addEventListener('mouseleave', () => {
+                        saveBtn.style.background = '#6366f1';
+                    });
+                    
+                    // Add focus styles to inputs
+                    const inputs = form.querySelectorAll('input, select, textarea');
+                    inputs.forEach(input => {
+                        input.addEventListener('focus', () => {
+                            input.style.borderColor = '#6366f1';
+                            input.style.background = 'white';
+                            input.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.1)';
+                        });
+                        input.addEventListener('blur', () => {
+                            input.style.borderColor = '#e5e7eb';
+                            input.style.background = '#f9fafb';
+                            input.style.boxShadow = 'none';
+                        });
+                    });
+                    
+                    // Animate in
+                    modal.style.opacity = '0';
+                    modal.style.transition = 'opacity 0.2s';
+                    requestAnimationFrame(() => {
+                        modal.style.opacity = '1';
+                    });
                 }
 
                 function addSettingsServiceById(serviceId, isPreload = false) {
@@ -22377,55 +22676,78 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 card.dataset.serviceName = service.name;
                 card.dataset.serviceCategory = service.category;
                 
-                card.innerHTML = `
-                    <!-- Image Container -->
-                    <div class="service-image-container">
-                        <img class="service-image-preview" src="" alt="Service Image" />
-                        <div class="service-image-placeholder">
-                            <i class="fas fa-image"></i>
-                            <div>Add service image</div>
-                        </div>
-                        <button type="button" class="service-image-upload-btn">
-                            <i class="fas fa-upload"></i>
-                            Upload Image
-                        </button>
-                        <div class="service-image-loading">
-                            <div class="spinner"></div>
-                            <div style="font-size: 0.875rem; color: #64748b;">Uploading...</div>
-                        </div>
-                        <input type="file" class="service-upload-input" accept="image/jpeg,image/png,image/jpg,image/webp" />
-                    </div>
+                // Determine icon based on category
+                const getCategoryIcon = () => {
+                    const catLower = (service.category || '').toLowerCase();
+                    const nameLower = (service.name || '').toLowerCase();
                     
-                    <!-- Content Wrapper -->
-                    <div class="service-content-wrapper">
-                        <div class="service-card-header">
-                            <h6 class="service-card-title" style="display:flex; align-items:center; gap:0.35rem;">
-                                ${service.name}
-                                <span style="font-size:0.65rem; color:#64748b; background:#f1f5f9; padding:2px 5px; border-radius:999px; font-weight:600;">${service.category}</span>
-                            </h6>
-                            <button type="button" class="remove-service-btn" aria-label="Remove service" title="Remove service" style="margin-left:auto;">
-                                <i class="fas fa-times"></i>
-                            </button>
+                    if (catLower.includes('photo') || nameLower.includes('photo')) return 'fa-camera';
+                    if (catLower.includes('video') || nameLower.includes('video')) return 'fa-video';
+                    if (catLower.includes('music') || catLower.includes('dj') || nameLower.includes('music') || nameLower.includes('dj')) return 'fa-music';
+                    if (catLower.includes('cater') || nameLower.includes('food') || nameLower.includes('cater')) return 'fa-utensils';
+                    if (catLower.includes('venue') || nameLower.includes('venue') || nameLower.includes('space')) return 'fa-building';
+                    if (catLower.includes('decor') || catLower.includes('floral') || nameLower.includes('decor') || nameLower.includes('flower')) return 'fa-leaf';
+                    if (catLower.includes('entertainment') || nameLower.includes('perform')) return 'fa-masks-theater';
+                    if (catLower.includes('transport') || nameLower.includes('transport')) return 'fa-car';
+                    if (catLower.includes('beauty') || catLower.includes('wellness') || nameLower.includes('makeup') || nameLower.includes('spa')) return 'fa-spa';
+                    return 'fa-concierge-bell';
+                };
+                
+                const serviceIcon = getCategoryIcon();
+                
+                card.innerHTML = `
+                    <div style="display: flex; gap: 1rem; align-items: center; padding: 1rem; background: white; border: 1px solid var(--border); border-radius: 8px; transition: all 0.2s;">
+                        <!-- Service Icon/Image -->
+                        <div style="flex-shrink: 0; width: 60px; height: 60px; overflow: hidden; border-radius: 8px; background: var(--secondary); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer;" class="service-icon-container">
+                            <img class="service-image-preview" src="" alt="${service.name}" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
+                            <i class="fas ${serviceIcon} service-icon-placeholder" style="color: var(--primary); font-size: 1.5rem;"></i>
+                            <div class="service-image-loading" style="position: absolute; inset: 0; background: rgba(255,255,255,0.9); display: none; align-items: center; justify-content: center;">
+                                <div class="spinner" style="width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite;"></div>
+                            </div>
+                            <input type="file" class="service-upload-input" accept="image/jpeg,image/png,image/jpg,image/webp" style="display: none;" />
                         </div>
                         
-                        <div class="service-card-description">
-                            ${service.description || 'Professional service offering'}
-                        </div>
-                        
-                        <div class="vendor-customization-form">
-                        <h6 style="margin: 0 0 0.3rem 0; color: var(--primary); font-size: 0.75rem; font-weight: 600;">Customize Your Service</h6>
-                        <div class="form-row-inline" style="margin-bottom: 0.25rem;">
-                            <div class="form-group-inline">
-                                <label>Pricing Model *</label>
-                                <select class="vendor-pricing-model">
-                                    <option value="time_based" selected>Time-based</option>
-                                    <option value="fixed_price">Fixed Price</option>
-                                    <option value="per_attendee">Per Attendee</option>
-                                </select>
+                        <!-- Service Details -->
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                                <div style="flex: 1; min-width: 0;">
+                                    <h3 style="font-size: 1rem; font-weight: 600; color: var(--text); margin: 0 0 0.35rem 0;">${service.name}</h3>
+                                    
+                                    <!-- Category & Duration Row -->
+                                    <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.25rem;">
+                                        ${service.category ? `<span><i class="fas fa-tag" style="margin-right: 0.25rem;"></i>${service.category}</span>` : ''}
+                                        <span class="service-duration-display"><i class="fas fa-clock" style="margin-right: 0.25rem;"></i><span class="duration-text">${service.defaultDuration ? (service.defaultDuration >= 60 ? Math.floor(service.defaultDuration/60) + ' hour' + (service.defaultDuration >= 120 ? 's' : '') : service.defaultDuration + ' min') : 'Not set'}</span></span>
+                                    </div>
+                                    
+                                    <!-- Pricing Info Row -->
+                                    <div style="display: flex; align-items: center; gap: 0.75rem; font-size: 0.75rem; color: var(--text-light);">
+                                        <span class="service-pricing-display"><i class="fas fa-dollar-sign" style="margin-right: 0.25rem;"></i><span class="pricing-text">Not configured</span></span>
+                                    </div>
+                                </div>
+                                <div style="text-align: right; flex-shrink: 0; display: flex; align-items: center; gap: 0.5rem;">
+                                    <button type="button" class="btn btn-outline edit-service-btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                                        <i class="fas fa-edit" style="margin-right: 0.25rem;"></i>Edit
+                                    </button>
+                                    <button type="button" class="remove-service-btn" aria-label="Remove service" title="Remove service" style="padding: 0.4rem 0.65rem; background: #fee; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; cursor: pointer; transition: all 0.2s;">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Hidden customization form (shown in modal) -->
+                    <div class="vendor-customization-form" style="display: none;">
+                        <div class="form-group-inline">
+                            <label>Pricing Model *</label>
+                            <select class="vendor-pricing-model">
+                                <option value="time_based" selected>Time-based</option>
+                                <option value="fixed_price">Fixed Price</option>
+                                <option value="per_attendee">Per Attendee</option>
+                            </select>
+                        </div>
 
-                        <div class="vendor-time-based" style="margin-top: 0.25rem;">
+                        <div class="vendor-time-based">
                             <div class="form-row-inline">
                                 <div class="form-group-inline">
                                     <label>Base Duration (min) *</label>
@@ -22442,7 +22764,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </div>
                         </div>
 
-                        <div class="vendor-fixed-price-section" style="margin-top: 0.35rem; display: none;">
+                        <div class="vendor-fixed-price-section" style="display: none;">
                             <div class="form-row-inline">
                                 <div class="form-group-inline">
                                     <label>Price ($) *</label>
@@ -22451,7 +22773,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </div>
                         </div>
 
-                        <div class="vendor-per-attendee-section" style="margin-top: 0.35rem; display: none;">
+                        <div class="vendor-per-attendee-section" style="display: none;">
                             <div class="form-row-inline">
                                 <div class="form-group-inline">
                                     <label>Price Per Person ($) *</label>
@@ -22473,8 +22795,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <textarea class="vendor-description-input" 
                                       placeholder="Add any specific details about how you provide this service..."
                                       rows="2" required></textarea>
-                        </div>
-                        
                         </div>
                     </div>
                 `;
