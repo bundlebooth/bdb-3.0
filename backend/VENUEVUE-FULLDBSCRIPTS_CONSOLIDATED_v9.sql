@@ -8512,35 +8512,52 @@ BEGIN
         v.UserID,
         u.Name AS VendorName,
         v.BusinessName,
-        v.Bio,
-        v.PrimaryCategory,
-        v.AdditionalCategories,
+        v.BusinessDescription,
+        v.Tagline,
         v.City,
         v.State,
         v.Country,
         v.Latitude,
         v.Longitude,
-        v.AverageRating,
-        v.TotalReviews,
         v.IsPremium,
         v.IsVerified,
-        v.ResponseTimeMinutes,
-        v.CompletedBookings,
+        v.AverageResponseTime AS ResponseTimeMinutes,
         COUNT(vpv.ViewID) AS ViewCount,
         COUNT(DISTINCT vpv.ViewerUserID) AS UniqueViewers,
+        (
+            SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) 
+            FROM Reviews r 
+            WHERE r.VendorProfileID = v.VendorProfileID 
+              AND r.IsApproved = 1
+        ) AS AverageRating,
+        (
+            SELECT COUNT(*) 
+            FROM Reviews r 
+            WHERE r.VendorProfileID = v.VendorProfileID 
+              AND r.IsApproved = 1
+        ) AS TotalReviews,
+        (
+            SELECT COUNT(*) 
+            FROM Bookings b 
+            WHERE b.VendorProfileID = v.VendorProfileID 
+              AND b.Status = 'Completed'
+        ) AS CompletedBookings,
+        (
+            SELECT STRING_AGG(vc.Category, ',')
+            FROM VendorCategories vc 
+            WHERE vc.VendorProfileID = v.VendorProfileID
+        ) AS Categories,
         (
             SELECT TOP 1 vi.CloudinaryPublicId
             FROM VendorImages vi
             WHERE vi.VendorProfileID = v.VendorProfileID
               AND vi.IsPrimary = 1
-              AND vi.IsActive = 1
         ) AS PrimaryImagePublicId,
         (
             SELECT TOP 1 vi.CloudinaryUrl
             FROM VendorImages vi
             WHERE vi.VendorProfileID = v.VendorProfileID
               AND vi.IsPrimary = 1
-              AND vi.IsActive = 1
         ) AS PrimaryImageUrl,
         (
             SELECT 
@@ -8551,7 +8568,6 @@ BEGIN
                 vi.Caption
             FROM VendorImages vi
             WHERE vi.VendorProfileID = v.VendorProfileID
-              AND vi.IsActive = 1
               AND @IncludeImages = 1
             ORDER BY vi.IsPrimary DESC, vi.DisplayOrder
             FOR JSON PATH
@@ -8560,13 +8576,12 @@ BEGIN
     INNER JOIN Users u ON v.UserID = u.UserID
     INNER JOIN VendorProfileViews vpv ON v.VendorProfileID = vpv.VendorProfileID
     WHERE vpv.ViewedAt >= DATEADD(DAY, -@DaysBack, GETUTCDATE())
-      AND v.SetupCompleted = 1
+      AND v.IsCompleted = 1
       AND u.IsActive = 1
     GROUP BY 
-        v.VendorProfileID, v.UserID, u.Name, v.BusinessName, v.Bio, v.PrimaryCategory,
-        v.AdditionalCategories, v.City, v.State, v.Country, v.Latitude, v.Longitude,
-        v.AverageRating, v.TotalReviews, v.IsPremium, v.IsVerified,
-        v.ResponseTimeMinutes, v.CompletedBookings
+        v.VendorProfileID, v.UserID, u.Name, v.BusinessName, v.BusinessDescription, v.Tagline,
+        v.City, v.State, v.Country, v.Latitude, v.Longitude,
+        v.IsPremium, v.IsVerified, v.AverageResponseTime
     ORDER BY ViewCount DESC, UniqueViewers DESC;
 END
 GO
