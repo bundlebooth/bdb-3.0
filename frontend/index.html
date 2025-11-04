@@ -5,6 +5,10 @@
     <title>PlanHive - Event Booking Platform</title>
     <link rel="icon" type="image/svg+xml" href="planhive_fav_icon.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Google Maps API with Places API (New) -->
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo&libraries=places,geometry,marker&callback=initMap&v=weekly"></script>
     <!-- MarkerClusterer for Google Maps markers clustering -->
@@ -7277,6 +7281,7 @@
                                     <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
                                         Update your business name, categories, and pricing to help clients find your services.
                                     </p>
+                                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
                                     <form id="vendor-profile-form">
                                         <!-- Row 1: Business Name and Display Name -->
                                         <div class="form-row">
@@ -7386,6 +7391,10 @@
                                 </button>
                                 <div class="dashboard-card">
                                         <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-map-marker-alt"></i></span> Location & Service Areas</h2>
+                                        <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                                            Set your business address and define the geographic areas you serve to help clients find you.
+                                        </p>
+                                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
                                         <form id="vendor-location-form">
                                             <!-- Row 1: Street Address and City -->
                                             <div class="form-row">
@@ -7459,9 +7468,10 @@
                                 </button>
                                 <div class="dashboard-card">
                                     <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-clipboard-check"></i></span> Vendor Setup Questionnaire</h2>
-                                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
                                         Select the features and services that apply to your business. This helps clients understand what you offer.
                                     </p>
+                                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
                                     <div id="vendor-questionnaire-container" style="margin-bottom: 2rem;">
                                         <div class="questionnaire-loading">
                                             <div class="spinner"></div>
@@ -7486,6 +7496,10 @@
                                 </button>
                                 <div class="dashboard-card">
                                         <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-share-alt"></i></span> Social Media & Booking</h2>
+                                        <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                                            Connect your social media profiles and booking links to increase engagement and make it easier for clients to reach you.
+                                        </p>
+                                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
                                         <form id="vendor-social-form">
                                             <h3 class="dashboard-card-subtitle" style="margin: 1rem 0; color: var(--primary);">Social Media Profiles</h3>
                                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
@@ -7563,6 +7577,10 @@
                                 </button>
                                 <div class="dashboard-card">
                                         <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-briefcase"></i></span> Services</h2>
+                                        <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                                            Select and manage the services you offer. Add services to make it easier for clients to find and book you.
+                                        </p>
+                                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
                                         <div id="vendor-settings-services-loading" style="text-align: center; padding: 2rem; color: var(--text-light);">
                                             <div class="spinner" style="margin: 0 auto;"></div>
                                         </div>
@@ -7595,6 +7613,10 @@
                                 </button>
                                 <div class="dashboard-card">
                                         <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-question-circle"></i></span> FAQs</h2>
+                                        <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
+                                            Create frequently asked questions to help clients learn more about your services and policies.
+                                        </p>
+                                        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
                                         <div id="faqs-list"></div>
                                         <div style="margin-top: 1rem;">
                                             <button id="add-faq-btn" class="btn btn-outline">Add FAQ</button>
@@ -7615,9 +7637,10 @@
                                         </span> 
                                         Gallery & Media
                                     </h2>
-                                    <p style="color: var(--text-light); margin-bottom: 1.5rem;">
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
                                         Manage your business photos and organize them into themed albums
                                     </p>
+                                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
                                     
                                     <!-- Business Photos Section -->
                                     <div style="margin-bottom: 3rem;">
@@ -7680,6 +7703,7 @@
                                         Business Hours & Availability
                                     </h2>
                                     <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">Set your regular business hours and timezone</p>
+                                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
                                     
                                     <!-- Timezone Selection -->
                                     <div style="margin-bottom: 2rem;">
@@ -7716,9 +7740,10 @@
                                 </button>
                                 <div class="dashboard-card">
                                     <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fab fa-stripe"></i></span> Stripe Connect</h2>
-                                    <p style="color: var(--text-light); margin-bottom: 2rem;">
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
                                         Connect your Stripe account to accept payments from customers.
                                     </p>
+                                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
                                     
                                     <!-- Stripe Status Display -->
                                     <div id="stripe-status-display">
@@ -7737,9 +7762,10 @@
                                 </button>
                                 <div class="dashboard-card">
                                     <h2 class="dashboard-card-title" style="display: flex; align-items: center; gap: 0.75rem;"><span style="width: 36px; height: 36px; border-radius: 8px; background: var(--secondary); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 1.1rem;"><i class="fas fa-tags"></i></span> Popular Filters</h2>
-                                    <p style="color: var(--text-light); margin-bottom: 2rem;">
+                                    <p style="color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem;">
                                         Enable special badges and filters that help clients find your business when browsing. These filters appear in search results and improve your visibility.
                                     </p>
+                                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0;">
                                     
                                     <form id="vendor-popular-filters-form">
                                         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
