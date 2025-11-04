@@ -192,7 +192,7 @@ router.get('/:id/analytics', async (req, res) => {
         SELECT 
           s.Name AS ServiceName,
           COUNT(b.BookingID) AS BookingCount,
-          SUM(b.TotalCost) AS TotalRevenue
+          SUM(b.TotalAmount) AS TotalRevenue
         FROM Services s
         LEFT JOIN Bookings b ON s.ServiceID = b.ServiceID
         WHERE s.VendorProfileID = @VendorProfileID
@@ -208,7 +208,7 @@ router.get('/:id/analytics', async (req, res) => {
         SELECT 
           FORMAT(EventDate, 'yyyy-MM') AS Month,
           COUNT(*) AS BookingCount,
-          SUM(TotalCost) AS TotalRevenue
+          SUM(TotalAmount) AS TotalRevenue
         FROM Bookings
         WHERE VendorProfileID = @VendorProfileID
           AND EventDate >= DATEADD(MONTH, -12, GETUTCDATE())
