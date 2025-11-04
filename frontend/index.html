@@ -6675,15 +6675,15 @@
             
             <!-- Trending Vendors Section - Main Page -->
             <div id="trending-vendors-section-main" style="display: block; margin-bottom: 2rem;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 1.5rem;">
-                    <h3 style="color: white; display: flex; align-items: center; gap: 0.5rem; margin: 0 0 1rem 0; font-size: 1.5rem;">
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
+                    <h3 style="color: #1a202c; display: flex; align-items: center; gap: 0.5rem; margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 700;">
                         <i class="fas fa-fire" style="color: #ff6b6b;"></i>
                         Trending Right Now
-                        <span style="font-size: 0.875rem; opacity: 0.9; margin-left: auto;">Most Viewed This Week</span>
+                        <span style="font-size: 0.875rem; color: #64748b; font-weight: 400; margin-left: auto;">Most Viewed This Month</span>
                     </h3>
-                    <div id="trending-vendors-carousel-main" style="display: flex; gap: 1rem; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; padding-bottom: 0.5rem; scroll-behavior: smooth;">
+                    <div id="trending-vendors-carousel-main" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.25rem;">
                         <!-- Trending vendor cards will be populated here -->
-                        <div style="text-align: center; color: rgba(255,255,255,0.8); padding: 2rem; width: 100%; font-size: 0.9rem;">
+                        <div style="text-align: center; color: #64748b; padding: 2rem; width: 100%; font-size: 0.9rem; grid-column: 1 / -1;">
                             <i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Loading trending vendors...
                         </div>
                     </div>
@@ -15101,8 +15101,17 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Load and display trending vendors as horizontal carousel
             async function loadTrendingVendors() {
                 try {
-                    const response = await fetch(`${API_BASE_URL}/analytics/trending?topN=5&daysBack=7`);
+                    const response = await fetch(`${API_BASE_URL}/analytics/trending?topN=5&daysBack=30`);
                     const data = await response.json();
+                    
+                    // DEBUG: Log what we're getting from the API
+                    console.log('🔥 Trending Vendors API Response:', data);
+                    console.log('📊 Number of vendors returned:', data.vendors?.length || 0);
+                    if (data.vendors) {
+                        data.vendors.forEach((v, i) => {
+                            console.log(`Vendor ${i+1}:`, v.BusinessName, '- Views:', v.ViewCount, '- ID:', v.VendorProfileID);
+                        });
+                    }
                     
                     // Get both carousel elements (main page and booking page)
                     const carouselMain = document.getElementById('trending-vendors-carousel-main');
@@ -15123,61 +15132,67 @@ document.addEventListener('DOMContentLoaded', async function() {
                             return `
                                 <div class="trending-vendor-card" data-vendor-id="${vendor.VendorProfileID}" style="
                                     background: white;
+                                    border: 1px solid #e2e8f0;
                                     border-radius: 12px;
-                                    min-width: 280px;
-                                    max-width: 280px;
                                     cursor: pointer;
                                     transition: all 0.3s ease;
-                                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
                                     overflow: hidden;
                                     position: relative;
-                                " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 8px 24px rgba(0,0,0,0.15)'"
-                                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.1)'">
-                                    <div style="position: relative;">
-                                        <img src="${imageUrl}" alt="${vendor.BusinessName}" style="
-                                            width: 100%;
-                                            height: 160px;
-                                            object-fit: cover;
+                                    display: flex;
+                                    flex-direction: column;
+                                " onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.12)'"
+                                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'">
+                                    <div style="position: relative; width: 100%; padding-top: 60%; overflow: hidden;">
+                                        <img src="${imageUrl}" 
+                                             alt="${vendor.BusinessName}" 
+                                             onerror="this.src='https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'"
+                                             style="
+                                                position: absolute;
+                                                top: 0;
+                                                left: 0;
+                                                width: 100%;
+                                                height: 100%;
+                                                object-fit: cover;
                                         ">
                                         <div style="
                                             position: absolute;
-                                            top: 8px;
-                                            left: 8px;
+                                            top: 12px;
+                                            left: 12px;
                                             background: linear-gradient(135deg, #ff6b6b, #ff5252);
                                             color: white;
-                                            width: 32px;
-                                            height: 32px;
+                                            width: 36px;
+                                            height: 36px;
                                             border-radius: 50%;
                                             display: flex;
                                             align-items: center;
                                             justify-content: center;
-                                            font-size: 0.9rem;
+                                            font-size: 1rem;
                                             font-weight: 700;
                                             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                                         ">#${index + 1}</div>
                                         ${isPremium ? `
-                                            <div style="position: absolute; top: 8px; right: 8px; background: rgba(255,215,0,0.95); color: #1a202c; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.7rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
+                                            <div style="position: absolute; top: 12px; right: 12px; background: rgba(255,215,0,0.95); color: #1a202c; padding: 0.3rem 0.6rem; border-radius: 8px; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; gap: 0.3rem; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
                                                 <i class="fas fa-crown"></i> PREMIUM
                                             </div>
                                         ` : ''}
                                     </div>
-                                    <div style="padding: 1rem;">
-                                        <div style="font-weight: 700; font-size: 1rem; color: #1a202c; margin-bottom: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    <div style="padding: 1.25rem; flex: 1; display: flex; flex-direction: column;">
+                                        <div style="font-weight: 700; font-size: 1.1rem; color: #1a202c; margin-bottom: 0.5rem; line-height: 1.3;">
                                             ${vendor.BusinessName}
                                         </div>
                                         ${city || state ? `
-                                            <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.5rem;">
-                                                <i class="fas fa-map-marker-alt" style="margin-right: 0.25rem;"></i>${city}${city && state ? ', ' : ''}${state}
+                                            <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.3rem;">
+                                                <i class="fas fa-map-marker-alt"></i>${city}${city && state ? ', ' : ''}${state}
                                             </div>
                                         ` : ''}
-                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.75rem;">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: auto; flex-wrap: wrap;">
                                             ${rating > 0 ? `
-                                                <span style="color: #f59e0b; font-size: 0.85rem; font-weight: 600;">
-                                                    ⭐ ${rating.toFixed(1)} ${vendor.TotalReviews ? `(${vendor.TotalReviews})` : ''}
+                                                <span style="color: #f59e0b; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
+                                                    ⭐ ${rating.toFixed(1)} ${vendor.TotalReviews ? `<span style="color: #94a3b8;">(${vendor.TotalReviews})</span>` : ''}
                                                 </span>
                                             ` : '<span></span>'}
-                                            <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
-                                                <i class="fas fa-fire"></i> ${viewCount} views
+                                            <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 0.35rem; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);">
+                                                <i class="fas fa-fire"></i> ${viewCount}
                                             </span>
                                         </div>
                                     </div>
