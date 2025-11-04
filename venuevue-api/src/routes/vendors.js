@@ -420,6 +420,7 @@ router.get('/', async (req, res) => {
       minPrice, 
       maxPrice, 
       minRating,
+      isTrending,
       isPremium,
       isEcoFriendly,
       isAwardWinning,
@@ -456,6 +457,7 @@ router.get('/', async (req, res) => {
     request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
     request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
     request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
+    request.input('IsTrending', sql.Bit, isTrending === 'true' ? 1 : isTrending === 'false' ? 0 : null);
     request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
     request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
     request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
@@ -832,6 +834,7 @@ router.get('/search-by-categories', async (req, res) => {
       minPrice,
       maxPrice,
       minRating,
+      isTrending,
       isPremium,
       isEcoFriendly,
       isAwardWinning,
@@ -901,6 +904,7 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
       request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
       request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
+      request.input('IsTrending', sql.Bit, isTrending === 'true' ? 1 : isTrending === 'false' ? 0 : null);
       request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
       request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
       request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
@@ -2270,32 +2274,56 @@ router.get('/:id/selected-services', async (req, res) => {
     }
 
     const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.query(`
-      SELECT 
-        vss.VendorSelectedServiceID,
-        vss.PredefinedServiceID,
-        ps.ServiceName,
-        ps.ServiceDescription as PredefinedDescription,
-        ps.Category,
-        ps.DefaultDurationMinutes,
-        vss.VendorPrice,
-        vss.VendorDescription,
-        vss.VendorDurationMinutes,
-        vss.ImageURL,
-        vss.CreatedAt,
-        vss.UpdatedAt,
-        vss.IsActive
-      FROM VendorSelectedServices vss
-      INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-      WHERE vss.VendorProfileID = @VendorProfileID AND vss.IsActive = 1
-      ORDER BY ps.Category, ps.DisplayOrder, ps.ServiceName
-    `);
+    // PRIORITY 1: Try to get services from Services table (has full pricing model details)
+    let rows = [];
+    try {
+      const servicesRequest = new sql.Request(pool);
+      servicesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      const servicesResult = await servicesRequest.query(`
+        SELECT 
+          s.LinkedPredefinedServiceID AS PredefinedServiceID,
+          ps.ServiceName,
+          ps.ServiceDescription as PredefinedDescription,
+          ps.Category,
+          ps.DefaultDurationMinutes,
+          s.Description AS VendorDescription,
+          -- Derive a single VendorPrice compatible with settings UI
+          CASE 
+            WHEN s.PricingModel = 'time_based' THEN s.BaseRate
+            WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'fixed_price' THEN s.FixedPrice
+            WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'per_attendee' THEN s.PricePerPerson
+            ELSE s.Price
+          END AS VendorPrice,
+          COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes,
+          s.ImageURL,
+          s.CreatedAt,
+          s.UpdatedAt,
+          s.IsActive,
+          -- Include full pricing model details
+          s.PricingModel,
+          s.BaseRate,
+          s.OvertimeRatePerHour,
+          s.MinimumBookingFee,
+          s.FixedPricingType,
+          s.FixedPrice,
+          s.PricePerPerson,
+          s.MinimumAttendees,
+          s.MaximumAttendees,
+          s.BaseDurationMinutes
+        FROM Services s
+        LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
+        WHERE s.VendorProfileID = @VendorProfileID 
+          AND s.LinkedPredefinedServiceID IS NOT NULL 
+          AND s.IsActive = 1
+        ORDER BY ps.Category, ps.ServiceName
+      `);
+      rows = servicesResult.recordset || [];
+    } catch (servicesErr) {
+      console.warn('Services table query failed, trying VendorSelectedServices fallback:', servicesErr?.message || servicesErr);
+    }
     
-    let rows = result.recordset;
-    // Fallback: if no legacy selected entries, derive from Services linked to predefined services
+    // PRIORITY 2 (Fallback): if no services found in Services table, try VendorSelectedServices
     if (!rows || rows.length === 0) {
       try {
         const fbReq = new sql.Request(pool);
@@ -2316,9 +2344,21 @@ router.get('/:id/selected-services', async (req, res) => {
               ELSE s.Price
             END AS VendorPrice,
             COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes,
+            s.ImageURL,
             s.CreatedAt,
             s.UpdatedAt,
-            s.IsActive
+            s.IsActive,
+            -- Include full pricing model details
+            s.PricingModel,
+            s.BaseRate,
+            s.OvertimeRatePerHour,
+            s.MinimumBookingFee,
+            s.FixedPricingType,
+            s.FixedPrice,
+            s.PricePerPerson,
+            s.MinimumAttendees,
+            s.MaximumAttendees,
+            s.BaseDurationMinutes
           FROM Services s
           LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
           WHERE s.VendorProfileID = @VendorProfileID 
