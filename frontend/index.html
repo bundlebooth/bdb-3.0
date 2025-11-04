@@ -5683,33 +5683,42 @@
         /* Messaging Widget Styles */
         .messaging-widget {
             position: fixed;
-            bottom: 20px;
+            bottom: 0;
             right: 20px;
             z-index: 20; /* Above sticky footer */
         }
 
         .chat-button {
-            width: 60px;
-            height: 60px;
-            background: var(--primary, #007bff);
-            border-radius: 50%;
+            padding: 15px 28px;
+            background: var(--primary, #5e72e4);
+            border-radius: 12px 12px 0 0;
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 10px;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 -2px 12px rgba(94, 114, 228, 0.25);
             transition: all 0.3s ease;
             position: relative;
+            border: none;
         }
 
         .chat-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 -4px 16px rgba(94, 114, 228, 0.35);
+            background: var(--primary-dark, #4c60d3);
         }
 
         .chat-button i {
             color: white;
-            font-size: 24px;
+            font-size: 18px;
+        }
+
+        .chat-button-text {
+            color: white;
+            font-weight: 600;
+            font-size: 15px;
+            letter-spacing: 0.3px;
         }
 
         .widget-message-badge {
@@ -5730,30 +5739,18 @@
         }
 
         .widget-container {
-            position: absolute;
-            bottom: 80px;
-            right: 0;
-            width: 350px;
-            height: 500px;
+            position: fixed;
+            bottom: 0;
+            right: 20px;
+            width: 380px;
+            height: 550px;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-            border: 1px solid #e1e5e9;
-            overflow: hidden;
-            display: flex;               /* ensure header + content stack within fixed height */
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 -2px 40px rgba(0, 0, 0, 0.16);
+            display: flex;
             flex-direction: column;
-            animation: slideUp 0.3s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            overflow: hidden;
+            z-index: 10;
         }
 
         .widget-header {
@@ -6261,12 +6258,15 @@
             }
 
             .chat-button {
-                width: 50px;
-                height: 50px;
+                padding: 12px 20px;
             }
 
             .chat-button i {
-                font-size: 20px;
+                font-size: 16px;
+            }
+
+            .chat-button-text {
+                font-size: 14px;
             }
         }
 
@@ -39223,10 +39223,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             openWidget() {
                 console.log('🚀 Opening messaging widget...');
                 const container = document.getElementById('widget-container');
+                const chatButton = document.getElementById('chat-button');
                 console.log('🔍 Widget container found:', container);
                 if (container) {
                     // Use flex so header/messages/input layout correctly
                     container.style.display = 'flex';
+                    // Hide chat button when widget is open
+                    if (chatButton) {
+                        chatButton.style.display = 'none';
+                    }
                     this.isOpen = true;
                     console.log('✅ Widget opened, loading conversations...');
                     this.loadConversations();
@@ -39237,8 +39242,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             closeWidget() {
                 const container = document.getElementById('widget-container');
+                const chatButton = document.getElementById('chat-button');
                 if (container) {
                     container.style.display = 'none';
+                    // Show chat button when widget is closed
+                    if (chatButton) {
+                        chatButton.style.display = 'flex';
+                    }
                     this.isOpen = false;
                 }
             }
@@ -39259,23 +39269,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 this.currentConversationId = conversationId;
                 this.currentChatUser = user;
                 
-                // Update chat header
-                const avatar = document.getElementById('chat-user-avatar');
-                const name = document.getElementById('chat-user-name');
+                // Update chat header - always get fresh references
+                const chatUserInfo = document.querySelector('.chat-user-info');
                 
-                if (avatar && name) {
-                    avatar.src = user.avatar || '';
-                    avatar.alt = user.name || 'User';
-                    name.textContent = user.name || 'Unknown User';
-                    
-                    // If no avatar, show initials
+                if (chatUserInfo) {
+                    // If no avatar, show initials structure with preserved IDs
                     if (!user.avatar) {
-                        avatar.style.display = 'none';
-                        avatar.parentElement.innerHTML = `
+                        chatUserInfo.innerHTML = `
                             <div class="conversation-avatar">
                                 ${this.getInitials(user.name)}
                             </div>
-                            <span class="chat-user-name">${user.name || 'Unknown User'}</span>
+                            <span id="chat-user-name" class="chat-user-name">${user.name || 'Unknown User'}</span>
+                        `;
+                    } else {
+                        // If avatar exists, show image structure with preserved IDs
+                        chatUserInfo.innerHTML = `
+                            <img id="chat-user-avatar" src="${user.avatar}" alt="${user.name || 'User'}" class="chat-user-avatar">
+                            <span id="chat-user-name" class="chat-user-name">${user.name || 'Unknown User'}</span>
                         `;
                     }
                 }
@@ -40351,6 +40361,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         <!-- Chat Button -->
         <div id="chat-button" class="chat-button">
             <i class="fas fa-comments"></i>
+            <span class="chat-button-text">Messages</span>
             <span id="widget-message-badge" class="widget-message-badge" style="display: none;">0</span>
         </div>
 
