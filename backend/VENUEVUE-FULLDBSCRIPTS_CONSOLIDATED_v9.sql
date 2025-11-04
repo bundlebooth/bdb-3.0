@@ -8419,23 +8419,23 @@ IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Ve
 BEGIN
     CREATE TABLE [dbo].[VendorProfileViews] (
         [ViewID] INT IDENTITY(1,1) PRIMARY KEY,
-        [VendorID] INT NOT NULL,
+        [VendorProfileID] INT NOT NULL,
         [ViewerUserID] INT NULL, -- Null for anonymous/non-logged-in viewers
         [ViewedAt] DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
         [IPAddress] VARCHAR(45) NULL, -- Support IPv4 and IPv6
         [UserAgent] VARCHAR(500) NULL,
         [ReferrerUrl] VARCHAR(1000) NULL,
         [SessionID] VARCHAR(100) NULL,
-        CONSTRAINT [FK_VendorProfileViews_Vendor] FOREIGN KEY ([VendorID]) 
-            REFERENCES [dbo].[Vendors]([VendorID]) ON DELETE CASCADE,
+        CONSTRAINT [FK_VendorProfileViews_VendorProfile] FOREIGN KEY ([VendorProfileID]) 
+            REFERENCES [dbo].[VendorProfiles]([VendorProfileID]) ON DELETE CASCADE,
         CONSTRAINT [FK_VendorProfileViews_User] FOREIGN KEY ([ViewerUserID]) 
             REFERENCES [dbo].[Users]([UserID]) ON DELETE SET NULL
     );
 
     -- Indexes for performance
-    CREATE INDEX [IX_VendorProfileViews_VendorID] ON [dbo].[VendorProfileViews]([VendorID]);
+    CREATE INDEX [IX_VendorProfileViews_VendorProfileID] ON [dbo].[VendorProfileViews]([VendorProfileID]);
     CREATE INDEX [IX_VendorProfileViews_ViewedAt] ON [dbo].[VendorProfileViews]([ViewedAt] DESC);
-    CREATE INDEX [IX_VendorProfileViews_VendorID_ViewedAt] ON [dbo].[VendorProfileViews]([VendorID], [ViewedAt] DESC);
+    CREATE INDEX [IX_VendorProfileViews_VendorProfileID_ViewedAt] ON [dbo].[VendorProfileViews]([VendorProfileID], [ViewedAt] DESC);
     CREATE INDEX [IX_VendorProfileViews_ViewerUserID] ON [dbo].[VendorProfileViews]([ViewerUserID]);
     
     PRINT '✅ Created VendorProfileViews table with indexes';
@@ -8451,7 +8451,7 @@ GO
 -- Logs a vendor profile view
 -- =============================================
 CREATE OR ALTER PROCEDURE [dbo].[sp_TrackVendorProfileView]
-    @VendorID INT,
+    @VendorProfileID INT,
     @ViewerUserID INT = NULL,
     @IPAddress VARCHAR(45) = NULL,
     @UserAgent VARCHAR(500) = NULL,
@@ -8462,7 +8462,7 @@ BEGIN
     SET NOCOUNT ON;
 
     -- Validate vendor exists
-    IF NOT EXISTS (SELECT 1 FROM Vendors WHERE VendorID = @VendorID)
+    IF NOT EXISTS (SELECT 1 FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID)
     BEGIN
         RAISERROR('Vendor not found', 16, 1);
         RETURN;
@@ -8470,7 +8470,7 @@ BEGIN
 
     -- Insert the view record
     INSERT INTO VendorProfileViews (
-        VendorID, 
+        VendorProfileID, 
         ViewerUserID, 
         ViewedAt, 
         IPAddress, 
@@ -8479,7 +8479,7 @@ BEGIN
         SessionID
     )
     VALUES (
-        @VendorID,
+        @VendorProfileID,
         @ViewerUserID,
         GETUTCDATE(),
         @IPAddress,
@@ -8508,7 +8508,7 @@ BEGIN
 
     -- Calculate trending vendors based on view count
     SELECT TOP (@TopN)
-        v.VendorID,
+        v.VendorProfileID,
         v.UserID,
         u.Name AS VendorName,
         v.BusinessName,
@@ -8531,14 +8531,14 @@ BEGIN
         (
             SELECT TOP 1 vi.CloudinaryPublicId
             FROM VendorImages vi
-            WHERE vi.VendorProfileID = v.VendorID
+            WHERE vi.VendorProfileID = v.VendorProfileID
               AND vi.IsPrimary = 1
               AND vi.IsActive = 1
         ) AS PrimaryImagePublicId,
         (
             SELECT TOP 1 vi.CloudinaryUrl
             FROM VendorImages vi
-            WHERE vi.VendorProfileID = v.VendorID
+            WHERE vi.VendorProfileID = v.VendorProfileID
               AND vi.IsPrimary = 1
               AND vi.IsActive = 1
         ) AS PrimaryImageUrl,
@@ -8550,20 +8550,20 @@ BEGIN
                 vi.DisplayOrder,
                 vi.Caption
             FROM VendorImages vi
-            WHERE vi.VendorProfileID = v.VendorID
+            WHERE vi.VendorProfileID = v.VendorProfileID
               AND vi.IsActive = 1
               AND @IncludeImages = 1
             ORDER BY vi.IsPrimary DESC, vi.DisplayOrder
             FOR JSON PATH
         ) AS ImagesJson
-    FROM Vendors v
+    FROM VendorProfiles v
     INNER JOIN Users u ON v.UserID = u.UserID
-    INNER JOIN VendorProfileViews vpv ON v.VendorID = vpv.VendorID
+    INNER JOIN VendorProfileViews vpv ON v.VendorProfileID = vpv.VendorProfileID
     WHERE vpv.ViewedAt >= DATEADD(DAY, -@DaysBack, GETUTCDATE())
       AND v.SetupCompleted = 1
       AND u.IsActive = 1
     GROUP BY 
-        v.VendorID, v.UserID, u.Name, v.BusinessName, v.Bio, v.PrimaryCategory,
+        v.VendorProfileID, v.UserID, u.Name, v.BusinessName, v.Bio, v.PrimaryCategory,
         v.AdditionalCategories, v.City, v.State, v.Country, v.Latitude, v.Longitude,
         v.AverageRating, v.TotalReviews, v.IsPremium, v.IsVerified,
         v.ResponseTimeMinutes, v.CompletedBookings
@@ -8576,7 +8576,7 @@ GO
 -- Returns analytics data for a specific vendor
 -- =============================================
 CREATE OR ALTER PROCEDURE [dbo].[sp_GetVendorAnalytics]
-    @VendorID INT,
+    @VendorProfileID INT,
     @DaysBack INT = 30
 AS
 BEGIN
@@ -8590,7 +8590,7 @@ BEGIN
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers,
         COUNT(DISTINCT CAST(ViewedAt AS DATE)) AS DaysWithViews
     FROM VendorProfileViews
-    WHERE VendorID = @VendorID
+    WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @StartDate;
 
     -- Daily view breakdown
@@ -8599,7 +8599,7 @@ BEGIN
         COUNT(*) AS ViewCount,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers
     FROM VendorProfileViews
-    WHERE VendorID = @VendorID
+    WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @StartDate
     GROUP BY CAST(ViewedAt AS DATE)
     ORDER BY ViewDate;
@@ -8609,7 +8609,7 @@ BEGIN
         DATEPART(HOUR, ViewedAt) AS HourOfDay,
         COUNT(*) AS ViewCount
     FROM VendorProfileViews
-    WHERE VendorID = @VendorID
+    WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @StartDate
     GROUP BY DATEPART(HOUR, ViewedAt)
     ORDER BY HourOfDay;
@@ -8622,7 +8622,7 @@ BEGIN
         END AS Referrer,
         COUNT(*) AS ViewCount
     FROM VendorProfileViews
-    WHERE VendorID = @VendorID
+    WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @StartDate
     GROUP BY ReferrerUrl
     ORDER BY ViewCount DESC;
@@ -8634,7 +8634,7 @@ GO
 -- Returns view trends comparing different time periods
 -- =============================================
 CREATE OR ALTER PROCEDURE [dbo].[sp_GetVendorViewTrends]
-    @VendorID INT
+    @VendorProfileID INT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -8649,7 +8649,7 @@ BEGIN
         COUNT(*) AS ViewCount,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers
     FROM VendorProfileViews
-    WHERE VendorID = @VendorID
+    WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @ThisWeekStart
     UNION ALL
     SELECT 
@@ -8657,7 +8657,7 @@ BEGIN
         COUNT(*) AS ViewCount,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers
     FROM VendorProfileViews
-    WHERE VendorID = @VendorID
+    WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @LastWeekStart
       AND ViewedAt < @LastWeekEnd;
 
@@ -8671,7 +8671,7 @@ BEGIN
         COUNT(*) AS ViewCount,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers
     FROM VendorProfileViews
-    WHERE VendorID = @VendorID
+    WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @ThisMonthStart
     UNION ALL
     SELECT 
@@ -8679,7 +8679,7 @@ BEGIN
         COUNT(*) AS ViewCount,
         COUNT(DISTINCT ViewerUserID) AS UniqueViewers
     FROM VendorProfileViews
-    WHERE VendorID = @VendorID
+    WHERE VendorProfileID = @VendorProfileID
       AND ViewedAt >= @LastMonthStart
       AND ViewedAt < @LastMonthEnd;
 END

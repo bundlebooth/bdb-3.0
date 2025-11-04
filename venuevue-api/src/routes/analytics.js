@@ -32,7 +32,7 @@ router.post('/track-view', async (req, res) => {
         const userAgent = req.headers['user-agent'];
 
         const result = await pool.request()
-            .input('VendorID', sql.Int, vendorId)
+            .input('VendorProfileID', sql.Int, vendorId)
             .input('ViewerUserID', sql.Int, viewerUserID)
             .input('IPAddress', sql.VarChar(45), ipAddress ? ipAddress.split(',')[0].trim() : null)
             .input('UserAgent', sql.VarChar(500), userAgent)
@@ -127,8 +127,8 @@ router.get('/vendor/:vendorId', authenticateToken, async (req, res) => {
 
         // Verify the vendor belongs to the requesting user (or user is admin)
         const vendorCheck = await pool.request()
-            .input('VendorID', sql.Int, vendorId)
-            .query('SELECT UserID FROM Vendors WHERE VendorID = @VendorID');
+            .input('VendorProfileID', sql.Int, vendorId)
+            .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
 
         if (vendorCheck.recordset.length === 0) {
             return res.status(404).json({ error: 'Vendor not found' });
@@ -142,7 +142,7 @@ router.get('/vendor/:vendorId', authenticateToken, async (req, res) => {
         }
 
         const result = await pool.request()
-            .input('VendorID', sql.Int, vendorId)
+            .input('VendorProfileID', sql.Int, vendorId)
             .input('DaysBack', sql.Int, parseInt(daysBack))
             .execute('sp_GetVendorAnalytics');
 
@@ -189,8 +189,8 @@ router.get('/vendor/:vendorId/trends', authenticateToken, async (req, res) => {
 
         // Verify the vendor belongs to the requesting user (or user is admin)
         const vendorCheck = await pool.request()
-            .input('VendorID', sql.Int, vendorId)
-            .query('SELECT UserID FROM Vendors WHERE VendorID = @VendorID');
+            .input('VendorProfileID', sql.Int, vendorId)
+            .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
 
         if (vendorCheck.recordset.length === 0) {
             return res.status(404).json({ error: 'Vendor not found' });
@@ -204,7 +204,7 @@ router.get('/vendor/:vendorId/trends', authenticateToken, async (req, res) => {
         }
 
         const result = await pool.request()
-            .input('VendorID', sql.Int, vendorId)
+            .input('VendorProfileID', sql.Int, vendorId)
             .execute('sp_GetVendorViewTrends');
 
         // Result has multiple recordsets - weekly and monthly comparisons
@@ -262,12 +262,12 @@ router.get('/vendor/:vendorId/view-count', async (req, res) => {
         const pool = await poolPromise;
 
         const result = await pool.request()
-            .input('VendorID', sql.Int, vendorId)
+            .input('VendorProfileID', sql.Int, vendorId)
             .input('DaysBack', sql.Int, parseInt(daysBack))
             .query(`
                 SELECT COUNT(*) AS ViewCount
                 FROM VendorProfileViews
-                WHERE VendorID = @VendorID
+                WHERE VendorProfileID = @VendorProfileID
                   AND ViewedAt >= DATEADD(DAY, -@DaysBack, GETUTCDATE())
             `);
 
