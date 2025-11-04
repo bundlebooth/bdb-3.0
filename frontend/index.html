@@ -2747,13 +2747,33 @@
             animation: slideIn 0.3s ease;
         }
 
-        @keyframes bannerSlideDown {
-            from { transform: translateY(-10px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        @keyframes bannerSlideIn {
+            from { 
+                transform: translate(-50%, -60px); 
+                opacity: 0;
+                filter: blur(2px);
+            }
+            to { 
+                transform: translate(-50%, 0); 
+                opacity: 1;
+                filter: blur(0);
+            }
         }
+        
+        @keyframes bannerSlideOut {
+            from { 
+                transform: translate(-50%, 0); 
+                opacity: 1;
+            }
+            to { 
+                transform: translate(-50%, -40px); 
+                opacity: 0;
+            }
+        }
+        
         .app-banner {
             position: fixed;
-            top: 80px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
             width: calc(100% - 40px);
@@ -2761,14 +2781,18 @@
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            padding: 0.75rem 1rem;
+            padding: 0.875rem 1.25rem;
             border-radius: var(--radius);
-            box-shadow: var(--shadow);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15), 0 2px 6px rgba(0, 0, 0, 0.08);
             border: 1px solid var(--border);
             background: #ffffff;
             color: var(--text);
             z-index: 10002;
-            animation: bannerSlideDown .2s ease;
+            animation: bannerSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        
+        .app-banner.app-banner--removing {
+            animation: bannerSlideOut 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
         }
         .app-banner--success { border-color: #10b98133; background: #ecfdf5; color: #065f46; }
         .app-banner--error { border-color: #ef444433; background: #fef2f2; color: #991b1b; }
@@ -11578,29 +11602,61 @@
                 }
             } catch {}
 
+            // Check for existing banner and remove with smooth animation
+            let hasExisting = false;
             try {
                 const existing = document.getElementById('app-banner');
-                if (existing) existing.remove();
+                if (existing) {
+                    hasExisting = true;
+                    existing.classList.add('app-banner--removing');
+                    setTimeout(() => existing.remove(), 300);
+                }
             } catch {}
 
-            const banner = document.createElement('div');
-            banner.id = 'app-banner';
-            const normalizedVariant = (variant === 'notice') ? 'info' : variant;
-            banner.className = `app-banner app-banner--${normalizedVariant}`;
-            const safeMsg = (typeof message === 'string') ? message : (message && message.message) || String(message);
-            const heading = title || (normalizedVariant === 'error' ? 'Error' : (normalizedVariant === 'success' ? 'Success' : 'Notice'));
-            banner.setAttribute('role', 'alert');
-            banner.setAttribute('aria-live', 'assertive');
-            banner.innerHTML = `
-                <span class="app-banner__icon" aria-hidden="true">${getBannerIcon(normalizedVariant)}</span>
-                <div class="app-banner__title">${heading}</div>
-                <div style="flex:1;">${safeMsg}</div>
-                <button class="app-banner__close" aria-label="Close">&times;</button>
-            `;
-            banner.querySelector('.app-banner__close').addEventListener('click', () => banner.remove());
-            document.body.appendChild(banner);
+            // Function to create and show the new banner
+            const createAndShowBanner = () => {
+                const banner = document.createElement('div');
+                banner.id = 'app-banner';
+                const normalizedVariant = (variant === 'notice') ? 'info' : variant;
+                banner.className = `app-banner app-banner--${normalizedVariant}`;
+                const safeMsg = (typeof message === 'string') ? message : (message && message.message) || String(message);
+                const heading = title || (normalizedVariant === 'error' ? 'Error' : (normalizedVariant === 'success' ? 'Success' : 'Notice'));
+                banner.setAttribute('role', 'alert');
+                banner.setAttribute('aria-live', 'assertive');
+                banner.innerHTML = `
+                    <span class="app-banner__icon" aria-hidden="true">${getBannerIcon(normalizedVariant)}</span>
+                    <div class="app-banner__title">${heading}</div>
+                    <div style="flex:1;">${safeMsg}</div>
+                    <button class="app-banner__close" aria-label="Close">&times;</button>
+                `;
+                
+                // Smooth removal function
+                const removeBanner = () => {
+                    banner.classList.add('app-banner--removing');
+                    setTimeout(() => {
+                        if (banner.parentElement) {
+                            banner.remove();
+                        }
+                    }, 300); // Match the bannerSlideOut animation duration
+                };
+                
+                banner.querySelector('.app-banner__close').addEventListener('click', removeBanner);
+                document.body.appendChild(banner);
 
-            setTimeout(() => { if (banner.parentElement) banner.remove(); }, 5000);
+                // Auto-dismiss after 5 seconds with smooth animation
+                setTimeout(() => { 
+                    if (banner.parentElement) {
+                        removeBanner();
+                    }
+                }, 5000);
+            };
+
+            // If there was an existing banner, wait for its removal animation to complete
+            if (hasExisting) {
+                setTimeout(createAndShowBanner, 320);
+            } else {
+                createAndShowBanner();
+            }
         }
 
         function getBannerIcon(variant) {
