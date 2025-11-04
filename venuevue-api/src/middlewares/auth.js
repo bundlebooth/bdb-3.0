@@ -12,17 +12,25 @@ const authenticate = async (req, res, next) => {
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Verify user exists
+    // Verify user exists and get admin status
     const pool = await poolPromise;
     const result = await pool.request()
       .input('UserID', sql.Int, decoded.id)
-      .query('SELECT UserID FROM Users WHERE UserID = @UserID');
+      .query('SELECT UserID, IsAdmin, IsVendor FROM Users WHERE UserID = @UserID');
       
     if (result.recordset.length === 0) {
       return res.status(401).json({ message: 'User not found' });
     }
     
-    req.user = { id: decoded.id };
+    const user = result.recordset[0];
+    
+    req.user = { 
+      id: decoded.id,
+      userId: decoded.id, // Add userId for compatibility
+      email: decoded.email,
+      isVendor: decoded.isVendor || user.IsVendor,
+      isAdmin: user.IsAdmin || false
+    };
     next();
   } catch (err) {
     res.status(401).json({ message: 'Please authenticate', error: err.message });
