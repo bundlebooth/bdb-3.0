@@ -624,12 +624,12 @@
             flex-direction: column; /* default: list view keeps one column */
         }
         .results-two-col .results-left { flex: 1; min-width: 0; }
-        .results-two-col .results-right { flex: 1; min-width: 0; position: relative; }
+        .results-two-col .results-right { flex: 1; min-width: 0; position: relative; display: none; }
         /* When map is active, switch to two columns */
         body.map-active .results-two-col { flex-direction: row; }
         /* Make map larger than cards in map view */
         body.map-active .results-two-col .results-left { flex: 0 0 30%; }
-        body.map-active .results-two-col .results-right { flex: 1 0 70%; }
+        body.map-active .results-two-col .results-right { flex: 1 0 70%; display: block; }
         @media (max-width: 900px) {
             body.map-active .results-two-col { flex-direction: column; }
             body.map-active .results-two-col .results-left,
@@ -6558,7 +6558,7 @@
         <nav class="categories-nav">
             <button class="nav-scroll-btn left" id="scroll-left">◀</button>
             <div class="categories-list-wrapper">
-                <div class="categories-list" id="categories-list"><div class="category-item active" data-category="all"><i class="fas fa-stream"></i><span>All Categories</span></div><div class="category-item" data-category="venue"><i class="fas fa-building"></i><span>Venues</span></div><div class="category-item" data-category="photo"><i class="fas fa-camera"></i><span>Photo/Video</span></div><div class="category-item" data-category="music"><i class="fas fa-music"></i><span>Music/DJ</span></div><div class="category-item" data-category="catering"><i class="fas fa-utensils"></i><span>Catering</span></div><div class="category-item" data-category="entertainment"><i class="fas fa-theater-masks"></i><span>Entertainment</span></div><div class="category-item" data-category="experiences"><i class="fas fa-star"></i><span>Experiences</span></div><div class="category-item" data-category="decor"><i class="fas fa-ribbon"></i><span>Decorations</span></div><div class="category-item" data-category="beauty"><i class="fas fa-spa"></i><span>Beauty</span></div><div class="category-item" data-category="cake"><i class="fas fa-birthday-cake"></i><span>Cake</span></div><div class="category-item" data-category="transport"><i class="fas fa-shuttle-van"></i><span>Transportation</span></div><div class="category-item" data-category="planner"><i class="fas fa-clipboard-list"></i><span>Planners</span></div><div class="category-item" data-category="fashion"><i class="fas fa-tshirt"></i><span>Fashion</span></div><div class="category-item" data-category="stationery"><i class="fas fa-envelope"></i><span>Stationery</span></div></div>
+                <div class="categories-list" id="categories-list"><div class="category-item active" data-category="all"><i class="fas fa-layer-group"></i><span>All Categories</span></div><div class="category-item" data-category="venue"><i class="fas fa-building"></i><span>Venues</span></div><div class="category-item" data-category="photo"><i class="fas fa-camera"></i><span>Photo/Video</span></div><div class="category-item" data-category="music"><i class="fas fa-music"></i><span>Music/DJ</span></div><div class="category-item" data-category="catering"><i class="fas fa-utensils"></i><span>Catering</span></div><div class="category-item" data-category="entertainment"><i class="fas fa-theater-masks"></i><span>Entertainment</span></div><div class="category-item" data-category="experiences"><i class="fas fa-star"></i><span>Experiences</span></div><div class="category-item" data-category="decor"><i class="fas fa-ribbon"></i><span>Decorations</span></div><div class="category-item" data-category="beauty"><i class="fas fa-spa"></i><span>Beauty</span></div><div class="category-item" data-category="cake"><i class="fas fa-birthday-cake"></i><span>Cake</span></div><div class="category-item" data-category="transport"><i class="fas fa-shuttle-van"></i><span>Transportation</span></div><div class="category-item" data-category="planner"><i class="fas fa-clipboard-list"></i><span>Planners</span></div><div class="category-item" data-category="fashion"><i class="fas fa-tshirt"></i><span>Fashion</span></div><div class="category-item" data-category="stationery"><i class="fas fa-envelope"></i><span>Stationery</span></div></div>
                 <div class="category-indicator" id="category-indicator"></div>
             </div>
             <button class="nav-scroll-btn right" id="scroll-right">▶</button>
@@ -6664,7 +6664,7 @@
 
             
             <!-- Trending Vendors Section - Main Page -->
-            <div id="trending-vendors-section-main" style="display: block; margin-bottom: 2rem;">
+            <div id="trending-vendors-section-main" style="display: none; margin-bottom: 2rem;">
                 <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
                     <h3 id="trending-header-main" style="color: #1a202c; display: none; align-items: center; gap: 0.5rem; margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 700;">
                         <i class="fas fa-fire" style="color: #ff6b6b;"></i>
