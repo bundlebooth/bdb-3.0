@@ -8522,6 +8522,7 @@ BEGIN
         v.IsPremium,
         v.IsVerified,
         v.AverageResponseTime AS ResponseTimeMinutes,
+        v.FeaturedImageURL,
         COUNT(vpv.ViewID) AS ViewCount,
         COUNT(DISTINCT vpv.ViewerUserID) AS UniqueViewers,
         (
@@ -8581,7 +8582,7 @@ BEGIN
     GROUP BY 
         v.VendorProfileID, v.UserID, u.Name, v.BusinessName, v.BusinessDescription, v.Tagline,
         v.City, v.State, v.Country, v.Latitude, v.Longitude,
-        v.IsPremium, v.IsVerified, v.AverageResponseTime
+        v.IsPremium, v.IsVerified, v.AverageResponseTime, v.FeaturedImageURL
     ORDER BY ViewCount DESC, UniqueViewers DESC;
 END
 GO
