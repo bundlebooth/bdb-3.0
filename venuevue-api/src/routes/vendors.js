@@ -424,6 +424,10 @@ router.get('/', async (req, res) => {
       isEcoFriendly,
       isAwardWinning,
       isLastMinute,
+      isCertified,
+      isInsured,
+      isLocal,
+      isMobile,
       latitude,
       longitude,
       radiusMiles,
@@ -460,6 +464,10 @@ router.get('/', async (req, res) => {
     request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
     request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
     request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
+    request.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : isCertified === 'false' ? 0 : null);
+    request.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : isInsured === 'false' ? 0 : null);
+    request.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : isLocal === 'false' ? 0 : null);
+    request.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : isMobile === 'false' ? 0 : null);
     request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
     request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
     request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
@@ -836,6 +844,10 @@ router.get('/search-by-categories', async (req, res) => {
       isEcoFriendly,
       isAwardWinning,
       isLastMinute,
+      isCertified,
+      isInsured,
+      isLocal,
+      isMobile,
       latitude,
       longitude,
       radiusMiles,
@@ -905,6 +917,10 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
       request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
       request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
+      request.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : isCertified === 'false' ? 0 : null);
+      request.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : isInsured === 'false' ? 0 : null);
+      request.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : isLocal === 'false' ? 0 : null);
+      request.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : isMobile === 'false' ? 0 : null);
       request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
       request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
       request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);

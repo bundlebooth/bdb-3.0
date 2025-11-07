@@ -1206,7 +1206,7 @@ router.get('/:id/popular-filters', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     const result = await request.query(`
-      SELECT IsPremium, IsEcoFriendly, IsAwardWinning, IsLastMinute
+      SELECT IsPremium, IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured, IsLocal, IsMobile
       FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
     `);
     if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
@@ -1221,7 +1221,7 @@ router.get('/:id/popular-filters', async (req, res) => {
 router.post('/:id/popular-filters', async (req, res) => {
   try {
     const { id } = req.params; // VendorProfileID
-    const { isPremium, isEcoFriendly, isAwardWinning, isLastMinute } = req.body;
+    const { isPremium, isEcoFriendly, isAwardWinning, isLastMinute, isCertified, isInsured, isLocal, isMobile } = req.body;
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
@@ -1229,12 +1229,20 @@ router.post('/:id/popular-filters', async (req, res) => {
     request.input('IsEcoFriendly', sql.Bit, !!isEcoFriendly);
     request.input('IsAwardWinning', sql.Bit, !!isAwardWinning);
     request.input('IsLastMinute', sql.Bit, !!isLastMinute);
+    request.input('IsCertified', sql.Bit, !!isCertified);
+    request.input('IsInsured', sql.Bit, !!isInsured);
+    request.input('IsLocal', sql.Bit, !!isLocal);
+    request.input('IsMobile', sql.Bit, !!isMobile);
     await request.query(`
       UPDATE VendorProfiles SET 
         IsPremium = @IsPremium,
         IsEcoFriendly = @IsEcoFriendly,
         IsAwardWinning = @IsAwardWinning,
         IsLastMinute = @IsLastMinute,
+        IsCertified = @IsCertified,
+        IsInsured = @IsInsured,
+        IsLocal = @IsLocal,
+        IsMobile = @IsMobile,
         UpdatedAt = GETDATE()
       WHERE VendorProfileID = @VendorProfileID
     `);
