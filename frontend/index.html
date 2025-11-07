@@ -7814,6 +7814,62 @@
                                                     </p>
                                                 </div>
                                             </div>
+
+                                            <!-- Certified Filter -->
+                                            <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 1.25rem; background: var(--secondary); border-radius: var(--radius); border: 2px solid var(--border);">
+                                                <input type="checkbox" id="filter-certified" style="width: 20px; height: 20px; margin-top: 2px; cursor: pointer;">
+                                                <div style="flex: 1;">
+                                                    <label for="filter-certified" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-bottom: 0.5rem; cursor: pointer;">
+                                                        <i class="fas fa-award" style="color: #8b5cf6; font-size: 1.25rem;"></i>
+                                                        <span>Certified</span>
+                                                    </label>
+                                                    <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">
+                                                        Indicate that your business holds relevant industry certifications or qualifications.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Insured Filter -->
+                                            <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 1.25rem; background: var(--secondary); border-radius: var(--radius); border: 2px solid var(--border);">
+                                                <input type="checkbox" id="filter-insured" style="width: 20px; height: 20px; margin-top: 2px; cursor: pointer;">
+                                                <div style="flex: 1;">
+                                                    <label for="filter-insured" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-bottom: 0.5rem; cursor: pointer;">
+                                                        <i class="fas fa-shield-alt" style="color: #10b981; font-size: 1.25rem;"></i>
+                                                        <span>Insured</span>
+                                                    </label>
+                                                    <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">
+                                                        Show that your business carries appropriate liability insurance coverage.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Local Filter -->
+                                            <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 1.25rem; background: var(--secondary); border-radius: var(--radius); border: 2px solid var(--border);">
+                                                <input type="checkbox" id="filter-local" style="width: 20px; height: 20px; margin-top: 2px; cursor: pointer;">
+                                                <div style="flex: 1;">
+                                                    <label for="filter-local" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-bottom: 0.5rem; cursor: pointer;">
+                                                        <i class="fas fa-map-marker-alt" style="color: #ef4444; font-size: 1.25rem;"></i>
+                                                        <span>Local</span>
+                                                    </label>
+                                                    <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">
+                                                        Highlight that your business is locally owned and operated in your community.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Accessible Filter -->
+                                            <div style="display: flex; align-items: flex-start; gap: 1rem; padding: 1.25rem; background: var(--secondary); border-radius: var(--radius); border: 2px solid var(--border);">
+                                                <input type="checkbox" id="filter-accessible" style="width: 20px; height: 20px; margin-top: 2px; cursor: pointer;">
+                                                <div style="flex: 1;">
+                                                    <label for="filter-accessible" style="display: flex; align-items: center; gap: 0.5rem; font-weight: 600; margin-bottom: 0.5rem; cursor: pointer;">
+                                                        <i class="fas fa-wheelchair" style="color: #06b6d4; font-size: 1.25rem;"></i>
+                                                        <span>Accessible</span>
+                                                    </label>
+                                                    <p style="margin: 0; color: var(--text-light); font-size: 0.9rem;">
+                                                        Show that your business is wheelchair accessible and accommodates people with disabilities.
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <button type="submit" class="btn btn-primary" style="margin-top: 2rem;">
@@ -30935,6 +30991,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     document.getElementById('filter-eco-friendly').checked = data.IsEcoFriendly || data.isEcoFriendly || false;
                     document.getElementById('filter-award-winning').checked = data.IsAwardWinning || data.isAwardWinning || false;
                     document.getElementById('filter-last-minute').checked = data.IsLastMinute || data.isLastMinute || false;
+                    document.getElementById('filter-certified').checked = data.IsCertified || data.isCertified || false;
+                    document.getElementById('filter-insured').checked = data.IsInsured || data.isInsured || false;
+                    document.getElementById('filter-local').checked = data.IsLocal || data.isLocal || false;
+                    document.getElementById('filter-accessible').checked = data.IsMobile || data.isMobile || false;
                     
                 } catch (error) {
                     console.error('Error loading popular filters:', error);
@@ -30949,7 +31009,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             isPremium: document.getElementById('filter-premium').checked,
                             isEcoFriendly: document.getElementById('filter-eco-friendly').checked,
                             isAwardWinning: document.getElementById('filter-award-winning').checked,
-                            isLastMinute: document.getElementById('filter-last-minute').checked
+                            isLastMinute: document.getElementById('filter-last-minute').checked,
+                            isCertified: document.getElementById('filter-certified').checked,
+                            isInsured: document.getElementById('filter-insured').checked,
+                            isLocal: document.getElementById('filter-local').checked,
+                            isMobile: document.getElementById('filter-accessible').checked
                         };
                         
                         const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/popular-filters`, {
