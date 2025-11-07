@@ -64,7 +64,8 @@ router.get('/trending', async (req, res) => {
         const { 
             topN = 5, 
             daysBack = 7, 
-            includeImages = true 
+            includeImages = true,
+            category = null  // *** ADDED: Accept category filter ***
         } = req.query;
 
         const pool = await poolPromise;
@@ -73,6 +74,7 @@ router.get('/trending', async (req, res) => {
             .input('TopN', sql.Int, parseInt(topN))
             .input('DaysBack', sql.Int, parseInt(daysBack))
             .input('IncludeImages', sql.Bit, includeImages === 'true' || includeImages === true)
+            .input('Category', sql.NVarChar(50), category)  // *** ADDED: Pass category to stored procedure ***
             .execute('sp_GetTrendingVendors');
 
         const vendors = result.recordset.map(vendor => {

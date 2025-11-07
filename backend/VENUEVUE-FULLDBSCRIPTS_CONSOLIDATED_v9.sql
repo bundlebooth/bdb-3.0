@@ -8501,7 +8501,8 @@ GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_GetTrendingVendors]
     @TopN INT = 5,
     @DaysBack INT = 7,
-    @IncludeImages BIT = 1
+    @IncludeImages BIT = 1,
+    @Category NVARCHAR(50) = NULL  -- Filter by category (venue, photo, music, etc.)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -8576,9 +8577,11 @@ BEGIN
     FROM VendorProfiles v
     INNER JOIN Users u ON v.UserID = u.UserID
     INNER JOIN VendorProfileViews vpv ON v.VendorProfileID = vpv.VendorProfileID
+    LEFT JOIN VendorCategories vc ON v.VendorProfileID = vc.VendorProfileID
     WHERE vpv.ViewedAt >= DATEADD(DAY, -@DaysBack, GETUTCDATE())
       AND v.IsCompleted = 1
       AND u.IsActive = 1
+      AND (@Category IS NULL OR @Category = '' OR @Category = 'all' OR vc.Category = @Category)
     GROUP BY 
         v.VendorProfileID, v.UserID, u.Name, v.BusinessName, v.BusinessDescription, v.Tagline,
         v.City, v.State, v.Country, v.Latitude, v.Longitude,

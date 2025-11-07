@@ -15523,12 +15523,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             showVendorSkeletons(8);
 
             // Load and display trending vendors as horizontal carousel
-            async function loadTrendingVendors() {
+            async function loadTrendingVendors(category = null) {
                 try {
                     // Show skeleton cards while loading
                     showTrendingSkeletons(5);
                     
-                    const response = await fetch(`${API_BASE_URL}/analytics/trending?topN=5&daysBack=30`);
+                    // Build URL with optional category filter
+                    let url = `${API_BASE_URL}/analytics/trending?topN=5&daysBack=30`;
+                    if (category && category !== 'all') {
+                        url += `&category=${encodeURIComponent(category)}`;
+                    }
+                    
+                    const response = await fetch(url);
                     const data = await response.json();
                     
                     // DEBUG: Log what we're getting from the API
@@ -19346,6 +19352,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 const url = qs ? `${location.pathname}?${qs}` : location.pathname;
                 history.pushState({}, '', url);
                 loadVendors();
+                // *** ADDED: Reload trending vendors for selected category ***
+                loadTrendingVendors(state.currentCategory);
             });
 
             categoriesListInner.appendChild(categoryItem);
@@ -19517,6 +19525,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 initCategoryFromUrl();
                 applyFiltersFromUrl();
                 loadVendors();
+                // *** ADDED: Reload trending vendors for current category ***
+                loadTrendingVendors(state.currentCategory);
             });
 
             // Check for existing user session
