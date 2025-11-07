@@ -8570,19 +8570,26 @@ BEGIN
             WHERE vc.VendorProfileID = v.VendorProfileID
         ) AS Categories,
         (
-            SELECT TOP 1 vi.CloudinaryPublicId
+            SELECT TOP 1 vi.ImageURL
             FROM VendorImages vi
             WHERE vi.VendorProfileID = v.VendorProfileID
               AND vi.IsPrimary = 1
-        ) AS PrimaryImagePublicId,
+        ) AS ImageURL,
         (
             SELECT TOP 1 vi.CloudinaryUrl
             FROM VendorImages vi
             WHERE vi.VendorProfileID = v.VendorProfileID
               AND vi.IsPrimary = 1
-        ) AS PrimaryImageUrl,
+        ) AS CloudinaryUrl,
+        (
+            SELECT TOP 1 vi.CloudinaryPublicId
+            FROM VendorImages vi
+            WHERE vi.VendorProfileID = v.VendorProfileID
+              AND vi.IsPrimary = 1
+        ) AS CloudinaryPublicId,
         (
             SELECT 
+                vi.ImageURL,
                 vi.CloudinaryPublicId,
                 vi.CloudinaryUrl,
                 vi.ImageType,
