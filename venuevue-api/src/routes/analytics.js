@@ -97,6 +97,20 @@ router.get('/trending', async (req, res) => {
                 }
             }
 
+            // FIX: Ensure image URL fallback logic - prioritize ImageURL (where actual data is)
+            // Use ImageURL as primary, then CloudinaryUrl, then FeaturedImageURL, then first image from Images array
+            const imageUrl = vendor.ImageURL || 
+                           vendor.CloudinaryUrl || 
+                           vendor.FeaturedImageURL ||
+                           (vendor.Images && vendor.Images.length > 0 ? (vendor.Images[0].ImageURL || vendor.Images[0].CloudinaryUrl) : null);
+            
+            // Set the image field that frontend expects
+            vendor.ImageURL = imageUrl;
+            vendor.image = imageUrl;  // Additional fallback field
+            
+            // Debug logging
+            console.log(`🔥 Trending vendor: ${vendor.BusinessName} - Image: ${imageUrl || 'MISSING'}`);
+
             return vendor;
         });
 
