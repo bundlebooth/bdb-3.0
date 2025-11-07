@@ -9222,6 +9222,16 @@
         let lastInvoiceBookingId = null;
         let lastInvoiceData = null;
 
+        // Function to update page title with notification count
+        function updatePageTitle(notificationCount) {
+            const baseTitle = 'PlanHive - Event Booking Platform';
+            if (notificationCount > 0) {
+                document.title = `(${notificationCount}) ${baseTitle}`;
+            } else {
+                document.title = baseTitle;
+            }
+        }
+
         // ========== Skeleton Loading HTML Generators (Global Scope) ==========
         function getStatsSkeletonHTML() {
             return `
@@ -11437,6 +11447,7 @@
                 document.querySelectorAll('#notifications-badge, [id$="-notifications-badge"]').forEach(badge => {
                     setCircularBadge(badge, count);
                 });
+                updatePageTitle(count);
 
                 // Ensure dashboard notification icons are visible when there are unread items
                 try {
@@ -11452,6 +11463,7 @@
                     const uid = currentUser?.id || currentUser?.vendorProfileId;
                     const unreadCount = uid ? notifications.filter(n => (n.userId === uid) && !n.isRead && !n.read).length : 0;
                     document.querySelectorAll('#notifications-badge, [id$="-notifications-badge"]').forEach(badge => setCircularBadge(badge, unreadCount));
+                    updatePageTitle(unreadCount);
                 } catch (_) {}
             }
         }
@@ -15568,7 +15580,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                             position: absolute;
                                             top: 12px;
                                             left: 12px;
-                                            background: linear-gradient(135deg, #ff6b6b, #ff5252);
+                                            background: #5e72e4;
                                             color: white;
                                             width: 36px;
                                             height: 36px;
@@ -28632,7 +28644,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const dashboardData = await response.json();
 
                     // Update notifications badge
-                    document.getElementById('dashboard-notifications-badge').textContent = dashboardData.unreadNotifications || 0;
+                    const unreadCount = dashboardData.unreadNotifications || 0;
+                    document.getElementById('dashboard-notifications-badge').textContent = unreadCount;
+                    updatePageTitle(unreadCount);
 
                     if (section === 'dashboard') {
 
@@ -29577,8 +29591,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const dashboardData = await response.json();
 
                     // Update notifications badge
+                    const unreadCount = dashboardData.unreadNotifications || 0;
                     const notifBadge = document.getElementById('dashboard-notifications-badge') || document.getElementById('vendor-notifications-badge');
-                    if (notifBadge) notifBadge.textContent = dashboardData.unreadNotifications || 0;
+                    if (notifBadge) notifBadge.textContent = unreadCount;
+                    updatePageTitle(unreadCount);
 
                     if (section === 'vendor-dashboard') {
                         ensureVendorOverviewContainers();
