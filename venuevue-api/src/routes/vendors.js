@@ -356,7 +356,20 @@ router.get('/predefined-services/:category', async (req, res) => {
 async function enhanceVendorWithImages(vendor, pool) {
   try {
     const imageRequest = new sql.Request(pool);
-    imageRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID || vendor.id);
+    // Try multiple variations of vendor profile ID
+    const vendorProfileId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
+    
+    if (!vendorProfileId) {
+      console.warn('No vendor profile ID found for vendor:', vendor);
+      return {
+        ...vendor,
+        featuredImage: null,
+        images: [],
+        imageCount: 0
+      };
+    }
+    
+    imageRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     
     const imageResult = await imageRequest.query(`
       SELECT 
@@ -370,6 +383,8 @@ async function enhanceVendorWithImages(vendor, pool) {
       WHERE VendorProfileID = @VendorProfileID 
       ORDER BY IsPrimary DESC, DisplayOrder ASC
     `);
+
+    console.log(`Found ${imageResult.recordset.length} images for vendor ${vendorProfileId}`);
 
     // Process images with Cloudinary enhancements
     const images = imageResult.recordset.map(img => {
@@ -424,6 +439,10 @@ router.get('/', async (req, res) => {
       isEcoFriendly,
       isAwardWinning,
       isLastMinute,
+      isCertified,
+      isInsured,
+      isLocal,
+      isMobile,
       latitude,
       longitude,
       radiusMiles,
@@ -460,6 +479,10 @@ router.get('/', async (req, res) => {
     request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
     request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
     request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
+    request.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : isCertified === 'false' ? 0 : null);
+    request.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : isInsured === 'false' ? 0 : null);
+    request.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : isLocal === 'false' ? 0 : null);
+    request.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : isMobile === 'false' ? 0 : null);
     request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
     request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
     request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
@@ -836,6 +859,10 @@ router.get('/search-by-categories', async (req, res) => {
       isEcoFriendly,
       isAwardWinning,
       isLastMinute,
+      isCertified,
+      isInsured,
+      isLocal,
+      isMobile,
       latitude,
       longitude,
       radiusMiles,
@@ -905,6 +932,10 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
       request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
       request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
+      request.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : isCertified === 'false' ? 0 : null);
+      request.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : isInsured === 'false' ? 0 : null);
+      request.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : isLocal === 'false' ? 0 : null);
+      request.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : isMobile === 'false' ? 0 : null);
       request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
       request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
       request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
@@ -1647,6 +1678,10 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
       request.input('IsPremium', sql.Bit, updateData.isPremium || 0);
       request.input('IsEcoFriendly', sql.Bit, updateData.isEcoFriendly || 0);
       request.input('IsAwardWinning', sql.Bit, updateData.isAwardWinning || 0);
+      request.input('IsCertified', sql.Bit, updateData.isCertified || 0);
+      request.input('IsInsured', sql.Bit, updateData.isInsured || 0);
+      request.input('IsLocal', sql.Bit, updateData.isLocal || 0);
+      request.input('IsMobile', sql.Bit, updateData.isMobile || 0);
 
       await request.query(`
         UPDATE VendorProfiles 
@@ -1664,6 +1699,10 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
           IsPremium = @IsPremium,
           IsEcoFriendly = @IsEcoFriendly,
           IsAwardWinning = @IsAwardWinning,
+          IsCertified = @IsCertified,
+          IsInsured = @IsInsured,
+          IsLocal = @IsLocal,
+          IsMobile = @IsMobile,
           UpdatedAt = GETDATE()
         WHERE VendorProfileID = @VendorProfileID
       `);
@@ -3075,7 +3114,11 @@ router.post('/setup/step9-verification', async (req, res) => {
       awards,
       certifications,
       isEcoFriendly,
-      isPremium
+      isPremium,
+      isCertified,
+      isInsured,
+      isLocal,
+      isMobile
     } = req.body;
 
     if (!vendorProfileId) {
@@ -3096,6 +3139,10 @@ router.post('/setup/step9-verification', async (req, res) => {
     updateRequest.input('Certifications', sql.NVarChar, JSON.stringify(certifications) || null);
     updateRequest.input('IsEcoFriendly', sql.Bit, isEcoFriendly || false);
     updateRequest.input('IsPremium', sql.Bit, isPremium || false);
+    updateRequest.input('IsCertified', sql.Bit, isCertified || false);
+    updateRequest.input('IsInsured', sql.Bit, isInsured || false);
+    updateRequest.input('IsLocal', sql.Bit, isLocal || false);
+    updateRequest.input('IsMobile', sql.Bit, isMobile || false);
     
     await updateRequest.query(`
       UPDATE VendorProfiles 
@@ -3105,6 +3152,10 @@ router.post('/setup/step9-verification', async (req, res) => {
           Certifications = @Certifications,
           IsEcoFriendly = @IsEcoFriendly,
           IsPremium = @IsPremium,
+          IsCertified = @IsCertified,
+          IsInsured = @IsInsured,
+          IsLocal = @IsLocal,
+          IsMobile = @IsMobile,
           UpdatedAt = GETDATE()
       WHERE VendorProfileID = @VendorProfileID
     `);
@@ -3421,6 +3472,108 @@ router.post('/setup', async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Failed to complete setup',
+      error: err.message 
+    });
+  }
+});
+
+// Get vendor images
+router.get('/:id/images', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, id);
+    
+    const result = await request.query(`
+      SELECT 
+        ImageID,
+        ImageURL,
+        Caption,
+        IsPrimary,
+        DisplayOrder,
+        ImageType,
+        CreatedAt
+      FROM VendorImages
+      WHERE VendorProfileID = @VendorProfileID
+      ORDER BY IsPrimary DESC, DisplayOrder ASC, CreatedAt DESC
+    `);
+    
+    res.json(result.recordset || []);
+  } catch (err) {
+    console.error('Get vendor images error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch vendor images',
+      error: err.message 
+    });
+  }
+});
+
+// Set image as primary
+router.put('/:id/images/:imageId/primary', async (req, res) => {
+  try {
+    const { id, imageId } = req.params;
+    const pool = await poolPromise;
+    
+    // First, unset all primary images for this vendor
+    const unsetRequest = new sql.Request(pool);
+    unsetRequest.input('VendorProfileID', sql.Int, id);
+    await unsetRequest.query(`
+      UPDATE VendorImages 
+      SET IsPrimary = 0
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    // Set the selected image as primary
+    const setPrimaryRequest = new sql.Request(pool);
+    setPrimaryRequest.input('ImageID', sql.Int, imageId);
+    setPrimaryRequest.input('VendorProfileID', sql.Int, id);
+    await setPrimaryRequest.query(`
+      UPDATE VendorImages 
+      SET IsPrimary = 1
+      WHERE ImageID = @ImageID AND VendorProfileID = @VendorProfileID
+    `);
+    
+    res.json({ 
+      success: true,
+      message: 'Image set as primary successfully'
+    });
+  } catch (err) {
+    console.error('Set primary image error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to set primary image',
+      error: err.message 
+    });
+  }
+});
+
+// Delete vendor image
+router.delete('/:id/images/:imageId', async (req, res) => {
+  try {
+    const { id, imageId } = req.params;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('ImageID', sql.Int, imageId);
+    request.input('VendorProfileID', sql.Int, id);
+    
+    await request.query(`
+      DELETE FROM VendorImages 
+      WHERE ImageID = @ImageID AND VendorProfileID = @VendorProfileID
+    `);
+    
+    res.json({ 
+      success: true,
+      message: 'Image deleted successfully'
+    });
+  } catch (err) {
+    console.error('Delete vendor image error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to delete image',
       error: err.message 
     });
   }

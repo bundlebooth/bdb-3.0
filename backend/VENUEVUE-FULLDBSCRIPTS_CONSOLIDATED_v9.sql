@@ -210,6 +210,10 @@ CREATE TABLE VendorProfiles (
     IsEcoFriendly BIT DEFAULT 0,
     IsAwardWinning BIT DEFAULT 0,
     IsLastMinute BIT DEFAULT 0,
+    IsCertified BIT DEFAULT 0,
+    IsInsured BIT DEFAULT 0,
+    IsLocal BIT DEFAULT 0,
+    IsMobile BIT DEFAULT 0,
     PriceLevel NVARCHAR(20) DEFAULT '$$', -- Supports: $, $$, $$$, $$$$, Inexpensive, Moderate, Expensive, Luxury
     Capacity INT,
     Rooms INT,
@@ -1505,6 +1509,10 @@ CREATE OR ALTER   PROCEDURE [dbo].[sp_SearchVendors]
     @IsEcoFriendly BIT = NULL,
     @IsAwardWinning BIT = NULL,
     @IsLastMinute BIT = NULL,
+    @IsCertified BIT = NULL,
+    @IsInsured BIT = NULL,
+    @IsLocal BIT = NULL,
+    @IsMobile BIT = NULL,
     @Latitude DECIMAL(10, 8) = NULL,
     @Longitude DECIMAL(11, 8) = NULL,
     @RadiusMiles INT = 25,
@@ -1572,6 +1580,10 @@ BEGIN
             v.IsEcoFriendly,
             v.IsAwardWinning,
             v.IsLastMinute,
+            v.IsCertified,
+            v.IsInsured,
+            v.IsLocal,
+            v.IsMobile,
             v.PriceLevel,
             v.Capacity,
             v.Rooms,
@@ -1627,6 +1639,10 @@ BEGIN
         AND (@IsEcoFriendly IS NULL OR v.IsEcoFriendly = @IsEcoFriendly)
         AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
         AND (@IsLastMinute IS NULL OR v.IsLastMinute = @IsLastMinute)
+        AND (@IsCertified IS NULL OR v.IsCertified = @IsCertified)
+        AND (@IsInsured IS NULL OR v.IsInsured = @IsInsured)
+        AND (@IsLocal IS NULL OR v.IsLocal = @IsLocal)
+        AND (@IsMobile IS NULL OR v.IsMobile = @IsMobile)
         AND (@PriceLevel IS NULL OR v.PriceLevel = @PriceLevel)
         AND (@MinPrice IS NULL OR MinSvc.MinPrice >= @MinPrice)
         AND (@MaxPrice IS NULL OR MinSvc.MinPrice <= @MaxPrice)
@@ -1866,6 +1882,10 @@ BEGIN
             v.IsPremium,
             v.IsEcoFriendly,
             v.IsAwardWinning,
+            v.IsCertified,
+            v.IsInsured,
+            v.IsLocal,
+            v.IsMobile,
             v.PriceLevel,
             v.Capacity,
             v.Rooms,

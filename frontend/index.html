@@ -6630,6 +6630,10 @@
                     <div class="trending-tag" data-filter="eco-friendly"><i class="fas fa-leaf" style="color: #22c55e; margin-right: 6px;"></i>Eco-Friendly</div>
                     <div class="trending-tag" data-filter="award-winning"><i class="fas fa-trophy" style="color: #f59e0b; margin-right: 6px;"></i>Award Winning</div>
                     <div class="trending-tag" data-filter="last-minute"><i class="fas fa-bolt" style="color: #3b82f6; margin-right: 6px;"></i>Last Minute</div>
+                    <div class="trending-tag" data-filter="certified"><i class="fas fa-award" style="color: #8b5cf6; margin-right: 6px;"></i>Certified</div>
+                    <div class="trending-tag" data-filter="insured"><i class="fas fa-shield-alt" style="color: #10b981; margin-right: 6px;"></i>Insured</div>
+                    <div class="trending-tag" data-filter="local"><i class="fas fa-map-marker-alt" style="color: #ef4444; margin-right: 6px;"></i>Local</div>
+                    <div class="trending-tag" data-filter="mobile"><i class="fas fa-wheelchair" style="color: #06b6d4; margin-right: 6px;"></i>Accessible</div>
                 </div>
             </div>
 
@@ -25134,10 +25138,14 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const priceLevel = document.getElementById('price-level-filter')?.value || '';
                 const minRating = document.getElementById('rating-filter')?.value || '';
                 
-                // Popular filters (premium, eco-friendly, award-winning)
+                // Popular filters (premium, eco-friendly, award-winning, certified, insured, local, mobile)
                 const isPremium = state.filters.popular.includes('premium');
                 const isEcoFriendly = state.filters.popular.includes('eco-friendly');
                 const isAwardWinning = state.filters.popular.includes('award-winning');
+                const isCertified = state.filters.popular.includes('certified');
+                const isInsured = state.filters.popular.includes('insured');
+                const isLocal = state.filters.popular.includes('local');
+                const isMobile = state.filters.popular.includes('mobile');
                 
                 // Update URL params
                 if (searchTerm) params.set('search', searchTerm);
@@ -25160,6 +25168,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 if (isAwardWinning) params.set('isAwardWinning', 'true');
                 else params.delete('isAwardWinning');
+                
+                if (isCertified) params.set('isCertified', 'true');
+                else params.delete('isCertified');
+                
+                if (isInsured) params.set('isInsured', 'true');
+                else params.delete('isInsured');
+                
+                if (isLocal) params.set('isLocal', 'true');
+                else params.delete('isLocal');
+                
+                if (isMobile) params.set('isMobile', 'true');
+                else params.delete('isMobile');
                 
                 return params;
             }
@@ -25200,11 +25220,19 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const isPremium = params.get('isPremium') === 'true';
                 const isEcoFriendly = params.get('isEcoFriendly') === 'true';
                 const isAwardWinning = params.get('isAwardWinning') === 'true';
+                const isCertified = params.get('isCertified') === 'true';
+                const isInsured = params.get('isInsured') === 'true';
+                const isLocal = params.get('isLocal') === 'true';
+                const isMobile = params.get('isMobile') === 'true';
                 
                 state.filters.popular = [];
                 if (isPremium) state.filters.popular.push('premium');
                 if (isEcoFriendly) state.filters.popular.push('eco-friendly');
                 if (isAwardWinning) state.filters.popular.push('award-winning');
+                if (isCertified) state.filters.popular.push('certified');
+                if (isInsured) state.filters.popular.push('insured');
+                if (isLocal) state.filters.popular.push('local');
+                if (isMobile) state.filters.popular.push('mobile');
                 
                 // Update UI for popular filters
                 trendingTags.forEach(tag => {
@@ -34826,6 +34854,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const isPremium = params.get('isPremium') === 'true';
                     const isEcoFriendly = params.get('isEcoFriendly') === 'true';
                     const isAwardWinning = params.get('isAwardWinning') === 'true';
+                    const isCertified = params.get('isCertified') === 'true';
+                    const isInsured = params.get('isInsured') === 'true';
+                    const isLocal = params.get('isLocal') === 'true';
+                    const isMobile = params.get('isMobile') === 'true';
                     
                     let url = `${API_BASE_URL}/vendors?pageNumber=${nextPage}&pageSize=${state.serverPageSize}`;
                     if (hasCategoryQuery && !isAll) {
@@ -34856,6 +34888,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (isPremium) qp.set('isPremium', 'true');
                         if (isEcoFriendly) qp.set('isEcoFriendly', 'true');
                         if (isAwardWinning) qp.set('isAwardWinning', 'true');
+                        if (isCertified) qp.set('isCertified', 'true');
+                        if (isInsured) qp.set('isInsured', 'true');
+                        if (isLocal) qp.set('isLocal', 'true');
+                        if (isMobile) qp.set('isMobile', 'true');
                         
                         url = `${API_BASE_URL}/vendors/search-by-categories?${qp.toString()}`;
                     } else {
@@ -34882,6 +34918,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         if (isPremium) qp.set('isPremium', 'true');
                         if (isEcoFriendly) qp.set('isEcoFriendly', 'true');
                         if (isAwardWinning) qp.set('isAwardWinning', 'true');
+                        if (isCertified) qp.set('isCertified', 'true');
+                        if (isInsured) qp.set('isInsured', 'true');
+                        if (isLocal) qp.set('isLocal', 'true');
+                        if (isMobile) qp.set('isMobile', 'true');
                         
                         url = `${API_BASE_URL}/vendors?${qp.toString()}`;
                     }
