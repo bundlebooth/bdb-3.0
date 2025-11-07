@@ -7251,7 +7251,7 @@
                         <div id="vendor-business-profile-section" style="display: none;">
                             <!-- Business Profile Categories -->
                             <div class="settings-category">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                                <div id="business-profile-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                                     <h2 class="settings-category-title" style="margin-bottom: 0;">Business Profile Management</h2>
                                     <button id="view-public-profile-btn" class="btn btn-outline" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding: 0.6rem 1rem;">
                                         <i class="fas fa-external-link-alt"></i>
@@ -7490,7 +7490,7 @@
                                                 </div>
                                             </div>
                                             
-                                            <!-- Row 3: Postal Code and Latitude/Longitude -->
+                                            <!-- Row 3: Postal Code -->
                                             <div class="form-row">
                                                 <div class="form-col">
                                                     <div class="form-group">
@@ -7498,27 +7498,38 @@
                                                         <input type="text" id="loc-postal">
                                                     </div>
                                                 </div>
-                                                <div class="form-col" style="display: flex; gap: 1rem;">
-                                                    <div class="form-group" style="flex: 1;">
-                                                        <label for="loc-lat">Latitude</label>
-                                                        <input type="text" id="loc-lat" readonly>
+                                                <div class="form-col"></div>
+                                            </div>
+                                            
+                                            <!-- Service Areas Section -->
+                                            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border);">
+                                                <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem;">
+                                                    Service Areas <span style="color: var(--accent);">*</span>
+                                                </h3>
+                                                <p style="color: var(--text-light); font-size: 0.875rem; margin-bottom: 0.75rem;">
+                                                    Add the cities or regions where you offer your services
+                                                </p>
+                                                
+                                                <div class="form-row" style="margin-bottom: 0.5rem;">
+                                                    <div class="form-col">
+                                                        <div class="form-group">
+                                                            <label for="service-area-input">Add City/Region</label>
+                                                            <input type="text" id="service-area-input" placeholder="e.g., Toronto, ON">
+                                                        </div>
                                                     </div>
-                                                    <div class="form-group" style="flex: 1;">
-                                                        <label for="loc-lng">Longitude</label>
-                                                        <input type="text" id="loc-lng" readonly>
+                                                    <div class="form-col">
+                                                        <div class="form-group">
+                                                            <label style="visibility: hidden;">Action</label>
+                                                            <button type="button" class="btn btn-primary" id="add-service-area-btn">
+                                                                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>Add
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
+                                                
+                                                <div id="service-areas-list" style="display: flex; gap: 0.5rem; flex-wrap: wrap; min-height: 2rem; margin-bottom: 0.5rem;"></div>
                                             </div>
-                                            <div class="dashboard-subcard" style="margin-top:1rem;">
-                                                <h3 class="dashboard-card-title" style="font-size:1rem;">Service Areas (Cities/Regions Served) <span style="color:red;">*</span></h3>
-                                                <div class="form-row">
-                                                    <div class="form-col"><div class="form-group"><label for="service-area-input">Add City/Region</label><input type="text" id="service-area-input" placeholder="e.g., Toronto, ON"></div></div>
-                                                    <div class="form-col" style="align-self:end;"><button type="button" class="btn btn-outline" id="add-service-area-btn">Add</button></div>
-                                                </div>
-                                                <div id="service-areas-list" style="display:flex;gap:.5rem;flex-wrap:wrap;"></div>
-                                                <p style="color:var(--text-light);margin-top:.5rem;">Add at least one city or region you serve.</p>
-                                            </div>
-                                            <button type="submit" class="btn btn-primary">Save Location</button>
+                                            <button type="submit" class="btn btn-primary" style="margin-top: 1.5rem;">Save Location</button>
                                         </form>
                                 </div>
                             </div>
@@ -27969,10 +27980,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             
                             // Navigation-style: hide grid, show only the panel
                             if (panel.style.display === 'none' || !panel.style.display) {
-                                // Hide the grid and category title
-                                const categoryTitle = document.querySelector('#vendor-business-profile-section .settings-category-title');
+                                // Hide the grid and header (title + button)
+                                const header = document.getElementById('business-profile-header');
                                 const grid = document.querySelector('#vendor-business-profile-section .settings-grid');
-                                if (categoryTitle) categoryTitle.style.display = 'none';
+                                if (header) header.style.display = 'none';
                                 if (grid) grid.style.display = 'none';
                                 
                                 panel.style.display = 'block';
@@ -28065,10 +28076,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const allPanels = document.querySelectorAll('#vendor-business-profile-section [id$="-panel"]');
                         allPanels.forEach(p => p.style.display = 'none');
                         
-                        // Show the grid and category title
-                        const categoryTitle = document.querySelector('#vendor-business-profile-section .settings-category-title');
+                        // Show the grid and header (title + button)
+                        const header = document.getElementById('business-profile-header');
                         const grid = document.querySelector('#vendor-business-profile-section .settings-grid');
-                        if (categoryTitle) categoryTitle.style.display = 'block';
+                        if (header) header.style.display = 'flex';
                         if (grid) grid.style.display = 'grid';
                         
                         console.log('Returned to Business Profile menu');
@@ -32638,8 +32649,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     state: document.getElementById('loc-state'),
                     country: document.getElementById('loc-country'),
                     postal: document.getElementById('loc-postal'),
-                    lat: document.getElementById('loc-lat'),
-                    lng: document.getElementById('loc-lng'),
                 };
                 const areasListEl = document.getElementById('service-areas-list');
                 const areaInputEl = document.getElementById('service-area-input');
@@ -32653,17 +32662,39 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         const tag = document.createElement('span');
                         tag.style.display = 'inline-flex';
                         tag.style.alignItems = 'center';
-                        tag.style.gap = '6px';
-                        tag.style.background = 'var(--muted)';
-                        tag.style.border = '1px solid var(--border)';
-                        tag.style.padding = '4px 8px';
-                        tag.style.borderRadius = '9999px';
-                        const label = [area.city, area.province || area.state, area.country].filter(Boolean).join(', ');
-                        tag.innerHTML = `${label} <button type="button" aria-label="Remove" style="border:none;background:transparent;color:var(--accent);cursor:pointer;">×</button>`;
-                        tag.querySelector('button').onclick = () => {
+                        tag.style.gap = '8px';
+                        tag.style.background = '#f0f4ff';
+                        tag.style.border = '1px solid #d0ddff';
+                        tag.style.padding = '8px 14px';
+                        tag.style.borderRadius = '8px';
+                        tag.style.fontSize = '0.9rem';
+                        tag.style.color = 'var(--text)';
+                        tag.style.fontWeight = '500';
+                        tag.style.transition = 'all 0.2s';
+                        
+                        const label = [area.city, area.province || area.state].filter(Boolean).join(', ');
+                        const removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.setAttribute('aria-label', 'Remove');
+                        removeBtn.innerHTML = '×';
+                        removeBtn.style.border = 'none';
+                        removeBtn.style.background = 'transparent';
+                        removeBtn.style.color = '#999';
+                        removeBtn.style.cursor = 'pointer';
+                        removeBtn.style.fontSize = '1.3rem';
+                        removeBtn.style.lineHeight = '1';
+                        removeBtn.style.padding = '0';
+                        removeBtn.style.marginLeft = '4px';
+                        removeBtn.style.transition = 'color 0.2s';
+                        removeBtn.onmouseover = () => removeBtn.style.color = 'var(--accent)';
+                        removeBtn.onmouseout = () => removeBtn.style.color = '#999';
+                        removeBtn.onclick = () => {
                             areasState.list.splice(idx, 1);
                             renderAreas();
                         };
+                        
+                        tag.textContent = label;
+                        tag.appendChild(removeBtn);
                         areasListEl.appendChild(tag);
                     });
                 }
@@ -32693,11 +32724,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 if (inputs.state) inputs.state.value = province;
                                 if (inputs.country) inputs.country.value = country;
                                 if (inputs.postal) inputs.postal.value = postal;
-                                const loc = place.geometry?.location;
-                                if (loc) {
-                                    if (inputs.lat) inputs.lat.value = (typeof loc.lat === 'function') ? loc.lat() : loc.lat;
-                                    if (inputs.lng) inputs.lng.value = (typeof loc.lng === 'function') ? loc.lng() : loc.lng;
-                                }
                             });
                         }
 
@@ -32762,8 +32788,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     inputs.state.value = loc.State || '';
                     inputs.country.value = loc.Country || '';
                     inputs.postal.value = loc.PostalCode || '';
-                    inputs.lat.value = loc.Latitude || '';
-                    inputs.lng.value = loc.Longitude || '';
 
                     // Initialize service areas
                     areasState.list = (data.serviceAreas || []).map(a => ({
@@ -32808,8 +32832,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             state: inputs.state.value?.trim(),
                             country: inputs.country.value?.trim(),
                             postalCode: inputs.postal.value?.trim(),
-                            latitude: inputs.lat.value || null,
-                            longitude: inputs.lng.value || null,
                             serviceAreas: areasState.list
                         };
                         const res = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/location`, {
