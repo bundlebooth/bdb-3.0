@@ -1777,10 +1777,10 @@ BEGIN
     BEGIN TRY
         EXEC sp_executesql @SQL, 
             N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), @MinRating DECIMAL(2, 1), 
-              @IsPremium BIT, @IsEcoFriendly BIT, @IsAwardWinning BIT, @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), 
-              @RadiusMiles INT, @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20),
+              @IsPremium BIT, @IsEcoFriendly BIT, @IsAwardWinning BIT, @IsLastMinute BIT, @IsCertified BIT, @IsInsured BIT, @IsLocal BIT, @IsMobile BIT,
+              @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), @RadiusMiles INT, @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20),
               @EventDateRaw NVARCHAR(50), @EventStartRaw NVARCHAR(20), @EventEndRaw NVARCHAR(20), @Region NVARCHAR(50), @PriceLevel NVARCHAR(10)',
-            @SearchTerm, @Category, @MinPrice, @MaxPrice, @MinRating, @IsPremium, @IsEcoFriendly, @IsAwardWinning, 
+            @SearchTerm, @Category, @MinPrice, @MaxPrice, @MinRating, @IsPremium, @IsEcoFriendly, @IsAwardWinning, @IsLastMinute, @IsCertified, @IsInsured, @IsLocal, @IsMobile,
             @Latitude, @Longitude, @RadiusMiles, @BudgetType, @PricingModelFilter, @FixedPricingTypeFilter,
             @EventDateRaw, @EventStartRaw, @EventEndRaw, @Region, @PriceLevel
     END TRY
