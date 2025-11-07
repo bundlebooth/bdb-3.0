@@ -111,18 +111,29 @@ router.get('/trending', async (req, res) => {
                 }
             }
 
-            // FIX: Ensure image URL fallback logic - prioritize ImageURL (where actual data is)
-            // Use ImageURL as primary, then CloudinaryUrl, then FeaturedImageURL, then first image from Images array
-            const imageUrl = vendor.ImageURL || 
-                           vendor.CloudinaryUrl || 
-                           vendor.FeaturedImageURL ||
-                           (vendor.Images && vendor.Images.length > 0 ? (vendor.Images[0].ImageURL || vendor.Images[0].CloudinaryUrl) : null);
+            // FIX: The stored procedure doesn't return ImageURL field, but it DOES return Images array
+            // Extract image URL from Images array, CloudinaryUrl, or FeaturedImageURL
+            let imageUrl = null;
+            
+            // Try Images array first (this is what's actually being returned)
+            if (vendor.Images && vendor.Images.length > 0) {
+                const firstImage = vendor.Images[0];
+                imageUrl = firstImage.CloudinaryUrl || firstImage.ImageURL;
+                console.log('Found image in Images array:', imageUrl);
+            }
+            
+            // Fallback to direct fields
+            if (!imageUrl) {
+                imageUrl = vendor.CloudinaryUrl || vendor.FeaturedImageURL;
+                console.log('Using fallback field:', imageUrl);
+            }
             
             console.log('✅ FINAL imageUrl chosen:', imageUrl || '❌ NONE FOUND');
             
-            // Set the image field that frontend expects
+            // Set multiple fields for maximum frontend compatibility
             vendor.ImageURL = imageUrl;
-            vendor.image = imageUrl;  // Additional fallback field
+            vendor.image = imageUrl;
+            vendor.PrimaryImageUrl = imageUrl;
 
             return vendor;
         });
