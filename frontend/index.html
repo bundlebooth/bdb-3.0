@@ -7251,7 +7251,13 @@
                         <div id="vendor-business-profile-section" style="display: none;">
                             <!-- Business Profile Categories -->
                             <div class="settings-category">
-                                <h2 class="settings-category-title">Business Profile Management</h2>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                                    <h2 class="settings-category-title" style="margin-bottom: 0;">Business Profile Management</h2>
+                                    <button id="view-public-profile-btn" class="btn btn-outline" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding: 0.6rem 1rem;">
+                                        <i class="fas fa-external-link-alt"></i>
+                                        View your profile
+                                    </button>
+                                </div>
                                 <div class="settings-grid">
                                     <div class="settings-card" data-panel="vendor-profile-panel">
                                         <div class="settings-card-icon">
@@ -27852,6 +27858,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function setupVendorBusinessProfileTabs(vendorProfileId) {
                 const section = document.getElementById('vendor-business-profile-section');
                 vendorSettingsLoaded = { location: false, additional: false, social: false, services: false, faqs: false, photos: false, portfolio: false, availability: false, stripe: false, popularFilters: false };
+                
+                // Setup "View your profile" button
+                const viewProfileBtn = document.getElementById('view-public-profile-btn');
+                if (viewProfileBtn) {
+                    // Remove any existing event listeners by cloning the element
+                    const newBtn = viewProfileBtn.cloneNode(true);
+                    viewProfileBtn.parentNode.replaceChild(newBtn, viewProfileBtn);
+                    
+                    newBtn.addEventListener('click', () => {
+                        if (vendorProfileId) {
+                            console.log('Opening public profile for vendor:', vendorProfileId);
+                            openVendorProfile(vendorProfileId);
+                        } else {
+                            alert('Unable to open profile. Vendor profile ID not found.');
+                        }
+                    });
+                }
                 
                 // Initialize panel toggle handlers
                 setTimeout(() => {
