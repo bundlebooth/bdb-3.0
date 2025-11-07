@@ -77,13 +77,27 @@ router.get('/trending', async (req, res) => {
             .input('Category', sql.NVarChar(50), category)  // *** ADDED: Pass category to stored procedure ***
             .execute('sp_GetTrendingVendors');
 
-        const vendors = result.recordset.map(vendor => {
+        console.log('\n========== TRENDING VENDORS RAW DATA ==========');
+        console.log('Total vendors from DB:', result.recordset.length);
+        
+        const vendors = result.recordset.map((vendor, index) => {
+            console.log(`\n--- Vendor ${index + 1}: ${vendor.BusinessName} ---`);
+            console.log('Raw ImageURL:', vendor.ImageURL);
+            console.log('Raw CloudinaryUrl:', vendor.CloudinaryUrl);
+            console.log('Raw FeaturedImageURL:', vendor.FeaturedImageURL);
+            console.log('Raw ImagesJson:', vendor.ImagesJson ? 'EXISTS' : 'NULL');
+            
             // Parse JSON fields
             if (vendor.ImagesJson) {
                 try {
                     vendor.Images = JSON.parse(vendor.ImagesJson);
+                    console.log('Parsed Images array length:', vendor.Images.length);
+                    if (vendor.Images.length > 0) {
+                        console.log('First image in array:', vendor.Images[0]);
+                    }
                 } catch (e) {
                     vendor.Images = [];
+                    console.log('Error parsing ImagesJson:', e.message);
                 }
                 delete vendor.ImagesJson;
             }
@@ -104,15 +118,16 @@ router.get('/trending', async (req, res) => {
                            vendor.FeaturedImageURL ||
                            (vendor.Images && vendor.Images.length > 0 ? (vendor.Images[0].ImageURL || vendor.Images[0].CloudinaryUrl) : null);
             
+            console.log('✅ FINAL imageUrl chosen:', imageUrl || '❌ NONE FOUND');
+            
             // Set the image field that frontend expects
             vendor.ImageURL = imageUrl;
             vendor.image = imageUrl;  // Additional fallback field
-            
-            // Debug logging
-            console.log(`🔥 Trending vendor: ${vendor.BusinessName} - Image: ${imageUrl || 'MISSING'}`);
 
             return vendor;
         });
+        
+        console.log('\n========== END TRENDING VENDORS DATA ==========\n');
 
         res.json({
             success: true,
