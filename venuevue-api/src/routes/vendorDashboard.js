@@ -66,8 +66,8 @@ async function computeSetupStatusByUserId(userId) {
     faq: (c.FAQCount || 0) > 0,
     gallery: !!p.FeaturedImageURL || (c.ImagesCount || 0) > 0,
     availability: (c.HoursCount || 0) > 0,
+    // OPTIONAL STEPS: verification and policies are tracked but NOT required for profile completion
     verification: !!(p.InsuranceVerified || p.LicenseNumber),
-    // Keep policies for legacy use (not in required list)
     policies: !!(p.PaymentMethods && p.PaymentTerms),
     stripe: (stripeStatus.connected && stripeStatus.chargesEnabled && stripeStatus.payoutsEnabled)
   };
@@ -84,7 +84,8 @@ async function computeSetupStatusByUserId(userId) {
     policies: 'Policies',
     stripe: 'Stripe payouts'
   };
-  const requiredOrder = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','verification','stripe'];
+  // Required steps for profile completion (verification and policies are OPTIONAL)
+  const requiredOrder = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','stripe'];
   const incompleteSteps = requiredOrder.filter(k => !steps[k]).map(k => ({ key: k, label: labels[k] }));
   const allRequiredComplete = incompleteSteps.length === 0;
   const canGoPublic = allRequiredComplete;

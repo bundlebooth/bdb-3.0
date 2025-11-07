@@ -10641,7 +10641,12 @@
                 }
                 const setup = await setupRes.json();
                 const allComplete = setup.allRequiredComplete ?? setup?.setupStatus?.allRequiredComplete;
-                const incompleteSteps = setup.incompleteSteps ?? setup?.setupStatus?.incompleteSteps ?? [];
+                // Filter out optional steps (verification, policies) from incomplete list
+                const rawIncompleteSteps = setup.incompleteSteps ?? setup?.setupStatus?.incompleteSteps ?? [];
+                const incompleteSteps = rawIncompleteSteps.filter(s => {
+                    const key = s?.key || s;
+                    return key !== 'verification' && key !== 'policies';
+                });
                 const labelMap = {
                     basics: 'Business Basics',
                     location: 'Location Information',
@@ -10656,8 +10661,8 @@
                     stripe: 'Stripe payouts'
                 };
                 const stepsObj = setup.steps ?? setup?.setupStatus?.steps ?? {};
-                // Only count required steps in the header (exclude optional 'policies') to match backend requiredOrder
-                const requiredKeys = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','verification','stripe'];
+                // Only count required steps in the header (exclude optional 'policies' and 'verification') to match backend requiredOrder
+                const requiredKeys = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','stripe'];
                 const completedStepKeys = requiredKeys.filter(k => stepsObj[k]);
                 const completedChips = completedStepKeys.map(k => `
                     <span data-step-key="${k}" style="display:inline-flex;align-items:center;gap:6px;background:#ecfdf5;color:#166534;border:1px solid #bbf7d0;border-radius:999px;padding:4px 10px;font-size:.85rem;white-space:nowrap;cursor:pointer;" title="Open ${labelMap[k] || k} settings">
@@ -29706,12 +29711,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     policies: 'Policies',
                     stripe: 'Stripe payouts'
                 };
-                const requiredOrder = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','verification','stripe'];
+                const requiredOrder = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','stripe'];
 
                 const steps = setupStatus?.steps || {};
                 const labelMap = stepLabels;
                 // Hide entire card if all required steps are complete (parity with banner)
                 const allComplete = setupStatus?.allRequiredComplete ?? setupStatus?.setupStatus?.allRequiredComplete;
+                // Filter out optional steps from incomplete list
+                const rawIncompleteSteps = setupStatus?.incompleteSteps ?? [];
+                const filteredIncompleteSteps = rawIncompleteSteps.filter(s => {
+                    const key = s?.key || s;
+                    return key !== 'verification' && key !== 'policies';
+                });
                 if (allComplete) {
                     try {
                         const userId = (window.currentUser && window.currentUser.id) ? window.currentUser.id : (typeof getUserIdFromToken === 'function' ? getUserIdFromToken() : null);
@@ -29734,7 +29745,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const totalSteps = requiredOrder.length;
                 const needsStripe = !steps.stripe;
 
-                const incompleteSteps = setupStatus?.incompleteSteps ?? [];
+                const incompleteSteps = filteredIncompleteSteps;
                 const stepsHtml = incompleteSteps.slice(0, 6).map(s => `
                     <span data-step-key="${(s && (s.key || s))}" style="display:inline-flex;align-items:center;gap:6px;background:#ffedd5;color:#7c2d12;border:1px solid #fed7aa;border-radius:999px;padding:4px 10px;font-size:.85rem;white-space:nowrap;cursor:pointer;" title="Open ${(s && (labelMap[s.key] || s.label || s))} settings">
                         <i class=\"fas fa-circle-xmark\"></i>${s.label || s.key}
