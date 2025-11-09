@@ -508,32 +508,32 @@
             width: 100%;
         }
         
-        /* Mobile: 1 column below 600px */
-        @media (max-width: 599px) {
+        /* Mobile: 1 SINGLE COLUMN on ALL mobile devices (up to 768px) */
+        @media (max-width: 768px) {
             .vendor-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr !important;
                 gap: 1rem;
             }
         }
         
-        /* Small Tablet: 2 columns from 600px to 899px */
-        @media (min-width: 600px) and (max-width: 899px) {
+        /* Tablet: 2 columns from 769px to 1023px */
+        @media (min-width: 769px) and (max-width: 1023px) {
             .vendor-grid {
                 grid-template-columns: repeat(2, 1fr);
                 gap: 1.25rem;
             }
         }
         
-        /* Medium Tablet/Small Desktop: 3 columns from 900px to 1199px */
-        @media (min-width: 900px) and (max-width: 1199px) {
+        /* Medium Desktop: 3 columns from 1024px to 1299px */
+        @media (min-width: 1024px) and (max-width: 1299px) {
             .vendor-grid {
                 grid-template-columns: repeat(3, 1fr);
                 gap: 1.5rem;
             }
         }
         
-        /* Large Desktop: 4 columns at 1200px and above */
-        @media (min-width: 1200px) {
+        /* Large Desktop: 4 columns at 1300px and above */
+        @media (min-width: 1300px) {
             .vendor-grid {
                 grid-template-columns: repeat(4, 1fr);
                 gap: 1.5rem;
@@ -6573,6 +6573,502 @@
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.8; transform: scale(0.98); }
         }
+
+        /* ========================================
+           MOBILE RESPONSIVE STYLES (PLANVUS-INSPIRED)
+           ======================================== */
+        
+        /* Mobile hamburger menu button */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text);
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        /* Mobile filter button (like planvus) */
+        .mobile-filter-btn {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.2rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .mobile-filter-btn i {
+            font-size: 1rem;
+        }
+
+        /* Location bar for mobile */
+        .mobile-location-bar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 60px;
+            z-index: 19;
+        }
+
+        .mobile-location-display {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .mobile-location-display i {
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .mobile-location-edit {
+            color: var(--primary);
+            font-size: 0.9rem;
+            text-decoration: none;
+            cursor: pointer;
+            margin-left: 0.5rem;
+        }
+
+        /* Mobile Overlay for filters */
+        .mobile-filter-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .mobile-filter-overlay.active {
+            display: block;
+            opacity: 1;
+        }
+
+        .mobile-filter-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 16px 16px 0 0;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .mobile-filter-overlay.active .mobile-filter-panel {
+            transform: translateY(0);
+        }
+
+        .mobile-filter-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 1;
+        }
+
+        .mobile-filter-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .mobile-filter-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .mobile-filter-content {
+            padding: 1rem 1.5rem 2rem;
+        }
+
+        /* Mobile responsive breakpoints */
+        @media (max-width: 768px) {
+            /* Prevent horizontal overflow on mobile */
+            body {
+                overflow-x: hidden !important;
+                max-width: 100vw !important;
+            }
+
+            /* Hide desktop elements */
+            .sidebar {
+                display: none !important;
+            }
+
+            .nav-scroll-btn {
+                display: none !important;
+            }
+
+            /* Show mobile elements */
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .mobile-location-bar {
+                display: flex;
+            }
+
+            .mobile-filter-btn {
+                display: flex;
+            }
+
+            /* Adjust grid layout */
+            .app-container {
+                grid-template-columns: 1fr !important;
+                min-height: auto;
+            }
+
+            .app-container.sidebar-collapsed {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Header adjustments */
+            .header {
+                padding: 0.75rem 1rem;
+                gap: 0.75rem;
+                flex-wrap: nowrap;
+                width: 100%;
+                max-width: 100vw;
+                box-sizing: border-box;
+                overflow-x: hidden;
+            }
+
+            .logo img {
+                height: 36px !important;
+            }
+
+            /* Search container in header */
+            .search-container {
+                flex: 1;
+                margin: 0 0.5rem;
+                max-width: calc(100vw - 200px);
+                box-sizing: border-box;
+            }
+
+            .search-bar input {
+                padding: 0.6rem 0.75rem 0.6rem 2.5rem;
+                font-size: 0.875rem;
+            }
+
+            .search-icon {
+                left: 0.75rem;
+                font-size: 0.9rem;
+            }
+
+            #search-button {
+                background: var(--primary) !important;
+                color: white !important;
+                border-radius: 50%;
+                width: 36px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                right: 4px;
+                padding: 0;
+            }
+
+            #search-button i {
+                margin: 0;
+            }
+
+            /* Hide desktop nav items on mobile */
+            #book-now-btn,
+            #wishlist-btn,
+            #chat-btn,
+            #notifications-btn {
+                display: none !important;
+            }
+
+            .user-nav {
+                gap: 0.5rem;
+            }
+
+            #profile-btn {
+                width: 32px !important;
+                height: 32px !important;
+                font-size: 0.875rem;
+            }
+
+            /* Category navigation */
+            .categories-nav {
+                padding: 0.5rem 0.75rem;
+                top: 60px;
+                width: 100%;
+                max-width: 100vw;
+                overflow-x: auto;
+                box-sizing: border-box;
+            }
+
+            .categories-list-wrapper {
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+
+            .categories-list {
+                gap: 1.5rem;
+                padding: 0 0.25rem;
+            }
+
+            .category-item {
+                min-width: 65px;
+                padding: 0.25rem;
+            }
+
+            .category-item i {
+                font-size: 1.4rem;
+                margin-bottom: 0.15rem;
+            }
+
+            .category-item span {
+                font-size: 0.75rem;
+            }
+
+            /* Main content */
+            .main-content {
+                padding: 1rem;
+                width: 100%;
+                max-width: 100vw;
+                overflow-x: hidden;
+                box-sizing: border-box;
+            }
+
+            .content-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+                margin-bottom: 1rem;
+            }
+
+            .results-title {
+                font-size: 1.25rem;
+            }
+
+            .view-controls {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .sort-select {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.85rem;
+            }
+
+            /* Vendor grid - single column on mobile */
+            .vendor-grid {
+                gap: 1rem;
+            }
+
+            /* Vendor cards optimized for mobile (planvus style) */
+            .vendor-card {
+                border-radius: 12px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: unset !important;
+            }
+
+            .vendor-image {
+                height: 240px;
+                border-radius: 12px 12px 0 0;
+            }
+
+            .vendor-details {
+                padding: 1rem;
+            }
+
+            .vendor-name {
+                font-size: 1.05rem;
+                margin-bottom: 0.4rem;
+            }
+
+            .vendor-location {
+                font-size: 0.85rem;
+                margin-bottom: 0.4rem;
+            }
+
+            .vendor-category {
+                font-size: 0.8rem;
+                padding: 0.3rem 0.6rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .vendor-price {
+                font-size: 0.9rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .vendor-description {
+                font-size: 0.85rem;
+                line-height: 1.5;
+                margin-bottom: 0.75rem;
+                -webkit-line-clamp: 2;
+            }
+
+            .vendor-actions {
+                gap: 0.5rem;
+            }
+
+            .vendor-actions .btn {
+                padding: 0.6rem 1rem;
+                font-size: 0.85rem;
+            }
+
+            /* Favorite button positioning */
+            .favorite-btn {
+                width: 36px;
+                height: 36px;
+                top: 10px;
+                right: 10px;
+            }
+
+            .favorite-btn i {
+                font-size: 1.1rem;
+            }
+
+            /* Modal adjustments */
+            .modal-content {
+                width: 100%;
+                height: 100vh;
+                max-width: 100%;
+                max-height: 100vh;
+                border-radius: 0;
+                margin: 0;
+            }
+
+            /* Profile content */
+            .profile-content {
+                padding: 1rem;
+            }
+
+            /* Footer adjustments */
+            footer {
+                padding: 2rem 1rem;
+            }
+
+            .footer-columns {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 480px) {
+            .header {
+                padding: 0.6rem 0.75rem;
+            }
+
+            .logo img {
+                height: 32px !important;
+            }
+
+            .search-bar input {
+                font-size: 0.8rem;
+                padding: 0.55rem 0.6rem 0.55rem 2.25rem;
+            }
+
+            #search-button {
+                width: 32px;
+                height: 32px;
+            }
+
+            #profile-btn {
+                width: 28px !important;
+                height: 28px !important;
+                font-size: 0.8rem;
+            }
+
+            .mobile-menu-btn {
+                font-size: 1.3rem;
+                padding: 0.25rem;
+            }
+
+            .main-content {
+                padding: 0.75rem;
+            }
+
+            .vendor-image {
+                height: 200px;
+            }
+
+            .vendor-details {
+                padding: 0.875rem;
+            }
+
+            .category-item {
+                min-width: 60px;
+            }
+
+            .category-item i {
+                font-size: 1.3rem;
+            }
+
+            .category-item span {
+                font-size: 0.7rem;
+            }
+        }
+
+        /* Tablet adjustments */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .app-container {
+                grid-template-columns: 240px 1fr;
+            }
+
+            .sidebar {
+                padding: 1rem;
+            }
+
+            .header {
+                padding: 1rem 1.5rem;
+            }
+
+            .main-content {
+                padding: 1.5rem;
+            }
+        }
+
+        /* Hide mobile menu when sidebar visible */
+        @media (min-width: 769px) {
+            .mobile-menu-btn,
+            .mobile-location-bar,
+            .mobile-filter-btn,
+            .mobile-filter-overlay {
+                display: none !important;
+            }
+        }
     </style>
 <style id="googleidentityservice_button_styles">.qJTHM{-moz-user-select:none;color:#202124;direction:ltr;font-family:"Roboto-Regular",arial,sans-serif;font-weight:400;margin:0;overflow:hidden}.ynRLnc{left:-9999px;position:absolute;top:-9999px}.L6cTce{display:none}.bltWBb{word-break:break-all}.hSRGPd{color:#1a73e8;cursor:pointer;font-weight:500;text-decoration:none}.Bz112c-W3lGp{height:16px;width:16px}.Bz112c-E3DyYd{height:20px;width:20px}.Bz112c-r9oPif{height:24px;width:24px}.Bz112c-u2z5K{height:36px;width:36px}.Bz112c-uaxL4e{-moz-border-radius:10px;border-radius:10px}.LgbsSe-Bz112c{display:block}.S9gUrf-YoZ4jf,.S9gUrf-YoZ4jf *{border:none;margin:0;padding:0}.fFW7wc-ibnC6b>.aZ2wEe>div{border-color:#4285f4}.P1ekSe-ZMv3u>div:nth-child(1){background-color:#1a73e8!important}.P1ekSe-ZMv3u>div:nth-child(2),.P1ekSe-ZMv3u>div:nth-child(3){background-image:linear-gradient(to right,rgba(255,255,255,.7),rgba(255,255,255,.7)),linear-gradient(to right,#1a73e8,#1a73e8)!important}.haAclf{display:inline-block}.nsm7Bb-HzV7m-LgbsSe{border-radius:4px;box-sizing:border-box;transition:background-color .218s,border-color .218s;-moz-user-select:none;background-color:#fff;background-image:none;border:1px solid #dadce0;color:#3c4043;cursor:pointer;font-family:"Google Sans",arial,sans-serif;font-size:14px;height:40px;letter-spacing:0.25px;outline:none;overflow:hidden;padding:0 12px;position:relative;text-align:center;vertical-align:middle;white-space:nowrap;width:auto}@media screen and (-ms-high-contrast:active){.nsm7Bb-HzV7m-LgbsSe{border:2px solid windowText;color:windowText}}@media screen and (preferes-contrast:more){.nsm7Bb-HzV7m-LgbsSe{color:#000}}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe{font-size:14px;height:32px;letter-spacing:0.25px;padding:0 10px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe{font-size:11px;height:20px;letter-spacing:0.3px;padding:0 8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe{padding:0;width:40px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe{width:32px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe{width:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK{border-radius:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.pSzOP-SxQuSe{border-radius:16px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.purZT-SxQuSe{border-radius:10px}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc{border:none;color:#fff}.nsm7Bb-HzV7m-LgbsSe.MFS4be-v3pZbf-Ia7Qfc{background-color:#1a73e8}.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{background-color:#202124;color:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{color:#fff}}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:18px;margin-right:8px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:14px;min-width:14px;width:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:10px;min-width:10px;width:10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin-left:8px;margin-right:-4px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:10px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:4px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:3px;border-bottom-left-radius:3px;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;justify-content:center;align-items:center;background-color:#fff;height:36px;margin-left:-10px;margin-right:12px;min-width:36px;width:36px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c,.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:28px;margin-left:-8px;margin-right:10px;min-width:28px;width:28px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:16px;margin-left:-6px;margin-right:8px;min-width:16px;width:16px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:3px;margin-left:2px;margin-right:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:8px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-bN97Pc-sM5MNb{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;flex-direction:row;justify-content:space-between;flex-wrap:nowrap;height:100%;position:relative;width:100%}.nsm7Bb-HzV7m-LgbsSe .oXtfBe-l4eHX{justify-content:center}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{flex-grow:1;font-family:"Google Sans",arial,sans-serif;font-weight:500;overflow:hidden;text-overflow:ellipsis;vertical-align:top}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-weight:300}.nsm7Bb-HzV7m-LgbsSe .oXtfBe-l4eHX .nsm7Bb-HzV7m-LgbsSe-BPrWId{flex-grow:0}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-MJoBVe{transition:background-color .218s;bottom:0;left:0;position:absolute;right:0;top:0}.nsm7Bb-HzV7m-LgbsSe:hover,.nsm7Bb-HzV7m-LgbsSe:focus{box-shadow:none;border-color:rgb(210,227,252);outline:none}.nsm7Bb-HzV7m-LgbsSe:focus-within{outline:2px solid #00639b;border-color:transparent}.nsm7Bb-HzV7m-LgbsSe:hover .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(66,133,244,.08)}.nsm7Bb-HzV7m-LgbsSe:active .nsm7Bb-HzV7m-LgbsSe-MJoBVe,.nsm7Bb-HzV7m-LgbsSe:focus .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(66,133,244,.1)}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:hover .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(255,255,255,.24)}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:active .nsm7Bb-HzV7m-LgbsSe-MJoBVe,.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:focus .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(255,255,255,.32)}.nsm7Bb-HzV7m-LgbsSe .n1UuX-DkfjY{border-radius:50%;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;height:20px;margin-left:-4px;margin-right:8px;min-width:20px;width:20px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-family:"Roboto";font-size:12px;text-align:left}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .ssJRIf,.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .fmcmS{overflow:hidden;text-overflow:ellipsis}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;color:#5f6368;fill:#5f6368;font-size:11px;font-weight:400}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#e8eaed;fill:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff,.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#000;fill:#000}}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .Bz112c{height:18px;margin:-3px -3px -3px 2px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:0;border-bottom-left-radius:0;border-top-right-radius:3px;border-bottom-right-radius:3px;margin-left:12px;margin-right:-10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.L5Fo6c-sM5MNb{border:0;display:block;left:0;position:relative;top:0}.L5Fo6c-bF1uUb{-moz-border-radius:4px;border-radius:4px;bottom:0;cursor:pointer;left:0;position:absolute;right:0;top:0}.L5Fo6c-bF1uUb:focus{border:none;outline:none}sentinel{}</style><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/common.js"></script><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/util.js"></script></head>
 <body data-new-gr-c-s-check-loaded="8.932.0" data-gr-ext-installed="" style="overflow: auto;">
@@ -6616,8 +7112,26 @@
                 <span class="badge" id="notifications-badge">0</span>
             </div>
             <div class="nav-icon" id="profile-btn" style="background-color: var(--primary); color: white; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">S</div>
+            
+            <!-- Mobile Menu Button -->
+            <button class="mobile-menu-btn" id="mobile-menu-btn">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
     </header>
+
+    <!-- Mobile Location Bar (like planvus) -->
+    <div class="mobile-location-bar" id="mobile-location-bar">
+        <div class="mobile-location-display">
+            <i class="fas fa-location-dot"></i>
+            <span id="mobile-location-text">Toronto, ON</span>
+            <i class="fas fa-pencil mobile-location-edit" id="mobile-location-edit"></i>
+        </div>
+        <button class="mobile-filter-btn" id="mobile-filter-btn">
+            <i class="fas fa-sliders"></i>
+            <span>Filters</span>
+        </button>
+    </div>
 
     <div class="app-container" id="app-container" style="display: grid;">
         <!-- Categories Navigation -->
@@ -41668,5 +42182,133 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             </div>
         </div>
     </footer>
+
+    <!-- Mobile Filter Overlay Panel -->
+    <div class="mobile-filter-overlay" id="mobile-filter-overlay">
+        <div class="mobile-filter-panel">
+            <div class="mobile-filter-header">
+                <h3>Filters</h3>
+                <button class="mobile-filter-close" id="mobile-filter-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mobile-filter-content" id="mobile-filter-content">
+                <!-- Filter content will be cloned from sidebar -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Mobile Menu and Filter functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileFilterBtn = document.getElementById('mobile-filter-btn');
+            const mobileFilterOverlay = document.getElementById('mobile-filter-overlay');
+            const mobileFilterClose = document.getElementById('mobile-filter-close');
+            const mobileFilterContent = document.getElementById('mobile-filter-content');
+            const mobileLocationEdit = document.getElementById('mobile-location-edit');
+            const sidebar = document.querySelector('.sidebar');
+
+            // Clone sidebar filters into mobile panel
+            if (sidebar && mobileFilterContent) {
+                // Clone all filter sections
+                const filterSections = sidebar.querySelectorAll('.filter-section');
+                filterSections.forEach(section => {
+                    mobileFilterContent.appendChild(section.cloneNode(true));
+                });
+
+                // Re-attach event listeners to cloned elements
+                const clonedInputs = mobileFilterContent.querySelectorAll('input, select');
+                clonedInputs.forEach(input => {
+                    const originalInput = sidebar.querySelector(`#${input.id}`);
+                    if (originalInput) {
+                        input.addEventListener('change', function() {
+                            originalInput.value = this.value;
+                            originalInput.checked = this.checked;
+                            // Trigger change event on original
+                            const event = new Event('change', { bubbles: true });
+                            originalInput.dispatchEvent(event);
+                        });
+                    }
+                });
+            }
+
+            // Mobile filter button click
+            if (mobileFilterBtn) {
+                mobileFilterBtn.addEventListener('click', function() {
+                    mobileFilterOverlay.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            }
+
+            // Close filter panel
+            function closeFilterPanel() {
+                mobileFilterOverlay.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+
+            if (mobileFilterClose) {
+                mobileFilterClose.addEventListener('click', closeFilterPanel);
+            }
+
+            // Close on overlay click
+            if (mobileFilterOverlay) {
+                mobileFilterOverlay.addEventListener('click', function(e) {
+                    if (e.target === mobileFilterOverlay) {
+                        closeFilterPanel();
+                    }
+                });
+            }
+
+            // Mobile menu button (can be extended for full menu)
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    // For now, just toggle profile menu or open a navigation drawer
+                    // You can implement a full mobile menu drawer here
+                    const profileBtn = document.getElementById('profile-btn');
+                    if (profileBtn) {
+                        profileBtn.click();
+                    }
+                });
+            }
+
+            // Mobile location edit
+            if (mobileLocationEdit) {
+                mobileLocationEdit.addEventListener('click', function() {
+                    const locationInput = document.getElementById('location-input');
+                    if (locationInput) {
+                        locationInput.focus();
+                        // Scroll to location input
+                        if (window.innerWidth <= 768) {
+                            mobileFilterBtn.click(); // Open filters to show location input
+                        }
+                    }
+                });
+            }
+
+            // Update mobile location text when location changes
+            const locationInput = document.getElementById('location-input');
+            const mobileLocationText = document.getElementById('mobile-location-text');
+            if (locationInput && mobileLocationText) {
+                locationInput.addEventListener('change', function() {
+                    if (this.value) {
+                        mobileLocationText.textContent = this.value;
+                    } else {
+                        mobileLocationText.textContent = 'Toronto, ON';
+                    }
+                });
+            }
+
+            // Sync location with geolocation
+            const currentLocationCheckbox = document.getElementById('current-location');
+            if (currentLocationCheckbox && mobileLocationText) {
+                currentLocationCheckbox.addEventListener('change', function() {
+                    if (this.checked && window.state && window.state.userLocation) {
+                        mobileLocationText.textContent = window.state.userLocation;
+                    }
+                });
+            }
+        });
+    </script>
 
 </html>
