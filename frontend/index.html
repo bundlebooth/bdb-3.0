@@ -4828,7 +4828,65 @@
             }
         }
 
+        /* Tablet adjustments (768px - 1024px) */
+        @media (max-width: 1024px) and (min-width: 769px) {
+            .header {
+                padding: 0.75rem 1.5rem !important;
+            }
+            
+            .search-container {
+                margin: 0 1rem !important;
+                max-width: 400px !important;
+            }
+            
+            .user-nav {
+                gap: 1rem !important;
+            }
+        }
+        
         @media (max-width: 768px) {
+            /* Main App Container - Mobile */
+            .app-container {
+                grid-template-columns: 1fr !important;
+            }
+            
+            /* Header - Mobile Only */
+            .header {
+                padding: 0.75rem 1rem !important;
+                flex-wrap: nowrap !important;
+                gap: 0.75rem;
+            }
+            
+            .logo {
+                font-size: 1.1rem !important;
+                flex-shrink: 0;
+            }
+            
+            .logo img {
+                height: 32px !important;
+            }
+            
+            .search-container {
+                flex: 1 !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+                max-width: none !important;
+            }
+            
+            .user-nav {
+                flex-shrink: 0;
+                gap: 0.75rem !important;
+            }
+            
+            .user-nav .btn-primary {
+                display: none !important;
+            }
+            
+            .nav-icon {
+                font-size: 1.2rem !important;
+            }
+            
+            /* Modal - Mobile */
             .modal-content {
                 width: 95%;
                 height: 90vh;
@@ -4846,19 +4904,30 @@
                 width: 100%;
                 height: 200px;
             }
-
+            
+            /* View Controls - Mobile */
             .view-controls {
                 flex-direction: column;
                 align-items: flex-start;
+                gap: 0.5rem !important;
             }
-
+            
+            .view-toggle-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+            
+            /* Categories Navigation - Mobile */
             .categories-nav {
                 padding: 0.5rem 1rem;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
             }
 
             .category-item {
                 padding: 0.5rem 0.75rem;
                 font-size: 0.8rem;
+                white-space: nowrap;
             }
 
             .dashboard-container {
@@ -5015,6 +5084,453 @@
             .btn {
                 padding: 0.6rem 1rem !important;
                 font-size: 0.9rem !important;
+            }
+            
+            /* Business Profile Management - Mobile */
+            .settings-grid {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+            }
+            
+            .settings-card {
+                padding: 1rem !important;
+            }
+            
+            .settings-category {
+                margin-bottom: 1.5rem !important;
+            }
+            
+            .settings-category-title {
+                font-size: 1.1rem !important;
+                margin-bottom: 1rem !important;
+            }
+            
+            /* Business Profile Panels - Mobile */
+            #vendor-business-profile-section .form-row {
+                flex-direction: column !important;
+                gap: 0.75rem !important;
+            }
+            
+            #business-profile-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 1rem !important;
+            }
+            
+            #business-profile-header button {
+                width: 100% !important;
+            }
+            
+            /* Vendor Public Profile Page - Mobile */
+            #vendor-profile-page {
+                padding: 0.75rem !important;
+            }
+            
+            #vendor-profile-page h1 {
+                font-size: 1.5rem !important;
+            }
+            
+            #vendor-profile-page h2 {
+                font-size: 1.2rem !important;
+            }
+            
+            #vendor-profile-page .vendor-profile-header {
+                flex-direction: column !important;
+                gap: 1rem !important;
+            }
+            
+            /* Vendor profile two-column layout to single column */
+            #vendor-profile-page > div[style*="grid-template-columns"] {
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 1.5rem !important;
+            }
+            
+            /* Make sidebar full width on mobile */
+            #vendor-profile-page > div[style*="grid-template-columns"] > div:last-child {
+                position: static !important;
+            }
+            
+            /* Image gallery mobile */
+            .image-gallery {
+                margin-bottom: 1rem !important;
+            }
+            
+            .gallery-item img {
+                height: 200px !important;
+            }
+            
+            /* Services grid mobile */
+            #services-list {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+            }
+            
+            /* Review cards mobile */
+            .review-card {
+                padding: 1rem !important;
+            }
+            
+            /* Venue recommendations mobile */
+            #venue-recommendations-section {
+                padding: 1.5rem 0 !important;
+            }
+            
+            #venue-recommendations-section > div {
+                padding: 0 0.75rem !important;
+            }
+            
+            #venue-recommendations-section h2 {
+                font-size: 1.25rem !important;
+                margin-bottom: 1rem !important;
+            }
+            
+            .venue-recommendation-tab {
+                padding: 0.75rem 1rem !important;
+                font-size: 0.85rem !important;
+            }
+            
+            /* Analytics Charts - Mobile */
+            .analytics-charts {
+                padding: 0.5rem !important;
+            }
+            
+            .analytics-charts canvas {
+                max-height: 250px !important;
+            }
+            
+            /* Messages Section - Mobile */
+            .chat-container {
+                grid-template-columns: 1fr !important;
+                height: calc(100vh - 200px) !important;
+            }
+            
+            .conversations-list {
+                display: none;
+            }
+            
+            .chat-container.conversation-selected .conversations-list {
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: white;
+                z-index: 100;
+            }
+            
+            /* Invoices - Mobile */
+            .invoices-grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .invoice-card {
+                padding: 1rem !important;
+            }
+            
+            /* Reviews Section - Mobile */
+            .reviews-grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            /* Booking calendar mobile */
+            .fc-toolbar {
+                flex-direction: column !important;
+                gap: 0.5rem !important;
+            }
+            
+            .fc-toolbar-chunk {
+                display: flex !important;
+                justify-content: center !important;
+                width: 100% !important;
+            }
+            
+            /* Table mobile responsiveness */
+            table {
+                font-size: 0.85rem !important;
+            }
+            
+            table thead {
+                display: none;
+            }
+            
+            table tr {
+                display: block;
+                margin-bottom: 1rem;
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 0.75rem;
+            }
+            
+            table td {
+                display: flex;
+                justify-content: space-between;
+                padding: 0.5rem 0 !important;
+                border: none !important;
+            }
+            
+            table td:before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: var(--text);
+            }
+            
+            /* Questionnaire features grid - Mobile */
+            .questionnaire-features-grid {
+                grid-template-columns: 1fr !important;
+                gap: 0.5rem !important;
+            }
+            
+            /* Photo/Portfolio grid - Mobile */
+            .photos-grid,
+            .portfolio-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 0.5rem !important;
+            }
+            
+            .photo-item,
+            .portfolio-item {
+                height: 120px !important;
+            }
+            
+            /* Service cards - Mobile */
+            .service-card {
+                padding: 1rem !important;
+            }
+            
+            .service-card h4 {
+                font-size: 1rem !important;
+            }
+            
+            /* FAQ items - Mobile */
+            .faq-item {
+                padding: 1rem !important;
+            }
+            
+            .faq-question {
+                font-size: 0.95rem !important;
+            }
+            
+            /* Team member cards - Mobile */
+            .team-member-card {
+                padding: 1rem !important;
+            }
+            
+            /* Availability calendar - Mobile */
+            .availability-calendar {
+                padding: 0.75rem !important;
+            }
+            
+            .calendar-day {
+                padding: 0.5rem !important;
+                font-size: 0.85rem !important;
+            }
+            
+            /* Stripe connect section - Mobile */
+            .stripe-connect-card {
+                padding: 1rem !important;
+            }
+            
+            /* Popular filters grid - Mobile */
+            .filters-grid {
+                grid-template-columns: 1fr !important;
+                gap: 0.75rem !important;
+            }
+            
+            /* Service categories in booking modal - Mobile */
+            .service-categories {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+            }
+            
+            .category-card {
+                padding: 1rem !important;
+            }
+            
+            /* Stats cards - Mobile */
+            .stat-value {
+                font-size: 1.5rem !important;
+            }
+            
+            .stat-label {
+                font-size: 0.8rem !important;
+            }
+            
+            /* Dashboard welcome banner - Mobile */
+            .welcome-banner {
+                padding: 1rem !important;
+            }
+            
+            .welcome-banner h2 {
+                font-size: 1.2rem !important;
+            }
+            
+            /* Action buttons in panels - Mobile */
+            .panel-actions {
+                flex-direction: column !important;
+                gap: 0.5rem !important;
+            }
+            
+            .panel-actions .btn {
+                width: 100% !important;
+            }
+            
+            /* Modal footer buttons - Mobile */
+            .modal-footer {
+                flex-direction: column-reverse !important;
+                gap: 0.5rem !important;
+            }
+            
+            .modal-footer .btn {
+                width: 100% !important;
+            }
+            
+            /* Booking summary sidebar - Mobile */
+            #booking-summary {
+                padding: 1rem !important;
+            }
+            
+            #booking-summary h3 {
+                font-size: 1.1rem !important;
+            }
+            
+            /* Business hours grid - Mobile */
+            #business-hours-list {
+                grid-template-columns: 1fr !important;
+            }
+            
+            /* Social media links - Mobile */
+            #social-media-links a {
+                font-size: 0.9rem !important;
+                padding: 0.5rem 0.75rem !important;
+            }
+            
+            /* Notification cards - Mobile */
+            .notification-card {
+                padding: 0.75rem !important;
+            }
+            
+            /* File upload areas - Mobile */
+            .upload-area {
+                padding: 1.5rem 1rem !important;
+            }
+            
+            .upload-area h4 {
+                font-size: 1rem !important;
+            }
+            
+            /* Form sections in panels - Mobile */
+            .form-section {
+                padding: 1rem !important;
+                margin-bottom: 1rem !important;
+            }
+            
+            .form-section h3 {
+                font-size: 1.1rem !important;
+            }
+            
+            /* Badge and tag elements - Mobile */
+            .badge,
+            .tag {
+                font-size: 0.75rem !important;
+                padding: 0.25rem 0.5rem !important;
+            }
+            
+            /* Map View - Mobile */
+            #map-view {
+                height: 400px !important;
+                margin-bottom: 1rem;
+            }
+            
+            .results-split {
+                flex-direction: column !important;
+            }
+            
+            .results-left,
+            .results-right {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            
+            /* Filters Sidebar - Mobile */
+            .filters-sidebar {
+                position: fixed !important;
+                top: 0;
+                left: -100%;
+                width: 85% !important;
+                max-width: 320px;
+                height: 100vh;
+                z-index: 1000;
+                background: white;
+                transition: left 0.3s ease;
+                overflow-y: auto;
+            }
+            
+            .filters-sidebar.open {
+                left: 0 !important;
+            }
+            
+            .filters-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+            }
+            
+            .filters-overlay.show {
+                display: block !important;
+            }
+            
+            /* Horizontal vendor cards in map view - Mobile */
+            .vendor-horizontal-container {
+                gap: 1rem !important;
+            }
+            
+            .vendor-horizontal-card {
+                flex-direction: column !important;
+                min-height: auto !important;
+            }
+            
+            .vendor-horizontal-card .vendor-card-image-container {
+                width: 100% !important;
+                height: 200px !important;
+            }
+            
+            /* Sort and filter controls - Mobile */
+            .sort-filter-controls {
+                flex-direction: column;
+                gap: 0.75rem !important;
+            }
+            
+            .sort-select {
+                width: 100% !important;
+            }
+            
+            /* Results count and title - Mobile */
+            .results-header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 0.5rem !important;
+            }
+            
+            .results-title {
+                font-size: 1.3rem !important;
+            }
+            
+            /* Pagination - Mobile */
+            .pagination {
+                flex-wrap: wrap;
+                gap: 0.5rem !important;
+            }
+            
+            .pagination button {
+                padding: 0.5rem 0.75rem !important;
+                font-size: 0.85rem !important;
             }
         }
 
@@ -9968,6 +10484,8 @@
 
     <!-- Main Application Script -->
     <script>
+        // CACHE BUSTER v2.0 - Invoice Table Mode Enabled - 2025-01-09T20:18:00Z
+        console.log('🚀 VenueVue v2.0 - Invoice Table Rendering Active');
         // API base URL (global constant)
         const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
         // Derive Socket base URL from API origin to avoid file:// resolution issues
@@ -10728,107 +11246,6 @@
                     document.body.prepend(container);
                 }
             }
-
-            // Load client invoices (all accepted/approved/paid bookings)
-            async function loadClientInvoices() {
-                const container = document.getElementById('client-invoices-list');
-                if (container) container.innerHTML = getBookingsSkeletonHTML(4);
-                if (!currentUser || !currentUser.id) {
-                    if (container) container.innerHTML = '<p>Please log in to view invoices.</p>';
-                    return;
-                }
-                try {
-                    const resp = await fetch(`${API_BASE_URL}/users/${currentUser.id}/bookings/all`, {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                    });
-                    if (!resp.ok) throw new Error('Failed to fetch bookings');
-                    const bookings = await resp.json();
-                    const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
-                        const s = (b.Status || '').toString().toLowerCase();
-                        return s === 'confirmed' || s === 'paid' || s === 'approved';
-                    }).sort((a,b) => new Date(b.EventDate) - new Date(a.EventDate));
-                    renderInvoicesList(accepted, container, 'client');
-                } catch (e) {
-                    console.error('loadClientInvoices error:', e);
-                    if (container) container.innerHTML = `<p style="color:var(--accent);">${e.message || 'Failed to load invoices'}</p>`;
-                }
-            }
-
-            // Load vendor invoices (bookings for vendor profile)
-            async function loadVendorInvoices(vendorProfileId) {
-                const container = document.getElementById('vendor-invoices-list');
-                if (container) container.innerHTML = getBookingsSkeletonHTML(4);
-                if (!vendorProfileId) {
-                    if (container) container.innerHTML = '<p>Vendor profile not found.</p>';
-                    return;
-                }
-                try {
-                    const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                    });
-                    if (!resp.ok) throw new Error('Failed to fetch vendor bookings');
-                    const bookings = await resp.json();
-                    const accepted = (Array.isArray(bookings) ? bookings : []).filter(b => {
-                        const s = (b.Status || '').toString().toLowerCase();
-                        return s === 'confirmed' || s === 'paid' || s === 'approved';
-                    }).sort((a,b) => new Date(b.EventDate) - new Date(a.EventDate));
-                    renderInvoicesList(accepted, container, 'vendor');
-                } catch (e) {
-                    console.error('loadVendorInvoices error:', e);
-                    if (container) container.innerHTML = `<p style="color:var(--accent);">${e.message || 'Failed to load invoices'}</p>`;
-                }
-            }
-
-            // Render invoice list cards
-            function renderInvoicesList(bookings, container, viewerRole) {
-                if (!container) return;
-                container.innerHTML = '';
-                if (!Array.isArray(bookings) || bookings.length === 0) {
-                    container.innerHTML = '<p>No invoices available.</p>';
-                    return;
-                }
-                const html = bookings.map(b => {
-                    const eventDate = new Date(b.EventDate);
-                    const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
-                    const day = eventDate.getDate();
-                    const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
-                    const name = viewerRole === 'vendor' ? (b.ClientName || 'Client') : (b.VendorName || 'Vendor');
-                    const total = (b.TotalAmount != null) ? `$${Number(b.TotalAmount).toFixed(2)}` : '';
-                    const status = (b.Status || '').toString().toLowerCase();
-                    const paid = (b.FullAmountPaid === true || b.FullAmountPaid === 1);
-                    return `
-                        <div class="booking-item">
-                            <div class="booking-date-section">
-                                <div class="booking-month">${month}</div>
-                                <div class="booking-day">${day}</div>
-                                <div class="booking-weekday">${weekday}</div>
-                            </div>
-                            <div class="booking-info">
-                                <div class="booking-client"><i class="fas fa-store" style="color:#6b7280;font-size:12px;"></i><span class="booking-client-name">${name}</span></div>
-                                <div class="booking-service-row"><span class="booking-service">Confirmed Booking</span></div>
-                                ${total ? `<div class=\"booking-price-row\"><i class=\"fas fa-dollar-sign\" style=\"color:#6b7280;font-size:12px;\"></i><span class=\"booking-price\">${total}</span></div>` : ''}
-                            </div>
-                            <div class="booking-actions">
-                                <span class="request-status ${paid ? 'paid' : status}" style="margin-right:12px;padding:4px 8px;border-radius:4px;font-size:12px;font-weight:500;text-transform:capitalize;">${paid ? 'Paid' : (status === 'confirmed' ? 'Accepted' : status)}</span>
-                                <button class="btn btn-outline btn-sm" onclick="openInvoiceModal('${b.BookingID}')">View</button>
-                                <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="downloadInvoiceForBooking('${b.BookingID}')">Download</button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                container.innerHTML = html;
-            }
-
-            // Convenience: open invoice then download as PDF
-            async function downloadInvoiceForBooking(bookingId) {
-                try {
-                    await openInvoiceModal(bookingId);
-                    // Give the UI a moment to render then download
-                    setTimeout(() => { try { downloadInvoicePDF(); } catch(_) {} }, 350);
-                } catch (e) {
-                    alert(e?.message || 'Failed to download invoice');
-                }
-            }
             return container;
         }
 
@@ -10872,6 +11289,7 @@
 
         // Load vendor invoices (bookings for vendor profile)
         async function loadVendorInvoices(vendorProfileId) {
+            console.log('🟢 loadVendorInvoices called', { vendorProfileId });
             const container = document.getElementById('vendor-invoices-list');
             if (container) container.innerHTML = getBookingsSkeletonHTML(4);
             if (!vendorProfileId) {
@@ -10909,6 +11327,7 @@
 
         // Render invoice list as a table (client and vendor) with search + sortable headers
         function renderInvoicesList(bookings, container, viewerRole) {
+            console.log('🔵 renderInvoicesList called - TABLE MODE', { bookings: bookings?.length, container: container?.id, viewerRole });
             if (!container) return;
             const listId = container.id || 'invoices-list';
             // State per list container
