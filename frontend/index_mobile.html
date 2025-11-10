@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>PlanHive - Event Booking Platform</title>
     <link rel="icon" type="image/svg+xml" href="planhive_fav_icon.svg">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- Google Fonts - Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -5260,9 +5260,25 @@
             }
             
             /* Prevent zoom on input focus - set minimum 16px font-size */
-            input,
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            input[type="tel"],
+            input[type="number"],
+            input[type="search"],
+            input[type="url"],
+            input[type="date"],
+            input[type="time"],
+            input[type="datetime-local"],
             select,
             textarea {
+                font-size: 16px !important;
+            }
+            
+            /* Specific for booking modal inputs */
+            #booking-modal input,
+            #booking-modal select,
+            #booking-modal textarea {
                 font-size: 16px !important;
             }
             
