@@ -4907,9 +4907,19 @@
             
             /* View Controls - Mobile */
             .view-controls {
-                flex-direction: column;
-                align-items: flex-start;
+                flex-direction: row;
+                align-items: center;
                 gap: 0.5rem !important;
+                flex-wrap: wrap;
+            }
+            
+            .mobile-filter-btn {
+                flex: 0 0 auto;
+            }
+            
+            .sort-select {
+                flex: 1;
+                min-width: 150px;
             }
             
             .view-toggle-group {
@@ -4979,7 +4989,7 @@
 
             .dashboard-content {
                 width: 100%;
-                padding: 0.75rem;
+                padding: 0;
             }
             
             .dashboard-header {
@@ -4992,7 +5002,7 @@
             
             /* Mobile spacing adjustments */
             .dashboard-container main > div {
-                padding: 0.75rem !important;
+                padding: 0 !important;
             }
             
             .dashboard-card {
@@ -7629,23 +7639,11 @@
             }
 
             #search-button {
-                background: var(--primary) !important;
-                color: white !important;
-                border-radius: 50%;
-                width: 32px;
-                height: 32px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                right: 6px;
-                padding: 0;
-                top: 50%;
-                transform: translateY(-50%);
+                font-size: 1rem;
             }
 
             #search-button i {
-                margin: 0;
-                font-size: 0.85rem;
+                font-size: 1rem;
             }
 
             /* Hide desktop nav items on mobile */
@@ -7811,6 +7809,44 @@
                 border-radius: 0;
                 margin: 0;
             }
+            
+            /* Profile/Login Modal - Mobile Responsive */
+            #profile-modal .modal-content {
+                width: 95%;
+                height: auto;
+                max-height: 90vh;
+                overflow-y: auto;
+                border-radius: 12px;
+                padding: 0;
+            }
+            
+            #profile-modal .modal-body {
+                padding: 1rem;
+            }
+            
+            /* 2FA OTP inputs - Mobile */
+            #twofa-code-inputs {
+                gap: 0.25rem !important;
+            }
+            
+            #twofa-code-inputs .otp-digit {
+                width: 40px !important;
+                height: 44px !important;
+                font-size: 1.1rem !important;
+            }
+            
+            /* Social login buttons - Mobile */
+            #login-form button,
+            #signup-form button {
+                font-size: 0.9rem;
+            }
+            
+            /* Form inputs - Mobile */
+            #login-form input,
+            #signup-form input,
+            #signup-form select {
+                font-size: 16px !important;
+            }
 
             /* Profile content */
             .profile-content {
@@ -7882,6 +7918,23 @@
             .category-item span {
                 font-size: 0.7rem;
             }
+            
+            /* Login Modal - Extra Small */
+            #twofa-code-inputs .otp-digit {
+                width: 36px !important;
+                height: 40px !important;
+                font-size: 1rem !important;
+            }
+            
+            #profile-modal .modal-header h3 {
+                font-size: 1.1rem;
+            }
+            
+            #login-form button,
+            #signup-form button {
+                padding: 0.65rem 1rem;
+                font-size: 0.85rem;
+            }
         }
 
         /* Tablet adjustments */
@@ -7909,6 +7962,12 @@
             .mobile-location-bar,
             .mobile-filter-btn,
             .mobile-filter-overlay {
+                display: none !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #filters-toggle {
                 display: none !important;
             }
         }
@@ -8065,6 +8124,10 @@
                 </div>
 
                 <div class="view-controls">
+                    <button id="mobile-filter-btn" class="mobile-filter-btn">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Filters</span>
+                    </button>
                     <button id="filters-toggle" class="btn btn-outline" style="display:flex;align-items:center;gap:.5rem;">
                         <i class="fas fa-sliders-h"></i>
                         <span>Filters</span>
@@ -17096,6 +17159,15 @@ document.addEventListener('DOMContentLoaded', async function() {
                 } catch (e) {}
                 if (filtersToggleBtn) {
                     filtersToggleBtn.addEventListener('click', () => {
+                        const willCollapse = !appContainer.classList.contains('sidebar-collapsed');
+                        applySidebarState(willCollapse);
+                    });
+                }
+                
+                // Mobile filter button handler
+                const mobileFilterBtn = document.getElementById('mobile-filter-btn');
+                if (mobileFilterBtn) {
+                    mobileFilterBtn.addEventListener('click', () => {
                         const willCollapse = !appContainer.classList.contains('sidebar-collapsed');
                         applySidebarState(willCollapse);
                     });
@@ -42954,6 +43026,12 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     mobileFilterContent.appendChild(section.cloneNode(true));
                 });
 
+                // Clone trending/popular filters section
+                const trendingSection = sidebar.querySelector('.trending-section');
+                if (trendingSection) {
+                    mobileFilterContent.appendChild(trendingSection.cloneNode(true));
+                }
+
                 // Re-attach event listeners to cloned elements
                 const clonedInputs = mobileFilterContent.querySelectorAll('input, select');
                 clonedInputs.forEach(input => {
@@ -42967,6 +43045,19 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             originalInput.dispatchEvent(event);
                         });
                     }
+                });
+
+                // Re-attach event listeners to cloned trending tags
+                const clonedTrendingTags = mobileFilterContent.querySelectorAll('.trending-tag');
+                clonedTrendingTags.forEach(tag => {
+                    const filterType = tag.getAttribute('data-filter');
+                    tag.addEventListener('click', function() {
+                        // Find and click the original tag
+                        const originalTag = sidebar.querySelector(`.trending-tag[data-filter="${filterType}"]`);
+                        if (originalTag) {
+                            originalTag.click();
+                        }
+                    });
                 });
             }
 
