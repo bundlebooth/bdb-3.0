@@ -76,7 +76,6 @@
             grid-template-columns: 300px 1fr;
             min-height: 100vh;
             transition: grid-template-columns 0.25s ease;
-            padding-bottom: 100px;
         }
 
         /* Collapsible sidebar behavior */
@@ -92,11 +91,9 @@
             justify-content: space-between;
             padding: 1rem 2rem;
             background-color: white;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
             z-index: 10;
         }
 
@@ -6934,24 +6931,23 @@
         .mobile-book-now-footer {
             display: none;
             position: fixed;
-            bottom: 20px;
+            bottom: 0;
             left: 0;
             right: 0;
-            background: transparent;
-            padding: 0 1rem;
+            background: white;
+            padding: 1rem;
             z-index: 19; /* Below modals but above content */
-            pointer-events: none; /* Allow clicks to pass through container */
+            pointer-events: auto;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .mobile-book-now-footer .btn-book-now {
             width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
             background: var(--primary, #5e72e4);
             color: white;
             border: none;
             padding: 1rem 1.5rem;
-            border-radius: 50px;
+            border-radius: 8px;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
@@ -6959,9 +6955,7 @@
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 8px 24px rgba(94, 114, 228, 0.4);
-            pointer-events: auto; /* Button itself is clickable */
+            transition: all 0.2s ease;
         }
 
         .mobile-book-now-footer .btn-book-now:hover {
