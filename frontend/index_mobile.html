@@ -6934,11 +6934,10 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: white;
+            background: transparent;
             padding: 1rem;
             z-index: 19; /* Below modals but above content */
-            pointer-events: auto;
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            pointer-events: none;
         }
 
         .mobile-book-now-footer .btn-book-now {
@@ -6956,6 +6955,8 @@
             justify-content: center;
             gap: 0.5rem;
             transition: all 0.2s ease;
+            pointer-events: auto;
+            box-shadow: 0 4px 12px rgba(94, 114, 228, 0.3);
         }
 
         .mobile-book-now-footer .btn-book-now:hover {
