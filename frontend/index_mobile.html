@@ -1040,7 +1040,8 @@
         .modal-body {
             padding: 20px;
             overflow-y: auto;
-            max-height: calc(90vh - 70px);
+            flex: 1;
+            min-height: 0;
         }
         /* Booking modal uses dashboard background/theme without affecting other modals */
         #booking-modal .modal-body {
@@ -4933,6 +4934,43 @@
             .user-nav {
                 gap: 1rem !important;
             }
+            
+            /* Hide desktop Book Now on tablet - use sticky footer */
+            .user-nav .btn-primary {
+                display: none !important;
+            }
+            
+            /* Booking Modal - Tablet Specific */
+            #booking-modal .modal-content {
+                width: 90% !important;
+                max-width: 900px !important;
+                height: 95vh !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: hidden !important;
+            }
+            
+            #booking-modal .modal-body {
+                padding: 1.5rem !important;
+            }
+            
+            #booking-modal .booking-step {
+                padding: 1.25rem !important;
+            }
+            
+            /* Service categories - 2 columns on tablet */
+            #booking-modal .service-categories {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+            
+            /* Form rows - stack on tablet for better readability */
+            #booking-modal .form-row {
+                flex-direction: column;
+            }
+            
+            #booking-modal .form-col {
+                width: 100%;
+            }
         }
         
         @media (max-width: 768px) {
@@ -4969,6 +5007,7 @@
                 gap: 0.75rem !important;
             }
             
+            /* Hide desktop Book Now button on mobile - will use sticky footer instead */
             .user-nav .btn-primary {
                 display: none !important;
             }
@@ -4985,6 +5024,95 @@
 
             .modal-body {
                 max-height: calc(90vh - 60px);
+            }
+            
+            /* Booking Modal - Mobile Specific */
+            #booking-modal .modal-content {
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 100vh !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: hidden !important;
+            }
+            
+            #booking-modal .modal-header {
+                padding: 1rem !important;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background: white;
+            }
+            
+            #booking-modal .modal-header h3 {
+                font-size: 1rem !important;
+                line-height: 1.4;
+            }
+            
+            #booking-modal .modal-body {
+                padding: 1rem !important;
+                flex: 1;
+                min-height: 0;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            #booking-modal .booking-step {
+                padding: 1rem !important;
+                margin-bottom: 1rem;
+            }
+            
+            #booking-modal .booking-progress {
+                padding: 0.75rem !important;
+                margin-bottom: 1rem !important;
+            }
+            
+            #booking-modal .form-section-title {
+                font-size: 1.1rem !important;
+                margin-bottom: 0.75rem !important;
+            }
+            
+            #booking-modal .step-number-badge {
+                width: 24px !important;
+                height: 24px !important;
+                font-size: 0.875rem !important;
+            }
+            
+            /* Booking Modal Step Buttons - Mobile */
+            #booking-modal .booking-step > div:last-child {
+                flex-direction: column !important;
+                gap: 0.75rem !important;
+            }
+            
+            #booking-modal .btn {
+                width: 100% !important;
+                padding: 0.875rem 1rem !important;
+                font-size: 0.95rem !important;
+            }
+            
+            /* Timeline in booking modal - Mobile */
+            #booking-modal #event-timeline-container {
+                padding: 0.75rem !important;
+            }
+            
+            /* Service selector - Mobile */
+            #booking-modal .services-grid,
+            #booking-modal .available-vendors-grid {
+                grid-template-columns: 1fr !important;
+                gap: 0.75rem !important;
+            }
+            
+            /* Vendor cards in booking - Mobile */
+            #booking-modal .vendor-card {
+                padding: 0.875rem !important;
+            }
+            
+            /* Close button - Mobile */
+            #booking-modal .close-modal {
+                font-size: 2rem !important;
+                padding: 0.25rem !important;
             }
 
             .vendor-detail-header {
@@ -6799,6 +6927,88 @@
             .booking-progress .step-indicator .step-number { width: 22px; height: 22px; font-size: 0.8rem; }
         }
 
+        /* Mobile Sticky Footer for Book Now Button */
+        .mobile-book-now-footer {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            background: transparent;
+            padding: 0 1rem;
+            z-index: 19; /* Below modals but above content */
+            pointer-events: none; /* Allow clicks to pass through container */
+        }
+
+        .mobile-book-now-footer .btn-book-now {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            background: var(--primary, #5e72e4);
+            color: white;
+            border: none;
+            padding: 1rem 1.5rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 24px rgba(94, 114, 228, 0.4);
+            pointer-events: auto; /* Button itself is clickable */
+        }
+
+        .mobile-book-now-footer .btn-book-now:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(94, 114, 228, 0.5);
+            background: #4c63d2;
+        }
+
+        .mobile-book-now-footer .btn-book-now:active {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(94, 114, 228, 0.4);
+        }
+
+        .mobile-book-now-footer .btn-book-now i {
+            font-size: 1.2rem;
+        }
+
+        /* Show mobile footer only on mobile/tablet devices */
+        @media (max-width: 768px) {
+            .mobile-book-now-footer {
+                display: block;
+            }
+            
+            /* Add padding to body to prevent content from being hidden behind floating button */
+            body:not(.modal-open) {
+                padding-bottom: 100px;
+            }
+            
+            /* Adjust messaging widget position on mobile to not overlap with Book Now button */
+            .messaging-widget {
+                bottom: 100px;
+                right: 1rem;
+            }
+        }
+
+        /* Tablet adjustments */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .mobile-book-now-footer {
+                display: block;
+            }
+            
+            body:not(.modal-open) {
+                padding-bottom: 100px;
+            }
+            
+            .messaging-widget {
+                bottom: 100px;
+            }
+        }
+
         /* Messaging Widget Styles */
         .messaging-widget {
             position: fixed;
@@ -7607,13 +7817,12 @@
 
         .mobile-filter-panel {
             position: fixed;
-            top: 0;
+            bottom: 0;
             left: 0;
             right: 0;
-            bottom: 0;
             background: white;
-            border-radius: 0;
-            height: 100vh;
+            border-radius: 16px 16px 0 0;
+            max-height: 80vh;
             overflow-y: auto;
             transform: translateY(100%);
             transition: transform 0.3s ease;
@@ -10416,7 +10625,7 @@
 
     <!-- Multi-Step Booking Modal -->
     <div id="booking-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 1400px; width: 95%; max-height: 95vh; overflow-y: auto;">
+        <div class="modal-content" style="max-width: 1400px; width: 95%; height: 95vh; display: flex; flex-direction: column; overflow: hidden;">
             <div class="modal-header">
                 <h3 id="booking-modal-title"><span class="step-number-badge">1</span>Step 1 of 5: Select Categories</h3>
                 <span class="close-modal">×</span>
@@ -17416,6 +17625,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                 updateBookingStep(1);
                 bookingModal.style.display = 'flex';
                 
+                // Prevent body scroll when modal is open
+                document.body.style.overflow = 'hidden';
+                
                 // Set minimum date to today
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('event-date').min = today;
@@ -17678,6 +17890,10 @@ document.addEventListener('DOMContentLoaded', async function() {
             function closeBookingModal() {
                 const bookingModal = document.getElementById('booking-modal');
                 bookingModal.style.display = 'none';
+                
+                // Restore body scroll when modal closes
+                document.body.style.overflow = 'auto';
+                
                 window.bookingState.reset();
                 
                 // Clear any countdown timers
@@ -43315,5 +43531,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
         });
     </script>
+
+    <!-- Mobile Sticky Footer for Book Now Button -->
+    <div class="mobile-book-now-footer">
+        <button class="btn-book-now" onclick="openBookingModal()">
+            <i class="fas fa-calendar-check"></i>
+            <span>Book Now</span>
+        </button>
+    </div>
 
 </html>
