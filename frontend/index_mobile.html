@@ -5083,18 +5083,90 @@
             /* Booking Modal Step Buttons - Mobile */
             #booking-modal .booking-step > div:last-child {
                 flex-direction: column !important;
+                gap: 1rem !important;
+                justify-content: stretch !important;
+                align-items: stretch !important;
+            }
+            
+            #booking-step-4 > div:last-child > div {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
                 gap: 0.75rem !important;
             }
             
-            #booking-modal .btn {
+            #selected-vendor-count {
+                text-align: center !important;
+                font-size: 0.95rem !important;
+                padding: 0.5rem 1rem !important;
+                background: #f8faff !important;
+                border-radius: 8px !important;
+                border: 1px solid #e3f2fd !important;
+                color: var(--primary) !important;
+                font-weight: 500 !important;
+                width: 100% !important;
+            }
+            
+            /* Adjust Filters Button - Mobile */
+            #adjust-filters-btn {
+                padding: 0.2rem 0.4rem !important;
+                font-size: 0.65rem !important;
+                min-width: auto !important;
+                white-space: nowrap !important;
+            }
+            
+            #adjust-filters-btn i {
+                margin-right: 0.15rem !important;
+            }
+            
+            #booking-modal .booking-step > div:last-child .btn {
                 width: 100% !important;
                 padding: 0.875rem 1rem !important;
                 font-size: 0.95rem !important;
             }
             
-            /* Timeline in booking modal - Mobile */
+            #adjust-criteria-btn {
+                padding: 0.2rem 0.4rem !important;
+                font-size: 0.65rem !important;
+                min-width: auto !important;
+                white-space: nowrap !important;
+                background: transparent !important;
+                border: none !important;
+                color: var(--primary-color) !important;
+                box-shadow: none !important;
+            }
+
+            #adjust-filters-btn {
+                background: transparent !important;
+                border: none !important;
+                color: var(--primary-color) !important;
+                box-shadow: none !important;
+            }
+
+            
+
             #booking-modal #event-timeline-container {
                 padding: 0.75rem !important;
+            }
+
+            @media (max-width: 768px) {
+                .timeline-section {
+                    display: none !important;
+                }
+                #selected-services-items .selected-service-item {
+                    flex-direction: column !important;
+                    align-items: stretch !important;
+                    gap: 0.75rem !important;
+                }
+                #selected-services-items .selected-service-item > div:last-child {
+                    flex-wrap: wrap !important;
+                    gap: 0.5rem !important;
+                    justify-content: flex-start !important;
+                }
+                #selected-services-items .service-budget-input,
+                #selected-services-items input[type="time"] {
+                    width: 110px !important;
+                }
             }
             
             /* Service selector - Mobile */
@@ -5144,6 +5216,21 @@
             .view-toggle-group {
                 width: 100%;
                 justify-content: space-between;
+            }
+            
+            /* Mobile View Toggle - Show only on mobile */
+            #mobile-view-toggle {
+                display: flex !important;
+            }
+            
+            .view-toggle-btn:hover {
+                background: #5a67d8 !important;
+                color: white !important;
+            }
+            
+            .view-toggle-btn:not(.active):hover {
+                background: #e2e8f0 !important;
+                color: #667eea !important;
             }
             
             /* Categories Navigation - Mobile */
@@ -5732,12 +5819,32 @@
             }
             
             /* Service cards - Mobile */
-            .service-card {
+            .service-card,
+            .predefined-service-card {
                 padding: 1rem !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
             }
             
             .service-card h4 {
                 font-size: 1rem !important;
+            }
+            
+            .service-card-title,
+            .predefined-service-card .service-card-title {
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                max-width: 100% !important;
+            }
+            
+            .service-card-description,
+            .predefined-service-card .service-card-description {
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                max-width: 100% !important;
             }
             
             /* FAQ items - Mobile */
@@ -8301,6 +8408,13 @@
                 display: none !important;
             }
         }
+
+        /* Hide mobile view toggle on desktop */
+        @media (min-width: 769px) {
+            #mobile-view-toggle {
+                display: none !important;
+            }
+        }
     </style>
 <style id="googleidentityservice_button_styles">.qJTHM{-moz-user-select:none;color:#202124;direction:ltr;font-family:"Roboto-Regular",arial,sans-serif;font-weight:400;margin:0;overflow:hidden}.ynRLnc{left:-9999px;position:absolute;top:-9999px}.L6cTce{display:none}.bltWBb{word-break:break-all}.hSRGPd{color:#1a73e8;cursor:pointer;font-weight:500;text-decoration:none}.Bz112c-W3lGp{height:16px;width:16px}.Bz112c-E3DyYd{height:20px;width:20px}.Bz112c-r9oPif{height:24px;width:24px}.Bz112c-u2z5K{height:36px;width:36px}.Bz112c-uaxL4e{-moz-border-radius:10px;border-radius:10px}.LgbsSe-Bz112c{display:block}.S9gUrf-YoZ4jf,.S9gUrf-YoZ4jf *{border:none;margin:0;padding:0}.fFW7wc-ibnC6b>.aZ2wEe>div{border-color:#4285f4}.P1ekSe-ZMv3u>div:nth-child(1){background-color:#1a73e8!important}.P1ekSe-ZMv3u>div:nth-child(2),.P1ekSe-ZMv3u>div:nth-child(3){background-image:linear-gradient(to right,rgba(255,255,255,.7),rgba(255,255,255,.7)),linear-gradient(to right,#1a73e8,#1a73e8)!important}.haAclf{display:inline-block}.nsm7Bb-HzV7m-LgbsSe{border-radius:4px;box-sizing:border-box;transition:background-color .218s,border-color .218s;-moz-user-select:none;background-color:#fff;background-image:none;border:1px solid #dadce0;color:#3c4043;cursor:pointer;font-family:"Google Sans",arial,sans-serif;font-size:14px;height:40px;letter-spacing:0.25px;outline:none;overflow:hidden;padding:0 12px;position:relative;text-align:center;vertical-align:middle;white-space:nowrap;width:auto}@media screen and (-ms-high-contrast:active){.nsm7Bb-HzV7m-LgbsSe{border:2px solid windowText;color:windowText}}@media screen and (preferes-contrast:more){.nsm7Bb-HzV7m-LgbsSe{color:#000}}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe{font-size:14px;height:32px;letter-spacing:0.25px;padding:0 10px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe{font-size:11px;height:20px;letter-spacing:0.3px;padding:0 8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe{padding:0;width:40px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe{width:32px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe{width:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK{border-radius:20px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.pSzOP-SxQuSe{border-radius:16px}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK.purZT-SxQuSe{border-radius:10px}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc{border:none;color:#fff}.nsm7Bb-HzV7m-LgbsSe.MFS4be-v3pZbf-Ia7Qfc{background-color:#1a73e8}.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{background-color:#202124;color:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.MFS4be-JaPV2b-Ia7Qfc{color:#fff}}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:18px;margin-right:8px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:14px;min-width:14px;width:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{height:10px;min-width:10px;width:10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin-left:8px;margin-right:-4px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:10px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:8px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c{padding:4px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:3px;border-bottom-left-radius:3px;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;justify-content:center;align-items:center;background-color:#fff;height:36px;margin-left:-10px;margin-right:12px;min-width:36px;width:36px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c,.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf .nsm7Bb-HzV7m-LgbsSe-Bz112c{margin:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:28px;margin-left:-8px;margin-right:10px;min-width:28px;width:28px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{height:16px;margin-left:-6px;margin-right:8px;min-width:16px;width:16px}.nsm7Bb-HzV7m-LgbsSe.Bz112c-LgbsSe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:3px;margin-left:2px;margin-right:0;padding:0}.nsm7Bb-HzV7m-LgbsSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.nsm7Bb-HzV7m-LgbsSe.pSzOP-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:14px}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:8px}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-bN97Pc-sM5MNb{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;flex-direction:row;justify-content:space-between;flex-wrap:nowrap;height:100%;position:relative;width:100%}.nsm7Bb-HzV7m-LgbsSe .oXtfBe-l4eHX{justify-content:center}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{flex-grow:1;font-family:"Google Sans",arial,sans-serif;font-weight:500;overflow:hidden;text-overflow:ellipsis;vertical-align:top}.nsm7Bb-HzV7m-LgbsSe.purZT-SxQuSe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-weight:300}.nsm7Bb-HzV7m-LgbsSe .oXtfBe-l4eHX .nsm7Bb-HzV7m-LgbsSe-BPrWId{flex-grow:0}.nsm7Bb-HzV7m-LgbsSe .nsm7Bb-HzV7m-LgbsSe-MJoBVe{transition:background-color .218s;bottom:0;left:0;position:absolute;right:0;top:0}.nsm7Bb-HzV7m-LgbsSe:hover,.nsm7Bb-HzV7m-LgbsSe:focus{box-shadow:none;border-color:rgb(210,227,252);outline:none}.nsm7Bb-HzV7m-LgbsSe:focus-within{outline:2px solid #00639b;border-color:transparent}.nsm7Bb-HzV7m-LgbsSe:hover .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(66,133,244,.08)}.nsm7Bb-HzV7m-LgbsSe:active .nsm7Bb-HzV7m-LgbsSe-MJoBVe,.nsm7Bb-HzV7m-LgbsSe:focus .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(66,133,244,.1)}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:hover .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(255,255,255,.24)}.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:active .nsm7Bb-HzV7m-LgbsSe-MJoBVe,.nsm7Bb-HzV7m-LgbsSe.MFS4be-Ia7Qfc:focus .nsm7Bb-HzV7m-LgbsSe-MJoBVe{background:rgba(255,255,255,.32)}.nsm7Bb-HzV7m-LgbsSe .n1UuX-DkfjY{border-radius:50%;display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;height:20px;margin-left:-4px;margin-right:8px;min-width:20px;width:20px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId{font-family:"Roboto";font-size:12px;text-align:left}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .ssJRIf,.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .fmcmS{overflow:hidden;text-overflow:ellipsis}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{display:-webkit-box;display:-moz-box;display:-ms-flexbox;display:-webkit-flex;display:flex;align-items:center;color:#5f6368;fill:#5f6368;font-size:11px;font-weight:400}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#e8eaed;fill:#e8eaed}@media screen and (prefers-contrast:more){.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff,.nsm7Bb-HzV7m-LgbsSe.jVeSEe.MFS4be-Ia7Qfc .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff{color:#000;fill:#000}}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-BPrWId .K4efff .Bz112c{height:18px;margin:-3px -3px -3px 2px;min-width:18px;width:18px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-top-left-radius:0;border-bottom-left-radius:0;border-top-right-radius:3px;border-bottom-right-radius:3px;margin-left:12px;margin-right:-10px}.nsm7Bb-HzV7m-LgbsSe.jVeSEe.JGcpL-RbRzK .nsm7Bb-HzV7m-LgbsSe-Bz112c-haAclf{border-radius:18px}.L5Fo6c-sM5MNb{border:0;display:block;left:0;position:relative;top:0}.L5Fo6c-bF1uUb{-moz-border-radius:4px;border-radius:4px;bottom:0;cursor:pointer;left:0;position:absolute;right:0;top:0}.L5Fo6c-bF1uUb:focus{border:none;outline:none}sentinel{}</style><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/common.js"></script><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/61/14/util.js"></script></head>
 <body data-new-gr-c-s-check-loaded="8.932.0" data-gr-ext-installed="" style="overflow: auto;">
@@ -8384,7 +8498,6 @@
                     <span class="filter-reset" id="price-reset">Reset</span>
                 </h3>
                 <select class="form-control" id="price-level-filter" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
-                    <option value="">All Price Ranges</option>
                     <option value="$">$ - Inexpensive</option>
                     <option value="$$">$$ - Moderate</option>
                     <option value="$$$">$$$ - Expensive</option>
@@ -10648,27 +10761,14 @@
     <div id="booking-modal" class="modal" style="display: none;">
         <div class="modal-content" style="max-width: 1400px; width: 95%; height: 95vh; display: flex; flex-direction: column; overflow: hidden;">
             <div class="modal-header">
-                <h3 id="booking-modal-title"><span class="step-number-badge">1</span>Step 1 of 5: Select Categories</h3>
+                <h3 id="booking-modal-title">Select Categories</h3>
                 <span class="close-modal">×</span>
             </div>
             <div class="modal-body">
-                <!-- Progress Bar -->
-                <div class="booking-progress" style="margin-bottom: 2rem;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
-                        <span class="step-indicator active" id="booking-step-indicator-1"><span class="step-number">1</span><span class="step-label">Categories</span></span>
-                        <span class="step-indicator" id="booking-step-indicator-2"><span class="step-number">2</span><span class="step-label">Details</span></span>
-                        <span class="step-indicator" id="booking-step-indicator-3"><span class="step-number">3</span><span class="step-label">Services</span></span>
-                        <span class="step-indicator" id="booking-step-indicator-4"><span class="step-number">4</span><span class="step-label">Vendors</span></span>
-                        <span class="step-indicator" id="booking-step-indicator-5"><span class="step-number">5</span><span class="step-label">Requests</span></span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="booking-progress-fill" style="width: 20%;"></div>
-                    </div>
-                </div>
 
                 <!-- Step 1: Service Selection -->
                 <div class="booking-step" id="booking-step-1" style="display: block;">
-                    <h4 class="form-section-title"><span class="step-number-badge">1</span>Select Categories</h4>
+                    <h4 class="form-section-title">Select Categories</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Choose the service categories you need for your event.</p>
                     
                     <div class="service-categories" id="service-categories">
@@ -10682,7 +10782,7 @@
 
                 <!-- Step 2: Event Details -->
                 <div class="booking-step" id="booking-step-2" style="display: none;">
-                    <h4 class="form-section-title"><span class="step-number-badge">2</span>Event Details</h4>
+                    <h4 class="form-section-title">Event Details</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Enter your event information. You will select services in the next step.</p>
 
                     <div class="form-group" style="margin-bottom: 2rem;">
@@ -10802,7 +10902,7 @@
 
                 <!-- Step 3: Selecting Service -->
                 <div class="booking-step" id="booking-step-3" style="display: none;">
-                    <h4 class="form-section-title"><span class="step-number-badge">3</span>Select Services</h4>
+                    <h4 class="form-section-title">Select Services</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Choose from available services and set individual budgets.</p>
 
                     <div class="form-group" style="margin-bottom: 2rem;">
@@ -10851,15 +10951,15 @@
 
                 <!-- Step 4: Vendor Matching -->
                 <div class="booking-step" id="booking-step-4" style="display: none;">
-                    <h4 class="form-section-title"><span class="step-number-badge">4</span>Available Vendors</h4>
+                    <h4 class="form-section-title">Available Vendors</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Select vendors that match your requirements. View nearby vendors on the map and browse detailed options below.</p>
                     
                     <!-- Search Criteria Summary -->
                     <div id="search-criteria-summary" class="search-criteria-summary" style="background: #f8faff; border: 1px solid #e3f2fd; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; display: none;">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
                             <h6 style="margin: 0; color: var(--text); font-weight: 600;">Search Criteria</h6>
-                            <button type="button" class="btn btn-sm btn-outline" id="adjust-filters-btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px;">
-                                <i class="fas fa-edit" style="margin-right: 0.3rem;"></i>Adjust Filters
+                            <button type="button" class="btn btn-sm btn-outline" id="adjust-filters-btn" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; border-radius: 4px; min-width: auto; white-space: nowrap;">
+                                <i class="fas fa-edit" style="margin-right: 0.2rem; font-size: 0.65rem;"></i>Adjust Filters
                             </button>
                         </div>
                         <div id="criteria-details" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.9rem;">
@@ -10872,23 +10972,26 @@
                         <p>Finding matching vendors for each service...</p>
                     </div>
                     
-                    <!-- Main Layout: Vendor Cards LEFT, Map RIGHT -->
-                    <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
-                        <!-- LEFT: Vendor Cards -->
-                        <div style="flex: 1; min-width: 0;">
-                            <div id="vendor-cards-container" style="display: flex; flex-direction: column; height: 720px;">
-                                <div class="vendor-filters" style="flex-shrink: 0; margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
-                                    <select id="vendor-sort" class="form-control" style="width: auto; display: inline-block;">
+                    <!-- Mobile View Toggle -->
+                    <div id="mobile-view-toggle" style="display: flex; background: #f8faff; border-radius: 8px; padding: 4px; margin-bottom: 1rem; gap: 4px;">
+                        <button id="list-view-btn" class="view-toggle-btn active" style="flex: 1; padding: 8px 16px; border: none; border-radius: 6px; background: #667eea; color: white; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                            <i class="fas fa-list" style="margin-right: 6px;"></i>List View
+                        </button>
+                        <button id="map-view-btn" class="view-toggle-btn" style="flex: 1; padding: 8px 16px; border: none; border-radius: 6px; background: transparent; color: #667eea; font-weight: 500; cursor: pointer; transition: all 0.2s;">
+                            <i class="fas fa-map" style="margin-right: 6px;"></i>Map View
+                        </button>
+                    </div>
+
+                    <!-- Main Layout: Single container that switches between List and Map -->
+                    <div id="vendor-content-container" style="margin-bottom: 2rem;">
+                        <!-- LIST VIEW: Vendor Cards -->
+                        <div id="list-view-container" style="display: block;">
+                            <div id="vendor-cards-container" style="display: flex; flex-direction: column; min-height: 600px;">
+                                <div class="vendor-filters" style="flex-shrink: 0; margin-bottom: 1rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                                    <select id="vendor-sort" class="sort-select" style="padding: 0.5rem 1rem; border-radius: var(--radius); border: 1px solid var(--border); background: white; color: var(--text); font-size: 0.9rem; min-width: 150px;">
                                         <option value="distance">Sort by Distance</option>
                                         <option value="price">Sort by Price</option>
                                         <option value="rating">Sort by Rating</option>
-                                    </select>
-                                    <select id="vendor-price-filter" class="form-control" style="width: auto; display: inline-block;">
-                                        <option value="">All Price Ranges</option>
-                                        <option value="$">$ - Inexpensive</option>
-                                        <option value="$$">$$ - Moderate</option>
-                                        <option value="$$$">$$$ - Expensive</option>
-                                        <option value="$$$$">$$$$ - Luxury</option>
                                     </select>
                                 </div>
                                 
@@ -10905,30 +11008,6 @@
                                     </button>
                                 </div>
                                 
-                                <!-- Trending Vendors Section -->
-                                <div id="trending-vendors-section" style="display: block; flex-shrink: 0; margin-bottom: 1.5rem;">
-                                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 1.25rem;">
-                                        <h3 style="color: white; display: flex; align-items: center; gap: 0.5rem; margin: 0 0 1rem 0; font-size: 1.25rem;">
-                                            <i class="fas fa-fire" style="color: #ff6b6b;"></i>
-                                            Trending Right Now
-                                            <span style="font-size: 0.875rem; opacity: 0.9; margin-left: auto;">Most Viewed This Week</span>
-                                        </h3>
-                                        <div id="trending-vendors-carousel-wrapper" style="position: relative;">
-                                            <button class="trending-carousel-nav trending-carousel-prev" id="trending-prev" aria-label="Previous vendor">
-                                                <i class="fas fa-chevron-left"></i>
-                                            </button>
-                                            <button class="trending-carousel-nav trending-carousel-next" id="trending-next" aria-label="Next vendor">
-                                                <i class="fas fa-chevron-right"></i>
-                                            </button>
-                                            <div id="trending-vendors-carousel" style="display: flex; gap: 1rem; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; padding-bottom: 0.5rem;">
-                                                <!-- Trending vendor cards will be populated here -->
-                                                <div style="text-align: center; color: rgba(255,255,255,0.8); padding: 2rem; width: 100%; font-size: 0.9rem;">
-                                                    <i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Loading trending vendors...
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                                 
                                 <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box; flex: 1; min-height: 0;">
                                     <!-- Horizontal vendor cards will be populated here -->
@@ -10940,8 +11019,8 @@
                             </div>
                         </div>
                         
-                        <!-- RIGHT: Google Maps Container -->
-                        <div style="flex: 1; min-width: 0;">
+                        <!-- MAP VIEW: Google Maps Container -->
+                        <div id="map-view-container" style="display: none;">
                             <div id="vendor-map-container" style="display: block;">
                                 <div class="map-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                     <h5 style="margin: 0; color: var(--text);">Vendors Near Your Event Location</h5>
@@ -10991,7 +11070,7 @@
 
                 <!-- Step 5: Request Submission -->
                 <div class="booking-step" id="booking-step-5" style="display: none;">
-                    <h4 class="form-section-title"><span class="step-number-badge">5</span>Booking Requests</h4>
+                    <h4 class="form-section-title">Send Requests</h4>
                     <p style="color: var(--text-light); margin-bottom: 1.5rem;">Review your selected vendors and their services before sending requests.</p>
                     
                     <div class="selected-vendors-summary" id="selected-vendors-summary">
@@ -18909,6 +18988,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Draw timeline with axis and bars in all visible sections
             function drawTimeline() {
+                const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+                if (isMobile) return; // disable on mobile
                 const sections = document.querySelectorAll('[data-timeline="section"]');
                 if (!sections || sections.length === 0) return;
                 const { minT, maxT } = getTimelineRange();
@@ -40799,28 +40880,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             `;
         }
 
-        // Setup vendor sorting and filtering functionality
+        // Setup vendor sorting functionality
         function setupVendorSorting(vendors) {
             const sortSelect = document.getElementById('vendor-sort');
-            const priceFilterSelect = document.getElementById('vendor-price-filter');
             if (!sortSelect) return;
 
             let currentVendors = vendors;
 
-            // Function to apply both filter and sort
-            function applyFilterAndSort() {
-                let filteredVendors = [...vendors];
-                
-                // Apply price filter
-                if (priceFilterSelect) {
-                    const priceFilter = priceFilterSelect.value;
-                    if (priceFilter) {
-                        filteredVendors = filteredVendors.filter(vendor => {
-                            const vendorPriceLevel = vendor.priceLevel || vendor.PriceLevel || '$$';
-                            return vendorPriceLevel === priceFilter;
-                        });
-                    }
-                }
+            // Function to apply sorting
+            function applySort() {
+                let sortedVendors = [...vendors];
 
                 // Apply sorting
                 const sortBy = sortSelect.value;
@@ -40832,17 +40901,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             const dfe = parseFloat(v.distanceFromEvent);
                             return isNaN(dfe) ? 999 : dfe;
                         };
-                        filteredVendors.sort((a, b) => (aDist(a) - aDist(b)));
+                        sortedVendors.sort((a, b) => (aDist(a) - aDist(b)));
                         break;
                     case 'price':
-                        filteredVendors.sort((a, b) => {
+                        sortedVendors.sort((a, b) => {
                             const priceA = getPriceValue(a.priceLevel || a.PriceLevel || '$$');
                             const priceB = getPriceValue(b.priceLevel || b.PriceLevel || '$$');
                             return priceA - priceB;
                         });
                         break;
                     case 'rating':
-                        filteredVendors.sort((a, b) => {
+                        sortedVendors.sort((a, b) => {
                             const ratingA = parseFloat(a.averageRating ?? a.rating ?? 0) || 0;
                             const ratingB = parseFloat(b.averageRating ?? b.rating ?? 0) || 0;
                             return ratingB - ratingA;
@@ -40850,38 +40919,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         break;
                 }
 
-                currentVendors = filteredVendors;
+                currentVendors = sortedVendors;
 
                 // Re-render cards
                 const cardsContainer = document.getElementById('vendor-horizontal-cards');
-                if (filteredVendors.length === 0) {
-                    cardsContainer.innerHTML = `
-                        <div style="padding: 2rem; background: #f8faff; border-radius: 12px; text-align: center;">
-                            <i class="fas fa-filter" style="font-size: 2rem; color: #ccc; margin-bottom: 0.5rem;"></i>
-                            <p style="color: #666; margin: 0;">No vendors match the selected filters</p>
-                            <p style="color: #999; font-size: 0.9rem; margin-top: 0.5rem;">Try adjusting your filters</p>
-                        </div>
-                    `;
-                } else {
-                    cardsContainer.innerHTML = filteredVendors.map(vendor => createHorizontalVendorCard(vendor)).join('');
-                    
-                    // Reinitialize carousel functionality for new cards
-                    setTimeout(() => {
-                        filteredVendors.forEach(vendor => {
-                            const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
-                            if (vendorId) initializeVendorCarousel(vendorId);
-                        });
-                    }, 100);
-                }
+                cardsContainer.innerHTML = sortedVendors.map(vendor => createHorizontalVendorCard(vendor)).join('');
+                
+                // Reinitialize carousel functionality for new cards
+                setTimeout(() => {
+                    sortedVendors.forEach(vendor => {
+                        const vendorId = vendor.VendorProfileID || vendor.vendorProfileId || vendor.id;
+                        if (vendorId) initializeVendorCarousel(vendorId);
+                    });
+                }, 100);
             }
 
             // Listen to sort changes
-            sortSelect.addEventListener('change', applyFilterAndSort);
-            
-            // Listen to price filter changes
-            if (priceFilterSelect) {
-                priceFilterSelect.addEventListener('change', applyFilterAndSort);
-            }
+            sortSelect.addEventListener('change', applySort);
         }
 
         // Helper function to convert price level symbols to numeric value for sorting
@@ -41010,12 +41064,6 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 });
             }
         });
-
-        // Helper function to get numeric price value
-        function getPriceValue(priceRange) {
-            const priceMap = { '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
-            return priceMap[priceRange] || 3;
-        }
 
         // Toggle vendor selection for specific service
         function toggleVendorSelection(vendorProfileId, serviceId = null) {
@@ -43548,6 +43596,47 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     if (this.checked && window.state && window.state.userLocation) {
                         mobileLocationText.textContent = window.state.userLocation;
                     }
+                });
+            }
+
+            // List/Map Toggle functionality
+            const listViewBtn = document.getElementById('list-view-btn');
+            const mapViewBtn = document.getElementById('map-view-btn');
+            const listViewContainer = document.getElementById('list-view-container');
+            const mapViewContainer = document.getElementById('map-view-container');
+
+            if (listViewBtn && mapViewBtn && listViewContainer && mapViewContainer) {
+                // List view button click
+                listViewBtn.addEventListener('click', function() {
+                    // Update button styles
+                    listViewBtn.style.background = '#667eea';
+                    listViewBtn.style.color = 'white';
+                    mapViewBtn.style.background = 'transparent';
+                    mapViewBtn.style.color = '#667eea';
+                    
+                    // Show list view, hide map view
+                    listViewContainer.style.display = 'block';
+                    mapViewContainer.style.display = 'none';
+                });
+
+                // Map view button click
+                mapViewBtn.addEventListener('click', function() {
+                    // Update button styles
+                    mapViewBtn.style.background = '#667eea';
+                    mapViewBtn.style.color = 'white';
+                    listViewBtn.style.background = 'transparent';
+                    listViewBtn.style.color = '#667eea';
+                    
+                    // Show map view, hide list view
+                    listViewContainer.style.display = 'none';
+                    mapViewContainer.style.display = 'block';
+                    
+                    // Trigger map resize to ensure proper rendering
+                    setTimeout(() => {
+                        if (window.vendorMap) {
+                            google.maps.event.trigger(window.vendorMap, 'resize');
+                        }
+                    }, 100);
                 });
             }
         });
