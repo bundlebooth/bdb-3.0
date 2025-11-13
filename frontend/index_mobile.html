@@ -514,6 +514,91 @@
                 grid-template-columns: 1fr !important;
                 gap: 1rem;
             }
+            
+            /* Mobile-specific booking modal fixes */
+            .booking-modal {
+                margin: 0;
+                max-width: 100vw;
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            /* Mobile view toggle - show only on mobile */
+            #mobile-view-toggle {
+                display: block !important;
+            }
+            
+            /* Desktop layout - hide on mobile when using toggle */
+            #desktop-layout {
+                display: none;
+            }
+            
+            /* Mobile vendor list section */
+            #vendor-list-section.mobile-active {
+                display: block;
+                width: 100%;
+            }
+            
+            /* Mobile map section */
+            #vendor-map-section.mobile-active {
+                display: block;
+                width: 100%;
+                height: 60vh;
+            }
+            
+            /* Selected Services & Budgets - mobile responsive */
+            #selected-services-display {
+                margin: 0 -1rem;
+                padding: 1rem;
+                background: var(--card-bg);
+                border-radius: 12px;
+                border: 1px solid var(--border);
+            }
+            
+            .selected-service-item {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 1rem !important;
+            }
+            
+            .selected-service-item > div:last-child {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                align-items: center;
+                justify-content: space-between;
+            }
+            
+            /* Search Criteria - mobile responsive */
+            .search-criteria-summary {
+                margin: 0 -1rem 1.5rem -1rem;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+            
+            #adjust-filters-btn {
+                padding: 0.4rem 0.8rem !important;
+                font-size: 0.8rem !important;
+            }
+            
+            /* Fix font consistency */
+            h6, .form-section-title, .search-criteria-summary h6 {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+                font-size: 1rem !important;
+                font-weight: 600 !important;
+            }
+            
+            /* Service dropdown mobile styles */
+            .service-dropdown {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+                font-size: 0.9rem !important;
+            }
+            
+            /* Button consistency */
+            .btn {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+            }
         }
         
         /* Tablet: 2 columns from 769px to 1023px */
@@ -5092,10 +5177,6 @@
                 font-size: 0.95rem !important;
             }
             
-            /* Timeline in booking modal - Mobile */
-            #booking-modal #event-timeline-container {
-                padding: 0.75rem !important;
-            }
             
             /* Service selector - Mobile */
             #booking-modal .services-grid,
@@ -10773,26 +10854,6 @@
                         </div>
                     </div>
 
-                    <!-- Timeline (visible in Step 2) -->
-                    <div class="timeline-section" data-timeline="section" style="margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;">
-                        <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 0.75rem;">
-                            <h5 style="margin: 0; color: var(--primary-color);"><i class="fas fa-stream" style="margin-right:0.5rem;"></i>Timeline</h5>
-                        </div>
-                        <div style="font-size:0.85rem; color: var(--text-light); margin-bottom:0.5rem;">
-                            Set event start/end. Timeline auto-updates as you add services in the next step.
-                        </div>
-                        <div class="timeline-container" data-timeline="container" style="position: relative; height: 180px; background: #fafbff; border: 1px dashed #e2e8f0; border-radius: 8px; overflow: hidden;">
-                            <div class="timeline-axis" data-timeline="axis" style="position:absolute; left:0; right:0; top:8px; height:20px; font-size: 11px; color:#64748b;"></div>
-                            <div class="timeline-layers" data-timeline="layers" style="position:absolute; left:0; right:0; top:32px; bottom:8px;"></div>
-                        </div>
-                        <div class="timeline-warning" data-timeline="warning" style="display:none; margin-top:0.5rem; padding:0.5rem; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; border-radius:6px; font-size:0.85rem;"></div>
-                        <div style="display:flex; gap:1rem; margin-top:0.5rem; font-size:0.85rem; color:#64748b;">
-                            <span><span style="display:inline-block; width:10px; height:10px; background:#c7d2fe; border-radius:2px; margin-right:6px;"></span>Event Window</span>
-                            <span><span style="display:inline-block; width:10px; height:10px; background:#bbf7d0; border-radius:2px; margin-right:6px;"></span>Vendor Hours</span>
-                            <span><span style="display:inline-block; width:10px; height:10px; background:#fcd34d; border-radius:2px; margin-right:6px;"></span>Service</span>
-                            <span><span style="display:inline-block; width:10px; height:10px; background:#fecaca; border-radius:2px; margin-right:6px;"></span>Outside Event</span>
-                        </div>
-                    </div>
 
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
                         <button type="button" class="btn btn-outline" id="back-to-booking-step-1">Back: Categories</button>
@@ -10822,26 +10883,7 @@
                         </div>
                     </div>
 
-                    <!-- Timeline (visible in Step 3) -->
-                    <div class="timeline-section" data-timeline="section" style="margin-bottom: 2rem; padding: 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;">
-                        <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 0.75rem;">
-                            <h5 style="margin: 0; color: var(--primary-color);"><i class="fas fa-stream" style="margin-right:0.5rem;"></i>Timeline</h5>
-                        </div>
-                        <div style="font-size:0.85rem; color: var(--text-light); margin-bottom:0.5rem;">
-                            Adjust service durations and times as needed. Conflicts will be highlighted.
-                        </div>
-                        <div class="timeline-container" data-timeline="container" style="position: relative; height: 180px; background: #fafbff; border: 1px dashed #e2e8f0; border-radius: 8px; overflow: hidden;">
-                            <div class="timeline-axis" data-timeline="axis" style="position:absolute; left:0; right:0; top:8px; height:20px; font-size: 11px; color:#64748b;"></div>
-                            <div class="timeline-layers" data-timeline="layers" style="position:absolute; left:0; right:0; top:32px; bottom:8px;"></div>
-                        </div>
-                        <div class="timeline-warning" data-timeline="warning" style="display:none; margin-top:0.5rem; padding:0.5rem; background:#fff7ed; border:1px solid #fdba74; color:#9a3412; border-radius:6px; font-size:0.85rem;"></div>
-                        <div style="display:flex; gap:1rem; margin-top:0.5rem; font-size:0.85rem; color:#64748b;">
-                            <span><span style="display:inline-block; width:10px; height:10px; background:#c7d2fe; border-radius:2px; margin-right:6px;"></span>Event Window</span>
-                            <span><span style="display:inline-block; width:10px; height:10px; background:#bbf7d0; border-radius:2px; margin-right:6px;"></span>Vendor Hours</span>
-                            <span><span style="display:inline-block; width:10px; height:10px; background:#fcd34d; border-radius:2px; margin-right:6px;"></span>Service</span>
-                            <span><span style="display:inline-block; width:10px; height:10px; background:#fecaca; border-radius:2px; margin-right:6px;"></span>Outside Event</span>
-                        </div>
-                    </div>
+                    <!-- Timeline section removed as requested -->
 
                     <div style="display: flex; justify-content: space-between; gap: 1rem; margin-top: 2rem;">
                         <button type="button" class="btn btn-outline" id="back-to-booking-step-2">Back: Event Details</button>
@@ -10857,12 +10899,12 @@
                     <!-- Search Criteria Summary -->
                     <div id="search-criteria-summary" class="search-criteria-summary" style="background: #f8faff; border: 1px solid #e3f2fd; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem; display: none;">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
-                            <h6 style="margin: 0; color: var(--text); font-weight: 600;">Search Criteria</h6>
-                            <button type="button" class="btn btn-sm btn-outline" id="adjust-filters-btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 6px;">
-                                <i class="fas fa-edit" style="margin-right: 0.3rem;"></i>Adjust Filters
+                            <h6 style="margin: 0; color: var(--text); font-weight: 600; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 1rem;">Search Criteria</h6>
+                            <button type="button" class="btn btn-sm btn-outline" id="adjust-filters-btn" style="padding: 0.5rem 1rem; font-size: 0.875rem; border-radius: 8px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 500;">
+                                <i class="fas fa-edit" style="margin-right: 0.5rem;"></i>Adjust Filters
                             </button>
                         </div>
-                        <div id="criteria-details" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.9rem;">
+                        <div id="criteria-details" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.875rem; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;">
                             <!-- Criteria details will be populated here -->
                         </div>
                     </div>
@@ -10872,10 +10914,22 @@
                         <p>Finding matching vendors for each service...</p>
                     </div>
                     
+                    <!-- Mobile View Toggle -->
+                    <div id="mobile-view-toggle" class="mobile-view-toggle" style="display: none; margin-bottom: 1rem; background: white; border-radius: 12px; padding: 0.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="display: flex; background: #f1f5f9; border-radius: 8px; padding: 2px;">
+                            <button id="list-view-btn" class="view-toggle-btn active" style="flex: 1; padding: 0.75rem; border: none; background: white; border-radius: 6px; font-weight: 600; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-family: 'Inter', sans-serif; font-size: 0.875rem;">
+                                <i class="fas fa-list" style="margin-right: 0.5rem;"></i>List View
+                            </button>
+                            <button id="map-view-btn" class="view-toggle-btn" style="flex: 1; padding: 0.75rem; border: none; background: transparent; border-radius: 6px; font-weight: 500; color: var(--text-light); font-family: 'Inter', sans-serif; font-size: 0.875rem;">
+                                <i class="fas fa-map" style="margin-right: 0.5rem;"></i>Map View
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Main Layout: Vendor Cards LEFT, Map RIGHT -->
-                    <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
+                    <div id="desktop-layout" style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                         <!-- LEFT: Vendor Cards -->
-                        <div style="flex: 1; min-width: 0;">
+                        <div id="vendor-list-section" style="flex: 1; min-width: 0;">
                             <div id="vendor-cards-container" style="display: flex; flex-direction: column; height: 720px;">
                                 <div class="vendor-filters" style="flex-shrink: 0; margin-bottom: 1rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
                                     <select id="vendor-sort" class="form-control" style="width: auto; display: inline-block;">
@@ -10905,30 +10959,7 @@
                                     </button>
                                 </div>
                                 
-                                <!-- Trending Vendors Section -->
-                                <div id="trending-vendors-section" style="display: block; flex-shrink: 0; margin-bottom: 1.5rem;">
-                                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 1.25rem;">
-                                        <h3 style="color: white; display: flex; align-items: center; gap: 0.5rem; margin: 0 0 1rem 0; font-size: 1.25rem;">
-                                            <i class="fas fa-fire" style="color: #ff6b6b;"></i>
-                                            Trending Right Now
-                                            <span style="font-size: 0.875rem; opacity: 0.9; margin-left: auto;">Most Viewed This Week</span>
-                                        </h3>
-                                        <div id="trending-vendors-carousel-wrapper" style="position: relative;">
-                                            <button class="trending-carousel-nav trending-carousel-prev" id="trending-prev" aria-label="Previous vendor">
-                                                <i class="fas fa-chevron-left"></i>
-                                            </button>
-                                            <button class="trending-carousel-nav trending-carousel-next" id="trending-next" aria-label="Next vendor">
-                                                <i class="fas fa-chevron-right"></i>
-                                            </button>
-                                            <div id="trending-vendors-carousel" style="display: flex; gap: 1rem; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.3) transparent; padding-bottom: 0.5rem;">
-                                                <!-- Trending vendor cards will be populated here -->
-                                                <div style="text-align: center; color: rgba(255,255,255,0.8); padding: 2rem; width: 100%; font-size: 0.9rem;">
-                                                    <i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Loading trending vendors...
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <!-- Trending Vendors Section removed as requested -->
                                 
                                 <div id="vendor-horizontal-cards" class="vendor-horizontal-container" style="overflow-y: auto; box-sizing: border-box; flex: 1; min-height: 0;">
                                     <!-- Horizontal vendor cards will be populated here -->
@@ -10941,7 +10972,7 @@
                         </div>
                         
                         <!-- RIGHT: Google Maps Container -->
-                        <div style="flex: 1; min-width: 0;">
+                        <div id="vendor-map-section" style="flex: 1; min-width: 0;">
                             <div id="vendor-map-container" style="display: block;">
                                 <div class="map-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                                     <h5 style="margin: 0; color: var(--text);">Vendors Near Your Event Location</h5>
@@ -18009,8 +18040,23 @@ document.addEventListener('DOMContentLoaded', async function() {
                 if (modalTitle) modalTitle.innerHTML = `<span class="step-number-badge">${step}</span>Step ${step} of 5: ${stepTitles[step] || 'Book Your Event'}`;
                 // State
                 window.bookingState.currentStep = step;
-                if (step === 4) updateSearchCriteriaSummary();
-                if (step === 2 || step === 3) setTimeout(drawTimeline, 0);
+                if (step === 4) {
+                    updateSearchCriteriaSummary();
+                    // Show mobile toggle on step 4 (vendor selection)
+                    const mobileToggle = document.getElementById('mobile-view-toggle');
+                    if (mobileToggle && window.innerWidth <= 768) {
+                        mobileToggle.style.display = 'block';
+                        // Default to list view on mobile
+                        switchMobileView('list');
+                    }
+                } else {
+                    // Hide mobile toggle on other steps
+                    const mobileToggle = document.getElementById('mobile-view-toggle');
+                    if (mobileToggle) {
+                        mobileToggle.style.display = 'none';
+                    }
+                }
+                // Remove timeline drawing as it's no longer needed
                 const mc = document.querySelector('#booking-modal .modal-content');
                 if (mc) { try { mc.scrollTo({ top: 0, behavior: 'smooth' }); } catch { mc.scrollTop = 0; } }
             }
@@ -18111,8 +18157,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 document.getElementById('next-to-booking-step-2')?.addEventListener('click', async () => {
                     if (validateStep1()) {
                         updateBookingStep(2);
-                        // initialize date picker and timeline if needed
-                        setTimeout(() => { initEventDatePicker(); drawTimeline(); }, 0);
+                        // initialize date picker
+                        setTimeout(() => { initEventDatePicker(); }, 0);
                     }
                 });
 
@@ -18124,7 +18170,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     }
                     updateBookingStep(3);
                     await loadPredefinedServicesForStep2();
-                    setTimeout(drawTimeline, 0);
                 });
 
                 document.getElementById('back-to-booking-step-1')?.addEventListener('click', () => updateBookingStep(1));
@@ -18179,6 +18224,62 @@ document.addEventListener('DOMContentLoaded', async function() {
                         hideNotificationsDropdown();
                     }
                 });
+
+                // Mobile view toggle functionality
+                document.getElementById('list-view-btn')?.addEventListener('click', () => {
+                    switchMobileView('list');
+                });
+                
+                document.getElementById('map-view-btn')?.addEventListener('click', () => {
+                    switchMobileView('map');
+                });
+            }
+
+            // Function to handle mobile view switching
+            function switchMobileView(view) {
+                const listBtn = document.getElementById('list-view-btn');
+                const mapBtn = document.getElementById('map-view-btn');
+                const vendorListSection = document.getElementById('vendor-list-section');
+                const vendorMapSection = document.getElementById('vendor-map-section');
+                
+                if (view === 'list') {
+                    // Show list view
+                    listBtn.classList.add('active');
+                    mapBtn.classList.remove('active');
+                    listBtn.style.background = 'white';
+                    listBtn.style.color = 'var(--primary)';
+                    listBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                    mapBtn.style.background = 'transparent';
+                    mapBtn.style.color = 'var(--text-light)';
+                    mapBtn.style.boxShadow = 'none';
+                    
+                    vendorListSection.classList.add('mobile-active');
+                    vendorMapSection.classList.remove('mobile-active');
+                    vendorListSection.style.display = 'block';
+                    vendorMapSection.style.display = 'none';
+                } else if (view === 'map') {
+                    // Show map view
+                    mapBtn.classList.add('active');
+                    listBtn.classList.remove('active');
+                    mapBtn.style.background = 'white';
+                    mapBtn.style.color = 'var(--primary)';
+                    mapBtn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                    listBtn.style.background = 'transparent';
+                    listBtn.style.color = 'var(--text-light)';
+                    listBtn.style.boxShadow = 'none';
+                    
+                    vendorMapSection.classList.add('mobile-active');
+                    vendorListSection.classList.remove('mobile-active');
+                    vendorMapSection.style.display = 'block';
+                    vendorListSection.style.display = 'none';
+                    
+                    // Trigger map resize if needed
+                    setTimeout(() => {
+                        if (window.google && window.google.maps && window.vendorMap) {
+                            window.google.maps.event.trigger(window.vendorMap, 'resize');
+                        }
+                    }, 100);
+                }
             }
 
             function handleServiceSelection() {
@@ -18407,8 +18508,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 selectedServicesContainer.innerHTML = `
                     <div id="selected-services-display" style="display: none;">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                            <h6 style="color: var(--primary-color); margin: 0;">Selected Services & Budgets</h6>
-                            <span id="booking-selected-services-count" style="font-size: 0.85rem; color: var(--text-light); background: #eef2ff; padding: 0.25rem 0.5rem; border-radius: 999px;">
+                            <h6 style="color: var(--primary-color); margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 1rem; font-weight: 600;">Selected Services & Budgets</h6>
+                            <span id="booking-selected-services-count" style="font-size: 0.85rem; color: var(--text-light); background: #eef2ff; padding: 0.25rem 0.5rem; border-radius: 999px; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;">
                                 0 selected
                             </span>
                         </div>
@@ -18566,7 +18667,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 renderSelectedServices();
                 updateFindVendorsButton();
                 updateDropdownCounts();
-                drawTimeline();
             }
 
             // Render selected services with budget inputs
@@ -18642,8 +18742,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 addSelectedServiceEventListeners();
                 // Keep dropdown counts in sync on re-render
                 updateDropdownCounts();
-                // Keep timeline in sync after re-render
-                drawTimeline();
             }
 
             // Global variable to store Google Maps initialization status
@@ -18744,7 +18842,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 renderSelectedServices();
                 updateFindVendorsButton();
                 updateDropdownCounts();
-                drawTimeline();
             }
 
             // Legacy function - keep for compatibility
@@ -18844,7 +18941,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     const disp = document.getElementById(`service-duration-display-${service.id}`);
                     if (disp) disp.textContent = `${service.duration} min`;
                 }
-                drawTimeline();
             }
 
             // Parse HH:MM to minutes from midnight
