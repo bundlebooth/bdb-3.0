@@ -1182,8 +1182,7 @@
             grid-template-rows: repeat(2, 1fr);
             gap: 8px;
             width: 100%;
-            max-width: 900px;
-            height: 400px;
+            height: 500px;
             border-radius: var(--radius);
             overflow: hidden;
             margin-bottom: 2rem;
@@ -1278,16 +1277,17 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.85);
+            background-color: rgba(0, 0, 0, 0.95);
             display: none; /* Hidden by default */
             align-items: center;
             justify-content: center;
+            padding: 2rem;
         }
 
         .lightbox-content {
             position: relative;
-            max-width: 90vw;
-            max-height: 90vh;
+            max-width: 85vw;
+            max-height: 85vh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1295,44 +1295,447 @@
 
         .lightbox-content img {
             max-width: 100%;
-            max-height: 100%;
-            border-radius: var(--radius);
+            max-height: 85vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .lightbox-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            z-index: 2001;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
+        }
+
+        .lightbox-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .lightbox-action-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+        }
+
+        .lightbox-action-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+
+        .lightbox-action-btn svg {
+            width: 20px;
+            height: 20px;
         }
 
         .lightbox-close {
-            position: absolute;
-            top: -40px;
-            right: 0;
             color: white;
-            font-size: 3rem;
-            font-weight: bold;
+            font-size: 2.5rem;
+            font-weight: 300;
             cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+        }
+
+        .lightbox-close:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.1);
+        }
+
+        .lightbox-counter {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            z-index: 2002;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .lightbox-nav {
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            background-color: rgba(0, 0, 0, 0.5);
-            color: white;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #333;
             border: none;
-            font-size: 2rem;
-            padding: 0.5rem 1rem;
+            font-size: 1.5rem;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            border-radius: var(--radius);
-            transition: background-color 0.2s;
+            border-radius: 50%;
+            transition: all 0.2s;
+            z-index: 2001;
         }
 
         .lightbox-nav:hover {
-            background-color: rgba(0, 0, 0, 0.8);
+            background-color: white;
+            transform: translateY(-50%) scale(1.1);
         }
 
         .lightbox-prev {
-            left: -60px;
+            left: 2rem;
         }
 
         .lightbox-next {
-            right: -60px;
+            right: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .lightbox-prev {
+                left: 1rem;
+            }
+            .lightbox-next {
+                right: 1rem;
+            }
+            .lightbox-nav {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+            .lightbox-header {
+                padding: 0.75rem 1rem;
+            }
+            .lightbox-action-btn {
+                width: 36px;
+                height: 36px;
+            }
+            .lightbox-action-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+            .lightbox-close {
+                width: 36px;
+                height: 36px;
+                font-size: 2rem;
+            }
+            .lightbox-counter {
+                bottom: 1.5rem;
+                font-size: 0.85rem;
+                padding: 0.4rem 0.85rem;
+            }
+        }
+
+        /* Show All Photos Button */
+        .show-all-photos-btn {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            background: white;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .show-all-photos-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .show-all-photos-btn i {
+            font-size: 1rem;
+        }
+
+        /* Photo Gallery Modal */
+        .photo-gallery-modal {
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            display: none;
+            flex-direction: column;
+        }
+
+        .photo-gallery-modal.active {
+            display: flex;
+        }
+
+        .photo-gallery-header {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .photo-gallery-header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .photo-gallery-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0;
+        }
+
+        .photo-gallery-header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .photo-gallery-action-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border);
+            background: white;
+        }
+
+        .photo-gallery-action-btn:hover {
+            background: var(--secondary);
+        }
+
+        .photo-gallery-action-btn.primary {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .photo-gallery-action-btn.primary:hover {
+            background: #0056b3;
+        }
+
+        .photo-gallery-close-btn {
+            background: none;
+            border: none;
+            font-size: 2rem;
+            color: var(--text-light);
+            cursor: pointer;
+            padding: 0;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+            z-index: 100;
+        }
+
+        .photo-gallery-close-btn:hover {
+            background: var(--secondary);
+            color: var(--text);
+        }
+
+        .photo-gallery-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .photo-gallery-thumbnails {
+            width: 250px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .photo-gallery-thumbnail {
+            position: relative;
+            aspect-ratio: 4 / 3;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .photo-gallery-thumbnail:hover {
+            border-color: var(--primary);
+        }
+
+        .photo-gallery-thumbnail.active {
+            border-color: var(--primary);
+            box-shadow: none;
+        }
+
+        .photo-gallery-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-gallery-main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .photo-gallery-main-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .photo-gallery-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+
+        .photo-gallery-nav-btn:hover {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        .photo-gallery-nav-btn.prev {
+            left: 2rem;
+        }
+
+        .photo-gallery-nav-btn.next {
+            right: 2rem;
+        }
+
+        .photo-gallery-nav-btn svg {
+            color: var(--text);
+        }
+
+        @media (max-width: 768px) {
+            .photo-gallery-content {
+                flex-direction: column;
+            }
+
+            .photo-gallery-thumbnails {
+                width: 100%;
+                height: 120px;
+                flex-direction: row;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                overflow-x: auto;
+                overflow-y: hidden;
+            }
+
+            .photo-gallery-thumbnail {
+                min-width: 100px;
+                height: 80px;
+            }
+
+            .photo-gallery-header-right {
+                gap: 0.5rem;
+            }
+
+            .photo-gallery-action-btn {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.75rem;
+            }
+        }
+
+        .photo-gallery-item:hover img {
+            transform: scale(1.05);
+        }
+
+        /* Mobile responsive for photo gallery */
+        @media (max-width: 768px) {
+            .photo-gallery-header {
+                padding: 1rem;
+            }
+
+            .photo-gallery-header h2 {
+                font-size: 1.25rem;
+            }
+
+            .photo-gallery-content {
+                padding: 1rem;
+            }
+
+            .photo-gallery-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 0.75rem;
+            }
+
+            .show-all-photos-btn {
+                bottom: 0.5rem;
+                right: 0.5rem;
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+            }
         }
 
         /* Services Section */
@@ -10760,12 +11163,70 @@
 
     <!-- Lightbox Modal -->
     <div id="lightbox-modal" class="lightbox-modal">
-        <span class="lightbox-close">×</span>
+        <div class="lightbox-header">
+            <div class="lightbox-actions">
+                <button class="lightbox-action-btn" id="lightbox-save-btn" title="Save Vendor">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                </button>
+                <button class="lightbox-action-btn" id="lightbox-share-btn" title="Share">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="18" cy="5" r="3"></circle>
+                        <circle cx="6" cy="12" r="3"></circle>
+                        <circle cx="18" cy="19" r="3"></circle>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                </button>
+            </div>
+            <span class="lightbox-close">×</span>
+        </div>
         <button class="lightbox-nav lightbox-prev">❮</button>
         <div class="lightbox-content">
             <img src="" alt="Lightbox image" id="lightbox-image">
+            <div class="lightbox-counter" id="lightbox-counter">1 / 1</div>
         </div>
         <button class="lightbox-nav lightbox-next">❯</button>
+    </div>
+
+    <!-- Photo Gallery Modal -->
+    <div id="photo-gallery-modal" class="photo-gallery-modal">
+        <div class="photo-gallery-header">
+            <div class="photo-gallery-header-left">
+                <button class="photo-gallery-close-btn" id="photo-gallery-close-btn" onclick="closePhotoGallery()">×</button>
+                <h2 id="photo-gallery-vendor-name">Photo tour</h2>
+            </div>
+            <div class="photo-gallery-header-right">
+                <button class="photo-gallery-action-btn" id="photo-gallery-save-btn" onclick="if(currentVendor) toggleFavorite(currentVendor.id)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                    Save Vendor
+                </button>
+                <button class="photo-gallery-action-btn primary" id="photo-gallery-request-btn" onclick="if(currentVendor) shareVendor(currentVendor)">
+                    Share Vendor
+                </button>
+            </div>
+        </div>
+        <div class="photo-gallery-content">
+            <div class="photo-gallery-thumbnails" id="photo-gallery-thumbnails">
+                <!-- Thumbnails will be dynamically populated here -->
+            </div>
+            <div class="photo-gallery-main">
+                <button class="photo-gallery-nav-btn prev" id="photo-gallery-prev-btn" onclick="showPrevGalleryImage()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+                <img id="photo-gallery-main-image" class="photo-gallery-main-image" src="" alt="Gallery Image">
+                <button class="photo-gallery-nav-btn next" id="photo-gallery-next-btn" onclick="showNextGalleryImage()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Multi-Step Booking Modal -->
@@ -17825,6 +18286,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                     // Setup lightbox event listeners
                     setupLightboxEventListeners();
+
+                    // Setup photo gallery event listeners
+                    setupPhotoGalleryListeners();
 
                     // Setup booking modal event listeners
                     setupBookingModalEventListeners();
@@ -35530,6 +35994,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 }, 3000);
             }
 
+            // Wrapper function for sharing vendor from lightbox
+            function shareVendor(vendor) {
+                if (vendor && vendor.id && vendor.name) {
+                    shareVendorProfile(vendor.id, vendor.name);
+                } else {
+                    console.error('Invalid vendor data for sharing');
+                }
+            }
+
             // Center map on user location
             function centerMapOnUser() {
                 if (state.map && state.userLocation) {
@@ -35832,6 +36305,26 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
         galleryContainer.appendChild(thumbnailsContainer);
         
+        // Add "Show All Photos" button if there are images
+        if (imageUrls.length > 0) {
+            // Remove existing button if any
+            const existingBtn = document.getElementById('show-all-photos-btn');
+            if (existingBtn) {
+                existingBtn.remove();
+            }
+            
+            // Create and add the button
+            const showAllBtn = document.createElement('button');
+            showAllBtn.id = 'show-all-photos-btn';
+            showAllBtn.className = 'show-all-photos-btn';
+            showAllBtn.innerHTML = '<i class="fas fa-th"></i> Show all photos';
+            showAllBtn.addEventListener('click', () => openPhotoGallery());
+            
+            // Add button to the gallery container
+            galleryContainer.style.position = 'relative';
+            galleryContainer.appendChild(showAllBtn);
+        }
+        
         console.log(`✅ Gallery populated with ${imageUrls.length} images`);
     }
 
@@ -35845,17 +36338,60 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 const lightbox = document.getElementById('lightbox-modal');
                 const closeBtn = lightbox.querySelector('.lightbox-close');
                 const prevBtn = lightbox.querySelector('.lightbox-prev');
-                const nextBtn = lightbox.querySelector('.lightbox-nav.lightbox-next');
+                const nextBtn = lightbox.querySelector('.lightbox-next');
+                const saveBtn = document.getElementById('lightbox-save-btn');
+                const shareBtn = document.getElementById('lightbox-share-btn');
                 
-                // Ensure only one listener is active
-                if (closeBtn) closeBtn.removeEventListener('click', closeLightbox);
-                if (prevBtn) prevBtn.removeEventListener('click', showPrevImage);
-                if (nextBtn) nextBtn.removeEventListener('click', showNextImage);
+                // Close button
+                if (closeBtn) {
+                    closeBtn.removeEventListener('click', closeLightbox);
+                    closeBtn.addEventListener('click', closeLightbox);
+                }
                 
-                if (closeBtn) closeBtn.addEventListener('click', closeLightbox);
-                if (prevBtn) prevBtn.addEventListener('click', showPrevImage);
-                if (nextBtn) nextBtn.addEventListener('click', showNextImage);
+                // Navigation buttons
+                if (prevBtn) {
+                    prevBtn.removeEventListener('click', showPrevImage);
+                    prevBtn.addEventListener('click', showPrevImage);
+                }
+                if (nextBtn) {
+                    nextBtn.removeEventListener('click', showNextImage);
+                    nextBtn.addEventListener('click', showNextImage);
+                }
+                
+                // Save vendor button
+                if (saveBtn) {
+                    saveBtn.removeEventListener('click', saveBtn.__clickHandler);
+                    const saveBtnHandler = () => {
+                        console.log('💾 Save button clicked');
+                        if (window.currentVendor) {
+                            toggleFavorite(window.currentVendor.VendorProfileID);
+                        } else {
+                            console.warn('No current vendor set');
+                        }
+                    };
+                    saveBtn.addEventListener('click', saveBtnHandler);
+                    saveBtn.__clickHandler = saveBtnHandler;
+                }
+                
+                // Share button
+                if (shareBtn) {
+                    shareBtn.removeEventListener('click', shareBtn.__clickHandler);
+                    const shareBtnHandler = () => {
+                        console.log('📤 Share button clicked');
+                        if (window.currentVendor) {
+                            shareVendor({
+                                id: window.currentVendor.VendorProfileID,
+                                name: window.currentVendor.BusinessName || window.currentVendor.DisplayName
+                            });
+                        } else {
+                            console.warn('No current vendor set');
+                        }
+                    };
+                    shareBtn.addEventListener('click', shareBtnHandler);
+                    shareBtn.__clickHandler = shareBtnHandler;
+                }
 
+                // Click outside to close
                 if (lightbox) {
                     if (lightbox.__overlayClickListener) {
                         lightbox.removeEventListener('click', lightbox.__overlayClickListener);
@@ -35870,6 +36406,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     lightbox.__overlayClickListener = newListener;
                 }
 
+                // Keyboard navigation
                 document.addEventListener('keydown', (e) => {
                     if (lightbox.style.display === 'flex') {
                         if (e.key === 'Escape') closeLightbox();
@@ -35882,8 +36419,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             function openLightbox(index) {
                 currentLightboxIndex = index;
                 updateLightboxImage();
-                document.getElementById('lightbox-modal').style.display = 'flex';
+                const lightbox = document.getElementById('lightbox-modal');
+                const header = lightbox.querySelector('.lightbox-header');
+                const counter = document.getElementById('lightbox-counter');
+                
+                lightbox.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
+                
+                // Ensure header and counter are visible
+                if (header) header.style.display = 'flex';
+                if (counter) counter.style.display = 'block';
+                
+                console.log('🖼️ Lightbox opened:', {
+                    index,
+                    totalImages: lightboxImages.length,
+                    headerVisible: header ? 'yes' : 'no',
+                    counterVisible: counter ? 'yes' : 'no'
+                });
             }
 
             function closeLightbox() {
@@ -35893,26 +36445,217 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             function updateLightboxImage() {
                 const lightboxImage = document.getElementById('lightbox-image');
+                const lightboxCounter = document.getElementById('lightbox-counter');
+                
                 if (lightboxImages.length > 0) {
                     lightboxImage.src = lightboxImages[currentLightboxIndex];
+                    if (lightboxCounter) {
+                        const counterText = `${currentLightboxIndex + 1} / ${lightboxImages.length}`;
+                        lightboxCounter.textContent = counterText;
+                        lightboxCounter.style.display = 'block';
+                        console.log('📊 Counter updated:', counterText);
+                    }
                 } else {
-                     lightboxImage.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+                    lightboxImage.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+                    if (lightboxCounter) {
+                        lightboxCounter.textContent = '1 / 1';
+                        lightboxCounter.style.display = 'block';
+                    }
                 }
             }
 
             function showPrevImage() {
+                console.log('⬅️ Previous button clicked');
                 if (lightboxImages.length > 0) {
                     currentLightboxIndex = (currentLightboxIndex - 1 + lightboxImages.length) % lightboxImages.length;
                     updateLightboxImage();
+                } else {
+                    console.warn('No images in lightbox');
                 }
             }
 
             function showNextImage() {
+                console.log('➡️ Next button clicked');
                 if (lightboxImages.length > 0) {
                     currentLightboxIndex = (currentLightboxIndex + 1) % lightboxImages.length;
                     updateLightboxImage();
+                } else {
+                    console.warn('No images in lightbox');
                 }
             }
+
+            // Photo Gallery Functions
+            let currentGalleryIndex = 0;
+            
+            function openPhotoGallery() {
+                console.log('🖼️ Opening photo gallery with', lightboxImages.length, 'images');
+                
+                const galleryModal = document.getElementById('photo-gallery-modal');
+                const thumbnailsContainer = document.getElementById('photo-gallery-thumbnails');
+                const mainImage = document.getElementById('photo-gallery-main-image');
+                const vendorNameEl = document.getElementById('photo-gallery-vendor-name');
+                
+                if (!galleryModal || !thumbnailsContainer || !mainImage) {
+                    console.error('Photo gallery elements not found');
+                    return;
+                }
+                
+                // Set vendor name
+                if (vendorNameEl && currentVendor) {
+                    vendorNameEl.textContent = currentVendor.name || 'Photo tour';
+                }
+                
+                // Clear existing thumbnails
+                thumbnailsContainer.innerHTML = '';
+                
+                // Set initial main image
+                currentGalleryIndex = 0;
+                if (lightboxImages.length > 0) {
+                    mainImage.src = lightboxImages[0];
+                }
+                
+                // Populate thumbnails
+                lightboxImages.forEach((imageUrl, index) => {
+                    const thumbnail = document.createElement('div');
+                    thumbnail.className = 'photo-gallery-thumbnail';
+                    if (index === 0) thumbnail.classList.add('active');
+                    
+                    const img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.alt = `Photo ${index + 1}`;
+                    img.loading = 'lazy';
+                    
+                    // Click to change main image
+                    thumbnail.addEventListener('click', () => {
+                        currentGalleryIndex = index;
+                        updateGalleryMainImage();
+                    });
+                    
+                    thumbnail.appendChild(img);
+                    thumbnailsContainer.appendChild(thumbnail);
+                });
+                
+                // Show the gallery modal
+                galleryModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                
+                // Setup event listeners for gallery buttons
+                setupPhotoGalleryListeners();
+                
+                console.log('✅ Photo gallery opened with', lightboxImages.length, 'images');
+            }
+            
+            function updateGalleryMainImage() {
+                const mainImage = document.getElementById('photo-gallery-main-image');
+                const thumbnails = document.querySelectorAll('.photo-gallery-thumbnail');
+                
+                if (mainImage && lightboxImages[currentGalleryIndex]) {
+                    mainImage.src = lightboxImages[currentGalleryIndex];
+                    
+                    // Update active thumbnail
+                    thumbnails.forEach((thumb, index) => {
+                        if (index === currentGalleryIndex) {
+                            thumb.classList.add('active');
+                            thumb.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        } else {
+                            thumb.classList.remove('active');
+                        }
+                    });
+                }
+            }
+            
+            function closePhotoGallery() {
+                console.log('🔴 closePhotoGallery called');
+                const galleryModal = document.getElementById('photo-gallery-modal');
+                if (galleryModal) {
+                    galleryModal.classList.remove('active');
+                    document.body.style.overflow = 'auto';
+                }
+            }
+            
+            function showNextGalleryImage() {
+                console.log('➡️ showNextGalleryImage called, currentIndex:', currentGalleryIndex);
+                if (lightboxImages.length === 0) return;
+                currentGalleryIndex = (currentGalleryIndex + 1) % lightboxImages.length;
+                updateGalleryMainImage();
+            }
+            
+            function showPrevGalleryImage() {
+                console.log('⬅️ showPrevGalleryImage called, currentIndex:', currentGalleryIndex);
+                if (lightboxImages.length === 0) return;
+                currentGalleryIndex = (currentGalleryIndex - 1 + lightboxImages.length) % lightboxImages.length;
+                updateGalleryMainImage();
+            }
+            
+            // Expose functions globally for inline onclick handlers
+            window.closePhotoGallery = closePhotoGallery;
+            window.showNextGalleryImage = showNextGalleryImage;
+            window.showPrevGalleryImage = showPrevGalleryImage;
+            
+            // Setup photo gallery close button
+            function setupPhotoGalleryListeners() {
+                const closeBtn = document.getElementById('photo-gallery-close-btn');
+                const prevBtn = document.getElementById('photo-gallery-prev-btn');
+                const nextBtn = document.getElementById('photo-gallery-next-btn');
+                const saveBtn = document.getElementById('photo-gallery-save-btn');
+                const requestBtn = document.getElementById('photo-gallery-request-btn');
+                
+                // Remove existing listeners by cloning and replacing
+                if (closeBtn) {
+                    const newCloseBtn = closeBtn.cloneNode(true);
+                    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+                    newCloseBtn.addEventListener('click', closePhotoGallery);
+                }
+                
+                if (prevBtn) {
+                    const newPrevBtn = prevBtn.cloneNode(true);
+                    prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
+                    newPrevBtn.addEventListener('click', showPrevGalleryImage);
+                }
+                
+                if (nextBtn) {
+                    const newNextBtn = nextBtn.cloneNode(true);
+                    nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
+                    newNextBtn.addEventListener('click', showNextGalleryImage);
+                }
+                
+                if (saveBtn) {
+                    const newSaveBtn = saveBtn.cloneNode(true);
+                    saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+                    newSaveBtn.addEventListener('click', () => {
+                        if (currentVendor) {
+                            toggleFavorite(currentVendor.id);
+                        }
+                    });
+                }
+                
+                if (requestBtn) {
+                    const newRequestBtn = requestBtn.cloneNode(true);
+                    requestBtn.parentNode.replaceChild(newRequestBtn, requestBtn);
+                    newRequestBtn.addEventListener('click', () => {
+                        if (currentVendor) {
+                            shareVendor(currentVendor);
+                        }
+                    });
+                }
+            }
+            
+            // Keyboard navigation handler
+            function handlePhotoGalleryKeydown(e) {
+                const galleryModal = document.getElementById('photo-gallery-modal');
+                if (galleryModal && galleryModal.classList.contains('active')) {
+                    if (e.key === 'Escape') {
+                        closePhotoGallery();
+                    } else if (e.key === 'ArrowRight') {
+                        showNextGalleryImage();
+                    } else if (e.key === 'ArrowLeft') {
+                        showPrevGalleryImage();
+                    }
+                }
+            }
+            
+            // Add keyboard listener once
+            document.addEventListener('keydown', handlePhotoGalleryKeydown);
 
             // Render vendors with Cloudinary images
             function renderVendors() {
