@@ -1496,6 +1496,7 @@
             background-color: white;
             display: none;
             flex-direction: column;
+            pointer-events: auto;
         }
 
         .photo-gallery-modal.active {
@@ -1509,8 +1510,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 10;
+            z-index: 2100;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            position: relative;
         }
 
         .photo-gallery-header-left {
@@ -1544,6 +1546,9 @@
             transition: all 0.2s;
             border: 1px solid var(--border);
             background: white;
+            z-index: 2100;
+            pointer-events: auto;
+            position: relative;
         }
 
         .photo-gallery-action-btn:hover {
@@ -1560,6 +1565,19 @@
             background: #0056b3;
         }
 
+        .photo-gallery-action-btn.favorited {
+            color: #e74c3c;
+            border-color: #e74c3c;
+        }
+
+        .photo-gallery-action-btn.favorited svg {
+            fill: #e74c3c;
+        }
+
+        .photo-gallery-action-btn.favorited:hover {
+            background: #ffe5e5;
+        }
+
         .photo-gallery-close-btn {
             background: none;
             border: none;
@@ -1574,7 +1592,9 @@
             justify-content: center;
             border-radius: 50%;
             transition: all 0.2s;
-            z-index: 100;
+            z-index: 2100;
+            pointer-events: auto;
+            position: relative;
         }
 
         .photo-gallery-close-btn:hover {
@@ -1586,6 +1606,7 @@
             flex: 1;
             display: flex;
             overflow: hidden;
+            pointer-events: auto;
         }
 
         .photo-gallery-thumbnails {
@@ -1656,7 +1677,8 @@
             cursor: pointer;
             transition: all 0.2s;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            z-index: 10;
+            z-index: 2050;
+            pointer-events: auto;
         }
 
         .photo-gallery-nav-btn:hover {
@@ -11161,8 +11183,8 @@
         </ul>
     </div>
 
-    <!-- Lightbox Modal -->
-    <div id="lightbox-modal" class="lightbox-modal">
+    <!-- Lightbox Modal (DEPRECATED - now redirects to Photo Gallery) -->
+    <div id="lightbox-modal" class="lightbox-modal" style="display: none !important;">
         <div class="lightbox-header">
             <div class="lightbox-actions">
                 <button class="lightbox-action-btn" id="lightbox-save-btn" title="Save Vendor">
@@ -11194,17 +11216,17 @@
     <div id="photo-gallery-modal" class="photo-gallery-modal">
         <div class="photo-gallery-header">
             <div class="photo-gallery-header-left">
-                <button class="photo-gallery-close-btn" id="photo-gallery-close-btn" onclick="closePhotoGallery()">×</button>
+                <button class="photo-gallery-close-btn" id="photo-gallery-close-btn">×</button>
                 <h2 id="photo-gallery-vendor-name">Photo tour</h2>
             </div>
             <div class="photo-gallery-header-right">
-                <button class="photo-gallery-action-btn" id="photo-gallery-save-btn" onclick="if(currentVendor) toggleFavorite(currentVendor.id)">
+                <button class="photo-gallery-action-btn" id="photo-gallery-save-btn">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                     </svg>
                     Save Vendor
                 </button>
-                <button class="photo-gallery-action-btn primary" id="photo-gallery-request-btn" onclick="if(currentVendor) shareVendor(currentVendor)">
+                <button class="photo-gallery-action-btn primary" id="photo-gallery-request-btn">
                     Share Vendor
                 </button>
             </div>
@@ -11214,13 +11236,13 @@
                 <!-- Thumbnails will be dynamically populated here -->
             </div>
             <div class="photo-gallery-main">
-                <button class="photo-gallery-nav-btn prev" id="photo-gallery-prev-btn" onclick="showPrevGalleryImage()">
+                <button class="photo-gallery-nav-btn prev" id="photo-gallery-prev-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
                 <img id="photo-gallery-main-image" class="photo-gallery-main-image" src="" alt="Gallery Image">
-                <button class="photo-gallery-nav-btn next" id="photo-gallery-next-btn" onclick="showNextGalleryImage()">
+                <button class="photo-gallery-nav-btn next" id="photo-gallery-next-btn">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
@@ -36318,7 +36340,10 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             showAllBtn.id = 'show-all-photos-btn';
             showAllBtn.className = 'show-all-photos-btn';
             showAllBtn.innerHTML = '<i class="fas fa-th"></i> Show all photos';
-            showAllBtn.addEventListener('click', () => openPhotoGallery());
+            showAllBtn.addEventListener('click', () => {
+                currentGalleryIndex = 0; // Start from first image
+                openPhotoGallery();
+            });
             
             // Add button to the gallery container
             galleryContainer.style.position = 'relative';
@@ -36417,18 +36442,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             function openLightbox(index) {
-                currentLightboxIndex = index;
-                updateLightboxImage();
-                const lightbox = document.getElementById('lightbox-modal');
-                const header = lightbox.querySelector('.lightbox-header');
-                const counter = document.getElementById('lightbox-counter');
-                
-                lightbox.style.display = 'flex';
-                document.body.style.overflow = 'hidden';
-                
-                // Ensure header and counter are visible
-                if (header) header.style.display = 'flex';
-                if (counter) counter.style.display = 'block';
+                // Redirect to photo gallery instead
+                currentGalleryIndex = index;
+                openPhotoGallery();
                 
                 console.log('🖼️ Lightbox opened:', {
                     index,
@@ -36508,17 +36524,16 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Clear existing thumbnails
                 thumbnailsContainer.innerHTML = '';
                 
-                // Set initial main image
-                currentGalleryIndex = 0;
+                // Set initial main image using currentGalleryIndex (which may have been set by openLightbox)
                 if (lightboxImages.length > 0) {
-                    mainImage.src = lightboxImages[0];
+                    mainImage.src = lightboxImages[currentGalleryIndex] || lightboxImages[0];
                 }
                 
                 // Populate thumbnails
                 lightboxImages.forEach((imageUrl, index) => {
                     const thumbnail = document.createElement('div');
                     thumbnail.className = 'photo-gallery-thumbnail';
-                    if (index === 0) thumbnail.classList.add('active');
+                    if (index === currentGalleryIndex) thumbnail.classList.add('active');
                     
                     const img = document.createElement('img');
                     img.src = imageUrl;
