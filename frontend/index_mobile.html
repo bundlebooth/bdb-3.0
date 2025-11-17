@@ -503,9 +503,9 @@
 
         .vendor-grid {
             display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 1.5rem;
             align-items: stretch;
-            width: 100%;
         }
         
         /* Mobile: 1 SINGLE COLUMN on ALL mobile devices (up to 768px) */
@@ -516,27 +516,11 @@
             }
         }
         
-        /* Tablet: 2 columns from 769px to 1023px */
-        @media (min-width: 769px) and (max-width: 1023px) {
+        /* Tablet and up: auto-fill with cards matching trending vendor size */
+        @media (min-width: 769px) {
             .vendor-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
                 gap: 1.25rem;
-            }
-        }
-        
-        /* Medium Desktop: 3 columns from 1024px to 1299px */
-        @media (min-width: 1024px) and (max-width: 1299px) {
-            .vendor-grid {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 1.5rem;
-            }
-        }
-        
-        /* Large Desktop: 4 columns at 1300px and above */
-        @media (min-width: 1300px) {
-            .vendor-grid {
-                grid-template-columns: repeat(4, 1fr);
-                gap: 1.5rem;
             }
         }
 
@@ -35825,6 +35809,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const locationText = (vendor.location && vendor.location.trim()) || [locCity, locState].filter(Boolean).join(', ');
                     const responseTime = vendor.ResponseTime || vendor.responseTime || 'within a few hours';
 
+                    // Get primary category
+                    const primaryCategory = vendor.PrimaryCategory || vendor.primaryCategory || vendor.Category || vendor.category || '';
+                    const categoryKey = mapTypeToCategory(primaryCategory);
+                    const categoryIconHtml = getCategoryIconHtml(categoryKey);
+
                     return `
                         <div class="vendor-card" data-vendor-id="${vendorId}" style="
                             background: white;
@@ -35915,36 +35904,47 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             
                             <!-- Card Content -->
                             <div style="padding: 12px 0; display: flex; flex-direction: column; gap: 4px;">
-                                <!-- Business Name -->
-                                <div style="font-weight: 600; font-size: 15px; color: #222; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <!-- Business Name (Blue and clickable like Giggster) -->
+                                <div style="font-weight: 400; font-size: 15px; color: #0066CC; line-height: 1.3; cursor: pointer;">
                                     ${vendor.BusinessName || vendor.name}
                                 </div>
                                 
-                                <!-- Price -->
-                                <div style="font-weight: 400; font-size: 15px; color: #222; margin-top: 2px;">
-                                    ${hourlyRate > 0 ? `$${hourlyRate}/hr` : 'Contact for pricing'}
+                                <!-- Price, Rating, Category, and Response Time (Giggster order) -->
+                                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px;">
+                                    ${hourlyRate > 0 ? `<span style="font-weight: 600; color: #222;">$${hourlyRate}/hr</span>` : ''}
+                                    ${rating > 0 && hourlyRate > 0 ? `<span style="color: #717171;">•</span>` : ''}
+                                    ${rating > 0 ? `
+                                        <span style="display: flex; align-items: center; gap: 3px;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; height: 12px; width: 12px; fill: #0066CC;">
+                                                <path fill-rule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
+                                            </svg>
+                                            <span style="font-weight: 600; color: #222;">${rating.toFixed(2)}</span>
+                                            ${reviewCount > 0 ? `<span style="color: #717171;">(${reviewCount})</span>` : ''}
+                                        </span>
+                                    ` : ''}
+                                    ${primaryCategory && (rating > 0 || hourlyRate > 0) ? `<span style="color: #717171;">•</span>` : ''}
+                                    ${primaryCategory ? `
+                                        <span style="display: flex; align-items: center; gap: 4px; color: #717171;">
+                                            ${categoryIconHtml}
+                                            <span>${primaryCategory}</span>
+                                        </span>
+                                    ` : ''}
+                                    ${responseTime && (primaryCategory || rating > 0 || hourlyRate > 0) ? `<span style="color: #717171;">•</span>` : ''}
+                                    ${responseTime ? `<span style="color: #717171;">Responds ${responseTime}</span>` : ''}
+                                    ${isPremium && (rating > 0 || hourlyRate > 0 || responseTime || primaryCategory) ? `<span style="color: #717171;">•</span>` : ''}
+                                    ${isPremium ? `
+                                        <span style="display: flex; align-items: center; gap: 3px;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="display: block; height: 13px; width: 13px; fill: #FF8C00;">
+                                                <path d="M8 1l-1.5 5H1l4 3.5L3 15l5-3.5L13 15l-2-5.5 4-3.5h-5.5L8 1z"/>
+                                            </svg>
+                                            <span style="font-weight: 600; color: #FF8C00;">Instant book</span>
+                                        </span>
+                                    ` : ''}
                                 </div>
                                 
-                                <!-- Rating -->
-                                ${rating > 0 ? `
-                                    <div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; height: 12px; width: 12px; fill: currentColor;">
-                                            <path fill-rule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
-                                        </svg>
-                                        <span style="font-size: 14px; font-weight: 600; color: #222;">
-                                            ${rating.toFixed(1)}
-                                        </span>
-                                        ${reviewCount > 0 ? `
-                                            <span style="font-size: 14px; color: #717171;">
-                                                (${reviewCount})
-                                            </span>
-                                        ` : ''}
-                                    </div>
-                                ` : ''}
-                                
-                                <!-- Response Time & Location -->
-                                <div style="font-size: 14px; color: #717171; margin-top: 2px;">
-                                    ${responseTime ? `Responds ${responseTime}` : ''}${(responseTime && locationText) ? ' • ' : ''}${locationText || ''}
+                                <!-- Location (Separate line like Giggster) -->
+                                <div style="font-size: 14px; color: #717171;">
+                                    ${locationText ? `<span>${locationText}</span>` : ''}
                                 </div>
                             </div>
                         </div>
