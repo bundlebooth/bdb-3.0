@@ -503,21 +503,34 @@
 
         .vendor-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            gap: 1.25rem;
-            align-items: stretch;
+            grid-template-columns: 1fr; /* Single column for split-screen layout */
+            gap: 1rem;
+            padding: 0;
         }
         
-        /* Mobile: 1 SINGLE COLUMN on ALL mobile devices (up to 768px) */
+        /* Mobile: maintain single column */
         @media (max-width: 768px) {
             .vendor-grid {
                 grid-template-columns: 1fr !important;
                 gap: 1rem;
             }
         }
+        
+        /* Tablet and desktop: single column in split-screen, or 2 columns if full-width */
+        @media (min-width: 769px) {
+            .vendor-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            /* If results-left is wide enough (no map), use 2 columns */
+            .results-left:not([data-map-visible]) .vendor-grid {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                gap: 1.25rem;
+            }
+        }
 
         .vendor-card {
-            background-color: transparent;
+            background-color: white;
             border-radius: 16px;
             overflow: hidden;
             box-shadow: none;
@@ -591,53 +604,89 @@
             transform: scale(1.05);
         }
 
-        /* Map view container and toggle */
-        /* Map + list two-column layout (mirrors booking vendors step) */
+        /* Giggster-style persistent split-screen layout */
+        /* Map + list two-column layout - always visible on desktop */
         .results-two-col {
             display: flex;
-            gap: 2rem;
+            gap: 1.5rem;
             align-items: stretch;
-            flex-direction: column; /* default: list view keeps one column */
+            flex-direction: row; /* Always side-by-side on desktop */
+            min-height: calc(100vh - 200px);
         }
-        .results-two-col .results-left { flex: 1; min-width: 0; }
-        .results-two-col .results-right { flex: 1; min-width: 0; position: relative; display: none; }
-        /* When map is active, switch to two columns */
-        body.map-active .results-two-col { flex-direction: row; }
-        /* Make map larger than cards in map view */
-        body.map-active .results-two-col .results-left { flex: 0 0 30%; }
-        body.map-active .results-two-col .results-right { flex: 1 0 70%; display: block; }
+        
+        /* Left panel: vendor cards - scrollable */
+        .results-two-col .results-left { 
+            flex: 0 0 45%; 
+            min-width: 0;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 0.5rem;
+        }
+        
+        /* Right panel: map - sticky and always visible */
+        .results-two-col .results-right { 
+            flex: 1; 
+            min-width: 0; 
+            position: sticky;
+            top: 140px; /* Below header + categories */
+            height: calc(100vh - 160px);
+            display: block; /* Always visible on desktop */
+        }
+        
+        /* Mobile: stack vertically, map below cards */
         @media (max-width: 900px) {
-            body.map-active .results-two-col { flex-direction: column; }
-            body.map-active .results-two-col .results-left,
-            body.map-active .results-two-col .results-right { flex: 1 0 auto; }
+            .results-two-col { 
+                flex-direction: column; 
+                min-height: auto;
+            }
+            .results-two-col .results-left {
+                flex: 1 0 auto;
+                max-height: none;
+                overflow-y: visible;
+                padding-right: 0;
+            }
+            .results-two-col .results-right { 
+                flex: 1 0 auto;
+                position: relative;
+                top: 0;
+                height: 500px; /* Fixed height on mobile */
+                margin-top: 1rem;
+            }
         }
 
-        /* Map view container */
+        /* Map view container - always visible */
         #map-view {
-            display: none; /* hidden by default in list view */
+            display: block !important; /* Always visible */
             width: 100%;
-            height: 720px;
+            height: 100%;
+            min-height: 600px; /* Ensure map is visible */
             border-radius: 12px;
             overflow: hidden;
             border: 1px solid var(--border);
-        }
-        /* Show map only in map view */
-        body.map-active #map-view { display: block; }
-        /* Removed legacy .map-toolbar and .btn-map-toggle styles */
-
-        /* Map-active: make left panel scrollable to align with map height */
-        body.map-active .results-left {
-            max-height: 720px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            background-color: #e5e3df; /* Google Maps default background */
         }
         
-        /* Fix vendor list positioning to align with map bottom */
-        body.map-active #vendor-horizontal-cards {
-            flex: 1;
-            min-height: 0;
-            overflow-y: auto;
+        /* Smooth scrolling for vendor cards */
+        .results-left {
+            scroll-behavior: smooth;
+        }
+        
+        /* Custom scrollbar for vendor list */
+        .results-left::-webkit-scrollbar {
+            width: 8px;
+        }
+        .results-left::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .results-left::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 4px;
+        }
+        .results-left::-webkit-scrollbar-thumb:hover {
+            background: #a0aec0;
         }
         
         /* Ensure service tabs don't push content down */
@@ -8430,14 +8479,15 @@
                         <i class="fas fa-sliders-h"></i>
                         <span>Filters</span>
                     </button>
-                    <select class="sort-select" id="sort-select">
+                    <select id="sort-select" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border); background-color: white; font-size: 0.9rem; color: var(--text);">
+                        <option value="recommended">Recommended</option>
                         <option value="price-low">Price: Low to High</option>
                         <option value="price-high">Price: High to Low</option>
-                        <option value="popular">Most Popular</option>
                         <option value="nearest">Nearest to Me</option>
                         <option value="rating">Highest Rated</option>
                     </select>
-                    <div class="view-toggle" id="legacy-view-toggle"></div>
+                    <!-- View toggle hidden - map always visible in Giggster-style layout -->
+                    <div class="view-toggle" id="legacy-view-toggle" style="display: none;"></div>
                 </div>
             </div>
 
@@ -11058,6 +11108,9 @@
         } catch (_) {
             SOCKET_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com';
         }
+        
+        // Google Maps API Key - REQUIRED for map functionality
+        window.GOOGLE_MAPS_API_KEY = 'AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo';
         
         // Global variables
         let currentUser = null;
@@ -17640,6 +17693,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
                     // Setup event listeners
                     setupEventListeners();
+                    
+                    // Initialize map immediately for Giggster-style layout
+                    console.log('🗺️ Initializing map on page load...');
+                    initMapIfNeeded().then(() => {
+                        console.log('✅ Map initialized successfully');
+                        updateMapMarkers();
+                    }).catch(err => {
+                        console.error('❌ Map initialization failed:', err);
+                    });
                     
                     // Load trending vendors
                     loadTrendingVendors();
@@ -35800,19 +35862,15 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     const locState = vendor.State || vendor.state || '';
                     const locationText = (vendor.location && vendor.location.trim()) || [locCity, locState].filter(Boolean).join(', ');
                     const responseTime = vendor.ResponseTime || vendor.responseTime || 'within a few hours';
-                    
-                    // Price range display from PriceLevel field
-                    const priceLevel = vendor.priceLevel || vendor.PriceLevel || '$$';
-                    
-                    // Get primary category information
-                    const primaryCat = vendor.PrimaryCategory || vendor.primaryCategory || vendor.type || vendor.category || '';
-                    const categoryKey = mapTypeToCategory(primaryCat);
+
+                    // Get primary category
+                    const primaryCategory = vendor.PrimaryCategory || vendor.primaryCategory || vendor.Category || vendor.category || '';
+                    const categoryKey = mapTypeToCategory(primaryCategory);
                     const categoryIconHtml = getCategoryIconHtml(categoryKey);
-                    const categoryName = getCategoryName(categoryKey);
 
                     return `
                         <div class="vendor-card" data-vendor-id="${vendorId}" style="
-                            background: transparent;
+                            background: white;
                             border-radius: 12px;
                             cursor: pointer;
                             transition: all 0.3s ease;
@@ -35820,7 +35878,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             position: relative;
                             display: flex;
                             flex-direction: column;
-                        ">
+                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.12)'; window.highlightMapMarker && window.highlightMapMarker('${vendorId}', true);"
+                           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none'; window.highlightMapMarker && window.highlightMapMarker('${vendorId}', false);">
                             <!-- Image Container -->
                             <div style="position: relative; width: 100%; padding-top: 66.67%; overflow: hidden; border-radius: 12px;">
                                 <img src="${imageUrl}" 
@@ -35899,65 +35958,47 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             
                             <!-- Card Content -->
                             <div style="padding: 12px 0; display: flex; flex-direction: column; gap: 4px;">
-                                <!-- Business Name with Category Pill -->
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                    <div style="font-weight: 600; font-size: 15px; color: #222; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
-                                        ${vendor.BusinessName || vendor.name}
-                                    </div>
-                                    ${categoryKey ? `
-                                        <span style="
-                                            display: inline-flex;
-                                            align-items: center;
-                                            gap: 4px;
-                                            background: #5e72e4;
-                                            color: white;
-                                            padding: 2px 6px;
-                                            border-radius: 12px;
-                                            font-size: 10px;
-                                            font-weight: 500;
-                                            white-space: nowrap;
-                                        ">
+                                <!-- Business Name (Blue and clickable like Giggster) -->
+                                <div style="font-weight: 400; font-size: 15px; color: #0066CC; line-height: 1.3; cursor: pointer;">
+                                    ${vendor.BusinessName || vendor.name}
+                                </div>
+                                
+                                <!-- Price, Rating, Category, and Response Time (Giggster order) -->
+                                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px;">
+                                    ${hourlyRate > 0 ? `<span style="font-weight: 600; color: #222;">$${hourlyRate}/hr</span>` : ''}
+                                    ${rating > 0 && hourlyRate > 0 ? `<span style="color: #717171;">•</span>` : ''}
+                                    ${rating > 0 ? `
+                                        <span style="display: flex; align-items: center; gap: 3px;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; height: 12px; width: 12px; fill: #0066CC;">
+                                                <path fill-rule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
+                                            </svg>
+                                            <span style="font-weight: 600; color: #222;">${rating.toFixed(2)}</span>
+                                            ${reviewCount > 0 ? `<span style="color: #717171;">(${reviewCount})</span>` : ''}
+                                        </span>
+                                    ` : ''}
+                                    ${primaryCategory && (rating > 0 || hourlyRate > 0) ? `<span style="color: #717171;">•</span>` : ''}
+                                    ${primaryCategory ? `
+                                        <span style="display: flex; align-items: center; gap: 4px; color: #717171;">
                                             ${categoryIconHtml}
-                                            <span>${categoryName}</span>
+                                            <span>${primaryCategory}</span>
+                                        </span>
+                                    ` : ''}
+                                    ${responseTime && (primaryCategory || rating > 0 || hourlyRate > 0) ? `<span style="color: #717171;">•</span>` : ''}
+                                    ${responseTime ? `<span style="color: #717171;">Responds ${responseTime}</span>` : ''}
+                                    ${isPremium && (rating > 0 || hourlyRate > 0 || responseTime || primaryCategory) ? `<span style="color: #717171;">•</span>` : ''}
+                                    ${isPremium ? `
+                                        <span style="display: flex; align-items: center; gap: 3px;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="display: block; height: 13px; width: 13px; fill: #FF8C00;">
+                                                <path d="M8 1l-1.5 5H1l4 3.5L3 15l5-3.5L13 15l-2-5.5 4-3.5h-5.5L8 1z"/>
+                                            </svg>
+                                            <span style="font-weight: 600; color: #FF8C00;">Instant book</span>
                                         </span>
                                     ` : ''}
                                 </div>
                                 
-                                <!-- Location -->
-                                ${locationText ? `
-                                    <div style="font-size: 14px; color: #717171; margin-bottom: 2px;">
-                                        ${locationText}
-                                    </div>
-                                ` : ''}
-                                
-                                <!-- Rating -->
-                                ${rating > 0 ? `
-                                    <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 2px;">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; height: 12px; width: 12px; fill: currentColor;">
-                                            <path fill-rule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
-                                        </svg>
-                                        <span style="font-size: 14px; font-weight: 600; color: #222;">
-                                            ${rating.toFixed(1)}
-                                        </span>
-                                        ${reviewCount > 0 ? `
-                                            <span style="font-size: 14px; color: #717171;">
-                                                (${reviewCount})
-                                            </span>
-                                        ` : ''}
-                                    </div>
-                                ` : ''}
-                                
-                                <!-- Price Range and Starting Price -->
-                                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                                    <span style="color: #6b7280; font-size: 14px; font-weight: 600; letter-spacing: 0.5px;">
-                                        ${priceLevel}
-                                    </span>
-                                    ${hourlyRate > 0 ? `
-                                        <span style="color: #6b7280;">•</span>
-                                        <span style="font-weight: 400; font-size: 14px; color: #222;">
-                                            Starting from $${hourlyRate}
-                                        </span>
-                                    ` : ''}
+                                <!-- Location (Separate line like Giggster) -->
+                                <div style="font-size: 14px; color: #717171;">
+                                    ${locationText ? `<span>${locationText}</span>` : ''}
                                 </div>
                             </div>
                         </div>
@@ -36184,6 +36225,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             // Attempt to retrieve the Google Maps API key similar to booking process
             function getGoogleMapsApiKey() {
                 // Try common globals used elsewhere in the app
+                const fromWindow = window.GOOGLE_MAPS_API_KEY || null;
                 const fromBookingState = (window.bookingState && window.bookingState.googleMapsApiKey) || null;
                 const fromBookingConfig = (window.bookingConfig && window.bookingConfig.googleMapsApiKey) || null;
                 const fromAppConfig = (window.APP_CONFIG && window.APP_CONFIG.googleMapsApiKey) || null;
@@ -36192,7 +36234,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     return tag ? tag.getAttribute('content') : null;
                 })();
                 const fromStorage = localStorage.getItem('googleMapsApiKey');
-                return fromBookingState || fromBookingConfig || fromAppConfig || fromMeta || fromStorage || null;
+                return fromWindow || fromBookingState || fromBookingConfig || fromAppConfig || fromMeta || fromStorage || null;
             }
 
             let googleMapsLoadingPromise = null;
@@ -36277,34 +36319,53 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             async function initMapIfNeeded() {
+                console.log('🗺️ initMapIfNeeded called');
                 ensureMapState();
-                if (state.map.initialized) return;
+                if (state.map.initialized) {
+                    console.log('✅ Map already initialized');
+                    return;
+                }
+                
+                console.log('📡 Loading Google Maps API...');
                 await loadGoogleMaps();
+                console.log('✅ Google Maps API loaded');
+                
                 const mapEl = document.getElementById('map-view');
-                if (!mapEl) return;
+                if (!mapEl) {
+                    console.error('❌ Map element #map-view not found!');
+                    return;
+                }
+                console.log('✅ Map element found:', mapEl);
+                
                 // Choose best available initial center
                 const stored = getStoredUserCoords();
                 if (stored) state.userCoords = stored;
-                // Require explicit coordinates before initializing the map
+                // Use available coordinates or default to Toronto for Giggster-style always-on map
                 const initialCenter = (state.userCoords)
                     ? { lat: state.userCoords.lat, lng: state.userCoords.lon }
                     : (window.selectedEventLocation && typeof window.selectedEventLocation.lat === 'number' && typeof window.selectedEventLocation.lng === 'number'
                         ? { lat: window.selectedEventLocation.lat, lng: window.selectedEventLocation.lng }
-                        : null);
-                if (!initialCenter) {
-                    console.warn('Map initialization skipped: no coordinates available yet. Enter/select an event location.');
-                    return;
-                }
+                        : { lat: 43.6532, lng: -79.3832 }); // Default to Toronto, Canada
+                console.log('🎯 Map initializing with center:', initialCenter);
                 const initialZoom = 11;
-                state.map.map = new google.maps.Map(mapEl, {
-                    center: initialCenter,
-                    zoom: initialZoom,
-                    mapTypeControl: false,
-                    streetViewControl: false,
-                    fullscreenControl: false,
-                });
+                
+                try {
+                    state.map.map = new google.maps.Map(mapEl, {
+                        center: initialCenter,
+                        zoom: initialZoom,
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                        fullscreenControl: false,
+                    });
+                    console.log('✅ Google Map object created successfully');
+                } catch (error) {
+                    console.error('❌ Failed to create Google Map:', error);
+                    throw error;
+                }
+                
                 state.map.geocoder = new google.maps.Geocoder();
                 state.map.initialized = true;
+                console.log('✅ Map fully initialized');
                 // Track user interactions to avoid auto-fit fighting user
                 state.map.userInteractedAt = 0;
                 state.map.lastFitCount = 0;
@@ -36531,6 +36592,91 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     } catch {}
                 }
             }
+            
+            // Simple function to add markers from already-loaded vendors
+            async function addMarkersFromLoadedVendors() {
+                console.log('📍 addMarkersFromLoadedVendors called');
+                await initMapIfNeeded();
+                if (!(window.google && state.map.map)) {
+                    console.error('❌ Google Maps not ready');
+                    return;
+                }
+                
+                const vendors = state.filteredVendors || [];
+                console.log(`📍 Adding markers for ${vendors.length} vendors`);
+                
+                if (vendors.length === 0) {
+                    console.warn('⚠️ No vendors to display on map');
+                    return;
+                }
+                
+                // Log first vendor to check data structure
+                if (vendors.length > 0) {
+                    console.log('📍 Sample vendor data:', {
+                        vendor: vendors[0],
+                        latitude: vendors[0].latitude,
+                        Latitude: vendors[0].Latitude,
+                        longitude: vendors[0].longitude,
+                        Longitude: vendors[0].Longitude
+                    });
+                }
+                
+                // Clear existing markers
+                clearMapMarkers();
+                const markers = [];
+                let markersAdded = 0;
+                let vendorsWithoutCoords = 0;
+                
+                for (const vendor of vendors) {
+                    const lat = vendor.latitude ?? vendor.Latitude;
+                    const lng = vendor.longitude ?? vendor.Longitude;
+                    
+                    if (typeof lat === 'number' && typeof lng === 'number') {
+                        try {
+                            const marker = new google.maps.Marker({
+                                position: { lat, lng },
+                                map: state.map.map,
+                                title: vendor.name || vendor.BusinessName || 'Vendor',
+                            });
+                            
+                            const vid = String(vendor.vendorProfileId || vendor.VendorProfileID || vendor.id);
+                            state.map.vendorMarkers[vid] = marker;
+                            
+                            marker.addListener('click', () => {
+                                console.log('Marker clicked:', vendor.name || vendor.BusinessName);
+                                selectVendor(vid, true);
+                            });
+                            
+                            markers.push(marker);
+                            markersAdded++;
+                        } catch (error) {
+                            console.error('Failed to create marker:', error);
+                        }
+                    } else {
+                        vendorsWithoutCoords++;
+                        if (vendorsWithoutCoords <= 3) {
+                            console.warn('⚠️ Vendor missing coordinates:', {
+                                name: vendor.name || vendor.BusinessName,
+                                lat, lng
+                            });
+                        }
+                    }
+                }
+                
+                console.log(`✅ Added ${markersAdded} markers to map`);
+                if (vendorsWithoutCoords > 0) {
+                    console.warn(`⚠️ ${vendorsWithoutCoords} vendors missing valid coordinates`);
+                }
+                state.map.markers = markers;
+                
+                // Fit map to show all markers
+                if (markers.length > 0) {
+                    const bounds = new google.maps.LatLngBounds();
+                    markers.forEach(m => bounds.extend(m.getPosition()));
+                    state.map.map.fitBounds(bounds);
+                    console.log('✅ Map bounds fitted to markers');
+                }
+            }
 
             async function updateMapMarkers() {
                 const mapEl = document.getElementById('map-view');
@@ -36725,7 +36871,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         listBtn.classList.remove('active');
                         mapBtn.classList.add('active');
                         try { localStorage.setItem('vv_view', 'map'); } catch {}
-                        initMapIfNeeded().then(updateMapMarkers).catch(() => {});
+                        addMarkersFromLoadedVendors().catch(err => {
+                            console.error('Failed to initialize map markers:', err);
+                        });
                     } else {
                         document.body.classList.remove('map-active');
                         mapEl.style.display = 'none';
@@ -37004,6 +37152,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     updateMetadata({ total: totalCount });
                     tryInitGeolocation();
                     console.log(`Successfully loaded and rendered ${vendors.length} vendors`);
+                    
+                    // Auto-initialize map with vendor markers (Giggster-style)
+                    setTimeout(() => {
+                        addMarkersFromLoadedVendors().catch(err => {
+                            console.error('Failed to add markers:', err);
+                        });
+                    }, 500);
                 } catch (error) {
                     console.error('Error loading vendors:', error);
                     
@@ -39386,6 +39541,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     fullscreenControl: true
                 });
                 console.log('✅ Google Map created successfully');
+                
+                // Add event location marker
+                const eventMarker = new google.maps.Marker({
+                    position: eventCoords,
+                    map: vendorMap,
+                    title: 'Event Location',
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 12,
+                        fillColor: '#ff6b6b',
+                        fillOpacity: 1,
+                        strokeColor: '#ffffff',
+                        strokeWeight: 3
+                    },
+                    zIndex: 1000
+                });
+                console.log('📍 Event location marker added at:', eventCoords);
 
                 // Store original vendor data for reset functionality
                 window.bookingState.originalVendorSections = [...vendorSections];
@@ -39415,20 +39587,32 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 
                 // ADD VENDOR MARKERS FROM SEARCH-BY-SERVICES API
                 console.log('🎯 Adding vendor markers after map initialization');
+                console.log('🎯 Total vendors to process:', allVendors.length);
+                console.log('🎯 Sample vendor data:', allVendors[0]);
+                
                 if (allVendors.length > 0) {
                     // Create vendor markers directly here since state is not available in this context
                     vendorMarkers = []; // Clear existing markers
                     
-                    allVendors.forEach(vendor => {
-                        // Get coordinates directly from vendor data
-                        const lat = parseFloat(vendor.Latitude);
-                        const lng = parseFloat(vendor.Longitude);
+                    allVendors.forEach((vendor, index) => {
+                        // Get coordinates from vendor data - check both formats
+                        let lat, lng;
+                        
+                        if (vendor.coordinates && vendor.coordinates.lat && vendor.coordinates.lng) {
+                            // Coordinates stored in coordinates object
+                            lat = parseFloat(vendor.coordinates.lat);
+                            lng = parseFloat(vendor.coordinates.lng);
+                        } else {
+                            // Fallback to direct Latitude/Longitude fields
+                            lat = parseFloat(vendor.Latitude || vendor.latitude);
+                            lng = parseFloat(vendor.Longitude || vendor.longitude);
+                        }
 
                         console.log(`🔍 Processing vendor: ${vendor.BusinessName}, Lat: ${lat}, Lng: ${lng}`);
 
                         // Skip vendors without valid coordinates
                         if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-                            console.warn('❌ Skipping vendor with invalid coordinates:', vendor.BusinessName, { lat, lng });
+                            console.warn('❌ Skipping vendor with invalid coordinates:', vendor.BusinessName, { lat, lng, vendor });
                             return;
                         }
 
@@ -39436,7 +39620,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                         const marker = new google.maps.Marker({
                             position: { lat: lat, lng: lng },
-                            // Do not set map here; MarkerClusterer will manage it
+                            map: vendorMap, // Add marker directly to map
                             title: vendor.BusinessName,
                             animation: google.maps.Animation.DROP,
                             icon: {
@@ -39452,6 +39636,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         // Store vendor data with marker for selection tracking
                         marker.vendorData = vendor;
                         vendorMarkers.push(marker);
+                        console.log(`✅ Marker ${index + 1}/${allVendors.length} created for ${vendor.BusinessName}`);
 
                         // Add click event to show vendor info
                         marker.addListener('click', () => {
@@ -39460,24 +39645,32 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         });
                     });
 
-                    console.log(`✅ Created ${vendorMarkers.length} vendor markers from search-by-services API`);
-                    // Cluster vendor markers when zoomed out (match main page pattern)
+                    console.log(`✅ Successfully created ${vendorMarkers.length} vendor markers on the map`);
+                    console.log(`📊 Markers summary:`, vendorMarkers.map(m => ({ 
+                        name: m.vendorData.BusinessName, 
+                        position: m.getPosition().toJSON() 
+                    })));
+                    
+                    // Try to add clustering for better performance (optional enhancement)
                     try {
-                        try { await loadMarkerClusterer(); } catch {}
-                        if (!window.markerClusterer || !markerClusterer?.MarkerClusterer) {
-                            console.warn('MarkerClusterer library not available');
-                        } else {
+                        await loadMarkerClusterer();
+                        if (window.markerClusterer && markerClusterer?.MarkerClusterer) {
+                            console.log('🎯 Initializing MarkerClusterer...');
                             if (window.bookingState.vendorClusterer) {
-                                try { window.bookingState.vendorClusterer.setMap(null); } catch {}
+                                try { window.bookingState.vendorClusterer.clearMarkers(); } catch {}
                                 window.bookingState.vendorClusterer = null;
                             }
+                            // Note: Markers are already on the map, clusterer will just manage them
                             window.bookingState.vendorClusterer = new markerClusterer.MarkerClusterer({
                                 map: vendorMap,
                                 markers: vendorMarkers,
                             });
+                            console.log('✅ MarkerClusterer initialized successfully');
+                        } else {
+                            console.log('ℹ️ MarkerClusterer not available, markers displayed without clustering');
                         }
                     } catch (e) {
-                        console.warn('MarkerClusterer init failed:', e);
+                        console.log('ℹ️ MarkerClusterer init skipped:', e.message);
                     }
                 }
 
