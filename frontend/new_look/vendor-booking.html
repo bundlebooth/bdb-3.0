@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request to Book - VenueVue</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="vendor-booking-styles.css?v=3">
+</head>
+<body>
+    <!-- Header -->
+    <header class="booking-header">
+        <div class="header-container">
+            <button class="back-btn" id="back-btn">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div class="header-logo">
+                <img src="planhive_logo.svg" alt="VenueVue" class="logo-img">
+            </div>
+            <div class="header-spacer"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="booking-container">
+        <!-- Left Side - Booking Form -->
+        <div class="booking-form-section">
+            <div class="booking-form-wrapper">
+                <h1 class="booking-title">Request to book</h1>
+                
+                <!-- Step 1: Event Information -->
+                <div class="booking-step" id="step-1">
+                    <h2 class="step-title">Your Event Details</h2>
+                    
+                    <div class="form-group">
+                        <label for="event-name" class="form-label">Event Name</label>
+                        <input type="text" id="event-name" class="form-input" placeholder="e.g., Sarah & John's Wedding">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-type" class="form-label">Event Type</label>
+                        <select id="event-type" class="form-input">
+                            <option value="">Select event type</option>
+                            <option value="wedding">Wedding</option>
+                            <option value="birthday">Birthday Party</option>
+                            <option value="corporate">Corporate Event</option>
+                            <option value="anniversary">Anniversary</option>
+                            <option value="graduation">Graduation</option>
+                            <option value="baby-shower">Baby Shower</option>
+                            <option value="engagement">Engagement Party</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="event-date" class="form-label">Event Date</label>
+                            <input type="date" id="event-date" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="event-time" class="form-label">Start Time</label>
+                            <input type="time" id="event-time" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="event-end-time" class="form-label">End Time (Optional)</label>
+                            <input type="time" id="event-end-time" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="attendee-count" class="form-label">Number of Guests</label>
+                            <input type="number" id="attendee-count" class="form-input" placeholder="50" min="1">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-location" class="form-label">Event Location</label>
+                        <input type="text" id="event-location" class="form-input" placeholder="Enter address or venue">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="budget" class="form-label">Budget (Optional)</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon">$</span>
+                            <input type="number" id="budget" class="form-input with-icon" placeholder="0.00" min="0" step="0.01">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Service Selection -->
+                <div class="booking-step" id="step-2" style="display: none;">
+                    <h2 class="step-title">Choose Services</h2>
+                    <p class="step-description">Select the services you'd like to book from this vendor</p>
+                    
+                    <div id="services-list" class="services-list">
+                        <!-- Services will be loaded dynamically -->
+                        <div class="loading-spinner">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Loading services...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Additional Details & Review -->
+                <div class="booking-step" id="step-3" style="display: none;">
+                    <h2 class="step-title">Review your request</h2>
+                    
+                    <div class="review-section">
+                        <h3 class="review-subtitle">Event Details</h3>
+                        <div class="review-item">
+                            <span class="review-label">Event:</span>
+                            <span class="review-value" id="review-event-name"></span>
+                        </div>
+                        <div class="review-item">
+                            <span class="review-label">Type:</span>
+                            <span class="review-value" id="review-event-type"></span>
+                        </div>
+                        <div class="review-item">
+                            <span class="review-label">Date & Time:</span>
+                            <span class="review-value" id="review-date-time"></span>
+                        </div>
+                        <div class="review-item">
+                            <span class="review-label">Guests:</span>
+                            <span class="review-value" id="review-guests"></span>
+                        </div>
+                        <div class="review-item">
+                            <span class="review-label">Location:</span>
+                            <span class="review-value" id="review-location"></span>
+                        </div>
+                    </div>
+
+                    <div class="review-section">
+                        <h3 class="review-subtitle">Selected Services</h3>
+                        <div id="review-services-list" class="review-services">
+                            <!-- Selected services will appear here -->
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="special-requests" class="form-label">Special Requests or Questions (Optional)</label>
+                        <textarea id="special-requests" class="form-textarea" rows="4" placeholder="Add any special requests, dietary restrictions, or questions for the vendor..."></textarea>
+                    </div>
+
+                    <div class="info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>What happens next?</strong>
+                            <p>The vendor will review your request and respond within 24 hours. You'll receive a notification when they respond.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="form-actions">
+                    <button class="btn btn-secondary" id="prev-btn" style="display: none;">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <button class="btn btn-primary" id="next-btn">
+                        Next <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="btn btn-primary" id="submit-btn" style="display: none;">
+                        <i class="fas fa-paper-plane"></i> Send Request
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side - Booking Summary -->
+        <div class="booking-summary-section">
+            <div class="booking-summary-card">
+                <div class="vendor-info" id="vendor-info">
+                    <div class="vendor-image-placeholder">
+                        <i class="fas fa-image"></i>
+                    </div>
+                    <div class="vendor-details">
+                        <h3 class="vendor-name">Loading...</h3>
+                        <div class="vendor-rating">
+                            <i class="fas fa-star"></i>
+                            <span>--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-divider"></div>
+
+                <div class="booking-summary-details">
+                    <h4 class="summary-title">Booking Summary</h4>
+                    
+                    <div class="summary-item" id="summary-date" style="display: none;">
+                        <i class="fas fa-calendar"></i>
+                        <div>
+                            <div class="summary-label">Date</div>
+                            <div class="summary-value"></div>
+                        </div>
+                    </div>
+
+                    <div class="summary-item" id="summary-time" style="display: none;">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <div class="summary-label">Time</div>
+                            <div class="summary-value"></div>
+                        </div>
+                    </div>
+
+                    <div class="summary-item" id="summary-guests" style="display: none;">
+                        <i class="fas fa-users"></i>
+                        <div>
+                            <div class="summary-label">Guests</div>
+                            <div class="summary-value"></div>
+                        </div>
+                    </div>
+
+                    <div class="summary-item" id="summary-services" style="display: none;">
+                        <i class="fas fa-list"></i>
+                        <div>
+                            <div class="summary-label">Services</div>
+                            <div class="summary-value"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-divider"></div>
+
+                <div class="price-breakdown" id="price-breakdown" style="display: none;">
+                    <div class="price-item">
+                        <span>Estimated Budget</span>
+                        <span id="estimated-budget">--</span>
+                    </div>
+                </div>
+
+                <div class="info-notice">
+                    <i class="fas fa-shield-alt"></i>
+                    <p>This is a free request. You won't be charged until you confirm with the vendor.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="modal" style="display: none;">
+        <div class="modal-content success-modal-content">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h2>Request Sent Successfully!</h2>
+            <p>Your booking request has been sent to the vendor. They will review your request and respond within 24 hours.</p>
+            <div class="success-actions">
+                <button class="btn btn-primary" id="view-requests-btn">View My Requests</button>
+                <button class="btn btn-secondary" id="back-to-vendor-btn">Back to Vendor</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="vendor-booking-script.js"></script>
+</body>
+</html>

@@ -1496,7 +1496,6 @@
             background-color: white;
             display: none;
             flex-direction: column;
-            pointer-events: auto;
         }
 
         .photo-gallery-modal.active {
@@ -1510,9 +1509,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 2100;
+            z-index: 10;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            position: relative;
         }
 
         .photo-gallery-header-left {
@@ -1546,9 +1544,6 @@
             transition: all 0.2s;
             border: 1px solid var(--border);
             background: white;
-            z-index: 2100;
-            pointer-events: auto;
-            position: relative;
         }
 
         .photo-gallery-action-btn:hover {
@@ -1565,19 +1560,6 @@
             background: #0056b3;
         }
 
-        .photo-gallery-action-btn.favorited {
-            color: #e74c3c;
-            border-color: #e74c3c;
-        }
-
-        .photo-gallery-action-btn.favorited svg {
-            fill: #e74c3c;
-        }
-
-        .photo-gallery-action-btn.favorited:hover {
-            background: #ffe5e5;
-        }
-
         .photo-gallery-close-btn {
             background: none;
             border: none;
@@ -1592,9 +1574,7 @@
             justify-content: center;
             border-radius: 50%;
             transition: all 0.2s;
-            z-index: 2100;
-            pointer-events: auto;
-            position: relative;
+            z-index: 100;
         }
 
         .photo-gallery-close-btn:hover {
@@ -1606,7 +1586,6 @@
             flex: 1;
             display: flex;
             overflow: hidden;
-            pointer-events: auto;
         }
 
         .photo-gallery-thumbnails {
@@ -1677,8 +1656,7 @@
             cursor: pointer;
             transition: all 0.2s;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            z-index: 2050;
-            pointer-events: auto;
+            z-index: 10;
         }
 
         .photo-gallery-nav-btn:hover {
@@ -8867,9 +8845,10 @@
         </div>
 
         <div class="user-nav">
-            <button class="btn btn-primary" id="book-now-btn" onclick="openBookingModal()" style="margin-right: 1rem; padding: 0.75rem 1.5rem; font-weight: 600;">
+            <!-- DECOMMISSIONED: Old Book Now button - replaced with vendor-specific booking flow -->
+            <!-- <button class="btn btn-primary" id="book-now-btn" onclick="openBookingModal()" style="margin-right: 1rem; padding: 0.75rem 1.5rem; font-weight: 600;">
                 <i class="fas fa-calendar" style="margin-right: 0.5rem;"></i>Book Now
-            </button>
+            </button> -->
             <div class="nav-icon" id="wishlist-btn">
                 <i class="fas fa-heart"></i>
                 <span class="badge" id="favorites-badge">0</span>
@@ -11183,8 +11162,8 @@
         </ul>
     </div>
 
-    <!-- Lightbox Modal (DEPRECATED - now redirects to Photo Gallery) -->
-    <div id="lightbox-modal" class="lightbox-modal" style="display: none !important;">
+    <!-- Lightbox Modal -->
+    <div id="lightbox-modal" class="lightbox-modal">
         <div class="lightbox-header">
             <div class="lightbox-actions">
                 <button class="lightbox-action-btn" id="lightbox-save-btn" title="Save Vendor">
@@ -11216,17 +11195,17 @@
     <div id="photo-gallery-modal" class="photo-gallery-modal">
         <div class="photo-gallery-header">
             <div class="photo-gallery-header-left">
-                <button class="photo-gallery-close-btn" id="photo-gallery-close-btn">×</button>
+                <button class="photo-gallery-close-btn" id="photo-gallery-close-btn" onclick="closePhotoGallery()">×</button>
                 <h2 id="photo-gallery-vendor-name">Photo tour</h2>
             </div>
             <div class="photo-gallery-header-right">
-                <button class="photo-gallery-action-btn" id="photo-gallery-save-btn">
+                <button class="photo-gallery-action-btn" id="photo-gallery-save-btn" onclick="if(currentVendor) toggleFavorite(currentVendor.id)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                     </svg>
                     Save Vendor
                 </button>
-                <button class="photo-gallery-action-btn primary" id="photo-gallery-request-btn">
+                <button class="photo-gallery-action-btn primary" id="photo-gallery-request-btn" onclick="if(currentVendor) shareVendor(currentVendor)">
                     Share Vendor
                 </button>
             </div>
@@ -11236,13 +11215,13 @@
                 <!-- Thumbnails will be dynamically populated here -->
             </div>
             <div class="photo-gallery-main">
-                <button class="photo-gallery-nav-btn prev" id="photo-gallery-prev-btn">
+                <button class="photo-gallery-nav-btn prev" id="photo-gallery-prev-btn" onclick="showPrevGalleryImage()">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="15 18 9 12 15 6"></polyline>
                     </svg>
                 </button>
                 <img id="photo-gallery-main-image" class="photo-gallery-main-image" src="" alt="Gallery Image">
-                <button class="photo-gallery-nav-btn next" id="photo-gallery-next-btn">
+                <button class="photo-gallery-nav-btn next" id="photo-gallery-next-btn" onclick="showNextGalleryImage()">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="9 18 15 12 9 6"></polyline>
                     </svg>
@@ -29243,17 +29222,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
                         <!-- Sidebar -->
                         <div style="display: flex; flex-direction: column; gap: 1.5rem; position: sticky; top: 5.5rem; align-self: flex-start; height: fit-content; max-height: calc(100vh - 11rem); overflow-y: auto;">
-                            <!-- Booking Summary -->
-                            <div id="booking-summary" style="background: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
-                                <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Your Booking</h3>
-                                <div id="selected-services-list" style="margin-bottom: 1rem;">
-                                    <p style="font-size: 0.9rem; color: var(--text-light); text-align: center; font-style: italic;">Select services from the list to get started.</p>
-                                </div>
-                                <div style="border-top: 1px solid var(--border); margin: 1rem 0; padding-top: 1rem; display: flex; justify-content: space-between; font-weight: 600;">
-                                    <span>Total</span>
-                                    <span id="booking-total-price">$0.00</span>
-                                </div>
-                                <button class="btn btn-primary" id="proceed-to-book-btn" style="width: 100%;" disabled>Choose Services</button>
+                            <!-- Request Booking Card -->
+                            <div style="background: var(--secondary); padding: 1.5rem; border-radius: var(--radius); border: 2px solid var(--primary);">
+                                <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--text);">Request to Book</h3>
+                                <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1.25rem; line-height: 1.5;">Send a booking request to this vendor with your event details and service requirements.</p>
+                                <button class="btn btn-primary" id="request-booking-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.875rem;">
+                                    <i class="fas fa-calendar-check"></i>
+                                    <span>Request Booking</span>
+                                </button>
+                                <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.75rem; text-align: center;">
+                                    <i class="fas fa-shield-alt" style="color: var(--primary);"></i> Free request • No payment required
+                                </p>
                             </div>
 
                             ${businessHours.length > 0 ? `
@@ -29354,6 +29333,23 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                          e.preventDefault();
                          profileModal.style.display = 'flex';
                          showLoginView();
+                    });
+                }
+
+                // Add event listener for new Request Booking button
+                const requestBookingBtn = vendorProfilePage.querySelector('#request-booking-btn');
+                if (requestBookingBtn) {
+                    requestBookingBtn.addEventListener('click', () => {
+                        // Check if user is logged in
+                        if (!currentUser) {
+                            alert('Please log in to send a booking request.');
+                            profileModal.style.display = 'flex';
+                            showLoginView();
+                            return;
+                        }
+                        
+                        // Redirect to new booking page with vendor ID
+                        window.location.href = `vendor-booking.html?vendorId=${profile.VendorProfileID}`;
                     });
                 }
 
@@ -36340,10 +36336,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             showAllBtn.id = 'show-all-photos-btn';
             showAllBtn.className = 'show-all-photos-btn';
             showAllBtn.innerHTML = '<i class="fas fa-th"></i> Show all photos';
-            showAllBtn.addEventListener('click', () => {
-                currentGalleryIndex = 0; // Start from first image
-                openPhotoGallery();
-            });
+            showAllBtn.addEventListener('click', () => openPhotoGallery());
             
             // Add button to the gallery container
             galleryContainer.style.position = 'relative';
@@ -36442,9 +36435,18 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
             }
 
             function openLightbox(index) {
-                // Redirect to photo gallery instead
-                currentGalleryIndex = index;
-                openPhotoGallery();
+                currentLightboxIndex = index;
+                updateLightboxImage();
+                const lightbox = document.getElementById('lightbox-modal');
+                const header = lightbox.querySelector('.lightbox-header');
+                const counter = document.getElementById('lightbox-counter');
+                
+                lightbox.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                
+                // Ensure header and counter are visible
+                if (header) header.style.display = 'flex';
+                if (counter) counter.style.display = 'block';
                 
                 console.log('🖼️ Lightbox opened:', {
                     index,
@@ -36524,16 +36526,17 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 // Clear existing thumbnails
                 thumbnailsContainer.innerHTML = '';
                 
-                // Set initial main image using currentGalleryIndex (which may have been set by openLightbox)
+                // Set initial main image
+                currentGalleryIndex = 0;
                 if (lightboxImages.length > 0) {
-                    mainImage.src = lightboxImages[currentGalleryIndex] || lightboxImages[0];
+                    mainImage.src = lightboxImages[0];
                 }
                 
                 // Populate thumbnails
                 lightboxImages.forEach((imageUrl, index) => {
                     const thumbnail = document.createElement('div');
                     thumbnail.className = 'photo-gallery-thumbnail';
-                    if (index === currentGalleryIndex) thumbnail.classList.add('active');
+                    if (index === 0) thumbnail.classList.add('active');
                     
                     const img = document.createElement('img');
                     img.src = imageUrl;
@@ -44803,12 +44806,13 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
         });
     </script>
 
-    <!-- Mobile Sticky Footer for Book Now Button -->
-    <div class="mobile-book-now-footer">
+    <!-- DECOMMISSIONED: Mobile Sticky Footer for Book Now Button -->
+    <!-- Replaced with vendor-specific booking flow accessible from vendor profile pages -->
+    <!-- <div class="mobile-book-now-footer">
         <button class="btn-book-now" onclick="openBookingModal()">
             <i class="fas fa-calendar-check"></i>
             <span>Book Now</span>
         </button>
-    </div>
+    </div> -->
 
 </html>
