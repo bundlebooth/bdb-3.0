@@ -4,7 +4,8 @@
 // ============================================
 
 // Configuration
-const API_BASE_URL = 'http://localhost:3000/api';
+// Use the same API base URL as the main application
+const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
 
 // State Management
 let currentStep = 1;
@@ -18,7 +19,6 @@ let bookingData = {
     eventEndTime: '',
     attendeeCount: '',
     eventLocation: '',
-    budget: '',
     specialRequests: ''
 };
 
@@ -72,7 +72,7 @@ function setupEventListeners() {
     // Form inputs - update summary on change
     const formInputs = [
         'event-name', 'event-type', 'event-date', 'event-time', 
-        'event-end-time', 'attendee-count', 'event-location', 'budget'
+        'event-end-time', 'attendee-count', 'event-location'
     ];
     
     formInputs.forEach(inputId => {
@@ -93,7 +93,7 @@ async function loadVendorData() {
         const response = await fetch(`${API_BASE_URL}/vendors/${window.vendorId}`);
         
         if (!response.ok) {
-            throw new Error('Failed to load vendor data');
+            throw new Error(`Failed to load vendor data: ${response.status} ${response.statusText}`);
         }
         
         vendorData = await response.json();
@@ -101,7 +101,24 @@ async function loadVendorData() {
         
     } catch (error) {
         console.error('Error loading vendor data:', error);
-        alert('Failed to load vendor information. Please try again.');
+        
+        // Show more helpful error message
+        const errorMsg = error.message.includes('fetch')
+            ? 'Unable to connect to the server. Please make sure the backend is running on port 3000.'
+            : 'Failed to load vendor information. Please try again.';
+        
+        alert(errorMsg);
+        
+        // Display error state in vendor info
+        document.getElementById('vendor-info').innerHTML = `
+            <div class="vendor-image-placeholder">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="vendor-details">
+                <h3 class="vendor-name">Unable to load vendor</h3>
+                <p class="vendor-category" style="color: var(--error-color);">Connection error</p>
+            </div>
+        `;
     }
 }
 
@@ -355,7 +372,6 @@ function saveStepData(step) {
         bookingData.eventEndTime = document.getElementById('event-end-time').value;
         bookingData.attendeeCount = document.getElementById('attendee-count').value;
         bookingData.eventLocation = document.getElementById('event-location').value.trim();
-        bookingData.budget = document.getElementById('budget').value;
     }
     
     if (step === 3) {
@@ -408,15 +424,6 @@ function updateBookingSummary() {
         document.getElementById('summary-services').style.display = 'flex';
     } else {
         document.getElementById('summary-services').style.display = 'none';
-    }
-    
-    // Update budget
-    const budget = document.getElementById('budget').value;
-    if (budget && parseFloat(budget) > 0) {
-        document.getElementById('estimated-budget').textContent = `$${parseFloat(budget).toFixed(2)}`;
-        document.getElementById('price-breakdown').style.display = 'block';
-    } else {
-        document.getElementById('price-breakdown').style.display = 'none';
     }
 }
 
@@ -504,7 +511,6 @@ async function submitBookingRequest() {
             eventEndTime: bookingData.eventEndTime ? bookingData.eventEndTime + ':00' : null,
             eventLocation: bookingData.eventLocation,
             attendeeCount: parseInt(bookingData.attendeeCount),
-            budget: bookingData.budget ? parseFloat(bookingData.budget) : null,
             services: selectedServices,
             specialRequestText: bookingData.specialRequests,
             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
