@@ -118,10 +118,112 @@ body {
     color: var(--text-primary);
 }
 
+/* ============================================
+   STEPS OVERVIEW - ALL STEPS SHOWN
+   ============================================ */
+
+.upcoming-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: 3rem;
+}
+
+.overview-step {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.overview-step.active {
+    opacity: 1;
+}
+
+.overview-step.completed {
+    opacity: 1;
+}
+
+.overview-step:not(.active):not(.completed) {
+    opacity: 1;
+}
+
+.overview-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid #d1d5db;
+    background-color: white;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1rem;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.overview-step.active .overview-number {
+    background-color: var(--text-primary);
+    border-color: var(--text-primary);
+    color: white;
+}
+
+.overview-step.completed .overview-number {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.overview-title {
+    font-size: 1.125rem;
+    font-weight: 400;
+    color: #d1d5db;
+    transition: all 0.2s;
+}
+
+.overview-step.active .overview-title {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.overview-step.completed .overview-title {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* ============================================
+   STEP HEADER - GIGGSTER STYLE
+   ============================================ */
+
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.step-number-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--text-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.125rem;
+    flex-shrink: 0;
+}
+
 .step-title {
     font-size: 1.5rem;
     font-weight: 600;
-    margin-bottom: 1.5rem;
+    margin: 0;
     color: var(--text-primary);
 }
 
@@ -725,6 +827,17 @@ body {
 
     .step-title {
         font-size: 1.25rem;
+    }
+    
+    .step-header {
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+    
+    .step-number-circle {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
     }
 
     .form-row {

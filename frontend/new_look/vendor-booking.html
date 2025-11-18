@@ -30,7 +30,10 @@
                 
                 <!-- Step 1: Event Information -->
                 <div class="booking-step" id="step-1">
-                    <h2 class="step-title">Your Event Details</h2>
+                    <div class="step-header">
+                        <div class="step-number-circle">1</div>
+                        <h2 class="step-title">Your Event Details</h2>
+                    </div>
                     
                     <div class="form-group">
                         <label for="event-name" class="form-label">Event Name <span class="required-asterisk">*</span></label>
@@ -78,11 +81,26 @@
                         <label for="event-location" class="form-label">Event Location <span class="required-asterisk">*</span></label>
                         <input type="text" id="event-location" class="form-input" placeholder="Enter address or venue" required>
                     </div>
+                    
+                    <!-- Upcoming Steps Preview -->
+                    <div class="upcoming-steps">
+                        <div class="overview-step" data-step="2">
+                            <div class="overview-number">2</div>
+                            <div class="overview-title">Choose Services</div>
+                        </div>
+                        <div class="overview-step" data-step="3">
+                            <div class="overview-number">3</div>
+                            <div class="overview-title">Review your request</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Step 2: Service Selection -->
                 <div class="booking-step" id="step-2" style="display: none;">
-                    <h2 class="step-title">Choose Services</h2>
+                    <div class="step-header">
+                        <div class="step-number-circle">2</div>
+                        <h2 class="step-title">Choose Services</h2>
+                    </div>
                     <p class="step-description">Select the services you'd like to book from this vendor</p>
                     
                     <div id="services-list" class="services-list">
@@ -92,11 +110,22 @@
                             <p>Loading services...</p>
                         </div>
                     </div>
+                    
+                    <!-- Upcoming Steps Preview -->
+                    <div class="upcoming-steps">
+                        <div class="overview-step" data-step="3">
+                            <div class="overview-number">3</div>
+                            <div class="overview-title">Review your request</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Step 3: Additional Details & Review -->
                 <div class="booking-step" id="step-3" style="display: none;">
-                    <h2 class="step-title">Review your request</h2>
+                    <div class="step-header">
+                        <div class="step-number-circle">3</div>
+                        <h2 class="step-title">Review your request</h2>
+                    </div>
                     
                     <div class="review-section">
                         <h3 class="review-subtitle">Event Details</h3>
