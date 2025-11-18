@@ -767,57 +767,7 @@
             color: var(--accent);
         }
 
-        /* Vendor Profile Action Buttons */
-        .vendor-profile-actions {
-            display: flex;
-            gap: 0.75rem;
-            align-items: center;
-        }
-
-        .vendor-action-btn {
-            width: 44px;
-            height: 44px;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid #e5e7eb;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: #64748b;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-size: 1.15rem;
-            backdrop-filter: blur(10px);
-        }
-
-        .vendor-action-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-            background: rgba(255, 255, 255, 1);
-        }
-
-        .vendor-action-btn.active {
-            color: var(--accent);
-            background: rgba(255, 255, 255, 1);
-            animation: heartBeat 0.3s ease;
-        }
-
-        .vendor-action-btn.active:hover {
-            transform: scale(1.15);
-        }
-
-        .vendor-action-btn i {
-            pointer-events: none;
-        }
-
-        @keyframes heartBeat {
-            0% { transform: scale(1); }
-            25% { transform: scale(1.2); }
-            50% { transform: scale(1); }
-            75% { transform: scale(1.15); }
-            100% { transform: scale(1); }
-        }
+        /* REMOVED: Vendor Profile Action Buttons - Now in standalone vendor-profile.html */
 
         .vendor-details {
             padding: 1.5rem;
@@ -1164,16 +1114,7 @@
             color: var(--primary);
         }
         
-        .vendor-profile-header {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            padding-bottom: 2rem;
-        }
-
-        .vendor-profile-info {
-            flex-grow: 1;
-        }
+        /* REMOVED: Vendor Profile Header styles - Now in standalone vendor-profile.html */
         
         /* Vendor Profile Image Gallery Layout */
         .image-gallery {
@@ -1485,251 +1426,9 @@
             font-size: 1rem;
         }
 
-        /* Photo Gallery Modal */
-        .photo-gallery-modal {
-            position: fixed;
-            z-index: 2000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: white;
-            display: none;
-            flex-direction: column;
-        }
-
-        .photo-gallery-modal.active {
-            display: flex;
-        }
-
-        .photo-gallery-header {
-            background: white;
-            border-bottom: 1px solid var(--border);
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 10;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-
-        .photo-gallery-header-left {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .photo-gallery-header h2 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text);
-            margin: 0;
-        }
-
-        .photo-gallery-header-right {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .photo-gallery-action-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid var(--border);
-            background: white;
-        }
-
-        .photo-gallery-action-btn:hover {
-            background: var(--secondary);
-        }
-
-        .photo-gallery-action-btn.primary {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .photo-gallery-action-btn.primary:hover {
-            background: #0056b3;
-        }
-
-        .photo-gallery-close-btn {
-            background: none;
-            border: none;
-            font-size: 2rem;
-            color: var(--text-light);
-            cursor: pointer;
-            padding: 0;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: all 0.2s;
-            z-index: 100;
-        }
-
-        .photo-gallery-close-btn:hover {
-            background: var(--secondary);
-            color: var(--text);
-        }
-
-        .photo-gallery-content {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-        }
-
-        .photo-gallery-thumbnails {
-            width: 250px;
-            overflow-y: auto;
-            border-right: 1px solid var(--border);
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        .photo-gallery-thumbnail {
-            position: relative;
-            aspect-ratio: 4 / 3;
-            border-radius: 8px;
-            overflow: hidden;
-            cursor: pointer;
-            border: 1px solid transparent;
-            transition: all 0.2s;
-        }
-
-        .photo-gallery-thumbnail:hover {
-            border-color: var(--primary);
-        }
-
-        .photo-gallery-thumbnail.active {
-            border-color: var(--primary);
-            box-shadow: none;
-        }
-
-        .photo-gallery-thumbnail img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .photo-gallery-main {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f8f9fa;
-            padding: 2rem;
-            position: relative;
-        }
-
-        .photo-gallery-main-image {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .photo-gallery-nav-btn {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            border: none;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            z-index: 10;
-        }
-
-        .photo-gallery-nav-btn:hover {
-            background: white;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            transform: translateY(-50%) scale(1.05);
-        }
-
-        .photo-gallery-nav-btn.prev {
-            left: 2rem;
-        }
-
-        .photo-gallery-nav-btn.next {
-            right: 2rem;
-        }
-
-        .photo-gallery-nav-btn svg {
-            color: var(--text);
-        }
+        /* REMOVED: Photo Gallery Modal styles - Now in standalone vendor-profile.html */
 
         @media (max-width: 768px) {
-            .photo-gallery-content {
-                flex-direction: column;
-            }
-
-            .photo-gallery-thumbnails {
-                width: 100%;
-                height: 120px;
-                flex-direction: row;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
-                overflow-x: auto;
-                overflow-y: hidden;
-            }
-
-            .photo-gallery-thumbnail {
-                min-width: 100px;
-                height: 80px;
-            }
-
-            .photo-gallery-header-right {
-                gap: 0.5rem;
-            }
-
-            .photo-gallery-action-btn {
-                padding: 0.4rem 0.75rem;
-                font-size: 0.75rem;
-            }
-        }
-
-        .photo-gallery-item:hover img {
-            transform: scale(1.05);
-        }
-
-        /* Mobile responsive for photo gallery */
-        @media (max-width: 768px) {
-            .photo-gallery-header {
-                padding: 1rem;
-            }
-
-            .photo-gallery-header h2 {
-                font-size: 1.25rem;
-            }
-
-            .photo-gallery-content {
-                padding: 1rem;
-            }
-
-            .photo-gallery-grid {
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-                gap: 0.75rem;
-            }
-
             .show-all-photos-btn {
                 bottom: 0.5rem;
                 right: 0.5rem;
@@ -5829,11 +5528,6 @@
                 padding: 0.75rem !important;
             }
             
-            .vendor-profile-header {
-                flex-direction: column;
-                gap: 0.75rem;
-            }
-            
             .form-group {
                 margin-bottom: 0.75rem !important;
             }
@@ -5890,259 +5584,7 @@
                 width: 100% !important;
             }
             
-            /* Vendor Public Profile Page - Mobile */
-            #vendor-profile-page {
-                padding: 0.75rem !important;
-            }
-            
-            /* Back button mobile */
-            #vendor-profile-page > div:first-child {
-                margin-bottom: 1rem !important;
-            }
-            
-            #vendor-profile-page > div:first-child button {
-                padding: 0.5rem 0.75rem !important;
-                font-size: 0.9rem !important;
-            }
-            
-            #vendor-profile-page h1 {
-                font-size: 1.5rem !important;
-                line-height: 1.3 !important;
-                margin-bottom: 0.5rem !important;
-            }
-            
-            #vendor-profile-page h2 {
-                font-size: 1.2rem !important;
-                margin-top: 1.5rem !important;
-                margin-bottom: 0.75rem !important;
-            }
-            
-            #vendor-profile-page .vendor-profile-header {
-                flex-direction: column !important;
-                gap: 0.75rem !important;
-                align-items: flex-start !important;
-            }
-            
-            #vendor-profile-page .vendor-profile-header .vendor-profile-info {
-                width: 100% !important;
-            }
-            
-            #vendor-profile-page .vendor-profile-header .vendor-profile-info h1 {
-                font-size: 1.5rem !important;
-            }
-            
-            #vendor-profile-page .vendor-profile-header .vendor-profile-info p {
-                font-size: 1rem !important;
-                margin-bottom: 0.5rem !important;
-            }
-            
-            #vendor-profile-page .vendor-profile-header .vendor-profile-info > div {
-                font-size: 0.85rem !important;
-                gap: 0.5rem !important;
-            }
-            
-            #vendor-profile-page .vendor-favorite {
-                position: absolute !important;
-                top: 0.75rem !important;
-                right: 0.75rem !important;
-                margin-top: 0 !important;
-                width: 40px !important;
-                height: 40px !important;
-                font-size: 1.2rem !important;
-            }
-            
-            /* Vendor profile two-column layout to single column */
-            #vendor-profile-page > div[style*="grid-template-columns"] {
-                display: flex !important;
-                flex-direction: column !important;
-                gap: 1.5rem !important;
-                margin-top: 1rem !important;
-            }
-            
-            /* Make sidebar full width on mobile */
-            #vendor-profile-page > div[style*="grid-template-columns"] > div:last-child {
-                position: static !important;
-                order: -1 !important;
-            }
-            
-            /* Image gallery mobile - make it single column stacked */
-            .image-gallery {
-                display: flex !important;
-                flex-direction: column !important;
-                height: auto !important;
-                max-width: 100% !important;
-                margin-bottom: 1rem !important;
-                gap: 0.5rem !important;
-            }
-            
-            .image-gallery > .gallery-item.large-image {
-                grid-column: unset !important;
-                grid-row: unset !important;
-                height: 250px !important;
-                width: 100% !important;
-            }
-            
-            .image-gallery > .thumbnails-container {
-                display: grid !important;
-                grid-template-columns: repeat(2, 1fr) !important;
-                grid-template-rows: auto !important;
-                gap: 0.5rem !important;
-                height: auto !important;
-            }
-            
-            .thumbnails-container > .gallery-item {
-                height: 120px !important;
-            }
-            
-            .gallery-item img {
-                height: 100% !important;
-                border-radius: 8px !important;
-            }
-            
-            /* Services grid mobile */
-            #services-list {
-                grid-template-columns: 1fr !important;
-                gap: 1rem !important;
-            }
-            
-            #vendor-profile-page .service-card {
-                padding: 1rem !important;
-            }
-            
-            #vendor-profile-page .service-card-title {
-                font-size: 1rem !important;
-            }
-            
-            #vendor-profile-page .service-card-description {
-                font-size: 0.85rem !important;
-            }
-            
-            #vendor-profile-page .service-card-details {
-                flex-wrap: wrap !important;
-                gap: 0.5rem !important;
-            }
-            
-            /* About section mobile */
-            #vendor-profile-page #vendor-description {
-                font-size: 0.95rem !important;
-                line-height: 1.6 !important;
-            }
-            
-            /* Social media links mobile */
-            #social-media-links {
-                gap: 0.75rem !important;
-            }
-            
-            #social-media-links a {
-                font-size: 1.5rem !important;
-            }
-            
-            /* Business hours mobile */
-            #business-hours-list {
-                grid-template-columns: 1fr !important;
-                gap: 0.5rem !important;
-            }
-            
-            /* FAQ section mobile */
-            .faq-item {
-                padding: 0.75rem !important;
-            }
-            
-            .faq-question {
-                font-size: 0.95rem !important;
-            }
-            
-            .faq-answer {
-                font-size: 0.9rem !important;
-            }
-            
-            /* Team section mobile */
-            #team-list {
-                grid-template-columns: 1fr !important;
-                gap: 1rem !important;
-            }
-            
-            /* Review cards mobile */
-            .review-card {
-                padding: 1rem !important;
-            }
-            
-            .review-header {
-                flex-direction: column !important;
-                gap: 0.25rem !important;
-                align-items: flex-start !important;
-            }
-            
-            .reviewer {
-                font-size: 0.95rem !important;
-            }
-            
-            .review-date {
-                font-size: 0.85rem !important;
-            }
-            
-            .review-title {
-                font-size: 1rem !important;
-            }
-            
-            .review-text {
-                font-size: 0.9rem !important;
-            }
-            
-            /* Booking sidebar mobile */
-            #vendor-profile-page #booking-summary {
-                padding: 1rem !important;
-            }
-            
-            #vendor-profile-page #booking-summary h3 {
-                font-size: 1.1rem !important;
-            }
-            
-            #vendor-profile-page #booking-summary #selected-services-list {
-                font-size: 0.9rem !important;
-            }
-            
-            #vendor-profile-page #booking-summary #booking-total-price {
-                font-size: 1.1rem !important;
-            }
-            
-            #vendor-profile-page #proceed-to-book-btn {
-                padding: 0.75rem !important;
-                font-size: 1rem !important;
-            }
-            
-            /* Contact card mobile */
-            #vendor-profile-page > div[style*="grid-template-columns"] > div:last-child > div {
-                padding: 1rem !important;
-            }
-            
-            #vendor-profile-page > div[style*="grid-template-columns"] > div:last-child h3 {
-                font-size: 1.1rem !important;
-            }
-            
-            #vendor-profile-page #open-chat-btn {
-                padding: 0.75rem !important;
-                font-size: 1rem !important;
-            }
-            
-            /* Venue recommendations mobile */
-            #venue-recommendations-section {
-                padding: 1.5rem 0 !important;
-            }
-            
-            #venue-recommendations-section > div {
-                padding: 0 0.75rem !important;
-            }
-            
-            #venue-recommendations-section h2 {
-                font-size: 1.25rem !important;
-                margin-bottom: 1rem !important;
-            }
-            
-            .venue-recommendation-tab {
-                padding: 0.75rem 1rem !important;
-                font-size: 0.85rem !important;
-            }
+            /* REMOVED: Vendor Profile Page styles - now in standalone vendor-profile.html */
             
             /* Analytics Charts - Mobile */
             .analytics-charts {
@@ -9053,222 +8495,6 @@
         </aside>
     </div>
 
-    <!-- Vendor Public Profile Page -->
-    <div id="vendor-profile-page" class="profile-content" style="display: none;">
-                    <!-- Back Button -->
-                    <div style="margin-bottom: 2rem;">
-                        <button onclick="window.location.hash = ''" class="btn btn-outline" style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span>← Back to search results</span>
-                        </button>
-                    </div>
-                    
-                    <!-- Image Gallery - Dynamic -->
-                    <div id="modal-image-gallery" class="image-gallery">
-                        <div class="gallery-item large-image">
-                            <img id="main-vendor-image" src="https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png" alt="Main Venue Image">
-                        </div>
-                        <div class="thumbnails-container" id="vendor-thumbnails">
-                            <!-- Thumbnails will be populated dynamically -->
-                        </div>
-                    </div>
-
-                    <!-- Vendor Header -->
-                    <div class="vendor-profile-header" style="position: relative;">
-                        <div class="vendor-profile-info">
-                            <h1 id="vendor-business-name" style="font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem;">Loading...</h1>
-                            <p id="vendor-tagline" style="font-size: 1.1rem; color: var(--primary); margin-bottom: 1rem;">Loading...</p>
-                            <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-light); margin-bottom: 1rem; flex-wrap: wrap;">
-                                <span id="vendor-location">Loading...</span>
-                                <span id="vendor-years-business" style="display: none;"></span>
-                                <span id="vendor-rating-display" style="color: #fbbf24;">☆☆☆☆☆ <span style="color: var(--text-light);">(0 reviews)</span></span>
-                            </div>
-                        </div>
-                         <!-- Favorite Button -->
-                        <div id="vendor-favorite-btn" class="vendor-favorite" data-id="1" style="flex-shrink: 0; align-self: flex-start; margin-top: 1rem;"><i class="fas fa-heart"></i></div>
-                    </div>
-
-                    <!-- Vendor Content Sections -->
-                    <div style="display: grid; grid-template-columns: 1fr 320px; gap: 2rem; margin-top: 2rem;">
-                        <!-- Main Content Area -->
-                        <div>
-                            <h2 class="services-title">About Us</h2>
-                            <p id="vendor-description" style="line-height: 1.6;">Loading...</p>
-                            
-                            <!-- Services & Packages Section -->
-                            <div id="services-section" class="services-section" style="display: none;">
-                                <h2 class="services-title">Services & Packages</h2>
-                                <div id="services-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
-                                    <!-- Services will be populated dynamically -->
-                                </div>
-                            </div>
-                            
-                            <!-- Business Hours Section -->
-                            <div id="business-hours-section" class="services-section" style="display: none;">
-                                <h2 class="services-title">Business Hours</h2>
-                                <div id="business-hours-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem;">
-                                    <!-- Business hours will be populated dynamically -->
-                                </div>
-                            </div>
-                            
-                            <!-- Social Media Section -->
-                            <div class="services-section">
-                                <h2 class="services-title">Connect With Us</h2>
-                                <div id="social-media-links" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                                    <!-- Social media links will be populated dynamically -->
-                                </div>
-                            </div>
-                            
-                            <!-- FAQ Section -->
-                            <div id="faq-section" class="services-section" style="display: none;">
-                                <h2 class="services-title">Frequently Asked Questions</h2>
-                                <div id="faq-list">
-                                    <!-- FAQs will be populated dynamically -->
-                                </div>
-                            </div>
-                            
-                            <!-- Team Section -->
-                            <div id="team-section" class="services-section" style="display: none;">
-                                <h2 class="services-title">Our Team</h2>
-                                <div id="team-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                                    <!-- Team members will be populated dynamically -->
-                                </div>
-                            </div>
-
-                            <!-- Reviews Section -->
-                            <div class="reviews-section">
-                                <h2 class="reviews-title">Reviews (1)</h2>
-                                <div id="vendor-profile-reviews-list">
-                                    
-                    <div class="review-card">
-                        <div class="review-header">
-                            <div class="reviewer">Jane Doe</div>
-                            <div class="review-date">August 8, 2025</div>
-                        </div>
-                        <div class="review-rating">★★★★★</div>
-                        <div class="review-title">Absolutely fantastic!</div>
-                        <div class="review-text">John and his team were amazing. They captured every special moment beautifully. Highly recommend!</div>
-                    </div>
-                
-                                </div>
-                                
-                                    <button class="btn btn-outline add-review-btn" id="show-review-form" style="margin-top: 1rem;">Add Review</button>
-                                    <div class="review-form" id="review-form" style="display: none;">
-                                        <div class="rating-input">
-                                            <span class="rating-star" data-rating="1">☆</span>
-                                            <span class="rating-star" data-rating="2">☆</span>
-                                            <span class="rating-star" data-rating="3">☆</span>
-                                            <span class="rating-star" data-rating="4">☆</span>
-                                            <span class="rating-star" data-rating="5">☆</span>
-                                        </div>
-                                        <textarea class="review-textarea" id="review-text" placeholder="Share your experience..."></textarea>
-                                        <button class="btn btn-primary" id="submit-review">Submit Review</button>
-                                    </div>
-                                
-                            </div>
-                        </div>
-
-                        <!-- Sidebar -->
-                        <div style="display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 2rem;">
-                            <!-- Booking Summary -->
-                            <div id="booking-summary" style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
-                                <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Your Booking</h3>
-                                <div id="selected-services-list">
-                                    <p style="font-size: 0.9rem; color: var(--text-light);">Select services from the list to get started.</p>
-                                </div>
-                                <div style="border-top: 1px solid var(--border); margin: 1rem 0; padding-top: 1rem; display: flex; justify-content: space-between; font-weight: 600;">
-                                    <span>Total</span>
-                                    <span id="booking-total-price">$0.00</span>
-                                </div>
-                                <button class="btn btn-primary" id="proceed-to-book-btn" style="width: 100%;" disabled="">Choose Services</button>
-                            </div>
-
-                            <!-- Contact -->
-                            <div style="background-color: var(--secondary); padding: 1.5rem; border-radius: var(--radius);">
-                                <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1rem;">Contact Vendor</h3>
-                                <p style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-light);">Have questions? Get in touch!</p>
-                                <button class="btn btn-outline" id="open-chat-btn" style="width: 100%;">Message Vendor</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-    <!-- Full-Width Venue Recommendations (Independent from profile) -->
-    <div id="venue-recommendations-section" style="display: none; background: #f9fafb; padding: 3rem 0; margin-top: 0;">
-        <div style="max-width: 1600px; margin: 0 auto; padding: 0 2rem;">
-            <h2 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 2rem; color: #1f2937;">Explore More Venues</h2>
-            
-            <!-- Tabs -->
-            <div style="display: flex; gap: 0; border-bottom: 2px solid #e5e7eb; margin-bottom: 2rem; overflow-x: auto;">
-                <button class="venue-recommendation-tab active" data-tab="similar" 
-                        style="padding: 1rem 2rem; background: #1f2937; color: white; border: none; cursor: pointer; font-weight: 500; border-radius: 4px 4px 0 0; transition: all 0.3s; white-space: nowrap;">
-                    Similar Venues
-                </button>
-                <button class="venue-recommendation-tab" data-tab="nearby"
-                        style="padding: 1rem 2rem; background: white; color: #6b7280; border: none; cursor: pointer; font-weight: 500; border-radius: 4px 4px 0 0; transition: all 0.3s; white-space: nowrap;">
-                    Venues Nearby
-                </button>
-                <button class="venue-recommendation-tab" data-tab="viewing"
-                        style="padding: 1rem 2rem; background: white; color: #6b7280; border: none; cursor: pointer; font-weight: 500; border-radius: 4px 4px 0 0; transition: all 0.3s; white-space: nowrap;">
-                    Other Users are Currently Viewing
-                </button>
-            </div>
-
-            <!-- Tab Content -->
-            <div id="similar-venues-content" class="venue-tab-content" style="display: block;">
-                <div style="position: relative;">
-                    <button class="scroll-arrow scroll-left" data-target="similar-venues-grid" style="position: absolute; left: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                    </button>
-                    <div id="similar-venues-grid" style="display: flex; gap: 1.5rem; overflow-x: auto; scroll-behavior: smooth; padding: 1rem 0; scrollbar-width: none; -ms-overflow-style: none;">
-                        <!-- Will be populated with skeleton or content -->
-                    </div>
-                    <button class="scroll-arrow scroll-right" data-target="similar-venues-grid" style="position: absolute; right: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            
-            <div id="nearby-venues-content" class="venue-tab-content" style="display: none;">
-                <div style="position: relative;">
-                    <button class="scroll-arrow scroll-left" data-target="nearby-venues-grid" style="position: absolute; left: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                    </button>
-                    <div id="nearby-venues-grid" style="display: flex; gap: 1.5rem; overflow-x: auto; scroll-behavior: smooth; padding: 1rem 0; scrollbar-width: none; -ms-overflow-style: none;">
-                        <!-- Will be populated with skeleton or content -->
-                    </div>
-                    <button class="scroll-arrow scroll-right" data-target="nearby-venues-grid" style="position: absolute; right: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-            
-            <div id="viewing-venues-content" class="venue-tab-content" style="display: none;">
-                <div style="position: relative;">
-                    <button class="scroll-arrow scroll-left" data-target="viewing-venues-grid" style="position: absolute; left: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
-                    </button>
-                    <div id="viewing-venues-grid" style="display: flex; gap: 1.5rem; overflow-x: auto; scroll-behavior: smooth; padding: 1rem 0; scrollbar-width: none; -ms-overflow-style: none;">
-                        <!-- Will be populated with skeleton or content -->
-                    </div>
-                    <button class="scroll-arrow scroll-right" data-target="viewing-venues-grid" style="position: absolute; right: -20px; top: 50%; transform: translateY(-50%); z-index: 10; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 40px; height: 40px; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: all 0.2s;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Dashboard Modal -->
     <div id="dashboard-modal" class="modal" data-no-outside-close style="display: none;">
@@ -11191,44 +10417,7 @@
         <button class="lightbox-nav lightbox-next">❯</button>
     </div>
 
-    <!-- Photo Gallery Modal -->
-    <div id="photo-gallery-modal" class="photo-gallery-modal">
-        <div class="photo-gallery-header">
-            <div class="photo-gallery-header-left">
-                <button class="photo-gallery-close-btn" id="photo-gallery-close-btn" onclick="closePhotoGallery()">×</button>
-                <h2 id="photo-gallery-vendor-name">Photo tour</h2>
-            </div>
-            <div class="photo-gallery-header-right">
-                <button class="photo-gallery-action-btn" id="photo-gallery-save-btn" onclick="if(currentVendor) toggleFavorite(currentVendor.id)">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                    </svg>
-                    Save Vendor
-                </button>
-                <button class="photo-gallery-action-btn primary" id="photo-gallery-request-btn" onclick="if(currentVendor) shareVendor(currentVendor)">
-                    Share Vendor
-                </button>
-            </div>
-        </div>
-        <div class="photo-gallery-content">
-            <div class="photo-gallery-thumbnails" id="photo-gallery-thumbnails">
-                <!-- Thumbnails will be dynamically populated here -->
-            </div>
-            <div class="photo-gallery-main">
-                <button class="photo-gallery-nav-btn prev" id="photo-gallery-prev-btn" onclick="showPrevGalleryImage()">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
-                </button>
-                <img id="photo-gallery-main-image" class="photo-gallery-main-image" src="" alt="Gallery Image">
-                <button class="photo-gallery-nav-btn next" id="photo-gallery-next-btn" onclick="showNextGalleryImage()">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"></polyline>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- REMOVED: Photo Gallery Modal - Now in standalone vendor-profile.html -->
 
     <!-- Multi-Step Booking Modal -->
     <div id="booking-modal" class="modal" style="display: none;">
@@ -15354,7 +14543,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Initialize variables
             const mainAppView = document.getElementById('app-container');
-            const vendorProfilePage = document.getElementById('vendor-profile-page');
             const confirmationModal = document.getElementById('confirmation-modal');
             const locationPermissionModal = document.getElementById('location-permission');
             const vendorGrid = document.getElementById('vendor-grid');
@@ -18081,8 +17269,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 const vendorId = card.dataset.vendorId;
                                 if (vendorId) {
                                     trackVendorView(vendorId);
-                                    const baseUrl = window.location.origin + window.location.pathname;
-                                    window.open(`${baseUrl}#/listings/${vendorId}`, '_blank');
+                                    const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+                                    window.open(`${baseUrl}/vendor-profile.html?vendorId=${vendorId}`, '_blank');
                                 }
                             });
                         });
@@ -18189,11 +17377,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                     vendorIdFromHash = hashPath.split('/')[2];
                 }
                 
-                // If a vendor ID is found from either path or hash, show the profile page and exit
+                // If a vendor ID is found from either path or hash, redirect to standalone profile page
                 const vendorId = vendorIdFromPath || vendorIdFromHash;
                 if (vendorId) {
-                    console.log('🚀 Direct URL vendor ID found on initial load:', vendorId);
-                    await showVendorProfilePage(vendorId);
+                    console.log('🚀 Direct URL vendor ID found, redirecting to standalone profile page:', vendorId);
+                    window.location.href = `vendor-profile.html?id=${vendorId}`;
                     return; // Important: Exit here to prevent loading the main app view.
                 }
                 
@@ -20297,7 +19485,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                         ${vendorDescription || ''}
                                     </div>
                                     <div class="vendor-footer">
-                                        <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '#/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');" style="border-radius: 12px; font-weight: 600;">View Profile</button>
+                                        <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); window.open('vendor-profile.html?id=${vendorId}', '_blank');" style="border-radius: 12px; font-weight: 600;">View Profile</button>
                                         <button class="btn btn-primary btn-select-vendor" onclick="toggleVendorSelection('${vendorId}', '${service.name}', ${priceInfo.value ?? 0})" style="border-radius: 12px; font-weight: 600;">
                                             Select Vendor
                                         </button>
@@ -20451,7 +19639,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     ${vendorDescription.length > 100 ? vendorDescription.substring(0, 100) + '...' : vendorDescription}
                                 </div>
                                 <div class="vendor-footer">
-                                    <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '#/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');">View Profile</button>
+                                    <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')); window.open(baseUrl + '/vendor-profile.html?vendorId=' + '${vendorId}', '_blank');">View Profile</button>
                                     <button class="btn btn-primary btn-select-vendor" onclick="toggleVendorSelection('${vendorId}', '${service.name}', ${actualPrice})">
                                         Select Vendor
                                     </button>
@@ -20471,8 +19659,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             // Function to view vendor profile in new tab
             function openVendorProfile(vendorId) {
-                const baseUrl = window.location.origin + window.location.pathname;
-                const profileUrl = `${baseUrl}#/listings/${vendorId}`;
+                const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+                const profileUrl = `${baseUrl}/vendor-profile.html?vendorId=${vendorId}`;
                 console.log('Opening vendor profile:', profileUrl);
                 window.open(profileUrl, '_blank');
             }
@@ -21718,60 +20906,29 @@ document.addEventListener('DOMContentLoaded', async function() {
         window.openBookingModal = openBookingModal;
         // toggleVendorSelection will be defined later in the file
             
-            // New router-like functionality for SPA
+            // Router functionality - vendor profiles now handled by standalone page
             let isInitialLoad = true;
             function handleUrlChange() {
                 console.log('🔄 handleUrlChange called');
                 console.log('🔄 Current URL:', window.location.href);
                 console.log('🔄 Current hash:', window.location.hash);
-                console.log('🔄 Current pathname:', window.location.pathname);
-                console.log('🔄 isInitialLoad:', isInitialLoad);
                 
-                // Check both hash-based and path-based routing
+                // Check for vendor profile hash routing and redirect to standalone page
                 const hashPath = window.location.hash.substring(1);
-                const pathname = window.location.pathname;
                 
-                let vendorId = null;
-                let shouldUpdateHash = false;
-                
-                // Check hash-based routing first (e.g., #/listings/144)
                 if (hashPath.startsWith('/listings/')) {
-                    vendorId = hashPath.split('/')[2];
-                    console.log('🔄 Found vendor ID from hash:', vendorId);
-                }
-                // Check path-based routing (e.g., /listings/144)
-                else if (pathname.includes('/listings/')) {
-                    const pathParts = pathname.split('/');
-                    const listingIndex = pathParts.findIndex(part => part === 'listings');
-                    if (listingIndex !== -1 && pathParts[listingIndex + 1]) {
-                        vendorId = pathParts[listingIndex + 1];
-                        shouldUpdateHash = true;
-                        console.log('🔄 Found vendor ID from path:', vendorId);
-                    }
+                    const vendorId = hashPath.split('/')[2];
+                    console.log('🔄 Redirecting to standalone vendor profile page:', vendorId);
+                    
+                    // Redirect to standalone vendor profile page
+                    const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+                    window.location.href = `${baseUrl}/vendor-profile.html?vendorId=${vendorId}`;
+                    return;
                 }
                 
-                // Check DOM elements
-                console.log('🔄 mainAppView exists:', !!mainAppView);
-                console.log('🔄 vendorProfilePage exists:', !!vendorProfilePage);
-                
-                if (vendorId) {
-                    console.log(`🔗 Loading vendor profile for ID: ${vendorId}`);
-                    
-                    // Update hash only after successful profile load to prevent redirect loops
-                    if (shouldUpdateHash && !isInitialLoad) {
-                        console.log('🔄 Updating hash for subsequent navigation');
-                        window.history.replaceState(null, null, `${window.location.origin}${window.location.pathname}#/listings/${vendorId}`);
-                    } else if (shouldUpdateHash && isInitialLoad) {
-                        console.log('🔄 Setting hash for initial load');
-                        // For initial load, set hash without triggering navigation
-                        window.location.hash = `/listings/${vendorId}`;
-                    }
-                    
-                    showVendorProfilePage(vendorId);
-                } else {
-                    console.log('🔄 No vendor ID found, showing main app');
-                    showMainApp();
-                }
+                // Otherwise show main app
+                console.log('🔄 Showing main app');
+                showMainApp();
                 
                 // Mark that initial load is complete
                 isInitialLoad = false;
@@ -21790,17 +20947,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                     });
                 } else {
                     console.error('❌ mainAppView not found');
-                }
-                
-                if (vendorProfilePage) {
-                    vendorProfilePage.style.display = 'none';
-                    console.log('🏠 vendorProfilePage hidden');
-                    
-                    // Hide the full-width recommendations section
-                    const recommendationsSection = document.getElementById('venue-recommendations-section');
-                    if (recommendationsSection) recommendationsSection.style.display = 'none';
-                } else {
-                    console.error('❌ vendorProfilePage not found');
                 }
                 
                 // Dashboards are now in a modal, so we don't hide them here
@@ -35910,8 +35056,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
 
             // Share vendor profile
             async function shareVendorProfile(vendorId, vendorName) {
-                const baseUrl = window.location.origin + window.location.pathname;
-                const profileUrl = `${baseUrl}#/listings/${vendorId}`;
+                const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+                const profileUrl = `${baseUrl}/vendor-profile.html?vendorId=${vendorId}`;
                 
                 // Check if Web Share API is available (mobile devices)
                 if (navigator.share) {
@@ -36091,7 +35237,8 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     // Add click event to show vendor info
                     marker.addListener('click', () => {
                         console.log(`🖱️ Clicked on vendor: ${vendor.BusinessName} (ID: ${vendor.VendorProfileID})`);
-                        window.location.hash = `/listings/${vendor.VendorProfileID}`;
+                        const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+                        window.open(`${baseUrl}/vendor-profile.html?vendorId=${vendor.VendorProfileID}`, '_blank');
                     });
                 });
 
@@ -37011,9 +36158,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         // Track the profile view
                         trackVendorView(vendorId);
                         
-                        // Open in new tab with hash-based routing
-                        const baseUrl = window.location.origin + window.location.pathname;
-                        const profileUrl = `${baseUrl}#/listings/${vendorId}`;
+                        // Open in new tab with new vendor profile page
+                        const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+                        const profileUrl = `${baseUrl}/vendor-profile.html?vendorId=${vendorId}`;
                         console.log('Opening URL:', profileUrl);
                         console.log('Base URL:', baseUrl);
                         console.log('Vendor ID:', vendorId);
@@ -41416,7 +40563,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 ${vendorDescription || 'Professional service provider offering quality services for your event.'}
                             </div>
                             <div class="vendor-footer">
-                                <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '#/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');" style="border-radius: 12px; font-weight: 600;">View Profile</button>
+                                <button class="btn btn-outline view-profile-btn" onclick="event.preventDefault(); event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')); window.open(baseUrl + '/vendor-profile.html?vendorId=' + '${vendorId}', '_blank');" style="border-radius: 12px; font-weight: 600;">View Profile</button>
                                 <button class="btn btn-primary btn-select-vendor" onclick="selectVendorForAllServices('${vendorId}')" style="border-radius: 12px; font-weight: 600;">
                                     Select for All Services
                                 </button>
@@ -41981,7 +41128,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             </div>
                         </div>
                         <div class="vendor-eye-icon" 
-                             onclick="event.stopPropagation(); const baseUrl = window.location.origin + window.location.pathname; const profileUrl = baseUrl + '#/listings/' + '${vendorId}'; window.open(profileUrl, '_blank');"
+                             onclick="event.stopPropagation(); window.open('vendor-profile.html?id=${vendorId}', '_blank');"
                              title="View vendor profile">
                             <i class="fas fa-eye"></i>
                         </div>
