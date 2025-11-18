@@ -96,15 +96,22 @@ async function loadVendorData() {
             throw new Error(`Failed to load vendor data: ${response.status} ${response.statusText}`);
         }
         
-        vendorData = await response.json();
-        displayVendorInfo();
+        const result = await response.json();
+        
+        // The API returns { success: true, data: { profile: {...}, ... } }
+        if (result.success && result.data) {
+            vendorData = result.data;
+            displayVendorInfo();
+        } else {
+            throw new Error('Invalid vendor data format');
+        }
         
     } catch (error) {
         console.error('Error loading vendor data:', error);
         
         // Show more helpful error message
         const errorMsg = error.message.includes('fetch')
-            ? 'Unable to connect to the server. Please make sure the backend is running on port 3000.'
+            ? 'Unable to connect to the server. Please make sure the backend is running.'
             : 'Failed to load vendor information. Please try again.';
         
         alert(errorMsg);
@@ -123,13 +130,20 @@ async function loadVendorData() {
 }
 
 function displayVendorInfo() {
-    if (!vendorData) return;
+    if (!vendorData || !vendorData.profile) return;
     
-    const businessName = vendorData.BusinessName || vendorData.Name || 'Vendor';
-    const category = vendorData.Category || vendorData.ServiceCategory || '';
-    const rating = vendorData.AverageRating || vendorData.Rating || 0;
-    const reviewCount = vendorData.ReviewCount || vendorData.TotalReviews || 0;
-    const profilePic = vendorData.ProfilePictureURL || vendorData.ProfilePicture || '';
+    const profile = vendorData.profile;
+    const businessName = profile.BusinessName || profile.Name || 'Vendor';
+    
+    // Get primary category from categories array
+    let category = '';
+    if (vendorData.categories && vendorData.categories.length > 0) {
+        category = vendorData.categories[0].CategoryName || vendorData.categories[0].Category || '';
+    }
+    
+    const rating = profile.AverageRating || profile.Rating || 0;
+    const reviewCount = profile.ReviewCount || profile.TotalReviews || 0;
+    const profilePic = profile.ProfilePictureURL || profile.ProfilePicture || '';
     
     const vendorInfoHtml = `
         ${profilePic ? 
@@ -178,19 +192,46 @@ async function loadVendorServices() {
             return;
         }
         
-        // Display services
-        servicesList.innerHTML = services.map(service => `
-            <div class="service-card" data-service-id="${service.PredefinedServiceID || service.VendorSelectedServiceID}" data-service-name="${service.ServiceName}" data-service-price="${service.VendorPrice || 0}">
-                <div class="service-card-header">
-                    <div class="service-name">${service.ServiceName}</div>
+        // Display services with vendor profile page styling - minimal design
+        servicesList.innerHTML = services.map(service => {
+            const category = service.Category || 'Beauty & Wellness';
+            const duration = service.VendorDurationMinutes || service.DefaultDurationMinutes || 0;
+            
+            // Format duration like "2 hours" or "1 hour 30 min"
+            let durationText = '';
+            if (duration > 0) {
+                const hours = Math.floor(duration / 60);
+                const minutes = duration % 60;
+                if (hours > 0 && minutes > 0) {
+                    durationText = `${hours} hour${hours > 1 ? 's' : ''} ${minutes} min`;
+                } else if (hours > 0) {
+                    durationText = `${hours} hour${hours > 1 ? 's' : ''}`;
+                } else {
+                    durationText = `${minutes} min`;
+                }
+            }
+            
+            return `
+                <div class="service-card" data-service-id="${service.PredefinedServiceID || service.VendorSelectedServiceID}" data-service-name="${service.ServiceName}" data-service-price="${service.VendorPrice || 0}">
+                    <div class="service-icon-container">
+                        <i class="fas fa-spa"></i>
+                    </div>
+                    <div class="service-content">
+                        <h4 class="service-name">${service.ServiceName}</h4>
+                        <div class="service-meta">
+                            <span class="service-category">
+                                <i class="fas fa-tag"></i>
+                                ${category}
+                            </span>
+                            ${durationText ? `<span class="service-duration"><i class="far fa-clock"></i> ${durationText}</span>` : ''}
+                        </div>
+                    </div>
                     <div class="service-checkbox">
                         <i class="fas fa-check" style="display: none;"></i>
                     </div>
                 </div>
-                ${service.VendorDescription || service.PredefinedDescription ? `<div class="service-description">${service.VendorDescription || service.PredefinedDescription}</div>` : ''}
-                ${service.VendorPrice ? `<div class="service-price">$${parseFloat(service.VendorPrice).toFixed(2)}</div>` : '<div class="service-price">Price on request</div>'}
-            </div>
-        `).join('');
+            `;
+        }).join('');
         
         // Add click handlers to service cards
         document.querySelectorAll('.service-card').forEach(card => {
