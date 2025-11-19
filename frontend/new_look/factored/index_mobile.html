@@ -85,12 +85,12 @@
     <div class="app-container" id="app-container" style="display: grid;">
         <!-- Categories Navigation -->
         <nav class="categories-nav">
-            <button class="nav-scroll-btn left" id="scroll-left">â—€</button>
+            <button class="nav-scroll-btn left" id="scroll-left">◀</button>
             <div class="categories-list-wrapper">
                 <div class="categories-list" id="categories-list"><div class="category-item active" data-category="all"><i class="fas fa-layer-group"></i><span>All Categories</span></div><div class="category-item" data-category="venue"><i class="fas fa-building"></i><span>Venues</span></div><div class="category-item" data-category="photo"><i class="fas fa-camera"></i><span>Photo/Video</span></div><div class="category-item" data-category="music"><i class="fas fa-music"></i><span>Music/DJ</span></div><div class="category-item" data-category="catering"><i class="fas fa-utensils"></i><span>Catering</span></div><div class="category-item" data-category="entertainment"><i class="fas fa-theater-masks"></i><span>Entertainment</span></div><div class="category-item" data-category="experiences"><i class="fas fa-star"></i><span>Experiences</span></div><div class="category-item" data-category="decor"><i class="fas fa-ribbon"></i><span>Decorations</span></div><div class="category-item" data-category="beauty"><i class="fas fa-spa"></i><span>Beauty</span></div><div class="category-item" data-category="cake"><i class="fas fa-birthday-cake"></i><span>Cake</span></div><div class="category-item" data-category="transport"><i class="fas fa-shuttle-van"></i><span>Transportation</span></div><div class="category-item" data-category="planner"><i class="fas fa-clipboard-list"></i><span>Planners</span></div><div class="category-item" data-category="fashion"><i class="fas fa-tshirt"></i><span>Fashion</span></div><div class="category-item" data-category="stationery"><i class="fas fa-envelope"></i><span>Stationery</span></div></div>
                 <div class="category-indicator" id="category-indicator"></div>
             </div>
-            <button class="nav-scroll-btn right" id="scroll-right">â–¶</button>
+            <button class="nav-scroll-btn right" id="scroll-right">▶</button>
         </nav>
 
         <aside class="sidebar">
@@ -133,10 +133,10 @@
                 </h3>
                 <select class="form-control" id="rating-filter" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
                     <option value="">All Ratings</option>
-                    <option value="4">â­â­â­â­ 4+ Stars</option>
-                    <option value="3">â­â­â­ 3+ Stars</option>
-                    <option value="2">â­â­ 2+ Stars</option>
-                    <option value="1">â­ 1+ Star</option>
+                    <option value="4">&#9733;&#9733;&#9733;&#9733; 4+ Stars</option>
+                    <option value="3">&#9733;&#9733;&#9733; 3+ Stars</option>
+                    <option value="2">&#9733;&#9733; 2+ Stars</option>
+                    <option value="1">&#9733; 1+ Star</option>
                 </select>
             </div>
 
@@ -276,7 +276,7 @@
             <div class="modal-header">
                 <h3 id="dashboard-modal-title">Dashboard</h3>
                 <!-- Mode toggle removed per request -->
-                <span class="close-modal">Ã—</span>
+                <span class="close-modal">×</span>
             </div>
             <div class="modal-body" style="padding: 0; overflow: hidden; flex-grow: 1;">
                 <!-- Client Dashboard -->
@@ -1267,7 +1267,7 @@
         <div class="modal-content" style="max-width: 95%; width: 1200px; height: 90vh; display: flex; flex-direction: column; background: var(--secondary);">
             <div class="modal-header">
                 <h3 id="registration-title"><span class="step-number-badge">1</span>Step 1 of 9: Business Basics</h3>
-                <span class="close-modal">Ã—</span>
+                <span class="close-modal">×</span>
             </div>
             <div class="modal-body">
                 <!-- Progress Bar -->
@@ -1847,7 +1847,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="modal-vendor-name">Vendor Name</h3>
-                <span class="close-modal">Ã—</span>
+                <span class="close-modal">×</span>
             </div>
             <div class="modal-body">
                 <!-- Image Gallery -->
@@ -1978,7 +1978,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3>Chat with <span id="chat-vendor-name">Vendor</span></h3>
-                <span class="close-modal">Ã—</span>
+                <span class="close-modal">×</span>
             </div>
             <div class="modal-body">
                 <div class="chat-container">
@@ -2029,7 +2029,7 @@
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
                 <h3 id="profile-modal-title">My Account</h3>
-                <span class="close-modal" id="close-profile-modal">Ã—</span>
+                <span class="close-modal" id="close-profile-modal">×</span>
             </div>
             <div class="modal-body">
                 <!-- Login Form (shown by default) -->
@@ -2181,14 +2181,14 @@
                     </svg>
                 </button>
             </div>
-            <span class="lightbox-close">Ã—</span>
+            <span class="lightbox-close">×</span>
         </div>
-        <button class="lightbox-nav lightbox-prev">â®</button>
+        <button class="lightbox-nav lightbox-prev">❮</button>
         <div class="lightbox-content">
             <img src="" alt="Lightbox image" id="lightbox-image">
             <div class="lightbox-counter" id="lightbox-counter">1 / 1</div>
         </div>
-        <button class="lightbox-nav lightbox-next">â¯</button>
+        <button class="lightbox-nav lightbox-next">❯</button>
     </div>
 
     <!-- REMOVED: Photo Gallery Modal - Now in standalone vendor-profile.html -->
@@ -2198,7 +2198,7 @@
         <div class="modal-content" style="max-width: 1400px; width: 95%; height: 95vh; display: flex; flex-direction: column; overflow: hidden;">
             <div class="modal-header">
                 <h3 id="booking-modal-title"><span class="step-number-badge">1</span>Step 1 of 5: Select Categories</h3>
-                <span class="close-modal">Ã—</span>
+                <span class="close-modal">×</span>
             </div>
             <div class="modal-body">
                 <!-- Progress Bar -->
@@ -2588,7 +2588,7 @@
       <div class="modal-content" style="max-width: 920px; width: 95%; display:flex; flex-direction:column; max-height: 90vh;">
         <div class="modal-header">
           <h3 id="invoice-modal-title">Invoice</h3>
-          <span class="close-modal" id="invoice-close-btn">Ã—</span>
+          <span class="close-modal" id="invoice-close-btn">×</span>
         </div>
         <div class="modal-body" style="overflow:auto;">
           <div id="invoice-print-area" style="background:white; padding: 24px; border-radius: 8px;">
@@ -2611,7 +2611,7 @@
         <div class="modal-header">
           <h3 id="booking-details-title">Event Details</h3>
           <div id="booking-details-status-slot" style="margin-left:auto; display:flex; align-items:center; gap:8px; position:relative;"></div>
-          <span class="close-modal" id="booking-details-close">Ã—</span>
+          <span class="close-modal" id="booking-details-close">×</span>
         </div>
         <div class="modal-body" style="overflow:auto;">
           <div id="booking-details-content"></div>

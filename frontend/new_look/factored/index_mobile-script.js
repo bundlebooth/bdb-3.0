@@ -438,7 +438,7 @@ function renderInvoice(inv) {
     const paymentsHtml = (Array.isArray(inv.payments) && inv.payments.length)
         ? `<div style="margin-top:8px;">${inv.payments.map(p => `
                 <div style="display:flex;justify-content:space-between;font-size:.92rem;padding:6px 0;border-bottom:1px dashed var(--border);">
-                  <span>${new Date(p.CreatedAt).toLocaleString()} â€¢ ${p.Currency || 'USD'}</span>
+                  <span>${new Date(p.CreatedAt).toLocaleString()} • ${p.Currency || 'USD'}</span>
                   <span>Paid ${money(p.Amount)} ${Number(p.FeeAmount||0)>0?`<span style='color:#6b7280'>(Fees: ${money(p.FeeAmount)})</span>`:''}</span>
                 </div>`).join('')}</div>`
         : `<div style="color:#6b7280;">No payments recorded yet.</div>`;
@@ -456,7 +456,7 @@ function renderInvoice(inv) {
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
         <div>
           <div style="font-size:1.25rem;font-weight:700;">${inv.billFrom?.name || 'Vendor'}</div>
-          <div style="font-size:.95rem;color:#6b7280;">${inv.billFrom?.email || ''}${inv.billFrom?.phone?` â€¢ ${inv.billFrom.phone}`:''}</div>
+          <div style="font-size:.95rem;color:#6b7280;">${inv.billFrom?.email || ''}${inv.billFrom?.phone?` • ${inv.billFrom.phone}`:''}</div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:1.4rem;font-weight:800;">INVOICE</div>
@@ -467,7 +467,7 @@ function renderInvoice(inv) {
         <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:12px;">
           <div style="font-weight:700;margin-bottom:6px;">Bill To</div>
           <div>${inv.billTo?.name || ''}</div>
-          <div style="color:#6b7280;">${inv.billTo?.email || ''}${inv.billTo?.phone?` â€¢ ${inv.billTo.phone}`:''}</div>
+          <div style="color:#6b7280;">${inv.billTo?.email || ''}${inv.billTo?.phone?` • ${inv.billTo.phone}`:''}</div>
         </div>
         <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:12px;">
           <div style="display:flex;justify-content:space-between;">
@@ -4174,7 +4174,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                     ? `$${service.pricePerPerson || 0}/person`
                                     : `$${service.fixedPrice || service.vendorPrice || 0} fixed`)
                                 : `$${service.baseRate || service.vendorPrice || 0} for ${service.vendorDuration || service.baseDurationMinutes || service.defaultDuration || 60} min`}
-                            ${service.vendorDescription ? ` â€¢ ${service.vendorDescription}` : ''}
+                            ${service.vendorDescription ? ` • ${service.vendorDescription}` : ''}
                         </div>
                     </div>
                     <div style="color: var(--primary); font-size: 0.85rem; font-weight: 500;">${service.category || ''}</div>
@@ -6382,7 +6382,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                                 
                                 <!-- Response Time & Location -->
                                 <div style="font-size: 14px; color: #717171; margin-top: 2px;">
-                                    ${responseTime ? `Responds ${responseTime}` : ''}${(responseTime && (city || state)) ? ' â€¢ ' : ''}${city || state ? `${city}${city && state ? ', ' : ''}${state}` : ''}
+                                    ${responseTime ? `Responds ${responseTime}` : ''}${(responseTime && (city || state)) ? ' • ' : ''}${city || state ? `${city}${city && state ? ', ' : ''}${state}` : ''}
                                 </div>
                             </div>
                         </div>
@@ -8057,7 +8057,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 <div style="display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; padding: 0.25rem 0; align-items: center;">
                     <div>
                         <div style="color: var(--text); font-weight:600;">${service.name}</div>
-                        <div style="color: var(--text-light); font-size:0.85rem;">Duration: ${durTxt}${durMin>0?` â€¢ ~$${Math.round(hourly).toLocaleString()}/hr`:''}</div>
+                        <div style="color: var(--text-light); font-size:0.85rem;">Duration: ${durTxt}${durMin>0?` • ~$${Math.round(hourly).toLocaleString()}/hr`:''}</div>
                     </div>
                     <div style="font-weight: 700; color: var(--primary-color);">$${Number(service.budget||0).toLocaleString()}</div>
                 </div>
@@ -8067,7 +8067,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const blendedHourly = totalMinutes>0 ? (totalBudget / (totalMinutes/60)) : 0;
         listHtml += `
             <div style="margin-top: 0.5rem; padding-top:0.5rem; border-top:1px dashed var(--border); color: var(--text-light); font-size:0.9rem;">
-                <div>Total duration: ${formatMinutes(totalMinutes)}${totalMinutes>0?` â€¢ Blended ~$${Math.round(blendedHourly).toLocaleString()}/hr`:''}</div>
+                <div>Total duration: ${formatMinutes(totalMinutes)}${totalMinutes>0?` • Blended ~$${Math.round(blendedHourly).toLocaleString()}/hr`:''}</div>
             </div>
         `;
         
@@ -14113,7 +14113,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                                 ? `$${service.pricePerPerson || 0}/person`
                                 : `$${service.fixedPrice || service.vendorPrice || 0} fixed`)
                             : `$${service.baseRate || service.vendorPrice || 0} for ${service.vendorDuration || service.baseDurationMinutes || service.defaultDuration || 60} min`}
-                        ${service.vendorDescription ? ` â€¢ ${service.vendorDescription}` : ''}
+                        ${service.vendorDescription ? ` • ${service.vendorDescription}` : ''}
                     </div>
                 </div>
                 <div style="color: var(--primary); font-size: 0.85rem; font-weight: 500;">
@@ -16676,7 +16676,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                 imageUrl = venue.PrimaryImageURL || venue.primaryImageURL || venue.imageUrl;
             }
 
-            const stars = 'â˜…'.repeat(Math.round(rating));
+            const stars = '★'.repeat(Math.round(rating));
             
             return `
                 <div class="recommendation-venue-card" onclick="window.location.hash = 'vendor/${vendorId}'">
@@ -17358,7 +17358,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         <div style="display: flex; align-items: center; gap: 1.25rem; color: var(--text-light); margin-bottom: 0.75rem; flex-wrap: wrap; font-size: 0.9rem;">
                             ${profile.City || profile.State ? `<span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${[profile.City, profile.State].filter(Boolean).join(', ')}</span>` : ''}
                             ${profile.YearsInBusiness ? `<span><i class="fas fa-trophy" style="color: #fbbf24; margin-right: 0.5rem;"></i>${profile.YearsInBusiness} years in business</span>` : ''}
-                            <span style="color: #fbbf24;">â˜†â˜†â˜†â˜†â˜† <span style="color: var(--text-light);">(0 reviews)</span></span>
+                            <span style="color: #fbbf24;">☆☆☆☆☆ <span style="color: var(--text-light);">(0 reviews)</span></span>
                         </div>
                         
                         <!-- Social Media Icons Row -->
@@ -17498,11 +17498,11 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <button class="btn btn-outline add-review-btn" id="show-review-form" style="margin-top: 1rem;">Add Review</button>
                             <div class="review-form" id="review-form" style="display: none; margin-top: 1rem; padding: 1.25rem; background: var(--secondary); border-radius: 8px;">
                                 <div class="rating-input" style="margin-bottom: 1rem;">
-                                    <span class="rating-star" data-rating="1" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">â˜†</span>
-                                    <span class="rating-star" data-rating="2" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">â˜†</span>
-                                    <span class="rating-star" data-rating="3" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">â˜†</span>
-                                    <span class="rating-star" data-rating="4" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">â˜†</span>
-                                    <span class="rating-star" data-rating="5" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">â˜†</span>
+                                    <span class="rating-star" data-rating="1" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">☆</span>
+                                    <span class="rating-star" data-rating="2" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">☆</span>
+                                    <span class="rating-star" data-rating="3" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">☆</span>
+                                    <span class="rating-star" data-rating="4" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">☆</span>
+                                    <span class="rating-star" data-rating="5" style="font-size: 1.25rem; cursor: pointer; color: #ddd;">☆</span>
                                 </div>
                                 <textarea class="review-textarea" id="review-text" placeholder="Share your experience..." style="width: 100%; min-height: 80px; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; resize: vertical; margin-bottom: 1rem;"></textarea>
                                 <button class="btn btn-primary" id="submit-review">Submit Review</button>
@@ -17522,7 +17522,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <span>Request Booking</span>
                         </button>
                         <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.75rem; text-align: center;">
-                            <i class="fas fa-shield-alt" style="color: var(--primary);"></i> Free request â€¢ No payment required
+                            <i class="fas fa-shield-alt" style="color: var(--primary);"></i> Free request • No payment required
                         </p>
                     </div>
 
@@ -17774,7 +17774,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                     <div class="reviewer">${review.ReviewerName || review.UserName || 'Anonymous'}</div>
                     <div class="review-date">${new Date(review.CreatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
                 </div>
-                <div class="review-rating">${'â˜…'.repeat(review.Rating)}${'â˜†'.repeat(5 - review.Rating)}</div>
+                <div class="review-rating">${'★'.repeat(review.Rating)}${'☆'.repeat(5 - review.Rating)}</div>
                 ${review.Title ? `<div class="review-title">${review.Title}</div>` : ''}
                 <div class="review-text">${review.Comment}</div>
             </div>
@@ -20131,9 +20131,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <div class="vendor-location" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                                 <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${locationText || 'Location unavailable'}</span>
                                 ${ratingValue > 0 ? `
-                                <span style="color:#6b7280;">â€¢</span>
+                                <span style="color:#6b7280;">•</span>
                                 <span style="display:flex;align-items:center;gap:.5rem;">
-                                    <span style="color:#f59e0b;font-size:.9rem;">${'â˜…'.repeat(Math.floor(ratingValue))}${'â˜†'.repeat(5-Math.floor(ratingValue))}</span>
+                                    <span style="color:#f59e0b;font-size:.9rem;">${'★'.repeat(Math.floor(ratingValue))}${'☆'.repeat(5-Math.floor(ratingValue))}</span>
                                     <span style="font-size:.85rem;color:#6b7280;">${ratingValue.toFixed(1)} (${reviewCount})</span>
                                 </span>
                                 ` : ''}
@@ -20234,9 +20234,9 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                             <div class="vendor-location" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
                                 <span><i class="fas fa-map-marker-alt" style="margin-right: 0.5rem;"></i>${locationText || 'Location unavailable'}</span>
                                 ${ratingValue > 0 ? `
-                                <span style="color:#6b7280;">â€¢</span>
+                                <span style="color:#6b7280;">•</span>
                                 <span style="display:flex;align-items:center;gap:.5rem;">
-                                    <span style="color:#f59e0b;font-size:.9rem;">${'â˜…'.repeat(Math.floor(ratingValue))}${'â˜†'.repeat(5-Math.floor(ratingValue))}</span>
+                                    <span style="color:#f59e0b;font-size:.9rem;">${'★'.repeat(Math.floor(ratingValue))}${'☆'.repeat(5-Math.floor(ratingValue))}</span>
                                     <span style="font-size:.85rem;color:#6b7280;">${ratingValue.toFixed(1)} (${reviewCount})</span>
                                 </span>
                                 ` : ''}
@@ -20288,7 +20288,7 @@ async function loadConversations(containerId, chatInputId, sendButtonId) {
                         <div class="reviewer">${review.VendorName}</div>
                         <div class="review-date">${new Date(review.CreatedAt).toLocaleDateString()}</div>
                     </div>
-                    <div class="review-rating">${'â˜…'.repeat(review.Rating)}${'â˜†'.repeat(5 - review.Rating)}</div>
+                    <div class="review-rating">${'★'.repeat(review.Rating)}${'☆'.repeat(5 - review.Rating)}</div>
                     ${review.Title ? `<div class="review-title">${review.Title}</div>` : ''}
                     <div class="review-text">${review.Comment}</div>
                 `;
@@ -25125,7 +25125,7 @@ populateVendorGallery(images);
                         <!-- Price, Rating, Category, and Response Time (Giggster order) -->
                         <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px;">
                             ${hourlyRate > 0 ? `<span style="font-weight: 600; color: #222;">$${hourlyRate}/hr</span>` : ''}
-                            ${rating > 0 && hourlyRate > 0 ? `<span style="color: #717171;">â€¢</span>` : ''}
+                            ${rating > 0 && hourlyRate > 0 ? `<span style="color: #717171;">•</span>` : ''}
                             ${rating > 0 ? `
                                 <span style="display: flex; align-items: center; gap: 3px;">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; height: 12px; width: 12px; fill: #0066CC;">
@@ -25135,16 +25135,16 @@ populateVendorGallery(images);
                                     ${reviewCount > 0 ? `<span style="color: #717171;">(${reviewCount})</span>` : ''}
                                 </span>
                             ` : ''}
-                            ${primaryCategory && (rating > 0 || hourlyRate > 0) ? `<span style="color: #717171;">â€¢</span>` : ''}
+                            ${primaryCategory && (rating > 0 || hourlyRate > 0) ? `<span style="color: #717171;">•</span>` : ''}
                             ${primaryCategory ? `
                                 <span style="display: flex; align-items: center; gap: 4px; color: #717171;">
                                     ${categoryIconHtml}
                                     <span>${primaryCategory}</span>
                                 </span>
                             ` : ''}
-                            ${responseTime && (primaryCategory || rating > 0 || hourlyRate > 0) ? `<span style="color: #717171;">â€¢</span>` : ''}
+                            ${responseTime && (primaryCategory || rating > 0 || hourlyRate > 0) ? `<span style="color: #717171;">•</span>` : ''}
                             ${responseTime ? `<span style="color: #717171;">Responds ${responseTime}</span>` : ''}
-                            ${isPremium && (rating > 0 || hourlyRate > 0 || responseTime || primaryCategory) ? `<span style="color: #717171;">â€¢</span>` : ''}
+                            ${isPremium && (rating > 0 || hourlyRate > 0 || responseTime || primaryCategory) ? `<span style="color: #717171;">•</span>` : ''}
                             ${isPremium ? `
                                 <span style="display: flex; align-items: center; gap: 3px;">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="display: block; height: 13px; width: 13px; fill: #FF8C00;">
@@ -29173,7 +29173,7 @@ function createVendorHoverContent(vendor, distance) {
                 ${businessName}
             </div>
             <div style="color: #10b981; font-weight: 500; margin-bottom: 0.25rem;">
-                ${serviceName} â€¢ ${price}
+                ${serviceName} • ${price}
             </div>
             <div style="color: #6b7280; font-size: 0.8rem;">
                 <i class="fas fa-map-marker-alt"></i> ${distance.toFixed(1)} km from event
@@ -29215,7 +29215,7 @@ function createVendorInfoWindowContent(vendor) {
             ${rating > 0 ? `
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                 <div style="color: #f59e0b; font-size: 0.85rem;">
-                    ${'â˜…'.repeat(Math.floor(rating))}${'â˜†'.repeat(5-Math.floor(rating))}
+                    ${'★'.repeat(Math.floor(rating))}${'☆'.repeat(5-Math.floor(rating))}
                 </div>
                 <span style="font-size: 0.8rem; color: #6b7280;">
                     ${rating.toFixed(1)} (${reviewCount} reviews)
@@ -29932,7 +29932,7 @@ function formatUnifiedServicePrice(service) {
         if (fpt === 'per_attendee') {
             let label = ppp != null ? `${fmtMoney(ppp)}/person` : '';
             const range = [minA, maxA].filter(v => v != null).map(v => Number(v)).join('-');
-            if (range) label += ` â€¢ ${range} ppl`;
+            if (range) label += ` • ${range} ppl`;
             return label;
         }
     }
@@ -30174,8 +30174,8 @@ function createHorizontalVendorCard(vendor) {
     } else {
         // Fallback to names if no detailed services present
         const displayServiceName = Array.isArray(serviceNames) && serviceNames.length > 0 ? serviceNames[0] : '';
-        const secondaryServices = Array.isArray(serviceNames) && serviceNames.length > 1 ? serviceNames.slice(1, 3).join(' â€¢ ') : '';
-        const names = [displayServiceName].concat(secondaryServices ? secondaryServices.split(' â€¢ ') : []).filter(Boolean);
+        const secondaryServices = Array.isArray(serviceNames) && serviceNames.length > 1 ? serviceNames.slice(1, 3).join(' • ') : '';
+        const names = [displayServiceName].concat(secondaryServices ? secondaryServices.split(' • ') : []).filter(Boolean);
         if (names.length > 0) {
             const tiles = names.map(n => `
                 <div class="service-pill">
@@ -30234,9 +30234,9 @@ function createHorizontalVendorCard(vendor) {
                     <div style="display:grid; grid-template-columns: 1fr auto; align-items:center; margin-top: 0.25rem; column-gap:8px;">
                         <div style="display:flex; align-items:center; gap:8px; min-width:0;">
                             ${(rating > 0) ? `
-                            <div style="color: #f59e0b; font-size: 0.85rem; line-height:1;">${'â˜…'.repeat(Math.floor(rating)) + 'â˜†'.repeat(5 - Math.floor(rating))}</div>
+                            <div style="color: #f59e0b; font-size: 0.85rem; line-height:1;">${'★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating))}</div>
                             <span style="font-size: 0.8rem; color: #9ca3af; white-space:nowrap;">${rating.toFixed(1)} (${reviewCount})</span>
-                            ${location ? `<span style="font-size: 0.8rem; color: #9ca3af; white-space:nowrap;">â€¢ ${location}</span>` : ''}
+                            ${location ? `<span style="font-size: 0.8rem; color: #9ca3af; white-space:nowrap;">• ${location}</span>` : ''}
                             ` : `
                             ${location ? `<span style="font-size: 0.8rem; color: #9ca3af; white-space:nowrap;">${location}</span>` : ''}
                             `}
@@ -30253,7 +30253,7 @@ function createHorizontalVendorCard(vendor) {
                 ${description ? `<div style="font-size: 0.9rem; color: #6b7280; line-height: 1.4; margin-bottom: 0.5rem; display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${description}</div>` : ''}
                 ${startingPriceDisplay ? `
                 <div style="font-size: 0.9rem; color: #059669; font-weight: 700; margin-bottom: 0.5rem;">
-                    Starting from ${startingPriceDisplay}${startingServiceName ? ` â€¢ <span style="font-weight:600; color:#059669;">${startingServiceName}</span>` : ''}
+                    Starting from ${startingPriceDisplay}${startingServiceName ? ` • <span style="font-weight:600; color:#059669;">${startingServiceName}</span>` : ''}
                 </div>` : ''}
                 
                 <div style="margin-bottom: 0.5rem;">

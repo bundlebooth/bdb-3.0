@@ -296,15 +296,89 @@ function renderServices(services) {
 
 // Render FAQs
 function renderFAQs(faqs) {
+    console.log('🔍 Rendering FAQs:', faqs);
+    
     return faqs.map((faq, index) => {
+        console.log(`📝 FAQ ${index}:`, faq);
+        console.log(`   AnswerType: "${faq.AnswerType}"`);
+        console.log(`   AnswerOptions:`, faq.AnswerOptions);
+        
+        let answerHtml = '';
+        
+        // Normalize AnswerType for comparison (case-insensitive, trim whitespace)
+        const answerType = (faq.AnswerType || '').trim().toLowerCase();
+        const hasAnswerOptions = faq.AnswerOptions && faq.AnswerOptions !== 'null' && faq.AnswerOptions !== '';
+        
+        console.log(`   Normalized AnswerType: "${answerType}"`);
+        console.log(`   Has AnswerOptions: ${hasAnswerOptions}`);
+        
+        // Check if this is a multiple choice question with AnswerOptions
+        // Support both "multiple choice" and "multiple_choice" formats
+        if ((answerType === 'multiple choice' || answerType === 'multiple_choice') && hasAnswerOptions) {
+            try {
+                // Parse the AnswerOptions JSON string if needed
+                let options = typeof faq.AnswerOptions === 'string' 
+                    ? JSON.parse(faq.AnswerOptions) 
+                    : faq.AnswerOptions;
+                
+                console.log(`   Parsed options:`, options);
+                
+                // Filter to only show checked options
+                if (Array.isArray(options) && options.length > 0) {
+                    // Check if options are objects with label/checked properties
+                    if (options[0] && typeof options[0] === 'object' && 'label' in options[0]) {
+                        // Filter to only checked options and extract labels
+                        const checkedOptions = options
+                            .filter(opt => opt.checked === true)
+                            .map(opt => opt.label);
+                        
+                        if (checkedOptions.length > 0) {
+                            answerHtml = `
+                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; margin-top: 0.75rem;">
+                                    ${checkedOptions.map(label => `
+                                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                            <i class="fas fa-check" style="color: #3b82f6; font-size: 0.875rem;"></i>
+                                            <span style="color: #2d3748; font-size: 0.9375rem;">${label}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `;
+                        } else {
+                            answerHtml = `<div style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6;">No options selected</div>`;
+                        }
+                    } else {
+                        // Options are simple strings
+                        answerHtml = `
+                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; margin-top: 0.75rem;">
+                                ${options.map(option => `
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-check" style="color: #3b82f6; font-size: 0.875rem;"></i>
+                                        <span style="color: #2d3748; font-size: 0.9375rem;">${option}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Fallback to Answer field if options array is empty
+                    answerHtml = `<div style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6;">${faq.Answer || 'No answer provided'}</div>`;
+                }
+            } catch (e) {
+                console.error('Error parsing FAQ AnswerOptions:', e);
+                // Fallback to Answer field if JSON parsing fails
+                answerHtml = `<div style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6;">${faq.Answer || 'No answer provided'}</div>`;
+            }
+        } else {
+            // For text answers, display the Answer field
+            answerHtml = `<div style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6;">${faq.Answer || 'No answer provided'}</div>`;
+        }
+        
         return `
             <div style="padding: 1.5rem 0; ${index < faqs.length - 1 ? 'border-bottom: 1px solid #e5e7eb;' : ''}">
                 <div style="font-weight: 600; color: var(--text); font-size: 1rem; margin-bottom: 0.75rem;">
                     ${faq.Question}
                 </div>
-                <div style="color: var(--text-light); font-size: 0.9rem; line-height: 1.6;">
-                    ${faq.Answer}
-                </div>
+                ${answerHtml}
             </div>
         `;
     }).join('');
@@ -1264,9 +1338,10 @@ function renderVendorProfileQuestionnaire(categorizedFeatures) {
         
         categoryData.features.forEach(feature => {
             const iconName = feature.FeatureIcon || 'check';
+            const faIcon = getFeatureIcon(iconName);
             html += `
                 <div style="display: flex; align-items: center; gap: 0.625rem;">
-                    <i data-lucide="${iconName}" style="width: 16px; height: 16px; color: #4a5568; flex-shrink: 0;"></i>
+                    <i class="fas fa-${faIcon}" style="width: 16px; height: 16px; color: #4a5568; flex-shrink: 0;"></i>
                     <span style="font-size: 0.9375rem; color: #2d3748; line-height: 1.4;">${feature.FeatureName}</span>
                 </div>
             `;
@@ -1310,14 +1385,9 @@ function renderVendorProfileQuestionnaire(categorizedFeatures) {
     `;
     
     container.innerHTML = html;
-    
-    // Initialize Lucide icons after rendering
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
 }
 
-// Map feature icons to Font Awesome icons (DEPRECATED - now using Lucide)
+// Map feature icons to Font Awesome icons
 function getFeatureIcon(iconName) {
     const iconMap = {
         'church': 'church',
@@ -1350,8 +1420,47 @@ function getFeatureIcon(iconName) {
         'glass-water': 'glass-martini',
         'list-music': 'list',
         'guitar': 'guitar',
+        'mic-vocal': 'microphone-alt',
+        'lamp': 'lamp',
+        'cloud': 'cloud',
+        'truck': 'truck',
+        'badge-check': 'check-circle',
         'palette': 'palette',
         'sparkles': 'star',
+        'flower': 'flower',
+        'hexagon': 'hexagon',
+        'rainbow': 'rainbow',
+        'trending-up': 'arrow-up',
+        'armchair': 'couch',
+        'lamp-desk': 'lamp',
+        'wallpaper': 'image',
+        'signpost': 'sign',
+        'flame': 'fire',
+        'circle': 'circle',
+        'drama': 'theater-masks',
+        'wand': 'magic',
+        'flame-kindling': 'fire-alt',
+        'person-standing': 'walking',
+        'baby': 'baby',
+        'gamepad-2': 'gamepad',
+        'bus': 'bus',
+        'bus-front': 'bus',
+        'key-round': 'key',
+        'move': 'arrows-alt',
+        'scissors': 'cut',
+        'spray-can': 'spray-can',
+        'calendar-check': 'calendar-check',
+        'users-round': 'users',
+        'hand': 'hand-paper',
+        'clipboard-check': 'clipboard-check',
+        'clipboard-list': 'clipboard-list',
+        'calendar-days': 'calendar-alt',
+        'handshake': 'handshake',
+        'wheat-off': 'ban',
+        'utensils-crossed': 'utensils',
+        'wine': 'wine-glass',
+        'arrow-right-circle': 'arrow-circle-right',
+        'scroll-text': 'scroll',
         'utensils': 'utensils',
         'cake': 'birthday-cake',
         'coffee': 'coffee',
