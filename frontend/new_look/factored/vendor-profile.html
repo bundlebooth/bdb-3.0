@@ -69,13 +69,13 @@
             <div class="vendor-main-content">
                 <!-- About Section -->
                 <div class="content-section">
-                    <h2>About Us</h2>
+                    <h2>About this vendor</h2>
                     <p id="vendor-about">Loading...</p>
                 </div>
 
                 <!-- Location & Service Areas Section -->
                 <div class="content-section" id="location-section" style="display: none;">
-                    <h2>Location & Service Areas</h2>
+                    <h2>Where you'll find us</h2>
                     <div id="location-map-container">
                         <!-- Google Maps will be populated by JavaScript -->
                     </div>
@@ -85,13 +85,16 @@
                 </div>
 
                 <!-- Vendor Questionnaire Section -->
-                <div id="vendor-profile-questionnaire-section" style="margin-bottom: 2rem;">
-                    <!-- Questionnaire will be loaded here -->
+                <div class="content-section" id="vendor-profile-questionnaire-section">
+                    <h2>What this place offers</h2>
+                    <div id="vendor-questionnaire-content">
+                        <!-- Questionnaire will be loaded here -->
+                    </div>
                 </div>
 
                 <!-- Services Section -->
                 <div class="content-section" id="services-section" style="display: none;">
-                    <h2>Services & Packages</h2>
+                    <h2>What we offer</h2>
                     <div id="services-list">
                         <!-- Services will be populated by JavaScript -->
                     </div>
@@ -99,7 +102,7 @@
 
                 <!-- FAQs Section -->
                 <div class="content-section" id="faqs-section" style="display: none;">
-                    <h2>Frequently Asked Questions</h2>
+                    <h2>Things to know</h2>
                     <div id="faqs-list">
                         <!-- FAQs will be populated by JavaScript -->
                     </div>
@@ -107,7 +110,7 @@
 
                 <!-- Team Section -->
                 <div class="content-section" id="team-section" style="display: none;">
-                    <h2>Our Team</h2>
+                    <h2>Meet the team</h2>
                     <div id="team-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
                         <!-- Team members will be populated by JavaScript -->
                     </div>
@@ -133,7 +136,7 @@
             <!-- Sidebar -->
             <div class="vendor-sidebar">
                 <!-- Request Booking Card -->
-                <div class="sidebar-card" style="background: var(--secondary); border: 2px solid var(--primary);">
+                <div class="sidebar-card">
                     <h3>Request to Book</h3>
                     <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1.25rem; line-height: 1.5;">
                         Send a booking request to this vendor with your event details and service requirements.

@@ -610,7 +610,77 @@ function populateVendorGallery(images) {
     }
     
     galleryContainer.appendChild(thumbnailsContainer);
+    
+    // Add "Show all photos" button
+    if (imageUrls.length > 1) {
+        const showAllBtn = document.createElement('button');
+        showAllBtn.className = 'show-all-photos-btn';
+        showAllBtn.innerHTML = '<i class="fas fa-th"></i> Show all photos';
+        showAllBtn.addEventListener('click', () => openFullGallery());
+        galleryContainer.appendChild(showAllBtn);
+    }
 }
+
+// Open full gallery modal
+function openFullGallery() {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('full-gallery-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'full-gallery-modal';
+        modal.className = 'full-gallery-modal';
+        
+        modal.innerHTML = `
+            <div class="full-gallery-header">
+                <button class="full-gallery-back" onclick="closeFullGallery()">
+                    <i class="fas fa-chevron-left"></i> Back
+                </button>
+                <div class="full-gallery-actions">
+                    <button class="gallery-action-btn" onclick="shareVendorProfile('${currentVendor.VendorProfileID}', '${currentVendor.BusinessName || currentVendor.DisplayName}')">
+                        <i class="fas fa-share"></i> Share
+                    </button>
+                    <button class="gallery-action-btn" id="gallery-favorite-btn" onclick="toggleFavorite('${currentVendor.VendorProfileID}')">
+                        <i class="far fa-heart"></i> Save
+                    </button>
+                </div>
+            </div>
+            <div class="full-gallery-grid" id="full-gallery-grid"></div>
+        `;
+        
+        document.body.appendChild(modal);
+    }
+    
+    // Populate gallery grid
+    const grid = document.getElementById('full-gallery-grid');
+    grid.innerHTML = lightboxImages.map((url, index) => `
+        <img src="${url}" alt="Gallery image ${index + 1}" class="full-gallery-image" onclick="openLightbox(${index})">
+    `).join('');
+    
+    // Update favorite button state
+    const favoriteBtn = document.getElementById('gallery-favorite-btn');
+    const mainFavoriteBtn = document.getElementById('vendor-favorite-btn');
+    if (mainFavoriteBtn && mainFavoriteBtn.classList.contains('active')) {
+        favoriteBtn.innerHTML = '<i class="fas fa-heart"></i> Saved';
+    }
+    
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+// Close full gallery modal
+function closeFullGallery() {
+    const modal = document.getElementById('full-gallery-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// Make functions globally accessible
+window.openFullGallery = openFullGallery;
+window.closeFullGallery = closeFullGallery;
+window.shareVendorProfile = shareVendorProfile;
+window.toggleFavorite = toggleFavorite;
 
 // Lightbox functions
 function openLightbox(index) {
@@ -1268,10 +1338,11 @@ function renderTeam(team) {
 async function loadVendorProfileQuestionnaire(vendorProfileId) {
     try {
         const container = document.getElementById('vendor-profile-questionnaire-section');
-        if (!container) return;
+        const contentDiv = document.getElementById('vendor-questionnaire-content');
+        if (!container || !contentDiv) return;
         
         // Show loading state
-        container.innerHTML = `
+        contentDiv.innerHTML = `
             <div style="text-align: center; padding: 1.5rem;">
                 <div class="spinner" style="margin: 0 auto; width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
             </div>
@@ -1294,6 +1365,9 @@ async function loadVendorProfileQuestionnaire(vendorProfileId) {
             container.style.display = 'none';
             return;
         }
+        
+        // Show the section
+        container.style.display = 'block';
         
         // Group features by category
         const categorizedFeatures = {};
@@ -1322,8 +1396,8 @@ async function loadVendorProfileQuestionnaire(vendorProfileId) {
 
 // Render vendor questionnaire for public display
 function renderVendorProfileQuestionnaire(categorizedFeatures) {
-    const container = document.getElementById('vendor-profile-questionnaire-section');
-    if (!container) return;
+    const contentDiv = document.getElementById('vendor-questionnaire-content');
+    if (!contentDiv) return;
     
     let html = '';
     
@@ -1331,8 +1405,8 @@ function renderVendorProfileQuestionnaire(categorizedFeatures) {
         const categoryData = categorizedFeatures[categoryName];
         
         html += `
-            <div style="display: grid; grid-template-columns: 180px 1fr; gap: 2rem; padding: 1.5rem 0; border-bottom: 1px solid #e5e7eb; align-items: start;">
-                <div style="font-size: 1.125rem; font-weight: 600; color: #1a202c;">${categoryName}</div>
+            <div style="display: grid; grid-template-columns: 180px 1fr; gap: 2rem; padding: 1.5rem 0; border-bottom: 1px solid #ebebeb; align-items: start;">
+                <div style="font-size: 1rem; font-weight: 600; color: #222;">${categoryName}</div>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem 1.5rem;">
         `;
         
@@ -1341,8 +1415,8 @@ function renderVendorProfileQuestionnaire(categorizedFeatures) {
             const faIcon = getFeatureIcon(iconName);
             html += `
                 <div style="display: flex; align-items: center; gap: 0.625rem;">
-                    <i class="fas fa-${faIcon}" style="width: 16px; height: 16px; color: #4a5568; flex-shrink: 0;"></i>
-                    <span style="font-size: 0.9375rem; color: #2d3748; line-height: 1.4;">${feature.FeatureName}</span>
+                    <i class="fas fa-${faIcon}" style="width: 16px; height: 16px; color: #717171; flex-shrink: 0;"></i>
+                    <span style="font-size: 0.9375rem; color: #222; line-height: 1.4;">${feature.FeatureName}</span>
                 </div>
             `;
         });
@@ -1360,31 +1434,31 @@ function renderVendorProfileQuestionnaire(categorizedFeatures) {
                 to { transform: rotate(360deg); }
             }
             @media (max-width: 1024px) {
-                #vendor-profile-questionnaire-section > div {
+                #vendor-questionnaire-content > div {
                     grid-template-columns: 150px 1fr !important;
                 }
-                #vendor-profile-questionnaire-section > div > div:nth-child(2) {
+                #vendor-questionnaire-content > div > div:nth-child(2) {
                     grid-template-columns: repeat(2, 1fr) !important;
                 }
             }
             @media (max-width: 768px) {
-                #vendor-profile-questionnaire-section > div {
+                #vendor-questionnaire-content > div {
                     grid-template-columns: 1fr !important;
                     gap: 1rem !important;
                 }
-                #vendor-profile-questionnaire-section > div > div:nth-child(2) {
+                #vendor-questionnaire-content > div > div:nth-child(2) {
                     grid-template-columns: repeat(2, 1fr) !important;
                 }
             }
             @media (max-width: 640px) {
-                #vendor-profile-questionnaire-section > div > div:nth-child(2) {
+                #vendor-questionnaire-content > div > div:nth-child(2) {
                     grid-template-columns: 1fr !important;
                 }
             }
         </style>
     `;
     
-    container.innerHTML = html;
+    contentDiv.innerHTML = html;
 }
 
 // Map feature icons to Font Awesome icons

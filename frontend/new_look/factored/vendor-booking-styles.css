@@ -28,9 +28,11 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: #f8f8f8;
     color: var(--text-primary);
-    background-color: #FFFFFF;
     line-height: 1.6;
 }
 
@@ -90,9 +92,10 @@ body {
    ============================================ */
 
 .booking-container {
-    max-width: 1280px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 2rem;
+    background: white;
     display: grid;
     grid-template-columns: 1fr 480px;
     gap: 4rem;
@@ -594,10 +597,10 @@ body {
 }
 
 .booking-summary-card {
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
+    border: 1px solid rgb(221, 221, 221);
+    border-radius: 12px;
     padding: 1.5rem;
-    box-shadow: var(--shadow-lg);
+    box-shadow: rgba(0, 0, 0, 0.12) 0px 6px 16px;
     background: white;
 }
 
@@ -819,6 +822,7 @@ body {
 
     .booking-container {
         padding: 1rem;
+        margin: 0;
     }
 
     .booking-title {

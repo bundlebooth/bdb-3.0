@@ -527,9 +527,9 @@ body {
 }
 
 .vendor-image {
-    /* Maintain consistent visual proportions across grid sizes */
-    aspect-ratio: 4 / 3;
-    height: auto;
+    /* Square images for neat, proportional display */
+    aspect-ratio: 1 / 1 !important;
+    height: auto !important;
     background: transparent;
     position: relative;
     display: flex;
@@ -7987,7 +7987,8 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
 
     .vendor-image {
-        height: 240px;
+        aspect-ratio: 1 / 1 !important;
+        height: auto !important;
         border-radius: 12px 12px 0 0;
     }
 
@@ -8144,7 +8145,8 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
 
     .vendor-image {
-        height: 200px;
+        aspect-ratio: 1 / 1 !important;
+        height: auto !important;
     }
 
     .vendor-details {
