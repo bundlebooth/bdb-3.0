@@ -1,0 +1,9 @@
+/**
+ * PlanHive - Main Stylesheet
+ * Production-ready styles for the event booking platform
+ */
+
+/* Import existing styles */
+@import url('../index_mobile-styles.css');
+
+/* Additional production optimizations can be added here */

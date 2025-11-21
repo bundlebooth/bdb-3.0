@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendor Profile - VenueVue</title>
+    <link rel="icon" type="image/svg+xml" href="planhive_fav_icon.svg">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Google Maps API -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo&libraries=places,geometry,marker&callback=initMap&v=weekly"></script>
+    
+    <!-- MarkerClusterer -->
+    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
+    
+    <!-- Google Sign-In -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
+    
+    <!-- FullCalendar -->
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+    
+    <!-- Flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- PDF libs -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    
+    <!-- jQuery (required by Select2) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- REQUIRED: Shared styles from index_mobile.html -->
+    <link rel="stylesheet" href="../css/index_mobile-styles.css">
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="../css/vendor-profile-styles.css?v=1">
+</head>
+<body>
+    <!-- UNIVERSAL SHARED COMPONENTS: Header, Nav, Dashboard, Footer -->
+    <script src="../js/shared-components.js"></script>
+    
+    <!-- Lucide Icons - Load early -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Main Container -->
+    <div class="profile-container">
+        <!-- Back Button -->
+        <button class="back-button">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to search</span>
+        </button>
+
+        <!-- Image Gallery -->
+        <div id="image-gallery" class="image-gallery">
+            <!-- Images will be populated by JavaScript -->
+        </div>
+
+        <!-- Vendor Header -->
+        <div class="vendor-profile-header">
+            <div class="vendor-profile-info">
+                <h1 id="vendor-business-name">Loading...</h1>
+                <p id="vendor-tagline">Loading...</p>
+                
+                <!-- Main Info Row -->
+                <div style="display: flex; align-items: center; gap: 1.25rem; color: var(--text-light); margin-bottom: 0.75rem; flex-wrap: wrap; font-size: 0.9rem;">
+                    <span id="vendor-location"></span>
+                    <span id="vendor-years"></span>
+                    <span style="color: #fbbf24;">☆☆☆☆☆ <span style="color: var(--text-light);">(0 reviews)</span></span>
+                </div>
+                
+                <!-- Social Media Icons Row -->
+                <div id="vendor-social-icons" style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem;">
+                    <!-- Social media icons will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="vendor-profile-actions">
+                <div class="vendor-action-btn" id="vendor-favorite-btn" title="Save to favorites">
+                    <i class="fas fa-heart"></i>
+                </div>
+                <div class="vendor-action-btn" id="vendor-share-btn" title="Share this vendor">
+                    <i class="fas fa-share-alt"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Layout -->
+        <div class="vendor-content-layout">
+            <!-- Main Content -->
+            <div class="vendor-main-content">
+                <!-- About Section -->
+                <div class="content-section">
+                    <h2>About this vendor</h2>
+                    <p id="vendor-about">Loading...</p>
+                </div>
+
+                <!-- Location & Service Areas Section -->
+                <div class="content-section" id="location-section" style="display: none;">
+                    <h2>Where you'll find us</h2>
+                    <div id="location-map-container">
+                        <!-- Google Maps will be populated by JavaScript -->
+                    </div>
+                    <div id="service-areas-container" style="margin-top: 1rem;">
+                        <!-- Service areas will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Vendor Questionnaire Section -->
+                <div class="content-section" id="vendor-profile-questionnaire-section">
+                    <h2>What this place offers</h2>
+                    <div id="vendor-questionnaire-content">
+                        <!-- Questionnaire will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Services Section -->
+                <div class="content-section" id="services-section" style="display: none;">
+                    <h2>What we offer</h2>
+                    <div id="services-list">
+                        <!-- Services will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- FAQs Section -->
+                <div class="content-section" id="faqs-section" style="display: none;">
+                    <h2>Things to know</h2>
+                    <div id="faqs-list">
+                        <!-- FAQs will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Team Section -->
+                <div class="content-section" id="team-section" style="display: none;">
+                    <h2>Meet the team</h2>
+                    <div id="team-list" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                        <!-- Team members will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Portfolio Section (from Business Photos) -->
+                <div class="content-section" id="portfolio-section" style="display: none;">
+                    <h2>Portfolio</h2>
+                    <div class="portfolio-grid" id="portfolio-grid">
+                        <!-- Portfolio albums will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Reviews Section -->
+                <div class="content-section">
+                    <h2>Reviews</h2>
+                    <div id="reviews-list">
+                        <!-- Reviews will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="vendor-sidebar">
+                <!-- Request Booking Card -->
+                <div class="sidebar-card">
+                    <h3>Request to Book</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 1.25rem; line-height: 1.5;">
+                        Send a booking request to this vendor with your event details and service requirements.
+                    </p>
+                    <button class="btn btn-primary btn-full-width" id="request-booking-btn">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Request Booking</span>
+                    </button>
+                    <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.75rem; text-align: center;">
+                        <i class="fas fa-shield-alt" style="color: var(--primary);"></i> Free request • No payment required
+                    </p>
+                </div>
+
+                <!-- Business Hours -->
+                <div class="sidebar-card" id="business-hours-section" style="display: none;">
+                    <h3>Business Hours</h3>
+                    <div id="business-hours-list" style="font-size: 0.9rem;">
+                        <!-- Business hours will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Contact -->
+                <div class="sidebar-card">
+                    <h3>Contact Vendor</h3>
+                    <p style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-light);">
+                        Have questions? Get in touch!
+                    </p>
+                    <button class="btn btn-outline btn-full-width" id="message-vendor-btn">
+                        <i class="fas fa-comment"></i>
+                        <span>Message Vendor</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Venue Recommendations Section -->
+    <div class="venue-recommendations-section">
+        <div class="venue-recommendations-container">
+            <div class="venue-recommendations-header">
+                <h2>You might also like</h2>
+            </div>
+
+            <!-- Tabs -->
+            <div class="venue-recommendation-tabs">
+                <button class="venue-recommendation-tab active" data-tab="similar">Similar Vendors</button>
+                <button class="venue-recommendation-tab" data-tab="nearby">Nearby Vendors</button>
+                <button class="venue-recommendation-tab" data-tab="viewing">Popular Vendors</button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="venue-tab-content" id="similar-venues-content" style="display: block;">
+                <div class="venues-scroll-container">
+                    <button class="scroll-arrow scroll-left" data-target="similar-venues-grid">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="venues-grid" id="similar-venues-grid">
+                        <!-- Venues will be populated by JavaScript -->
+                    </div>
+                    <button class="scroll-arrow scroll-right" data-target="similar-venues-grid">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="venue-tab-content" id="nearby-venues-content" style="display: none;">
+                <div class="venues-scroll-container">
+                    <button class="scroll-arrow scroll-left" data-target="nearby-venues-grid">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="venues-grid" id="nearby-venues-grid">
+                        <!-- Venues will be populated by JavaScript -->
+                    </div>
+                    <button class="scroll-arrow scroll-right" data-target="nearby-venues-grid">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="venue-tab-content" id="viewing-venues-content" style="display: none;">
+                <div class="venues-scroll-container">
+                    <button class="scroll-arrow scroll-left" data-target="viewing-venues-grid">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="venues-grid" id="viewing-venues-grid">
+                        <!-- Venues will be populated by JavaScript -->
+                    </div>
+                    <button class="scroll-arrow scroll-right" data-target="viewing-venues-grid">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 9999; align-items: center; justify-content: center;">
+        <button id="lightbox-close" style="position: absolute; top: 20px; right: 20px; background: rgba(255, 255, 255, 0.2); border: none; color: white; font-size: 2rem; cursor: pointer; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <button id="lightbox-prev" style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.2); border: none; color: white; font-size: 2rem; cursor: pointer; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        
+        <button id="lightbox-next" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.2); border: none; color: white; font-size: 2rem; cursor: pointer; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        
+        <img id="lightbox-image" src="" alt="Lightbox Image" style="max-width: 90%; max-height: 90%; object-fit: contain;">
+        
+        <div id="lightbox-counter" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: white; font-size: 1rem; background: rgba(0, 0, 0, 0.5); padding: 0.5rem 1rem; border-radius: 20px; backdrop-filter: blur(10px);">
+            1 / 1
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../js/vendor-profile-script.js?v=1"></script>
+</body>
+</html>

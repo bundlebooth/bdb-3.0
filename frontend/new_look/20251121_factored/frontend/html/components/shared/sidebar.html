@@ -1,0 +1,73 @@
+<aside class="sidebar">
+    <div class="filter-section">
+        <h3 class="filter-title">
+            Location
+            <span class="filter-reset" id="location-reset">Reset</span>
+        </h3>
+        <input type="text" placeholder="City or ZIP code" class="search-input" id="location-input" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1rem;">
+        <div class="filter-group">
+            <div class="filter-option">
+                <input type="checkbox" id="current-location">
+                <label for="current-location">Use my location</label>
+            </div>
+            <div class="filter-option">
+                <input type="checkbox" id="within50">
+                <label for="within50">Within 50 miles</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <h3 class="filter-title">
+            Price Range
+            <span class="filter-reset" id="price-reset">Reset</span>
+        </h3>
+        <select class="form-control" id="price-level-filter" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
+            <option value="">All Price Ranges</option>
+            <option value="$">$ - Inexpensive</option>
+            <option value="$$">$$ - Moderate</option>
+            <option value="$$$">$$$ - Expensive</option>
+            <option value="$$$$">$$$$ - Luxury</option>
+        </select>
+    </div>
+
+    <div class="filter-section">
+        <h3 class="filter-title">
+            Minimum Rating
+            <span class="filter-reset" id="rating-reset">Reset</span>
+        </h3>
+        <select class="form-control" id="rating-filter" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background-color: white;">
+            <option value="">All Ratings</option>
+            <option value="4">&#9733;&#9733;&#9733;&#9733; 4+ Stars</option>
+            <option value="3">&#9733;&#9733;&#9733; 3+ Stars</option>
+            <option value="2">&#9733;&#9733; 2+ Stars</option>
+            <option value="1">&#9733; 1+ Star</option>
+        </select>
+    </div>
+
+    <div class="filter-section">
+        <h3 class="filter-title">Region</h3>
+        <select class="region-select" id="region-select">
+            <option value="">All Regions</option>
+            <option value="north">Northern Region</option>
+            <option value="south">Southern Region</option>
+            <option value="east">Eastern Region</option>
+            <option value="west">Western Region</option>
+            <option value="central">Central Region</option>
+        </select>
+    </div>
+
+    <div class="trending-section">
+        <h3 class="filter-title">Popular Filters</h3>
+        <div class="trending-tags">
+            <div class="trending-tag" data-filter="premium"><i class="fas fa-crown" style="color: #FFD700; margin-right: 6px;"></i>Premium</div>
+            <div class="trending-tag" data-filter="eco-friendly"><i class="fas fa-leaf" style="color: #22c55e; margin-right: 6px;"></i>Eco-Friendly</div>
+            <div class="trending-tag" data-filter="award-winning"><i class="fas fa-trophy" style="color: #f59e0b; margin-right: 6px;"></i>Award Winning</div>
+            <div class="trending-tag" data-filter="last-minute"><i class="fas fa-bolt" style="color: #3b82f6; margin-right: 6px;"></i>Last Minute</div>
+            <div class="trending-tag" data-filter="certified"><i class="fas fa-award" style="color: #8b5cf6; margin-right: 6px;"></i>Certified</div>
+            <div class="trending-tag" data-filter="insured"><i class="fas fa-shield-alt" style="color: #10b981; margin-right: 6px;"></i>Insured</div>
+            <div class="trending-tag" data-filter="local"><i class="fas fa-map-marker-alt" style="color: #ef4444; margin-right: 6px;"></i>Local</div>
+            <div class="trending-tag" data-filter="mobile"><i class="fas fa-wheelchair" style="color: #06b6d4; margin-right: 6px;"></i>Accessible</div>
+        </div>
+    </div>
+</aside>

@@ -1,0 +1,92 @@
+<main class="main-content">
+    <div class="content-header">
+        <div>
+            <h1 class="results-title" id="results-title">
+                <div class="skeleton-line" style="height: 32px; width: 280px; border-radius: 8px;"></div>
+            </h1>
+            <p class="results-count" id="results-count">
+                <div class="skeleton-line" style="height: 16px; width: 150px; border-radius: 6px; margin-top: 8px;"></div>
+            </p>
+        </div>
+
+        <div class="view-controls">
+            <button id="mobile-filter-btn" class="mobile-filter-btn">
+                <i class="fas fa-sliders-h"></i>
+                <span>Filters</span>
+            </button>
+            <button id="filters-toggle" class="btn btn-outline" style="display:flex;align-items:center;gap:.5rem;">
+                <i class="fas fa-sliders-h"></i>
+                <span>Filters</span>
+            </button>
+            <select id="sort-select" style="padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border); background-color: white; font-size: 0.9rem; color: var(--text);">
+                <option value="recommended">Recommended</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="nearest">Nearest to Me</option>
+                <option value="rating">Highest Rated</option>
+            </select>
+            <button id="map-toggle" class="btn btn-outline" style="display:flex;align-items:center;gap:.5rem;">
+                <i class="fas fa-map-marked-alt"></i>
+                <span id="map-toggle-text">Show Map</span>
+            </button>
+            <div class="view-toggle" id="legacy-view-toggle" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Trending Vendors Section -->
+    <div id="trending-vendors-section-main" style="display: none; margin-bottom: 2rem;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem;">
+            <h3 id="trending-header-main" style="color: #1a202c; display: none; align-items: center; gap: 0.5rem; margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 700;">
+                <i class="fas fa-fire" style="color: #ff6b6b;"></i>
+                Trending Right Now
+                <span style="font-size: 0.875rem; color: #64748b; font-weight: 400; margin-left: auto;">Most Viewed This Month</span>
+            </h3>
+            <div id="trending-vendors-carousel-wrapper-main" style="position: relative;">
+                <button class="trending-carousel-nav trending-carousel-prev" id="trending-prev-main" aria-label="Previous vendor">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="trending-carousel-nav trending-carousel-next" id="trending-next-main" aria-label="Next vendor">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                <div id="trending-vendors-carousel-main" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.25rem;" data-skeleton="1">
+                    <!-- Trending skeleton cards will be injected here on page load -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map overlay -->
+    <div class="map-overlay" id="map-overlay"></div>
+
+    <div class="vendor-grid skeleton-active" id="vendor-grid" data-skeleton="1">
+        <!-- Initial skeleton cards will be injected here -->
+    </div>
+    
+    <!-- Horizontal cards container (used only in Map view) -->
+    <div id="main-horizontal-cards" class="vendor-horizontal-container" style="display:none;"></div>
+    
+    <!-- Load more button -->
+    <div id="load-more-wrapper" style="display:none; justify-content:center; align-items:center; margin: 3rem 0 2rem 0;">
+        <button class="btn" id="load-more-btn" style="
+            background-color: #5e72e4;
+            color: white;
+            border: none;
+            padding: 0.875rem 2.5rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(94, 114, 228, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-width: 140px;
+        " onmouseover="if(!this.disabled){this.style.backgroundColor='#4a5acf'; this.style.boxShadow='0 4px 12px rgba(94, 114, 228, 0.3)'; this.style.transform='translateY(-1px)'}" onmouseout="if(!this.disabled){this.style.backgroundColor='#5e72e4'; this.style.boxShadow='0 2px 8px rgba(94, 114, 228, 0.2)'; this.style.transform='translateY(0)'}">
+            <div class="spinner" id="load-more-spinner" style="display:none; width: 20px; height: 20px; border-width: 2px;"></div>
+            <span id="load-more-text">Load More</span>
+            <i class="fas fa-chevron-down"></i>
+        </button>
+    </div>
+</main>

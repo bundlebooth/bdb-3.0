@@ -1,0 +1,45 @@
+{
+  "name": "planhive-frontend",
+  "version": "3.0.0",
+  "description": "PlanHive Event Booking Platform - Production-Ready Frontend",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "http-server -p 8000 -c-1",
+    "lint": "eslint . --ext .js",
+    "format": "prettier --write \"**/*.{js,html,css,md}\"",
+    "optimize-images": "node scripts/optimize-images.js"
+  },
+  "keywords": [
+    "event-booking",
+    "venue-booking",
+    "event-planning",
+    "vendor-marketplace"
+  ],
+  "author": "PlanHive Team",
+  "license": "MIT",
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "http-server": "^14.1.1",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.1",
+    "sharp": "^0.33.0"
+  },
+  "dependencies": {},
+  "browserslist": [
+    "> 0.5%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/planhive.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/planhive/issues"
+  },
+  "homepage": "https://planhive.com"
+}

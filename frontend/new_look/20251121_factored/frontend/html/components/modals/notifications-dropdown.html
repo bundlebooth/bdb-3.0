@@ -1,0 +1,19 @@
+<!-- Notifications Dropdown -->
+<div id="notifications-dropdown" class="notifications-dropdown" style="display: none;">
+    <div class="dropdown-header">
+        <h3>Notifications</h3>
+        <button id="mark-all-read" class="btn btn-sm">Mark All Read</button>
+    </div>
+    <div class="notification-tabs">
+        <button class="notification-tab active" data-tab="all">All</button>
+        <button class="notification-tab" data-tab="unread">Unread</button>
+    </div>
+    <div id="notifications-list" class="notifications-list">
+        <div class="loading-notifications">
+            <div class="spinner" style="margin: 0 auto;"></div>
+        </div>
+    </div>
+    <div class="dropdown-footer">
+        <a href="#" onclick="displayUserDashboard('client', 'dashboard')" class="view-all-link">View All Notifications</a>
+    </div>
+</div>

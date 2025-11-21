@@ -1,0 +1,30 @@
+<header class="header">
+    <div class="logo" style="cursor: pointer;">
+        <img src="./assets/images/planhive_logo.svg" alt="PlanHive" style="height: 50px; width: auto;">
+    </div>
+
+    <div class="search-container">
+        <div class="search-bar" style="position: relative; display: flex; align-items: center;">
+            <input type="text" placeholder="Search for event vendors..." id="search-input" style="flex-grow: 1; padding-left: 1rem; padding-right: 2.5rem;">
+            <button id="search-button" style="position: absolute; right: 0.5rem; background: none; border: none; cursor: pointer; color: var(--primary); font-size: 1.25rem;">
+                <i class="fas fa-magnifying-glass"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="user-nav">
+        <div class="nav-icon" id="wishlist-btn">
+            <i class="fas fa-heart"></i>
+            <span class="badge" id="favorites-badge">0</span>
+        </div>
+        <div class="nav-icon" id="chat-btn" title="Chat">
+            <i class="fas fa-comments"></i>
+            <span class="badge" id="messages-badge">0</span>
+        </div>
+        <div class="nav-icon" id="notifications-btn">
+            <i class="fas fa-bell"></i>
+            <span class="badge" id="notifications-badge">0</span>
+        </div>
+        <div class="nav-icon" id="profile-btn" style="background-color: var(--primary); color: white; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">S</div>
+    </div>
+</header>
