@@ -10048,7 +10048,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     };
 
     // Make functions globally available
-window.openBookingModal = openBookingModal;
+// window.openBookingModal = openBookingModal; // REMOVED - Multi-Step Booking Modal removed
 // toggleVendorSelection will be defined later in the file
     
     // Router functionality - vendor profiles now handled by standalone page
@@ -27106,23 +27106,15 @@ populateVendorGallery(images);
 
     // Initialize booking modal when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
-        // Add event listener for Book Now button
-        const bookNowBtn = document.getElementById('book-now-btn');
-        if (bookNowBtn) {
-            bookNowBtn.addEventListener('click', openBookingModal);
-        }
-        
-        // Add event listener for closing booking modal
-        const bookingModal = document.getElementById('booking-modal');
-        if (bookingModal) {
-            bookingModal.addEventListener('click', function(e) {});
-        }
-        
-        // Add event listeners for booking step navigation
-        setupBookingStepNavigation();
+        // Book Now button and booking modal removed
+        // const bookNowBtn = document.getElementById('book-now-btn');
+        // if (bookNowBtn) {
+        //     bookNowBtn.addEventListener('click', openBookingModal);
+        // }
     });
     
-    function setupBookingStepNavigation() {
+    // setupBookingStepNavigation function removed - Multi-Step Booking Modal removed
+    function setupBookingStepNavigation_REMOVED() {
         // Step 1 to Step 2
         const nextToStep2Btn = document.getElementById('next-to-booking-step-2');
         if (nextToStep2Btn) {
