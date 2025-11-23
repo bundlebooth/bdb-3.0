@@ -9,6 +9,7 @@ import VendorGrid from '../components/VendorGrid';
 import TrendingVendors from '../components/TrendingVendors';
 import MapView from '../components/MapView';
 import ProfileModal from '../components/ProfileModal';
+import DashboardModal from '../components/DashboardModal';
 import { showBanner } from '../utils/helpers';
 
 function IndexPage() {
@@ -28,6 +29,8 @@ function IndexPage() {
   const [userLocation, setUserLocation] = useState(null);
   const [selectedVendorId, setSelectedVendorId] = useState(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
+  const [dashboardSection, setDashboardSection] = useState('dashboard');
   
   const vendorsPerPage = 12;
   const serverPageSize = 20;
@@ -95,11 +98,15 @@ function IndexPage() {
       if (filters.tags.includes('local')) params.set('isLocal', 'true');
       if (filters.tags.includes('mobile')) params.set('isMobile', 'true');
       const url = `${API_BASE_URL}/vendors?${params.toString()}`;
+      console.log('🔍 Fetching vendors from:', url);
       const response = await fetch(url);
+      console.log('📡 Response status:', response.status);
       if (!response.ok) throw new Error('Failed to fetch vendors');
       const data = await response.json();
+      console.log('📦 Received data:', data);
       const newVendors = data.vendors || [];
       const totalCount = data.totalCount || newVendors.length;
+      console.log('✅ Vendors loaded:', newVendors.length, 'Total count:', totalCount);
       if (append) {
         setVendors(prev => [...prev, ...newVendors]);
       } else {
@@ -108,7 +115,7 @@ function IndexPage() {
       setServerPageNumber(nextPage);
       setServerTotalCount(totalCount);
     } catch (error) {
-      console.error('Error loading vendors:', error);
+      console.error('❌ Error loading vendors:', error);
       showBanner('Failed to load vendors', 'error');
     } finally {
       setLoading(false);
@@ -124,6 +131,7 @@ function IndexPage() {
   }, [tryGetUserLocation, currentUser, loadFavorites, loadVendors]);
 
   const applyFilters = useCallback(() => {
+    console.log('🔧 Applying filters. Vendors count:', vendors.length);
     let filtered = [...vendors];
     if (filters.location && !userLocation) {
       const searchTerm = filters.location.toLowerCase();
@@ -132,12 +140,24 @@ function IndexPage() {
         return location.includes(searchTerm);
       });
     }
+    console.log('✨ Filtered vendors count:', filtered.length);
     setFilteredVendors(filtered);
   }, [filters, vendors, userLocation]);
 
   useEffect(() => {
     initializePage();
   }, [initializePage]);
+
+  // Listen for dashboard open events from ProfileModal
+  useEffect(() => {
+    const handleOpenDashboard = () => {
+      setProfileModalOpen(false);
+      setDashboardModalOpen(true);
+    };
+    
+    window.addEventListener('openDashboard', handleOpenDashboard);
+    return () => window.removeEventListener('openDashboard', handleOpenDashboard);
+  }, []);
 
   useEffect(() => {
     if (currentCategory) {
@@ -215,17 +235,52 @@ function IndexPage() {
   const endIndex = startIndex + vendorsPerPage;
   const currentVendors = filteredVendors.slice(startIndex, endIndex);
   const hasMore = vendors.length < serverTotalCount;
+  
+  console.log('📊 Render state:', { 
+    vendorsCount: vendors.length, 
+    filteredVendorsCount: filteredVendors.length, 
+    currentVendorsCount: currentVendors.length,
+    loading,
+    currentPage,
+    hasMore
+  });
 
   return (
     <div>
       <Header 
         onSearch={(q) => console.log(q)} 
-        onProfileClick={() => setProfileModalOpen(true)} 
-        onWishlistClick={() => {}} 
-        onChatClick={() => {}} 
+        onProfileClick={() => {
+          if (currentUser) {
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
+        onWishlistClick={() => {
+          if (currentUser) {
+            setDashboardSection('favorites');
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
+        onChatClick={() => {
+          if (currentUser) {
+            const section = currentUser.isVendor ? 'vendor-messages' : 'messages';
+            setDashboardSection(section);
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
         onNotificationsClick={() => {}} 
       />
       <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
+      <DashboardModal 
+        isOpen={dashboardModalOpen} 
+        onClose={() => setDashboardModalOpen(false)}
+        initialSection={dashboardSection}
+      />
       <div className={`app-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'grid' }}>
         <CategoriesNav activeCategory={currentCategory} onCategoryChange={handleCategoryChange} />
         <FilterSidebar filters={filters} onFilterChange={handleFilterChange} collapsed={sidebarCollapsed} />

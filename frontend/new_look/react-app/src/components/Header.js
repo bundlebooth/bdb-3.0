@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import DashboardModal from './DashboardModal';
 
@@ -9,6 +9,24 @@ function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNoti
   const [messagesBadge] = useState(0);
   const [notificationsBadge] = useState(0);
   const [dashboardOpen, setDashboardOpen] = useState(false);
+
+  // Clear any dashboard hash on mount to prevent auto-opening
+  useEffect(() => {
+    if (window.location.hash === '#dashboard') {
+      console.log('Clearing dashboard hash to prevent auto-open');
+      window.history.replaceState(null, null, window.location.pathname);
+    }
+
+    // Listen for custom dashboard open event
+    const handleOpenDashboard = () => {
+      if (currentUser) {
+        setDashboardOpen(true);
+      }
+    };
+
+    window.addEventListener('openDashboard', handleOpenDashboard);
+    return () => window.removeEventListener('openDashboard', handleOpenDashboard);
+  }, [currentUser]);
 
   const handleSearch = () => {
     if (onSearch) {

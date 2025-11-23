@@ -251,8 +251,8 @@ function ProfileModal({ isOpen, onClose }) {
 
   const handleViewDashboard = () => {
     onClose();
-    // Navigate to dashboard
-    window.location.hash = 'dashboard';
+    // Trigger dashboard open event instead of using hash
+    window.dispatchEvent(new CustomEvent('openDashboard'));
   };
 
   if (!isOpen) return null;
