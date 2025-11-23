@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
-import { showBanner } from '../../../utils/helpers';
 
 function ClientMessagesSection({ onSectionChange }) {
   const { currentUser } = useAuth();
@@ -21,48 +20,70 @@ function ClientMessagesSection({ onSectionChange }) {
     
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/messages/conversations/user/${currentUser.id}`, {
-        headers: { 
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        }
+      const url = `${API_BASE_URL}/messages/conversations/user/${currentUser.id}`;
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (response.ok) {
-        const data = await response.json();
-        setConversations(data.conversations || []);
+        const responseData = await response.json();
+        let convs = responseData.conversations || [];
+        
+        // Map API response to expected format
+        convs = convs.map(conv => ({
+          id: conv.id || conv.ConversationID,
+          userName: conv.OtherPartyName || conv.userName || 'Unknown User',
+          OtherPartyName: conv.OtherPartyName || conv.userName || 'Unknown User',
+          lastMessageContent: conv.lastMessageContent || conv.LastMessageContent || 'No messages yet',
+          lastMessageCreatedAt: conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt,
+          lastMessageSenderId: conv.lastMessageSenderId || conv.LastMessageSenderID,
+          unreadCount: conv.unreadCount || conv.UnreadCount || 0
+        }));
+        setConversations(convs);
+        
+        // Auto-select first conversation
+        if (convs.length > 0 && !selectedConversation) {
+          setSelectedConversation(convs[0]);
+        }
       } else {
-        console.error('Failed to load conversations');
-        // Try localStorage fallback like vanilla JS
+        // Fallback: Load from localStorage
         const localConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
-        setConversations(localConversations.filter(c => c.userId === currentUser.id));
+        const filtered = localConversations.filter(conv => 
+          conv.userId === currentUser.id || conv.vendorProfileId === currentUser.vendorProfileId
+        );
+        setConversations(filtered);
       }
     } catch (error) {
       console.error('Error loading conversations:', error);
-      showBanner('Failed to load conversations', 'error');
+      // Load local conversations as fallback
+      const localConversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+      const filtered = localConversations.filter(conv => 
+        conv.userId === currentUser.id || conv.vendorProfileId === currentUser.vendorProfileId
+      );
+      setConversations(filtered);
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, selectedConversation]);
 
   const loadMessages = useCallback(async (conversationId) => {
     if (!conversationId) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}`, {
-        headers: { 
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        }
+      const response = await fetch(`${API_BASE_URL}/messages/conversation/${conversationId}?userId=${currentUser?.id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(data.messages || []);
-        setTimeout(scrollToBottom, 100);
-      }
+      if (!response.ok) throw new Error('Failed to load messages');
+      
+      const data = await response.json();
+      setMessages(data.messages || []);
+      setTimeout(scrollToBottom, 100);
     } catch (error) {
       console.error('Error loading messages:', error);
+      setMessages([]);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     loadConversations();
@@ -70,84 +91,105 @@ function ClientMessagesSection({ onSectionChange }) {
 
   useEffect(() => {
     if (selectedConversation) {
-      loadMessages(selectedConversation.ConversationId);
+      loadMessages(selectedConversation.id);
     }
   }, [selectedConversation, loadMessages]);
 
   const handleSendMessage = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!newMessage.trim() || !selectedConversation) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/messages/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          conversationId: selectedConversation.ConversationId,
-          senderId: currentUser.id,
-          message: newMessage.trim()
-        })
-      });
-      
-      if (response.ok) {
+      // Use Socket.IO if available, otherwise HTTP
+      if (window.socket) {
+        window.socket.emit('send-message', {
+          conversationId: selectedConversation.id,
+          senderId: currentUser?.id,
+          content: newMessage.trim()
+        });
         setNewMessage('');
-        loadMessages(selectedConversation.ConversationId);
+        // Reload messages after a short delay
+        setTimeout(() => loadMessages(selectedConversation.id), 500);
       } else {
-        showBanner('Failed to send message', 'error');
+        const response = await fetch(`${API_BASE_URL}/messages/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            conversationId: selectedConversation.id,
+            senderId: currentUser.id,
+            content: newMessage.trim()
+          })
+        });
+        
+        if (response.ok) {
+          setNewMessage('');
+          loadMessages(selectedConversation.id);
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      showBanner('Failed to send message', 'error');
     }
   };
 
-  const renderConversationItem = (conversation) => {
-    const lastMessageDate = conversation.LastMessageDate 
-      ? new Date(conversation.LastMessageDate).toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric' 
-        })
-      : '';
-
+  const renderConversationItem = (conv) => {
+    // Format last message with sender prefix
+    let lastMessageDisplay = 'No messages yet';
+    if (conv.lastMessageContent) {
+      const isOwnLastMessage = conv.lastMessageSenderId === currentUser?.id;
+      const senderPrefix = isOwnLastMessage ? 'You: ' : `${conv.userName || conv.OtherPartyName || 'Other'}: `;
+      lastMessageDisplay = senderPrefix + conv.lastMessageContent;
+    }
+    
+    const isSelected = selectedConversation?.id === conv.id;
+    
     return (
       <div 
-        key={conversation.ConversationId} 
-        className={`conversation-item ${selectedConversation?.ConversationId === conversation.ConversationId ? 'active' : ''}`}
-        onClick={() => setSelectedConversation(conversation)}
+        key={conv.id}
+        className="conversation-item" 
+        onClick={() => setSelectedConversation(conv)}
+        style={{
+          padding: '1rem',
+          borderBottom: '1px solid #eee',
+          cursor: 'pointer',
+          transition: 'background-color 0.2s',
+          backgroundColor: isSelected ? '#e3f2fd' : 'transparent'
+        }}
+        onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = '#f5f5f5'; }}
+        onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent'; }}
       >
-        <div className="conversation-avatar">
-          {conversation.OtherUserName?.substring(0, 2).toUpperCase() || 'V'}
+        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
+          {conv.userName || conv.OtherPartyName || 'Unknown User'}
         </div>
-        <div className="conversation-content">
-          <div className="conversation-name">{conversation.OtherUserName || 'Vendor'}</div>
-          <div className="conversation-preview">{conversation.LastMessage || 'No messages yet'}</div>
+        <div style={{ fontSize: '0.85rem', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {lastMessageDisplay}
         </div>
-        <div className="conversation-meta">
-          <div className="conversation-time">{lastMessageDate}</div>
-          {conversation.UnreadCount > 0 && (
-            <span className="unread-badge">{conversation.UnreadCount}</span>
-          )}
+        <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>
+          {conv.lastMessageCreatedAt ? new Date(conv.lastMessageCreatedAt).toLocaleString() : ''}
         </div>
       </div>
     );
   };
 
   const renderMessage = (message) => {
-    const isOwn = message.SenderId === currentUser.id;
-    const messageTime = new Date(message.SentAt).toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      hour12: true 
-    });
-
+    const isOwnMessage = message.SenderID === currentUser?.id;
+    const containerStyle = isOwnMessage ? 'display: flex; justify-content: flex-end;' : 'display: flex; justify-content: flex-start;';
+    const bubbleStyle = isOwnMessage 
+      ? 'background: #007bff; color: white; border-bottom-right-radius: 4px;' 
+      : 'background: #e9ecef; color: #333; border: 1px solid #dee2e6; border-bottom-left-radius: 4px;';
+    
+    const senderName = isOwnMessage ? 'You' : (message.SenderName || 'Other User');
+    
     return (
-      <div key={message.MessageId} className={`chat-message ${isOwn ? 'own' : 'other'}`}>
-        <div className="message-content">
-          <div className="message-text">{message.MessageText}</div>
-          <div className="message-time">{messageTime}</div>
+      <div key={message.MessageID || message.id} style={{ marginBottom: '1rem', [containerStyle.split(':')[0]]: containerStyle.split(':')[1] }}>
+        <div style={{ padding: '0.75rem 1rem', borderRadius: '18px', ...Object.fromEntries(bubbleStyle.split(';').filter(s => s.trim()).map(s => s.split(':').map(p => p.trim()))), boxShadow: '0 1px 2px rgba(0,0,0,0.1)', maxWidth: '70%' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, marginBottom: '0.25rem', opacity: 0.8 }}>{senderName}</div>
+          <div style={{ marginBottom: '0.25rem' }}>{message.Content}</div>
+          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>
+            {new Date(message.CreatedAt).toLocaleString()}
+          </div>
         </div>
       </div>
     );
@@ -156,61 +198,74 @@ function ClientMessagesSection({ onSectionChange }) {
   return (
     <div id="messages-section">
       <div className="dashboard-card">
-        <div className="chat-container" style={{ height: '600px' }}>
-          {!selectedConversation ? (
-            <div className="conversations-list-view">
-              <div className="conversations-header">
-                <h3>Messages</h3>
-              </div>
+        <h2 className="dashboard-card-title">Messages</h2>
+        <div id="chat-app" style={{ height: '500px', display: 'flex', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+          {/* Conversations sidebar */}
+          <div id="conversations-sidebar" style={{ width: '300px', borderRight: '1px solid var(--border)', background: '#f8f9fa' }}>
+            <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)', background: 'white' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem' }}>Conversations</h3>
+            </div>
+            <div id="conversations-list" style={{ height: 'calc(100% - 60px)', overflowY: 'auto' }}>
               {loading ? (
-                <div style={{ textAlign: 'center', padding: '3rem' }}>
+                <div style={{ padding: '1rem', textAlign: 'center' }}>
                   <div className="spinner" style={{ margin: '0 auto' }}></div>
                 </div>
-              ) : conversations.length > 0 ? (
-                <div className="conversations-list">
-                  {conversations.map(renderConversationItem)}
-                </div>
+              ) : conversations.length === 0 ? (
+                <div style={{ padding: '1rem', textAlign: 'center', color: '#666' }}>No conversations found</div>
               ) : (
-                <div className="empty-state">
-                  <i className="fas fa-comments" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>
-                  <p>No conversations yet.</p>
-                </div>
+                conversations.map(renderConversationItem)
               )}
             </div>
-          ) : (
-            <>
-              <div className="chat-header">
-                <button 
-                  className="back-button"
-                  onClick={() => setSelectedConversation(null)}
-                >
-                  <i className="fas fa-arrow-left"></i>
-                </button>
-                <div className="chat-user-info">
-                  <div className="chat-user-avatar">
-                    {selectedConversation.OtherUserName?.substring(0, 2).toUpperCase() || 'V'}
-                  </div>
-                  <span className="chat-user-name">{selectedConversation.OtherUserName || 'Vendor'}</span>
+          </div>
+          
+          {/* Chat area */}
+          <div id="chat-area" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            {/* Chat header */}
+            <div id="chat-header" style={{ padding: '1rem', borderBottom: '1px solid var(--border)', background: 'white' }}>
+              <div id="chat-partner-name" style={{ fontWeight: 600, color: selectedConversation ? '#111' : '#666' }}>
+                {selectedConversation ? (selectedConversation.OtherPartyName || 'Unknown') : 'Select a conversation'}
+              </div>
+            </div>
+            
+            {/* Messages container */}
+            <div id="messages-container" style={{ flex: 1, padding: '1rem', overflowY: 'auto', background: '#f8f9fa' }}>
+              {!selectedConversation ? (
+                <div id="welcome-message" style={{ textAlign: 'center', color: '#666', marginTop: '2rem' }}>
+                  Select a conversation to start messaging
                 </div>
-              </div>
-              <div className="chat-messages" id="dashboard-chat-messages">
-                {messages.map(renderMessage)}
-                <div ref={messagesEndRef} />
-              </div>
-              <form className="chat-input" onSubmit={handleSendMessage}>
+              ) : messages.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#666', padding: '2rem' }}>No messages yet. Start the conversation!</div>
+              ) : (
+                <>
+                  {messages.map(renderMessage)}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
+            </div>
+            
+            {/* Message input */}
+            <div id="message-input-area" style={{ padding: '1rem', borderTop: '1px solid var(--border)', background: 'white', display: selectedConversation ? 'block' : 'none' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input 
                   type="text" 
+                  id="message-input" 
                   placeholder="Type your message..." 
-                  id="dashboard-chat-input"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
+                  style={{ flex: 1, padding: '0.75rem', border: '1px solid var(--border)', borderRadius: '4px', outline: 'none' }}
                 />
-                <button type="submit" className="btn btn-primary" id="dashboard-send-btn">
+                <button 
+                  id="send-message-btn" 
+                  className="btn btn-primary" 
+                  onClick={handleSendMessage}
+                  style={{ padding: '0.75rem 1.5rem' }}
+                >
                   Send
                 </button>
-              </form>
-            </>
-          )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -37,19 +37,58 @@ function ClientDashboard({ activeSection, onSectionChange, onLogout }) {
         return;
       }
       
+      // Step 1: Fetch main dashboard data
       const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/dashboard`, {
         headers: { 
           'Authorization': `Bearer ${localStorage.getItem('token')}` 
         }
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setDashboardData(data);
-      } else {
-        console.error('Failed to load dashboard data');
-        setDashboardData({});
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data');
       }
+      
+      const dashData = await response.json();
+      
+      // Step 2: Fetch favorites count
+      let favoritesCount = 0;
+      try {
+        const favResp = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (favResp.ok) {
+          const favs = await favResp.json();
+          favoritesCount = Array.isArray(favs) ? favs.length : (favs?.length || 0);
+        }
+      } catch (e) {
+        console.error('Error loading favorites:', e);
+      }
+      
+      // Step 3: Fetch pending requests count
+      let pendingRequests = 0;
+      try {
+        const reqResp = await fetch(`${API_BASE_URL}/bookings/requests/${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (reqResp.ok) {
+          const reqData = await reqResp.json();
+          const reqs = reqData.requests || [];
+          pendingRequests = reqs.filter(r => (r.Status || r.status) === 'pending').length;
+        }
+      } catch (e) {
+        console.error('Error loading pending requests:', e);
+      }
+      
+      // Combine all data
+      setDashboardData({
+        ...dashData,
+        favoritesCount,
+        pendingRequests,
+        upcomingBookings: dashData.upcomingBookings || [],
+        recentMessages: dashData.recentMessages || [],
+        unreadMessages: dashData.unreadMessages || 0
+      });
+      
     } catch (error) {
       console.error('Error loading dashboard:', error);
       setDashboardData({});
@@ -96,6 +135,7 @@ function ClientDashboard({ activeSection, onSectionChange, onLogout }) {
         activeSection={activeSection}
         onSectionChange={onSectionChange}
         onLogout={onLogout}
+        sectionLabel="CLIENT"
       />
       <main className="dashboard-content" style={{ overflowY: 'auto', flex: 1 }}>
         <div className="dashboard-header">

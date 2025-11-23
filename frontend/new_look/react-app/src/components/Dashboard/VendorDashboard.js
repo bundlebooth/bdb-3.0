@@ -99,11 +99,12 @@ function VendorDashboard({ activeSection, onSectionChange, onLogout }) {
         activeSection={activeSection}
         onSectionChange={onSectionChange}
         onLogout={onLogout}
+        sectionLabel="VENDOR"
       />
       <main className="dashboard-content" style={{ overflowY: 'auto', flex: 1 }}>
         <div className="dashboard-header">
           <h1 className="dashboard-title" id="vendor-dashboard-title">
-            {menuItems.find(item => item.id === activeSection)?.label || 'Vendor Dashboard'}
+            {activeSection === 'vendor-dashboard' ? 'Vendor Dashboard' : (menuItems.find(item => item.id === activeSection)?.label || 'Vendor Dashboard')}
           </h1>
           <div className="user-nav">
             <div className="nav-icon" id="vendor-notifications-btn" style={{ display: 'none' }}>

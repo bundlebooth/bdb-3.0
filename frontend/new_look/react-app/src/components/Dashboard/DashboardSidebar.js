@@ -1,6 +1,6 @@
 import React from 'react';
 
-function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout }) {
+function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout, sectionLabel, unified }) {
   return (
     <aside className="dashboard-sidebar">
       <div 
@@ -20,22 +20,73 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout 
         />
       </div>
       <ul className="dashboard-menu">
-        {menuItems.map(item => (
-          <li key={item.id}>
-            <a 
-              href="#" 
-              className={activeSection === item.id ? 'active' : ''} 
-              data-section={item.id}
-              onClick={(e) => {
-                e.preventDefault();
-                onSectionChange(item.id);
-              }}
-            >
-              <i className={`fas ${item.icon}`}></i>
-              {item.label}
-            </a>
-          </li>
-        ))}
+        {unified ? (
+          // Unified menu with CLIENT and VENDOR sections
+          menuItems.map((section, idx) => (
+            <React.Fragment key={idx}>
+              <li className="menu-heading" style={{
+                padding: '1rem 1.5rem 0.5rem',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                listStyle: 'none'
+              }}>
+                {section.section}
+              </li>
+              {section.items.map(item => (
+                <li key={item.id}>
+                  <a 
+                    href="#" 
+                    className={activeSection === item.id ? 'active' : ''} 
+                    data-section={item.id}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSectionChange(item.id);
+                    }}
+                  >
+                    <i className={`fas ${item.icon}`}></i>
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </React.Fragment>
+          ))
+        ) : (
+          // Single section menu (legacy)
+          <>
+            {sectionLabel && (
+              <li className="menu-heading" style={{
+                padding: '1rem 1.5rem 0.5rem',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                listStyle: 'none'
+              }}>
+                {sectionLabel}
+              </li>
+            )}
+            {menuItems.map(item => (
+              <li key={item.id}>
+                <a 
+                  href="#" 
+                  className={activeSection === item.id ? 'active' : ''} 
+                  data-section={item.id}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onSectionChange(item.id);
+                  }}
+                >
+                  <i className={`fas ${item.icon}`}></i>
+                  {item.label}
+                </a>
+              </li>
+            ))}
+          </>
+        )}
         <li>
           <a 
             href="#" 

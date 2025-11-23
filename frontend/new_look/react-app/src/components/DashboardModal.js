@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import ClientDashboard from './Dashboard/ClientDashboard';
-import VendorDashboard from './Dashboard/VendorDashboard';
+import UnifiedDashboard from './Dashboard/UnifiedDashboard';
 
 function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
   const { currentUser, logout } = useAuth();
@@ -60,9 +59,7 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
         }}
       >
         <div className="modal-header">
-          <h3 id="dashboard-modal-title">
-            {isVendor ? 'Vendor Dashboard' : 'Dashboard'}
-          </h3>
+          <h3 id="dashboard-modal-title">Dashboard</h3>
           <span className="close-modal" onClick={handleClose}>×</span>
         </div>
         <div 
@@ -73,19 +70,11 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
             flexGrow: 1 
           }}
         >
-          {isVendor ? (
-            <VendorDashboard 
-              activeSection={activeSection}
-              onSectionChange={handleSectionChange}
-              onLogout={handleLogout}
-            />
-          ) : (
-            <ClientDashboard 
-              activeSection={activeSection}
-              onSectionChange={handleSectionChange}
-              onLogout={handleLogout}
-            />
-          )}
+          <UnifiedDashboard 
+            activeSection={activeSection}
+            onSectionChange={handleSectionChange}
+            onLogout={handleLogout}
+          />
         </div>
       </div>
     </div>

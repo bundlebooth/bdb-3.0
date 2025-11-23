@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
-import { showBanner } from '../../../utils/helpers';
 
 function ClientReviewsSection() {
   const { currentUser } = useAuth();
@@ -13,21 +12,16 @@ function ClientReviewsSection() {
     
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/reviews/user/${currentUser.id}`, {
-        headers: { 
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        }
+      const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/reviews`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        setReviews(data.reviews || []);
-      } else {
-        console.error('Failed to load reviews');
-      }
+      if (!response.ok) throw new Error('Failed to fetch user reviews');
+      const reviewsData = await response.json();
+      setReviews(Array.isArray(reviewsData) ? reviewsData : []);
     } catch (error) {
-      console.error('Error loading reviews:', error);
-      showBanner('Failed to load reviews', 'error');
+      console.error('Error loading user reviews:', error);
+      setReviews([]);
     } finally {
       setLoading(false);
     }
@@ -38,70 +32,55 @@ function ClientReviewsSection() {
   }, [loadReviews]);
 
   const renderReviewItem = (review) => {
-    const reviewDate = new Date(review.CreatedAt);
-    const formattedDate = reviewDate.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-
     return (
-      <div key={review.ReviewId} className="review-item">
+      <div key={review.ReviewID || review.id} className="review-card">
         <div className="review-header">
-          <div className="review-vendor">
-            <i className="fas fa-store"></i>
-            <span>{review.VendorName || 'Vendor'}</span>
-          </div>
-          <div className="review-rating">
-            {[1, 2, 3, 4, 5].map(star => (
-              <i 
-                key={star}
-                className={`fas fa-star ${star <= review.Rating ? 'filled' : ''}`}
-              ></i>
-            ))}
-          </div>
+          <div className="reviewer">{review.VendorName}</div>
+          <div className="review-date">{new Date(review.CreatedAt).toLocaleDateString()}</div>
         </div>
-        <div className="review-date">{formattedDate}</div>
-        <div className="review-text">{review.ReviewText}</div>
-        {review.Response && (
-          <div className="review-response">
-            <strong>Vendor Response:</strong>
-            <p>{review.Response}</p>
-          </div>
+        <div className="review-rating">
+          {'★'.repeat(review.Rating)}{'☆'.repeat(5 - review.Rating)}
+        </div>
+        {review.Title && (
+          <div className="review-title">{review.Title}</div>
         )}
-        <div className="review-actions">
-          <button className="btn btn-outline btn-sm">
-            <i className="fas fa-edit"></i> Edit
-          </button>
-          <button className="btn btn-outline btn-sm">
-            <i className="fas fa-trash"></i> Delete
-          </button>
-        </div>
+        <div className="review-text">{review.Comment}</div>
       </div>
     );
   };
 
+  if (loading) {
+    return (
+      <div id="reviews-section">
+        <div className="dashboard-card">
+          <div id="user-reviews">
+            <div style={{ textAlign: 'center', padding: '3rem' }}>
+              <div className="spinner" style={{ margin: '0 auto' }}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (reviews.length === 0) {
+    return (
+      <div id="reviews-section">
+        <div className="dashboard-card">
+          <div id="user-reviews">
+            <p>No reviews submitted yet.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div id="reviews-section">
       <div className="dashboard-card">
-        <h2 className="dashboard-card-title">My Reviews</h2>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem' }}>
-            <div className="spinner" style={{ margin: '0 auto' }}></div>
-          </div>
-        ) : reviews.length > 0 ? (
-          <div id="user-reviews" className="reviews-list">
-            {reviews.map(renderReviewItem)}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <i className="fas fa-star" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>
-            <p>No reviews yet.</p>
-            <p style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>
-              After completing a booking, you can leave a review for the vendor.
-            </p>
-          </div>
-        )}
+        <div id="user-reviews">
+          {reviews.map(renderReviewItem)}
+        </div>
       </div>
     </div>
   );
