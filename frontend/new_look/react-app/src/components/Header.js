@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import DashboardModal from './DashboardModal';
 
 function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNotificationsClick }) {
   const { currentUser } = useAuth();
@@ -7,6 +8,7 @@ function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNoti
   const [favoritesBadge] = useState(0);
   const [messagesBadge] = useState(0);
   const [notificationsBadge] = useState(0);
+  const [dashboardOpen, setDashboardOpen] = useState(false);
 
   const handleSearch = () => {
     if (onSearch) {
@@ -89,7 +91,7 @@ function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNoti
         <div
           className="nav-icon"
           id="profile-btn"
-          onClick={onProfileClick}
+          onClick={() => currentUser ? setDashboardOpen(true) : onProfileClick()}
           style={{
             backgroundColor: 'var(--primary)',
             color: 'white',
@@ -98,12 +100,16 @@ function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNoti
             height: '36px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            cursor: 'pointer'
           }}
         >
           {currentUser ? currentUser.name.charAt(0).toUpperCase() : 'S'}
         </div>
       </div>
+
+      {/* Dashboard Modal */}
+      <DashboardModal isOpen={dashboardOpen} onClose={() => setDashboardOpen(false)} />
     </header>
   );
 }

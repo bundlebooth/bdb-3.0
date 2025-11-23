@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { showBanner } from '../utils/helpers';
@@ -28,6 +28,20 @@ function ProfileModal({ isOpen, onClose }) {
     }
   }, [isOpen, currentUser]);
 
+  const handleGoogleResponse = useCallback(async (response) => {
+    try {
+      setLoading(true);
+      await handleGoogleLogin(response.credential);
+      showBanner('Successfully logged in with Google!', 'success');
+      onClose();
+    } catch (error) {
+      console.error('Google login error:', error);
+      showBanner('Failed to login with Google', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [handleGoogleLogin, onClose]);
+
   useEffect(() => {
     // Initialize Google Sign-In
     if (window.google && isOpen) {
@@ -44,21 +58,7 @@ function ProfileModal({ isOpen, onClose }) {
         console.error('Google Sign-In initialization error:', error);
       }
     }
-  }, [isOpen]);
-
-  const handleGoogleResponse = async (response) => {
-    try {
-      setLoading(true);
-      await handleGoogleLogin(response.credential);
-      showBanner('Successfully logged in with Google!', 'success');
-      onClose();
-    } catch (error) {
-      console.error('Google login error:', error);
-      showBanner('Failed to login with Google', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isOpen, handleGoogleResponse]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -70,7 +70,7 @@ function ProfileModal({ isOpen, onClose }) {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(`${API_BASE_URL}/users/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: loginEmail, password: loginPassword })
@@ -84,7 +84,7 @@ function ProfileModal({ isOpen, onClose }) {
       const data = await response.json();
       
       // Check if 2FA is required
-      if (data.requires2FA) {
+      if (data.twoFactorRequired) {
         setTwofaEmail(loginEmail);
         setView('twofa');
         showBanner('Verification code sent to your email', 'info');
@@ -96,9 +96,14 @@ function ProfileModal({ isOpen, onClose }) {
         localStorage.setItem('token', data.token);
       }
       
+      // Backend returns user data directly, not wrapped in data.user
       setCurrentUser({
-        ...data.user,
-        userId: data.user.id
+        id: data.userId,
+        userId: data.userId,
+        name: data.name || data.email?.split('@')[0] || 'User',
+        email: data.email,
+        userType: data.isVendor ? 'vendor' : 'client',
+        isVendor: data.isVendor || false
       });
       
       showBanner('Successfully logged in!', 'success');
@@ -126,7 +131,7 @@ function ProfileModal({ isOpen, onClose }) {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const response = await fetch(`${API_BASE_URL}/users/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -148,9 +153,14 @@ function ProfileModal({ isOpen, onClose }) {
         localStorage.setItem('token', data.token);
       }
       
+      // Backend returns user data directly
       setCurrentUser({
-        ...data.user,
-        userId: data.user.id
+        id: data.userId,
+        userId: data.userId,
+        name: data.name || data.email?.split('@')[0] || 'User',
+        email: data.email,
+        userType: data.isVendor ? 'vendor' : 'client',
+        isVendor: data.isVendor || false
       });
       
       showBanner('Account created successfully!', 'success');
@@ -288,9 +298,9 @@ function ProfileModal({ isOpen, onClose }) {
                 {loading ? 'Logging in...' : 'Log In'}
               </button>
               <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                <a href="#" onClick={(e) => { e.preventDefault(); setView('signup'); }} style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem' }}>
+                <button type="button" onClick={() => setView('signup')} style={{ background: 'none', border: 'none', color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
                   Don't have an account? Sign up
-                </a>
+                </button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border)' }}></div>
@@ -351,9 +361,9 @@ function ProfileModal({ isOpen, onClose }) {
                 {loading ? 'Creating Account...' : 'Create Account'}
               </button>
               <div style={{ textAlign: 'center' }}>
-                <a href="#" onClick={(e) => { e.preventDefault(); setView('login'); }} style={{ color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem' }}>
+                <button type="button" onClick={() => setView('login')} style={{ background: 'none', border: 'none', color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
                   Already have an account? Log in
-                </a>
+                </button>
               </div>
             </form>
           )}

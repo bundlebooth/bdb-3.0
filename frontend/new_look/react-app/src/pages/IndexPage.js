@@ -8,6 +8,7 @@ import FilterSidebar from '../components/FilterSidebar';
 import VendorGrid from '../components/VendorGrid';
 import TrendingVendors from '../components/TrendingVendors';
 import MapView from '../components/MapView';
+import ProfileModal from '../components/ProfileModal';
 import { showBanner } from '../utils/helpers';
 
 function IndexPage() {
@@ -26,6 +27,7 @@ function IndexPage() {
   const [serverTotalCount, setServerTotalCount] = useState(0);
   const [userLocation, setUserLocation] = useState(null);
   const [selectedVendorId, setSelectedVendorId] = useState(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   
   const vendorsPerPage = 12;
   const serverPageSize = 20;
@@ -216,7 +218,14 @@ function IndexPage() {
 
   return (
     <div>
-      <Header onSearch={(q) => console.log(q)} onProfileClick={() => {}} onWishlistClick={() => {}} onChatClick={() => {}} onNotificationsClick={() => {}} />
+      <Header 
+        onSearch={(q) => console.log(q)} 
+        onProfileClick={() => setProfileModalOpen(true)} 
+        onWishlistClick={() => {}} 
+        onChatClick={() => {}} 
+        onNotificationsClick={() => {}} 
+      />
+      <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
       <div className={`app-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'grid' }}>
         <CategoriesNav activeCategory={currentCategory} onCategoryChange={handleCategoryChange} />
         <FilterSidebar filters={filters} onFilterChange={handleFilterChange} collapsed={sidebarCollapsed} />

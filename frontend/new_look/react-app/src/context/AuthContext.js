@@ -20,7 +20,7 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+        const response = await fetch(`${API_BASE_URL}/users/verify-token`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -28,9 +28,14 @@ export function AuthProvider({ children }) {
         
         if (response.ok) {
           const data = await response.json();
+          // Backend returns user data directly
           setCurrentUser({
-            ...data.user,
-            userId: data.user.id
+            id: data.userId,
+            userId: data.userId,
+            name: data.name || data.email?.split('@')[0] || 'User',
+            email: data.email,
+            userType: data.isVendor ? 'vendor' : 'client',
+            isVendor: data.isVendor || false
           });
         } else {
           localStorage.removeItem('token');
@@ -68,7 +73,7 @@ export function AuthProvider({ children }) {
 
   async function handleGoogleLogin(credential) {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/google`, {
+      const response = await fetch(`${API_BASE_URL}/users/social-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -86,9 +91,14 @@ export function AuthProvider({ children }) {
         localStorage.setItem('token', data.token);
       }
 
+      // Backend returns user data directly
       const userData = {
-        ...data.user,
-        userId: data.user.id
+        id: data.userId,
+        userId: data.userId,
+        name: data.name || data.email?.split('@')[0] || 'User',
+        email: data.email,
+        userType: data.isVendor ? 'vendor' : 'client',
+        isVendor: data.isVendor || false
       };
       
       setCurrentUser(userData);
