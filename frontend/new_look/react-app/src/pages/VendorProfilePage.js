@@ -2,7 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import Header from '../components/Header';
 import VendorGallery from '../components/VendorGallery';
+import ProfileModal from '../components/ProfileModal';
+import DashboardModal from '../components/DashboardModal';
+import Footer from '../components/Footer';
 import { showBanner } from '../utils/helpers';
 
 function VendorProfilePage() {
@@ -13,6 +17,16 @@ function VendorProfilePage() {
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
+  const [dashboardSection, setDashboardSection] = useState('dashboard');
+  const [vendorFeatures, setVendorFeatures] = useState([]);
+  const [portfolioAlbums, setPortfolioAlbums] = useState([]);
+  const [recommendations, setRecommendations] = useState({ similar: [], nearby: [], popular: [] });
+  const [activeRecommendationTab, setActiveRecommendationTab] = useState('similar');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const loadVendorProfile = useCallback(async () => {
     try {
@@ -30,6 +44,13 @@ function VendorProfilePage() {
       setVendor(vendorDetails);
       setIsFavorite(vendorDetails.isFavorite || false);
       
+      // Load additional data
+      if (vendorDetails.profile?.VendorProfileID) {
+        loadVendorFeatures(vendorDetails.profile.VendorProfileID);
+        loadPortfolioAlbums(vendorDetails.profile.VendorProfileID);
+        loadRecommendations(vendorId, vendorDetails);
+      }
+      
       // Update page title
       document.title = `${vendorDetails.profile.BusinessName || vendorDetails.profile.DisplayName} - PlanHive`;
     } catch (error) {
@@ -39,6 +60,74 @@ function VendorProfilePage() {
       setLoading(false);
     }
   }, [vendorId, currentUser]);
+
+  // Load vendor features (questionnaire)
+  const loadVendorFeatures = useCallback(async (vendorProfileId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setVendorFeatures(data.selectedFeatures || []);
+      }
+    } catch (error) {
+      console.error('Error loading vendor features:', error);
+    }
+  }, []);
+
+  // Load portfolio albums
+  const loadPortfolioAlbums = useCallback(async (vendorProfileId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/public`);
+      if (response.ok) {
+        const data = await response.json();
+        setPortfolioAlbums(data.albums || []);
+      }
+    } catch (error) {
+      console.error('Error loading portfolio albums:', error);
+    }
+  }, []);
+
+  // Load recommendations
+  const loadRecommendations = useCallback(async (vendorId, vendorData) => {
+    try {
+      // Load similar vendors
+      const category = vendorData.profile?.PrimaryCategory || vendorData.profile?.Category;
+      const similarUrl = category 
+        ? `${API_BASE_URL}/vendors?category=${encodeURIComponent(category)}&pageSize=8`
+        : `${API_BASE_URL}/vendors?pageSize=8&sortBy=rating`;
+      
+      const similarResponse = await fetch(similarUrl);
+      if (similarResponse.ok) {
+        const similarData = await similarResponse.json();
+        const similar = (similarData.vendors || similarData.data || []).filter(v => v.VendorProfileID != vendorId);
+        setRecommendations(prev => ({ ...prev, similar }));
+      }
+
+      // Load nearby vendors
+      const latitude = vendorData.profile?.Latitude;
+      const longitude = vendorData.profile?.Longitude;
+      if (latitude && longitude) {
+        const nearbyResponse = await fetch(
+          `${API_BASE_URL}/vendors?latitude=${latitude}&longitude=${longitude}&radiusMiles=25&pageSize=8&sortBy=nearest`
+        );
+        if (nearbyResponse.ok) {
+          const nearbyData = await nearbyResponse.json();
+          const nearby = (nearbyData.data || []).filter(v => v.VendorProfileID !== vendorId);
+          setRecommendations(prev => ({ ...prev, nearby }));
+        }
+      }
+
+      // Load popular vendors
+      const popularResponse = await fetch(`${API_BASE_URL}/vendors?pageSize=8&sortBy=rating`);
+      if (popularResponse.ok) {
+        const popularData = await popularResponse.json();
+        const popular = (popularData.data || []).filter(v => v.VendorProfileID !== vendorId);
+        setRecommendations(prev => ({ ...prev, popular }));
+      }
+    } catch (error) {
+      console.error('Error loading recommendations:', error);
+    }
+  }, []);
 
   useEffect(() => {
     if (vendorId) {
@@ -111,11 +200,11 @@ function VendorProfilePage() {
   const handleRequestBooking = () => {
     if (!currentUser) {
       showBanner('Please log in to request a booking', 'info');
-      navigate('/');
+      setProfileModalOpen(true);
       return;
     }
-    // Navigate to booking wizard or modal
-    console.log('Request booking for vendor:', vendorId);
+    // Navigate to booking page
+    navigate(`/booking/${vendorId}`);
   };
 
   const handleMessageVendor = () => {
@@ -159,9 +248,44 @@ function VendorProfilePage() {
   const businessHours = vendor.businessHours || [];
 
   return (
-    <div className="profile-container">
-      {/* Back Button */}
-      <button className="back-button" onClick={() => navigate(-1)}>
+    <>
+      <Header 
+        onSearch={(q) => console.log(q)} 
+        onProfileClick={() => {
+          if (currentUser) {
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
+        onWishlistClick={() => {
+          if (currentUser) {
+            setDashboardSection('favorites');
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
+        onChatClick={() => {
+          if (currentUser) {
+            const section = currentUser.isVendor ? 'vendor-messages' : 'messages';
+            setDashboardSection(section);
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
+        onNotificationsClick={() => {}} 
+      />
+      <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
+      <DashboardModal 
+        isOpen={dashboardModalOpen} 
+        onClose={() => setDashboardModalOpen(false)}
+        initialSection={dashboardSection}
+      />
+      <div className="profile-container">
+        {/* Back Button */}
+        <button className="back-button" onClick={() => navigate(-1)}>
         <i className="fas fa-arrow-left"></i>
         <span>Back to search</span>
       </button>
@@ -339,7 +463,9 @@ function VendorProfilePage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
+    </>
   );
 }
 

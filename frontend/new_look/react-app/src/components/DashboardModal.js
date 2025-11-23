@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import ClientDashboard from './Dashboard/ClientDashboard';
 import VendorDashboard from './Dashboard/VendorDashboard';
@@ -63,7 +63,7 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
           <h3 id="dashboard-modal-title">
             {isVendor ? 'Vendor Dashboard' : 'Dashboard'}
           </h3>
-          <span className="close-modal" onClick={handleClose}></span>
+          <span className="close-modal" onClick={handleClose}>×</span>
         </div>
         <div 
           className="modal-body" 

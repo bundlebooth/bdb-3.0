@@ -116,12 +116,11 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
           Vendor Setup Questionnaire
         </h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Select features that describe your services to help clients find you.
+          Select the features and services that apply to your business. This helps clients understand what you offer.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
-        
-        <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+        <div id="vendor-questionnaire-container" style={{ marginBottom: '2rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
             {featureOptions.map(feature => (
               <label
                 key={feature.id}
@@ -148,9 +147,23 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
               </label>
             ))}
           </div>
-
-          <button type="submit" className="btn btn-primary">Save Features</button>
-        </form>
+        </div>
+        <div style={{ marginTop: '2.5rem', paddingTop: '2rem', borderTop: '2px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div id="selection-summary" style={{ color: 'var(--text-light)', fontSize: '0.95rem' }}>
+            <i className="fas fa-info-circle" style={{ color: 'var(--primary)' }}></i>
+            {' '}
+            <span id="selection-count">{selectedFeatures.length} features selected</span>
+          </div>
+          <button
+            type="button"
+            id="save-vendor-questionnaire"
+            className="btn btn-primary"
+            onClick={handleSubmit}
+            style={{ display: selectedFeatures.length > 0 ? 'block' : 'none', padding: '0.75rem 2rem', fontSize: '1rem' }}
+          >
+            <i className="fas fa-check"></i> Save Selections
+          </button>
+        </div>
       </div>
     </div>
   );

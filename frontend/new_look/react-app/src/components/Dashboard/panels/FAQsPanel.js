@@ -116,96 +116,62 @@ function FAQsPanel({ onBack, vendorProfileId }) {
           <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
             <i className="fas fa-question-circle"></i>
           </span>
-          Frequently Asked Questions
+          FAQs
         </h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Add common questions and answers to help clients learn more about your services.
+          Create frequently asked questions to help clients learn more about your services and policies.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
-
-        {/* Add FAQ Form */}
-        <form onSubmit={handleAddFAQ} style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f9fafb', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-          <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Add New FAQ</h3>
-          
-          <div className="form-group">
-            <label htmlFor="faq-question">Question <span style={{ color: 'red' }}>*</span></label>
-            <input
-              type="text"
-              id="faq-question"
-              placeholder="e.g., Do you offer refunds?"
-              value={newFaq.question}
-              onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="faq-answer">Answer <span style={{ color: 'red' }}>*</span></label>
-            <textarea
-              id="faq-answer"
-              rows="4"
-              placeholder="Provide a detailed answer..."
-              style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
-              value={newFaq.answer}
-              onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
-              required
-            ></textarea>
-          </div>
-
-          <button type="submit" className="btn btn-primary">
-            <i className="fas fa-plus"></i> Add FAQ
-          </button>
-        </form>
-
-        {/* FAQs List */}
-        <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Your FAQs</h3>
-        {faqs.length === 0 ? (
-          <div className="empty-state">
-            <i className="fas fa-question-circle" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>
-            <p>No FAQs added yet.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            {faqs.map((faq, index) => (
-              <div key={faq.id} style={{ padding: '1.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'white' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', gap: '0.75rem', flex: 1 }}>
-                    <span style={{ 
-                      width: '28px', 
-                      height: '28px', 
-                      borderRadius: '50%', 
-                      background: 'var(--primary)', 
-                      color: 'white', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      fontSize: '0.9rem',
-                      fontWeight: 600,
-                      flexShrink: 0
-                    }}>
-                      Q
-                    </span>
-                    <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text)' }}>
-                      {faq.question}
-                    </h4>
+        <div id="faqs-list">
+          {faqs.length === 0 ? (
+            <p style={{ color: 'var(--text-light)', textAlign: 'center', padding: '2rem' }}>No FAQs added yet.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: '1rem', marginBottom: '1rem' }}>
+              {faqs.map((faq, index) => (
+                <div key={faq.id || index} style={{ padding: '1.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'white' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', flex: 1 }}>
+                      <span style={{ 
+                        width: '28px', 
+                        height: '28px', 
+                        borderRadius: '50%', 
+                        background: 'var(--primary)', 
+                        color: 'white', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        flexShrink: 0
+                      }}>
+                        Q
+                      </span>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text)' }}>
+                        {faq.question}
+                      </h4>
+                    </div>
+                    <button
+                      className="btn btn-outline btn-sm"
+                      onClick={() => handleDeleteFAQ(faq.id || index)}
+                      style={{ color: 'var(--error)' }}
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
                   </div>
-                  <button
-                    className="btn btn-outline btn-sm"
-                    onClick={() => handleDeleteFAQ(faq.id)}
-                    style={{ color: 'var(--error)' }}
-                  >
-                    <i className="fas fa-trash"></i>
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.75rem', paddingLeft: '2.5rem' }}>
+                    <p style={{ margin: 0, color: 'var(--text-light)', lineHeight: 1.6 }}>
+                      {faq.answer}
+                    </p>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem', paddingLeft: '2.5rem' }}>
-                  <p style={{ margin: 0, color: 'var(--text-light)', lineHeight: 1.6 }}>
-                    {faq.answer}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ marginTop: '1rem' }}>
+          <button id="add-faq-btn" className="btn btn-outline" onClick={handleAddFAQ}>Add FAQ</button>
+          <button id="save-faqs-btn" className="btn btn-primary" style={{ marginLeft: '0.5rem' }}>Save FAQs</button>
+        </div>
       </div>
     </div>
   );

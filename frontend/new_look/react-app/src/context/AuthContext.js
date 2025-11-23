@@ -17,6 +17,43 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function checkExistingSession() {
+    // First check localStorage for userSession (matches original)
+    const storedUser = localStorage.getItem('userSession');
+    if (storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        setCurrentUser(userData);
+        window.currentUser = userData;
+        
+        // Also fetch vendor status if user is a vendor
+        if (userData.isVendor && !userData.vendorProfileId) {
+          try {
+            const response = await fetch(`${API_BASE_URL}/vendors/status?userId=${userData.id}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (response.ok) {
+              const vendorData = await response.json();
+              if (vendorData.vendorProfileId) {
+                const updatedUser = { ...userData, vendorProfileId: vendorData.vendorProfileId };
+                setCurrentUser(updatedUser);
+                window.currentUser = updatedUser;
+                localStorage.setItem('userSession', JSON.stringify(updatedUser));
+              }
+            }
+          } catch (error) {
+            console.error('Failed to fetch vendor status:', error);
+          }
+        }
+        
+        setLoading(false);
+        return;
+      } catch (error) {
+        console.error('Failed to parse stored user:', error);
+        localStorage.removeItem('userSession');
+      }
+    }
+    
+    // Fallback: check token
     const token = localStorage.getItem('token');
     if (token) {
       try {
@@ -28,15 +65,18 @@ export function AuthProvider({ children }) {
         
         if (response.ok) {
           const data = await response.json();
-          // Backend returns user data directly
-          setCurrentUser({
+          const userData = {
             id: data.userId,
             userId: data.userId,
             name: data.name || data.email?.split('@')[0] || 'User',
             email: data.email,
             userType: data.isVendor ? 'vendor' : 'client',
-            isVendor: data.isVendor || false
-          });
+            isVendor: data.isVendor || false,
+            vendorProfileId: data.vendorProfileId
+          };
+          setCurrentUser(userData);
+          window.currentUser = userData;
+          localStorage.setItem('userSession', JSON.stringify(userData));
         } else {
           localStorage.removeItem('token');
         }
@@ -51,9 +91,12 @@ export function AuthProvider({ children }) {
   function simulateLogin(user) {
     const userData = {
       ...user,
-      userId: user.id
+      userId: user.id,
+      isVendor: user.isVendor || false
     };
     setCurrentUser(userData);
+    window.currentUser = userData;
+    localStorage.setItem('userSession', JSON.stringify(userData));
     
     // Update UI elements
     updateUserInterface(userData);
@@ -113,7 +156,9 @@ export function AuthProvider({ children }) {
 
   async function logout() {
     localStorage.removeItem('token');
+    localStorage.removeItem('userSession');
     setCurrentUser(null);
+    window.currentUser = null;
     
     // Reset UI
     const profileBtn = document.getElementById('profile-btn');
@@ -167,7 +212,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

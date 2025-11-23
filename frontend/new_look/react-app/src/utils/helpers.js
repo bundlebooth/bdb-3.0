@@ -45,49 +45,8 @@ export function generateSessionId() {
   return sessionId;
 }
 
-// Show banner notification
-export function showBanner(message, type = 'info', title = '') {
-  const banner = document.createElement('div');
-  const bgColors = {
-    success: '#10b981',
-    error: '#ef4444',
-    info: '#3b82f6',
-    favorite: '#ff385c'
-  };
-  
-  banner.innerHTML = `
-    <div style="display: flex; align-items: center; gap: 0.75rem;">
-      <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'favorite' ? 'heart' : 'info-circle'}" style="font-size: 1.25rem;"></i>
-      <div>
-        ${title ? `<div style="font-weight: 600; margin-bottom: 0.25rem;">${title}</div>` : ''}
-        <div style="font-size: 0.9rem;">${message}</div>
-      </div>
-    </div>
-  `;
-  
-  banner.style.cssText = `
-    position: fixed;
-    top: 5rem;
-    right: 2rem;
-    background: ${bgColors[type] || bgColors.info};
-    color: white;
-    padding: 1rem 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    z-index: 10000;
-    animation: slideInRight 0.3s ease-out;
-    min-width: 300px;
-  `;
-  
-  document.body.appendChild(banner);
-  
-  setTimeout(() => {
-    banner.style.animation = 'slideOutRight 0.3s ease-in';
-    setTimeout(() => {
-      document.body.removeChild(banner);
-    }, 300);
-  }, 3000);
-}
+// Show banner notification - import from banners.js
+export { showBanner, showSuccess, showError, showInfo, detectBannerVariant } from './banners';
 
 // Map category to icon
 export function getCategoryIcon(category) {

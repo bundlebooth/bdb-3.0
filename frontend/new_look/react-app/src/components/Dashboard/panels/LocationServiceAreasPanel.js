@@ -5,13 +5,13 @@ import { showBanner } from '../../../utils/helpers';
 
 function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
+  const [serviceAreaInput, setServiceAreaInput] = useState('');
   const [formData, setFormData] = useState({
     address: '',
     city: '',
     state: '',
-    zipCode: '',
-    country: 'United States',
-    serviceRadius: '25',
+    postalCode: '',
+    country: '',
     serviceAreas: []
   });
 
@@ -36,10 +36,9 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           address: data.Address || '',
           city: data.City || '',
           state: data.State || '',
-          zipCode: data.ZipCode || '',
-          country: data.Country || 'United States',
-          serviceRadius: data.ServiceRadius || '25',
-          serviceAreas: data.ServiceAreas ? data.ServiceAreas.split(',') : []
+          postalCode: data.PostalCode || '',
+          country: data.Country || '',
+          serviceAreas: data.ServiceAreas ? data.ServiceAreas.split(',').filter(Boolean) : []
         });
       }
     } catch (error) {
@@ -47,6 +46,23 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAddServiceArea = () => {
+    if (serviceAreaInput.trim()) {
+      setFormData({
+        ...formData,
+        serviceAreas: [...formData.serviceAreas, serviceAreaInput.trim()]
+      });
+      setServiceAreaInput('');
+    }
+  };
+
+  const handleRemoveServiceArea = (index) => {
+    setFormData({
+      ...formData,
+      serviceAreas: formData.serviceAreas.filter((_, i) => i !== index)
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -63,9 +79,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           Address: formData.address,
           City: formData.city,
           State: formData.state,
-          ZipCode: formData.zipCode,
+          PostalCode: formData.postalCode,
           Country: formData.country,
-          ServiceRadius: formData.serviceRadius,
           ServiceAreas: formData.serviceAreas.join(',')
         })
       });
@@ -109,68 +124,57 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           Location & Service Areas
         </h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Set your business address and define the areas you serve.
+          Set your business address and define the geographic areas you serve to help clients find you.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
         
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="vendor-address">Street Address <span style={{ color: 'red' }}>*</span></label>
-            <input
-              type="text"
-              id="vendor-address"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              required
-            />
-          </div>
-
+        <form id="vendor-location-form" onSubmit={handleSubmit}>
+          {/* Row 1: Street Address and City */}
           <div className="form-row">
             <div className="form-col">
               <div className="form-group">
-                <label htmlFor="vendor-city">City <span style={{ color: 'red' }}>*</span></label>
+                <label htmlFor="loc-address">Street Address</label>
                 <input
                   type="text"
-                  id="vendor-city"
+                  id="loc-address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="form-col">
+              <div className="form-group">
+                <label htmlFor="loc-city">City</label>
+                <input
+                  type="text"
+                  id="loc-city"
                   value={formData.city}
                   onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <div className="form-col">
-              <div className="form-group">
-                <label htmlFor="vendor-state">State <span style={{ color: 'red' }}>*</span></label>
-                <input
-                  type="text"
-                  id="vendor-state"
-                  value={formData.state}
-                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  required
                 />
               </div>
             </div>
           </div>
 
+          {/* Row 2: Province and Country */}
           <div className="form-row">
             <div className="form-col">
               <div className="form-group">
-                <label htmlFor="vendor-zip">ZIP Code <span style={{ color: 'red' }}>*</span></label>
+                <label htmlFor="loc-state">Province</label>
                 <input
                   type="text"
-                  id="vendor-zip"
-                  value={formData.zipCode}
-                  onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                  required
+                  id="loc-state"
+                  value={formData.state}
+                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                 />
               </div>
             </div>
             <div className="form-col">
               <div className="form-group">
-                <label htmlFor="vendor-country">Country</label>
+                <label htmlFor="loc-country">Country</label>
                 <input
                   type="text"
-                  id="vendor-country"
+                  id="loc-country"
+                  placeholder="Canada"
                   value={formData.country}
                   onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                 />
@@ -178,26 +182,107 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
             </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="vendor-service-radius">Service Radius (miles)</label>
-            <select
-              id="vendor-service-radius"
-              value={formData.serviceRadius}
-              onChange={(e) => setFormData({ ...formData, serviceRadius: e.target.value })}
-              style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
-            >
-              <option value="10">10 miles</option>
-              <option value="25">25 miles</option>
-              <option value="50">50 miles</option>
-              <option value="100">100 miles</option>
-              <option value="unlimited">Unlimited</option>
-            </select>
-            <small style={{ color: 'var(--text-light)', fontSize: '0.85rem', display: 'block', marginTop: '0.5rem' }}>
-              How far are you willing to travel for events?
-            </small>
+          {/* Row 3: Postal Code */}
+          <div className="form-row">
+            <div className="form-col">
+              <div className="form-group">
+                <label htmlFor="loc-postal">Postal Code</label>
+                <input
+                  type="text"
+                  id="loc-postal"
+                  value={formData.postalCode}
+                  onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="form-col"></div>
           </div>
 
-          <button type="submit" className="btn btn-primary">Save Changes</button>
+          {/* Service Areas Section */}
+          <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.5rem' }}>
+              Service Areas <span style={{ color: 'var(--accent)' }}>*</span>
+            </h3>
+            <p style={{ color: 'var(--text-light)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+              Add the cities or regions where you offer your services
+            </p>
+
+            <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+              <div className="form-col">
+                <div className="form-group">
+                  <label htmlFor="service-area-input">Add City/Region</label>
+                  <input
+                    type="text"
+                    id="service-area-input"
+                    placeholder="e.g., Toronto, ON"
+                    value={serviceAreaInput}
+                    onChange={(e) => setServiceAreaInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddServiceArea();
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="form-col">
+                <div className="form-group">
+                  <label style={{ visibility: 'hidden' }}>Action</label>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    id="add-service-area-btn"
+                    onClick={handleAddServiceArea}
+                  >
+                    <i className="fas fa-plus" style={{ marginRight: '0.5rem' }}></i>Add
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div
+              id="service-areas-list"
+              style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', minHeight: '2rem', marginBottom: '0.5rem' }}
+            >
+              {formData.serviceAreas.map((area, index) => (
+                <span
+                  key={index}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 0.75rem',
+                    background: 'var(--primary)',
+                    color: 'white',
+                    borderRadius: 'var(--radius)',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  {area}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveServiceArea(index)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'white',
+                      cursor: 'pointer',
+                      padding: '0',
+                      fontSize: '1rem',
+                      lineHeight: 1
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
+            Save Location
+          </button>
         </form>
       </div>
     </div>

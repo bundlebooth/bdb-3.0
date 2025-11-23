@@ -4,6 +4,7 @@ import { showBanner } from '../../../utils/helpers';
 
 function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
+  const [timezone, setTimezone] = useState('');
   const [hours, setHours] = useState({
     monday: { open: '09:00', close: '17:00', closed: false },
     tuesday: { open: '09:00', close: '17:00', closed: false },
@@ -43,6 +44,9 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
         const data = await response.json();
         if (data.hours) {
           setHours(data.hours);
+        }
+        if (data.timezone) {
+          setTimezone(data.timezone);
         }
       }
     } catch (error) {
@@ -143,10 +147,49 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
           </span>
           Availability & Business Hours
         </h2>
-        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Set your regular business hours so clients know when you're available.
-        </p>
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Set your regular business hours and timezone</p>
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
+        
+        {/* Timezone Selection */}
+        <div style={{ marginBottom: '2rem' }}>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text)', fontSize: '0.9rem' }}>
+            <i className="fas fa-globe" style={{ color: 'var(--primary)', marginRight: '0.5rem' }}></i>
+            Timezone
+          </label>
+          <select
+            id="business-timezone"
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.75rem 1rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              background: 'white',
+              fontSize: '0.95rem',
+              color: 'var(--text)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              appearance: 'none',
+              backgroundImage: 'url(\'data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23666%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e\')',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 1rem center',
+              backgroundSize: '1.25rem',
+              paddingRight: '3rem'
+            }}
+          >
+            <option value="" disabled>Select timezone...</option>
+            <option value="America/St_Johns">America/St_Johns (NST) GMT -3:30</option>
+            <option value="America/Halifax">America/Halifax (AST) GMT -4:00</option>
+            <option value="America/Toronto">America/Toronto (EST) GMT -5:00</option>
+            <option value="America/Winnipeg">America/Winnipeg (CST) GMT -6:00</option>
+            <option value="America/Edmonton">America/Edmonton (MST) GMT -7:00</option>
+            <option value="America/Vancouver">America/Vancouver (PST) GMT -8:00</option>
+          </select>
+          <small style={{ color: 'var(--text-light)', display: 'block', marginTop: '0.5rem', fontSize: '0.85rem' }}>
+            This timezone will be displayed to customers viewing your profile
+          </small>
+        </div>
 
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gap: '1rem' }}>
@@ -207,7 +250,7 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
             ))}
           </div>
 
-          <div style={{ marginTop: '2rem', padding: '1rem', background: '#f0f7ff', borderRadius: 'var(--radius)', border: '1px solid #bfdbfe' }}>
+          <div id="business-hours-container" style={{ marginTop: '1.5rem' }}>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'start' }}>
               <i className="fas fa-info-circle" style={{ color: 'var(--primary)', marginTop: '0.25rem' }}></i>
               <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text)' }}>
@@ -216,7 +259,8 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
+          <button className="btn btn-primary" id="save-business-hours-btn" onClick={handleSubmit} style={{ marginTop: '1.5rem', width: '100%', padding: '0.875rem' }}>
+            <i className="fas fa-save" style={{ marginRight: '0.5rem' }}></i>
             Save Business Hours
           </button>
         </form>

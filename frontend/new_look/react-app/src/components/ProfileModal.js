@@ -97,14 +97,19 @@ function ProfileModal({ isOpen, onClose }) {
       }
       
       // Backend returns user data directly, not wrapped in data.user
-      setCurrentUser({
+      const userData = {
         id: data.userId,
         userId: data.userId,
         name: data.name || data.email?.split('@')[0] || 'User',
         email: data.email,
         userType: data.isVendor ? 'vendor' : 'client',
-        isVendor: data.isVendor || false
-      });
+        isVendor: data.isVendor || false,
+        vendorProfileId: data.vendorProfileId || null
+      };
+      
+      setCurrentUser(userData);
+      window.currentUser = userData;
+      localStorage.setItem('userSession', JSON.stringify(userData));
       
       showBanner('Successfully logged in!', 'success');
       onClose();
@@ -154,14 +159,19 @@ function ProfileModal({ isOpen, onClose }) {
       }
       
       // Backend returns user data directly
-      setCurrentUser({
+      const userData = {
         id: data.userId,
         userId: data.userId,
         name: data.name || data.email?.split('@')[0] || 'User',
         email: data.email,
         userType: data.isVendor ? 'vendor' : 'client',
-        isVendor: data.isVendor || false
-      });
+        isVendor: data.isVendor || false,
+        vendorProfileId: data.vendorProfileId || null
+      };
+      
+      setCurrentUser(userData);
+      window.currentUser = userData;
+      localStorage.setItem('userSession', JSON.stringify(userData));
       
       showBanner('Account created successfully!', 'success');
       onClose();
@@ -199,10 +209,19 @@ function ProfileModal({ isOpen, onClose }) {
         localStorage.setItem('token', data.token);
       }
       
-      setCurrentUser({
-        ...data.user,
-        userId: data.user.id
-      });
+      const userData = {
+        id: data.userId,
+        userId: data.userId,
+        name: data.name || data.email?.split('@')[0] || 'User',
+        email: data.email,
+        userType: data.isVendor ? 'vendor' : 'client',
+        isVendor: data.isVendor || false,
+        vendorProfileId: data.vendorProfileId || null
+      };
+      
+      setCurrentUser(userData);
+      window.currentUser = userData;
+      localStorage.setItem('userSession', JSON.stringify(userData));
       
       showBanner('Successfully verified!', 'success');
       onClose();

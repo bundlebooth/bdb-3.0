@@ -78,7 +78,12 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
   }, [createMap]);
 
   const updateMarkers = useCallback(() => {
-    if (!mapInstanceRef.current) return;
+    if (!mapInstanceRef.current || !window.google || !window.google.maps) {
+      console.log('Map not ready for markers');
+      return;
+    }
+
+    console.log('🗺️ Updating markers for', vendors.length, 'vendors');
 
     // Clear existing markers
     markersRef.current.forEach(marker => marker.setMap(null));
@@ -98,8 +103,11 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
       const lng = parseFloat(vendor.Longitude);
 
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+        console.log('⚠️ Invalid coordinates for vendor:', vendor.BusinessName, lat, lng);
         return;
       }
+
+      console.log('✅ Adding marker for:', vendor.BusinessName, 'at', lat, lng);
 
       const position = { lat, lng };
       const marker = new window.google.maps.Marker({
@@ -132,6 +140,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
       hasValidMarkers = true;
     });
 
+    console.log('📍 Total markers added:', markersRef.current.length);
+
     // Fit map to markers
     if (hasValidMarkers) {
       mapInstanceRef.current.fitBounds(bounds);
@@ -143,6 +153,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
         }
         window.google.maps.event.removeListener(listener);
       });
+    } else {
+      console.log('⚠️ No valid markers to display');
     }
 
     // Initialize marker clusterer if available

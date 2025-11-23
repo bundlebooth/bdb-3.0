@@ -1,28 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+import '../../../styles/dashboard.css';
 
 function PopularFiltersPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
   const [selectedFilters, setSelectedFilters] = useState([]);
 
   const filterOptions = [
-    { id: 'lgbtq-friendly', label: 'LGBTQ+ Friendly', icon: 'fa-rainbow', color: '#ec4899' },
-    { id: 'eco-friendly', label: 'Eco-Friendly', icon: 'fa-leaf', color: '#10b981' },
-    { id: 'pet-friendly', label: 'Pet-Friendly', icon: 'fa-paw', color: '#f59e0b' },
-    { id: 'wheelchair-accessible', label: 'Wheelchair Accessible', icon: 'fa-wheelchair', color: '#3b82f6' },
-    { id: 'family-friendly', label: 'Family-Friendly', icon: 'fa-users', color: '#8b5cf6' },
-    { id: 'outdoor-venue', label: 'Outdoor Venue', icon: 'fa-tree', color: '#059669' },
-    { id: 'indoor-venue', label: 'Indoor Venue', icon: 'fa-building', color: '#6366f1' },
-    { id: 'parking-available', label: 'Parking Available', icon: 'fa-parking', color: '#0891b2' },
-    { id: 'catering-available', label: 'Catering Available', icon: 'fa-utensils', color: '#dc2626' },
-    { id: 'alcohol-permitted', label: 'Alcohol Permitted', icon: 'fa-wine-glass', color: '#7c3aed' },
-    { id: 'live-music', label: 'Live Music Allowed', icon: 'fa-music', color: '#db2777' },
-    { id: 'photography-allowed', label: 'Photography Allowed', icon: 'fa-camera', color: '#0284c7' },
-    { id: 'customizable', label: 'Highly Customizable', icon: 'fa-sliders-h', color: '#ea580c' },
-    { id: 'all-inclusive', label: 'All-Inclusive Packages', icon: 'fa-check-double', color: '#16a34a' },
-    { id: 'budget-friendly', label: 'Budget-Friendly', icon: 'fa-dollar-sign', color: '#65a30d' },
-    { id: 'luxury', label: 'Luxury Service', icon: 'fa-gem', color: '#a855f7' }
+    { id: 'filter-premium', label: 'Premium', icon: 'fa-crown', color: '#fbbf24', description: 'Mark your business as a premium service provider' },
+    { id: 'filter-eco-friendly', label: 'Eco-Friendly', icon: 'fa-leaf', color: '#10b981', description: 'Show that your business follows environmentally friendly practices' },
+    { id: 'filter-award-winning', label: 'Award Winning', icon: 'fa-trophy', color: '#f59e0b', description: 'Indicate that your business has received industry awards or recognition' },
+    { id: 'filter-last-minute', label: 'Last Minute Availability', icon: 'fa-bolt', color: '#3b82f6', description: 'Accept bookings on short notice and accommodate urgent requests' },
+    { id: 'filter-certified', label: 'Certified', icon: 'fa-award', color: '#8b5cf6', description: 'Your business holds relevant industry certifications or qualifications' },
+    { id: 'filter-insured', label: 'Insured', icon: 'fa-shield-alt', color: '#10b981', description: 'Your business carries appropriate liability insurance coverage' },
+    { id: 'filter-local', label: 'Local', icon: 'fa-map-marker-alt', color: '#ef4444', description: 'Your business is locally owned and operated in your community' },
+    { id: 'filter-accessible', label: 'Accessible', icon: 'fa-wheelchair', color: '#06b6d4', description: 'Your business is wheelchair accessible and accommodates people with disabilities' }
   ];
 
   useEffect(() => {
@@ -107,67 +100,38 @@ function PopularFiltersPanel({ onBack, vendorProfileId }) {
       </button>
       <div className="dashboard-card">
         <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
+          <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1rem' }}>
             <i className="fas fa-tags"></i>
           </span>
           Popular Filters
         </h2>
-        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Enable special badges that help clients find your business based on their preferences.
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+          Enable special badges and filters that help clients find your business when browsing.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f7ff', borderRadius: 'var(--radius)', border: '1px solid #bfdbfe' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'start' }}>
-              <i className="fas fa-info-circle" style={{ color: 'var(--primary)', marginTop: '0.25rem' }}></i>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text)' }}>
-                Selected filters will appear as badges on your profile and help clients find you when they search with these criteria.
-              </p>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+        <form id="vendor-popular-filters-form" onSubmit={handleSubmit}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             {filterOptions.map(filter => (
-              <label
-                key={filter.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '1rem',
-                  border: selectedFilters.includes(filter.id) ? `2px solid ${filter.color}` : '1px solid var(--border)',
-                  borderRadius: 'var(--radius)',
-                  background: selectedFilters.includes(filter.id) ? `${filter.color}10` : 'white',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
+              <label key={filter.id} className="filter-row-card">
                 <input
                   type="checkbox"
+                  id={filter.id}
                   checked={selectedFilters.includes(filter.id)}
                   onChange={() => handleToggleFilter(filter.id)}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                 />
-                <i 
-                  className={`fas ${filter.icon}`} 
-                  style={{ color: filter.color, fontSize: '1.2rem' }}
-                ></i>
-                <span style={{ fontSize: '0.9rem', fontWeight: 500, flex: 1 }}>
-                  {filter.label}
+                <i className={`fas ${filter.icon}`} style={{ color: filter.color }}></i>
+                <span className="filter-row-content">
+                  <span className="filter-row-title">{filter.label}</span>
+                  <span className="filter-row-description">{filter.description}</span>
                 </span>
               </label>
             ))}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button type="submit" className="btn btn-primary">
-              Save Filters
-            </button>
-            <span style={{ color: 'var(--text-light)', fontSize: '0.9rem' }}>
-              {selectedFilters.length} filter{selectedFilters.length !== 1 ? 's' : ''} selected
-            </span>
-          </div>
+          <button type="submit" className="btn btn-primary" style={{ marginTop: '2rem' }}>
+            <i className="fas fa-save"></i> Save Filter Settings
+          </button>
         </form>
       </div>
     </div>

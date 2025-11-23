@@ -90,14 +90,14 @@ function ClientDashboard({ activeSection, onSectionChange, onLogout }) {
   };
 
   return (
-    <div className="dashboard-container" id="dashboard-container" style={{ display: 'grid', height: '100%' }}>
+    <div className="dashboard-container" id="dashboard-container" style={{ display: 'flex', height: '100%' }}>
       <DashboardSidebar 
         menuItems={menuItems}
         activeSection={activeSection}
         onSectionChange={onSectionChange}
         onLogout={onLogout}
       />
-      <main className="dashboard-content" style={{ overflowY: 'auto' }}>
+      <main className="dashboard-content" style={{ overflowY: 'auto', flex: 1 }}>
         <div className="dashboard-header">
           <h1 className="dashboard-title" id="dashboard-title">
             {menuItems.find(item => item.id === activeSection)?.label || 'Dashboard'}

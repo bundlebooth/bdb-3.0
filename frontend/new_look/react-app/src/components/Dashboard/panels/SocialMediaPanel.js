@@ -8,7 +8,9 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
     facebook: '',
     instagram: '',
     twitter: '',
-    bookingLink: ''
+    linkedin: '',
+    youtube: '',
+    tiktok: ''
   });
 
   useEffect(() => {
@@ -32,7 +34,9 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
           facebook: data.FacebookUrl || '',
           instagram: data.InstagramUrl || '',
           twitter: data.TwitterUrl || '',
-          bookingLink: data.BookingLink || ''
+          linkedin: data.LinkedInUrl || '',
+          youtube: data.YouTubeUrl || '',
+          tiktok: data.TikTokUrl || ''
         });
       }
     } catch (error) {
@@ -56,7 +60,9 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
           FacebookUrl: formData.facebook,
           InstagramUrl: formData.instagram,
           TwitterUrl: formData.twitter,
-          BookingLink: formData.bookingLink
+          LinkedInUrl: formData.linkedin,
+          YouTubeUrl: formData.youtube,
+          TikTokUrl: formData.tiktok
         })
       });
       
@@ -99,71 +105,137 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
           Social Media & Booking
         </h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Connect your social media profiles and external booking link.
+          Connect your social media profiles and booking links to increase engagement and make it easier for clients to reach you.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
         
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="facebook-url">
-              <i className="fab fa-facebook" style={{ marginRight: '0.5rem', color: '#1877f2' }}></i>
-              Facebook URL
-            </label>
-            <input
-              type="url"
-              id="facebook-url"
-              placeholder="https://facebook.com/yourbusiness"
-              value={formData.facebook}
-              onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
-            />
+        <form id="vendor-social-form" onSubmit={handleSubmit}>
+          <h3 className="dashboard-card-subtitle" style={{ margin: '1rem 0', color: 'var(--primary)' }}>Social Media Profiles</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+            {/* Facebook */}
+            <div className="form-group">
+              <label htmlFor="social-facebook-settings" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className="fab fa-facebook" style={{ color: '#1877F2', fontSize: '1.2rem' }}></i>
+                Facebook
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 'var(--radius)', backgroundColor: 'white' }}>
+                <span style={{ padding: '0.75rem 0.5rem 0.75rem 0.75rem', color: 'var(--text-light)', fontSize: '0.9rem', backgroundColor: 'var(--secondary)', borderRight: '1px solid var(--border)' }}>facebook.com/</span>
+                <input
+                  type="text"
+                  id="social-facebook-settings"
+                  placeholder="yourpage"
+                  style={{ border: 'none', outline: 'none', padding: '0.75rem', flex: 1, fontSize: '0.9rem', background: 'transparent' }}
+                  value={formData.facebook}
+                  onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
+                  data-prefix="https://facebook.com/"
+                />
+              </div>
+            </div>
+
+            {/* Instagram */}
+            <div className="form-group">
+              <label htmlFor="social-instagram-settings" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className="fab fa-instagram" style={{ color: '#E4405F', fontSize: '1.2rem' }}></i>
+                Instagram
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 'var(--radius)', backgroundColor: 'white' }}>
+                <span style={{ padding: '0.75rem 0.5rem 0.75rem 0.75rem', color: 'var(--text-light)', fontSize: '0.9rem', backgroundColor: 'var(--secondary)', borderRight: '1px solid var(--border)' }}>instagram.com/</span>
+                <input
+                  type="text"
+                  id="social-instagram-settings"
+                  placeholder="youraccount"
+                  style={{ border: 'none', outline: 'none', padding: '0.75rem', flex: 1, fontSize: '0.9rem', background: 'transparent' }}
+                  value={formData.instagram}
+                  onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+                  data-prefix="https://instagram.com/"
+                />
+              </div>
+            </div>
+
+            {/* X (Twitter) */}
+            <div className="form-group">
+              <label htmlFor="social-twitter-settings" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="#000000" style={{ marginRight: '0.25rem' }}>
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                </svg>
+                X
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 'var(--radius)', backgroundColor: 'white' }}>
+                <span style={{ padding: '0.75rem 0.5rem 0.75rem 0.75rem', color: 'var(--text-light)', fontSize: '0.9rem', backgroundColor: 'var(--secondary)', borderRight: '1px solid var(--border)' }}>x.com/</span>
+                <input
+                  type="text"
+                  id="social-twitter-settings"
+                  placeholder="youraccount"
+                  style={{ border: 'none', outline: 'none', padding: '0.75rem', flex: 1, fontSize: '0.9rem', background: 'transparent' }}
+                  value={formData.twitter}
+                  onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
+                  data-prefix="https://x.com/"
+                />
+              </div>
+            </div>
+
+            {/* LinkedIn */}
+            <div className="form-group">
+              <label htmlFor="social-linkedin-settings" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className="fab fa-linkedin" style={{ color: '#0077B5', fontSize: '1.2rem' }}></i>
+                LinkedIn
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 'var(--radius)', backgroundColor: 'white' }}>
+                <span style={{ padding: '0.75rem 0.5rem 0.75rem 0.75rem', color: 'var(--text-light)', fontSize: '0.9rem', backgroundColor: 'var(--secondary)', borderRight: '1px solid var(--border)' }}>linkedin.com/in/</span>
+                <input
+                  type="text"
+                  id="social-linkedin-settings"
+                  placeholder="yourprofile"
+                  style={{ border: 'none', outline: 'none', padding: '0.75rem', flex: 1, fontSize: '0.9rem', background: 'transparent' }}
+                  value={formData.linkedin}
+                  onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+                  data-prefix="https://linkedin.com/in/"
+                />
+              </div>
+            </div>
+
+            {/* YouTube */}
+            <div className="form-group">
+              <label htmlFor="social-youtube-settings" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className="fab fa-youtube" style={{ color: '#FF0000', fontSize: '1.2rem' }}></i>
+                YouTube
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 'var(--radius)', backgroundColor: 'white' }}>
+                <span style={{ padding: '0.75rem 0.5rem 0.75rem 0.75rem', color: 'var(--text-light)', fontSize: '0.9rem', backgroundColor: 'var(--secondary)', borderRight: '1px solid var(--border)' }}>youtube.com/</span>
+                <input
+                  type="text"
+                  id="social-youtube-settings"
+                  placeholder="yourchannel"
+                  style={{ border: 'none', outline: 'none', padding: '0.75rem', flex: 1, fontSize: '0.9rem', background: 'transparent' }}
+                  value={formData.youtube}
+                  onChange={(e) => setFormData({ ...formData, youtube: e.target.value })}
+                  data-prefix="https://youtube.com/"
+                />
+              </div>
+            </div>
+
+            {/* TikTok */}
+            <div className="form-group">
+              <label htmlFor="social-tiktok-settings" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className="fab fa-tiktok" style={{ color: '#6b7280', fontSize: '1.2rem' }}></i>
+                TikTok
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 'var(--radius)', backgroundColor: 'white' }}>
+                <span style={{ padding: '0.75rem 0.5rem 0.75rem 0.75rem', color: 'var(--text-light)', fontSize: '0.9rem', backgroundColor: 'var(--secondary)', borderRight: '1px solid var(--border)' }}>tiktok.com/@</span>
+                <input
+                  type="text"
+                  id="social-tiktok-settings"
+                  placeholder="youraccount"
+                  style={{ border: 'none', outline: 'none', padding: '0.75rem', flex: 1, fontSize: '0.9rem', background: 'transparent' }}
+                  value={formData.tiktok}
+                  onChange={(e) => setFormData({ ...formData, tiktok: e.target.value })}
+                  data-prefix="https://tiktok.com/@"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="instagram-url">
-              <i className="fab fa-instagram" style={{ marginRight: '0.5rem', color: '#e4405f' }}></i>
-              Instagram URL
-            </label>
-            <input
-              type="url"
-              id="instagram-url"
-              placeholder="https://instagram.com/yourbusiness"
-              value={formData.instagram}
-              onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="twitter-url">
-              <i className="fab fa-twitter" style={{ marginRight: '0.5rem', color: '#1da1f2' }}></i>
-              Twitter URL
-            </label>
-            <input
-              type="url"
-              id="twitter-url"
-              placeholder="https://twitter.com/yourbusiness"
-              value={formData.twitter}
-              onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="booking-link">
-              <i className="fas fa-link" style={{ marginRight: '0.5rem', color: 'var(--primary)' }}></i>
-              External Booking Link
-            </label>
-            <input
-              type="url"
-              id="booking-link"
-              placeholder="https://yourbooking.com"
-              value={formData.bookingLink}
-              onChange={(e) => setFormData({ ...formData, bookingLink: e.target.value })}
-            />
-            <small style={{ color: 'var(--text-light)', fontSize: '0.85rem', display: 'block', marginTop: '0.5rem' }}>
-              If you have an external booking system, add the link here
-            </small>
-          </div>
-
-          <button type="submit" className="btn btn-primary">Save Changes</button>
+          <button type="submit" className="btn btn-primary">Save Social</button>
         </form>
       </div>
     </div>

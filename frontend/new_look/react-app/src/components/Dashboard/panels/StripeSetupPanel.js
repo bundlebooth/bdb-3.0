@@ -109,10 +109,10 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
           <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
             <i className="fab fa-stripe"></i>
           </span>
-          Stripe Payment Setup
+          Stripe Connect
         </h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          Connect your Stripe account to receive payments from clients.
+          Connect your Stripe account to accept payments from customers.
         </p>
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
 

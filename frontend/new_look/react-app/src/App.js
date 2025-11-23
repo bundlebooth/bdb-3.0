@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import IndexPage from './pages/IndexPage';
 import VendorProfilePage from './pages/VendorProfilePage';
+import BookingPage from './pages/BookingPage';
 import { AuthProvider } from './context/AuthContext';
 
 // Global initMap callback for Google Maps
@@ -38,6 +39,7 @@ function App() {
         <Routes>
           <Route path="/" element={<IndexPage />} />
           <Route path="/vendor/:vendorId" element={<VendorProfilePage />} />
+          <Route path="/booking/:vendorId" element={<BookingPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

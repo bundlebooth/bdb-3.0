@@ -10,6 +10,7 @@ import TrendingVendors from '../components/TrendingVendors';
 import MapView from '../components/MapView';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
+import Footer from '../components/Footer';
 import { showBanner } from '../utils/helpers';
 
 function IndexPage() {
@@ -58,10 +59,11 @@ function IndexPage() {
     } catch (error) {
       console.error('Failed to load favorites:', error);
     }
-  }, [currentUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   const tryGetUserLocation = useCallback(() => {
-    if (navigator.geolocation) {
+    if (navigator.geolocation && !userLocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setUserLocation({
@@ -72,6 +74,7 @@ function IndexPage() {
         (error) => console.log('Geolocation error:', error)
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadVendors = useCallback(async (append = false) => {
@@ -109,10 +112,11 @@ function IndexPage() {
       console.log('✅ Vendors loaded:', newVendors.length, 'Total count:', totalCount);
       if (append) {
         setVendors(prev => [...prev, ...newVendors]);
+        setServerPageNumber(nextPage);
       } else {
         setVendors(newVendors);
+        setServerPageNumber(1);
       }
-      setServerPageNumber(nextPage);
       setServerTotalCount(totalCount);
     } catch (error) {
       console.error('❌ Error loading vendors:', error);
@@ -120,7 +124,7 @@ function IndexPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentCategory, filters.priceLevel, filters.minRating, filters.region, filters.tags, userLocation, serverPageNumber]);
+  }, [currentCategory, filters.priceLevel, filters.minRating, filters.region, filters.tags, userLocation]);
 
   const initializePage = useCallback(async () => {
     tryGetUserLocation();
@@ -128,7 +132,7 @@ function IndexPage() {
       loadFavorites();
     }
     await loadVendors();
-  }, [tryGetUserLocation, currentUser, loadFavorites, loadVendors]);
+  }, []);
 
   const applyFilters = useCallback(() => {
     console.log('🔧 Applying filters. Vendors count:', vendors.length);
@@ -146,7 +150,8 @@ function IndexPage() {
 
   useEffect(() => {
     initializePage();
-  }, [initializePage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Listen for dashboard open events from ProfileModal
   useEffect(() => {
@@ -161,13 +166,15 @@ function IndexPage() {
 
   useEffect(() => {
     if (currentCategory) {
+      setServerPageNumber(1);
       loadVendors();
     }
-  }, [currentCategory, loadVendors]);
+  }, [currentCategory]);
 
   useEffect(() => {
     applyFilters();
-  }, [applyFilters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendors, filters, userLocation]);
 
   const handleCategoryChange = useCallback((category) => {
     setCurrentCategory(category);
@@ -231,10 +238,10 @@ function IndexPage() {
     if (appContainer) appContainer.classList.toggle('map-active');
   }, [mapActive]);
 
-  const startIndex = (currentPage - 1) * vendorsPerPage;
-  const endIndex = startIndex + vendorsPerPage;
-  const currentVendors = filteredVendors.slice(startIndex, endIndex);
+  // Show ALL vendors (no client-side pagination)
+  const currentVendors = filteredVendors;
   const hasMore = vendors.length < serverTotalCount;
+  const showLoadMore = hasMore && !loading && filteredVendors.length > 0;
   
   console.log('📊 Render state:', { 
     vendorsCount: vendors.length, 
@@ -300,10 +307,54 @@ function IndexPage() {
           <TrendingVendors onViewVendor={handleViewVendor} />
           <div className="map-overlay"></div>
           <VendorGrid vendors={currentVendors} loading={loading} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewVendor={handleViewVendor} onHighlightVendor={handleHighlightVendor} />
-          {hasMore && !loading && <div style={{ display: 'flex', justifyContent: 'center', margin: '3rem 0 2rem 0' }}><button className="btn" onClick={() => loadVendors(true)} style={{ backgroundColor: '#5e72e4', color: 'white', border: 'none', padding: '0.875rem 2.5rem', fontSize: '1rem', fontWeight: 500, borderRadius: '8px', cursor: 'pointer', boxShadow: '0 2px 8px rgba(94, 114, 228, 0.2)' }}>Load More <i className="fas fa-chevron-down"></i></button></div>}
+          {showLoadMore && (
+            <div id="load-more-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '3rem 0 2rem 0' }}>
+              <button 
+                className="btn" 
+                id="load-more-btn"
+                onClick={() => loadVendors(true)}
+                disabled={loading}
+                style={{ 
+                  backgroundColor: '#5e72e4', 
+                  color: 'white', 
+                  border: 'none', 
+                  padding: '0.875rem 2.5rem', 
+                  fontSize: '1rem', 
+                  fontWeight: 500, 
+                  borderRadius: '8px', 
+                  cursor: loading ? 'not-allowed' : 'pointer', 
+                  boxShadow: '0 2px 8px rgba(94, 114, 228, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s ease',
+                  opacity: loading ? 0.6 : 1
+                }}
+                onMouseOver={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.backgroundColor = '#4a5acf';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(94, 114, 228, 0.3)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.backgroundColor = '#5e72e4';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(94, 114, 228, 0.2)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }
+                }}
+              >
+                <span id="load-more-text">{loading ? 'Loading...' : 'Load More'}</span>
+                {!loading && <i className="fas fa-chevron-down"></i>}
+                {loading && <i className="fas fa-spinner fa-spin"></i>}
+              </button>
+            </div>
+          )}
         </main>
         <aside className="map-sidebar"><div className="map-sidebar-content">{mapActive && <MapView vendors={filteredVendors} onVendorSelect={handleVendorSelectFromMap} selectedVendorId={selectedVendorId} />}</div></aside>
       </div>
+      <Footer />
     </div>
   );
 }
