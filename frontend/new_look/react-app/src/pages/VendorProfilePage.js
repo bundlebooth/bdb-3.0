@@ -653,12 +653,15 @@ function VendorProfilePage() {
 
           {/* Image Gallery Skeleton */}
           <div className="image-gallery">
-            <div className="gallery-item large-image skeleton"></div>
+            <div className="gallery-item large-image">
+              <div className="skeleton" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}></div>
+            </div>
             <div className="thumbnails-container">
-              <div className="gallery-item skeleton"></div>
-              <div className="gallery-item skeleton"></div>
-              <div className="gallery-item skeleton"></div>
-              <div className="gallery-item skeleton"></div>
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="gallery-item">
+                  <div className="skeleton" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}></div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -738,7 +741,7 @@ function VendorProfilePage() {
   const businessHours = vendor.businessHours || [];
 
   return (
-    <>
+    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', width: '100%' }}>
       <Header 
         onSearch={(q) => console.log(q)} 
         onProfileClick={() => {
@@ -780,72 +783,77 @@ function VendorProfilePage() {
           <span>Back to search</span>
         </button>
 
-        {/* Vendor Title and Rating - ABOVE Gallery */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <h1 style={{ fontSize: '1.625rem', fontWeight: 600, marginBottom: '0.5rem', color: '#222', lineHeight: 1.25 }}>
-            {profile.BusinessName || profile.DisplayName}
-          </h1>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
-            {/* Rating with blue star */}
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
-                display: 'block', 
-                height: '14px', 
-                width: '14px', 
-                fill: '#0066CC'
-              }}>
-                <path fillRule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
-              </svg>
-              <span style={{ fontWeight: 600, color: '#000' }}>
-                {reviews.length > 0 ? '4.9' : '5.0'}
-              </span>
-              {reviews.length > 0 && (
-                <span style={{ color: '#717171' }}>({reviews.length})</span>
-              )}
-            </span>
-            
-            <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
-            
-            {/* Location */}
-            {(profile.City || profile.State) && (
-              <>
-                <span style={{ color: '#000', textDecoration: 'underline', fontWeight: 500, cursor: 'pointer' }}>
-                  {[profile.City, profile.State, profile.Country].filter(Boolean).join(', ')}
-                </span>
-                <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
-              </>
-            )}
-            
-            {/* Category */}
-            <span style={{ color: '#000' }}>{profile.Tagline || profile.CategoryName || 'Event Services'}</span>
-          </div>
-        </div>
-
         {/* Image Gallery */}
         <VendorGallery images={images} />
 
-        {/* Action Buttons and Social Media */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid var(--border)' }}>
+        {/* Vendor Title and Rating - BELOW Gallery */}
+        <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+            <div style={{ flex: 1 }}>
+              <h1 style={{ fontSize: '1.625rem', fontWeight: 600, marginBottom: '0.5rem', color: '#222', lineHeight: 1.25 }}>
+                {profile.BusinessName || profile.DisplayName}
+              </h1>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
+                {/* Rating with blue star */}
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
+                    display: 'block', 
+                    height: '14px', 
+                    width: '14px', 
+                    fill: '#0066CC'
+                  }}>
+                    <path fillRule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
+                  </svg>
+                  <span style={{ fontWeight: 600, color: '#000' }}>
+                    {reviews.length > 0 ? '4.9' : '5.0'}
+                  </span>
+                  {reviews.length > 0 && (
+                    <span style={{ color: '#717171' }}>({reviews.length})</span>
+                  )}
+                </span>
+                
+                <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
+                
+                {/* Location */}
+                {(profile.City || profile.State) && (
+                  <>
+                    <span style={{ color: '#000', textDecoration: 'underline', fontWeight: 500, cursor: 'pointer' }}>
+                      {[profile.City, profile.State, profile.Country].filter(Boolean).join(', ')}
+                    </span>
+                    <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
+                  </>
+                )}
+                
+                {/* Category */}
+                <span style={{ color: '#000' }}>{profile.Tagline || profile.CategoryName || 'Event Services'}</span>
+              </div>
+            </div>
+
+            {/* Action Buttons - Aligned to the right */}
+            <div className="vendor-profile-actions">
+              <div
+                className={`vendor-action-btn ${isFavorite ? 'active' : ''}`}
+                onClick={handleToggleFavorite}
+                title="Save to favorites"
+              >
+                <i className="fas fa-heart"></i>
+                <span>Save</span>
+              </div>
+              <div
+                className="vendor-action-btn"
+                onClick={handleShare}
+                title="Share this vendor"
+              >
+                <i className="fas fa-share-alt"></i>
+                <span>Share</span>
+              </div>
+            </div>
+          </div>
+
           {/* Social Media Icons */}
-          {renderSocialMediaIcons()}
-          
-          {/* Action Buttons */}
-          <div className="vendor-profile-actions">
-            <div
-              className={`vendor-action-btn ${isFavorite ? 'active' : ''}`}
-              onClick={handleToggleFavorite}
-              title="Save to favorites"
-            >
-              <i className="fas fa-heart"></i>
-            </div>
-            <div
-              className="vendor-action-btn"
-              onClick={handleShare}
-              title="Share this vendor"
-            >
-              <i className="fas fa-share-alt"></i>
-            </div>
+          <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #ebebeb' }}>
+            {renderSocialMediaIcons()}
           </div>
         </div>
 
@@ -899,9 +907,27 @@ function VendorProfilePage() {
           </div>
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar - Reordered */}
         <div className="vendor-sidebar">
-          {/* Request Booking Card */}
+          {/* Business Hours - First */}
+          {businessHours.length > 0 && (
+            <div className="sidebar-card">
+              <h3>Business Hours</h3>
+              <div style={{ fontSize: '0.9rem' }}>
+                {businessHours.map((hour, index) => {
+                  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                  return (
+                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: index < businessHours.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
+                      <span style={{ fontWeight: 500, color: '#222' }}>{dayNames[hour.DayOfWeek]}</span>
+                      <span style={{ color: '#717171' }}>{hour.IsAvailable ? `${hour.OpenTime} - ${hour.CloseTime}` : 'Closed'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Request Booking Card - Second */}
           <div className="sidebar-card">
             <h3>Request to Book</h3>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
@@ -916,33 +942,15 @@ function VendorProfilePage() {
             </p>
           </div>
 
-          {/* Business Hours */}
-          {businessHours.length > 0 && (
-            <div className="sidebar-card">
-              <h3>Business Hours</h3>
-              <div style={{ fontSize: '0.9rem' }}>
-                {businessHours.map((hour, index) => {
-                  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                  return (
-                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0' }}>
-                      <span style={{ fontWeight: 500 }}>{dayNames[hour.DayOfWeek]}</span>
-                      <span>{hour.IsAvailable ? `${hour.OpenTime} - ${hour.CloseTime}` : 'Closed'}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Contact */}
+          {/* Contact - Third */}
           <div className="sidebar-card">
-            <h3>Contact Vendor</h3>
+            <h3>Message Vendor</h3>
             <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-light)' }}>
               Have questions? Get in touch!
             </p>
             <button className="btn btn-outline btn-full-width" onClick={handleMessageVendor}>
               <i className="fas fa-comment"></i>
-              <span>Message Vendor</span>
+              <span>Send Message</span>
             </button>
           </div>
         </div>
@@ -952,7 +960,7 @@ function VendorProfilePage() {
       {renderRecommendations()}
     </div>
     <Footer />
-    </>
+    </div>
   );
 }
 

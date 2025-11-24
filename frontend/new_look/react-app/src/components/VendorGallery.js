@@ -80,6 +80,7 @@ function VendorGallery({ images }) {
           <img
             src={getImageUrl(validImages[0])}
             alt="Main"
+            style={{ objectFit: 'cover' }}
             onError={(e) => {
               e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
             }}
@@ -104,6 +105,7 @@ function VendorGallery({ images }) {
                     <img
                       src={getImageUrl(validImages[index])}
                       alt={`Image ${index + 1}`}
+                      style={{ objectFit: 'cover' }}
                       onError={(e) => {
                         e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
                       }}

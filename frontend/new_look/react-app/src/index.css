@@ -30,8 +30,16 @@ label {
 }
 
 body {
-    background-color: #f8fafc;
+    background-color: #ffffff !important;
     color: var(--text);
+}
+
+html {
+    background-color: #ffffff !important;
+}
+
+#root {
+    background-color: #ffffff !important;
 }
 
 .app-container {
@@ -292,7 +300,7 @@ body {
 
 /* Filter Sidebar */
 .sidebar {
-    background-color: white;
+    background-color: white !important;
     padding: 1.5rem;
     border-right: 1px solid var(--border);
     height: calc(100vh - 120px);
@@ -438,7 +446,13 @@ body {
 /* Main Content */
 .main-content {
     padding: 2rem;
-    background-color: white;
+    background-color: white !important;
+}
+
+/* Force white background for entire viewport */
+.app-container,
+.app-container > * {
+    background-color: #ffffff !important;
 }
 
 .profile-content {
@@ -654,7 +668,7 @@ body {
 /* Smooth scrolling for vendor cards */
 .results-left {
     scroll-behavior: smooth;
-    background-color: #f8fafc; /* Match body background */
+    background-color: #ffffff; /* Match body background */
 }
 
 /* Custom scrollbar for vendor list - sleek design */
@@ -1160,7 +1174,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 .gallery-item:hover img {
-    transform: scale(1.05);
+    transform: none;
 }
 
 .see-all-overlay {
