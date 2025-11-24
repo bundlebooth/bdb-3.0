@@ -1,16 +1,79 @@
 import React from 'react';
 import VendorCard from './VendorCard';
-import { getVendorCardSkeletonHTML } from '../utils/skeletons';
 
 function VendorGrid({ vendors, loading, favorites, onToggleFavorite, onViewVendor, onHighlightVendor }) {
-  if (loading) {
+  console.log('🎯 VendorGrid render - loading:', loading, 'vendors count:', vendors?.length);
+  
+  if (loading && (!vendors || vendors.length === 0)) {
+    console.log('✅ VendorGrid: Showing skeleton cards NOW!');
     return (
       <div 
-        className="vendor-grid skeleton-active" 
-        id="vendor-grid" 
-        data-skeleton="1"
-        dangerouslySetInnerHTML={{ __html: getVendorCardSkeletonHTML(6) }}
-      />
+        className="vendor-grid" 
+        id="vendor-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '1.5rem',
+          padding: '1rem 0'
+        }}
+      >
+        {Array(6).fill(0).map((_, index) => (
+          <div 
+            key={index} 
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              background: 'transparent',
+              cursor: 'default'
+            }}
+          >
+            {/* Image Container */}
+            <div style={{ 
+              position: 'relative', 
+              width: '100%', 
+              paddingTop: '66.67%', 
+              overflow: 'hidden', 
+              borderRadius: '12px',
+              background: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
+              backgroundSize: '200% 100%',
+              animation: 'skeleton-shimmer 1.5s infinite'
+            }}></div>
+            
+            {/* Card Content */}
+            <div style={{ padding: '10px 0 4px 0', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {/* Title line */}
+              <div style={{
+                height: '20px',
+                width: '70%',
+                background: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
+                backgroundSize: '200% 100%',
+                animation: 'skeleton-shimmer 1.5s infinite',
+                borderRadius: '4px'
+              }}></div>
+              
+              {/* Price/Rating line */}
+              <div style={{
+                height: '18px',
+                width: '100%',
+                background: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
+                backgroundSize: '200% 100%',
+                animation: 'skeleton-shimmer 1.5s infinite',
+                borderRadius: '4px'
+              }}></div>
+              
+              {/* Location line */}
+              <div style={{
+                height: '18px',
+                width: '50%',
+                background: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
+                backgroundSize: '200% 100%',
+                animation: 'skeleton-shimmer 1.5s infinite',
+                borderRadius: '4px'
+              }}></div>
+            </div>
+          </div>
+        ))}
+      </div>
     );
   }
 

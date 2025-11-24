@@ -426,6 +426,7 @@ body {
 /* Main Content */
 .main-content {
     padding: 2rem;
+    background-color: white;
 }
 
 .profile-content {
@@ -505,9 +506,9 @@ body {
 }
 
 .vendor-card {
-    background-color: white;
-    border-radius: 16px;
-    overflow: hidden;
+    background-color: transparent;
+    border-radius: 0;
+    overflow: visible;
     box-shadow: none;
     transition: transform .35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow .35s cubic-bezier(0.22, 1, 0.36, 1), border-color .35s ease;
     border: none;
@@ -6131,10 +6132,10 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 /* Vendor grid responsive styles defined earlier in the file (around line 503) */
 
 .vendor-card {
-    background-color: white;
+    background-color: transparent;
     border: none;
-    border-radius: 16px;
-    overflow: hidden;
+    border-radius: 0;
+    overflow: visible;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     box-shadow: none;

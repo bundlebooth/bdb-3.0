@@ -24,7 +24,7 @@ function IndexPage() {
   const [currentCategory, setCurrentCategory] = useState('all');
   const [favorites, setFavorites] = useState([]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mapActive, setMapActive] = useState(false);
+  const [mapActive, setMapActive] = useState(true); // Map always loaded on page landing
   const [currentPage, setCurrentPage] = useState(1);
   const [serverPageNumber, setServerPageNumber] = useState(1);
   const [serverTotalCount, setServerTotalCount] = useState(0);
@@ -256,6 +256,10 @@ function IndexPage() {
 
   useEffect(() => {
     initializePage();
+    // Set map-active class on initial load since map starts as true
+    document.body.classList.add('map-active');
+    const appContainer = document.getElementById('app-container');
+    if (appContainer) appContainer.classList.add('map-active');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -276,6 +280,15 @@ function IndexPage() {
       loadVendors();
     }
   }, [currentCategory]);
+
+  // Reload vendors when filters change (especially popular filters/tags)
+  useEffect(() => {
+    if (filters.priceLevel || filters.minRating || filters.region || filters.tags.length > 0) {
+      setServerPageNumber(1);
+      loadVendors();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.priceLevel, filters.minRating, filters.region, filters.tags]);
 
   useEffect(() => {
     if (vendors.length > 0) {
@@ -417,10 +430,49 @@ function IndexPage() {
               <button className="mobile-filter-btn"><i className="fas fa-sliders-h"></i><span>Filters</span></button>
               <button className="btn btn-outline" onClick={handleToggleFilters} style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}><i className="fas fa-sliders-h"></i><span>Filters</span></button>
               <select id="sort-select" style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'white', fontSize: '0.9rem', color: 'var(--text)' }}><option value="recommended">Recommended</option><option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option><option value="nearest">Nearest to Me</option><option value="rating">Highest Rated</option></select>
-              <button className="btn btn-outline" onClick={handleToggleMap} style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}><i className="fas fa-map-marked-alt"></i><span>{mapActive ? 'Hide Map' : 'Show Map'}</span></button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.9rem', color: 'var(--text)' }}>{mapActive ? 'Hide map' : 'Show map'}</span>
+                <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={mapActive} 
+                    onChange={handleToggleMap}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: mapActive ? '#34D399' : '#E5E7EB',
+                    borderRadius: '24px',
+                    transition: 'background-color 0.3s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '2px'
+                  }}>
+                    <span style={{
+                      position: 'absolute',
+                      height: '20px',
+                      width: '20px',
+                      left: mapActive ? '22px' : '2px',
+                      backgroundColor: 'white',
+                      borderRadius: '50%',
+                      transition: 'left 0.3s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {mapActive && <span style={{ color: '#34D399', fontSize: '12px' }}>✓</span>}
+                    </span>
+                  </span>
+                </label>
+              </div>
             </div>
           </div>
-          <TrendingVendors onViewVendor={handleViewVendor} />
+          {!loading && <TrendingVendors onViewVendor={handleViewVendor} />}
           <div className="map-overlay"></div>
           <VendorGrid vendors={currentVendors} loading={loading} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewVendor={handleViewVendor} onHighlightVendor={handleHighlightVendor} />
           {showLoadMore && (
@@ -468,7 +520,18 @@ function IndexPage() {
             </div>
           )}
         </main>
-        <aside className="map-sidebar"><div className="map-sidebar-content">{mapActive && <MapView vendors={filteredVendors} onVendorSelect={handleVendorSelectFromMap} selectedVendorId={selectedVendorId} />}</div></aside>
+        <aside className="map-sidebar">
+          <div className="map-sidebar-content">
+            {mapActive && (
+              <MapView 
+                vendors={filteredVendors} 
+                onVendorSelect={handleVendorSelectFromMap} 
+                selectedVendorId={selectedVendorId}
+                loading={loading}
+              />
+            )}
+          </div>
+        </aside>
       </div>
       <Footer />
     </div>

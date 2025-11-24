@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
+import VendorCard from '../../VendorCard';
 
 function ClientFavoritesSection() {
   const { currentUser } = useAuth();
@@ -31,6 +32,20 @@ function ClientFavoritesSection() {
     loadFavorites();
   }, [loadFavorites]);
 
+
+  const handleToggleFavorite = useCallback(async (vendorId) => {
+    // Remove from favorites
+    try {
+      await fetch(`${API_BASE_URL}/favorites/${currentUser.id}/${vendorId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      // Reload favorites
+      loadFavorites();
+    } catch (error) {
+      console.error('Error removing favorite:', error);
+    }
+  }, [currentUser, loadFavorites]);
 
   const renderVendorCard = (vendor) => {
     const imageUrl = vendor.PortfolioImage || vendor.FeaturedImageURL || vendor.ImageURL || vendor.imageUrl || vendor.image || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
@@ -128,7 +143,7 @@ function ClientFavoritesSection() {
               )}
             </div>
             <div className="vendor-actions">
-              <button className="btn btn-outline save-btn" data-id={vendorId}>Save</button>
+              <button className="btn btn-outline save-btn" data-id={vendorId} onClick={() => handleToggleFavorite(vendorId)}>Save</button>
               <button className="btn btn-primary view-btn" data-id={vendorId}>View</button>
             </div>
           </div>
@@ -167,7 +182,16 @@ function ClientFavoritesSection() {
     <div id="favorites-section">
       <div className="dashboard-card">
         <div className="vendor-grid" id="saved-favorites">
-          {favorites.map(renderVendorCard)}
+          {favorites.map((vendor) => (
+            <VendorCard
+              key={vendor.VendorProfileID || vendor.id}
+              vendor={vendor}
+              isFavorite={true}
+              onToggleFavorite={handleToggleFavorite}
+              onView={() => {}}
+              onHighlight={() => {}}
+            />
+          ))}
         </div>
       </div>
     </div>

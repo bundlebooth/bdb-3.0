@@ -19,6 +19,7 @@ const categories = [
 
 function CategoriesNav({ activeCategory, onCategoryChange }) {
   const [showScrollButtons, setShowScrollButtons] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const wrapperRef = useRef(null);
   const listRef = useRef(null);
   const indicatorRef = useRef(null);
@@ -46,8 +47,17 @@ function CategoriesNav({ activeCategory, onCategoryChange }) {
   useEffect(() => {
     checkScrollButtons();
     updateIndicator();
+    
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    
     window.addEventListener('resize', checkScrollButtons);
-    return () => window.removeEventListener('resize', checkScrollButtons);
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('resize', checkScrollButtons);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, [checkScrollButtons, updateIndicator]);
 
   useEffect(() => {
@@ -65,7 +75,7 @@ function CategoriesNav({ activeCategory, onCategoryChange }) {
   };
 
   return (
-    <nav className="categories-nav">
+    <nav className={`categories-nav ${isScrolled ? 'scrolled' : ''}`}>
       <button
         className="nav-scroll-btn left"
         id="scroll-left"

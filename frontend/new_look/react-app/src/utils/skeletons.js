@@ -58,11 +58,19 @@ export function getMessagesSkeletonHTML(count = 5) {
 
 export function getVendorCardSkeletonHTML(count = 4) {
   return Array(count).fill(0).map(() => `
-    <div class="skeleton-vendor-card">
-      <div class="skeleton skeleton-vendor-image"></div>
-      <div class="skeleton skeleton-vendor-title"></div>
-      <div class="skeleton skeleton-vendor-category"></div>
-      <div class="skeleton skeleton-vendor-rating"></div>
+    <div class="skeleton-card-simple">
+      <div class="skeleton-img-simple"></div>
+      <div class="skeleton-text-simple skeleton-text-lg"></div>
+      <div class="skeleton-text-simple skeleton-text-md"></div>
+      <div class="skeleton-text-simple skeleton-text-sm"></div>
     </div>
   `).join('');
+}
+
+export function getMapSkeletonHTML() {
+  return `
+    <div class="skeleton-map-simple">
+      <div class="skeleton-map-spinner-simple"></div>
+    </div>
+  `;
 }

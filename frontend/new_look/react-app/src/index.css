@@ -160,6 +160,12 @@ body {
     z-index: 50;
     backdrop-filter: blur(10px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: padding 0.3s ease, top 0.3s ease;
+}
+
+.categories-nav.scrolled {
+    padding: 0.25rem 1rem;
+    top: 60px;
 }
 
 .categories-list-wrapper {
@@ -294,6 +300,12 @@ body {
     top: 120px;
     overflow-y: auto;
     transition: padding 0.25s ease, border-color 0.25s ease;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.sidebar::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
 }
 
 .sidebar.collapsed {
@@ -426,6 +438,7 @@ body {
 /* Main Content */
 .main-content {
     padding: 2rem;
+    background-color: white;
 }
 
 .profile-content {
@@ -505,9 +518,9 @@ body {
 }
 
 .vendor-card {
-    background-color: white;
-    border-radius: 16px;
-    overflow: hidden;
+    background-color: transparent;
+    border-radius: 0;
+    overflow: visible;
     box-shadow: none;
     transition: transform .35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow .35s cubic-bezier(0.22, 1, 0.36, 1), border-color .35s ease;
     border: none;
@@ -6131,10 +6144,10 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 /* Vendor grid responsive styles defined earlier in the file (around line 503) */
 
 .vendor-card {
-    background-color: white;
+    background-color: transparent;
     border: none;
-    border-radius: 16px;
-    overflow: hidden;
+    border-radius: 0;
+    overflow: visible;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     box-shadow: none;
@@ -6562,34 +6575,99 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     height: 14px;
 }
 
-.skeleton-vendor-card {
-    background: white;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1rem;
+/* Simple Clean Skeleton Styles */
+.skeleton-card-simple {
+    display: flex !important;
+    flex-direction: column !important;
+    background: white !important;
+    padding: 12px !important;
+    min-height: 350px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    overflow: hidden !important;
 }
 
-.skeleton-vendor-image {
+.skeleton-img-simple {
+    width: 100% !important;
+    height: 200px !important;
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%) !important;
+    background-size: 200% 100% !important;
+    animation: skeleton-shimmer 1.5s infinite !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+}
+
+.skeleton-text-simple {
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%) !important;
+    background-size: 200% 100% !important;
+    animation: skeleton-shimmer 1.5s infinite !important;
+    border-radius: 4px !important;
+    margin-bottom: 10px !important;
+}
+
+.skeleton-text-lg {
+    height: 20px !important;
+    width: 75% !important;
+}
+
+.skeleton-text-md {
+    height: 18px !important;
+    width: 100% !important;
+}
+
+.skeleton-text-sm {
+    height: 18px !important;
+    width: 50% !important;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Simple Map Skeleton */
+.skeleton-map-simple {
     width: 100%;
-    height: 200px;
-    margin-bottom: 1rem;
-    border-radius: 8px;
+    height: 100%;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f9fafb;
 }
 
-.skeleton-vendor-title {
-    height: 24px;
-    margin-bottom: 0.5rem;
+.skeleton-map-spinner-simple {
+    width: 48px;
+    height: 48px;
+    border: 4px solid #e5e7eb;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
 }
 
-.skeleton-vendor-category {
-    height: 18px;
-    width: 60%;
-    margin-bottom: 0.5rem;
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
-.skeleton-vendor-rating {
-    height: 20px;
-    width: 40%;
+.skeleton-map-text-simple {
+    font-size: 15px;
+    font-weight: 500;
+    color: #6b7280;
 }
 
 /* Booking Modal Category Skeleton Styles */
