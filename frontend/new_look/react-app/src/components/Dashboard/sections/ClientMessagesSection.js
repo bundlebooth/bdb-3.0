@@ -111,7 +111,7 @@ function ClientMessagesSection({ onSectionChange }) {
         // Reload messages after a short delay
         setTimeout(() => loadMessages(selectedConversation.id), 500);
       } else {
-        const response = await fetch(`${API_BASE_URL}/messages/send`, {
+        const response = await fetch(`${API_BASE_URL}/messages`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -127,6 +127,8 @@ function ClientMessagesSection({ onSectionChange }) {
         if (response.ok) {
           setNewMessage('');
           loadMessages(selectedConversation.id);
+        } else {
+          console.error('Failed to send message:', response.status);
         }
       }
     } catch (error) {

@@ -32,11 +32,23 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
 
   const loadCategories = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/categories`);
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data.filter(c => c.id !== 'all'));
-      }
+      // Use hardcoded categories matching vanilla JS
+      const categoriesList = [
+        { id: 'venue', name: 'Venues' },
+        { id: 'photo', name: 'Photo/Video' },
+        { id: 'music', name: 'Music/DJ' },
+        { id: 'catering', name: 'Catering' },
+        { id: 'entertainment', name: 'Entertainment' },
+        { id: 'experiences', name: 'Experiences' },
+        { id: 'decor', name: 'Decorations' },
+        { id: 'beauty', name: 'Beauty' },
+        { id: 'cake', name: 'Cake' },
+        { id: 'transport', name: 'Transportation' },
+        { id: 'planner', name: 'Planners' },
+        { id: 'fashion', name: 'Fashion' },
+        { id: 'stationery', name: 'Stationery' }
+      ];
+      setCategories(categoriesList);
     } catch (error) {
       console.error('Error loading categories:', error);
     }
@@ -45,12 +57,16 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
   const loadProfileData = async () => {
     try {
       setLoading(true);
+      console.log('Loading profile for vendorProfileId:', vendorProfileId);
       const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/profile-details`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
+      console.log('Profile response status:', response.status);
+      
       if (response.ok) {
         const profile = await response.json();
+        console.log('Profile data loaded:', profile);
         const categoriesArray = profile.Categories ? profile.Categories.split(',').map(c => c.trim()) : [];
         
         setFormData({
@@ -66,6 +82,11 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
           additionalCategories: categoriesArray.slice(1),
           priceLevel: profile.PriceLevel || '$$'
         });
+      } else if (response.status === 404) {
+        console.warn('Profile not found (404) - this may be a new vendor profile');
+        // Don't throw error for 404, just leave form empty for new profile
+      } else {
+        console.error('Failed to load profile:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -80,34 +101,47 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     try {
       const allCategories = [formData.category, ...formData.additionalCategories].filter(Boolean).join(',');
       
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/profile-details`, {
-        method: 'PUT',
+      console.log('Saving profile for vendorProfileId:', vendorProfileId);
+      console.log('Profile data:', {
+        BusinessName: formData.businessName,
+        Categories: allCategories,
+        PriceLevel: formData.priceLevel
+      });
+      
+      const response = await fetch(`${API_BASE_URL}/vendors/setup/step1-business-basics`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          BusinessName: formData.businessName,
-          DisplayName: formData.displayName,
-          BusinessEmail: formData.email,
-          BusinessPhone: formData.phone,
-          Website: formData.website,
-          YearsInBusiness: formData.yearsInBusiness,
-          BusinessDescription: formData.description,
-          Tagline: formData.tagline,
-          Categories: allCategories,
-          PriceLevel: formData.priceLevel
+          vendorProfileId: vendorProfileId,
+          businessName: formData.businessName,
+          displayName: formData.displayName,
+          businessEmail: formData.email,
+          businessPhone: formData.phone,
+          website: formData.website,
+          yearsInBusiness: formData.yearsInBusiness,
+          businessDescription: formData.description,
+          tagline: formData.tagline,
+          primaryCategory: formData.category,
+          additionalCategories: formData.additionalCategories,
+          priceLevel: formData.priceLevel
         })
       });
+      
+      console.log('Save response status:', response.status);
       
       if (response.ok) {
         showBanner('Profile updated successfully!', 'success');
       } else {
-        throw new Error('Failed to update profile');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Save failed:', response.status, errorData);
+        throw new Error(errorData.message || `Failed to update profile (${response.status})`);
       }
     } catch (error) {
       console.error('Error saving profile:', error);
-      showBanner('Failed to save changes', 'error');
+      showBanner(`Failed to save changes: ${error.message}`, 'error');
     }
   };
 

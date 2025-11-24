@@ -246,7 +246,7 @@ function VendorInvoicesSection() {
                     }
                     
                     return (
-                      <tr key={b.BookingID} style={{ borderBottom: '1px solid var(--border, #e5e7eb)' }}>
+                      <tr key={b.InvoiceID || b.BookingID || `invoice-${b.InvoiceNumber}-${dateStr}`} style={{ borderBottom: '1px solid var(--border, #e5e7eb)' }}>
                         <td className="nowrap ta-center" style={{ whiteSpace: 'nowrap', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)', textAlign: 'center' }}>
                           <div className="inv-actions" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                             <button className="btn btn-outline btn-sm" title="View invoice" aria-label="View invoice" style={{ margin: 0 }}>

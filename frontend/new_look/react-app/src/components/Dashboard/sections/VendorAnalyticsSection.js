@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../../../config';
 function VendorAnalyticsSection() {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [vendorProfileId, setVendorProfileId] = useState(null);
   const [analytics, setAnalytics] = useState({
     views: 0,
     bookings: 0,
@@ -14,13 +15,34 @@ function VendorAnalyticsSection() {
   });
 
   useEffect(() => {
-    loadAnalytics();
+    getVendorProfileId();
   }, []);
+
+  useEffect(() => {
+    if (vendorProfileId) {
+      loadAnalytics();
+    }
+  }, [vendorProfileId]);
+
+  const getVendorProfileId = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setVendorProfileId(data.vendorProfileId);
+      }
+    } catch (error) {
+      console.error('Error fetching vendor profile ID:', error);
+      setLoading(false);
+    }
+  };
 
   const loadAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/analytics`, {
+      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/analytics`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       

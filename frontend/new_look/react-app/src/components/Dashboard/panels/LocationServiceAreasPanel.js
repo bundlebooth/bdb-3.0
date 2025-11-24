@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
@@ -14,6 +14,11 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
     country: '',
     serviceAreas: []
   });
+  
+  const addressInputRef = useRef(null);
+  const serviceAreaInputRef = useRef(null);
+  const addressAutocompleteRef = useRef(null);
+  const serviceAreaAutocompleteRef = useRef(null);
 
   useEffect(() => {
     if (vendorProfileId) {
@@ -22,7 +27,94 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
       setLoading(false);
     }
   }, [vendorProfileId]);
+  
+  useEffect(() => {
+    // Initialize Google Maps autocomplete after component mounts
+    initializeGoogleMaps();
+  }, []);
 
+  const initializeGoogleMaps = () => {
+    if (!window.google || !window.google.maps || !window.google.maps.places) {
+      console.warn('Google Maps not loaded yet');
+      return;
+    }
+    
+    // Address Autocomplete
+    if (addressInputRef.current && !addressAutocompleteRef.current) {
+      addressAutocompleteRef.current = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+        fields: ['address_components', 'geometry', 'formatted_address', 'place_id', 'types'],
+        types: ['address'],
+        componentRestrictions: { country: ['ca'] }
+      });
+      
+      addressAutocompleteRef.current.addListener('place_changed', () => {
+        const place = addressAutocompleteRef.current.getPlace();
+        if (!place || !place.address_components) return;
+        
+        const comps = place.address_components;
+        const pick = (type) => comps.find(c => c.types.includes(type))?.long_name || '';
+        
+        setFormData(prev => ({
+          ...prev,
+          address: place.formatted_address || prev.address,
+          city: pick('locality') || pick('sublocality') || pick('postal_town') || pick('administrative_area_level_3') || '',
+          state: pick('administrative_area_level_1') || '',
+          country: pick('country') || '',
+          postalCode: pick('postal_code') || ''
+        }));
+      });
+    }
+    
+    // Service Area Autocomplete
+    if (serviceAreaInputRef.current && !serviceAreaAutocompleteRef.current) {
+      serviceAreaAutocompleteRef.current = new window.google.maps.places.Autocomplete(serviceAreaInputRef.current, {
+        fields: ['address_components', 'geometry', 'formatted_address', 'place_id', 'types'],
+        types: ['(cities)'],
+        componentRestrictions: { country: ['ca'] }
+      });
+      
+      serviceAreaAutocompleteRef.current.addListener('place_changed', () => {
+        const place = serviceAreaAutocompleteRef.current.getPlace();
+        if (!place || !place.address_components) return;
+        
+        const comps = place.address_components;
+        const pick = (type) => comps.find(c => c.types.includes(type))?.long_name || '';
+        const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || '';
+        const province = pick('administrative_area_level_1') || '';
+        const country = pick('country') || formData.country || '';
+        const loc = place.geometry?.location;
+        
+        const newArea = {
+          placeId: place.place_id || null,
+          city,
+          province,
+          country,
+          latitude: loc ? (typeof loc.lat === 'function' ? loc.lat() : loc.lat) : null,
+          longitude: loc ? (typeof loc.lng === 'function' ? loc.lng() : loc.lng) : null,
+          formattedAddress: place.formatted_address || [city, province, country].filter(Boolean).join(', '),
+          placeType: Array.isArray(place.types) ? place.types[0] : 'locality',
+          serviceRadius: 25.0
+        };
+        
+        // Check for duplicates
+        const exists = formData.serviceAreas.some(a => 
+          (newArea.placeId && a.placeId && a.placeId === newArea.placeId) ||
+          (a.city.toLowerCase() === newArea.city.toLowerCase() && 
+           a.province.toLowerCase() === newArea.province.toLowerCase())
+        );
+        
+        if (!exists) {
+          setFormData(prev => ({
+            ...prev,
+            serviceAreas: [...prev.serviceAreas, newArea]
+          }));
+        }
+        
+        setServiceAreaInput('');
+      });
+    }
+  };
+  
   const loadLocationData = async () => {
     try {
       setLoading(true);
@@ -32,30 +124,57 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
       
       if (response.ok) {
         const data = await response.json();
+        const loc = data.location || {};
         setFormData({
-          address: data.Address || '',
-          city: data.City || '',
-          state: data.State || '',
-          postalCode: data.PostalCode || '',
-          country: data.Country || '',
-          serviceAreas: data.ServiceAreas ? data.ServiceAreas.split(',').filter(Boolean) : []
+          address: loc.Address || '',
+          city: loc.City || '',
+          state: loc.State || '',
+          postalCode: loc.PostalCode || '',
+          country: loc.Country || '',
+          serviceAreas: (data.serviceAreas || []).map(a => ({
+            placeId: a.GooglePlaceID || null,
+            city: a.CityName || '',
+            province: a.StateProvince || '',
+            country: a.Country || '',
+            latitude: a.Latitude ?? null,
+            longitude: a.Longitude ?? null,
+            serviceRadius: a.ServiceRadius ?? 25.0,
+            formattedAddress: a.FormattedAddress || null,
+            placeType: a.PlaceType || null
+          }))
         });
       }
     } catch (error) {
       console.error('Error loading location:', error);
     } finally {
       setLoading(false);
+      // Initialize Google Maps after data is loaded
+      setTimeout(initializeGoogleMaps, 100);
     }
   };
 
   const handleAddServiceArea = () => {
-    if (serviceAreaInput.trim()) {
-      setFormData({
-        ...formData,
-        serviceAreas: [...formData.serviceAreas, serviceAreaInput.trim()]
-      });
-      setServiceAreaInput('');
-    }
+    const raw = serviceAreaInput.trim();
+    if (!raw) return;
+    
+    // Manual entry (fallback if autocomplete not used)
+    const parts = raw.split(',').map(s => s.trim()).filter(Boolean);
+    const city = parts[0] || raw;
+    const province = parts[1] || formData.state || '';
+    const country = formData.country || 'Canada';
+    
+    const newArea = {
+      city,
+      province,
+      country,
+      serviceRadius: 25.0
+    };
+    
+    setFormData(prev => ({
+      ...prev,
+      serviceAreas: [...prev.serviceAreas, newArea]
+    }));
+    setServiceAreaInput('');
   };
 
   const handleRemoveServiceArea = (index) => {
@@ -69,30 +188,33 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
     e.preventDefault();
     
     try {
+      const payload = {
+        address: formData.address.trim(),
+        city: formData.city.trim(),
+        state: formData.state.trim(),
+        country: formData.country.trim(),
+        postalCode: formData.postalCode.trim(),
+        serviceAreas: formData.serviceAreas
+      };
+      
       const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/location`, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({
-          Address: formData.address,
-          City: formData.city,
-          State: formData.state,
-          PostalCode: formData.postalCode,
-          Country: formData.country,
-          ServiceAreas: formData.serviceAreas.join(',')
-        })
+        body: JSON.stringify(payload)
       });
       
       if (response.ok) {
-        showBanner('Location updated successfully!', 'success');
+        showBanner('Location saved successfully!', 'success');
       } else {
-        throw new Error('Failed to update location');
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || 'Failed to save location');
       }
     } catch (error) {
       console.error('Error saving location:', error);
-      showBanner('Failed to save changes', 'error');
+      showBanner('Failed to save changes: ' + error.message, 'error');
     }
   };
 
@@ -137,8 +259,10 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
                 <input
                   type="text"
                   id="loc-address"
+                  ref={addressInputRef}
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Start typing your address..."
                 />
               </div>
             </div>
@@ -214,7 +338,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
                   <input
                     type="text"
                     id="service-area-input"
-                    placeholder="e.g., Toronto, ON"
+                    ref={serviceAreaInputRef}
+                    placeholder="Start typing a city name..."
                     value={serviceAreaInput}
                     onChange={(e) => setServiceAreaInput(e.target.value)}
                     onKeyPress={(e) => {
@@ -224,6 +349,7 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
                       }
                     }}
                   />
+                  <div className="pac-container" style={{ display: 'none' }}></div>
                 </div>
               </div>
               <div className="form-col">
@@ -245,38 +371,46 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
               id="service-areas-list"
               style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', minHeight: '2rem', marginBottom: '0.5rem' }}
             >
-              {formData.serviceAreas.map((area, index) => (
-                <span
-                  key={index}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 0.75rem',
-                    background: 'var(--primary)',
-                    color: 'white',
-                    borderRadius: 'var(--radius)',
-                    fontSize: '0.875rem'
-                  }}
-                >
-                  {area}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveServiceArea(index)}
+              {formData.serviceAreas.map((area, index) => {
+                const label = [area.city, area.province || area.state].filter(Boolean).join(', ');
+                return (
+                  <span
+                    key={index}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'white',
-                      cursor: 'pointer',
-                      padding: '0',
-                      fontSize: '1rem',
-                      lineHeight: 1
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0.875rem',
+                      background: '#f0f4ff',
+                      border: '1px solid #d0ddff',
+                      color: 'var(--text)',
+                      borderRadius: 'var(--radius)',
+                      fontSize: '0.9rem',
+                      fontWeight: 500
                     }}
                   >
-                    ×
-                  </button>
-                </span>
-              ))}
+                    {label}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveServiceArea(index)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#999',
+                        cursor: 'pointer',
+                        padding: '0',
+                        fontSize: '1.3rem',
+                        lineHeight: 1,
+                        marginLeft: '4px'
+                      }}
+                      onMouseOver={(e) => e.target.style.color = 'var(--accent)'}
+                      onMouseOut={(e) => e.target.style.color = '#999'}
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
             </div>
           </div>
 

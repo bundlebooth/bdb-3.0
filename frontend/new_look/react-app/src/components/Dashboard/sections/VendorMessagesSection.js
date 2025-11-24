@@ -133,7 +133,7 @@ function VendorMessagesSection({ onSectionChange }) {
         // Reload messages after a short delay
         setTimeout(() => loadMessages(selectedConversation.id), 500);
       } else {
-        const response = await fetch(`${API_BASE_URL}/messages/send`, {
+        const response = await fetch(`${API_BASE_URL}/messages`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

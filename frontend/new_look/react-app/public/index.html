@@ -10,6 +10,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Google Maps API with Places API -->
+    <script>
+      // Define initMap globally to prevent Google Maps callback error
+      window.initMap = function() {
+        console.log('Google Maps API loaded');
+      };
+    </script>
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo&libraries=places,geometry,marker&callback=initMap&v=weekly"></script>
     <!-- MarkerClusterer for Google Maps markers clustering -->
     <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>

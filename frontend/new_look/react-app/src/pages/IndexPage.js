@@ -295,7 +295,7 @@ function IndexPage() {
           <div className="content-header">
             <div>
               <h1 className="results-title">{loading ? <div className="skeleton-line" style={{ height: '32px', width: '280px', borderRadius: '8px' }}></div> : `Vendors ${filters.location || userLocation ? 'in ' + (filters.location || 'your area') : 'Near you'}`}</h1>
-              <p className="results-count">{loading ? <div className="skeleton-line" style={{ height: '16px', width: '150px', borderRadius: '6px', marginTop: '8px' }}></div> : `${serverTotalCount} vendors available`}</p>
+              <p className="results-count">{loading ? <span className="skeleton-line" style={{ display: 'inline-block', height: '16px', width: '150px', borderRadius: '6px', marginTop: '8px' }}></span> : `${serverTotalCount} vendors available`}</p>
             </div>
             <div className="view-controls">
               <button className="mobile-filter-btn"><i className="fas fa-sliders-h"></i><span>Filters</span></button>
