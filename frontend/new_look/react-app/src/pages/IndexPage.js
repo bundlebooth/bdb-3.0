@@ -10,6 +10,7 @@ import TrendingVendors from '../components/TrendingVendors';
 import MapView from '../components/MapView';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
+import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import Footer from '../components/Footer';
 import { showBanner } from '../utils/helpers';
 
@@ -49,7 +50,7 @@ function IndexPage() {
   const loadFavorites = useCallback(async () => {
     if (!currentUser?.id) return;
     try {
-      const response = await fetch(`${API_BASE_URL}/favorites/${currentUser.id}`, {
+      const response = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (response.ok) {
@@ -104,14 +105,55 @@ function IndexPage() {
       console.log('🔍 Fetching vendors from:', url);
       const response = await fetch(url);
       console.log('📡 Response status:', response.status);
-      if (!response.ok) throw new Error('Failed to fetch vendors');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error:', errorText);
+        throw new Error('Failed to fetch vendors');
+      }
       const data = await response.json();
-      console.log('📦 Received data:', data);
-      const newVendors = data.vendors || [];
-      const totalCount = data.totalCount || newVendors.length;
+      console.log('📦 Raw API response:', data);
+      
+      // Handle BOTH response formats like original (line 26240-26258)
+      let newVendors = [];
+      let totalCount = 0;
+      
+      // Check if response has sections (from /vendors/search-by-categories)
+      if (Array.isArray(data.sections)) {
+        console.log('📦 Response has sections format');
+        newVendors = data.sections.flatMap(s => s?.vendors || []);
+        
+        // Deduplicate by vendor ID
+        const seen = new Set();
+        const unique = [];
+        for (const v of newVendors) {
+          const k = v.vendorProfileId || v.VendorProfileID || v.id;
+          if (k == null) { unique.push(v); continue; }
+          if (!seen.has(k)) { seen.add(k); unique.push(v); }
+        }
+        newVendors = unique;
+        
+        // Sum section totals
+        try {
+          totalCount = data.sections.reduce((acc, s) => acc + (s?.totalCount || (s?.vendors?.length || 0)), 0);
+        } catch { 
+          totalCount = newVendors.length; 
+        }
+      } else {
+        // Regular /vendors response
+        console.log('📦 Response has regular format');
+        newVendors = data.vendors || [];
+        totalCount = data.totalCount || newVendors.length;
+      }
       console.log('✅ Vendors loaded:', newVendors.length, 'Total count:', totalCount);
+      if (newVendors.length > 0) {
+        console.log('📋 First vendor sample:', newVendors[0]);
+      }
       if (append) {
-        setVendors(prev => [...prev, ...newVendors]);
+        // Deduplicate vendors when appending
+        const existingIds = new Set(vendors.map(v => v.VendorProfileID || v.id));
+        const uniqueNewVendors = newVendors.filter(v => !existingIds.has(v.VendorProfileID || v.id));
+        console.log('🔄 Appending vendors. Existing:', vendors.length, 'New unique:', uniqueNewVendors.length);
+        setVendors(prev => [...prev, ...uniqueNewVendors]);
         setServerPageNumber(nextPage);
       } else {
         setVendors(newVendors);
@@ -238,7 +280,7 @@ function IndexPage() {
     if (appContainer) appContainer.classList.toggle('map-active');
   }, [mapActive]);
 
-  // Show ALL vendors (no client-side pagination)
+  // Show ALL vendors from filteredVendors (no client-side pagination, matches original)
   const currentVendors = filteredVendors;
   const hasMore = vendors.length < serverTotalCount;
   const showLoadMore = hasMore && !loading && filteredVendors.length > 0;
@@ -292,6 +334,14 @@ function IndexPage() {
         <CategoriesNav activeCategory={currentCategory} onCategoryChange={handleCategoryChange} />
         <FilterSidebar filters={filters} onFilterChange={handleFilterChange} collapsed={sidebarCollapsed} />
         <main className="main-content">
+          {currentUser?.vendorProfileId && (
+            <SetupIncompleteBanner 
+              onContinueSetup={() => {
+                setDashboardSection('vendor-settings');
+                setDashboardModalOpen(true);
+              }}
+            />
+          )}
           <div className="content-header">
             <div>
               <h1 className="results-title">{loading ? <div className="skeleton-line" style={{ height: '32px', width: '280px', borderRadius: '8px' }}></div> : `Vendors ${filters.location || userLocation ? 'in ' + (filters.location || 'your area') : 'Near you'}`}</h1>

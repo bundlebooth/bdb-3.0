@@ -12,12 +12,28 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
     if (isOpen) {
       setActiveSection(initialSection);
       document.body.style.overflow = 'hidden';
+      
+      // CRITICAL: Hide categories nav when modal is open to prevent overlap
+      const categoriesNav = document.querySelector('.categories-nav');
+      if (categoriesNav) {
+        categoriesNav.style.display = 'none';
+      }
     } else {
       document.body.style.overflow = '';
+      
+      // Show categories nav when modal closes
+      const categoriesNav = document.querySelector('.categories-nav');
+      if (categoriesNav) {
+        categoriesNav.style.display = 'flex';
+      }
     }
     
     return () => {
       document.body.style.overflow = '';
+      const categoriesNav = document.querySelector('.categories-nav');
+      if (categoriesNav) {
+        categoriesNav.style.display = 'flex';
+      }
     };
   }, [isOpen, initialSection]);
 

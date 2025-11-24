@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
 import DashboardModal from './DashboardModal';
 
 function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNotificationsClick }) {
   const { currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
-  const [favoritesBadge] = useState(0);
-  const [messagesBadge] = useState(0);
-  const [notificationsBadge] = useState(0);
+  const [favoritesBadge, setFavoritesBadge] = useState(0);
+  const [messagesBadge, setMessagesBadge] = useState(0);
+  const [notificationsBadge, setNotificationsBadge] = useState(0);
   const [dashboardOpen, setDashboardOpen] = useState(false);
 
   // Clear any dashboard hash on mount to prevent auto-opening
@@ -26,6 +27,55 @@ function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNoti
 
     window.addEventListener('openDashboard', handleOpenDashboard);
     return () => window.removeEventListener('openDashboard', handleOpenDashboard);
+  }, [currentUser]);
+
+  // Load notification badges
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const loadBadges = async () => {
+      try {
+        // Load favorites count
+        const favResponse = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (favResponse.ok) {
+          const favData = await favResponse.json();
+          setFavoritesBadge(Array.isArray(favData.favorites) ? favData.favorites.length : 0);
+        }
+
+        // Load unread messages count
+        const msgResponse = await fetch(`${API_BASE_URL}/messages/unread-count/${currentUser.id}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (msgResponse.ok) {
+          const msgData = await msgResponse.json();
+          setMessagesBadge(msgData.unreadCount || 0);
+        }
+
+        // Load notifications count (if endpoint exists)
+        try {
+          const notifResponse = await fetch(`${API_BASE_URL}/notifications/unread-count/${currentUser.id}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (notifResponse.ok) {
+            const notifData = await notifResponse.json();
+            setNotificationsBadge(notifData.unreadCount || 0);
+          }
+        } catch (e) {
+          // Notifications endpoint might not exist
+          console.log('Notifications endpoint not available');
+        }
+      } catch (error) {
+        console.error('Failed to load badges:', error);
+      }
+    };
+
+    loadBadges();
+    
+    // Refresh badges every 30 seconds
+    const interval = setInterval(loadBadges, 30000);
+    return () => clearInterval(interval);
   }, [currentUser]);
 
   const handleSearch = () => {

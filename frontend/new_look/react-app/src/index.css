@@ -66,7 +66,7 @@ body {
     box-shadow: var(--shadow);
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 100;
 }
 
 .logo {
@@ -157,7 +157,7 @@ body {
     align-items: center;
     position: sticky;
     top: 65px; /* Positioned below the header */
-    z-index: 9;
+    z-index: 50;
     backdrop-filter: blur(10px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
@@ -967,7 +967,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 /* Booking Modal Styles */
 .modal {
     position: fixed;
-    z-index: 1000;
+    z-index: 10000;
     left: 0;
     top: 0;
     width: 100%;

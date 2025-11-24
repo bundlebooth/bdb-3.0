@@ -14,8 +14,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
     if (!bounds) return;
 
     const vendorsInView = vendors.filter(vendor => {
-      const lat = parseFloat(vendor.Latitude);
-      const lng = parseFloat(vendor.Longitude);
+      const lat = parseFloat(vendor.Latitude || vendor.latitude || vendor.lat);
+      const lng = parseFloat(vendor.Longitude || vendor.longitude || vendor.lng || vendor.lon);
       
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
         return false;
@@ -99,15 +99,16 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
 
     // Create markers for each vendor
     vendors.forEach(vendor => {
-      const lat = parseFloat(vendor.Latitude);
-      const lng = parseFloat(vendor.Longitude);
+      // Try multiple field name variations for coordinates
+      const lat = parseFloat(vendor.Latitude || vendor.latitude || vendor.lat);
+      const lng = parseFloat(vendor.Longitude || vendor.longitude || vendor.lng || vendor.lon);
 
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-        console.log('⚠️ Invalid coordinates for vendor:', vendor.BusinessName, lat, lng);
+        console.log('⚠️ Invalid coordinates for vendor:', vendor.BusinessName || vendor.name, 'lat:', lat, 'lng:', lng, 'vendor:', vendor);
         return;
       }
 
-      console.log('✅ Adding marker for:', vendor.BusinessName, 'at', lat, lng);
+      console.log('✅ Adding marker for:', vendor.BusinessName || vendor.name, 'at', lat, lng);
 
       const position = { lat, lng };
       const marker = new window.google.maps.Marker({
@@ -116,12 +117,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
         title: vendor.BusinessName || vendor.name,
         animation: window.google.maps.Animation.DROP,
         icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: '#5e72e4',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2
+          url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+          scaledSize: new window.google.maps.Size(40, 40)
         }
       });
 
@@ -170,23 +167,15 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
     markersRef.current.forEach(marker => {
       if (marker.vendorId === vendorId) {
         marker.setIcon({
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 12,
-          fillColor: '#ff385c',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 3
+          url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+          scaledSize: new window.google.maps.Size(50, 50)
         });
         marker.setAnimation(window.google.maps.Animation.BOUNCE);
         setTimeout(() => marker.setAnimation(null), 2000);
       } else {
         marker.setIcon({
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 10,
-          fillColor: '#5e72e4',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 2
+          url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+          scaledSize: new window.google.maps.Size(40, 40)
         });
       }
     });
@@ -217,12 +206,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
         // Reset all markers to default
         markersRef.current.forEach(marker => {
           marker.setIcon({
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: '#5e72e4',
-            fillOpacity: 1,
-            strokeColor: '#ffffff',
-            strokeWeight: 2
+            url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+            scaledSize: new window.google.maps.Size(40, 40)
           });
         });
       }
