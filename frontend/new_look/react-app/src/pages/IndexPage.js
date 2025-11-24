@@ -78,30 +78,97 @@ function IndexPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // EXACT match to original applyClientSideFilters (line 26091-26120)
+  const applyClientSideFiltersInternal = useCallback((vendorsToFilter) => {
+    console.log('🔧 Applying client-side filters to', vendorsToFilter.length, 'vendors');
+    
+    const filtered = vendorsToFilter.filter(vendor => {
+      // Category filter (line 26093-26096)
+      if (currentCategory !== 'all' && vendor.category !== currentCategory) {
+        return false;
+      }
+      
+      // Location filter - only apply text-based filter if we DON'T have user coordinates (line 26098-26107)
+      const hasUserCoords = userLocation?.lat && userLocation?.lng;
+      if (filters.location && !hasUserCoords) {
+        const location = filters.location.toLowerCase();
+        const vendorLocation = `${vendor.City || ''} ${vendor.State || ''}`.toLowerCase();
+        if (!vendorLocation.includes(location)) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+    
+    console.log('✨ Filtered vendors count:', filtered.length);
+    setFilteredVendors(filtered);
+    setCurrentPage(1); // Reset to first page (line 26112)
+  }, [currentCategory, filters.location, userLocation]);
+
   const loadVendors = useCallback(async (append = false) => {
     try {
       if (!append) setLoading(true);
-      const params = new URLSearchParams();
+      
+      // Match original logic (line 26133-26162)
+      const hasCategoryQuery = currentCategory && currentCategory !== 'all';
       const nextPage = append ? serverPageNumber + 1 : 1;
-      params.set('pageNumber', String(nextPage));
-      params.set('pageSize', String(serverPageSize));
-      if (userLocation) {
-        params.set('latitude', String(userLocation.lat));
-        params.set('longitude', String(userLocation.lng));
-        params.set('radiusMiles', '50');
+      const hasUserLocation = userLocation?.lat && userLocation?.lng;
+      
+      let url = '';
+      
+      // Build URL exactly like original (line 26162-26227)
+      if (hasCategoryQuery) {
+        // Use /vendors/search-by-categories for category queries
+        const qp = new URLSearchParams();
+        qp.set('category', currentCategory);
+        qp.set('pageNumber', String(nextPage));
+        qp.set('pageSize', String(serverPageSize));
+        
+        if (hasUserLocation) {
+          qp.set('latitude', String(userLocation.lat));
+          qp.set('longitude', String(userLocation.lng));
+          qp.set('radiusMiles', '50');
+        }
+        
+        if (filters.priceLevel) qp.set('priceLevel', filters.priceLevel);
+        if (filters.minRating) qp.set('minRating', filters.minRating);
+        if (filters.region) qp.set('region', filters.region);
+        if (filters.tags.includes('premium')) qp.set('isPremium', 'true');
+        if (filters.tags.includes('eco-friendly')) qp.set('isEcoFriendly', 'true');
+        if (filters.tags.includes('award-winning')) qp.set('isAwardWinning', 'true');
+        if (filters.tags.includes('certified')) qp.set('isCertified', 'true');
+        if (filters.tags.includes('insured')) qp.set('isInsured', 'true');
+        if (filters.tags.includes('local')) qp.set('isLocal', 'true');
+        if (filters.tags.includes('mobile')) qp.set('isMobile', 'true');
+        
+        url = `${API_BASE_URL}/vendors/search-by-categories?${qp.toString()}`;
+      } else {
+        // Use regular /vendors endpoint
+        const qp = new URLSearchParams();
+        qp.set('pageNumber', String(nextPage));
+        qp.set('pageSize', String(serverPageSize));
+        
+        if (hasUserLocation) {
+          qp.set('latitude', String(userLocation.lat));
+          qp.set('longitude', String(userLocation.lng));
+          qp.set('radiusMiles', '50');
+        }
+        
+        if (filters.priceLevel) qp.set('priceLevel', filters.priceLevel);
+        if (filters.minRating) qp.set('minRating', filters.minRating);
+        if (filters.region) qp.set('region', filters.region);
+        if (filters.tags.includes('premium')) qp.set('isPremium', 'true');
+        if (filters.tags.includes('eco-friendly')) qp.set('isEcoFriendly', 'true');
+        if (filters.tags.includes('award-winning')) qp.set('isAwardWinning', 'true');
+        if (filters.tags.includes('certified')) qp.set('isCertified', 'true');
+        if (filters.tags.includes('insured')) qp.set('isInsured', 'true');
+        if (filters.tags.includes('local')) qp.set('isLocal', 'true');
+        if (filters.tags.includes('mobile')) qp.set('isMobile', 'true');
+        
+        url = `${API_BASE_URL}/vendors?${qp.toString()}`;
       }
-      if (currentCategory && currentCategory !== 'all') params.set('category', currentCategory);
-      if (filters.priceLevel) params.set('priceLevel', filters.priceLevel);
-      if (filters.minRating) params.set('minRating', filters.minRating);
-      if (filters.region) params.set('region', filters.region);
-      if (filters.tags.includes('premium')) params.set('isPremium', 'true');
-      if (filters.tags.includes('eco-friendly')) params.set('isEcoFriendly', 'true');
-      if (filters.tags.includes('award-winning')) params.set('isAwardWinning', 'true');
-      if (filters.tags.includes('certified')) params.set('isCertified', 'true');
-      if (filters.tags.includes('insured')) params.set('isInsured', 'true');
-      if (filters.tags.includes('local')) params.set('isLocal', 'true');
-      if (filters.tags.includes('mobile')) params.set('isMobile', 'true');
-      const url = `${API_BASE_URL}/vendors?${params.toString()}`;
+      
       console.log('🔍 Fetching vendors from:', url);
       const response = await fetch(url);
       console.log('📡 Response status:', response.status);
@@ -113,16 +180,16 @@ function IndexPage() {
       const data = await response.json();
       console.log('📦 Raw API response:', data);
       
-      // Handle BOTH response formats like original (line 26240-26258)
+      // Handle response EXACTLY like original (line 26238-26258)
       let newVendors = [];
       let totalCount = 0;
       
-      // Check if response has sections (from /vendors/search-by-categories)
-      if (Array.isArray(data.sections)) {
+      if (hasCategoryQuery && Array.isArray(data.sections)) {
+        // Response from /vendors/search-by-categories has sections
         console.log('📦 Response has sections format');
         newVendors = data.sections.flatMap(s => s?.vendors || []);
         
-        // Deduplicate by vendor ID
+        // Deduplicate vendors by profile ID or id (EXACT match to line 26242-26250)
         const seen = new Set();
         const unique = [];
         for (const v of newVendors) {
@@ -132,14 +199,14 @@ function IndexPage() {
         }
         newVendors = unique;
         
-        // Sum section totals
+        // Sum section totals when available (line 26252-26254)
         try {
           totalCount = data.sections.reduce((acc, s) => acc + (s?.totalCount || (s?.vendors?.length || 0)), 0);
         } catch { 
           totalCount = newVendors.length; 
         }
       } else {
-        // Regular /vendors response
+        // Regular /vendors response (line 26256-26258)
         console.log('📦 Response has regular format');
         newVendors = data.vendors || [];
         totalCount = data.totalCount || newVendors.length;
@@ -148,25 +215,36 @@ function IndexPage() {
       if (newVendors.length > 0) {
         console.log('📋 First vendor sample:', newVendors[0]);
       }
+      // EXACT match to original (line 26284-26300)
+      let updatedVendors;
       if (append) {
-        // Deduplicate vendors when appending
-        const existingIds = new Set(vendors.map(v => v.VendorProfileID || v.id));
-        const uniqueNewVendors = newVendors.filter(v => !existingIds.has(v.VendorProfileID || v.id));
-        console.log('🔄 Appending vendors. Existing:', vendors.length, 'New unique:', uniqueNewVendors.length);
-        setVendors(prev => [...prev, ...uniqueNewVendors]);
+        // Merge with existing and dedupe using Map (line 26285-26292)
+        const merged = [...vendors, ...newVendors];
+        const byId = new Map();
+        for (const v of merged) {
+          const key = v.vendorProfileId || v.VendorProfileID || v.id;
+          byId.set(String(key || Math.random()), v);
+        }
+        updatedVendors = Array.from(byId.values());
+        console.log('🔄 Appending vendors. Before:', vendors.length, 'After merge:', merged.length, 'After dedupe:', updatedVendors.length);
+        setVendors(updatedVendors);
         setServerPageNumber(nextPage);
       } else {
+        updatedVendors = newVendors;
         setVendors(newVendors);
         setServerPageNumber(1);
       }
       setServerTotalCount(totalCount);
+      
+      // Apply client-side filters (line 26297)
+      applyClientSideFiltersInternal(updatedVendors);
     } catch (error) {
       console.error('❌ Error loading vendors:', error);
       showBanner('Failed to load vendors', 'error');
     } finally {
       setLoading(false);
     }
-  }, [currentCategory, filters.priceLevel, filters.minRating, filters.region, filters.tags, userLocation]);
+  }, [currentCategory, filters.priceLevel, filters.minRating, filters.region, filters.tags, userLocation, applyClientSideFiltersInternal, vendors, serverPageNumber, serverPageSize]);
 
   const initializePage = useCallback(async () => {
     tryGetUserLocation();
@@ -175,20 +253,6 @@ function IndexPage() {
     }
     await loadVendors();
   }, []);
-
-  const applyFilters = useCallback(() => {
-    console.log('🔧 Applying filters. Vendors count:', vendors.length);
-    let filtered = [...vendors];
-    if (filters.location && !userLocation) {
-      const searchTerm = filters.location.toLowerCase();
-      filtered = filtered.filter(vendor => {
-        const location = `${vendor.City || ''} ${vendor.State || ''}`.toLowerCase();
-        return location.includes(searchTerm);
-      });
-    }
-    console.log('✨ Filtered vendors count:', filtered.length);
-    setFilteredVendors(filtered);
-  }, [filters, vendors, userLocation]);
 
   useEffect(() => {
     initializePage();
@@ -214,7 +278,9 @@ function IndexPage() {
   }, [currentCategory]);
 
   useEffect(() => {
-    applyFilters();
+    if (vendors.length > 0) {
+      applyClientSideFiltersInternal(vendors);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendors, filters, userLocation]);
 

@@ -8,8 +8,8 @@ function SetupIncompleteBanner({ onContinueSetup }) {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (!currentUser?.vendorProfileId) {
-      console.log('No vendor profile ID, hiding banner');
+    if (!currentUser?.id) {
+      console.log('No user ID, hiding banner');
       return;
     }
     
@@ -21,51 +21,100 @@ function SetupIncompleteBanner({ onContinueSetup }) {
       return;
     }
 
-    console.log('Loading setup status for vendor:', currentUser.vendorProfileId);
-    loadSetupStatus();
+    console.log('Checking vendor status and setup for user:', currentUser.id);
+    checkVendorStatusAndLoadSetup();
   }, [currentUser]);
 
-  const loadSetupStatus = async () => {
+  // EXACT match to original (line 1316-1380)
+  const checkVendorStatusAndLoadSetup = async () => {
     try {
-      // CORRECT API: /vendor/{userId}/setup-status (from original code line 1333)
-      const response = await fetch(`${API_BASE_URL}/vendor/${currentUser.id}/setup-status`, {
+      // Step 1: Verify vendor status (line 1317-1330)
+      console.log('Step 1: Checking vendor status...');
+      const statusRes = await fetch(`${API_BASE_URL}/vendors/status?userId=${currentUser.id}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
-      console.log('Setup status response:', response.status);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Setup status data:', data);
-        setSetupStatus(data);
-      } else {
-        console.error('Setup status API error:', response.status);
-        // Show default incomplete status if API fails
-        setSetupStatus({
-          isComplete: false,
-          incompleteSteps: [
-            { key: 'basics', label: 'Business Basics' },
-            { key: 'location', label: 'Location Information' },
-            { key: 'services', label: 'Services & Packages' }
-          ],
-          completedSteps: [],
-          totalSteps: 8
-        });
+      if (!statusRes.ok) {
+        console.log('Vendor status check failed, hiding banner');
+        return;
       }
-    } catch (error) {
-      console.error('Failed to load setup status:', error);
-      // Show default incomplete status if API fails
+      
+      const status = await statusRes.json();
+      console.log('Vendor status:', status);
+      
+      if (!status.isVendor) {
+        console.log('User is not a vendor, hiding banner');
+        return;
+      }
+      
+      // Step 2: Get detailed setup status (line 1333-1380)
+      console.log('Step 2: Loading setup status...');
+      const setupRes = await fetch(`${API_BASE_URL}/vendor/${currentUser.id}/setup-status`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (!setupRes.ok) {
+        console.log('Setup status check failed, hiding banner');
+        return;
+      }
+      
+      const setup = await setupRes.json();
+      console.log('Setup status data:', setup);
+      
+      const allComplete = setup.allRequiredComplete ?? setup?.setupStatus?.allRequiredComplete;
+      
+      if (allComplete) {
+        console.log('Setup is complete, hiding banner');
+        // Clear dismiss flag (line 1374-1377)
+        try {
+          localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${currentUser.id}`);
+        } catch (_) {}
+        return;
+      }
+      
+      // Filter incomplete steps (line 1344-1348)
+      const rawIncompleteSteps = setup.incompleteSteps ?? setup?.setupStatus?.incompleteSteps ?? [];
+      const incompleteSteps = rawIncompleteSteps.filter(s => {
+        const key = s?.key || s;
+        return key !== 'verification' && key !== 'policies';
+      });
+      
+      // Get completed steps (line 1362-1365)
+      const stepsObj = setup.steps ?? setup?.setupStatus?.steps ?? {};
+      const requiredKeys = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','stripe'];
+      const completedStepKeys = requiredKeys.filter(k => stepsObj[k]);
+      
+      const completedSteps = completedStepKeys.map(k => ({ key: k, label: getLabelForKey(k) }));
+      const incompleteWithLabels = incompleteSteps.map(s => ({ 
+        key: s?.key || s, 
+        label: getLabelForKey(s?.key || s) 
+      }));
+      
       setSetupStatus({
         isComplete: false,
-        incompleteSteps: [
-          { key: 'basics', label: 'Business Basics' },
-          { key: 'location', label: 'Location Information' },
-          { key: 'services', label: 'Services & Packages' }
-        ],
-        completedSteps: [],
-        totalSteps: 8
+        incompleteSteps: incompleteWithLabels,
+        completedSteps: completedSteps,
+        totalSteps: requiredKeys.length
       });
+      
+    } catch (error) {
+      console.error('Failed to check vendor status:', error);
     }
+  };
+  
+  const getLabelForKey = (key) => {
+    const labelMap = {
+      basics: 'Business Basics',
+      location: 'Location Information',
+      additionalDetails: 'Additional Details',
+      social: 'Social Media',
+      servicesPackages: 'Services & Packages',
+      faq: 'FAQ Section',
+      gallery: 'Gallery & Media',
+      availability: 'Availability & Scheduling',
+      stripe: 'Stripe Payouts'
+    };
+    return labelMap[key] || key;
   };
 
   const handleDismiss = () => {

@@ -84,6 +84,11 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
     }
 
     console.log('🗺️ Updating markers for', vendors.length, 'vendors');
+    console.log('📍 Vendor coordinates check:', vendors.map(v => ({
+      name: v.BusinessName || v.name,
+      lat: v.Latitude || v.latitude,
+      lng: v.Longitude || v.longitude
+    })));
 
     // Clear existing markers
     markersRef.current.forEach(marker => marker.setMap(null));
@@ -103,8 +108,9 @@ function MapView({ vendors, onVendorSelect, selectedVendorId }) {
       const lat = parseFloat(vendor.Latitude || vendor.latitude || vendor.lat);
       const lng = parseFloat(vendor.Longitude || vendor.longitude || vendor.lng || vendor.lon);
 
+      // Only check if coordinates exist and are valid numbers
       if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
-        console.log('⚠️ Invalid coordinates for vendor:', vendor.BusinessName || vendor.name, 'lat:', lat, 'lng:', lng, 'vendor:', vendor);
+        console.log('⚠️ No valid coordinates for vendor:', vendor.BusinessName || vendor.name, 'lat:', lat, 'lng:', lng);
         return;
       }
 

@@ -4,8 +4,20 @@ import { getCategoryIconHtml, mapTypeToCategory } from '../utils/helpers';
 function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight }) {
   const vendorId = vendor.VendorProfileID || vendor.id;
   
-  // Image URL resolution
-  const imageUrl = vendor.ProfileImageURL || vendor.profileImage || vendor.image || 
+  // Image URL resolution - EXACT match to original (line 24986-24997)
+  const imageUrl = vendor.FeaturedImageURL || 
+                   vendor.featuredImageURL ||
+                   vendor.featuredImageUrl ||
+                   vendor.FeaturedImageUrl ||
+                   vendor.image || 
+                   vendor.ImageURL ||
+                   vendor.imageURL ||
+                   vendor.imageUrl ||
+                   vendor.ProfileImageURL ||
+                   vendor.profileImage ||
+                   vendor.featuredImage?.url || 
+                   vendor.featuredImage?.thumbnailUrl || 
+                   (vendor.images && vendor.images.length > 0 ? vendor.images[0].url : null) ||
                    'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
   
   // Premium status
