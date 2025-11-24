@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -35,6 +35,11 @@ function IndexPage() {
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState('dashboard');
   const [loadingMore, setLoadingMore] = useState(false);
+  
+  // Track initial mount to prevent duplicate loads
+  const isInitialMount = useRef(true);
+  const hasLoadedOnce = useRef(false);
+  const isLoadingRef = useRef(false); // Prevent concurrent API calls
   
   const vendorsPerPage = 12;
   const serverPageSize = 20;
@@ -109,6 +114,14 @@ function IndexPage() {
   }, [currentCategory, filters.location, userLocation]);
 
   const loadVendors = useCallback(async (append = false) => {
+    // Prevent concurrent API calls
+    if (isLoadingRef.current) {
+      console.log('⏭️ Skipping loadVendors - already loading');
+      return;
+    }
+    
+    isLoadingRef.current = true;
+    
     try {
       if (!append) {
         setLoading(true);
@@ -250,15 +263,25 @@ function IndexPage() {
     } finally {
       setLoading(false);
       setLoadingMore(false);
+      isLoadingRef.current = false;
     }
-  }, [currentCategory, filters.priceLevel, filters.minRating, filters.region, filters.tags, userLocation, applyClientSideFiltersInternal, vendors, serverPageNumber, serverPageSize]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentCategory, filters.priceLevel, filters.minRating, filters.region, filters.tags, userLocation, serverPageNumber]);
 
   const initializePage = useCallback(async () => {
+    if (hasLoadedOnce.current) {
+      console.log('⏭️ Skipping initializePage - already initialized');
+      return; // Prevent duplicate initialization
+    }
+    hasLoadedOnce.current = true;
+    console.log('🚀 Initializing page...');
+    
     tryGetUserLocation();
     if (currentUser) {
       loadFavorites();
     }
     await loadVendors();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load filters from URL on mount
@@ -285,6 +308,13 @@ function IndexPage() {
     document.body.classList.add('map-active');
     const appContainer = document.getElementById('app-container');
     if (appContainer) appContainer.classList.add('map-active');
+    
+    // Mark initial mount as complete after first render
+    const timer = setTimeout(() => {
+      isInitialMount.current = false;
+    }, 100);
+    
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -300,15 +330,26 @@ function IndexPage() {
   }, []);
 
   useEffect(() => {
+    // Skip on initial mount - initializePage handles the first load
+    if (isInitialMount.current) {
+      return;
+    }
+    
     if (currentCategory) {
       setLoading(true); // Show loading state when category changes
       setServerPageNumber(1);
       loadVendors();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCategory]);
 
   // Reload vendors when filters change (especially popular filters/tags)
   useEffect(() => {
+    // Skip on initial mount - initializePage handles the first load
+    if (isInitialMount.current) {
+      return;
+    }
+    
     if (filters.priceLevel || filters.minRating || filters.region || filters.tags.length > 0) {
       setLoading(true); // Show loading state when filters change
       setServerPageNumber(1);
@@ -318,6 +359,11 @@ function IndexPage() {
   }, [filters.priceLevel, filters.minRating, filters.region, filters.tags]);
 
   useEffect(() => {
+    // Skip on initial mount - loadVendors already applies filters
+    if (isInitialMount.current) {
+      return;
+    }
+    
     if (vendors.length > 0) {
       applyClientSideFiltersInternal(vendors);
     }
@@ -505,8 +551,8 @@ function IndexPage() {
           )}
           <div className="content-header">
             <div>
-              <h1 className="results-title">{loading ? <div className="skeleton-line" style={{ height: '32px', width: '280px', borderRadius: '8px' }}></div> : `Vendors ${filters.location || userLocation ? 'in ' + (filters.location || 'your area') : 'Near you'}`}</h1>
-              <p className="results-count">{loading ? <span className="skeleton-line" style={{ display: 'inline-block', height: '16px', width: '150px', borderRadius: '6px', marginTop: '8px' }}></span> : `${serverTotalCount} vendors available`}</p>
+              <h1 className="results-title">{loading ? <div className="skeleton" style={{ height: '32px', width: '280px', borderRadius: '8px' }}></div> : `Vendors ${filters.location || userLocation ? 'in ' + (filters.location || 'your area') : 'Near you'}`}</h1>
+              <p className="results-count">{loading ? <span className="skeleton" style={{ display: 'inline-block', height: '16px', width: '150px', borderRadius: '6px', marginTop: '8px' }}></span> : `${serverTotalCount} vendors available`}</p>
             </div>
             <div className="view-controls">
               <button className="mobile-filter-btn"><i className="fas fa-sliders-h"></i><span>Filters</span></button>

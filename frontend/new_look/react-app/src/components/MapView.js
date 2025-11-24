@@ -7,6 +7,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
   const markerClusterRef = useRef(null);
   const infoWindowRef = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const isInitializingRef = useRef(false); // Prevent duplicate initialization
+  const previousVendorsRef = useRef([]); // Track previous vendors to prevent unnecessary updates
 
   const createMiniVendorCardHTML = useCallback((vendor) => {
     const imageUrl = vendor.FeaturedImageURL || vendor.featuredImageURL || 
@@ -113,6 +115,13 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
   }, [updateVendorsInViewport]);
 
   const initializeMap = useCallback(async () => {
+    // Prevent duplicate initialization
+    if (isInitializingRef.current || mapInstanceRef.current) {
+      return;
+    }
+    
+    isInitializingRef.current = true;
+    
     if (!window.google || !window.google.maps) {
       console.log('Waiting for Google Maps to load...');
       // Wait for Google Maps to be loaded from CDN
@@ -120,12 +129,14 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
         if (window.google && window.google.maps) {
           clearInterval(checkGoogleMaps);
           createMap();
+          isInitializingRef.current = false;
         }
       }, 100);
       return;
     }
     
     createMap();
+    isInitializingRef.current = false;
   }, [createMap]);
 
   const updateMarkers = useCallback(() => {
@@ -267,7 +278,19 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
 
   // Update markers when vendors change
   useEffect(() => {
-    if (mapLoaded && vendors.length > 0) {
+    if (!mapLoaded || vendors.length === 0) {
+      return;
+    }
+    
+    // Check if vendors actually changed to prevent unnecessary updates
+    const vendorsChanged = vendors.length !== previousVendorsRef.current.length ||
+      vendors.some((v, i) => {
+        const prev = previousVendorsRef.current[i];
+        return !prev || (v.VendorProfileID || v.id) !== (prev.VendorProfileID || prev.id);
+      });
+    
+    if (vendorsChanged) {
+      previousVendorsRef.current = vendors;
       updateMarkers();
     }
   }, [vendors, mapLoaded, updateMarkers]);

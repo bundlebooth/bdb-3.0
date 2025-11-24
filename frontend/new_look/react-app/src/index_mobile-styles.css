@@ -6352,9 +6352,9 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 
 /* Skeleton Loading Styles for Dashboard */
 .skeleton {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
     background-size: 200% 100%;
-    animation: skeleton-loading 1.5s ease-in-out infinite;
+    animation: skeleton-shimmer 1.5s infinite;
     border-radius: 4px;
 }
 
