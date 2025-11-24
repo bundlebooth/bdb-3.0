@@ -8,6 +8,7 @@ import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import Footer from '../components/Footer';
 import { showBanner } from '../utils/helpers';
+import './VendorProfilePage.css';
 
 function VendorProfilePage() {
   const { vendorId } = useParams();
@@ -27,6 +28,9 @@ function VendorProfilePage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [socialMedia, setSocialMedia] = useState([]);
+  const [serviceAreas, setServiceAreas] = useState([]);
+  const [team, setTeam] = useState([]);
 
   const loadVendorProfile = useCallback(async () => {
     try {
@@ -43,6 +47,9 @@ function VendorProfilePage() {
       
       setVendor(vendorDetails);
       setIsFavorite(vendorDetails.isFavorite || false);
+      setSocialMedia(vendorDetails.socialMedia || []);
+      setServiceAreas(vendorDetails.serviceAreas || []);
+      setTeam(vendorDetails.team || []);
       
       // Load additional data
       if (vendorDetails.profile?.VendorProfileID) {
@@ -216,6 +223,420 @@ function VendorProfilePage() {
     console.log('Message vendor:', vendorId);
   };
 
+  // Render social media icons
+  const renderSocialMediaIcons = () => {
+    if (!socialMedia || (socialMedia.length === 0 && !profile.Website)) {
+      return null;
+    }
+
+    const platformIcons = {
+      'facebook': 'https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg',
+      'instagram': 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png',
+      'twitter': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/X_logo_2023.svg',
+      'x': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/X_logo_2023.svg',
+      'linkedin': 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
+      'youtube': 'https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png'
+    };
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.75rem' }}>
+        {socialMedia.map((social, index) => {
+          const iconUrl = platformIcons[social.Platform.toLowerCase()] || 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg';
+          const url = social.URL.startsWith('http') ? social.URL : `https://${social.URL}`;
+          return (
+            <a key={index} href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', opacity: 0.7, transition: 'all 0.2s' }}
+               onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+               onMouseOut={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.transform = 'translateY(0)'; }}>
+              <img src={iconUrl} className="social-icon-small" alt={social.Platform} />
+            </a>
+          );
+        })}
+        {profile.Website && (
+          <a href={profile.Website.startsWith('http') ? profile.Website : `https://${profile.Website}`} target="_blank" rel="noopener noreferrer"
+             style={{ textDecoration: 'none', opacity: 0.7, transition: 'all 0.2s' }}
+             onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+             onMouseOut={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.transform = 'translateY(0)'; }}>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" className="social-icon-small" alt="Website" />
+          </a>
+        )}
+      </div>
+    );
+  };
+
+  // Render vendor features (questionnaire)
+  const renderVendorFeatures = () => {
+    if (!vendorFeatures || vendorFeatures.length === 0) return null;
+
+    // Group features by category
+    const categorizedFeatures = {};
+    vendorFeatures.forEach(feature => {
+      const category = feature.CategoryName || 'Other';
+      if (!categorizedFeatures[category]) {
+        categorizedFeatures[category] = [];
+      }
+      categorizedFeatures[category].push(feature);
+    });
+
+    return (
+      <div className="content-section">
+        <h2>What this place offers</h2>
+        <div>
+          {Object.keys(categorizedFeatures).map((categoryName, index) => (
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '2rem', padding: '1.5rem 0', borderBottom: '1px solid #ebebeb', alignItems: 'start' }}>
+              <div style={{ fontSize: '1rem', fontWeight: 600, color: '#222' }}>{categoryName}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem 1.5rem' }}>
+                {categorizedFeatures[categoryName].map((feature, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                    <i className={`fas fa-${feature.FeatureIcon || 'check'}`} style={{ width: '16px', height: '16px', color: '#717171', flexShrink: 0 }}></i>
+                    <span style={{ fontSize: '0.9375rem', color: '#222', lineHeight: 1.4 }}>{feature.FeatureName}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render location and service areas
+  const renderLocationAndServiceAreas = () => {
+    const hasLocation = profile.Latitude && profile.Longitude;
+    const hasServiceAreas = serviceAreas && serviceAreas.length > 0;
+
+    if (!hasLocation && !hasServiceAreas) return null;
+
+    return (
+      <div className="content-section">
+        <h2>Where you'll find us</h2>
+        {hasLocation && (
+          <div style={{ marginBottom: '1rem' }}>
+            <iframe
+              width="100%"
+              height="350"
+              frameBorder="0"
+              style={{ border: 0, display: 'block', borderRadius: '12px' }}
+              referrerPolicy="no-referrer-when-downgrade"
+              src={`https://maps.google.com/maps?q=${profile.Latitude},${profile.Longitude}&hl=en&z=14&output=embed`}
+              allowFullScreen
+            ></iframe>
+            <div style={{ padding: '1rem', background: 'white', borderTop: '1px solid var(--border)', borderRadius: '0 0 12px 12px' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <i className="fas fa-building"></i>
+                <span>Business Location</span>
+              </div>
+              <div style={{ fontSize: '0.95rem', color: 'var(--text)' }}>
+                {[profile.Address, profile.City, profile.State, profile.PostalCode, profile.Country].filter(Boolean).join(', ')}
+              </div>
+            </div>
+          </div>
+        )}
+        {hasServiceAreas && (
+          <div>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.75rem' }}>Areas We Serve</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '0.75rem' }}>
+              {serviceAreas.map((area, index) => {
+                const location = [area.CityName, area.StateProvince, area.Country].filter(Boolean).join(', ');
+                return (
+                  <div key={index} style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1rem' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+                      <i className="fas fa-map-marker-alt" style={{ color: 'var(--primary)', marginRight: '0.5rem', fontSize: '0.85rem' }}></i>
+                      {location}
+                    </div>
+                    {(area.ServiceRadius || (area.TravelCost && parseFloat(area.TravelCost) > 0)) && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                        {area.ServiceRadius && (
+                          <div><i className="fas fa-route" style={{ marginRight: '0.35rem', width: '12px' }}></i>{area.ServiceRadius} miles radius</div>
+                        )}
+                        {area.TravelCost && parseFloat(area.TravelCost) > 0 && (
+                          <div><i className="fas fa-dollar-sign" style={{ marginRight: '0.35rem', width: '12px' }}></i>${parseFloat(area.TravelCost).toFixed(2)} travel fee</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render portfolio albums
+  const renderPortfolioAlbums = () => {
+    if (!portfolioAlbums || portfolioAlbums.length === 0) return null;
+
+    return (
+      <div className="content-section">
+        <h2>Portfolio</h2>
+        <div className="portfolio-grid">
+          {portfolioAlbums.map((album, index) => (
+            <div key={index} className="portfolio-album" onClick={() => console.log('Open album:', album.AlbumID)}>
+              <div style={{ position: 'relative', paddingTop: '66%', background: 'var(--bg-dark)' }}>
+                {album.CoverImageURL ? (
+                  <img src={album.CoverImageURL} alt={album.AlbumName} className="portfolio-album-image" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: 'var(--text-light)', opacity: 0.5 }}></i>
+                  </div>
+                )}
+                <div className="portfolio-album-badge">
+                  <i className="fas fa-images"></i> {album.ImageCount || 0}
+                </div>
+              </div>
+              <div className="portfolio-album-info">
+                <h4>{album.AlbumName}</h4>
+                {album.AlbumDescription && <p>{album.AlbumDescription}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render team members
+  const renderTeam = () => {
+    if (!team || team.length === 0) return null;
+
+    return (
+      <div className="content-section">
+        <h2>Meet the team</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+          {team.map((member, index) => (
+            <div key={index} className="team-member-card">
+              {member.PhotoURL && <img src={member.PhotoURL} alt={member.Name} className="team-member-photo" />}
+              <h4 className="team-member-name">{member.Name}</h4>
+              <p className="team-member-role">{member.Role}</p>
+              {member.Bio && <p className="team-member-bio">{member.Bio}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render enhanced services with better formatting
+  const renderEnhancedServices = () => {
+    if (!services || services.length === 0) return null;
+
+    return (
+      <div className="content-section">
+        <h2>What we offer</h2>
+        <div>
+          {services.map((service, index) => {
+            const serviceName = service.ServiceName || service.Name || 'Unnamed Service';
+            const servicePrice = service.Price || 0;
+            const serviceDescription = service.Description || '';
+            const serviceDuration = service.DurationMinutes || 0;
+            const serviceCapacity = service.MaxAttendees || 0;
+            const categoryName = service.CategoryName || '';
+            const requiresDeposit = service.RequiresDeposit || false;
+            const depositPercentage = service.DepositPercentage || 0;
+
+            let priceDisplay = servicePrice > 0 ? `$${parseFloat(servicePrice).toFixed(2)}` : 'Contact for pricing';
+            let priceSubtext = servicePrice > 0 ? '/ per service' : '';
+
+            let durationText = '';
+            if (serviceDuration > 0) {
+              const hours = Math.floor(serviceDuration / 60);
+              const mins = serviceDuration % 60;
+              if (hours > 0 && mins > 0) {
+                durationText = `${hours} hour${hours > 1 ? 's' : ''} ${mins} min`;
+              } else if (hours > 0) {
+                durationText = `${hours} hour${hours > 1 ? 's' : ''}`;
+              } else {
+                durationText = `${mins} minutes`;
+              }
+            }
+
+            return (
+              <div key={index} className="service-package-card">
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div className="service-image-container">
+                    <i className="fas fa-concierge-bell service-icon"></i>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h3 className="service-card-title">{serviceName}</h3>
+                        <div className="service-card-details" style={{ marginBottom: '0.25rem' }}>
+                          {categoryName && <span><i className="fas fa-tag"></i>{categoryName}</span>}
+                          {durationText && <span><i className="fas fa-clock"></i>{durationText}</span>}
+                        </div>
+                        <div className="service-card-details">
+                          {serviceCapacity > 0 && <span><i className="fas fa-users"></i>Up to {serviceCapacity}</span>}
+                          {requiresDeposit && depositPercentage > 0 && (
+                            <span><i className="fas fa-receipt" style={{ color: 'var(--accent)' }}></i>{depositPercentage}% deposit</span>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--primary)', whiteSpace: 'nowrap' }}>{priceDisplay}</div>
+                        {priceSubtext && <div style={{ fontSize: '0.7rem', color: 'var(--text-light)', marginTop: '0.15rem' }}>{priceSubtext}</div>}
+                      </div>
+                    </div>
+                    {serviceDescription && <p className="service-card-description" style={{ marginTop: '0.5rem' }}>{serviceDescription}</p>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // Render enhanced FAQs with multiple choice support
+  const renderEnhancedFAQs = () => {
+    if (!faqs || faqs.length === 0) return null;
+
+    return (
+      <div className="content-section">
+        <h2>Things to know</h2>
+        <div>
+          {faqs.map((faq, index) => {
+            const answerType = (faq.AnswerType || '').trim().toLowerCase();
+            const hasAnswerOptions = faq.AnswerOptions && faq.AnswerOptions !== 'null' && faq.AnswerOptions !== '';
+            
+            let answerContent = null;
+
+            if ((answerType === 'multiple choice' || answerType === 'multiple_choice') && hasAnswerOptions) {
+              try {
+                let options = typeof faq.AnswerOptions === 'string' ? JSON.parse(faq.AnswerOptions) : faq.AnswerOptions;
+                
+                if (Array.isArray(options) && options.length > 0) {
+                  if (options[0] && typeof options[0] === 'object' && 'label' in options[0]) {
+                    const checkedOptions = options.filter(opt => opt.checked === true).map(opt => opt.label);
+                    
+                    if (checkedOptions.length > 0) {
+                      answerContent = (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.75rem' }}>
+                          {checkedOptions.map((label, idx) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <i className="fas fa-check" style={{ color: '#3b82f6', fontSize: '0.875rem' }}></i>
+                              <span style={{ color: '#2d3748', fontSize: '0.9375rem' }}>{label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } else {
+                      answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>No options selected</div>;
+                    }
+                  } else {
+                    answerContent = (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.75rem' }}>
+                        {options.map((option, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <i className="fas fa-check" style={{ color: '#3b82f6', fontSize: '0.875rem' }}></i>
+                            <span style={{ color: '#2d3748', fontSize: '0.9375rem' }}>{option}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                } else {
+                  answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>{faq.Answer || 'No answer provided'}</div>;
+                }
+              } catch (e) {
+                answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>{faq.Answer || 'No answer provided'}</div>;
+              }
+            } else {
+              answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>{faq.Answer || 'No answer provided'}</div>;
+            }
+
+            return (
+              <div key={index} style={{ padding: '1.5rem 0', borderBottom: index < faqs.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '1rem', marginBottom: '0.75rem' }}>
+                  {faq.Question}
+                </div>
+                {answerContent}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // Render recommendations section
+  const renderRecommendations = () => {
+    const currentRecs = recommendations[activeRecommendationTab] || [];
+    if (currentRecs.length === 0) return null;
+
+    return (
+      <div className="venue-recommendations-section">
+        <div className="venue-recommendations-container">
+          <div className="venue-recommendations-header">
+            <h2>You might also like</h2>
+          </div>
+          <div className="venue-recommendation-tabs">
+            <button 
+              className={`venue-recommendation-tab ${activeRecommendationTab === 'similar' ? 'active' : ''}`}
+              onClick={() => setActiveRecommendationTab('similar')}
+            >
+              Similar Vendors
+            </button>
+            <button 
+              className={`venue-recommendation-tab ${activeRecommendationTab === 'nearby' ? 'active' : ''}`}
+              onClick={() => setActiveRecommendationTab('nearby')}
+            >
+              Nearby Vendors
+            </button>
+            <button 
+              className={`venue-recommendation-tab ${activeRecommendationTab === 'popular' ? 'active' : ''}`}
+              onClick={() => setActiveRecommendationTab('popular')}
+            >
+              Popular Vendors
+            </button>
+          </div>
+          <div className="venues-grid">
+            {currentRecs.map((venue, index) => {
+              const vId = venue.VendorProfileID || venue.vendorProfileId || venue.id;
+              const name = venue.BusinessName || venue.businessName || venue.name || 'Unnamed Venue';
+              const rating = parseFloat(venue.averageRating ?? venue.rating ?? 0);
+              const reviewCount = venue.totalReviews || venue.reviewCount || 0;
+              const city = venue.City || venue.city || '';
+              const state = venue.State || venue.state || '';
+              const location = [city, state].filter(Boolean).join(', ') || 'Location unavailable';
+              
+              let imageUrl = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+              if (venue.images && venue.images.length > 0) {
+                imageUrl = venue.images[0].ImageURL || venue.images[0].imageUrl || venue.images[0].url || imageUrl;
+              } else if (venue.PrimaryImageURL || venue.primaryImageURL || venue.imageUrl) {
+                imageUrl = venue.PrimaryImageURL || venue.primaryImageURL || venue.imageUrl;
+              }
+              
+              const stars = '★'.repeat(Math.round(rating));
+
+              return (
+                <div key={index} className="recommendation-venue-card" onClick={() => navigate(`/vendor/${vId}`)}>
+                  <img src={imageUrl} alt={name} className="recommendation-venue-image" 
+                       onError={(e) => e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'} />
+                  <div className="recommendation-venue-info">
+                    <div className="recommendation-venue-name">{name}</div>
+                    {rating > 0 && (
+                      <div className="recommendation-venue-rating">
+                        <span className="stars">{stars}</span>
+                        <span style={{ color: '#6b7280' }}>{rating.toFixed(1)}</span>
+                        <span style={{ color: '#9ca3af' }}>({reviewCount})</span>
+                      </div>
+                    )}
+                    <div className="recommendation-venue-location">
+                      <i className="fas fa-map-marker-alt"></i>
+                      {location}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="profile-container">
@@ -314,6 +735,9 @@ function VendorProfilePage() {
               ☆☆☆☆☆ <span style={{ color: 'var(--text-light)' }}>({reviews.length} reviews)</span>
             </span>
           </div>
+          
+          {/* Social Media Icons */}
+          {renderSocialMediaIcons()}
         </div>
         
         {/* Action Buttons */}
@@ -345,53 +769,23 @@ function VendorProfilePage() {
             <p>{profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}</p>
           </div>
 
-          {/* Services Section */}
-          {services.length > 0 && (
-            <div className="content-section">
-              <h2>What we offer</h2>
-              <div id="services-list">
-                {services.map((service, index) => (
-                  <div key={index} className="service-package-card">
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                      <div className="service-image-container">
-                        <i className="fas fa-concierge-bell service-icon"></i>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                          <div style={{ flex: 1 }}>
-                            <h3 className="service-card-title">{service.ServiceName || service.Name}</h3>
-                            {service.Description && (
-                              <p className="service-card-description">{service.Description}</p>
-                            )}
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--primary)' }}>
-                              ${parseFloat(service.Price || 0).toFixed(2)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Location & Service Areas */}
+          {renderLocationAndServiceAreas()}
 
-          {/* FAQs Section */}
-          {faqs.length > 0 && (
-            <div className="content-section">
-              <h2>Things to know</h2>
-              <div id="faqs-list">
-                {faqs.map((faq, index) => (
-                  <div key={index} style={{ padding: '1.5rem 0', borderBottom: index < faqs.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '0.75rem' }}>{faq.Question}</div>
-                    <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>{faq.Answer}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Vendor Features (Questionnaire) */}
+          {renderVendorFeatures()}
+
+          {/* Enhanced Services Section */}
+          {renderEnhancedServices()}
+
+          {/* Enhanced FAQs Section */}
+          {renderEnhancedFAQs()}
+
+          {/* Team Section */}
+          {renderTeam()}
+
+          {/* Portfolio Section */}
+          {renderPortfolioAlbums()}
 
           {/* Reviews Section */}
           <div className="content-section">
@@ -463,8 +857,11 @@ function VendorProfilePage() {
           </div>
         </div>
       </div>
-      <Footer />
+      
+      {/* Recommendations Section */}
+      {renderRecommendations()}
     </div>
+    <Footer />
     </>
   );
 }

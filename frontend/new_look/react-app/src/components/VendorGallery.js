@@ -71,61 +71,75 @@ function VendorGallery({ images }) {
   return (
     <>
       <div className="image-gallery" id="image-gallery">
-        {/* Main Image */}
+        {/* Large Image (Left Side) */}
         <div 
-          className="main-image-container" 
-          onClick={() => openLightbox(currentIndex)}
+          className="gallery-item large-image" 
+          onClick={() => openLightbox(0)}
           style={{ cursor: 'pointer' }}
         >
           <img
-            src={getImageUrl(mainImage)}
-            alt="Vendor"
-            className="main-vendor-image"
-            id="main-vendor-image"
+            src={getImageUrl(validImages[0])}
+            alt="Main"
             onError={(e) => {
               e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
             }}
           />
         </div>
 
-        {/* Thumbnails */}
+        {/* Thumbnails Grid (Right Side) - 2x2 Grid */}
         {validImages.length > 1 && (
-          <div className="thumbnail-container" id="vendor-thumbnails">
-            {thumbnails.map((img, index) => (
+          <div className="thumbnails-container">
+            {[1, 2, 3, 4].map((index) => (
               <div
                 key={index}
-                className={`gallery-item ${index === currentIndex ? 'active' : ''}`}
-                onClick={() => handleThumbnailClick(index)}
-                style={{ cursor: 'pointer' }}
-              >
-                <img
-                  src={getImageUrl(img)}
-                  alt={`Thumbnail ${index + 1}`}
-                  onError={(e) => {
-                    e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
-                  }}
-                />
-              </div>
-            ))}
-            {validImages.length > 5 && (
-              <div
-                className="gallery-item more-images"
-                onClick={() => openLightbox(5)}
-                style={{
+                className="gallery-item"
+                onClick={() => openLightbox(index)}
+                style={{ 
                   cursor: 'pointer',
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'rgba(0,0,0,0.7)',
-                  color: 'white',
-                  fontWeight: 600
+                  position: 'relative'
                 }}
               >
-                +{validImages.length - 5}
+                {validImages[index] ? (
+                  <>
+                    <img
+                      src={getImageUrl(validImages[index])}
+                      alt={`Image ${index + 1}`}
+                      onError={(e) => {
+                        e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+                      }}
+                    />
+                    {/* Show "Show all photos" overlay on last thumbnail if more images exist */}
+                    {index === 4 && validImages.length > 5 && (
+                      <div className="see-all-overlay">
+                        <i className="fas fa-th"></i> Show all photos
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    background: '#f3f4f6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <i className="fas fa-image" style={{ color: '#d1d5db', fontSize: '2rem' }}></i>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
+        )}
+
+        {/* Show All Photos Button */}
+        {validImages.length > 1 && (
+          <button 
+            className="show-all-photos-btn"
+            onClick={() => openLightbox(0)}
+          >
+            <i className="fas fa-th"></i> Show all photos
+          </button>
         )}
       </div>
 
