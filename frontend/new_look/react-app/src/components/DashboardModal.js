@@ -71,7 +71,7 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
           width: '1200px', 
           height: '90vh', 
           display: 'flex', 
-          flexDirection: 'column' 
+          flexDirection: 'column'
         }}
       >
         <div className="modal-header">

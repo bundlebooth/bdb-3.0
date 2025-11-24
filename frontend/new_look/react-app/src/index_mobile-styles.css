@@ -1000,7 +1000,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 .modal-body {
-    padding: 20px;
+    padding: 0;
     overflow-y: auto;
     flex: 1;
     min-height: 0;
@@ -2280,8 +2280,13 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 #dashboard-modal .dashboard-container {
     height: 100%;
     min-height: 0;
+    gap: 0;
 }
-#dashboard-modal .modal-content { overflow: hidden; }
+#dashboard-modal .modal-content { 
+    overflow: hidden;
+    padding: 0;
+    background: var(--secondary);
+}
 #dashboard-modal .dashboard-content {
     height: 100%;
     min-height: 0; /* allow child to compute height within modal */

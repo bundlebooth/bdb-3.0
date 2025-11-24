@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config';
+import { useNotifications } from '../../hooks/useNotifications';
 import DashboardSidebar from './DashboardSidebar';
 import VendorDashboardSection from './sections/VendorDashboardSection';
 import VendorRequestsSection from './sections/VendorRequestsSection';
@@ -13,6 +14,7 @@ import VendorSettingsSection from './sections/VendorSettingsSection';
 
 function VendorDashboard({ activeSection, onSectionChange, onLogout }) {
   const { currentUser } = useAuth();
+  const { notificationCount } = useNotifications();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -107,9 +109,11 @@ function VendorDashboard({ activeSection, onSectionChange, onLogout }) {
             {activeSection === 'vendor-dashboard' ? 'Vendor Dashboard' : (menuItems.find(item => item.id === activeSection)?.label || 'Vendor Dashboard')}
           </h1>
           <div className="user-nav">
-            <div className="nav-icon" id="vendor-notifications-btn" style={{ display: 'none' }}>
+            <div className="nav-icon" id="vendor-notifications-btn" style={{ position: 'relative', cursor: 'pointer' }}>
               <i className="fas fa-bell"></i>
-              <span className="badge" id="vendor-notifications-badge">0</span>
+              <span className="badge" id="vendor-notifications-badge" style={{ display: notificationCount > 0 ? 'grid' : 'none' }}>
+                {notificationCount}
+              </span>
             </div>
           </div>
         </div>

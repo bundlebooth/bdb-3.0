@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config';
+import { useNotifications } from '../../hooks/useNotifications';
 import DashboardSidebar from './DashboardSidebar';
 
 // Import all client sections
@@ -24,6 +25,7 @@ import VendorSettingsSection from './sections/VendorSettingsSection';
 
 function UnifiedDashboard({ activeSection, onSectionChange, onLogout }) {
   const { currentUser } = useAuth();
+  const { notificationCount } = useNotifications();
   const [clientData, setClientData] = useState(null);
   const [vendorData, setVendorData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -208,9 +210,11 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout }) {
             {getSectionTitle()}
           </h1>
           <div className="user-nav">
-            <div className="nav-icon" id="dashboard-notifications-btn" style={{ display: 'none' }}>
+            <div className="nav-icon" id="dashboard-notifications-btn" style={{ position: 'relative', cursor: 'pointer' }}>
               <i className="fas fa-bell"></i>
-              <span className="badge" id="dashboard-notifications-badge">0</span>
+              <span className="badge" id="dashboard-notifications-badge" style={{ display: notificationCount > 0 ? 'grid' : 'none' }}>
+                {notificationCount}
+              </span>
             </div>
           </div>
         </div>

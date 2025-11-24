@@ -24,15 +24,7 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout,
           // Unified menu with CLIENT and VENDOR sections
           menuItems.map((section, idx) => (
             <React.Fragment key={idx}>
-              <li className="menu-heading" style={{
-                padding: '1rem 1.5rem 0.5rem',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                listStyle: 'none'
-              }}>
+              <li className="menu-heading">
                 {section.section}
               </li>
               {section.items.map(item => (
@@ -57,15 +49,7 @@ function DashboardSidebar({ menuItems, activeSection, onSectionChange, onLogout,
           // Single section menu (legacy)
           <>
             {sectionLabel && (
-              <li className="menu-heading" style={{
-                padding: '1rem 1.5rem 0.5rem',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                listStyle: 'none'
-              }}>
+              <li className="menu-heading">
                 {sectionLabel}
               </li>
             )}
