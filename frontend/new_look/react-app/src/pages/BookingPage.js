@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import Header from '../components/Header';
+import ProfileModal from '../components/ProfileModal';
 import '../styles/vendor-booking-styles.css';
 
 function BookingPage() {
@@ -17,6 +19,7 @@ function BookingPage() {
   const [loadingServices, setLoadingServices] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const [bookingData, setBookingData] = useState({
     eventName: '',
@@ -282,25 +285,49 @@ function BookingPage() {
   const profilePic = profile.ProfilePictureURL || profile.ProfilePicture || '';
 
   return (
-    <>
+    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', width: '100%' }}>
       {/* Header */}
-      <header className="booking-header">
-        <div className="header-container">
-          <button className="back-btn" onClick={goBackToVendor}>
-            <i className="fas fa-arrow-left"></i>
-          </button>
-          <div className="header-logo">
-            <img src="/planhive_logo.svg" alt="PlanHive" className="logo-img" />
-          </div>
-          <div className="header-spacer"></div>
-        </div>
-      </header>
+      <Header 
+        onSearch={(q) => console.log(q)} 
+        onProfileClick={() => {
+          if (currentUser) {
+            setProfileModalOpen(true);
+          } else {
+            navigate('/');
+          }
+        }} 
+        onWishlistClick={() => setProfileModalOpen(true)} 
+        onChatClick={() => setProfileModalOpen(true)} 
+        onNotificationsClick={() => {}} 
+      />
 
       {/* Main Content */}
       <div className="booking-container">
         {/* Left Side - Booking Form */}
         <div className="booking-form-section">
           <div className="booking-form-wrapper">
+            {/* Back Button */}
+            <button 
+              className="back-button" 
+              onClick={goBackToVendor}
+              style={{ 
+                marginBottom: '1.5rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                background: 'transparent',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+                color: '#222'
+              }}
+            >
+              <i className="fas fa-arrow-left"></i>
+              Back to Vendor
+            </button>
+            
             <h1 className="booking-title">Request to book</h1>
             
             {/* Step 1: Event Information */}
@@ -721,7 +748,13 @@ function BookingPage() {
           </div>
         </div>
       )}
-    </>
+
+      {/* Profile Modal */}
+      <ProfileModal 
+        isOpen={profileModalOpen} 
+        onClose={() => setProfileModalOpen(false)} 
+      />
+    </div>
   );
 }
 

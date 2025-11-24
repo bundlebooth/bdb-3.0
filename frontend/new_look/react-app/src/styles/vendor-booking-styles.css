@@ -92,14 +92,20 @@ body {
    ============================================ */
 
 .booking-container {
-    max-width: 1100px;
+    max-width: 1280px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 2rem 5rem;
     background: white;
     display: grid;
-    grid-template-columns: 1fr 480px;
+    grid-template-columns: 1fr 380px;
     gap: 4rem;
     min-height: calc(100vh - 80px);
+}
+
+/* Wrapper to ensure full white background */
+.booking-page-wrapper {
+    background: white;
+    min-height: 100vh;
 }
 
 /* ============================================
@@ -268,6 +274,10 @@ body {
     font-family: inherit;
     transition: border-color 0.2s, box-shadow 0.2s;
     background-color: white;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: var(--text-primary);
 }
 
 .form-input:focus,
@@ -924,6 +934,14 @@ body {
 
 .booking-step {
     animation: fadeIn 0.3s ease-out;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.form-group {
+    display: block !important;
+    visibility: visible !important;
 }
 
 /* ============================================

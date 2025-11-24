@@ -325,19 +325,15 @@
     margin-bottom: 0.75rem;
 }
 
-/* Service Cards - Airbnb Style */
+/* Service Cards - Match Dashboard Style */
 .service-package-card {
-    background: white;
-    border: 1px solid #ebebeb;
-    border-radius: 12px;
-    padding: 1.5rem;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
     margin-bottom: 1rem;
-    transition: box-shadow 0.2s ease;
 }
 
-.service-package-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
 
 .service-card-title {
     font-weight: 600;
@@ -372,28 +368,15 @@
 
 .service-image-container {
     flex-shrink: 0;
-    width: 64px;
-    height: 64px;
+    width: 60px;
+    height: 60px;
     overflow: hidden;
     border-radius: 8px;
-    background: #f7f7f7;
-    border: none;
+    background: var(--secondary);
+    border: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.service-image-container:hover::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
 }
 
 .service-image-container img {
@@ -403,7 +386,7 @@
 }
 
 .service-icon {
-    color: #717171;
+    color: var(--primary);
     font-size: 1.5rem;
 }
 
