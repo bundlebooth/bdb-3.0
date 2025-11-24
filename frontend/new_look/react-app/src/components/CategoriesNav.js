@@ -44,19 +44,32 @@ function CategoriesNav({ activeCategory, onCategoryChange }) {
     }
   }, [activeCategory]);
 
+  // Handle scroll to shrink/expand categories nav
+  useEffect(() => {
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          setIsScrolled(scrollTop > 1); // Shrink immediately on any scroll
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   useEffect(() => {
     checkScrollButtons();
     updateIndicator();
     
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
-    
     window.addEventListener('resize', checkScrollButtons);
-    window.addEventListener('scroll', handleScroll);
     return () => {
       window.removeEventListener('resize', checkScrollButtons);
-      window.removeEventListener('scroll', handleScroll);
     };
   }, [checkScrollButtons, updateIndicator]);
 
@@ -92,6 +105,7 @@ function CategoriesNav({ activeCategory, onCategoryChange }) {
               className={`category-item ${activeCategory === category.key ? 'active' : ''}`}
               data-category={category.key}
               onClick={() => onCategoryChange(category.key)}
+              title={category.label}
             >
               <i className={`fas ${category.icon}`}></i>
               <span>{category.label}</span>

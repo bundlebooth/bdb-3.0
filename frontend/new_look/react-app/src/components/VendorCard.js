@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { getCategoryIconHtml, mapTypeToCategory } from '../utils/helpers';
 
-function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight }) {
+const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight }) {
   const vendorId = vendor.VendorProfileID || vendor.id;
   
   // Image URL resolution - EXACT match to original (line 24986-24997)
@@ -286,6 +286,6 @@ function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight 
       </div>
     </div>
   );
-}
+});
 
 export default VendorCard;

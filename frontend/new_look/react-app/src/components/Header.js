@@ -1,15 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import DashboardModal from './DashboardModal';
+import NotificationDropdown from './NotificationDropdown';
+import { getUnreadNotificationCount, updatePageTitle } from '../utils/notifications';
 
-function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNotificationsClick }) {
+const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNotificationsClick }) {
   const { currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [favoritesBadge, setFavoritesBadge] = useState(0);
   const [messagesBadge, setMessagesBadge] = useState(0);
   const [notificationsBadge, setNotificationsBadge] = useState(0);
   const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const notificationBtnRef = useRef(null);
 
   // Clear any dashboard hash on mount to prevent auto-opening
   useEffect(() => {
@@ -28,6 +33,25 @@ function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNoti
     window.addEventListener('openDashboard', handleOpenDashboard);
     return () => window.removeEventListener('openDashboard', handleOpenDashboard);
   }, [currentUser]);
+
+  // Handle scroll to shrink/expand header
+  useEffect(() => {
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          setIsScrolled(scrollTop > 1); // Shrink immediately on any scroll
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Load notification badges
   useEffect(() => {
@@ -53,19 +77,10 @@ function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNoti
           setMessagesBadge(msgData.unreadCount || 0);
         }
 
-        // Load notifications count (if endpoint exists)
-        try {
-          const notifResponse = await fetch(`${API_BASE_URL}/notifications/unread-count/${currentUser.id}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          if (notifResponse.ok) {
-            const notifData = await notifResponse.json();
-            setNotificationsBadge(notifData.unreadCount || 0);
-          }
-        } catch (e) {
-          // Notifications endpoint might not exist
-          console.log('Notifications endpoint not available');
-        }
+        // Load notifications count
+        const notifCount = await getUnreadNotificationCount(currentUser.id);
+        setNotificationsBadge(notifCount);
+        updatePageTitle(notifCount);
       } catch (error) {
         console.error('Failed to load badges:', error);
       }
@@ -90,8 +105,25 @@ function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNoti
     }
   };
 
+  const handleNotificationClick = () => {
+    setNotificationDropdownOpen(!notificationDropdownOpen);
+    if (onNotificationsClick) {
+      onNotificationsClick();
+    }
+  };
+
+  const handleNotificationDropdownClose = async () => {
+    setNotificationDropdownOpen(false);
+    // Refresh notification count after closing
+    if (currentUser?.id) {
+      const notifCount = await getUnreadNotificationCount(currentUser.id);
+      setNotificationsBadge(notifCount);
+      updatePageTitle(notifCount);
+    }
+  };
+
   return (
-    <header className="header">
+    <header className={`header ${isScrolled ? 'header-scrolled' : ''}`}>
       <div className="logo" style={{ cursor: 'pointer' }} onClick={() => window.location.href = '/'}>
         <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '50px', width: 'auto' }} />
       </div>
@@ -146,7 +178,13 @@ function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNoti
             {messagesBadge}
           </span>
         </div>
-        <div className="nav-icon" id="notifications-btn" onClick={onNotificationsClick}>
+        <div 
+          ref={notificationBtnRef}
+          className="nav-icon" 
+          id="notifications-btn" 
+          onClick={handleNotificationClick}
+          style={{ cursor: 'pointer' }}
+        >
           <i className="fas fa-bell"></i>
           <span
             className="badge"
@@ -178,8 +216,15 @@ function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNoti
 
       {/* Dashboard Modal */}
       <DashboardModal isOpen={dashboardOpen} onClose={() => setDashboardOpen(false)} />
+      
+      {/* Notification Dropdown */}
+      <NotificationDropdown 
+        isOpen={notificationDropdownOpen} 
+        onClose={handleNotificationDropdownClose}
+        anchorEl={notificationBtnRef.current}
+      />
     </header>
   );
-}
+});
 
 export default Header;

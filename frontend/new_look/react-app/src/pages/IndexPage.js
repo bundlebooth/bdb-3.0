@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -11,6 +11,7 @@ import MapView from '../components/MapView';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
+import StripeConnectBanner from '../components/StripeConnectBanner';
 import Footer from '../components/Footer';
 import { showBanner } from '../utils/helpers';
 
@@ -33,6 +34,7 @@ function IndexPage() {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState('dashboard');
+  const [loadingMore, setLoadingMore] = useState(false);
   
   const vendorsPerPage = 12;
   const serverPageSize = 20;
@@ -108,7 +110,11 @@ function IndexPage() {
 
   const loadVendors = useCallback(async (append = false) => {
     try {
-      if (!append) setLoading(true);
+      if (!append) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
       
       // Match original logic (line 26133-26162)
       const hasCategoryQuery = currentCategory && currentCategory !== 'all';
@@ -243,6 +249,7 @@ function IndexPage() {
       showBanner('Failed to load vendors', 'error');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [currentCategory, filters.priceLevel, filters.minRating, filters.region, filters.tags, userLocation, applyClientSideFiltersInternal, vendors, serverPageNumber, serverPageSize]);
 
@@ -252,6 +259,24 @@ function IndexPage() {
       loadFavorites();
     }
     await loadVendors();
+  }, []);
+
+  // Load filters from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlFilters = {};
+    
+    if (params.has('location')) urlFilters.location = params.get('location');
+    if (params.has('priceLevel')) urlFilters.priceLevel = params.get('priceLevel');
+    if (params.has('minRating')) urlFilters.minRating = params.get('minRating');
+    if (params.has('region')) urlFilters.region = params.get('region');
+    if (params.has('tags')) urlFilters.tags = params.get('tags').split(',');
+    if (params.has('useCurrentLocation')) urlFilters.useCurrentLocation = params.get('useCurrentLocation') === 'true';
+    if (params.has('within50Miles')) urlFilters.within50Miles = params.get('within50Miles') === 'true';
+    
+    if (Object.keys(urlFilters).length > 0) {
+      setFilters(prev => ({ ...prev, ...urlFilters }));
+    }
   }, []);
 
   useEffect(() => {
@@ -276,6 +301,7 @@ function IndexPage() {
 
   useEffect(() => {
     if (currentCategory) {
+      setLoading(true); // Show loading state when category changes
       setServerPageNumber(1);
       loadVendors();
     }
@@ -284,6 +310,7 @@ function IndexPage() {
   // Reload vendors when filters change (especially popular filters/tags)
   useEffect(() => {
     if (filters.priceLevel || filters.minRating || filters.region || filters.tags.length > 0) {
+      setLoading(true); // Show loading state when filters change
       setServerPageNumber(1);
       loadVendors();
     }
@@ -302,7 +329,59 @@ function IndexPage() {
     setCurrentPage(1);
   }, []);
 
-  const handleFilterChange = useCallback((newFilters) => setFilters(newFilters), []);
+  const handleFilterChange = useCallback((newFilters) => {
+    setFilters(newFilters);
+    
+    // Update URL with filter parameters
+    const params = new URLSearchParams(window.location.search);
+    
+    // Add/update filter params
+    if (newFilters.location) {
+      params.set('location', newFilters.location);
+    } else {
+      params.delete('location');
+    }
+    
+    if (newFilters.priceLevel) {
+      params.set('priceLevel', newFilters.priceLevel);
+    } else {
+      params.delete('priceLevel');
+    }
+    
+    if (newFilters.minRating) {
+      params.set('minRating', newFilters.minRating);
+    } else {
+      params.delete('minRating');
+    }
+    
+    if (newFilters.region) {
+      params.set('region', newFilters.region);
+    } else {
+      params.delete('region');
+    }
+    
+    if (newFilters.tags && newFilters.tags.length > 0) {
+      params.set('tags', newFilters.tags.join(','));
+    } else {
+      params.delete('tags');
+    }
+    
+    if (newFilters.useCurrentLocation) {
+      params.set('useCurrentLocation', 'true');
+    } else {
+      params.delete('useCurrentLocation');
+    }
+    
+    if (newFilters.within50Miles) {
+      params.set('within50Miles', 'true');
+    } else {
+      params.delete('within50Miles');
+    }
+    
+    // Update URL without reloading page
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newUrl);
+  }, []);
 
   const handleToggleFavorite = useCallback(async (vendorId) => {
     if (!currentUser) {
@@ -414,12 +493,15 @@ function IndexPage() {
         <FilterSidebar filters={filters} onFilterChange={handleFilterChange} collapsed={sidebarCollapsed} />
         <main className="main-content">
           {currentUser?.vendorProfileId && (
-            <SetupIncompleteBanner 
-              onContinueSetup={() => {
-                setDashboardSection('vendor-settings');
-                setDashboardModalOpen(true);
-              }}
-            />
+            <>
+              <SetupIncompleteBanner 
+                onContinueSetup={() => {
+                  setDashboardSection('vendor-settings');
+                  setDashboardModalOpen(true);
+                }}
+              />
+              <StripeConnectBanner />
+            </>
           )}
           <div className="content-header">
             <div>
@@ -474,14 +556,14 @@ function IndexPage() {
           </div>
           {!loading && <TrendingVendors onViewVendor={handleViewVendor} />}
           <div className="map-overlay"></div>
-          <VendorGrid vendors={currentVendors} loading={loading} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewVendor={handleViewVendor} onHighlightVendor={handleHighlightVendor} />
+          <VendorGrid vendors={currentVendors} loading={loading} loadingMore={loadingMore} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewVendor={handleViewVendor} onHighlightVendor={handleHighlightVendor} />
           {showLoadMore && (
             <div id="load-more-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '3rem 0 2rem 0' }}>
               <button 
                 className="btn" 
                 id="load-more-btn"
                 onClick={() => loadVendors(true)}
-                disabled={loading}
+                disabled={loadingMore}
                 style={{ 
                   backgroundColor: '#5e72e4', 
                   color: 'white', 
@@ -490,32 +572,32 @@ function IndexPage() {
                   fontSize: '1rem', 
                   fontWeight: 500, 
                   borderRadius: '8px', 
-                  cursor: loading ? 'not-allowed' : 'pointer', 
+                  cursor: loadingMore ? 'not-allowed' : 'pointer', 
                   boxShadow: '0 2px 8px rgba(94, 114, 228, 0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
                   transition: 'all 0.2s ease',
-                  opacity: loading ? 0.6 : 1
+                  opacity: loadingMore ? 0.6 : 1
                 }}
                 onMouseOver={(e) => {
-                  if (!loading) {
+                  if (!loadingMore) {
                     e.currentTarget.style.backgroundColor = '#4a5acf';
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(94, 114, 228, 0.3)';
                     e.currentTarget.style.transform = 'translateY(-1px)';
                   }
                 }}
                 onMouseOut={(e) => {
-                  if (!loading) {
+                  if (!loadingMore) {
                     e.currentTarget.style.backgroundColor = '#5e72e4';
                     e.currentTarget.style.boxShadow = '0 2px 8px rgba(94, 114, 228, 0.2)';
                     e.currentTarget.style.transform = 'translateY(0)';
                   }
                 }}
               >
-                <span id="load-more-text">{loading ? 'Loading...' : 'Load More'}</span>
-                {!loading && <i className="fas fa-chevron-down"></i>}
-                {loading && <i className="fas fa-spinner fa-spin"></i>}
+                <span id="load-more-text">{loadingMore ? 'Loading...' : 'Load More'}</span>
+                {!loadingMore && <i className="fas fa-chevron-down"></i>}
+                {loadingMore && <i className="fas fa-spinner fa-spin"></i>}
               </button>
             </div>
           )}
