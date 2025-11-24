@@ -639,12 +639,81 @@ function VendorProfilePage() {
 
   if (loading) {
     return (
-      <div className="profile-container">
-        <div style={{ padding: '2rem', textAlign: 'center' }}>
-          <div className="loading-spinner"></div>
-          <p style={{ marginTop: '1rem', color: 'var(--text-light)' }}>Loading vendor profile...</p>
+      <>
+        <Header 
+          onSearch={(q) => console.log(q)} 
+          onProfileClick={() => setProfileModalOpen(true)} 
+          onWishlistClick={() => setProfileModalOpen(true)} 
+          onChatClick={() => setProfileModalOpen(true)} 
+          onNotificationsClick={() => {}} 
+        />
+        <div className="profile-container">
+          {/* Back Button Skeleton */}
+          <div className="skeleton" style={{ width: '150px', height: '40px', borderRadius: '12px', marginBottom: '2rem' }}></div>
+
+          {/* Image Gallery Skeleton */}
+          <div className="image-gallery">
+            <div className="gallery-item large-image skeleton"></div>
+            <div className="thumbnails-container">
+              <div className="gallery-item skeleton"></div>
+              <div className="gallery-item skeleton"></div>
+              <div className="gallery-item skeleton"></div>
+              <div className="gallery-item skeleton"></div>
+            </div>
+          </div>
+
+          {/* Header Skeleton */}
+          <div className="vendor-profile-header">
+            <div className="vendor-profile-info" style={{ flex: 1 }}>
+              <div className="skeleton" style={{ width: '60%', height: '36px', marginBottom: '0.75rem' }}></div>
+              <div className="skeleton" style={{ width: '40%', height: '20px', marginBottom: '0.5rem' }}></div>
+            </div>
+            <div className="vendor-profile-actions">
+              <div className="skeleton" style={{ width: '44px', height: '44px', borderRadius: '50%' }}></div>
+              <div className="skeleton" style={{ width: '44px', height: '44px', borderRadius: '50%' }}></div>
+            </div>
+          </div>
+
+          {/* Content Layout Skeleton */}
+          <div className="vendor-content-layout">
+            <div className="vendor-main-content">
+              {/* About Section Skeleton */}
+              <div className="content-section">
+                <div className="skeleton" style={{ width: '200px', height: '28px', marginBottom: '1rem' }}></div>
+                <div className="skeleton" style={{ width: '100%', height: '20px', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ width: '90%', height: '20px', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ width: '80%', height: '20px' }}></div>
+              </div>
+
+              {/* Services Section Skeleton */}
+              <div className="content-section">
+                <div className="skeleton" style={{ width: '180px', height: '28px', marginBottom: '1rem' }}></div>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="service-package-card" style={{ marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                      <div className="skeleton" style={{ width: '80px', height: '80px', borderRadius: '12px' }}></div>
+                      <div style={{ flex: 1 }}>
+                        <div className="skeleton" style={{ width: '60%', height: '20px', marginBottom: '0.5rem' }}></div>
+                        <div className="skeleton" style={{ width: '100%', height: '16px', marginBottom: '0.5rem' }}></div>
+                        <div className="skeleton" style={{ width: '40%', height: '16px' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Sidebar Skeleton */}
+            <div className="vendor-sidebar">
+              <div className="sidebar-card">
+                <div className="skeleton" style={{ width: '100%', height: '48px', borderRadius: '12px', marginBottom: '1rem' }}></div>
+                <div className="skeleton" style={{ width: '100%', height: '48px', borderRadius: '12px' }}></div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+        <Footer />
+      </>
     );
   }
 
@@ -707,57 +776,78 @@ function VendorProfilePage() {
       <div className="profile-container">
         {/* Back Button */}
         <button className="back-button" onClick={() => navigate(-1)}>
-        <i className="fas fa-arrow-left"></i>
-        <span>Back to search</span>
-      </button>
+          <i className="fas fa-arrow-left"></i>
+          <span>Back to search</span>
+        </button>
 
-      {/* Image Gallery */}
-      <VendorGallery images={images} />
-
-      {/* Vendor Header */}
-      <div className="vendor-profile-header">
-        <div className="vendor-profile-info">
-          <h1 id="vendor-business-name">{profile.BusinessName || profile.DisplayName}</h1>
-          <p id="vendor-tagline">{profile.Tagline || 'Professional Event Services'}</p>
+        {/* Vendor Title and Rating - ABOVE Gallery */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h1 style={{ fontSize: '1.625rem', fontWeight: 600, marginBottom: '0.5rem', color: '#222', lineHeight: 1.25 }}>
+            {profile.BusinessName || profile.DisplayName}
+          </h1>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', color: 'var(--text-light)', marginBottom: '0.75rem', flexWrap: 'wrap', fontSize: '0.9rem' }}>
-            {(profile.City || profile.State) && (
-              <span>
-                <i className="fas fa-map-marker-alt"></i> {[profile.City, profile.State].filter(Boolean).join(', ')}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
+            {/* Rating with blue star */}
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
+                display: 'block', 
+                height: '14px', 
+                width: '14px', 
+                fill: '#0066CC'
+              }}>
+                <path fillRule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
+              </svg>
+              <span style={{ fontWeight: 600, color: '#000' }}>
+                {reviews.length > 0 ? '4.9' : '5.0'}
               </span>
-            )}
-            {profile.YearsInBusiness && (
-              <span>
-                <i className="fas fa-trophy" style={{ color: '#fbbf24' }}></i> {profile.YearsInBusiness} years in business
-              </span>
-            )}
-            <span style={{ color: '#fbbf24' }}>
-              ☆☆☆☆☆ <span style={{ color: 'var(--text-light)' }}>({reviews.length} reviews)</span>
+              {reviews.length > 0 && (
+                <span style={{ color: '#717171' }}>({reviews.length})</span>
+              )}
             </span>
+            
+            <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
+            
+            {/* Location */}
+            {(profile.City || profile.State) && (
+              <>
+                <span style={{ color: '#000', textDecoration: 'underline', fontWeight: 500, cursor: 'pointer' }}>
+                  {[profile.City, profile.State, profile.Country].filter(Boolean).join(', ')}
+                </span>
+                <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
+              </>
+            )}
+            
+            {/* Category */}
+            <span style={{ color: '#000' }}>{profile.Tagline || profile.CategoryName || 'Event Services'}</span>
           </div>
-          
+        </div>
+
+        {/* Image Gallery */}
+        <VendorGallery images={images} />
+
+        {/* Action Buttons and Social Media */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid var(--border)' }}>
           {/* Social Media Icons */}
           {renderSocialMediaIcons()}
-        </div>
-        
-        {/* Action Buttons */}
-        <div className="vendor-profile-actions">
-          <div
-            className={`vendor-action-btn ${isFavorite ? 'active' : ''}`}
-            onClick={handleToggleFavorite}
-            title="Save to favorites"
-          >
-            <i className="fas fa-heart"></i>
+          
+          {/* Action Buttons */}
+          <div className="vendor-profile-actions">
+            <div
+              className={`vendor-action-btn ${isFavorite ? 'active' : ''}`}
+              onClick={handleToggleFavorite}
+              title="Save to favorites"
+            >
+              <i className="fas fa-heart"></i>
+            </div>
+            <div
+              className="vendor-action-btn"
+              onClick={handleShare}
+              title="Share this vendor"
+            >
+              <i className="fas fa-share-alt"></i>
+            </div>
           </div>
-          <div
-            className="vendor-action-btn"
-            onClick={handleShare}
-            title="Share this vendor"
-          >
-            <i className="fas fa-share-alt"></i>
-          </div>
         </div>
-      </div>
 
       {/* Content Layout */}
       <div className="vendor-content-layout">
