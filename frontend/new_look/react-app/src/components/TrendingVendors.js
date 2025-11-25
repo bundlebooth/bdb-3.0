@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../config';
-import { getVendorCardSkeletonHTML } from '../utils/skeletons';
+// Removed skeleton import - using simple loading state
 import VendorCard from './VendorCard';
 
 function TrendingVendors({ onViewVendor }) {
@@ -89,7 +89,21 @@ function TrendingVendors({ onViewVendor }) {
             data-skeleton={loading ? "1" : "0"}
           >
             {loading ? (
-              <div dangerouslySetInnerHTML={{ __html: getVendorCardSkeletonHTML(4) }} />
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} style={{ 
+                  background: '#f8f9fa', 
+                  borderRadius: '8px', 
+                  padding: '1rem', 
+                  height: '300px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#6c757d'
+                }}>
+                  <i className="fas fa-spinner fa-spin"></i>
+                  <span style={{ marginLeft: '0.5rem' }}>Loading...</span>
+                </div>
+              ))
             ) : (
               trendingVendors.slice(currentIndex, currentIndex + 4).map((vendor) => (
                 <VendorCard

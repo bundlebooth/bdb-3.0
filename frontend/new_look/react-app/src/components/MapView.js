@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { getVendorBadges } from '../utils/helpers';
 
 function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false }) {
   const mapRef = useRef(null);
@@ -51,9 +50,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
     const responseTime = vendor.ResponseTime || vendor.responseTime || 'within a few hours';
     const businessName = vendor.BusinessName || vendor.name || 'Vendor';
     
-    // Get vendor badges
-    const badges = getVendorBadges(vendor);
-    const topBadges = badges.slice(0, 2); // Show max 2 badges
+    // No badges needed for map cards
     
     // SMALL card, smaller image with border, left-aligned text, heart icon
     return `

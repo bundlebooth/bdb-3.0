@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
 import ProfileModal from '../components/ProfileModal';
-import '../styles/vendor-booking-styles.css';
+// CSS file moved - styles now inline or in main CSS
 
 function BookingPage() {
   const { vendorId } = useParams();
