@@ -1,68 +1,102 @@
-import React from 'react';
+import React, { useState } from 'react';
+import PersonalDetailsPanel from '../panels/PersonalDetailsPanel';
+import CommunicationPreferencesPanel from '../panels/CommunicationPreferencesPanel';
+import SecurityPanel from '../panels/SecurityPanel';
 
 function ClientSettingsSection() {
-  const handleCardClick = (cardId) => {
-    console.log('Opening settings modal:', cardId);
-    // In full implementation, this would open a modal
+  const [activePanel, setActivePanel] = useState(null);
+
+  const settingsCards = [
+    { 
+      id: 'personal-details', 
+      icon: 'fa-user', 
+      title: 'Personal details', 
+      description: 'Contact information, password, authentication methods and your active sessions.',
+      category: 'personal'
+    },
+    { 
+      id: 'communication-preferences', 
+      icon: 'fa-envelope', 
+      title: 'Communication preferences', 
+      description: 'Customise the emails, SMS, and push notifications you receive.',
+      category: 'personal'
+    },
+    { 
+      id: 'security', 
+      icon: 'fa-shield-alt', 
+      title: 'Security', 
+      description: 'Manage your account security, authorised apps, and shared resources.',
+      category: 'account'
+    }
+  ];
+
+  const renderPanel = () => {
+    switch (activePanel) {
+      case 'personal-details':
+        return <PersonalDetailsPanel onBack={() => setActivePanel(null)} />;
+      case 'communication-preferences':
+        return <CommunicationPreferencesPanel onBack={() => setActivePanel(null)} />;
+      case 'security':
+        return <SecurityPanel onBack={() => setActivePanel(null)} />;
+      default:
+        return null;
+    }
   };
+
+  const personalCards = settingsCards.filter(c => c.category === 'personal');
+  const accountCards = settingsCards.filter(c => c.category === 'account');
 
   return (
     <div id="settings-section">
-      {/* Personal Settings Category */}
-      <div className="settings-category">
-        <h2 className="settings-category-title">Personal settings</h2>
-        <div className="settings-grid">
-          <div 
-            className="settings-card" 
-            data-settings-modal="personal-details"
-            onClick={() => handleCardClick('personal-details')}
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="settings-card-icon">
-              <i className="fas fa-user"></i>
+      {!activePanel ? (
+        <>
+          {/* Personal Settings Category */}
+          <div className="settings-category">
+            <h2 className="settings-category-title">Personal settings</h2>
+            <div className="settings-grid">
+              {personalCards.map(card => (
+                <div 
+                  key={card.id}
+                  className="settings-card" 
+                  data-settings-modal={card.id}
+                  onClick={() => setActivePanel(card.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="settings-card-icon">
+                    <i className={`fas ${card.icon}`}></i>
+                  </div>
+                  <h3 className="settings-card-title">{card.title}</h3>
+                  <p className="settings-card-description">{card.description}</p>
+                </div>
+              ))}
             </div>
-            <h3 className="settings-card-title">Personal details</h3>
-            <p className="settings-card-description">
-              Contact information, password, authentication methods and your active sessions.
-            </p>
           </div>
-          <div 
-            className="settings-card" 
-            data-settings-modal="communication-preferences"
-            onClick={() => handleCardClick('communication-preferences')}
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="settings-card-icon">
-              <i className="fas fa-envelope"></i>
-            </div>
-            <h3 className="settings-card-title">Communication preferences</h3>
-            <p className="settings-card-description">
-              Customise the emails, SMS, and push notifications you receive.
-            </p>
-          </div>
-        </div>
-      </div>
 
-      {/* Account Settings Category */}
-      <div className="settings-category">
-        <h2 className="settings-category-title">Account settings</h2>
-        <div className="settings-grid">
-          <div 
-            className="settings-card" 
-            data-settings-modal="security"
-            onClick={() => handleCardClick('security')}
-            style={{ cursor: 'pointer' }}
-          >
-            <div className="settings-card-icon">
-              <i className="fas fa-shield-alt"></i>
+          {/* Account Settings Category */}
+          <div className="settings-category">
+            <h2 className="settings-category-title">Account settings</h2>
+            <div className="settings-grid">
+              {accountCards.map(card => (
+                <div 
+                  key={card.id}
+                  className="settings-card" 
+                  data-settings-modal={card.id}
+                  onClick={() => setActivePanel(card.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="settings-card-icon">
+                    <i className={`fas ${card.icon}`}></i>
+                  </div>
+                  <h3 className="settings-card-title">{card.title}</h3>
+                  <p className="settings-card-description">{card.description}</p>
+                </div>
+              ))}
             </div>
-            <h3 className="settings-card-title">Security</h3>
-            <p className="settings-card-description">
-              Manage your account security, authorised apps, and shared resources.
-            </p>
           </div>
-        </div>
-      </div>
+        </>
+      ) : (
+        renderPanel()
+      )}
     </div>
   );
 }

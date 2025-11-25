@@ -168,6 +168,14 @@ export function AuthProvider({ children }) {
     }
   }
 
+  function updateUser(updatedData) {
+    const newUserData = { ...currentUser, ...updatedData };
+    setCurrentUser(newUserData);
+    window.currentUser = newUserData;
+    localStorage.setItem('userSession', JSON.stringify(newUserData));
+    updateUserInterface(newUserData);
+  }
+
   async function getVendorProfileId() {
     if (currentUser?.vendorProfileId) {
       return currentUser.vendorProfileId;
@@ -206,6 +214,7 @@ export function AuthProvider({ children }) {
     simulateLogin,
     handleGoogleLogin,
     logout,
+    updateUser,
     getVendorProfileId,
     loading
   };
