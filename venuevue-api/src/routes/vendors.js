@@ -4459,7 +4459,7 @@ router.get('/category-questions/:category', async (req, res) => {
 });
 
 // Upload vendor logo
-router.post('/vendor/:vendorProfileId/logo', upload.single('logo'), async (req, res) => {
+router.post('/:vendorProfileId/logo', upload.single('logo'), async (req, res) => {
   try {
     const { vendorProfileId } = req.params;
 
@@ -4491,7 +4491,7 @@ router.post('/vendor/:vendorProfileId/logo', upload.single('logo'), async (req, 
     const pool = await poolPromise;
     const request = pool.request();
     request.input('VendorProfileID', sql.Int, parseInt(vendorProfileId));
-    request.input('LogoURL', sql.NVarChar(500), logoUrl);
+    request.input('LogoURL', sql.NVarChar(255), logoUrl);
 
     await request.query(`
       UPDATE VendorProfiles 

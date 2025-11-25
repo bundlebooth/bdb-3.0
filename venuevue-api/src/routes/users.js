@@ -772,15 +772,15 @@ router.post('/:id/profile-picture', upload.single('profilePicture'), async (req,
 
     const profilePictureUrl = uploadResult.secure_url;
 
-    // Update user profile picture in database
+    // Update user profile image in database
     const pool = await poolPromise;
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
-    request.input('ProfilePicture', sql.NVarChar(500), profilePictureUrl);
+    request.input('ProfileImageURL', sql.NVarChar(255), profilePictureUrl);
 
     await request.query(`
       UPDATE Users 
-      SET ProfilePicture = @ProfilePicture, UpdatedAt = GETDATE()
+      SET ProfileImageURL = @ProfileImageURL, UpdatedAt = GETDATE()
       WHERE UserID = @UserID
     `);
 
@@ -823,7 +823,7 @@ router.get('/:id', async (req, res) => {
         Name,
         Email,
         Phone,
-        ProfilePicture,
+        ProfileImageURL,
         IsVendor,
         IsActive,
         CreatedAt
@@ -846,7 +846,7 @@ router.get('/:id', async (req, res) => {
       LastName: user.Name ? user.Name.split(' ').slice(1).join(' ') : '',
       Email: user.Email,
       Phone: user.Phone,
-      ProfilePicture: user.ProfilePicture,
+      ProfilePicture: user.ProfileImageURL,
       IsVendor: user.IsVendor,
       IsActive: user.IsActive,
       CreatedAt: user.CreatedAt

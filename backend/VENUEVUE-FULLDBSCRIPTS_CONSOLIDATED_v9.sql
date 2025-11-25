@@ -16,7 +16,7 @@ CREATE TABLE Users (
     Name NVARCHAR(100) NOT NULL,
     Email NVARCHAR(100) UNIQUE NOT NULL,
     PasswordHash NVARCHAR(255), -- Nullable for social logins
-    Avatar NVARCHAR(255),
+    ProfileImageURL NVARCHAR(255),
     Phone NVARCHAR(20),
     Bio NVARCHAR(MAX),
     IsVendor BIT DEFAULT 0,
@@ -217,7 +217,7 @@ CREATE TABLE VendorProfiles (
     PriceLevel NVARCHAR(20) DEFAULT '$$', -- Supports: $, $$, $$$, $$$$, Inexpensive, Moderate, Expensive, Luxury
     Capacity INT,
     Rooms INT,
-    FeaturedImageURL NVARCHAR(255),
+    LogoURL NVARCHAR(255),
     BookingLink NVARCHAR(255), -- New field
     AcceptingBookings BIT DEFAULT 0, -- New field
     -- Additional fields for comprehensive setup
@@ -935,7 +935,7 @@ SELECT
     v.PriceLevel,
     v.Capacity,
     v.Rooms,
-    v.FeaturedImageURL,
+    v.LogoURL,
     v.BookingLink,
     v.AcceptingBookings,
     (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
@@ -1158,7 +1158,7 @@ SELECT
     r.VendorProfileID,
     r.UserID,
     u.Name AS ReviewerName,
-    u.Avatar AS ReviewerAvatar,
+    u.ProfileImageURL AS ReviewerAvatar,
     r.BookingID,
     r.Rating,
     r.Title,
@@ -1202,7 +1202,7 @@ SELECT
     c.VendorProfileID,
     c.UserID,
     u.Name AS UserName,
-    u.Avatar AS UserAvatar,
+    u.ProfileImageURL AS UserAvatar,
     c.BookingID,
     b.ServiceID,
     s.Name AS ServiceName,
@@ -1339,7 +1339,7 @@ CREATE OR ALTER PROCEDURE sp_RegisterSocialUser
     @Email NVARCHAR(100),
     @Name NVARCHAR(100),
     @AuthProvider NVARCHAR(20),
-    @Avatar NVARCHAR(255) = NULL
+    @ProfileImageURL NVARCHAR(255) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1350,8 +1350,8 @@ BEGIN
     IF @UserID IS NULL
     BEGIN
         -- User does not exist, create new user
-        INSERT INTO Users (Name, Email, AuthProvider, Avatar, IsVendor)
-        VALUES (@Name, @Email, @AuthProvider, @Avatar, 0); -- Default to client
+        INSERT INTO Users (Name, Email, AuthProvider, ProfileImageURL, IsVendor)
+        VALUES (@Name, @Email, @AuthProvider, @ProfileImageURL, 0); -- Default to client
         SET @UserID = SCOPE_IDENTITY();
     END
     ELSE
@@ -1360,7 +1360,7 @@ BEGIN
         UPDATE Users
         SET AuthProvider = @AuthProvider,
             Name = @Name,
-            Avatar = ISNULL(@Avatar, Avatar),
+            ProfileImageURL = ISNULL(@ProfileImageURL, ProfileImageURL),
             LastLogin = GETDATE(),
             UpdatedAt = GETDATE()
         WHERE UserID = @UserID;
@@ -1587,7 +1587,7 @@ BEGIN
             v.PriceLevel,
             v.Capacity,
             v.Rooms,
-            v.FeaturedImageURL,
+            v.LogoURL,
             -- Use OUTER APPLY to get both the numeric min price and its service name
             MinSvc.MinPrice AS MinPrice,
             MinSvc.MinServiceName AS MinServiceName,
@@ -1760,7 +1760,7 @@ BEGIN
                 LEFT(r.Comment, 100) + CASE WHEN LEN(r.Comment) > 100 THEN ''...'' ELSE '''' END AS commentPreview,
                 r.CreatedAt,
                 u.Name AS reviewerName,
-                u.Avatar AS reviewerAvatar,
+                u.ProfileImageURL AS reviewerAvatar,
                 (SELECT COUNT(*) FROM ReviewMedia rm WHERE rm.ReviewID = r.ReviewID) AS mediaCount
             FROM Reviews r
             JOIN Users u ON r.UserID = u.UserID
@@ -1889,7 +1889,7 @@ BEGIN
             v.PriceLevel,
             v.Capacity,
             v.Rooms,
-            v.FeaturedImageURL,
+            v.LogoURL,
             vcm.CategoryMatchCount,
             vcm.TotalEstimatedPrice,
             (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
@@ -2083,7 +2083,7 @@ BEGIN
             v.PriceLevel,
             v.Capacity,
             v.Rooms,
-            v.FeaturedImageURL,
+            v.LogoURL,
             COUNT(DISTINCT vss.PredefinedServiceID) as MatchingServices,
             SUM(
                 COALESCE(
@@ -2168,7 +2168,7 @@ BEGIN
     SET @SQL = @SQL + '
         GROUP BY v.VendorProfileID, v.BusinessName, v.DisplayName, v.BusinessDescription,
                  v.City, v.State, v.Country, v.Latitude, v.Longitude, v.IsPremium, 
-                 v.IsEcoFriendly, v.IsAwardWinning, v.PriceLevel, v.Capacity, v.Rooms, v.FeaturedImageURL
+                 v.IsEcoFriendly, v.IsAwardWinning, v.PriceLevel, v.Capacity, v.Rooms, v.LogoURL
         HAVING COUNT(DISTINCT vss.PredefinedServiceID) >= 1
     )
     SELECT 
@@ -3029,7 +3029,7 @@ BEGIN
         vp.PriceLevel,
         vp.Capacity,
         vp.Rooms,
-        vp.FeaturedImageURL,
+        vp.LogoURL,
         (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) AS FavoriteCount,
         (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
         (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
@@ -4039,7 +4039,7 @@ BEGIN
             c.ConversationID,
             c.UserID,
             u.Name AS UserName,
-            u.Avatar AS UserAvatar,
+            u.ProfileImageURL AS UserAvatar,
             c.VendorProfileID,
             v.BusinessName AS VendorName,
             (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS VendorImage,
@@ -4088,7 +4088,7 @@ BEGIN
             m.MessageID,
             m.SenderID,
             u.Name AS SenderName,
-            u.Avatar AS SenderAvatar,
+            u.ProfileImageURL AS SenderAvatar,
             m.Content,
             m.IsRead,
             m.ReadAt,
@@ -4651,7 +4651,7 @@ BEGIN
         v.VendorProfileID,
         v.BusinessName,
         v.BusinessDescription,
-        u.Avatar,
+        u.ProfileImageURL,
         (SELECT STRING_AGG(vc.Category, ', ') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
         v.AverageResponseTime,
         v.ResponseRate
@@ -4758,7 +4758,7 @@ CREATE OR ALTER PROCEDURE sp_UpdateUserProfile
     @Name NVARCHAR(100) = NULL,
     @Phone NVARCHAR(20) = NULL,
     @Bio NVARCHAR(MAX) = NULL,
-    @Avatar NVARCHAR(255) = NULL
+    @ProfileImageURL NVARCHAR(255) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -4768,7 +4768,7 @@ BEGIN
         Name = ISNULL(@Name, Name),
         Phone = ISNULL(@Phone, Phone),
         Bio = ISNULL(@Bio, Bio),
-        Avatar = ISNULL(@Avatar, Avatar),
+        ProfileImageURL = ISNULL(@ProfileImageURL, ProfileImageURL),
         UpdatedAt = GETDATE()
     WHERE UserID = @UserID;
 
@@ -4881,7 +4881,7 @@ BEGIN
         vp.PriceLevel,
         vp.Capacity,
         vp.Rooms,
-        vp.FeaturedImageURL,
+        vp.LogoURL,
         vp.BookingLink,
         vp.AcceptingBookings,
         (SELECT STRING_AGG(vc.Category, ', ') FROM VendorCategories vc WHERE vc.VendorProfileID = vp.VendorProfileID) AS Categories
@@ -6082,7 +6082,7 @@ BEGIN
         vp.City,
         vp.State,
         vp.PostalCode,
-        vp.FeaturedImageURL,
+        vp.LogoURL,
         vp.IsCompleted,
         u.Name AS OwnerName,
         u.Email AS OwnerEmail
@@ -6205,7 +6205,7 @@ BEGIN
         IF @IsPrimary = 1
         BEGIN
             UPDATE VendorProfiles 
-            SET FeaturedImageURL = COALESCE(@CloudinarySecureUrl, @CloudinaryUrl, @ImageURL),
+            SET LogoURL = COALESCE(@CloudinarySecureUrl, @CloudinaryUrl, @ImageURL),
                 UpdatedAt = GETDATE()
             WHERE VendorProfileID = @VendorProfileID;
         END
@@ -7122,7 +7122,7 @@ BEGIN
         br.RequestID,
         br.VendorProfileID,
         vp.BusinessName AS VendorName,
-        vp.FeaturedImageURL AS VendorImage,
+        vp.LogoURL AS VendorImage,
         br.ServiceID,
         s.Name AS ServiceName,
         br.EventDate,
@@ -7176,7 +7176,7 @@ BEGIN
         u.Name AS ClientName,
         u.Email AS ClientEmail,
         u.Phone AS ClientPhone,
-        u.Avatar AS ClientAvatar,
+        u.ProfileImageURL AS ClientAvatar,
         br.ServiceID,
         s.Name AS ServiceName,
         br.EventDate,
@@ -7486,12 +7486,12 @@ BEGIN
         u.Name AS ClientName,
         u.Email AS ClientEmail,
         u.Phone AS ClientPhone,
-        u.Avatar AS ClientAvatar,
+        u.ProfileImageURL AS ClientAvatar,
         br.VendorProfileID,
         vp.BusinessName AS VendorName,
         vp.BusinessEmail AS VendorEmail,
         vp.BusinessPhone AS VendorPhone,
-        vp.FeaturedImageURL AS VendorImage,
+        vp.LogoURL AS VendorImage,
         br.ServiceID,
         s.Name AS ServiceName,
         s.Description AS ServiceDescription,
@@ -8543,7 +8543,7 @@ BEGIN
         v.IsPremium,
         v.IsVerified,
         v.AverageResponseTime AS ResponseTimeMinutes,
-        v.FeaturedImageURL,
+        v.LogoURL,
         COUNT(vpv.ViewID) AS ViewCount,
         COUNT(DISTINCT vpv.ViewerUserID) AS UniqueViewers,
         (
@@ -8612,7 +8612,7 @@ BEGIN
     GROUP BY 
         v.VendorProfileID, v.UserID, u.Name, v.BusinessName, v.BusinessDescription, v.Tagline,
         v.City, v.State, v.Country, v.Latitude, v.Longitude,
-        v.IsPremium, v.IsVerified, v.AverageResponseTime, v.FeaturedImageURL
+        v.IsPremium, v.IsVerified, v.AverageResponseTime, v.LogoURL
     ORDER BY ViewCount DESC, UniqueViewers DESC;
 END
 GO
