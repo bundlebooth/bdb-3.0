@@ -4458,4 +4458,62 @@ router.get('/category-questions/:category', async (req, res) => {
   }
 });
 
+// Upload vendor logo
+router.post('/vendor/:vendorProfileId/logo', upload.single('logo'), async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+
+    if (isNaN(vendorProfileId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid vendor profile ID'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    // Upload to Cloudinary
+    const uploadResult = await cloudinaryService.uploadImage(req.file.path, {
+      folder: 'venuevue/vendor-logos',
+      transformation: [
+        { width: 500, height: 500, crop: 'fill', gravity: 'center' }
+      ]
+    });
+
+    const logoUrl = uploadResult.secure_url;
+
+    // Update vendor profile logo in database
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, parseInt(vendorProfileId));
+    request.input('LogoURL', sql.NVarChar(500), logoUrl);
+
+    await request.query(`
+      UPDATE VendorProfiles 
+      SET LogoURL = @LogoURL, UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    res.json({
+      success: true,
+      message: 'Logo uploaded successfully',
+      logoUrl: logoUrl,
+      url: logoUrl
+    });
+
+  } catch (err) {
+    console.error('Logo upload error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload logo',
+      error: err.message
+    });
+  }
+});
+
 module.exports = router;

@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendTwoFactorCode } = require('../services/email');
 const crypto = require('crypto');
+const { upload } = require('../middlewares/uploadMiddleware');
+const cloudinaryService = require('../services/cloudinaryService');
 
 // Helper functions for validation
 const validateEmail = (email) => {
@@ -736,6 +738,202 @@ router.put('/:id/notification-preferences', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update notification preferences',
+      error: err.message
+    });
+  }
+});
+
+// Upload profile picture
+router.post('/:id/profile-picture', upload.single('profilePicture'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    // Upload to Cloudinary
+    const uploadResult = await cloudinaryService.uploadImage(req.file.path, {
+      folder: 'venuevue/profile-pictures',
+      transformation: [
+        { width: 500, height: 500, crop: 'fill', gravity: 'face' }
+      ]
+    });
+
+    const profilePictureUrl = uploadResult.secure_url;
+
+    // Update user profile picture in database
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+    request.input('ProfilePicture', sql.NVarChar(500), profilePictureUrl);
+
+    await request.query(`
+      UPDATE Users 
+      SET ProfilePicture = @ProfilePicture, UpdatedAt = GETDATE()
+      WHERE UserID = @UserID
+    `);
+
+    res.json({
+      success: true,
+      message: 'Profile picture uploaded successfully',
+      profilePictureUrl: profilePictureUrl,
+      url: profilePictureUrl
+    });
+
+  } catch (err) {
+    console.error('Profile picture upload error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload profile picture',
+      error: err.message
+    });
+  }
+});
+
+// Get user by ID (with profile picture)
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+
+    const result = await request.query(`
+      SELECT 
+        UserID,
+        Name,
+        Email,
+        Phone,
+        ProfilePicture,
+        IsVendor,
+        IsActive,
+        CreatedAt
+      FROM Users 
+      WHERE UserID = @UserID
+    `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const user = result.recordset[0];
+    
+    res.json({
+      success: true,
+      FirstName: user.Name ? user.Name.split(' ')[0] : '',
+      LastName: user.Name ? user.Name.split(' ').slice(1).join(' ') : '',
+      Email: user.Email,
+      Phone: user.Phone,
+      ProfilePicture: user.ProfilePicture,
+      IsVendor: user.IsVendor,
+      IsActive: user.IsActive,
+      CreatedAt: user.CreatedAt
+    });
+
+  } catch (err) {
+    console.error('Get user error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get user',
+      error: err.message
+    });
+  }
+});
+
+// Update user (including profile picture)
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { firstName, lastName, phone, currentPassword, newPassword } = req.body;
+
+    if (isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user ID'
+      });
+    }
+
+    const pool = await poolPromise;
+
+    // If password change is requested, verify current password
+    if (newPassword && currentPassword) {
+      const checkRequest = pool.request();
+      checkRequest.input('UserID', sql.Int, parseInt(id));
+      const userResult = await checkRequest.query(`
+        SELECT PasswordHash FROM Users WHERE UserID = @UserID
+      `);
+
+      if (userResult.recordset.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      const isMatch = await bcrypt.compare(currentPassword, userResult.recordset[0].PasswordHash);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Current password is incorrect'
+        });
+      }
+
+      // Hash new password
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(newPassword, salt);
+
+      const passwordRequest = pool.request();
+      passwordRequest.input('UserID', sql.Int, parseInt(id));
+      passwordRequest.input('PasswordHash', sql.NVarChar(255), passwordHash);
+      await passwordRequest.query(`
+        UPDATE Users SET PasswordHash = @PasswordHash WHERE UserID = @UserID
+      `);
+    }
+
+    // Update user profile
+    const request = pool.request();
+    request.input('UserID', sql.Int, parseInt(id));
+    request.input('Name', sql.NVarChar(100), `${firstName || ''} ${lastName || ''}`.trim());
+    request.input('Phone', sql.NVarChar(20), phone || null);
+
+    await request.query(`
+      UPDATE Users 
+      SET Name = @Name, Phone = @Phone, UpdatedAt = GETDATE()
+      WHERE UserID = @UserID
+    `);
+
+    res.json({
+      success: true,
+      message: 'User profile updated successfully'
+    });
+
+  } catch (err) {
+    console.error('Update user error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update user',
       error: err.message
     });
   }
