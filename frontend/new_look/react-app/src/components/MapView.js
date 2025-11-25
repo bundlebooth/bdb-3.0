@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { getVendorBadges } from '../utils/helpers';
 
 function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false }) {
   const mapRef = useRef(null);
@@ -10,10 +11,27 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
   const isInitializingRef = useRef(false); // Prevent duplicate initialization
   const previousVendorsRef = useRef([]); // Track previous vendors to prevent unnecessary updates
 
+  // Helper function to create custom marker icon (grey by default, blue on hover/click)
+  const createMarkerIcon = useCallback((color = '#6B7280', isHovered = false) => {
+    // EXACT Airbnb style - simple round pin with pointed bottom
+    const size = isHovered ? 32 : 28;
+    const svg = `
+      <svg width="${size}" height="${size}" viewBox="0 0 27 43" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" fill-rule="evenodd">
+          <path d="M13.5 0C6.044 0 0 6.044 0 13.5c0 1.45.228 2.853.65 4.165C2.723 25.45 13.5 43 13.5 43s10.777-17.55 12.85-25.335c.422-1.312.65-2.715.65-4.165C27 6.044 20.956 0 13.5 0z" 
+                fill="${color}"/>
+          <ellipse fill="#FFFFFF" cx="13.5" cy="13.5" rx="5.5" ry="5.5"/>
+        </g>
+      </svg>
+    `;
+    
+    return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+  }, []);
+
   const createMiniVendorCardHTML = useCallback((vendor) => {
     const imageUrl = vendor.FeaturedImageURL || vendor.featuredImageURL || 
                      vendor.image || vendor.ImageURL || 
-                     'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+                     'https://via.placeholder.com/400x300/f5f5f5/999999?text=No+Image';
     
     const rawPrice = vendor.startingPrice ?? vendor.MinPriceNumeric ?? vendor.MinPrice ?? 
                      vendor.price ?? vendor.Price ?? vendor.HourlyRate ?? vendor.BasePrice;
@@ -31,30 +49,36 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
     const reviewCount = vendor.totalReviews ?? vendor.reviewCount ?? vendor.TotalReviews ?? 0;
     const locationText = [vendor.City || vendor.city, vendor.State || vendor.state].filter(Boolean).join(', ');
     const responseTime = vendor.ResponseTime || vendor.responseTime || 'within a few hours';
+    const businessName = vendor.BusinessName || vendor.name || 'Vendor';
     
+    // Get vendor badges
+    const badges = getVendorBadges(vendor);
+    const topBadges = badges.slice(0, 2); // Show max 2 badges
+    
+    // SMALL card, smaller image with border, left-aligned text, heart icon
     return `
-      <div style="width: 280px; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        <div style="position: relative; width: 100%; padding-top: 66.67%; overflow: hidden; border-radius: 12px; margin-bottom: 8px;">
-          <img src="${imageUrl}" alt="${vendor.BusinessName || vendor.name}" 
-               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;" />
+      <div style="width: 180px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+        <div style="padding: 4px 8px 8px 8px; background: white;">
+          <div style="position: relative; width: 100%; height: 100px; background-image: url('${imageUrl}'); background-size: cover; background-position: center center; background-repeat: no-repeat; background-color: #f5f5f5; border-radius: 6px;">
+            <div style="position: absolute; top: 6px; right: 6px;">
+              <div style="background: rgba(255,255,255,0.9); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="display: block; fill: none; height: 12px; width: 12px; stroke: #222; stroke-width: 2;">
+                  <path d="M16 28c7-4.73 14-10 14-17a6.98 6.98 0 0 0-7-7c-1.8 0-3.58.68-4.95 2.05L16 8.1l-2.05-2.05a6.98 6.98 0 0 0-9.9 0A6.98 6.98 0 0 0 2 11c0 7 7 12.27 14 17z"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
         </div>
-        <div style="padding: 4px 0;">
-          <div style="font-size: 14px; color: #0066CC; line-height: 18px; font-weight: 400; margin-bottom: 4px;">
-            ${vendor.BusinessName || vendor.name}
+        <div style="padding: 0 10px 10px 10px; text-align: left;">
+          <div style="font-size: 12px; color: #222; font-weight: 600; margin-bottom: 2px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            ${businessName}
           </div>
-          <div style="display: flex; align-items: center; gap: 4px; font-size: 13px; line-height: 16px; flex-wrap: wrap; margin-bottom: 4px;">
-            ${hourlyRate > 0 ? `<span style="font-weight: 400; color: #222222;">Starting from </span><span style="font-weight: 600; color: #222222;">$${hourlyRate}</span><span style="color: #222222; margin: 0 2px;">·</span>` : ''}
-            <span style="display: flex; align-items: center; gap: 2px;">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; height: 11px; width: 11px; fill: #0066CC;">
-                <path fill-rule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
-              </svg>
-              <span style="font-weight: 400; color: #222222;">${rating.toFixed(2)}</span>
-              ${reviewCount > 0 ? `<span style="color: #222222;"> (${reviewCount})</span>` : ''}
-            </span>
-            <span style="color: #222222; margin: 0 2px;">·</span>
-            <span style="color: #0066CC;">Responds ${responseTime}</span>
+          <div style="font-size: 13px; color: #222; font-weight: 700; margin-bottom: 1px;">
+            $${hourlyRate > 0 ? hourlyRate.toLocaleString() : '1,000'}<span style="font-weight: 400; font-size: 11px;">/hr</span>
           </div>
-          ${locationText ? `<div style="font-size: 13px; color: #222222; line-height: 16px;">${locationText}</div>` : ''}
+          <div style="font-size: 10px; color: #717171;">
+            ${responseTime}
+          </div>
         </div>
       </div>
     `;
@@ -82,11 +106,19 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
   }, [vendors]);
 
   const createMap = useCallback(() => {
-    if (!mapRef.current) return;
+    console.log('🗺️ createMap called');
+    console.log('mapRef.current:', mapRef.current);
+    console.log('window.google:', window.google);
+    
+    if (!mapRef.current) {
+      console.error('❌ mapRef.current is null!');
+      return;
+    }
 
     // Default center (can be updated based on user location)
     const defaultCenter = { lat: 40.7128, lng: -74.0060 }; // New York
 
+    console.log('Creating Google Map instance...');
     const map = new window.google.maps.Map(mapRef.current, {
       center: defaultCenter,
       zoom: 11,
@@ -111,7 +143,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
       updateVendorsInViewport();
     });
 
-    console.log('Google Maps initialized');
+    console.log('✅ Google Maps initialized successfully');
   }, [updateVendorsInViewport]);
 
   const initializeMap = useCallback(async () => {
@@ -174,14 +206,40 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
       console.log('✅ Adding marker for:', vendor.BusinessName || vendor.name, 'at', lat, lng);
 
       const position = { lat, lng };
+      
+      // Create grey marker by default
+      const greyIcon = createMarkerIcon('#6B7280', false);
+      const blueIcon = createMarkerIcon('#5E72E4', true);
+      
       const marker = new window.google.maps.Marker({
         position,
         map: mapInstanceRef.current,
         title: vendor.BusinessName || vendor.name,
         animation: window.google.maps.Animation.DROP,
         icon: {
-          url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-          scaledSize: new window.google.maps.Size(40, 40)
+          url: greyIcon,
+          scaledSize: new window.google.maps.Size(28, 43),
+          anchor: new window.google.maps.Point(14, 43)
+        }
+      });
+      
+      // Add hover effect - turn blue on mouseover
+      marker.addListener('mouseover', () => {
+        marker.setIcon({
+          url: blueIcon,
+          scaledSize: new window.google.maps.Size(32, 48),
+          anchor: new window.google.maps.Point(16, 48)
+        });
+      });
+      
+      // Return to grey on mouseout (unless InfoWindow is open)
+      marker.addListener('mouseout', () => {
+        if (!infoWindowRef.current || infoWindowRef.current.anchor !== marker) {
+          marker.setIcon({
+            url: greyIcon,
+            scaledSize: new window.google.maps.Size(28, 43),
+            anchor: new window.google.maps.Point(14, 43)
+          });
         }
       });
 
@@ -191,29 +249,103 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
 
       // Add click listener to show InfoWindow with mini vendor card
       marker.addListener('click', () => {
+        console.log('🔵 MARKER CLICKED:', vendor.BusinessName || vendor.name);
+        
+        // Reset all markers to grey
+        markersRef.current.forEach(m => {
+          if (m !== marker) {
+            m.setIcon({
+              url: greyIcon,
+              scaledSize: new window.google.maps.Size(28, 43),
+              anchor: new window.google.maps.Point(14, 43)
+            });
+          }
+        });
+        
+        // Keep clicked marker blue
+        marker.setIcon({
+          url: blueIcon,
+          scaledSize: new window.google.maps.Size(32, 48),
+          anchor: new window.google.maps.Point(16, 48)
+        });
+        
         // Close existing InfoWindow if any
         if (infoWindowRef.current) {
+          console.log('Closing existing InfoWindow');
           infoWindowRef.current.close();
         }
         
-        // Create new InfoWindow with mini vendor card
+        console.log('Creating InfoWindow...');
+        
+        // Create Airbnb-style vendor card
+        const cardHTML = createMiniVendorCardHTML(vendor);
+        console.log('Card HTML created, length:', cardHTML.length);
+        
+        // Create new InfoWindow with vendor card
         const infoWindow = new window.google.maps.InfoWindow({
-          content: createMiniVendorCardHTML(vendor),
-          maxWidth: 300
+          content: cardHTML,
+          maxWidth: 200
         });
         
-        infoWindow.open(mapInstanceRef.current, marker);
-        infoWindowRef.current = infoWindow;
+        console.log('Opening InfoWindow...');
         
-        // Add click listener to InfoWindow content to open full profile
+        try {
+          infoWindow.open(mapInstanceRef.current, marker);
+          infoWindowRef.current = infoWindow;
+          console.log('✅ InfoWindow opened successfully');
+        } catch (error) {
+          console.error('Error opening InfoWindow:', error);
+        }
+        
+        // Listen for close events to debug
+        window.google.maps.event.addListener(infoWindow, 'closeclick', () => {
+          console.log('❌ InfoWindow closed via closeclick event');
+          marker.setIcon({
+            url: greyIcon,
+            scaledSize: new window.google.maps.Size(28, 43),
+            anchor: new window.google.maps.Point(14, 43)
+          });
+        });
+        
+        // Style and add interactions when DOM is ready
         window.google.maps.event.addListener(infoWindow, 'domready', () => {
-          const content = document.querySelector('.gm-style-iw-c');
-          if (content) {
-            content.style.cursor = 'pointer';
-            content.addEventListener('click', () => {
-              if (onVendorSelect) {
-                onVendorSelect(marker.vendorId);
-              }
+          console.log('✅ InfoWindow DOM ready');
+          
+          // HIDE Google's default close button
+          const closeButton = document.querySelector('button[title="Close"]');
+          if (closeButton) {
+            closeButton.style.display = 'none';
+          }
+          
+          // Style ALL InfoWindow containers to CENTER content
+          const iwContainer = document.querySelector('.gm-style-iw-c');
+          if (iwContainer) {
+            iwContainer.style.padding = '0';
+            iwContainer.style.borderRadius = '8px';
+            iwContainer.style.overflow = 'hidden';
+            iwContainer.style.textAlign = 'center';
+            iwContainer.style.display = 'flex';
+            iwContainer.style.justifyContent = 'center';
+            iwContainer.style.alignItems = 'center';
+          }
+          
+          // Fix the inner content container
+          const iwContent = document.querySelector('.gm-style-iw-d');
+          if (iwContent) {
+            iwContent.style.overflow = 'hidden';
+            iwContent.style.textAlign = 'center';
+            iwContent.style.display = 'flex';
+            iwContent.style.justifyContent = 'center';
+            iwContent.style.alignItems = 'center';
+          }
+          
+          // Click on card to open vendor profile
+          const cardDiv = document.querySelector('.gm-style-iw-c > div');
+          if (cardDiv && onVendorSelect) {
+            cardDiv.style.cursor = 'pointer';
+            cardDiv.addEventListener('click', () => {
+              console.log('Card clicked, opening vendor profile');
+              onVendorSelect(marker.vendorId);
             });
           }
         });
@@ -248,25 +380,30 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
         markers: markersRef.current
       });
     }
-  }, [vendors, onVendorSelect, createMiniVendorCardHTML]);
+  }, [vendors, onVendorSelect, createMiniVendorCardHTML, createMarkerIcon]);
 
   const highlightMarker = useCallback((vendorId) => {
+    const greyIcon = createMarkerIcon('#6B7280', false);
+    const blueIcon = createMarkerIcon('#5E72E4', true);
+    
     markersRef.current.forEach(marker => {
       if (marker.vendorId === vendorId) {
         marker.setIcon({
-          url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-          scaledSize: new window.google.maps.Size(50, 50)
+          url: blueIcon,
+          scaledSize: new window.google.maps.Size(32, 48),
+          anchor: new window.google.maps.Point(16, 48)
         });
         marker.setAnimation(window.google.maps.Animation.BOUNCE);
         setTimeout(() => marker.setAnimation(null), 2000);
       } else {
         marker.setIcon({
-          url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-          scaledSize: new window.google.maps.Size(40, 40)
+          url: greyIcon,
+          scaledSize: new window.google.maps.Size(28, 43),
+          anchor: new window.google.maps.Point(14, 43)
         });
       }
     });
-  }, []);
+  }, [createMarkerIcon]);
 
   // Initialize map ONCE on mount
   useEffect(() => {
@@ -307,11 +444,13 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
       if (highlight) {
         highlightMarker(vendorId);
       } else {
-        // Reset all markers to default
+        // Reset all markers to grey
+        const greyIcon = createMarkerIcon('#6B7280', false);
         markersRef.current.forEach(marker => {
           marker.setIcon({
-            url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
-            scaledSize: new window.google.maps.Size(40, 40)
+            url: greyIcon,
+            scaledSize: new window.google.maps.Size(28, 43),
+            anchor: new window.google.maps.Point(14, 43)
           });
         });
       }
@@ -320,7 +459,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
     return () => {
       delete window.highlightMapMarker;
     };
-  }, [highlightMarker]);
+  }, [highlightMarker, createMarkerIcon]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '500px' }}>
