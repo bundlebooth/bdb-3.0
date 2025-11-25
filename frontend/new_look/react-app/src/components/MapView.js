@@ -28,12 +28,29 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
   }, []);
 
   const createMiniVendorCardHTML = useCallback((vendor) => {
-    const imageUrl = vendor.FeaturedImageURL || vendor.featuredImageURL || 
-                     vendor.image || vendor.ImageURL || 
-                     'https://via.placeholder.com/400x300/f5f5f5/999999?text=No+Image';
+    // Image URL resolution - match VendorCard.js
+    const imageUrl = vendor.FeaturedImageURL || 
+                     vendor.featuredImageURL ||
+                     vendor.featuredImageUrl ||
+                     vendor.FeaturedImageUrl ||
+                     vendor.image || 
+                     vendor.ImageURL ||
+                     vendor.imageURL ||
+                     vendor.imageUrl ||
+                     vendor.ProfileImageURL ||
+                     vendor.profileImage ||
+                     vendor.featuredImage?.url || 
+                     vendor.featuredImage?.thumbnailUrl || 
+                     (vendor.images && vendor.images.length > 0 ? vendor.images[0].url : null) ||
+                     'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
     
+    // Premium status
+    const isPremium = vendor.IsPremium || vendor.isPremium || false;
+    
+    // Price resolution
     const rawPrice = vendor.startingPrice ?? vendor.MinPriceNumeric ?? vendor.MinPrice ?? 
-                     vendor.price ?? vendor.Price ?? vendor.HourlyRate ?? vendor.BasePrice;
+                     vendor.price ?? vendor.Price ?? vendor.minPrice ?? vendor.starting_price ?? 
+                     vendor.HourlyRate ?? vendor.BasePrice;
     let hourlyRate = 0;
     if (rawPrice !== undefined && rawPrice !== null && rawPrice !== '') {
       if (typeof rawPrice === 'number') {
@@ -44,39 +61,130 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
       }
     }
     
-    const rating = parseFloat(vendor.averageRating ?? vendor.rating ?? vendor.AverageRating ?? 0) || 5.0;
+    // Rating and reviews
+    const rating = (() => {
+      const r = parseFloat(vendor.averageRating ?? vendor.rating ?? vendor.AverageRating ?? 0);
+      return isNaN(r) || r === 0 ? 0 : r;
+    })();
     const reviewCount = vendor.totalReviews ?? vendor.reviewCount ?? vendor.TotalReviews ?? 0;
-    const locationText = [vendor.City || vendor.city, vendor.State || vendor.state].filter(Boolean).join(', ');
+    
+    // Location
+    const locCity = vendor.City || vendor.city || '';
+    const locState = vendor.State || vendor.state || '';
+    const locationText = (vendor.location && vendor.location.trim()) || 
+                        [locCity, locState].filter(Boolean).join(', ');
+    
+    // Response time
     const responseTime = vendor.ResponseTime || vendor.responseTime || 'within a few hours';
     const businessName = vendor.BusinessName || vendor.name || 'Vendor';
     
-    // No badges needed for map cards
-    
-    // SMALL card, smaller image with border, left-aligned text, heart icon
+    // Match the main vendor card style with proper image display - smaller size for map
     return `
-      <div style="width: 180px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-        <div style="padding: 4px 8px 8px 8px; background: white;">
-          <div style="position: relative; width: 100%; height: 100px; background-image: url('${imageUrl}'); background-size: cover; background-position: center center; background-repeat: no-repeat; background-color: #f5f5f5; border-radius: 6px;">
-            <div style="position: absolute; top: 6px; right: 6px;">
-              <div style="background: rgba(255,255,255,0.9); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
-                <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="display: block; fill: none; height: 12px; width: 12px; stroke: #222; stroke-width: 2;">
+      <div class="map-vendor-card" style="width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer;">
+        <!-- Image Container with padding to create border effect -->
+        <div style="padding: 2px 6px 0 6px;">
+          <div style="position: relative; width: 100%; padding-top: 66.67%; overflow: hidden; border-radius: 6px;">
+            <img 
+              src="${imageUrl}" 
+              alt="${businessName}"
+              onerror="this.src='https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;"
+            />
+            
+            ${isPremium ? `
+            <div style="position: absolute; top: 8px; left: 8px; background: white; color: #222222; padding: 4px 8px; border-radius: 16px; font-size: 10px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 3px;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="display: block; height: 11px; width: 11px; fill: #FF385C;">
+                <path d="M8 12.5l-4.5 2.5 1-5L0 6l5-.5L8 1l3 4.5 5 .5-4.5 4 1 5z"/>
+              </svg>
+              Guest favorite
+            </div>
+            ` : ''}
+            
+            <!-- Heart and Share Icons -->
+            <div style="position: absolute; top: 8px; right: 8px; display: flex; gap: 6px;">
+              <button onclick="event.stopPropagation();" style="background: rgba(255,255,255,0.9); border: none; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; fill: none; height: 14px; width: 14px; stroke: rgba(0,0,0,0.5); stroke-width: 2; overflow: visible;">
                   <path d="M16 28c7-4.73 14-10 14-17a6.98 6.98 0 0 0-7-7c-1.8 0-3.58.68-4.95 2.05L16 8.1l-2.05-2.05a6.98 6.98 0 0 0-9.9 0A6.98 6.98 0 0 0 2 11c0 7 7 12.27 14 17z"></path>
                 </svg>
-              </div>
+              </button>
+              <button onclick="event.stopPropagation();" style="background: rgba(255,255,255,0.9); border: none; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; fill: none; height: 14px; width: 14px; stroke: rgba(0,0,0,0.5); stroke-width: 2; overflow: visible;">
+                  <g fill="none">
+                    <path d="M27 18v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9"></path>
+                    <polyline points="16 3 16 17"></polyline>
+                    <polyline points="22 10 16 3 10 10"></polyline>
+                  </g>
+                </svg>
+              </button>
             </div>
           </div>
         </div>
-        <div style="padding: 0 10px 10px 10px; text-align: left;">
-          <div style="font-size: 12px; color: #222; font-weight: 600; margin-bottom: 2px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+        
+        <!-- Card Content -->
+        <div style="padding: 10px; display: flex; flex-direction: column; gap: 3px;">
+          <!-- Business Name - Blue Link Style -->
+          <div style="font-size: 13px; color: #0066CC; line-height: 18px; font-weight: 400;">
             ${businessName}
           </div>
-          <div style="font-size: 13px; color: #222; font-weight: 700; margin-bottom: 1px;">
-            $${hourlyRate > 0 ? hourlyRate.toLocaleString() : '1,000'}<span style="font-weight: 400; font-size: 11px;">/hr</span>
+          
+          <!-- Price, Rating, Response Time -->
+          <div style="display: flex; align-items: center; gap: 3px; font-size: 12px; line-height: 16px; flex-wrap: wrap;">
+            ${hourlyRate > 0 ? `
+              <span style="font-weight: 400; color: #222222;">Starting from </span>
+              <span style="font-weight: 600; color: #222222;">$${hourlyRate}</span>
+              <span style="color: #222222; margin: 0 2px;">·</span>
+            ` : ''}
+            
+            <!-- Rating with blue star -->
+            <span style="display: flex; align-items: center; gap: 2px;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="display: block; height: 11px; width: 11px; fill: #0066CC;">
+                <path fill-rule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
+              </svg>
+              <span style="font-weight: 400; color: #222222;">
+                ${rating > 0 ? rating.toFixed(1) : '5.0'}
+              </span>
+              <span style="color: #222222;">
+                ${reviewCount > 0 ? `(${reviewCount})` : '(0)'}
+              </span>
+            </span>
+            
+            <span style="color: #222222; margin: 0 2px;">·</span>
+            
+            <!-- Response Time - Blue -->
+            <span style="color: #0066CC;">Responds ${responseTime}</span>
           </div>
-          <div style="font-size: 10px; color: #717171;">
-            ${responseTime}
+          
+          <!-- Location -->
+          ${locationText ? `
+          <div style="font-size: 12px; color: #222222; line-height: 16px;">
+            ${locationText}
           </div>
+          ` : ''}
         </div>
+      </div>
+    `;
+  }, []);
+
+  const createLoadingSkeletonHTML = useCallback(() => {
+    return `
+      <div style="width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <!-- Image Skeleton -->
+        <div style="position: relative; width: 100%; padding-top: 66.67%; overflow: hidden; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite;">
+        </div>
+        
+        <!-- Content Skeleton -->
+        <div style="padding: 10px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="height: 18px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; width: 70%;"></div>
+          <div style="height: 16px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; width: 90%;"></div>
+          <div style="height: 16px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; width: 50%;"></div>
+        </div>
+        
+        <style>
+          @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+          }
+        </style>
       </div>
     `;
   }, []);
@@ -272,29 +380,31 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
           infoWindowRef.current.close();
         }
         
-        console.log('Creating InfoWindow...');
+        console.log('Creating InfoWindow with loading skeleton...');
         
-        // Create Airbnb-style vendor card
-        const cardHTML = createMiniVendorCardHTML(vendor);
-        console.log('Card HTML created, length:', cardHTML.length);
-        
-        // Create new InfoWindow with vendor card
+        // Show loading skeleton first
+        const loadingHTML = createLoadingSkeletonHTML();
         const infoWindow = new window.google.maps.InfoWindow({
-          content: cardHTML,
-          maxWidth: 200
+          content: loadingHTML,
+          maxWidth: 240
         });
-        
-        console.log('Opening InfoWindow...');
         
         try {
           infoWindow.open(mapInstanceRef.current, marker);
           infoWindowRef.current = infoWindow;
-          console.log('✅ InfoWindow opened successfully');
+          console.log('✅ Loading skeleton displayed');
+          
+          // After a brief delay, replace with actual card content
+          setTimeout(() => {
+            const cardHTML = createMiniVendorCardHTML(vendor);
+            infoWindow.setContent(cardHTML);
+            console.log('✅ Actual card content loaded');
+          }, 300);
         } catch (error) {
           console.error('Error opening InfoWindow:', error);
         }
         
-        // Listen for close events to debug
+        // Listen for close events
         window.google.maps.event.addListener(infoWindow, 'closeclick', () => {
           console.log('❌ InfoWindow closed via closeclick event');
           marker.setIcon({
@@ -314,35 +424,28 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
             closeButton.style.display = 'none';
           }
           
-          // Style ALL InfoWindow containers to CENTER content
+          // Style InfoWindow containers
           const iwContainer = document.querySelector('.gm-style-iw-c');
           if (iwContainer) {
             iwContainer.style.padding = '0';
-            iwContainer.style.borderRadius = '8px';
+            iwContainer.style.borderRadius = '12px';
             iwContainer.style.overflow = 'hidden';
-            iwContainer.style.textAlign = 'center';
-            iwContainer.style.display = 'flex';
-            iwContainer.style.justifyContent = 'center';
-            iwContainer.style.alignItems = 'center';
           }
           
-          // Fix the inner content container
           const iwContent = document.querySelector('.gm-style-iw-d');
           if (iwContent) {
             iwContent.style.overflow = 'hidden';
-            iwContent.style.textAlign = 'center';
-            iwContent.style.display = 'flex';
-            iwContent.style.justifyContent = 'center';
-            iwContent.style.alignItems = 'center';
+            iwContent.style.padding = '0';
           }
           
-          // Click on card to open vendor profile
-          const cardDiv = document.querySelector('.gm-style-iw-c > div');
-          if (cardDiv && onVendorSelect) {
-            cardDiv.style.cursor = 'pointer';
+          // Click on card to navigate to vendor profile page
+          const cardDiv = document.querySelector('.map-vendor-card');
+          if (cardDiv) {
             cardDiv.addEventListener('click', () => {
-              console.log('Card clicked, opening vendor profile');
-              onVendorSelect(marker.vendorId);
+              console.log('Card clicked, navigating to vendor profile');
+              const vendorId = marker.vendorId;
+              // Navigate to vendor profile page
+              window.location.href = `/vendor/${vendorId}`;
             });
           }
         });

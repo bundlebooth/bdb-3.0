@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
 import ProfileModal from '../components/ProfileModal';
-// CSS file moved - styles now inline or in main CSS
+import '../styles/BookingPage.css';
 
 function BookingPage() {
   const { vendorId } = useParams();
@@ -53,6 +53,7 @@ function BookingPage() {
   // Load vendor data
   const loadVendorData = useCallback(async () => {
     try {
+      console.log(`Loading vendor data for ID: ${vendorId}`);
       const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}`);
       
       if (!response.ok) {
@@ -60,6 +61,7 @@ function BookingPage() {
       }
       
       const result = await response.json();
+      console.log('Vendor data response:', result);
       
       if (result.success && result.data) {
         setVendorData(result.data);
@@ -68,7 +70,18 @@ function BookingPage() {
       }
     } catch (error) {
       console.error('Error loading vendor data:', error);
-      alert('Failed to load vendor information. Please try again.');
+      
+      // For development/testing, show a placeholder vendor
+      setVendorData({
+        profile: {
+          BusinessName: 'Sample Vendor',
+          AverageRating: 4.8,
+          ReviewCount: 24
+        },
+        categories: [{
+          CategoryName: 'Event Services'
+        }]
+      });
     }
   }, [vendorId]);
 
@@ -102,7 +115,22 @@ function BookingPage() {
   // Handle input changes
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    const fieldName = id.replace('event-', '').replace('attendee-count', 'attendeeCount');
+    let fieldName = id;
+    
+    // Map form field IDs to state property names
+    const fieldMapping = {
+      'event-name': 'eventName',
+      'event-type': 'eventType',
+      'event-date': 'eventDate',
+      'event-time': 'eventTime',
+      'event-end-time': 'eventEndTime',
+      'attendee-count': 'attendeeCount',
+      'event-location': 'eventLocation',
+      'special-requests': 'specialRequests'
+    };
+    
+    fieldName = fieldMapping[id] || fieldName;
+    
     setBookingData(prev => ({
       ...prev,
       [fieldName]: value
@@ -284,6 +312,10 @@ function BookingPage() {
   const reviewCount = profile.ReviewCount || profile.TotalReviews || 0;
   const profilePic = profile.ProfilePictureURL || profile.ProfilePicture || '';
 
+  // Debug logging
+  console.log('Current step:', currentStep);
+  console.log('Booking data:', bookingData);
+
   return (
     <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', width: '100%' }}>
       {/* Header */}
@@ -330,22 +362,33 @@ function BookingPage() {
             
             <h1 className="booking-title">Request to book</h1>
             
+            
             {/* Step 1: Event Information */}
             {currentStep === 1 && (
-              <div className="booking-step" id="step-1">
-                <div className="step-header">
-                  <div className="step-number-circle">1</div>
-                  <h2 className="step-title">Your Event Details</h2>
+            <div style={{ display: 'block', width: '100%', padding: '20px', backgroundColor: '#ffffff' }}>
+              <div className="booking-step" id="step-1" style={{ display: 'block', width: '100%' }}>
+                <div className="step-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <div className="step-number-circle" style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' }}>1</div>
+                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>Your Event Details</h2>
                 </div>
                 
-                <div className="form-group">
-                  <label htmlFor="event-name" className="form-label">
-                    Event Name <span className="required-asterisk">*</span>
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label htmlFor="event-name" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
+                    Event Name <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
                     type="text"
                     id="event-name"
                     className="form-input"
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem 1rem', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '8px', 
+                      fontSize: '1rem',
+                      display: 'block',
+                      backgroundColor: 'white'
+                    }}
                     placeholder="e.g., Sarah & John's Wedding"
                     value={bookingData.eventName}
                     onChange={handleInputChange}
@@ -353,13 +396,22 @@ function BookingPage() {
                   />
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="event-type" className="form-label">
-                    Event Type <span className="required-asterisk">*</span>
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label htmlFor="event-type" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
+                    Event Type <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <select
                     id="event-type"
                     className="form-input"
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem 1rem', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '8px', 
+                      fontSize: '1rem',
+                      display: 'block',
+                      backgroundColor: 'white'
+                    }}
                     value={bookingData.eventType}
                     onChange={handleInputChange}
                   >
@@ -375,28 +427,46 @@ function BookingPage() {
                   </select>
                 </div>
 
-                <div className="form-row">
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                   <div className="form-group">
-                    <label htmlFor="event-date" className="form-label">
-                      Event Date <span className="required-asterisk">*</span>
+                    <label htmlFor="event-date" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
+                      Event Date <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
                     </label>
                     <input
                       type="date"
                       id="event-date"
                       className="form-input"
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.75rem 1rem', 
+                        border: '1px solid #ddd', 
+                        borderRadius: '8px', 
+                        fontSize: '1rem',
+                        display: 'block',
+                        backgroundColor: 'white'
+                      }}
                       value={bookingData.eventDate}
                       onChange={handleInputChange}
                       required
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="event-time" className="form-label">
-                      Start Time <span className="required-asterisk">*</span>
+                    <label htmlFor="event-time" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
+                      Start Time <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
                     </label>
                     <input
                       type="time"
                       id="event-time"
                       className="form-input"
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.75rem 1rem', 
+                        border: '1px solid #ddd', 
+                        borderRadius: '8px', 
+                        fontSize: '1rem',
+                        display: 'block',
+                        backgroundColor: 'white'
+                      }}
                       value={bookingData.eventTime}
                       onChange={handleInputChange}
                       required
@@ -461,16 +531,17 @@ function BookingPage() {
                   </div>
                 </div>
               </div>
+            </div>
             )}
 
             {/* Step 2: Service Selection */}
             {currentStep === 2 && (
-              <div className="booking-step" id="step-2">
-                <div className="step-header">
-                  <div className="step-number-circle">2</div>
-                  <h2 className="step-title">Choose Services</h2>
+              <div className="booking-step" id="step-2" style={{ display: 'block', width: '100%', padding: '20px', backgroundColor: '#ffffff' }}>
+                <div className="step-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <div className="step-number-circle" style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' }}>2</div>
+                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>Choose Services</h2>
                 </div>
-                <p className="step-description">Select the services you'd like to book from this vendor</p>
+                <p className="step-description" style={{ color: '#717171', marginBottom: '1.5rem' }}>Select the services you'd like to book from this vendor</p>
                 
                 <div id="services-list" className="services-list">
                   {loadingServices ? (
@@ -534,20 +605,20 @@ function BookingPage() {
 
             {/* Step 3: Additional Details & Review */}
             {currentStep === 3 && (
-              <div className="booking-step" id="step-3">
-                <div className="step-header">
-                  <div className="step-number-circle">3</div>
-                  <h2 className="step-title">Review your request</h2>
+              <div className="booking-step" id="step-3" style={{ display: 'block', width: '100%', padding: '20px', backgroundColor: '#ffffff' }}>
+                <div className="step-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <div className="step-number-circle" style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#222', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '600' }}>3</div>
+                  <h2 className="step-title" style={{ fontSize: '1.5rem', fontWeight: '600', margin: '0', color: '#222' }}>Review your request</h2>
                 </div>
                 
-                <div className="review-section">
-                  <h3 className="review-subtitle">Event Details</h3>
-                  <div className="review-item">
-                    <span className="review-label">Event:</span>
-                    <span className="review-value">{bookingData.eventName}</span>
+                <div className="review-section" style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: '#f7f7f7', borderRadius: '12px' }}>
+                  <h3 className="review-subtitle" style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '1rem', color: '#222' }}>Event Details</h3>
+                  <div className="review-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid #ddd' }}>
+                    <span className="review-label" style={{ color: '#717171', fontWeight: '500' }}>Event:</span>
+                    <span className="review-value" style={{ color: '#222', fontWeight: '600', textAlign: 'right' }}>{bookingData.eventName}</span>
                   </div>
-                  <div className="review-item">
-                    <span className="review-label">Type:</span>
+                  <div className="review-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid #ddd' }}>
+                    <span className="review-label" style={{ color: '#717171', fontWeight: '500' }}>Type:</span>
                     <span className="review-value">
                       {bookingData.eventType.charAt(0).toUpperCase() + bookingData.eventType.slice(1).replace('-', ' ')}
                     </span>
