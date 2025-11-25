@@ -6,6 +6,7 @@ import { showBanner } from '../../../utils/helpers';
 function BusinessInformationPanel({ onBack, vendorProfileId }) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     businessName: '',
@@ -18,7 +19,8 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     tagline: '',
     category: '',
     additionalCategories: [],
-    priceLevel: '$$'
+    priceLevel: '$$',
+    logoUrl: ''
   });
 
   useEffect(() => {
@@ -54,6 +56,51 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     }
   };
 
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showBanner('Please select an image file', 'error');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showBanner('Image size must be less than 5MB', 'error');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formDataUpload = new FormData();
+      formDataUpload.append('logo', file);
+
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/logo`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formDataUpload
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const imageUrl = data.logoUrl || data.url;
+        setFormData(prev => ({ ...prev, logoUrl: imageUrl }));
+        showBanner('Logo updated successfully!', 'success');
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      showBanner('Failed to upload logo', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const loadProfileData = async () => {
     try {
       setLoading(true);
@@ -80,7 +127,8 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
           tagline: profile.Tagline || '',
           category: categoriesArray[0] || '',
           additionalCategories: categoriesArray.slice(1),
-          priceLevel: profile.PriceLevel || '$$'
+          priceLevel: profile.PriceLevel || '$$',
+          logoUrl: profile.LogoURL || profile.FeaturedImageURL || profile.logoUrl || ''
         });
       } else if (response.status === 404) {
         console.warn('Profile not found (404) - this may be a new vendor profile');
@@ -187,6 +235,57 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
         
         <form id="vendor-profile-form" onSubmit={handleSubmit}>
+          {/* Business Logo */}
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text)' }}>
+            Business Logo
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ 
+              width: '120px', 
+              height: '120px', 
+              borderRadius: '50%', 
+              overflow: 'hidden', 
+              border: '3px solid var(--border)',
+              background: 'var(--secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {formData.logoUrl ? (
+                <img 
+                  src={formData.logoUrl} 
+                  alt="Business Logo" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <i className="fas fa-building" style={{ fontSize: '3rem', color: 'var(--text-light)' }}></i>
+              )}
+            </div>
+            <div>
+              <button 
+                type="button"
+                className="btn btn-outline"
+                onClick={() => document.getElementById('logo-upload-input').click()}
+                disabled={uploading}
+                style={{ marginBottom: '0.5rem' }}
+              >
+                <i className="fas fa-upload"></i> {uploading ? 'Uploading...' : 'Upload Logo'}
+              </button>
+              <input
+                type="file"
+                id="logo-upload-input"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                style={{ display: 'none' }}
+              />
+              <p style={{ color: 'var(--text-light)', fontSize: '0.85rem', margin: 0 }}>
+                JPG, PNG or SVG. Max size 5MB.
+              </p>
+            </div>
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '2rem 0' }} />
+
           <div className="form-row">
             <div className="form-col">
               <div className="form-group">

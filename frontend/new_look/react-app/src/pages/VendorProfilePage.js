@@ -789,44 +789,66 @@ function VendorProfilePage() {
         {/* Vendor Title and Rating - BELOW Gallery */}
         <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-            <div style={{ flex: 1 }}>
-              <h1 style={{ fontSize: '1.625rem', fontWeight: 600, marginBottom: '0.5rem', color: '#222', lineHeight: 1.25 }}>
-                {profile.BusinessName || profile.DisplayName}
-              </h1>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              {/* Business Logo */}
+              {(profile.LogoURL || profile.FeaturedImageURL) && (
+                <div style={{ 
+                  width: '80px', 
+                  height: '80px', 
+                  borderRadius: '50%', 
+                  overflow: 'hidden', 
+                  border: '2px solid var(--border)',
+                  background: 'var(--secondary)',
+                  flexShrink: 0
+                }}>
+                  <img 
+                    src={profile.LogoURL || profile.FeaturedImageURL} 
+                    alt={`${profile.BusinessName || profile.DisplayName} logo`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
+                </div>
+              )}
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
-                {/* Rating with blue star */}
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
-                    display: 'block', 
-                    height: '14px', 
-                    width: '14px', 
-                    fill: '#0066CC'
-                  }}>
-                    <path fillRule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
-                  </svg>
-                  <span style={{ fontWeight: 600, color: '#000' }}>
-                    {reviews.length > 0 ? '4.9' : '5.0'}
-                  </span>
-                  {reviews.length > 0 && (
-                    <span style={{ color: '#717171' }}>({reviews.length})</span>
-                  )}
-                </span>
-                
-                <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
-                
-                {/* Location */}
-                {(profile.City || profile.State) && (
-                  <>
-                    <span style={{ color: '#000', textDecoration: 'underline', fontWeight: 500, cursor: 'pointer' }}>
-                      {[profile.City, profile.State, profile.Country].filter(Boolean).join(', ')}
+              <div style={{ flex: 1 }}>
+                <h1 style={{ fontSize: '1.625rem', fontWeight: 600, marginBottom: '0.5rem', color: '#222', lineHeight: 1.25 }}>
+                  {profile.BusinessName || profile.DisplayName}
+                </h1>
+              
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
+                  {/* Rating with blue star */}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
+                      display: 'block', 
+                      height: '14px', 
+                      width: '14px', 
+                      fill: '#0066CC'
+                    }}>
+                      <path fillRule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
+                    </svg>
+                    <span style={{ fontWeight: 600, color: '#000' }}>
+                      {reviews.length > 0 ? '4.9' : '5.0'}
                     </span>
-                    <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
-                  </>
-                )}
-                
-                {/* Category */}
-                <span style={{ color: '#000' }}>{profile.Tagline || profile.CategoryName || 'Event Services'}</span>
+                    {reviews.length > 0 && (
+                      <span style={{ color: '#717171' }}>({reviews.length})</span>
+                    )}
+                  </span>
+                  
+                  <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
+                  
+                  {/* Location */}
+                  {(profile.City || profile.State) && (
+                    <>
+                      <span style={{ color: '#000', textDecoration: 'underline', fontWeight: 500, cursor: 'pointer' }}>
+                        {[profile.City, profile.State, profile.Country].filter(Boolean).join(', ')}
+                      </span>
+                      <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
+                    </>
+                  )}
+                  
+                  {/* Category */}
+                  <span style={{ color: '#000' }}>{profile.Tagline || profile.CategoryName || 'Event Services'}</span>
+                </div>
               </div>
             </div>
 

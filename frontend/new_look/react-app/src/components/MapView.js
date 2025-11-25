@@ -29,7 +29,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
 
   const createMiniVendorCardHTML = useCallback((vendor) => {
     // Image URL resolution - match VendorCard.js
-    const imageUrl = vendor.FeaturedImageURL || 
+    const imageUrl = vendor.LogoURL || 
+                     vendor.FeaturedImageURL || 
                      vendor.featuredImageURL ||
                      vendor.featuredImageUrl ||
                      vendor.FeaturedImageUrl ||
@@ -220,13 +221,26 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
       return;
     }
 
-    // Default center (can be updated based on user location)
-    const defaultCenter = { lat: 40.7128, lng: -74.0060 }; // New York
+    // Center on vendors if available, otherwise use a generic US center
+    let mapCenter = { lat: 39.8283, lng: -98.5795 }; // Geographic center of US
+    let mapZoom = 4; // Zoomed out to show whole US
+    
+    // If we have vendors, center on them
+    if (vendors && vendors.length > 0) {
+      const validVendors = vendors.filter(v => v.Latitude && v.Longitude);
+      if (validVendors.length > 0) {
+        // Calculate center of all vendors
+        const avgLat = validVendors.reduce((sum, v) => sum + parseFloat(v.Latitude), 0) / validVendors.length;
+        const avgLng = validVendors.reduce((sum, v) => sum + parseFloat(v.Longitude), 0) / validVendors.length;
+        mapCenter = { lat: avgLat, lng: avgLng };
+        mapZoom = validVendors.length === 1 ? 13 : 10; // Closer zoom if we have vendors
+      }
+    }
 
     console.log('Creating Google Map instance...');
     const map = new window.google.maps.Map(mapRef.current, {
-      center: defaultCenter,
-      zoom: 11,
+      center: mapCenter,
+      zoom: mapZoom,
       mapTypeControl: true,
       streetViewControl: false,
       fullscreenControl: true,

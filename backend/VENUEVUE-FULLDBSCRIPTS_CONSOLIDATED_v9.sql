@@ -1494,12 +1494,11 @@ END;
 GO
     
 -- Enhanced vendor search procedure with location filtering
-SET ANSI_NULLS ON
 GO
-SET QUOTED_IDENTIFIER ON
+SET QUOTED_IDENTIFIER OFF
 GO
 
-CREATE OR ALTER   PROCEDURE [dbo].[sp_SearchVendors]
+CREATE   PROCEDURE [dbo].[sp_SearchVendors]
     @SearchTerm NVARCHAR(100) = NULL,
     @Category NVARCHAR(50) = NULL,
     @MinPrice DECIMAL(10, 2) = NULL,
@@ -1599,87 +1598,97 @@ BEGIN
             (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS PrimaryCategory,
             (SELECT STRING_AGG(vc.Category, '', '') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
             CASE 
-                WHEN v.Latitude BETWEEN 35.0 AND 45.0 AND v.Longitude BETWEEN -80.0 AND -70.0 THEN ''north''
-                WHEN v.Latitude BETWEEN 30.0 AND 35.0 AND v.Longitude BETWEEN -85.0 AND -75.0 THEN ''south''
-                WHEN v.Latitude BETWEEN 38.0 AND 42.0 AND v.Longitude BETWEEN -90.0 AND -80.0 THEN ''midwest''
-                WHEN v.Latitude BETWEEN 32.0 AND 40.0 AND v.Longitude BETWEEN -120.0 AND -100.0 THEN ''west''
-                ELSE ''other''
-            END AS Region'
-            + @DistanceCalculation + '
+                WHEN v.IsPremium = 1 THEN 3
+                WHEN (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) >= 4.5 THEN 2
+                ELSE 1
+            END AS RecommendationScore' + @DistanceCalculation + '
         FROM VendorProfiles v
+        JOIN Users u ON v.UserID = u.UserID
         OUTER APPLY (
             SELECT TOP 1 
-                -- Effective price based on pricing model
-                CASE 
-                    WHEN s.PricingModel = ''time_based'' THEN ISNULL(NULLIF(s.MinimumBookingFee, 0), s.BaseRate)
-                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
-                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN s.PricePerPerson
-                    ELSE s.Price
-                END AS MinPrice,
+                COALESCE(
+                    CASE 
+                        WHEN s.PricingModel = ''time_based'' THEN NULLIF(ISNULL(s.MinimumBookingFee, 0), 0)
+                        ELSE NULL
+                    END,
+                    CASE 
+                        WHEN s.PricingModel = ''time_based'' THEN s.BaseRate
+                        WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
+                        WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN CASE WHEN @BudgetType = ''per_person'' THEN s.PricePerPerson ELSE s.Price END
+                        ELSE s.Price
+                    END,
+                    0
+                ) AS MinPrice,
                 s.Name AS MinServiceName
-            FROM Services s 
-            JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID 
-            WHERE sc.VendorProfileID = v.VendorProfileID AND s.IsActive = 1
-                AND (@PricingModelFilter IS NULL OR s.PricingModel = @PricingModelFilter)
-                AND (@FixedPricingTypeFilter IS NULL OR s.FixedPricingType = @FixedPricingTypeFilter)
-            ORDER BY 
+            FROM Services s
+            WHERE s.VendorProfileID = v.VendorProfileID AND s.IsActive = 1
+            ORDER BY COALESCE(
                 CASE 
-                    WHEN s.PricingModel = ''time_based'' THEN ISNULL(NULLIF(s.MinimumBookingFee, 0), s.BaseRate)
+                    WHEN s.PricingModel = ''time_based'' THEN NULLIF(ISNULL(s.MinimumBookingFee, 0), 0)
+                    ELSE NULL
+                END,
+                CASE 
+                    WHEN s.PricingModel = ''time_based'' THEN s.BaseRate
                     WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''fixed_price'' THEN s.FixedPrice
-                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN s.PricePerPerson
+                    WHEN s.PricingModel = ''fixed_based'' AND s.FixedPricingType = ''per_attendee'' THEN CASE WHEN @BudgetType = ''per_person'' THEN s.PricePerPerson ELSE s.Price END
                     ELSE s.Price
-                END ASC
+                END,
+                999999
+            ) ASC
         ) AS MinSvc
-        JOIN Users u ON v.UserID = u.UserID
         WHERE u.IsActive = 1
-        AND v.IsVerified = 1
-        AND (@SearchTerm IS NULL OR v.BusinessName LIKE ''%'' + @SearchTerm + ''%'' OR v.BusinessDescription LIKE ''%'' + @SearchTerm + ''%'')
-        AND (@Category IS NULL OR EXISTS (SELECT 1 FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category = @Category))
-        AND (@IsPremium IS NULL OR v.IsPremium = @IsPremium)
-        AND (@IsEcoFriendly IS NULL OR v.IsEcoFriendly = @IsEcoFriendly)
-        AND (@IsAwardWinning IS NULL OR v.IsAwardWinning = @IsAwardWinning)
-        AND (@IsLastMinute IS NULL OR v.IsLastMinute = @IsLastMinute)
-        AND (@IsCertified IS NULL OR v.IsCertified = @IsCertified)
-        AND (@IsInsured IS NULL OR v.IsInsured = @IsInsured)
-        AND (@IsLocal IS NULL OR v.IsLocal = @IsLocal)
-        AND (@IsMobile IS NULL OR v.IsMobile = @IsMobile)
-        AND (@PriceLevel IS NULL OR v.PriceLevel = @PriceLevel)
-        AND (@MinPrice IS NULL OR MinSvc.MinPrice >= @MinPrice)
-        AND (@MaxPrice IS NULL OR MinSvc.MinPrice <= @MaxPrice)
-        AND (@MinRating IS NULL OR (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) >= @MinRating)
-        AND (@Region IS NULL OR 
-            CASE 
-                WHEN v.Latitude BETWEEN 35.0 AND 45.0 AND v.Longitude BETWEEN -80.0 AND -70.0 THEN ''north''
-                WHEN v.Latitude BETWEEN 30.0 AND 35.0 AND v.Longitude BETWEEN -85.0 AND -75.0 THEN ''south''
-                WHEN v.Latitude BETWEEN 38.0 AND 42.0 AND v.Longitude BETWEEN -90.0 AND -80.0 THEN ''midwest''
-                WHEN v.Latitude BETWEEN 32.0 AND 40.0 AND v.Longitude BETWEEN -120.0 AND -100.0 THEN ''west''
-                ELSE ''other''
-            END = @Region
-        )'
-
-    -- Add business hours availability filter when all event params present
-    IF @EventDateRaw IS NOT NULL AND @EventStartRaw IS NOT NULL AND @EventEndRaw IS NOT NULL
+        AND v.IsCompleted = 1';
+    
+    -- Add search term filter
+    IF @SearchTerm IS NOT NULL AND @SearchTerm != ''
     BEGIN
         SET @SQL = @SQL + '
-        AND EXISTS (
-            SELECT 1 FROM VendorBusinessHours vbh
-            WHERE vbh.VendorProfileID = v.VendorProfileID
-              AND vbh.IsAvailable = 1
-              AND vbh.DayOfWeek = CASE DATENAME(WEEKDAY, TRY_CONVERT(date, @EventDateRaw))
-                                    WHEN ''Sunday'' THEN 0
-                                    WHEN ''Monday'' THEN 1
-                                    WHEN ''Tuesday'' THEN 2
-                                    WHEN ''Wednesday'' THEN 3
-                                    WHEN ''Thursday'' THEN 4
-                                    WHEN ''Friday'' THEN 5
-                                    WHEN ''Saturday'' THEN 6
-                                  END
-              AND vbh.OpenTime <= TRY_CONVERT(time, @EventStartRaw)
-              AND vbh.CloseTime >= TRY_CONVERT(time, @EventEndRaw)
-        )'
+        AND (v.BusinessName LIKE ''%' + @SearchTerm + '%'' 
+             OR v.BusinessDescription LIKE ''%' + @SearchTerm + '%''
+             OR EXISTS (SELECT 1 FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category LIKE ''%' + @SearchTerm + '%''))';
     END
     
-    -- Add distance filter if location provided
+    -- Add category filter
+    IF @Category IS NOT NULL AND @Category != ''
+    BEGIN
+        SET @SQL = @SQL + '
+        AND EXISTS (SELECT 1 FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category = ''' + @Category + ''')';
+    END
+    
+    -- Add price filters
+    IF @MinPrice IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + ' AND MinSvc.MinPrice >= ' + CAST(@MinPrice AS NVARCHAR(20));
+    END
+    
+    IF @MaxPrice IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + ' AND MinSvc.MinPrice <= ' + CAST(@MaxPrice AS NVARCHAR(20));
+    END
+    
+    -- Add rating filter
+    IF @MinRating IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + ' AND (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) >= ' + CAST(@MinRating AS NVARCHAR(10));
+    END
+    
+    -- Add feature filters
+    IF @IsPremium IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + ' AND v.IsPremium = ' + CAST(@IsPremium AS NVARCHAR(1));
+    END
+    
+    IF @IsEcoFriendly IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + ' AND v.IsEcoFriendly = ' + CAST(@IsEcoFriendly AS NVARCHAR(1));
+    END
+    
+    IF @IsAwardWinning IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + ' AND v.IsAwardWinning = ' + CAST(@IsAwardWinning AS NVARCHAR(1));
+    END
+    
+    -- Add location filter
     IF @Latitude IS NOT NULL AND @Longitude IS NOT NULL
     BEGIN
         SET @SQL = @SQL + '
@@ -1687,10 +1696,17 @@ BEGIN
         AND 3959 * ACOS(
             COS(RADIANS(' + CAST(@Latitude AS NVARCHAR(20)) + ')) * COS(RADIANS(v.Latitude)) * COS(RADIANS(v.Longitude) - RADIANS(' + CAST(@Longitude AS NVARCHAR(20)) + ')) + 
             SIN(RADIANS(' + CAST(@Latitude AS NVARCHAR(20)) + ')) * SIN(RADIANS(v.Latitude))
-        ) <= @RadiusMiles'
+        ) <= ' + CAST(@RadiusMiles AS NVARCHAR(10));
     END
     
-    -- Complete the query with enhanced JSON output for services and reviews
+    -- Add price level filter
+    IF @PriceLevel IS NOT NULL AND @PriceLevel != ''
+    BEGIN
+        SET @SQL = @SQL + ' AND v.PriceLevel = ''' + @PriceLevel + '''';
+    END
+    
+    -- Note: @Region parameter is ignored since Region column doesn't exist in VendorProfiles table
+    
     SET @SQL = @SQL + '
     )
     SELECT 
@@ -1716,7 +1732,6 @@ BEGIN
         IsLastMinute,
         Capacity,
         Rooms,
-        Region,
         Address,
         PostalCode,
         City,
@@ -1742,14 +1757,16 @@ BEGIN
                         s.MaxAttendees,
                         s.RequiresDeposit,
                         s.DepositPercentage,
-                        (SELECT TOP 1 si.ImageURL FROM ServiceImages si WHERE si.ServiceID = s.ServiceID AND si.IsPrimary = 1) AS image,
-                        (SELECT COUNT(*) FROM Bookings b WHERE b.ServiceID = s.ServiceID) AS bookingCount
+                        s.CancellationPolicy,
+                        s.IsActive
                     FROM Services s
                     WHERE s.CategoryID = sc.CategoryID AND s.IsActive = 1
+                    ORDER BY s.Price ASC
                     FOR JSON PATH
                 )) AS services
             FROM ServiceCategories sc
-            WHERE sc.VendorProfileID = v.VendorProfileID
+            WHERE sc.VendorProfileID = FilteredVendors.VendorProfileID
+            ORDER BY sc.Name
             FOR JSON PATH
         )) AS services,
         JSON_QUERY((
@@ -1764,19 +1781,18 @@ BEGIN
                 (SELECT COUNT(*) FROM ReviewMedia rm WHERE rm.ReviewID = r.ReviewID) AS mediaCount
             FROM Reviews r
             JOIN Users u ON r.UserID = u.UserID
-            WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1
+            WHERE r.VendorProfileID = FilteredVendors.VendorProfileID AND r.IsApproved = 1
             ORDER BY r.CreatedAt DESC
             FOR JSON PATH
         )) AS reviews
-    FROM FilteredVendors v
+    FROM FilteredVendors
     ORDER BY ' + @SortExpression + '
     OFFSET (' + CAST((@PageNumber - 1) * @PageSize AS NVARCHAR(10)) + ') ROWS
-    FETCH NEXT ' + CAST(@PageSize AS NVARCHAR(10)) + ' ROWS ONLY'
+    FETCH NEXT ' + CAST(@PageSize AS NVARCHAR(10)) + ' ROWS ONLY';
     
-    -- Execute the dynamic SQL
     BEGIN TRY
-        EXEC sp_executesql @SQL, 
-            N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), @MinRating DECIMAL(2, 1), 
+        EXEC sp_executesql @SQL,
+            N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), @MinRating DECIMAL(2, 1),
               @IsPremium BIT, @IsEcoFriendly BIT, @IsAwardWinning BIT, @IsLastMinute BIT, @IsCertified BIT, @IsInsured BIT, @IsLocal BIT, @IsMobile BIT,
               @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), @RadiusMiles INT, @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20),
               @EventDateRaw NVARCHAR(50), @EventStartRaw NVARCHAR(20), @EventEndRaw NVARCHAR(20), @Region NVARCHAR(50), @PriceLevel NVARCHAR(10)',
@@ -1790,6 +1806,7 @@ BEGIN
     END CATCH
 END;
 GO
+
 
 -- ============================================
 -- MULTI-CATEGORY VENDOR SEARCH PROCEDURE
@@ -2186,7 +2203,7 @@ BEGIN
         Capacity,
         Rooms,
         ImageURL AS image,
-        FeaturedImageURL,
+        LogoURL,
         MatchingServices,
         TotalEstimatedPrice,
         AverageRating,
@@ -4605,7 +4622,7 @@ BEGIN
         UserID,
         Name,
         Email,
-        Avatar,
+        ProfileImageURL,
         Phone,
         IsVendor
     FROM Users
@@ -4745,7 +4762,7 @@ BEGIN
         Email,
         Phone,
         Bio,
-        Avatar,
+        ProfileImageURL,
         IsVendor
     FROM Users
     WHERE UserID = @UserID;

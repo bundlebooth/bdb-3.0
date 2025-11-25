@@ -375,6 +375,48 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Get unread message count for a user
+router.get('/unread-count/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'User ID is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query(`
+        SELECT COUNT(*) AS UnreadCount
+        FROM Messages m
+        JOIN Conversations c ON m.ConversationID = c.ConversationID
+        LEFT JOIN VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID
+        WHERE m.IsRead = 0 
+        AND m.SenderID != @UserID
+        AND (c.UserID = @UserID OR vp.UserID = @UserID)
+      `);
+
+    const unreadCount = result.recordset[0]?.UnreadCount || 0;
+
+    res.json({
+      success: true,
+      unreadCount: unreadCount
+    });
+
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch unread count',
+      error: err.message 
+    });
+  }
+});
+
 module.exports = {
   router,
   handleSocketIO

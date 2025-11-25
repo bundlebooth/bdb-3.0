@@ -7,11 +7,13 @@ function PersonalDetailsPanel({ onBack }) {
   const { currentUser, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
+    profilePicture: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
@@ -20,6 +22,54 @@ function PersonalDetailsPanel({ onBack }) {
   useEffect(() => {
     loadUserData();
   }, [currentUser]);
+
+  const handleProfilePictureUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showBanner('Please select an image file', 'error');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showBanner('Image size must be less than 5MB', 'error');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formDataUpload = new FormData();
+      formDataUpload.append('profilePicture', file);
+
+      const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}/profile-picture`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formDataUpload
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const imageUrl = data.profilePictureUrl || data.url;
+        setFormData(prev => ({ ...prev, profilePicture: imageUrl }));
+        if (updateUser) {
+          updateUser({ profilePicture: imageUrl });
+        }
+        showBanner('Profile picture updated successfully!', 'success');
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      showBanner('Failed to upload profile picture', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const loadUserData = async () => {
     if (!currentUser?.id) {
@@ -39,7 +89,8 @@ function PersonalDetailsPanel({ onBack }) {
       firstName: firstNameFromSession,
       lastName: lastNameFromSession,
       email: currentUser.email || '',
-      phone: currentUser.phone || ''
+      phone: currentUser.phone || '',
+      profilePicture: currentUser.profilePicture || ''
     }));
     
     try {
@@ -56,7 +107,8 @@ function PersonalDetailsPanel({ onBack }) {
           firstName: userData.FirstName || userData.firstName || prev.firstName,
           lastName: userData.LastName || userData.lastName || prev.lastName,
           email: userData.Email || userData.email || prev.email,
-          phone: userData.Phone || userData.phone || prev.phone
+          phone: userData.Phone || userData.phone || prev.phone,
+          profilePicture: userData.ProfilePicture || userData.profilePicture || prev.profilePicture
         }));
       } else {
         console.warn('API returned non-OK status, using session data');
@@ -175,6 +227,57 @@ function PersonalDetailsPanel({ onBack }) {
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
         
         <form onSubmit={handleSubmit}>
+          {/* Profile Picture */}
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text)' }}>
+            Profile Picture
+          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem' }}>
+            <div style={{ 
+              width: '100px', 
+              height: '100px', 
+              borderRadius: '50%', 
+              overflow: 'hidden', 
+              border: '3px solid var(--border)',
+              background: 'var(--secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              {formData.profilePicture ? (
+                <img 
+                  src={formData.profilePicture} 
+                  alt="Profile" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <i className="fas fa-user" style={{ fontSize: '2.5rem', color: 'var(--text-light)' }}></i>
+              )}
+            </div>
+            <div>
+              <button 
+                type="button"
+                className="btn btn-outline"
+                onClick={() => document.getElementById('profile-picture-input').click()}
+                disabled={uploading}
+                style={{ marginBottom: '0.5rem' }}
+              >
+                <i className="fas fa-upload"></i> {uploading ? 'Uploading...' : 'Upload Photo'}
+              </button>
+              <input
+                type="file"
+                id="profile-picture-input"
+                accept="image/*"
+                onChange={handleProfilePictureUpload}
+                style={{ display: 'none' }}
+              />
+              <p style={{ color: 'var(--text-light)', fontSize: '0.85rem', margin: 0 }}>
+                JPG, PNG or GIF. Max size 5MB.
+              </p>
+            </div>
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '2rem 0' }} />
+
           {/* Contact Information */}
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text)' }}>
             Contact Information
