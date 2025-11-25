@@ -11,9 +11,9 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
   const previousVendorsRef = useRef([]); // Track previous vendors to prevent unnecessary updates
 
   // Helper function to create custom marker icon (grey by default, blue on hover/click)
-  const createMarkerIcon = useCallback((color = '#6B7280', isHovered = false) => {
-    // EXACT Airbnb style - simple round pin with pointed bottom
-    const size = isHovered ? 32 : 28;
+  const createMarkerIcon = useCallback((color = '#9CA3AF', isHovered = false) => {
+    // Small grey pin style matching Google Maps default
+    const size = isHovered ? 28 : 20;
     const svg = `
       <svg width="${size}" height="${size}" viewBox="0 0 27 43" xmlns="http://www.w3.org/2000/svg">
         <g fill="none" fill-rule="evenodd">
@@ -204,8 +204,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
 
       const position = { lat, lng };
       
-      // Create grey marker by default
-      const greyIcon = createMarkerIcon('#6B7280', false);
+      // Create grey marker by default (smaller size)
+      const greyIcon = createMarkerIcon('#9CA3AF', false);
       const blueIcon = createMarkerIcon('#5E72E4', true);
       
       const marker = new window.google.maps.Marker({
@@ -215,8 +215,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
         animation: window.google.maps.Animation.DROP,
         icon: {
           url: greyIcon,
-          scaledSize: new window.google.maps.Size(28, 43),
-          anchor: new window.google.maps.Point(14, 43)
+          scaledSize: new window.google.maps.Size(20, 30),
+          anchor: new window.google.maps.Point(10, 30)
         }
       });
       
@@ -224,8 +224,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
       marker.addListener('mouseover', () => {
         marker.setIcon({
           url: blueIcon,
-          scaledSize: new window.google.maps.Size(32, 48),
-          anchor: new window.google.maps.Point(16, 48)
+          scaledSize: new window.google.maps.Size(28, 42),
+          anchor: new window.google.maps.Point(14, 42)
         });
       });
       
@@ -234,8 +234,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
         if (!infoWindowRef.current || infoWindowRef.current.anchor !== marker) {
           marker.setIcon({
             url: greyIcon,
-            scaledSize: new window.google.maps.Size(28, 43),
-            anchor: new window.google.maps.Point(14, 43)
+            scaledSize: new window.google.maps.Size(20, 30),
+            anchor: new window.google.maps.Point(10, 30)
           });
         }
       });
@@ -253,8 +253,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
           if (m !== marker) {
             m.setIcon({
               url: greyIcon,
-              scaledSize: new window.google.maps.Size(28, 43),
-              anchor: new window.google.maps.Point(14, 43)
+              scaledSize: new window.google.maps.Size(20, 30),
+              anchor: new window.google.maps.Point(10, 30)
             });
           }
         });
@@ -262,8 +262,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
         // Keep clicked marker blue
         marker.setIcon({
           url: blueIcon,
-          scaledSize: new window.google.maps.Size(32, 48),
-          anchor: new window.google.maps.Point(16, 48)
+          scaledSize: new window.google.maps.Size(28, 42),
+          anchor: new window.google.maps.Point(14, 42)
         });
         
         // Close existing InfoWindow if any
@@ -299,8 +299,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
           console.log('❌ InfoWindow closed via closeclick event');
           marker.setIcon({
             url: greyIcon,
-            scaledSize: new window.google.maps.Size(28, 43),
-            anchor: new window.google.maps.Point(14, 43)
+            scaledSize: new window.google.maps.Size(20, 30),
+            anchor: new window.google.maps.Point(10, 30)
           });
         });
         
@@ -370,33 +370,28 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
       console.log('⚠️ No valid markers to display');
     }
 
-    // Initialize marker clusterer if available
-    if (window.markerClusterer && window.markerClusterer.MarkerClusterer) {
-      markerClusterRef.current = new window.markerClusterer.MarkerClusterer({
-        map: mapInstanceRef.current,
-        markers: markersRef.current
-      });
-    }
+    // No clustering - show all individual pins like Google Maps default
+    // Clustering disabled to match the desired pin style
   }, [vendors, onVendorSelect, createMiniVendorCardHTML, createMarkerIcon]);
 
   const highlightMarker = useCallback((vendorId) => {
-    const greyIcon = createMarkerIcon('#6B7280', false);
+    const greyIcon = createMarkerIcon('#9CA3AF', false);
     const blueIcon = createMarkerIcon('#5E72E4', true);
     
     markersRef.current.forEach(marker => {
       if (marker.vendorId === vendorId) {
         marker.setIcon({
           url: blueIcon,
-          scaledSize: new window.google.maps.Size(32, 48),
-          anchor: new window.google.maps.Point(16, 48)
+          scaledSize: new window.google.maps.Size(28, 42),
+          anchor: new window.google.maps.Point(14, 42)
         });
         marker.setAnimation(window.google.maps.Animation.BOUNCE);
         setTimeout(() => marker.setAnimation(null), 2000);
       } else {
         marker.setIcon({
           url: greyIcon,
-          scaledSize: new window.google.maps.Size(28, 43),
-          anchor: new window.google.maps.Point(14, 43)
+          scaledSize: new window.google.maps.Size(20, 30),
+          anchor: new window.google.maps.Point(10, 30)
         });
       }
     });
@@ -442,12 +437,12 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
         highlightMarker(vendorId);
       } else {
         // Reset all markers to grey
-        const greyIcon = createMarkerIcon('#6B7280', false);
+        const greyIcon = createMarkerIcon('#9CA3AF', false);
         markersRef.current.forEach(marker => {
           marker.setIcon({
             url: greyIcon,
-            scaledSize: new window.google.maps.Size(28, 43),
-            anchor: new window.google.maps.Point(14, 43)
+            scaledSize: new window.google.maps.Size(20, 30),
+            anchor: new window.google.maps.Point(10, 30)
           });
         });
       }
