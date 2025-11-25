@@ -70,7 +70,7 @@ async function computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId) 
   const profReq = new sql.Request(pool);
   profReq.input('VendorProfileID', sql.Int, vendorProfileId);
   const profRes = await profReq.query(`
-    SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, FeaturedImageURL,
+    SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, LogoURL,
            PaymentMethods, PaymentTerms, LicenseNumber, InsuranceVerified, IsCompleted, AcceptingBookings
     FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
   if (!profRes.recordset.length) return { exists: false, error: 'Vendor profile not found' };
@@ -96,7 +96,7 @@ async function computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId) 
     social: (c.SocialCount || 0) > 0,
     servicesPackages: ((c.ServicesCount || 0) > 0) || ((c.PackageCount || 0) > 0),
     faq: (c.FAQCount || 0) > 0,
-    gallery: !!p.FeaturedImageURL || (c.ImagesCount || 0) > 0,
+    gallery: !!p.LogoURL || (c.ImagesCount || 0) > 0,
     availability: (c.HoursCount || 0) > 0,
     verification: !!(p.InsuranceVerified || p.LicenseNumber),
     policies: !!(p.PaymentMethods && p.PaymentTerms),
@@ -1841,11 +1841,11 @@ router.post('/setup/step3-gallery', async (req, res) => {
     // Update featured image
     const updateRequest = new sql.Request(pool);
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    updateRequest.input('FeaturedImageURL', sql.NVarChar, featuredImage);
+    updateRequest.input('LogoURL', sql.NVarChar, featuredImage);
     
     await updateRequest.query(`
       UPDATE VendorProfiles 
-      SET FeaturedImageURL = @FeaturedImageURL, UpdatedAt = GETDATE()
+      SET LogoURL = @LogoURL, UpdatedAt = GETDATE()
       WHERE VendorProfileID = @VendorProfileID
     `);
     
@@ -2239,7 +2239,7 @@ router.post('/search-by-services', async (req, res) => {
         IsPremium: vendor.IsPremium,
         IsEcoFriendly: vendor.IsEcoFriendly,
         IsAwardWinning: vendor.IsAwardWinning,
-        FeaturedImageURL: vendor.image,
+        LogoURL: vendor.image,
         MatchingServices: vendor.CategoryMatchCount || 1,
         MatchingServiceNames: vendor.MatchingServiceNames || services.map(s => s.ServiceName).join(', '),
         VendorImages: vendorImages, // Include parsed VendorImages
@@ -3234,7 +3234,7 @@ router.get('/setup/progress/:vendorProfileId', async (req, res) => {
         v.BusinessEmail,
         v.BusinessPhone,
         v.Address,
-        v.FeaturedImageURL,
+        v.LogoURL,
         v.AcceptingBookings,
         (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID = @VendorProfileID) as CategoriesCount,
         (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = @VendorProfileID) as ImagesCount,
@@ -3259,7 +3259,7 @@ router.get('/setup/progress/:vendorProfileId', async (req, res) => {
     const steps = {
       step1: !!(profile.BusinessName && profile.BusinessEmail && profile.BusinessPhone && profile.CategoriesCount > 0),
       step2: !!(profile.Address),
-      step3: !!(profile.FeaturedImageURL),
+      step3: !!(profile.LogoURL),
       step4: !!(profile.ServicesCount > 0),
       step5: true, // Optional step
       step6: !!(profile.SocialMediaCount > 0),
@@ -3706,7 +3706,7 @@ router.get('/summary/:id', async (req, res) => {
       SELECT 
         BusinessName, DisplayName, BusinessEmail, BusinessPhone, Website,
         YearsInBusiness, BusinessDescription, Tagline, Address, City, State,
-        Country, PostalCode, FeaturedImageURL
+        Country, PostalCode, LogoURL
       FROM VendorProfiles 
       WHERE VendorProfileID = @VendorProfileID
     `);
@@ -4019,7 +4019,7 @@ router.post('/setup/step5-availability', async (req, res) => {
 // Step 6: Gallery & Media
 router.post('/setup/step6-gallery', async (req, res) => {
   try {
-    const { vendorProfileId, featuredImageURL, galleryImages } = req.body;
+    const { vendorProfileId, logoURL, galleryImages } = req.body;
 
     if (!vendorProfileId) {
       return res.status(400).json({ success: false, message: 'Vendor profile ID is required' });
@@ -4028,14 +4028,14 @@ router.post('/setup/step6-gallery', async (req, res) => {
     const pool = await poolPromise;
     
     // Update featured image if provided
-    if (featuredImageURL) {
+    if (logoURL) {
       const request = new sql.Request(pool);
       request.input('VendorProfileID', sql.Int, vendorProfileId);
-      request.input('FeaturedImageURL', sql.NVarChar(500), featuredImageURL);
+      request.input('LogoURL', sql.NVarChar(500), logoURL);
       
       await request.query(`
         UPDATE VendorProfiles 
-        SET FeaturedImageURL = @FeaturedImageURL,
+        SET LogoURL = @LogoURL,
             UpdatedAt = GETUTCDATE()
         WHERE VendorProfileID = @VendorProfileID
       `);

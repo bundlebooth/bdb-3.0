@@ -35,7 +35,7 @@ async function computeSetupStatusByUserId(userId) {
   const req = new sql.Request(pool);
   req.input('UserID', sql.Int, parseInt(userId));
   const prof = await req.query(`
-    SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, FeaturedImageURL,
+    SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, LogoURL,
            DepositRequirements, PaymentMethods, PaymentTerms, LicenseNumber, InsuranceVerified,
            IsVerified, IsCompleted, AcceptingBookings
     FROM VendorProfiles WHERE UserID = @UserID`);
@@ -64,7 +64,7 @@ async function computeSetupStatusByUserId(userId) {
     social: (c.SocialCount || 0) > 0,
     servicesPackages: ((c.ServicesCount || 0) > 0) || ((c.PackageCount || 0) > 0),
     faq: (c.FAQCount || 0) > 0,
-    gallery: !!p.FeaturedImageURL || (c.ImagesCount || 0) > 0,
+    gallery: !!p.LogoURL || (c.ImagesCount || 0) > 0,
     availability: (c.HoursCount || 0) > 0,
     // OPTIONAL STEPS: verification and policies are tracked but NOT required for profile completion
     verification: !!(p.InsuranceVerified || p.LicenseNumber),

@@ -84,7 +84,7 @@ router.get('/trending', async (req, res) => {
             console.log(`\n--- Vendor ${index + 1}: ${vendor.BusinessName} ---`);
             console.log('Raw ImageURL:', vendor.ImageURL);
             console.log('Raw CloudinaryUrl:', vendor.CloudinaryUrl);
-            console.log('Raw FeaturedImageURL:', vendor.FeaturedImageURL);
+            console.log('Raw LogoURL:', vendor.LogoURL);
             console.log('Raw ImagesJson:', vendor.ImagesJson ? 'EXISTS' : 'NULL');
             
             // Parse JSON fields
@@ -112,7 +112,7 @@ router.get('/trending', async (req, res) => {
             }
 
             // FIX: The stored procedure doesn't return ImageURL field, but it DOES return Images array
-            // Extract image URL from Images array, CloudinaryUrl, or FeaturedImageURL
+            // Extract image URL from Images array, CloudinaryUrl, or LogoURL
             let imageUrl = null;
             
             // Try Images array first (this is what's actually being returned)
@@ -124,7 +124,7 @@ router.get('/trending', async (req, res) => {
             
             // Fallback to direct fields
             if (!imageUrl) {
-                imageUrl = vendor.CloudinaryUrl || vendor.FeaturedImageURL;
+                imageUrl = vendor.CloudinaryUrl || vendor.LogoURL;
                 console.log('Using fallback field:', imageUrl);
             }
             
