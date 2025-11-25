@@ -27,6 +27,21 @@ function PersonalDetailsPanel({ onBack }) {
       return;
     }
     
+    // First, populate from currentUser data (from localStorage/session)
+    const nameFromSession = currentUser.name || '';
+    const nameParts = nameFromSession.split(' ');
+    const firstNameFromSession = currentUser.firstName || nameParts[0] || '';
+    const lastNameFromSession = currentUser.lastName || nameParts.slice(1).join(' ') || '';
+    
+    // Set initial data from session immediately
+    setFormData(prev => ({
+      ...prev,
+      firstName: firstNameFromSession,
+      lastName: lastNameFromSession,
+      email: currentUser.email || '',
+      phone: currentUser.phone || ''
+    }));
+    
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE_URL}/users/${currentUser.id}`, {
@@ -35,16 +50,20 @@ function PersonalDetailsPanel({ onBack }) {
       
       if (response.ok) {
         const userData = await response.json();
+        // Update with API data if available (API data takes precedence)
         setFormData(prev => ({
           ...prev,
-          firstName: userData.FirstName || userData.firstName || '',
-          lastName: userData.LastName || userData.lastName || '',
-          email: userData.Email || userData.email || currentUser.email || '',
-          phone: userData.Phone || userData.phone || ''
+          firstName: userData.FirstName || userData.firstName || prev.firstName,
+          lastName: userData.LastName || userData.lastName || prev.lastName,
+          email: userData.Email || userData.email || prev.email,
+          phone: userData.Phone || userData.phone || prev.phone
         }));
+      } else {
+        console.warn('API returned non-OK status, using session data');
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('Error loading user data from API:', error);
+      // Keep the session data that was already set
     } finally {
       setLoading(false);
     }
@@ -102,12 +121,13 @@ function PersonalDetailsPanel({ onBack }) {
           newPassword: '',
           confirmPassword: ''
         }));
-        // Update auth context if needed
+        // Update auth context to persist the data
         if (updateUser) {
           updateUser({
-            ...currentUser,
             firstName: formData.firstName,
-            lastName: formData.lastName
+            lastName: formData.lastName,
+            phone: formData.phone,
+            name: `${formData.firstName} ${formData.lastName}`.trim()
           });
         }
       } else {
