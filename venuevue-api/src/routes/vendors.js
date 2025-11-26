@@ -5,6 +5,7 @@ const sql = require('mssql');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
+const axios = require('axios');
 
 // Helper function to convert time string to 24-hour format for database comparison
 function convertTo24Hour(timeString) {
@@ -4512,6 +4513,142 @@ router.post('/:vendorProfileId/logo', upload.single('logo'), async (req, res) =>
       success: false,
       message: 'Failed to upload logo',
       error: err.message
+    });
+  }
+});
+
+// ==================== GOOGLE REVIEWS INTEGRATION ====================
+
+// GET /api/vendors/google-reviews/:placeId
+// Fetch Google Reviews for a specific Place ID
+router.get('/google-reviews/:placeId', async (req, res) => {
+  try {
+    const { placeId } = req.params;
+    const googleApiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.GOOGLE_MAPS_API_KEY;
+
+    if (!googleApiKey) {
+      return res.status(500).json({
+        success: false,
+        message: 'Google Places API key not configured'
+      });
+    }
+
+    // Fetch place details from Google Places API
+    const response = await axios.get('https://maps.googleapis.com/maps/api/place/details/json', {
+      params: {
+        place_id: placeId,
+        fields: 'name,rating,user_ratings_total,reviews,url',
+        key: googleApiKey
+      }
+    });
+
+    if (response.data.status !== 'OK') {
+      return res.status(400).json({
+        success: false,
+        message: `Google Places API error: ${response.data.status}`,
+        error: response.data.error_message || 'Invalid Place ID'
+      });
+    }
+
+    const placeData = response.data.result;
+
+    res.json({
+      success: true,
+      data: {
+        rating: placeData.rating || 0,
+        user_ratings_total: placeData.user_ratings_total || 0,
+        url: placeData.url || '',
+        reviews: (placeData.reviews || []).map(review => ({
+          author_name: review.author_name,
+          author_url: review.author_url,
+          profile_photo_url: review.profile_photo_url,
+          rating: review.rating,
+          text: review.text,
+          time: review.time,
+          relative_time_description: review.relative_time_description
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching Google Reviews:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch Google Reviews',
+      error: error.message
+    });
+  }
+});
+
+// GET /api/vendor/:vendorProfileId/google-reviews-settings
+// Get Google Reviews settings for a vendor
+router.get('/vendor/:vendorProfileId/google-reviews-settings', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    const pool = await poolPromise;
+
+    const result = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query(`
+        SELECT GooglePlaceId, GoogleBusinessUrl
+        FROM VendorProfiles
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      GooglePlaceId: result.recordset[0].GooglePlaceId || '',
+      GoogleBusinessUrl: result.recordset[0].GoogleBusinessUrl || ''
+    });
+
+  } catch (error) {
+    console.error('Error fetching Google Reviews settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch settings',
+      error: error.message
+    });
+  }
+});
+
+// POST /api/vendor/:vendorProfileId/google-reviews-settings
+// Save Google Reviews settings for a vendor
+router.post('/vendor/:vendorProfileId/google-reviews-settings', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    const { GooglePlaceId, GoogleBusinessUrl } = req.body;
+    const pool = await poolPromise;
+
+    // Update vendor profile with Google Reviews settings
+    await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('GooglePlaceId', sql.NVarChar(100), GooglePlaceId || null)
+      .input('GoogleBusinessUrl', sql.NVarChar(500), GoogleBusinessUrl || null)
+      .query(`
+        UPDATE VendorProfiles
+        SET GooglePlaceId = @GooglePlaceId,
+            GoogleBusinessUrl = @GoogleBusinessUrl
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+
+    res.json({
+      success: true,
+      message: 'Google Reviews settings saved successfully'
+    });
+
+  } catch (error) {
+    console.error('Error saving Google Reviews settings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save settings',
+      error: error.message
     });
   }
 });

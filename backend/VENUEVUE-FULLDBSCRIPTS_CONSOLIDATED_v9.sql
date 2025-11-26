@@ -246,9 +246,18 @@ CREATE TABLE VendorProfiles (
     SetupStep9Completed BIT DEFAULT 0,
     SetupStep10Completed BIT DEFAULT 0,
     SetupCompletedAt DATETIME,
+    -- Google Reviews Integration fields
+    GooglePlaceId NVARCHAR(100) NULL,
+    GoogleBusinessUrl NVARCHAR(500) NULL,
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE()
 );
+GO
+
+-- Create index for Google Reviews integration
+CREATE INDEX IX_VendorProfiles_GooglePlaceId 
+ON VendorProfiles(GooglePlaceId)
+WHERE GooglePlaceId IS NOT NULL;
 GO
 
 -- Vendor images table
