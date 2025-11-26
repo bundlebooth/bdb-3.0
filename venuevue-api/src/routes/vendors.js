@@ -4580,9 +4580,9 @@ router.get('/google-reviews/:placeId', async (req, res) => {
   }
 });
 
-// GET /api/vendor/:vendorProfileId/google-reviews-settings
+// GET /api/vendors/:vendorProfileId/google-reviews-settings
 // Get Google Reviews settings for a vendor
-router.get('/vendor/:vendorProfileId/google-reviews-settings', async (req, res) => {
+router.get('/:vendorProfileId/google-reviews-settings', async (req, res) => {
   try {
     const { vendorProfileId } = req.params;
     const pool = await poolPromise;
@@ -4618,9 +4618,9 @@ router.get('/vendor/:vendorProfileId/google-reviews-settings', async (req, res) 
   }
 });
 
-// POST /api/vendor/:vendorProfileId/google-reviews-settings
+// POST /api/vendors/:vendorProfileId/google-reviews-settings
 // Save Google Reviews settings for a vendor
-router.post('/vendor/:vendorProfileId/google-reviews-settings', async (req, res) => {
+router.post('/:vendorProfileId/google-reviews-settings', async (req, res) => {
   try {
     const { vendorProfileId } = req.params;
     const { GooglePlaceId, GoogleBusinessUrl } = req.body;
