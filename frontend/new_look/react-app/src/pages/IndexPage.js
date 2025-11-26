@@ -6,12 +6,10 @@ import Header from '../components/Header';
 import CategoriesNav from '../components/CategoriesNav';
 import FilterSidebar from '../components/FilterSidebar';
 import VendorGrid from '../components/VendorGrid';
-import TrendingVendors from '../components/TrendingVendors';
 import MapView from '../components/MapView';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
-import StripeConnectBanner from '../components/StripeConnectBanner';
 import Footer from '../components/Footer';
 import { showBanner } from '../utils/helpers';
 
@@ -546,7 +544,6 @@ function IndexPage() {
                   setDashboardModalOpen(true);
                 }}
               />
-              <StripeConnectBanner />
             </>
           )}
           <div className="content-header">
@@ -600,7 +597,6 @@ function IndexPage() {
               </div>
             </div>
           </div>
-          {!loading && <TrendingVendors onViewVendor={handleViewVendor} />}
           <div className="map-overlay"></div>
           <VendorGrid vendors={currentVendors} loading={loading} loadingMore={loadingMore} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewVendor={handleViewVendor} onHighlightVendor={handleHighlightVendor} />
           {showLoadMore && (
