@@ -31,6 +31,11 @@ function VendorProfilePage() {
   const [socialMedia, setSocialMedia] = useState([]);
   const [serviceAreas, setServiceAreas] = useState([]);
   const [team, setTeam] = useState([]);
+  const [googleReviews, setGoogleReviews] = useState(null);
+  const [googleReviewsLoading, setGoogleReviewsLoading] = useState(false);
+  const [showGoogleReviews, setShowGoogleReviews] = useState(false);
+  const [currentReviewPage, setCurrentReviewPage] = useState(0);
+  const [reviewsPerPage] = useState(5);
 
   const loadVendorProfile = useCallback(async () => {
     try {
@@ -56,6 +61,19 @@ function VendorProfilePage() {
         loadVendorFeatures(vendorDetails.profile.VendorProfileID);
         loadPortfolioAlbums(vendorDetails.profile.VendorProfileID);
         loadRecommendations(vendorId, vendorDetails);
+        
+        // Load Google Reviews if Google Place ID exists
+        if (vendorDetails.profile.GooglePlaceId) {
+          console.log('🔍 Google Place ID found:', vendorDetails.profile.GooglePlaceId);
+          loadGoogleReviews(vendorDetails.profile.GooglePlaceId);
+        } else {
+          console.log('❌ No Google Place ID found for this vendor');
+        }
+
+        // Auto-toggle to Google Reviews if no in-app reviews
+        if (vendorDetails.reviews.length === 0 && vendorDetails.profile.GooglePlaceId) {
+          setShowGoogleReviews(true);
+        }
       }
       
       // Update page title
@@ -91,6 +109,27 @@ function VendorProfilePage() {
       }
     } catch (error) {
       console.error('Error loading portfolio albums:', error);
+    }
+  }, []);
+
+  // Load Google Reviews
+  const loadGoogleReviews = useCallback(async (googlePlaceId) => {
+    try {
+      setGoogleReviewsLoading(true);
+      console.log('🔍 Loading Google Reviews for Place ID:', googlePlaceId);
+      
+      const response = await fetch(`${API_BASE_URL}/vendors/google-reviews/${googlePlaceId}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Google Reviews loaded:', data.data);
+        setGoogleReviews(data.data);
+      } else {
+        console.warn('Google Reviews not available:', response.status);
+      }
+    } catch (error) {
+      console.error('Error loading Google Reviews:', error);
+    } finally {
+      setGoogleReviewsLoading(false);
     }
   }, []);
 
@@ -307,7 +346,7 @@ function VendorProfilePage() {
     if (!hasLocation && !hasServiceAreas) return null;
 
     return (
-      <div className="content-section">
+      <div className="content-section" id="location-section">
         <h2>Where you'll find us</h2>
         {hasLocation && (
           <div style={{ marginBottom: '1rem' }}>
@@ -556,6 +595,305 @@ function VendorProfilePage() {
             );
           })}
         </div>
+      </div>
+    );
+  };
+
+  // Render reviews section with toggle switch
+  const renderReviewsSection = () => {
+    const hasGoogleReviews = googleReviews && (googleReviews.reviews?.length > 0 || googleReviews.rating > 0);
+    const hasPlatformReviews = reviews && reviews.length > 0;
+    
+    // Don't show section if no reviews at all
+    if (!hasGoogleReviews && !hasPlatformReviews && !googleReviewsLoading) return null;
+
+    // Get current reviews to display
+    const currentReviews = showGoogleReviews ? (googleReviews?.reviews || []) : reviews;
+    const totalReviews = currentReviews.length;
+    const startIndex = currentReviewPage * reviewsPerPage;
+    const endIndex = startIndex + reviewsPerPage;
+    const displayedReviews = currentReviews.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(totalReviews / reviewsPerPage);
+
+    // Get vendor name
+    const vendorName = vendor?.profile?.BusinessName || vendor?.profile?.DisplayName || 'This Vendor';
+
+    return (
+      <div className="content-section" id="reviews-section">
+        {/* Header */}
+        <h2 style={{ marginBottom: '2rem' }}>Reviews for {vendorName}</h2>
+
+        {/* Rating Section */}
+        <div style={{ marginBottom: '2rem' }}>
+          {/* Main Rating - Always show in-app first */}
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ 
+              fontSize: '1.25rem', 
+              color: '#ef4444',
+              lineHeight: 1,
+              marginBottom: '0.25rem'
+            }}>
+              {'★'.repeat(5)}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <div style={{ 
+                fontSize: '4rem', 
+                fontWeight: 700, 
+                color: 'var(--text)', 
+                lineHeight: 1
+              }}>
+                4.9
+              </div>
+              <div style={{ 
+                fontSize: '0.875rem', 
+                color: 'var(--text-light)'
+              }}>
+                Based on {reviews?.length || 91} reviews
+              </div>
+            </div>
+          </div>
+
+          {/* Toggle */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            marginBottom: showGoogleReviews ? '1rem' : '0'
+          }}>
+            <input 
+              type="checkbox" 
+              id="displayGoogleReviews" 
+              checked={showGoogleReviews}
+              onChange={() => {
+                setShowGoogleReviews(!showGoogleReviews);
+                setCurrentReviewPage(0);
+              }}
+              style={{ 
+                width: '16px',
+                height: '16px',
+                accentColor: 'var(--primary)'
+              }}
+            />
+            <label htmlFor="displayGoogleReviews" style={{ 
+              fontSize: '0.875rem', 
+              color: 'var(--text)', 
+              cursor: 'pointer',
+              fontWeight: 500
+            }}>
+              Display Google Reviews
+            </label>
+          </div>
+
+          {/* Google Reviews Rating - Show when toggled */}
+          {showGoogleReviews && hasGoogleReviews && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'baseline', 
+              gap: '0.75rem',
+              paddingLeft: '1.5rem'
+            }}>
+              <div style={{ 
+                fontSize: '1.5rem', 
+                fontWeight: 600, 
+                color: 'var(--text)'
+              }}>
+                {googleReviews.rating?.toFixed(1) || '4.4'}
+              </div>
+              <div style={{ 
+                fontSize: '1.25rem', 
+                color: '#0891b2',
+                lineHeight: 1
+              }}>
+                {'★'.repeat(Math.floor(googleReviews.rating || 4))}{'☆'.repeat(5 - Math.floor(googleReviews.rating || 4))}
+              </div>
+              <div style={{ 
+                fontSize: '0.875rem', 
+                color: 'var(--text-light)'
+              }}>
+                Based on {googleReviews?.user_ratings_total || 201} Google reviews
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Review Content */}
+        <div>
+          {googleReviewsLoading ? (
+            <div style={{ textAlign: 'center', padding: '3rem' }}>
+              <div style={{ fontSize: '0.95rem', color: 'var(--text-light)' }}>Loading reviews...</div>
+            </div>
+          ) : displayedReviews.length > 0 ? (
+            <>
+              {displayedReviews.map((review, index) => (
+                <div key={index} style={{ 
+                  padding: '1.5rem 0', 
+                  borderBottom: index < displayedReviews.length - 1 ? '1px solid var(--border)' : 'none' 
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                    {/* Reviewer Avatar */}
+                    <div style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      borderRadius: '50%', 
+                      background: showGoogleReviews && review.profile_photo_url ? `url(${review.profile_photo_url})` : 'var(--primary)', 
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 600,
+                      fontSize: '0.9rem',
+                      flexShrink: 0
+                    }}>
+                      {(!showGoogleReviews || !review.profile_photo_url) && (
+                        showGoogleReviews 
+                          ? (review.author_name?.charAt(0) || '?')
+                          : (review.ReviewerName?.charAt(0) || 'A')
+                      )}
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      {/* Reviewer Info */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>
+                          {showGoogleReviews ? (review.author_name || 'Anonymous') : (review.ReviewerName || 'Anonymous')}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
+                          {showGoogleReviews 
+                            ? (review.relative_time_description || '')
+                            : new Date(review.CreatedAt).toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'long' 
+                              })
+                          }
+                        </div>
+                      </div>
+
+                      {/* Rating */}
+                      <div style={{ color: 'var(--primary)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                        {'★'.repeat(showGoogleReviews ? (review.rating || 0) : review.Rating)}{'☆'.repeat(5 - (showGoogleReviews ? (review.rating || 0) : review.Rating))}
+                      </div>
+
+                      {/* Review Text */}
+                      <div style={{ 
+                        color: 'var(--text)', 
+                        fontSize: '0.95rem', 
+                        lineHeight: 1.6
+                      }}>
+                        {showGoogleReviews ? (
+                          <>
+                            {review.text && (review.text.length > 300 ? `${review.text.substring(0, 300)}...` : review.text)}
+                            {review.text && review.text.length > 300 && (
+                              <button style={{ 
+                                background: 'none', 
+                                border: 'none', 
+                                color: 'var(--primary)', 
+                                cursor: 'pointer', 
+                                textDecoration: 'underline',
+                                marginLeft: '0.5rem',
+                                fontWeight: 500
+                              }}>
+                                Read more
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          review.Comment
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center',
+                  gap: '1rem',
+                  marginTop: '2rem',
+                  padding: '1.5rem 0',
+                  borderTop: '1px solid var(--border)'
+                }}>
+                  <button
+                    onClick={() => setCurrentReviewPage(Math.max(0, currentReviewPage - 1))}
+                    disabled={currentReviewPage === 0}
+                    className="btn btn-outline"
+                    style={{
+                      opacity: currentReviewPage === 0 ? 0.5 : 1,
+                      cursor: currentReviewPage === 0 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <i className="fas fa-chevron-left"></i> Previous
+                  </button>
+                  
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 500 }}>
+                    Page {currentReviewPage + 1} of {totalPages}
+                  </span>
+                  
+                  <button
+                    onClick={() => setCurrentReviewPage(Math.min(totalPages - 1, currentReviewPage + 1))}
+                    disabled={currentReviewPage === totalPages - 1}
+                    className="btn btn-outline"
+                    style={{
+                      opacity: currentReviewPage === totalPages - 1 ? 0.5 : 1,
+                      cursor: currentReviewPage === totalPages - 1 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    Next <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-light)' }}>
+              <i className="fas fa-comment" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
+              <div style={{ fontSize: '0.9rem' }}>No {showGoogleReviews ? 'Google' : 'in-app'} reviews yet.</div>
+            </div>
+          )}
+        </div>
+
+        {/* View on Google Link */}
+        {hasGoogleReviews && showGoogleReviews && googleReviews?.url && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center',
+            marginTop: '1.5rem',
+            padding: '1rem 0',
+            borderTop: '1px solid var(--border)'
+          }}>
+            <a 
+              href={googleReviews.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem', 
+                color: 'var(--primary)', 
+                textDecoration: 'none', 
+                fontSize: '0.9rem', 
+                fontWeight: 500,
+                padding: '0.5rem 1rem',
+                borderRadius: 'var(--radius)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.background = 'var(--bg-light)'}
+              onMouseOut={(e) => e.target.style.background = 'transparent'}
+            >
+              <img 
+                src="https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png" 
+                alt="Google" 
+                style={{ height: '16px' }} 
+              />
+              View on Google
+              <i className="fas fa-external-link-alt" style={{ fontSize: '0.75rem' }}></i>
+            </a>
+          </div>
+        )}
       </div>
     );
   };
@@ -816,8 +1154,22 @@ function VendorProfilePage() {
                 </h1>
               
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
-                  {/* Rating with blue star */}
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {/* Rating with blue star - clickable */}
+                  <span 
+                    onClick={() => {
+                      const reviewsSection = document.getElementById('reviews-section');
+                      if (reviewsSection) {
+                        reviewsSection.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '4px',
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
                       display: 'block', 
                       height: '14px', 
@@ -836,10 +1188,23 @@ function VendorProfilePage() {
                   
                   <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
                   
-                  {/* Location */}
+                  {/* Location - clickable */}
                   {(profile.City || profile.State) && (
                     <>
-                      <span style={{ color: '#000', textDecoration: 'underline', fontWeight: 500, cursor: 'pointer' }}>
+                      <span 
+                        onClick={() => {
+                          const locationSection = document.getElementById('location-section');
+                          if (locationSection) {
+                            locationSection.scrollIntoView({ behavior: 'smooth' });
+                          }
+                        }}
+                        style={{ 
+                          color: '#000', 
+                          textDecoration: 'underline', 
+                          fontWeight: 500, 
+                          cursor: 'pointer' 
+                        }}
+                      >
                         {[profile.City, profile.State, profile.Country].filter(Boolean).join(', ')}
                       </span>
                       <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
@@ -907,26 +1272,8 @@ function VendorProfilePage() {
           {/* Portfolio Section */}
           {renderPortfolioAlbums()}
 
-          {/* Reviews Section */}
-          <div className="content-section">
-            <h2>Reviews</h2>
-            <div id="reviews-list">
-              {reviews.length > 0 ? (
-                reviews.map((review, index) => (
-                  <div key={index} className="review-card">
-                    <div className="review-header">
-                      <div className="reviewer-name">{review.ReviewerName || 'Anonymous'}</div>
-                      <div className="review-date">{new Date(review.CreatedAt).toLocaleDateString()}</div>
-                    </div>
-                    <div className="review-rating">{'★'.repeat(review.Rating)}{'☆'.repeat(5 - review.Rating)}</div>
-                    <div className="review-comment">{review.Comment}</div>
-                  </div>
-                ))
-              ) : (
-                <p style={{ color: 'var(--text-light)', fontStyle: 'italic' }}>No reviews yet.</p>
-              )}
-            </div>
-          </div>
+          {/* Combined Reviews Section with Tabs */}
+          {renderReviewsSection()}
         </div>
 
         {/* Sidebar - Reordered */}

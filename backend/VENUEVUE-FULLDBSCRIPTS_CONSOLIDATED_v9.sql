@@ -3056,6 +3056,9 @@ BEGIN
         vp.Capacity,
         vp.Rooms,
         vp.LogoURL,
+        -- Google Reviews Integration fields
+        vp.GooglePlaceId,
+        vp.GoogleBusinessUrl,
         (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = vp.VendorProfileID) AS FavoriteCount,
         (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS AverageRating,
         (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = vp.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
