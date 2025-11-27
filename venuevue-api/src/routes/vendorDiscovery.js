@@ -8,29 +8,103 @@ const sql = require('mssql');
  * Provides endpoints for grouped vendor sections on the main search page
  */
 
+// Helper function to fetch vendor images
+async function getVendorImages(vendorProfileId, pool) {
+    try {
+        const imageRequest = new sql.Request(pool);
+        imageRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        
+        const imageResult = await imageRequest.query(`
+            SELECT TOP 1
+                ImageID,
+                ImageURL,
+                IsPrimary,
+                DisplayOrder
+            FROM VendorImages 
+            WHERE VendorProfileID = @VendorProfileID 
+            ORDER BY IsPrimary DESC, DisplayOrder ASC
+        `);
+        
+        if (imageResult.recordset.length > 0) {
+            return imageResult.recordset[0].ImageURL;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching vendor images:', error);
+        return null;
+    }
+}
+
 // Helper function to format vendor data
-function formatVendorData(vendor) {
+async function formatVendorData(vendor, pool) {
+    // Fetch the primary/featured image
+    const featuredImageURL = await getVendorImages(vendor.VendorProfileID, pool);
+    
+    // Build location string
+    const locationParts = [vendor.City, vendor.State].filter(Boolean);
+    const location = locationParts.join(', ');
+    
     return {
+        VendorProfileID: vendor.VendorProfileID,
         vendorProfileId: vendor.VendorProfileID,
         id: vendor.VendorProfileID,
+        BusinessName: vendor.BusinessName,
         businessName: vendor.BusinessName,
+        name: vendor.BusinessName,
+        DisplayName: vendor.DisplayName || vendor.BusinessName,
         displayName: vendor.DisplayName || vendor.BusinessName,
+        Tagline: vendor.Tagline,
         tagline: vendor.Tagline,
+        City: vendor.City,
         city: vendor.City,
+        State: vendor.State,
         state: vendor.State,
+        location: location,
+        LogoURL: vendor.LogoURL,
         logoUrl: vendor.LogoURL,
+        // Featured image for display
+        FeaturedImageURL: featuredImageURL || vendor.LogoURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png',
+        featuredImageURL: featuredImageURL || vendor.LogoURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png',
+        imageURL: featuredImageURL || vendor.LogoURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png',
+        image: featuredImageURL || vendor.LogoURL || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png',
+        PriceLevel: vendor.PriceLevel,
         priceLevel: vendor.PriceLevel,
-        isPremium: vendor.IsPremium,
-        isFeatured: vendor.IsFeatured,
+        IsPremium: vendor.IsPremium || false,
+        isPremium: vendor.IsPremium || false,
+        IsFeatured: vendor.IsFeatured || false,
+        isFeatured: vendor.IsFeatured || false,
+        Latitude: vendor.Latitude,
         latitude: vendor.Latitude,
+        Longitude: vendor.Longitude,
         longitude: vendor.Longitude,
         // Use new performance columns
-        averageRating: parseFloat(vendor.AvgRating || vendor.AverageRating) || 0,
+        AverageRating: parseFloat(vendor.AvgRating || vendor.AverageRating || 0),
+        averageRating: parseFloat(vendor.AvgRating || vendor.AverageRating || 0),
+        rating: parseFloat(vendor.AvgRating || vendor.AverageRating || 0),
+        TotalReviews: vendor.TotalReviews || vendor.ReviewCount || 0,
+        totalReviews: vendor.TotalReviews || vendor.ReviewCount || 0,
         reviewCount: vendor.TotalReviews || vendor.ReviewCount || 0,
+        TotalBookings: vendor.TotalBookings || vendor.BookingCount || 0,
         totalBookings: vendor.TotalBookings || vendor.BookingCount || 0,
+        DistanceMiles: vendor.DistanceMiles,
         distanceMiles: vendor.DistanceMiles,
+        CreatedAt: vendor.CreatedAt,
         createdAt: vendor.CreatedAt,
-        lastReviewDate: vendor.LastReviewDate
+        LastReviewDate: vendor.LastReviewDate,
+        lastReviewDate: vendor.LastReviewDate,
+        // Price fields - use PriceLevel as fallback
+        startingPrice: 100, // Default starting price
+        MinPrice: 100,
+        minPrice: 100,
+        price: 100,
+        // Category - will need to be fetched separately or use a default
+        PrimaryCategory: 'Services',
+        primaryCategory: 'Services',
+        Category: 'Services',
+        category: 'Services',
+        // Response time
+        ResponseTime: vendor.ResponseTimeHours ? `within ${vendor.ResponseTimeHours} hours` : 'within a few hours',
+        responseTime: vendor.ResponseTimeHours ? `within ${vendor.ResponseTimeHours} hours` : 'within a few hours'
     };
 }
 
@@ -52,11 +126,14 @@ router.get('/sections', async (req, res) => {
             
             const trendingResult = await trendingRequest.execute('sp_GetTrendingVendors');
             if (trendingResult.recordset.length > 0) {
+                const vendors = await Promise.all(
+                    trendingResult.recordset.map(v => formatVendorData(v, pool))
+                );
                 sections.push({
                     id: 'trending',
                     title: 'Trending Vendors',
                     description: 'Popular vendors getting lots of attention',
-                    vendors: trendingResult.recordset.map(formatVendorData)
+                    vendors: vendors
                 });
             }
         } catch (err) {
@@ -72,11 +149,14 @@ router.get('/sections', async (req, res) => {
             
             const topRatedResult = await topRatedRequest.execute('sp_GetTopRatedVendors');
             if (topRatedResult.recordset.length > 0) {
+                const vendors = await Promise.all(
+                    topRatedResult.recordset.map(v => formatVendorData(v, pool))
+                );
                 sections.push({
                     id: 'top-rated',
                     title: 'Top Rated Vendors',
                     description: 'Highest rated by customers',
-                    vendors: topRatedResult.recordset.map(formatVendorData)
+                    vendors: vendors
                 });
             }
         } catch (err) {
@@ -92,11 +172,14 @@ router.get('/sections', async (req, res) => {
             
             const responsiveResult = await responsiveRequest.execute('sp_GetResponsiveVendors');
             if (responsiveResult.recordset.length > 0) {
+                const vendors = await Promise.all(
+                    responsiveResult.recordset.map(v => formatVendorData(v, pool))
+                );
                 sections.push({
                     id: 'responsive',
                     title: 'Highly Responsive Vendors',
                     description: 'Quick to reply to messages',
-                    vendors: responsiveResult.recordset.map(formatVendorData)
+                    vendors: vendors
                 });
             }
         } catch (err) {
@@ -113,11 +196,14 @@ router.get('/sections', async (req, res) => {
             
             const recentlyReviewedResult = await recentlyReviewedRequest.execute('sp_GetRecentlyReviewedVendors');
             if (recentlyReviewedResult.recordset.length > 0) {
+                const vendors = await Promise.all(
+                    recentlyReviewedResult.recordset.map(v => formatVendorData(v, pool))
+                );
                 sections.push({
                     id: 'recently-reviewed',
                     title: 'Recently Reviewed',
                     description: 'Fresh feedback from customers',
-                    vendors: recentlyReviewedResult.recordset.map(formatVendorData)
+                    vendors: vendors
                 });
             }
         } catch (err) {
@@ -135,11 +221,14 @@ router.get('/sections', async (req, res) => {
                 
                 const nearbyResult = await nearbyRequest.execute('sp_GetVendorsNearLocation');
                 if (nearbyResult.recordset.length > 0) {
+                    const vendors = await Promise.all(
+                        nearbyResult.recordset.map(v => formatVendorData(v, pool))
+                    );
                     sections.push({
                         id: 'nearby',
                         title: 'Vendors Near You',
                         description: 'Closest to your location',
-                        vendors: nearbyResult.recordset.map(formatVendorData)
+                        vendors: vendors
                     });
                 }
             } catch (err) {
@@ -156,11 +245,14 @@ router.get('/sections', async (req, res) => {
             
             const premiumResult = await premiumRequest.execute('sp_GetPremiumVendors');
             if (premiumResult.recordset.length > 0) {
+                const vendors = await Promise.all(
+                    premiumResult.recordset.map(v => formatVendorData(v, pool))
+                );
                 sections.push({
                     id: 'premium',
                     title: 'Premium Vendors',
                     description: 'Top-tier verified vendors',
-                    vendors: premiumResult.recordset.map(formatVendorData)
+                    vendors: vendors
                 });
             }
         } catch (err) {
@@ -176,11 +268,14 @@ router.get('/sections', async (req, res) => {
             
             const mostBookedResult = await mostBookedRequest.execute('sp_GetMostBookedVendors');
             if (mostBookedResult.recordset.length > 0) {
+                const vendors = await Promise.all(
+                    mostBookedResult.recordset.map(v => formatVendorData(v, pool))
+                );
                 sections.push({
                     id: 'most-booked',
                     title: 'Most Booked Vendors',
                     description: 'Customer favorites',
-                    vendors: mostBookedResult.recordset.map(formatVendorData)
+                    vendors: vendors
                 });
             }
         } catch (err) {
@@ -197,18 +292,21 @@ router.get('/sections', async (req, res) => {
             
             const recentlyAddedResult = await recentlyAddedRequest.execute('sp_GetRecentlyAddedVendors');
             if (recentlyAddedResult.recordset.length > 0) {
+                const vendors = await Promise.all(
+                    recentlyAddedResult.recordset.map(v => formatVendorData(v, pool))
+                );
                 sections.push({
                     id: 'recently-added',
                     title: 'Recently Added Vendors',
                     description: 'New vendors to discover',
-                    vendors: recentlyAddedResult.recordset.map(formatVendorData)
+                    vendors: vendors
                 });
             }
         } catch (err) {
             console.error('Error fetching recently added vendors:', err);
         }
         
-        // 8. Recommended for You (if user is logged in)
+        // 9. Recommended for You (if user is logged in)
         if (req.query.userId) {
             try {
                 const recommendedRequest = pool.request();
@@ -219,11 +317,14 @@ router.get('/sections', async (req, res) => {
                 
                 const recommendedResult = await recommendedRequest.execute('sp_GetRecommendedVendors');
                 if (recommendedResult.recordset.length > 0) {
+                    const vendors = await Promise.all(
+                        recommendedResult.recordset.map(v => formatVendorData(v, pool))
+                    );
                     sections.push({
                         id: 'recommended',
                         title: 'Recommended for You',
                         description: 'Based on your activity and preferences',
-                        vendors: recommendedResult.recordset.map(formatVendorData)
+                        vendors: vendors
                     });
                 }
             } catch (err) {
@@ -259,11 +360,14 @@ router.get('/trending', async (req, res) => {
         else request.input('City', sql.NVarChar(100), null);
         
         const result = await request.execute('sp_GetTrendingVendors');
+        const vendors = await Promise.all(
+            result.recordset.map(v => formatVendorData(v, pool))
+        );
         
         res.json({
             success: true,
-            vendors: result.recordset.map(formatVendorData),
-            count: result.recordset.length
+            vendors: vendors,
+            count: vendors.length
         });
     } catch (error) {
         console.error('Error fetching trending vendors:', error);
@@ -287,11 +391,14 @@ router.get('/responsive', async (req, res) => {
         else request.input('City', sql.NVarChar(100), null);
         
         const result = await request.execute('sp_GetResponsiveVendors');
+        const vendors = await Promise.all(
+            result.recordset.map(v => formatVendorData(v, pool))
+        );
         
         res.json({
             success: true,
-            vendors: result.recordset.map(formatVendorData),
-            count: result.recordset.length
+            vendors: vendors,
+            count: vendors.length
         });
     } catch (error) {
         console.error('Error fetching responsive vendors:', error);
@@ -315,11 +422,14 @@ router.get('/top-rated', async (req, res) => {
         else request.input('City', sql.NVarChar(100), null);
         
         const result = await request.execute('sp_GetTopRatedVendors');
+        const vendors = await Promise.all(
+            result.recordset.map(v => formatVendorData(v, pool))
+        );
         
         res.json({
             success: true,
-            vendors: result.recordset.map(formatVendorData),
-            count: result.recordset.length
+            vendors: vendors,
+            count: vendors.length
         });
     } catch (error) {
         console.error('Error fetching top rated vendors:', error);
@@ -343,11 +453,14 @@ router.get('/most-booked', async (req, res) => {
         else request.input('City', sql.NVarChar(100), null);
         
         const result = await request.execute('sp_GetMostBookedVendors');
+        const vendors = await Promise.all(
+            result.recordset.map(v => formatVendorData(v, pool))
+        );
         
         res.json({
             success: true,
-            vendors: result.recordset.map(formatVendorData),
-            count: result.recordset.length
+            vendors: vendors,
+            count: vendors.length
         });
     } catch (error) {
         console.error('Error fetching most booked vendors:', error);
@@ -371,11 +484,14 @@ router.get('/recently-added', async (req, res) => {
         else request.input('City', sql.NVarChar(100), null);
         
         const result = await request.execute('sp_GetRecentlyAddedVendors');
+        const vendors = await Promise.all(
+            result.recordset.map(v => formatVendorData(v, pool))
+        );
         
         res.json({
             success: true,
-            vendors: result.recordset.map(formatVendorData),
-            count: result.recordset.length
+            vendors: vendors,
+            count: vendors.length
         });
     } catch (error) {
         console.error('Error fetching recently added vendors:', error);
@@ -399,11 +515,14 @@ router.get('/premium', async (req, res) => {
         else request.input('City', sql.NVarChar(100), null);
         
         const result = await request.execute('sp_GetPremiumVendors');
+        const vendors = await Promise.all(
+            result.recordset.map(v => formatVendorData(v, pool))
+        );
         
         res.json({
             success: true,
-            vendors: result.recordset.map(formatVendorData),
-            count: result.recordset.length
+            vendors: vendors,
+            count: vendors.length
         });
     } catch (error) {
         console.error('Error fetching premium vendors:', error);
@@ -427,11 +546,14 @@ router.get('/recently-reviewed', async (req, res) => {
         else request.input('City', sql.NVarChar(100), null);
         
         const result = await request.execute('sp_GetRecentlyReviewedVendors');
+        const vendors = await Promise.all(
+            result.recordset.map(v => formatVendorData(v, pool))
+        );
         
         res.json({
             success: true,
-            vendors: result.recordset.map(formatVendorData),
-            count: result.recordset.length
+            vendors: vendors,
+            count: vendors.length
         });
     } catch (error) {
         console.error('Error fetching recently reviewed vendors:', error);
@@ -464,11 +586,14 @@ router.get('/nearby', async (req, res) => {
         request.input('Limit', sql.Int, parseInt(limit));
         
         const result = await request.execute('sp_GetVendorsNearLocation');
+        const vendors = await Promise.all(
+            result.recordset.map(v => formatVendorData(v, pool))
+        );
         
         res.json({
             success: true,
-            vendors: result.recordset.map(formatVendorData),
-            count: result.recordset.length
+            vendors: vendors,
+            count: vendors.length
         });
     } catch (error) {
         console.error('Error fetching nearby vendors:', error);
@@ -575,11 +700,14 @@ router.get('/recommended', async (req, res) => {
         else request.input('City', sql.NVarChar(100), null);
         
         const result = await request.execute('sp_GetRecommendedVendors');
+        const vendors = await Promise.all(
+            result.recordset.map(v => formatVendorData(v, pool))
+        );
         
         res.json({
             success: true,
-            vendors: result.recordset.map(formatVendorData),
-            count: result.recordset.length
+            vendors: vendors,
+            count: vendors.length
         });
     } catch (error) {
         console.error('Error fetching recommended vendors:', error);
