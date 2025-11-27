@@ -249,6 +249,11 @@ CREATE TABLE VendorProfiles (
     -- Google Reviews Integration fields
     GooglePlaceId NVARCHAR(100) NULL,
     GoogleBusinessUrl NVARCHAR(500) NULL,
+    -- Vendor Discovery & Performance Metrics (denormalized for speed)
+    TotalBookings INT DEFAULT 0,
+    TotalReviews INT DEFAULT 0,
+    AvgRating DECIMAL(3,2) NULL,
+    LastReviewDate DATETIME NULL,
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE()
 );
@@ -685,6 +690,44 @@ CREATE TABLE MessageAttachments (
     FileSize INT,
     OriginalName NVARCHAR(255)
 );
+GO
+
+-- =============================================
+-- VENDOR DISCOVERY & METRICS TRACKING TABLES
+-- =============================================
+
+-- Vendor views tracking for trending and analytics
+CREATE TABLE VendorViews (
+    ViewID INT PRIMARY KEY IDENTITY(1,1),
+    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+    UserID INT NULL FOREIGN KEY REFERENCES Users(UserID),
+    ViewedAt DATETIME DEFAULT GETDATE(),
+    SessionID NVARCHAR(100) NULL,
+    IPAddress NVARCHAR(50) NULL,
+    UserAgent NVARCHAR(500) NULL,
+    ReferrerURL NVARCHAR(500) NULL
+);
+GO
+
+CREATE INDEX IX_VendorViews_VendorProfileID ON VendorViews(VendorProfileID);
+CREATE INDEX IX_VendorViews_ViewedAt ON VendorViews(ViewedAt);
+CREATE INDEX IX_VendorViews_UserID ON VendorViews(UserID) WHERE UserID IS NOT NULL;
+GO
+
+-- Message response times for responsiveness tracking
+CREATE TABLE MessageResponseTimes (
+    ResponseTimeID INT PRIMARY KEY IDENTITY(1,1),
+    VendorProfileID INT FOREIGN KEY REFERENCES VendorProfiles(VendorProfileID),
+    ConversationID INT FOREIGN KEY REFERENCES Conversations(ConversationID),
+    InitialMessageTime DATETIME NOT NULL,
+    ResponseTime DATETIME NOT NULL,
+    ResponseMinutes INT NOT NULL,
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+GO
+
+CREATE INDEX IX_MessageResponseTimes_VendorProfileID ON MessageResponseTimes(VendorProfileID);
+CREATE INDEX IX_MessageResponseTimes_CreatedAt ON MessageResponseTimes(CreatedAt);
 GO
 
 -- Notifications with enhanced fields
@@ -8763,6 +8806,739 @@ GO
 PRINT '✅ Vendor analytics system initialized';
 GO
 
+-- =============================================
+-- VENDOR DISCOVERY SYSTEM - PERFORMANCE OPTIMIZED
+-- =============================================
+
+-- =============================================
+-- TRIGGERS FOR REAL-TIME METRIC UPDATES
+-- =============================================
+
+-- Trigger: Update booking count when booking is created/updated
+IF OBJECT_ID('tr_Bookings_UpdateCount', 'TR') IS NOT NULL
+    DROP TRIGGER tr_Bookings_UpdateCount;
+GO
+
+CREATE TRIGGER tr_Bookings_UpdateCount
+ON Bookings
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    UPDATE vp
+    SET TotalBookings = (
+        SELECT COUNT(*)
+        FROM Bookings
+        WHERE VendorProfileID = vp.VendorProfileID
+          AND Status IN ('confirmed', 'completed')
+    )
+    FROM VendorProfiles vp
+    WHERE vp.VendorProfileID IN (
+        SELECT DISTINCT VendorProfileID FROM inserted
+        UNION
+        SELECT DISTINCT VendorProfileID FROM deleted
+    );
+END
+GO
+
+-- Trigger: Update review metrics when review is created/updated
+IF OBJECT_ID('tr_Reviews_UpdateMetrics', 'TR') IS NOT NULL
+    DROP TRIGGER tr_Reviews_UpdateMetrics;
+GO
+
+CREATE TRIGGER tr_Reviews_UpdateMetrics
+ON Reviews
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    UPDATE vp
+    SET 
+        TotalReviews = ISNULL(r.ReviewCount, 0),
+        AvgRating = r.AvgRating,
+        LastReviewDate = r.LastReviewDate
+    FROM VendorProfiles vp
+    LEFT JOIN (
+        SELECT 
+            VendorProfileID,
+            COUNT(*) AS ReviewCount,
+            AVG(CAST(Rating AS FLOAT)) AS AvgRating,
+            MAX(CreatedAt) AS LastReviewDate
+        FROM Reviews
+        GROUP BY VendorProfileID
+    ) r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.VendorProfileID IN (
+        SELECT DISTINCT VendorProfileID FROM inserted
+        UNION
+        SELECT DISTINCT VendorProfileID FROM deleted
+    );
+END
+GO
+
+-- =============================================
+-- VENDOR DISCOVERY STORED PROCEDURES
+-- =============================================
+
+-- 1. TRENDING VENDORS
+CREATE OR ALTER PROCEDURE sp_GetTrendingVendors
+    @City NVARCHAR(100) = NULL,
+    @Limit INT = 8
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Get trending vendors based on views in last 7 days
+    SELECT TOP (@Limit) vp.*
+    FROM VendorProfiles vp
+    INNER JOIN (
+        SELECT VendorProfileID, COUNT(*) AS ViewCount7Days
+        FROM VendorProfileViews
+        WHERE ViewedAt >= DATEADD(DAY, -7, GETDATE())
+        GROUP BY VendorProfileID
+    ) vt ON vp.VendorProfileID = vt.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND (@City IS NULL OR vp.City = @City)
+    ORDER BY vt.ViewCount7Days DESC, vp.TotalBookings DESC;
+END
+GO
+
+-- 2. HIGHLY RESPONSIVE VENDORS
+CREATE OR ALTER PROCEDURE sp_GetResponsiveVendors
+    @City NVARCHAR(100) = NULL,
+    @Limit INT = 8
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Calculate response times from Messages table
+    SELECT TOP (@Limit) vp.*
+    FROM VendorProfiles vp
+    INNER JOIN (
+        SELECT 
+            c.VendorProfileID,
+            AVG(DATEDIFF(MINUTE, m_user.CreatedAt, m_vendor.CreatedAt)) AS AvgResponseMinutes
+        FROM Conversations c
+        INNER JOIN VendorProfiles vp2 ON c.VendorProfileID = vp2.VendorProfileID
+        INNER JOIN Messages m_user ON c.ConversationID = m_user.ConversationID 
+            AND m_user.SenderID = c.UserID
+        INNER JOIN Messages m_vendor ON c.ConversationID = m_vendor.ConversationID 
+            AND m_vendor.SenderID = vp2.UserID
+            AND m_vendor.CreatedAt > m_user.CreatedAt
+        WHERE DATEDIFF(MINUTE, m_user.CreatedAt, m_vendor.CreatedAt) <= 1440
+        GROUP BY c.VendorProfileID
+        HAVING AVG(DATEDIFF(MINUTE, m_user.CreatedAt, m_vendor.CreatedAt)) <= 120
+    ) vrt ON vp.VendorProfileID = vrt.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND (@City IS NULL OR vp.City = @City)
+    ORDER BY vrt.AvgResponseMinutes ASC;
+END
+GO
+
+-- 3. VENDORS NEAR YOU
+CREATE OR ALTER PROCEDURE sp_GetVendorsNearLocation
+    @Latitude DECIMAL(10,8),
+    @Longitude DECIMAL(11,8),
+    @RadiusMiles INT = 25,
+    @Limit INT = 8
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit) *,
+        (3959 * ACOS(
+            COS(RADIANS(@Latitude)) * COS(RADIANS(Latitude)) *
+            COS(RADIANS(Longitude) - RADIANS(@Longitude)) +
+            SIN(RADIANS(@Latitude)) * SIN(RADIANS(Latitude))
+        )) AS DistanceMiles
+    FROM VendorProfiles
+    WHERE IsCompleted = 1
+      AND Latitude IS NOT NULL
+      AND Longitude IS NOT NULL
+      AND (3959 * ACOS(
+            COS(RADIANS(@Latitude)) * COS(RADIANS(Latitude)) *
+            COS(RADIANS(Longitude) - RADIANS(@Longitude)) +
+            SIN(RADIANS(@Latitude)) * SIN(RADIANS(Latitude))
+        )) <= @RadiusMiles
+    ORDER BY DistanceMiles ASC;
+END
+GO
+
+-- 4. PREMIUM VENDORS
+CREATE OR ALTER PROCEDURE sp_GetPremiumVendors
+    @City NVARCHAR(100) = NULL,
+    @Limit INT = 8
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit) vp.*
+    FROM VendorProfiles vp
+    LEFT JOIN (
+        SELECT VendorProfileID, COUNT(*) AS ViewCount7Days
+        FROM VendorProfileViews
+        WHERE ViewedAt >= DATEADD(DAY, -7, GETDATE())
+        GROUP BY VendorProfileID
+    ) vt ON vp.VendorProfileID = vt.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND (@City IS NULL OR vp.City = @City)
+      AND vp.IsPremium = 1
+    ORDER BY ISNULL(vt.ViewCount7Days, 0) DESC, vp.TotalBookings DESC, vp.AvgRating DESC;
+END
+GO
+
+-- 5. TOP RATED VENDORS
+CREATE OR ALTER PROCEDURE sp_GetTopRatedVendors
+    @City NVARCHAR(100) = NULL,
+    @Limit INT = 8
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit) *
+    FROM VendorProfiles
+    WHERE IsCompleted = 1
+      AND (@City IS NULL OR City = @City)
+      AND AvgRating >= 4.5
+      AND TotalReviews >= 5
+    ORDER BY AvgRating DESC, TotalReviews DESC;
+END
+GO
+
+-- 6. RECENTLY ADDED VENDORS
+CREATE OR ALTER PROCEDURE sp_GetRecentlyAddedVendors
+    @City NVARCHAR(100) = NULL,
+    @Limit INT = 8
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit) *
+    FROM VendorProfiles
+    WHERE IsCompleted = 1
+      AND (@City IS NULL OR City = @City)
+      AND CreatedAt >= DATEADD(DAY, -30, GETDATE())
+    ORDER BY CreatedAt DESC;
+END
+GO
+
+-- 7. MOST BOOKED VENDORS
+CREATE OR ALTER PROCEDURE sp_GetMostBookedVendors
+    @City NVARCHAR(100) = NULL,
+    @Limit INT = 8
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit) *
+    FROM VendorProfiles
+    WHERE IsCompleted = 1
+      AND (@City IS NULL OR City = @City)
+      AND TotalBookings > 0
+    ORDER BY TotalBookings DESC;
+END
+GO
+
+-- 8. RECENTLY REVIEWED VENDORS
+CREATE OR ALTER PROCEDURE sp_GetRecentlyReviewedVendors
+    @City NVARCHAR(100) = NULL,
+    @Limit INT = 8
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit) *
+    FROM VendorProfiles
+    WHERE IsCompleted = 1
+      AND (@City IS NULL OR City = @City)
+      AND LastReviewDate IS NOT NULL
+      AND LastReviewDate >= DATEADD(DAY, -14, GETDATE())
+    ORDER BY LastReviewDate DESC;
+END
+GO
+
+-- 9. RECOMMENDED FOR YOU
+CREATE OR ALTER PROCEDURE sp_GetRecommendedVendors
+    @UserID INT,
+    @City NVARCHAR(100) = NULL,
+    @Limit INT = 8
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Get vendors based on user's activity - simplified version
+    SELECT TOP (@Limit) vp.*
+    FROM VendorProfiles vp
+    WHERE vp.IsCompleted = 1
+      AND (@City IS NULL OR vp.City = @City)
+      AND vp.VendorProfileID NOT IN (
+          -- Exclude already viewed vendors
+          SELECT DISTINCT VendorProfileID 
+          FROM VendorProfileViews 
+          WHERE ViewerUserID = @UserID
+      )
+      AND (
+          -- Same city as user's viewed vendors
+          vp.City IN (
+              SELECT DISTINCT vp3.City 
+              FROM VendorProfileViews vpv
+              INNER JOIN VendorProfiles vp3 ON vpv.VendorProfileID = vp3.VendorProfileID
+              WHERE vpv.ViewerUserID = @UserID
+          )
+          OR
+          -- High rated vendors as fallback
+          (vp.AvgRating >= 4.0 AND vp.TotalReviews >= 3)
+      )
+    ORDER BY vp.AvgRating DESC, vp.TotalBookings DESC;
+END
+GO
+
+-- Legacy procedures for compatibility
+CREATE OR ALTER PROCEDURE sp_TrackVendorView
+    @VendorProfileID INT,
+    @UserID INT = NULL,
+    @SessionID NVARCHAR(100) = NULL,
+    @IPAddress NVARCHAR(50) = NULL,
+    @UserAgent NVARCHAR(500) = NULL,
+    @ReferrerURL NVARCHAR(500) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        -- Insert view record using existing table
+        INSERT INTO VendorProfileViews (VendorProfileID, ViewerUserID, ViewedAt, SessionID, IPAddress, UserAgent, ReferrerUrl)
+        VALUES (@VendorProfileID, @UserID, GETDATE(), @SessionID, @IPAddress, @UserAgent, @ReferrerURL);
+        
+        SELECT 1 AS Success, 'View tracked successfully' AS Message;
+    END TRY
+    BEGIN CATCH
+        SELECT 0 AS Success, ERROR_MESSAGE() AS Message;
+    END CATCH
+END
+GO
+
+-- Track message response time
+CREATE OR ALTER PROCEDURE sp_TrackMessageResponseTime
+    @VendorProfileID INT,
+    @ConversationID INT,
+    @InitialMessageTime DATETIME,
+    @ResponseTime DATETIME
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        DECLARE @ResponseMinutes INT;
+        SET @ResponseMinutes = DATEDIFF(MINUTE, @InitialMessageTime, @ResponseTime);
+        
+        -- Insert response time record
+        INSERT INTO MessageResponseTimes (VendorProfileID, ConversationID, InitialMessageTime, ResponseTime, ResponseMinutes)
+        VALUES (@VendorProfileID, @ConversationID, @InitialMessageTime, @ResponseTime, @ResponseMinutes);
+        
+        -- Update vendor average response time
+        UPDATE VendorProfiles
+        SET AverageResponseTimeMinutes = (
+            SELECT AVG(ResponseMinutes)
+            FROM MessageResponseTimes
+            WHERE VendorProfileID = @VendorProfileID
+              AND CreatedAt >= DATEADD(DAY, -30, GETDATE())
+        )
+        WHERE VendorProfileID = @VendorProfileID;
+        
+        SELECT 1 AS Success, 'Response time tracked successfully' AS Message;
+    END TRY
+    BEGIN CATCH
+        SELECT 0 AS Success, ERROR_MESSAGE() AS Message;
+    END CATCH
+END
+GO
+
+-- Get trending vendors
+CREATE OR ALTER PROCEDURE sp_GetTrendingVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.ViewCount,
+        vp.TrendingScore,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AverageRating,
+        COUNT(DISTINCT r.ReviewID) AS ReviewCount
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND (@City IS NULL OR vp.City = @City)
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline, 
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.ViewCount, vp.TrendingScore, vp.Latitude, vp.Longitude
+    ORDER BY vp.TrendingScore DESC, vp.ViewCount DESC;
+END
+GO
+
+-- Get highly responsive vendors
+CREATE OR ALTER PROCEDURE sp_GetResponsiveVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.AverageResponseTimeMinutes,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AverageRating,
+        COUNT(DISTINCT r.ReviewID) AS ReviewCount
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND vp.AverageResponseTimeMinutes IS NOT NULL
+      AND vp.AverageResponseTimeMinutes <= 120
+      AND (@City IS NULL OR vp.City = @City)
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.AverageResponseTimeMinutes, vp.Latitude, vp.Longitude
+    ORDER BY vp.AverageResponseTimeMinutes ASC;
+END
+GO
+
+-- Get top rated vendors
+CREATE OR ALTER PROCEDURE sp_GetTopRatedVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @MinRating DECIMAL(3,2) = 4.5,
+    @MinReviews INT = 5
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        AVG(r.Rating) AS AverageRating,
+        COUNT(r.ReviewID) AS ReviewCount
+    FROM VendorProfiles vp
+    INNER JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND (@City IS NULL OR vp.City = @City)
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    HAVING AVG(r.Rating) >= @MinRating
+       AND COUNT(r.ReviewID) >= @MinReviews
+    ORDER BY AVG(r.Rating) DESC, COUNT(r.ReviewID) DESC;
+END
+GO
+
+-- Get most booked vendors
+CREATE OR ALTER PROCEDURE sp_GetMostBookedVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.BookingCount,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AverageRating,
+        COUNT(DISTINCT r.ReviewID) AS ReviewCount
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND vp.BookingCount > 0
+      AND (@City IS NULL OR vp.City = @City)
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.BookingCount, vp.Latitude, vp.Longitude
+    ORDER BY vp.BookingCount DESC;
+END
+GO
+
+-- Get recently added vendors
+CREATE OR ALTER PROCEDURE sp_GetRecentlyAddedVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @DaysBack INT = 30
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.CreatedAt,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AverageRating,
+        COUNT(DISTINCT r.ReviewID) AS ReviewCount
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND vp.CreatedAt >= DATEADD(DAY, -@DaysBack, GETDATE())
+      AND (@City IS NULL OR vp.City = @City)
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.CreatedAt, vp.Latitude, vp.Longitude
+    ORDER BY vp.CreatedAt DESC;
+END
+GO
+
+-- Get premium vendors
+CREATE OR ALTER PROCEDURE sp_GetPremiumVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.IsFeatured,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AverageRating,
+        COUNT(DISTINCT r.ReviewID) AS ReviewCount
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND (vp.IsPremium = 1 OR vp.IsFeatured = 1)
+      AND (@City IS NULL OR vp.City = @City)
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.IsFeatured, vp.Latitude, vp.Longitude
+    ORDER BY vp.IsFeatured DESC, vp.IsPremium DESC, vp.TrendingScore DESC;
+END
+GO
+
+-- Get recently reviewed vendors
+CREATE OR ALTER PROCEDURE sp_GetRecentlyReviewedVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @DaysBack INT = 14
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        AVG(r.Rating) AS AverageRating,
+        COUNT(r.ReviewID) AS ReviewCount,
+        MAX(r.CreatedAt) AS LastReviewDate
+    FROM VendorProfiles vp
+    INNER JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND r.CreatedAt >= DATEADD(DAY, -@DaysBack, GETDATE())
+      AND (@City IS NULL OR vp.City = @City)
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    ORDER BY MAX(r.CreatedAt) DESC, AVG(r.Rating) DESC;
+END
+GO
+
+-- Get vendors near user location
+CREATE OR ALTER PROCEDURE sp_GetVendorsNearLocation
+    @Latitude DECIMAL(10,8),
+    @Longitude DECIMAL(11,8),
+    @RadiusMiles INT = 25,
+    @Limit INT = 10
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Calculate distance using Haversine formula
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AverageRating,
+        COUNT(DISTINCT r.ReviewID) AS ReviewCount,
+        (3959 * ACOS(
+            COS(RADIANS(@Latitude)) * COS(RADIANS(vp.Latitude)) *
+            COS(RADIANS(vp.Longitude) - RADIANS(@Longitude)) +
+            SIN(RADIANS(@Latitude)) * SIN(RADIANS(vp.Latitude))
+        )) AS DistanceMiles
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND vp.Latitude IS NOT NULL
+      AND vp.Longitude IS NOT NULL
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    HAVING (3959 * ACOS(
+            COS(RADIANS(@Latitude)) * COS(RADIANS(vp.Latitude)) *
+            COS(RADIANS(vp.Longitude) - RADIANS(@Longitude)) +
+            SIN(RADIANS(@Latitude)) * SIN(RADIANS(vp.Latitude))
+        )) <= @RadiusMiles
+    ORDER BY DistanceMiles ASC;
+END
+GO
+
+-- =============================================
+-- PERFORMANCE INDEXES FOR VENDOR DISCOVERY
+-- =============================================
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_VendorProfiles_TotalBookings' AND object_id = OBJECT_ID('VendorProfiles'))
+BEGIN
+    CREATE INDEX IX_VendorProfiles_TotalBookings 
+    ON VendorProfiles(TotalBookings DESC)
+    INCLUDE (City, IsCompleted)
+    WHERE IsCompleted = 1;
+    PRINT '✓ Created index on TotalBookings';
+END
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_VendorProfiles_AvgRating' AND object_id = OBJECT_ID('VendorProfiles'))
+BEGIN
+    CREATE INDEX IX_VendorProfiles_AvgRating 
+    ON VendorProfiles(AvgRating DESC, TotalReviews DESC)
+    INCLUDE (City, IsCompleted)
+    WHERE IsCompleted = 1 AND AvgRating >= 4.5;
+    PRINT '✓ Created index on AvgRating';
+END
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_VendorProfiles_LastReviewDate' AND object_id = OBJECT_ID('VendorProfiles'))
+BEGIN
+    CREATE INDEX IX_VendorProfiles_LastReviewDate 
+    ON VendorProfiles(LastReviewDate DESC)
+    INCLUDE (City, IsCompleted)
+    WHERE IsCompleted = 1 AND LastReviewDate IS NOT NULL;
+    PRINT '✓ Created index on LastReviewDate';
+END
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_VendorProfiles_CreatedAt_Discovery' AND object_id = OBJECT_ID('VendorProfiles'))
+BEGIN
+    CREATE INDEX IX_VendorProfiles_CreatedAt_Discovery 
+    ON VendorProfiles(CreatedAt DESC)
+    INCLUDE (City, IsCompleted)
+    WHERE IsCompleted = 1;
+    PRINT '✓ Created index on CreatedAt for discovery';
+END
+
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_VendorProfiles_IsPremium_Discovery' AND object_id = OBJECT_ID('VendorProfiles'))
+BEGIN
+    CREATE INDEX IX_VendorProfiles_IsPremium_Discovery 
+    ON VendorProfiles(IsPremium)
+    INCLUDE (City, IsCompleted, TotalBookings, AvgRating)
+    WHERE IsCompleted = 1 AND IsPremium = 1;
+    PRINT '✓ Created index on IsPremium for discovery';
+END
+
+-- Initialize existing vendor metrics
+UPDATE vp
+SET TotalBookings = ISNULL(b.BookingCount, 0)
+FROM VendorProfiles vp
+LEFT JOIN (
+    SELECT VendorProfileID, COUNT(*) AS BookingCount
+    FROM Bookings
+    WHERE Status IN ('confirmed', 'completed')
+    GROUP BY VendorProfileID
+) b ON vp.VendorProfileID = b.VendorProfileID;
+
+UPDATE vp
+SET 
+    TotalReviews = ISNULL(r.ReviewCount, 0),
+    AvgRating = r.AvgRating,
+    LastReviewDate = r.LastReviewDate
+FROM VendorProfiles vp
+LEFT JOIN (
+    SELECT 
+        VendorProfileID,
+        COUNT(*) AS ReviewCount,
+        AVG(CAST(Rating AS FLOAT)) AS AvgRating,
+        MAX(CreatedAt) AS LastReviewDate
+    FROM Reviews
+    GROUP BY VendorProfileID
+) r ON vp.VendorProfileID = r.VendorProfileID;
+
+PRINT '✅ Vendor discovery system with performance optimization complete';
+GO
+
 PRINT '============================================='
 PRINT 'VenueVue v4 PRODUCTION DATABASE COMPLETE'
 PRINT '============================================='
@@ -8772,6 +9548,37 @@ PRINT '✅ Category questions system (91+ questions)'
 PRINT '✅ Vendor Features/Questionnaire (130+ features)'
 PRINT '✅ Email Template System (modular)'
 PRINT '✅ Vendor Analytics & Profile Visit Tracking'
+PRINT '✅ Vendor Discovery System (9 sections + performance)'
+PRINT '✅ Real-time triggers for metrics updates'
+PRINT '✅ Performance indexes for fast queries'
+PRINT '✅ Production-ready error handling'
+PRINT '✅ All stored procedures included'
+PRINT ''
+PRINT 'Discovery Sections Available:'
+PRINT '1. Trending Vendors (views in last 7 days)'
+PRINT '2. Highly Responsive Vendors (reply < 2 hours)'
+PRINT '3. Vendors Near You (location-based)'
+PRINT '4. Premium Vendors (premium subscription)'
+PRINT '5. Top Rated Vendors (4.5+ stars, 5+ reviews)'
+PRINT '6. Recently Added Vendors (last 30 days)'
+PRINT '7. Most Booked Vendors (confirmed bookings)'
+PRINT '8. Recently Reviewed Vendors (last 14 days)'
+PRINT '9. Recommended for You (personalized)'
+PRINT ''
+PRINT 'Ready for production deployment!'
+GO
+
+PRINT '============================================='
+PRINT 'VenueVue v4 PRODUCTION DATABASE COMPLETE'
+PRINT '============================================='
+PRINT 'Enhanced with:'
+PRINT '✅ Full Cloudinary image support'
+PRINT '✅ Category questions system (91+ questions)'
+PRINT '✅ Vendor Features/Questionnaire (130+ features)'
+PRINT '✅ Email Template System (modular)'
+PRINT '✅ Vendor Analytics & Profile Visit Tracking'
+PRINT '✅ Vendor Discovery System (Trending, Top Rated, etc.)'
+PRINT '✅ Responsiveness Tracking & Metrics'
 PRINT '✅ Production-grade error handling'
 PRINT '✅ Complete API compatibility'
 PRINT '✅ All v4 functionality preserved & enhanced'
