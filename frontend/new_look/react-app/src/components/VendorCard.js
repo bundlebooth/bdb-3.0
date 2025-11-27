@@ -62,6 +62,9 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
   const handleCardClick = () => {
     if (onView) {
       onView(vendorId);
+    } else {
+      // Open in new tab/page when no onView handler is provided
+      window.open(`/vendor/${vendorId}`, '_blank');
     }
   };
 

@@ -1,8 +1,11 @@
 // API base URL (global constant)
 // Use local API for development, production API for deployed version
-export const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://bdb-3-0-venuevue-api.onrender.com/api'
-  : 'http://localhost:5000/api';
+// export const API_BASE_URL = process.env.NODE_ENV === 'production' 
+//   ? 'https://bdb-3-0-venuevue-api.onrender.com/api'
+//   : 'http://localhost:5000/api';
+
+// Always use Render API (production backend)
+export const API_BASE_URL = 'https://bdb-3-0-venuevue-api.onrender.com/api';
 
 // Derive Socket base URL from API origin
 let SOCKET_BASE_URL = '';

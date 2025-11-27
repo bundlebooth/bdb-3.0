@@ -4,9 +4,11 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
 import VendorGallery from '../components/VendorGallery';
+import VendorCard from '../components/VendorCard';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import Footer from '../components/Footer';
+import Breadcrumb from '../components/Breadcrumb';
 import { showBanner } from '../utils/helpers';
 import './VendorProfilePage.css';
 
@@ -18,6 +20,7 @@ function VendorProfilePage() {
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [favorites, setFavorites] = useState([]);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState('dashboard');
@@ -36,6 +39,7 @@ function VendorProfilePage() {
   const [showGoogleReviews, setShowGoogleReviews] = useState(false);
   const [currentReviewPage, setCurrentReviewPage] = useState(0);
   const [reviewsPerPage] = useState(5);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   const loadVendorProfile = useCallback(async () => {
     try {
@@ -175,11 +179,36 @@ function VendorProfilePage() {
     }
   }, []);
 
+  // Load favorites
+  const loadFavorites = useCallback(async () => {
+    if (!currentUser?.id) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setFavorites(data.favorites || []);
+      }
+    } catch (error) {
+      console.error('Failed to load favorites:', error);
+    }
+  }, [currentUser?.id]);
+
   useEffect(() => {
     if (vendorId) {
       loadVendorProfile();
     }
   }, [vendorId, loadVendorProfile]);
+
+  useEffect(() => {
+    loadFavorites();
+  }, [loadFavorites]);
+
+  // Scroll to top when component mounts or vendorId changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [vendorId]);
 
   const handleToggleFavorite = async () => {
     if (!currentUser) {
@@ -204,6 +233,47 @@ function VendorProfilePage() {
 
       const result = await response.json();
       setIsFavorite(result.IsFavorite);
+      showBanner(
+        result.IsFavorite ? 'Vendor saved to favorites' : 'Vendor removed from favorites',
+        'favorite'
+      );
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      showBanner('Failed to update favorites', 'error');
+    }
+  };
+
+  // Handle favorite toggle for recommendation cards
+  const handleRecommendationFavorite = async (recommendationVendorId) => {
+    if (!currentUser) {
+      showBanner('Please log in to save favorites', 'info');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorites/toggle`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          vendorProfileId: recommendationVendorId
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to toggle favorite');
+
+      const result = await response.json();
+      
+      // Update favorites list
+      if (result.IsFavorite) {
+        setFavorites(prev => [...prev, { vendorProfileId: recommendationVendorId }]);
+      } else {
+        setFavorites(prev => prev.filter(fav => fav.vendorProfileId !== recommendationVendorId));
+      }
+      
       showBanner(
         result.IsFavorite ? 'Vendor saved to favorites' : 'Vendor removed from favorites',
         'favorite'
@@ -338,57 +408,140 @@ function VendorProfilePage() {
     );
   };
 
-  // Render location and service areas
+  // Render location and service areas with enhanced Google Maps
   const renderLocationAndServiceAreas = () => {
     const hasLocation = profile.Latitude && profile.Longitude;
+    const hasAddress = profile.Address || profile.City;
     const hasServiceAreas = serviceAreas && serviceAreas.length > 0;
 
-    if (!hasLocation && !hasServiceAreas) return null;
+    if (!hasLocation && !hasAddress && !hasServiceAreas) return null;
 
     return (
       <div className="content-section" id="location-section">
         <h2>Where you'll find us</h2>
-        {hasLocation && (
-          <div style={{ marginBottom: '1rem' }}>
-            <iframe
-              width="100%"
-              height="350"
-              frameBorder="0"
-              style={{ border: 0, display: 'block', borderRadius: '12px' }}
-              referrerPolicy="no-referrer-when-downgrade"
-              src={`https://maps.google.com/maps?q=${profile.Latitude},${profile.Longitude}&hl=en&z=14&output=embed`}
-              allowFullScreen
-            ></iframe>
-            <div style={{ padding: '1rem', background: 'white', borderTop: '1px solid var(--border)', borderRadius: '0 0 12px 12px' }}>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <i className="fas fa-building"></i>
-                <span>Business Location</span>
-              </div>
-              <div style={{ fontSize: '0.95rem', color: 'var(--text)' }}>
-                {[profile.Address, profile.City, profile.State, profile.PostalCode, profile.Country].filter(Boolean).join(', ')}
+        
+        {/* Google Maps - Show if we have coordinates OR address */}
+        {(hasLocation || hasAddress) && (
+          <div style={{ marginBottom: '2rem' }}>
+            <div style={{ 
+              position: 'relative',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+            }}>
+              <iframe
+                width="100%"
+                height="400"
+                frameBorder="0"
+                style={{ border: 0, display: 'block' }}
+                referrerPolicy="no-referrer-when-downgrade"
+                src={hasLocation 
+                  ? `https://maps.google.com/maps?q=${profile.Latitude},${profile.Longitude}&hl=en&z=15&output=embed`
+                  : `https://maps.google.com/maps?q=${encodeURIComponent([profile.Address, profile.City, profile.State].filter(Boolean).join(', '))}&hl=en&z=15&output=embed`
+                }
+                allowFullScreen
+                loading="lazy"
+              ></iframe>
+              
+              {/* Address overlay */}
+              <div style={{ 
+                position: 'absolute',
+                bottom: '0',
+                left: '0',
+                right: '0',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.4), transparent)',
+                color: 'white',
+                padding: '1.5rem 1rem 1rem',
+                backdropFilter: 'blur(4px)'
+              }}>
+                <div style={{ 
+                  fontSize: '0.875rem', 
+                  opacity: 0.9,
+                  marginBottom: '0.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <i className="fas fa-map-marker-alt"></i>
+                  <span>Business Location</span>
+                </div>
+                <div style={{ 
+                  fontSize: '1rem', 
+                  fontWeight: '500',
+                  lineHeight: '1.4'
+                }}>
+                  {[profile.Address, profile.City, profile.State, profile.PostalCode, profile.Country].filter(Boolean).join(', ') || 'Address available upon booking'}
+                </div>
               </div>
             </div>
           </div>
         )}
+
+        {/* Service Areas */}
         {hasServiceAreas && (
           <div>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.75rem' }}>Areas We Serve</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '0.75rem' }}>
+            <h3 style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: 600, 
+              color: '#111827',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <i className="fas fa-route" style={{ color: '#3b82f6', fontSize: '1rem' }}></i>
+              Areas We Serve
+            </h3>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+              gap: '1rem' 
+            }}>
               {serviceAreas.map((area, index) => {
                 const location = [area.CityName, area.StateProvince, area.Country].filter(Boolean).join(', ');
                 return (
-                  <div key={index} style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1rem' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
-                      <i className="fas fa-map-marker-alt" style={{ color: 'var(--primary)', marginRight: '0.5rem', fontSize: '0.85rem' }}></i>
+                  <div key={index} style={{ 
+                    background: 'white', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '12px', 
+                    padding: '1.25rem',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                  }}>
+                    <div style={{ 
+                      fontWeight: 600, 
+                      color: '#111827', 
+                      marginBottom: '0.75rem', 
+                      fontSize: '1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      <i className="fas fa-map-marker-alt" style={{ 
+                        color: '#3b82f6', 
+                        fontSize: '0.875rem' 
+                      }}></i>
                       {location}
                     </div>
                     {(area.ServiceRadius || (area.TravelCost && parseFloat(area.TravelCost) > 0)) && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--text-light)' }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '0.5rem', 
+                        fontSize: '0.875rem', 
+                        color: '#6b7280' 
+                      }}>
                         {area.ServiceRadius && (
-                          <div><i className="fas fa-route" style={{ marginRight: '0.35rem', width: '12px' }}></i>{area.ServiceRadius} miles radius</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <i className="fas fa-route" style={{ width: '14px', color: '#9ca3af' }}></i>
+                            <span>{area.ServiceRadius} miles radius</span>
+                          </div>
                         )}
                         {area.TravelCost && parseFloat(area.TravelCost) > 0 && (
-                          <div><i className="fas fa-dollar-sign" style={{ marginRight: '0.35rem', width: '12px' }}></i>${parseFloat(area.TravelCost).toFixed(2)} travel fee</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <i className="fas fa-dollar-sign" style={{ width: '14px', color: '#9ca3af' }}></i>
+                            <span>${parseFloat(area.TravelCost).toFixed(2)} travel fee</span>
+                          </div>
                         )}
                       </div>
                     )}
@@ -624,96 +777,93 @@ function VendorProfilePage() {
         <h2 style={{ marginBottom: '2rem' }}>Reviews for {vendorName}</h2>
 
         {/* Rating Section */}
-        <div style={{ marginBottom: '2rem' }}>
-          {/* Main Rating - Always show in-app first */}
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ 
-              fontSize: '1.25rem', 
-              color: '#ef4444',
-              lineHeight: 1,
-              marginBottom: '0.25rem'
-            }}>
-              {'★'.repeat(5)}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem' }}>
-              <div style={{ 
-                fontSize: '4rem', 
-                fontWeight: 700, 
-                color: 'var(--text)', 
-                lineHeight: 1
-              }}>
-                4.9
-              </div>
-              <div style={{ 
-                fontSize: '0.875rem', 
-                color: 'var(--text-light)'
-              }}>
-                Based on {reviews?.length || 91} reviews
-              </div>
-            </div>
-          </div>
-
-          {/* Toggle */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'flex-start',
+          marginBottom: '1.5rem' 
+        }}>
+          {/* Toggle Switch - Left side */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: '0.5rem',
-            marginBottom: showGoogleReviews ? '1rem' : '0'
+            gap: '0.5rem'
           }}>
-            <input 
-              type="checkbox" 
-              id="displayGoogleReviews" 
-              checked={showGoogleReviews}
-              onChange={() => {
+            <span style={{ 
+              fontSize: '0.8rem', 
+              color: showGoogleReviews ? 'var(--text-light)' : 'var(--primary)', 
+              fontWeight: showGoogleReviews ? 400 : 600,
+              transition: 'all 0.2s'
+            }}>
+              PlanHive Reviews
+            </span>
+            
+            <div 
+              onClick={() => {
                 setShowGoogleReviews(!showGoogleReviews);
                 setCurrentReviewPage(0);
               }}
-              style={{ 
-                width: '16px',
-                height: '16px',
-                accentColor: 'var(--primary)'
+              style={{
+                width: '44px',
+                height: '22px',
+                backgroundColor: showGoogleReviews ? 'var(--primary)' : '#e2e8f0',
+                borderRadius: '11px',
+                position: 'relative',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease'
               }}
-            />
-            <label htmlFor="displayGoogleReviews" style={{ 
-              fontSize: '0.875rem', 
-              color: 'var(--text)', 
-              cursor: 'pointer',
-              fontWeight: 500
+            >
+              <div style={{
+                width: '18px',
+                height: '18px',
+                backgroundColor: 'white',
+                borderRadius: '50%',
+                position: 'absolute',
+                top: '2px',
+                left: showGoogleReviews ? '24px' : '2px',
+                transition: 'left 0.2s ease',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)'
+              }} />
+            </div>
+            
+            <span style={{ 
+              fontSize: '0.8rem', 
+              color: showGoogleReviews ? 'var(--primary)' : 'var(--text-light)', 
+              fontWeight: showGoogleReviews ? 600 : 400,
+              transition: 'all 0.2s'
             }}>
-              Display Google Reviews
-            </label>
+              Google Reviews
+            </span>
           </div>
 
-          {/* Google Reviews Rating - Show when toggled */}
-          {showGoogleReviews && hasGoogleReviews && (
+          {/* Rating Display - Right side */}
+          <div style={{ textAlign: 'right' }}>
             <div style={{ 
-              display: 'flex', 
-              alignItems: 'baseline', 
-              gap: '0.75rem',
-              paddingLeft: '1.5rem'
+              fontSize: '1.25rem', 
+              color: 'var(--primary)',
+              lineHeight: 1,
+              marginBottom: '0.125rem'
             }}>
-              <div style={{ 
-                fontSize: '1.5rem', 
-                fontWeight: 600, 
-                color: 'var(--text)'
-              }}>
-                {googleReviews.rating?.toFixed(1) || '4.4'}
-              </div>
-              <div style={{ 
-                fontSize: '1.25rem', 
-                color: '#0891b2',
-                lineHeight: 1
-              }}>
-                {'★'.repeat(Math.floor(googleReviews.rating || 4))}{'☆'.repeat(5 - Math.floor(googleReviews.rating || 4))}
-              </div>
-              <div style={{ 
-                fontSize: '0.875rem', 
-                color: 'var(--text-light)'
-              }}>
-                Based on {googleReviews?.user_ratings_total || 201} Google reviews
-              </div>
+              {'★'.repeat(5)}
             </div>
-          )}
+            
+            <div style={{ 
+              fontSize: '4rem', 
+              fontWeight: 700, 
+              color: 'var(--text)', 
+              lineHeight: 0.9,
+              marginBottom: '0.25rem'
+            }}>
+              {showGoogleReviews ? (googleReviews?.rating?.toFixed(1) || '4.8') : '4.9'}
+            </div>
+
+            <div style={{ 
+              fontSize: '0.875rem', 
+              color: 'var(--text-light)'
+            }}>
+              Based on {showGoogleReviews ? (googleReviews?.user_ratings_total || 565) : (reviews?.length || 91)} {showGoogleReviews ? 'Google ' : ''}reviews
+            </div>
+          </div>
         </div>
 
         {/* Review Content */}
@@ -898,78 +1048,231 @@ function VendorProfilePage() {
     );
   };
 
-  // Render recommendations section
+  // Render recommendations section as horizontal carousel
   const renderRecommendations = () => {
     const currentRecs = recommendations[activeRecommendationTab] || [];
-    if (currentRecs.length === 0) return null;
+    const itemWidth = 320; // Width for each card
+    const gap = 24; // 1.5rem = 24px
+    const containerPadding = 160; // Padding for navigation buttons
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1400;
+    const availableWidth = viewportWidth - containerPadding;
+    const totalContentWidth = currentRecs.length * (itemWidth + gap) - gap; // Remove last gap
+    const maxScroll = Math.max(0, totalContentWidth - availableWidth);
+
+    const handleTabChange = (tab) => {
+      setActiveRecommendationTab(tab);
+      setCarouselIndex(0); // Reset scroll when changing tabs
+    };
+
+    const scrollLeft = () => {
+      setCarouselIndex(prev => Math.max(prev - (itemWidth + gap), 0));
+    };
+
+    const scrollRight = () => {
+      setCarouselIndex(prev => Math.min(prev + (itemWidth + gap), maxScroll));
+    };
 
     return (
-      <div className="venue-recommendations-section">
-        <div className="venue-recommendations-container">
-          <div className="venue-recommendations-header">
-            <h2>You might also like</h2>
+      <div style={{ 
+        padding: '3rem 0 0 0', 
+        backgroundColor: '#f8f9fa',
+        marginTop: '2rem',
+        marginBottom: '-1px', // Slight overlap to ensure no gap
+        width: '100vw',
+        marginLeft: 'calc(-50vw + 50%)',
+        position: 'relative',
+        zIndex: 1
+      }}>
+        <div style={{ 
+          width: '100%', 
+          margin: '0 auto', 
+          padding: '0' 
+        }}>
+          <div style={{ 
+            marginBottom: '2rem',
+            textAlign: 'center',
+            padding: '0 2rem'
+          }}>
+            <h2 style={{ 
+              fontSize: '1.875rem', 
+              fontWeight: '600', 
+              color: '#111827',
+              marginBottom: '1rem'
+            }}>
+              You might also like
+            </h2>
           </div>
-          <div className="venue-recommendation-tabs">
+          
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center',
+            gap: '1rem',
+            marginBottom: '2rem',
+            flexWrap: 'wrap',
+            padding: '0 2rem'
+          }}>
             <button 
-              className={`venue-recommendation-tab ${activeRecommendationTab === 'similar' ? 'active' : ''}`}
-              onClick={() => setActiveRecommendationTab('similar')}
+              onClick={() => handleTabChange('similar')}
+              style={{
+                padding: '0.75rem 1.5rem',
+                borderRadius: '25px',
+                border: 'none',
+                backgroundColor: activeRecommendationTab === 'similar' ? '#111827' : '#ffffff',
+                color: activeRecommendationTab === 'similar' ? '#ffffff' : '#6b7280',
+                fontWeight: '600',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              }}
             >
               Similar Vendors
             </button>
             <button 
-              className={`venue-recommendation-tab ${activeRecommendationTab === 'nearby' ? 'active' : ''}`}
-              onClick={() => setActiveRecommendationTab('nearby')}
+              onClick={() => handleTabChange('nearby')}
+              style={{
+                padding: '0.75rem 1.5rem',
+                borderRadius: '25px',
+                border: 'none',
+                backgroundColor: activeRecommendationTab === 'nearby' ? '#111827' : '#ffffff',
+                color: activeRecommendationTab === 'nearby' ? '#ffffff' : '#6b7280',
+                fontWeight: '600',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              }}
             >
               Nearby Vendors
             </button>
             <button 
-              className={`venue-recommendation-tab ${activeRecommendationTab === 'popular' ? 'active' : ''}`}
-              onClick={() => setActiveRecommendationTab('popular')}
+              onClick={() => handleTabChange('popular')}
+              style={{
+                padding: '0.75rem 1.5rem',
+                borderRadius: '25px',
+                border: 'none',
+                backgroundColor: activeRecommendationTab === 'popular' ? '#111827' : '#ffffff',
+                color: activeRecommendationTab === 'popular' ? '#ffffff' : '#6b7280',
+                fontWeight: '600',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              }}
             >
               Popular Vendors
             </button>
           </div>
-          <div className="venues-grid">
-            {currentRecs.map((venue, index) => {
-              const vId = venue.VendorProfileID || venue.vendorProfileId || venue.id;
-              const name = venue.BusinessName || venue.businessName || venue.name || 'Unnamed Venue';
-              const rating = parseFloat(venue.averageRating ?? venue.rating ?? 0);
-              const reviewCount = venue.totalReviews || venue.reviewCount || 0;
-              const city = venue.City || venue.city || '';
-              const state = venue.State || venue.state || '';
-              const location = [city, state].filter(Boolean).join(', ') || 'Location unavailable';
-              
-              let imageUrl = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
-              if (venue.images && venue.images.length > 0) {
-                imageUrl = venue.images[0].ImageURL || venue.images[0].imageUrl || venue.images[0].url || imageUrl;
-              } else if (venue.PrimaryImageURL || venue.primaryImageURL || venue.imageUrl) {
-                imageUrl = venue.PrimaryImageURL || venue.primaryImageURL || venue.imageUrl;
-              }
-              
-              const stars = '★'.repeat(Math.round(rating));
-
-              return (
-                <div key={index} className="recommendation-venue-card" onClick={() => navigate(`/vendor/${vId}`)}>
-                  <img src={imageUrl} alt={name} className="recommendation-venue-image" 
-                       onError={(e) => e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'} />
-                  <div className="recommendation-venue-info">
-                    <div className="recommendation-venue-name">{name}</div>
-                    {rating > 0 && (
-                      <div className="recommendation-venue-rating">
-                        <span className="stars">{stars}</span>
-                        <span style={{ color: '#6b7280' }}>{rating.toFixed(1)}</span>
-                        <span style={{ color: '#9ca3af' }}>({reviewCount})</span>
-                      </div>
-                    )}
-                    <div className="recommendation-venue-location">
-                      <i className="fas fa-map-marker-alt"></i>
-                      {location}
+          
+          {/* Horizontal Carousel */}
+          <div style={{ position: 'relative' }}>
+            {/* Navigation Buttons */}
+            {currentRecs.length > 3 && (
+              <>
+                <button
+                  onClick={scrollLeft}
+                  disabled={carouselIndex === 0}
+                  style={{
+                    position: 'absolute',
+                    left: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 10,
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    backgroundColor: '#ffffff',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    cursor: carouselIndex === 0 ? 'not-allowed' : 'pointer',
+                    opacity: carouselIndex === 0 ? 0.5 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <i className="fas fa-chevron-left" style={{ color: '#111827', fontSize: '16px' }}></i>
+                </button>
+                
+                <button
+                  onClick={scrollRight}
+                  disabled={carouselIndex >= maxScroll}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 10,
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    backgroundColor: '#ffffff',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    cursor: carouselIndex >= maxScroll ? 'not-allowed' : 'pointer',
+                    opacity: carouselIndex >= maxScroll ? 0.5 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <i className="fas fa-chevron-right" style={{ color: '#111827', fontSize: '16px' }}></i>
+                </button>
+              </>
+            )}
+            
+            {/* Carousel Container */}
+            <div style={{ 
+              overflow: 'hidden',
+              padding: '0 80px', // Space for navigation buttons
+              width: '100vw'
+            }}>
+              <div style={{
+                display: 'flex',
+                transform: `translateX(-${carouselIndex}px)`,
+                transition: 'transform 0.3s ease-in-out',
+                gap: `${gap}px`,
+                width: 'fit-content'
+              }}>
+                {currentRecs.length > 0 ? (
+                  currentRecs.map((venue, index) => (
+                    <div
+                      key={venue.VendorProfileID || venue.id || index}
+                      style={{
+                        flex: `0 0 ${itemWidth}px`,
+                        width: `${itemWidth}px`,
+                        minWidth: `${itemWidth}px`
+                      }}
+                    >
+                      <VendorCard
+                        vendor={venue}
+                        isFavorite={favorites.some(fav => fav.vendorProfileId === (venue.VendorProfileID || venue.id))}
+                        onToggleFavorite={(vendorId) => handleRecommendationFavorite(vendorId)}
+                        onView={(vendorId) => navigate(`/vendor/${vendorId}`)}
+                      />
                     </div>
+                  ))
+                ) : (
+                  <div style={{
+                    flex: '1',
+                    textAlign: 'center',
+                    padding: '3rem',
+                    color: '#6b7280',
+                    minWidth: '100%'
+                  }}>
+                    <i className="fas fa-search" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
+                    <div style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Loading recommendations...</div>
+                    <div style={{ fontSize: '0.9rem' }}>We're finding similar vendors for you</div>
                   </div>
-                </div>
-              );
-            })}
+                )}
+              </div>
+            </div>
           </div>
+          
+          {/* Extra padding to ensure background extends */}
+          <div style={{ height: '2rem' }}></div>
         </div>
       </div>
     );
@@ -1077,6 +1380,7 @@ function VendorProfilePage() {
   const reviews = vendor.reviews || [];
   const faqs = vendor.faqs || [];
   const businessHours = vendor.businessHours || [];
+  const categories = vendor.categories || [];
 
   return (
     <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', width: '100%' }}>
@@ -1115,6 +1419,14 @@ function VendorProfilePage() {
         initialSection={dashboardSection}
       />
       <div className="profile-container">
+        {/* Breadcrumb Navigation */}
+        <Breadcrumb items={[
+          profile.City || 'City',
+          categories[0]?.CategoryName || categories[0]?.Category || profile.CategoryName || profile.PrimaryCategory || profile.Category || 'Services',
+          profile.BusinessName || profile.DisplayName || 'Vendor Name',
+          'Profile'
+        ]} />
+
         {/* Back Button */}
         <button className="back-button" onClick={() => navigate(-1)}>
           <i className="fas fa-arrow-left"></i>
@@ -1327,8 +1639,10 @@ function VendorProfilePage() {
       
       {/* Recommendations Section */}
       {renderRecommendations()}
+      
+      {/* Footer - No spacing */}
+      <Footer />
     </div>
-    <Footer />
     </div>
   );
 }

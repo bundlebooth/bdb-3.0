@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
 import ProfileModal from '../components/ProfileModal';
+import Breadcrumb from '../components/Breadcrumb';
 import '../styles/BookingPage.css';
 
 function BookingPage() {
@@ -49,6 +50,11 @@ function BookingPage() {
 
     loadVendorData();
   }, [vendorId, navigate]);
+
+  // Scroll to top when component mounts or vendorId changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [vendorId]);
 
   // Load vendor data
   const loadVendorData = useCallback(async () => {
@@ -338,6 +344,16 @@ function BookingPage() {
         {/* Left Side - Booking Form */}
         <div className="booking-form-section">
           <div className="booking-form-wrapper">
+            {/* Breadcrumb Navigation */}
+            {vendorData && (
+              <Breadcrumb items={[
+                vendorData.profile?.City || 'City',
+                vendorData.categories?.[0]?.CategoryName || vendorData.profile?.CategoryName || vendorData.profile?.PrimaryCategory || vendorData.profile?.Category || 'Services',
+                vendorData.profile?.BusinessName || 'Vendor Name',
+                'Booking'
+              ]} />
+            )}
+
             {/* Back Button */}
             <button 
               className="back-button" 
