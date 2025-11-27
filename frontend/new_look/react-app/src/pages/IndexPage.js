@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import CategoriesNav from '../components/CategoriesNav';
 import FilterSidebar from '../components/FilterSidebar';
 import VendorGrid from '../components/VendorGrid';
+import VendorSection from '../components/VendorSection';
 import MapView from '../components/MapView';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
@@ -33,6 +34,10 @@ function IndexPage() {
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState('dashboard');
   const [loadingMore, setLoadingMore] = useState(false);
+  
+  // Vendor discovery sections state
+  const [discoverySections, setDiscoverySections] = useState([]);
+  const [loadingDiscovery, setLoadingDiscovery] = useState(true);
   
   // Track initial mount to prevent duplicate loads
   const isInitialMount = useRef(true);
@@ -82,6 +87,50 @@ function IndexPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadDiscoverySections = useCallback(async () => {
+    try {
+      setLoadingDiscovery(true);
+      
+      const params = new URLSearchParams();
+      params.set('limit', '8');
+      
+      if (filters.location) {
+        params.set('city', filters.location);
+      }
+      
+      if (userLocation?.lat && userLocation?.lng) {
+        params.set('latitude', userLocation.lat);
+        params.set('longitude', userLocation.lng);
+      }
+      
+      // Add userId for personalized recommendations
+      if (currentUser?.userId) {
+        params.set('userId', currentUser.userId);
+      }
+      
+      const url = `${API_BASE_URL}/vendor-discovery/sections?${params.toString()}`;
+      console.log('🔍 Fetching discovery sections from:', url);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch discovery sections');
+      }
+      
+      const data = await response.json();
+      console.log('📦 Discovery sections loaded:', data);
+      
+      if (data.success && data.sections) {
+        setDiscoverySections(data.sections);
+      }
+    } catch (error) {
+      console.error('❌ Error loading discovery sections:', error);
+      // Don't show error banner - discovery sections are optional
+    } finally {
+      setLoadingDiscovery(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.location, userLocation, currentUser]);
 
   // EXACT match to original applyClientSideFilters (line 26091-26120)
   const applyClientSideFiltersInternal = useCallback((vendorsToFilter) => {
@@ -279,6 +328,7 @@ function IndexPage() {
       loadFavorites();
     }
     await loadVendors();
+    await loadDiscoverySections();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -367,6 +417,18 @@ function IndexPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendors, filters, userLocation]);
+
+  // Reload discovery sections when location changes
+  useEffect(() => {
+    if (isInitialMount.current) {
+      return;
+    }
+    
+    if (userLocation || filters.location) {
+      loadDiscoverySections();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation, filters.location]);
 
   const handleCategoryChange = useCallback((category) => {
     setCurrentCategory(category);
@@ -598,6 +660,26 @@ function IndexPage() {
             </div>
           </div>
           <div className="map-overlay"></div>
+          
+          {/* Vendor Discovery Sections */}
+          {!loadingDiscovery && discoverySections.length > 0 && (
+            <div className="vendor-discovery-sections">
+              {discoverySections.map((section) => (
+                <VendorSection
+                  key={section.id}
+                  title={section.title}
+                  description={section.description}
+                  vendors={section.vendors}
+                  favorites={favorites}
+                  onToggleFavorite={handleToggleFavorite}
+                  onViewVendor={handleViewVendor}
+                  onHighlightVendor={handleHighlightVendor}
+                />
+              ))}
+            </div>
+          )}
+          
+          {/* Main Vendor Grid */}
           <VendorGrid vendors={currentVendors} loading={loading} loadingMore={loadingMore} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewVendor={handleViewVendor} onHighlightVendor={handleHighlightVendor} />
           {showLoadMore && (
             <div id="load-more-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '3rem 0 2rem 0' }}>

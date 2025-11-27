@@ -12,8 +12,8 @@ const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, fav
         id="vendor-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '1.5rem',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gap: '1rem',
           padding: '1rem 0'
         }}
       >

@@ -9027,3 +9027,213 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     max-height: 400px;
     overflow-y: auto;
 }
+
+/* =============================================
+   VENDOR DISCOVERY SECTIONS STYLES
+   ============================================= */
+
+/* =============================================
+   VENDOR DISCOVERY SECTIONS - AIRBNB STYLE
+   ============================================= */
+
+.vendor-discovery-sections {
+  margin: 2rem 0;
+  width: 100%;
+}
+
+.vendor-section {
+  margin-bottom: 3rem;
+  position: relative;
+  width: 100%;
+}
+
+.vendor-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  padding: 0 1.5rem;
+}
+
+.vendor-section-info {
+  flex: 1;
+}
+
+.vendor-section-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #222;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.2;
+}
+
+.vendor-section-description {
+  font-size: 1rem;
+  color: #717171;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.vendor-section-nav {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.vendor-section-nav-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid #DDDDDD;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  font-size: 16px;
+  color: #222;
+}
+
+.vendor-section-nav-btn:hover:not(:disabled) {
+  border-color: #222;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  transform: scale(1.05);
+}
+
+.vendor-section-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.vendor-section-scroll-container {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  gap: 1rem;
+  padding: 0 1.5rem 1rem 1.5rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  width: 100%;
+}
+
+.vendor-section-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* CRITICAL: Fixed width vendor cards */
+.vendor-section-card {
+  flex: 0 0 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+  width: 300px !important;
+}
+
+/* Override any VendorCard styles that might be causing issues */
+.vendor-section-card .vendor-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.vendor-section-card .vendor-card-image {
+  width: 100% !important;
+  height: 200px !important;
+  object-fit: cover !important;
+  border-radius: 12px !important;
+}
+
+.vendor-section-card .vendor-card-content {
+  padding: 1rem 0 !important;
+}
+
+/* Loading skeleton */
+.vendor-section-loading {
+  display: flex;
+  gap: 1rem;
+  padding: 0 1.5rem;
+  overflow: hidden;
+}
+
+.vendor-section-skeleton {
+  flex: 0 0 300px;
+  min-width: 300px;
+  height: 350px;
+  background: linear-gradient(90deg, #f7f7f7 25%, #ebebeb 50%, #f7f7f7 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 12px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .vendor-section-card {
+    flex: 0 0 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+    width: 280px !important;
+  }
+  
+  .vendor-section-skeleton {
+    flex: 0 0 280px;
+    min-width: 280px;
+  }
+}
+
+@media (max-width: 768px) {
+  .vendor-section-nav {
+    display: none;
+  }
+  
+  .vendor-section-header {
+    padding: 0 1rem;
+  }
+  
+  .vendor-section-scroll-container {
+    padding: 0 1rem 1rem 1rem;
+    gap: 0.75rem;
+  }
+  
+  .vendor-section-card {
+    flex: 0 0 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    width: 260px !important;
+  }
+  
+  .vendor-section-skeleton {
+    flex: 0 0 260px;
+    min-width: 260px;
+  }
+  
+  .vendor-section-title {
+    font-size: 1.5rem;
+    width: 260px;
+  }
+}
+
+@media (max-width: 480px) {
+  .vendor-section-title {
+    font-size: 1.25rem;
+  }
+  
+  .vendor-section-card-wrapper {
+    width: 240px;
+  }
+  
+  .vendor-section-grid {
+    gap: 0.875rem;
+  }
+}
