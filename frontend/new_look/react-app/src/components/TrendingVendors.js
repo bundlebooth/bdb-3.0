@@ -6,7 +6,7 @@ import VendorCard from './VendorCard';
 function TrendingVendors({ onViewVendor }) {
   const [trendingVendors, setTrendingVendors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const carouselRef = React.useRef(null);
 
   useEffect(() => {
     loadTrendingVendors();
@@ -27,11 +27,15 @@ function TrendingVendors({ onViewVendor }) {
   };
 
   const handlePrev = () => {
-    setCurrentIndex((prev) => Math.max(0, prev - 1));
+    if (carouselRef.current) {
+      carouselRef.current.scrollBy({ left: -400, behavior: 'smooth' });
+    }
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => Math.min(trendingVendors.length - 4, prev + 1));
+    if (carouselRef.current) {
+      carouselRef.current.scrollBy({ left: 400, behavior: 'smooth' });
+    }
   };
 
   if (!loading && trendingVendors.length === 0) {
@@ -39,84 +43,109 @@ function TrendingVendors({ onViewVendor }) {
   }
 
   return (
-    <div id="trending-vendors-section-main" style={{ display: 'block', marginBottom: '2rem' }}>
-      <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem' }}>
-        <h3 
-          id="trending-header-main" 
+    <div id="trending-vendors-section-main" style={{ marginBottom: '3rem', paddingTop: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+        <h2 
           style={{ 
-            color: '#1a202c', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.5rem', 
-            margin: '0 0 1.5rem 0', 
-            fontSize: '1.25rem', 
-            fontWeight: 700 
+            color: '#222222', 
+            margin: '0', 
+            fontSize: '1.375rem', 
+            fontWeight: 600,
+            letterSpacing: '-0.01em'
           }}
         >
-          <i className="fas fa-fire" style={{ color: '#ff6b6b' }}></i>
-          Trending Right Now
-          <span style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 400, marginLeft: 'auto' }}>
-            Most Viewed This Month
-          </span>
-        </h3>
-        <div id="trending-vendors-carousel-wrapper-main" style={{ position: 'relative' }}>
+          Trending Vendors
+        </h2>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button 
-            className="trending-carousel-nav trending-carousel-prev" 
-            id="trending-prev-main"
             onClick={handlePrev}
-            disabled={currentIndex === 0}
-            aria-label="Previous vendor"
+            aria-label="Previous vendors"
+            style={{
+              width: '32px',
+              height: '32px',
+              border: '1px solid #DDDDDD',
+              borderRadius: '50%',
+              background: '#FFFFFF',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+              padding: 0
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)'}
+            onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
           >
-            <i className="fas fa-chevron-left"></i>
+            <i className="fas fa-chevron-left" style={{ fontSize: '0.75rem', color: '#222222' }}></i>
           </button>
           <button 
-            className="trending-carousel-nav trending-carousel-next" 
-            id="trending-next-main"
             onClick={handleNext}
-            disabled={currentIndex >= trendingVendors.length - 4}
-            aria-label="Next vendor"
-          >
-            <i className="fas fa-chevron-right"></i>
-          </button>
-          <div 
-            id="trending-vendors-carousel-main" 
-            style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', 
-              gap: '1.25rem',
-              transition: 'transform 0.3s ease'
+            aria-label="Next vendors"
+            style={{
+              width: '32px',
+              height: '32px',
+              border: '1px solid #DDDDDD',
+              borderRadius: '50%',
+              background: '#FFFFFF',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+              padding: 0
             }}
-            data-skeleton={loading ? "1" : "0"}
+            onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)'}
+            onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
           >
-            {loading ? (
-              Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} style={{ 
-                  background: '#f8f9fa', 
-                  borderRadius: '8px', 
-                  padding: '1rem', 
-                  height: '300px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#6c757d'
-                }}>
-                  <i className="fas fa-spinner fa-spin"></i>
-                  <span style={{ marginLeft: '0.5rem' }}>Loading...</span>
-                </div>
-              ))
-            ) : (
-              trendingVendors.slice(currentIndex, currentIndex + 4).map((vendor) => (
+            <i className="fas fa-chevron-right" style={{ fontSize: '0.75rem', color: '#222222' }}></i>
+          </button>
+        </div>
+      </div>
+      <div style={{ position: 'relative', margin: '0 -24px' }}>
+        <div 
+          ref={carouselRef}
+          style={{ 
+            display: 'flex',
+            gap: '16px',
+            overflowX: 'scroll',
+            scrollBehavior: 'smooth',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            WebkitOverflowScrolling: 'touch',
+            padding: '0 24px'
+          }}
+        >
+          {loading ? (
+            Array.from({ length: 5 }).map((_, index) => (
+              <div key={index} style={{ 
+                flex: '0 0 auto',
+                width: '260px',
+                background: '#f8f9fa', 
+                borderRadius: '12px', 
+                padding: '1rem', 
+                height: '320px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#6c757d'
+              }}>
+                <i className="fas fa-spinner fa-spin"></i>
+                <span style={{ marginLeft: '0.5rem' }}>Loading...</span>
+              </div>
+            ))
+          ) : (
+            trendingVendors.map((vendor) => (
+              <div key={vendor.VendorProfileID || vendor.id} style={{ flex: '0 0 auto', width: '260px' }}>
                 <VendorCard
-                  key={vendor.VendorProfileID || vendor.id}
                   vendor={vendor}
                   isFavorite={false}
                   onToggleFavorite={() => {}}
                   onView={onViewVendor}
                   onHighlight={() => {}}
                 />
-              ))
-            )}
-          </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

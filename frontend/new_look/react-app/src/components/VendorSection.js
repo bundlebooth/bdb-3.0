@@ -21,57 +21,69 @@ function VendorSection({
   const [showModal, setShowModal] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [visibleCount, setVisibleCount] = useState(4);
+
+  const calculateVisibleCount = () => {
+    if (!scrollContainerRef.current) return 3;
+    const containerWidth = scrollContainerRef.current.offsetWidth;
+    const cardWidth = 260;
+    const gap = 16;
+    // Be more conservative - subtract extra margin to ensure no overflow
+    const availableWidth = containerWidth - 40; // Extra safety margin
+    const count = Math.floor(availableWidth / (cardWidth + gap));
+    return Math.max(1, Math.min(count, 6)); // Cap at 6 cards max
+  };
 
   const checkScrollButtons = () => {
-    if (scrollContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-    }
+    const maxIndex = Math.max(0, vendors.length - visibleCount);
+    setCanScrollLeft(currentIndex > 0);
+    setCanScrollRight(currentIndex < maxIndex);
   };
 
   useEffect(() => {
-    checkScrollButtons();
-    const container = scrollContainerRef.current;
-    if (container) {
-      container.addEventListener('scroll', checkScrollButtons);
-      window.addEventListener('resize', checkScrollButtons);
-      return () => {
-        container.removeEventListener('scroll', checkScrollButtons);
-        window.removeEventListener('resize', checkScrollButtons);
-      };
-    }
-  }, [vendors]);
+    const updateLayout = () => {
+      const count = calculateVisibleCount();
+      setVisibleCount(count);
+      checkScrollButtons();
+    };
+    
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    return () => {
+      window.removeEventListener('resize', updateLayout);
+    };
+  }, [vendors, currentIndex, visibleCount]);
 
   const scroll = (direction) => {
-    if (scrollContainerRef.current) {
-      const cardWidth = 300;
-      const gap = 16;
-      const scrollAmount = (cardWidth + gap) * 4; // Scroll 4 cards at a time
-      const newScrollLeft = scrollContainerRef.current.scrollLeft + (direction === 'left' ? -scrollAmount : scrollAmount);
-      scrollContainerRef.current.scrollTo({
-        left: newScrollLeft,
-        behavior: 'smooth'
-      });
+    const scrollAmount = Math.floor(visibleCount / 2) || 1; // Scroll half of visible cards
+    const maxIndex = Math.max(0, vendors.length - visibleCount);
+    
+    if (direction === 'left') {
+      setCurrentIndex(prev => Math.max(0, prev - scrollAmount));
+    } else {
+      setCurrentIndex(prev => Math.min(maxIndex, prev + scrollAmount));
     }
   };
 
-  // Get icon based on section title if not provided
-  const getIcon = () => {
-    if (icon) return icon;
+  // Get icon and color based on section title if not provided
+  const getIconConfig = () => {
+    if (icon) return { icon, color: '#FF385C' };
     
     const titleLower = title.toLowerCase();
-    if (titleLower.includes('trending')) return 'fa-fire';
-    if (titleLower.includes('top rated') || titleLower.includes('rated')) return 'fa-star';
-    if (titleLower.includes('responsive')) return 'fa-bolt';
-    if (titleLower.includes('reviewed') || titleLower.includes('review')) return 'fa-comment-dots';
-    if (titleLower.includes('near') || titleLower.includes('nearby')) return 'fa-location-dot';
-    if (titleLower.includes('premium')) return 'fa-crown';
-    if (titleLower.includes('booked') || titleLower.includes('popular')) return 'fa-heart';
-    if (titleLower.includes('new') || titleLower.includes('added')) return 'fa-sparkles';
-    if (titleLower.includes('recommended')) return 'fa-thumbs-up';
-    return 'fa-store';
+    if (titleLower.includes('trending')) return { icon: 'fa-fire', color: '#FF385C' };
+    if (titleLower.includes('top rated') || titleLower.includes('rated')) return { icon: 'fa-star', color: '#FFB400' };
+    if (titleLower.includes('responsive')) return { icon: 'fa-bolt', color: '#00A699' };
+    if (titleLower.includes('reviewed') || titleLower.includes('review')) return { icon: 'fa-comment-dots', color: '#5E72E4' };
+    if (titleLower.includes('near') || titleLower.includes('nearby')) return { icon: 'fa-location-dot', color: '#8B5CF6' };
+    if (titleLower.includes('premium')) return { icon: 'fa-crown', color: '#F59E0B' };
+    if (titleLower.includes('booked') || titleLower.includes('popular')) return { icon: 'fa-heart', color: '#EC4899' };
+    if (titleLower.includes('new') || titleLower.includes('added')) return { icon: 'fa-sparkles', color: '#10B981' };
+    if (titleLower.includes('recommended')) return { icon: 'fa-thumbs-up', color: '#3B82F6' };
+    return { icon: 'fa-store', color: '#6366F1' };
   };
+
+  const iconConfig = getIconConfig();
 
   if (!vendors || vendors.length === 0) {
     return null;
@@ -83,9 +95,14 @@ function VendorSection({
         <div className="vendor-section-header">
           <div className="vendor-section-title-wrapper">
             <h2 className="vendor-section-title">
-              <i className={`fas ${getIcon()}`}></i>
+              <span className="vendor-section-icon" style={{ backgroundColor: `${iconConfig.color}15`, color: iconConfig.color }}>
+                <i className={`fas ${iconConfig.icon}`}></i>
+              </span>
               {title}
             </h2>
+            {description && (
+              <p className="vendor-section-description">{description}</p>
+            )}
           </div>
           <div className="vendor-section-controls">
             <button 
@@ -117,7 +134,7 @@ function VendorSection({
       
         <div className="vendor-section-scroll-container" ref={scrollContainerRef}>
           <div className="vendor-section-grid">
-            {vendors.map((vendor) => {
+            {vendors.slice(currentIndex, currentIndex + visibleCount).map((vendor) => {
               const vendorId = vendor.vendorProfileId || vendor.VendorProfileID || vendor.id;
               return (
                 <div key={vendorId} className="vendor-section-card-wrapper">
@@ -141,7 +158,9 @@ function VendorSection({
           <div className="vendor-section-modal" onClick={(e) => e.stopPropagation()}>
             <div className="vendor-section-modal-header">
               <h2>
-                <i className={`fas ${getIcon()}`}></i>
+                <span className="vendor-section-icon" style={{ backgroundColor: `${iconConfig.color}15`, color: iconConfig.color }}>
+                  <i className={`fas ${iconConfig.icon}`}></i>
+                </span>
                 {title}
               </h2>
               <button 

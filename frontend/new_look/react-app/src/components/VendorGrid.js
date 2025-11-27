@@ -12,15 +12,18 @@ const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, fav
         id="vendor-grid"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, 260px)',
           gap: '1rem',
-          padding: '1rem 0'
+          padding: '1rem 0',
+          justifyContent: 'start'
         }}
       >
         {Array(6).fill(0).map((_, index) => (
           <div 
             key={index} 
             style={{
+              width: '100%',
+              maxWidth: '260px',
               display: 'flex',
               flexDirection: 'column',
               background: 'transparent',
@@ -95,7 +98,17 @@ const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, fav
   }
 
   return (
-    <div className="vendor-grid" id="vendor-grid">
+    <div 
+      className="vendor-grid" 
+      id="vendor-grid"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, 260px)',
+        gap: '1rem',
+        padding: '1rem 0',
+        justifyContent: 'start'
+      }}
+    >
       {vendors.map((vendor) => {
         const vendorId = vendor.VendorProfileID || vendor.id;
         const isFavorite = favorites.includes(vendorId);
@@ -117,6 +130,8 @@ const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, fav
         <div 
           key={`loading-${index}`} 
           style={{
+            width: '100%',
+            maxWidth: '260px',
             display: 'flex',
             flexDirection: 'column',
             background: 'transparent',

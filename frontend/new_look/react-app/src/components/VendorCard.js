@@ -20,6 +20,14 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
                    (vendor.images && vendor.images.length > 0 ? vendor.images[0].url : null) ||
                    'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
   
+  // Logo URL resolution
+  const logoUrl = vendor.LogoURL || 
+                  vendor.logoURL ||
+                  vendor.logoUrl ||
+                  vendor.logo ||
+                  vendor.Logo ||
+                  null;
+  
   // Premium status
   const isPremium = vendor.IsPremium || vendor.isPremium || false;
   
@@ -100,7 +108,9 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
         transition: 'all 0.3s ease',
         position: 'relative',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        width: '100%',
+        maxWidth: '260px'
       }}
     >
       {/* Image Container */}
@@ -202,14 +212,43 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
       
       {/* Card Content */}
       <div style={{ padding: '10px 0 4px 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {/* Title - Blue Link Style */}
+        {/* Title - Blue Link Style with Logo */}
         <div style={{ 
           fontSize: '15px', 
           color: '#0066CC', 
           lineHeight: '20px',
-          fontWeight: 400
+          fontWeight: 400,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
         }}>
-          {vendor.BusinessName || vendor.name}
+          {logoUrl && (
+            <div style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              flexShrink: 0,
+              border: '1px solid #E5E7EB',
+              background: '#FFFFFF'
+            }}>
+              <img 
+                src={logoUrl} 
+                alt={`${vendor.BusinessName || vendor.name} logo`}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+            </div>
+          )}
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {vendor.BusinessName || vendor.name}
+          </span>
         </div>
         
         {/* Price, Rating, Response Time - ALL ON ONE LINE */}

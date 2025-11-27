@@ -1089,99 +1089,88 @@ function VendorProfilePage() {
 
     return (
       <div style={{ 
-        padding: '3rem 0 0 0', 
-        backgroundColor: '#f8f9fa',
+        padding: '3rem 0 2rem 0', 
         marginTop: '2rem',
-        marginBottom: '-1px', // Slight overlap to ensure no gap
-        width: '100vw',
-        marginLeft: 'calc(-50vw + 50%)',
-        position: 'relative',
-        zIndex: 1
+        position: 'relative'
       }}>
         <div style={{ 
-          width: '100%', 
+          maxWidth: '1280px', 
           margin: '0 auto', 
-          padding: '0' 
+          padding: '0 2rem' 
         }}>
-          <div style={{ 
-            marginBottom: '2rem',
-            textAlign: 'center',
-            padding: '0 2rem'
+          {/* Title - Airbnb style: smaller, left-aligned */}
+          <h2 style={{ 
+            fontSize: '1.375rem', 
+            fontWeight: '600', 
+            color: '#222222',
+            marginBottom: '1.5rem',
+            textAlign: 'left'
           }}>
-            <h2 style={{ 
-              fontSize: '1.875rem', 
-              fontWeight: '600', 
-              color: '#111827',
-              marginBottom: '1rem'
-            }}>
-              You might also like
-            </h2>
-          </div>
+            {activeRecommendationTab === 'similar' && 'Similar vendors'}
+            {activeRecommendationTab === 'nearby' && 'Nearby vendors'}
+            {activeRecommendationTab === 'popular' && 'Popular vendors'}
+          </h2>
           
+          {/* Tab buttons - simplified, left-aligned */}
           <div style={{ 
             display: 'flex', 
-            justifyContent: 'center',
-            gap: '1rem',
-            marginBottom: '2rem',
-            flexWrap: 'wrap',
-            padding: '0 2rem'
+            gap: '0.75rem',
+            marginBottom: '1.5rem',
+            flexWrap: 'wrap'
           }}>
             <button 
               onClick={() => handleTabChange('similar')}
               style={{
-                padding: '0.75rem 1.5rem',
-                borderRadius: '25px',
-                border: 'none',
-                backgroundColor: activeRecommendationTab === 'similar' ? '#111827' : '#ffffff',
-                color: activeRecommendationTab === 'similar' ? '#ffffff' : '#6b7280',
-                fontWeight: '600',
+                padding: '0.5rem 1rem',
+                borderRadius: '20px',
+                border: '1px solid #dddddd',
+                backgroundColor: activeRecommendationTab === 'similar' ? '#222222' : '#ffffff',
+                color: activeRecommendationTab === 'similar' ? '#ffffff' : '#222222',
+                fontWeight: '500',
                 fontSize: '0.875rem',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                transition: 'all 0.2s'
               }}
             >
-              Similar Vendors
+              Similar
             </button>
             <button 
               onClick={() => handleTabChange('nearby')}
               style={{
-                padding: '0.75rem 1.5rem',
-                borderRadius: '25px',
-                border: 'none',
-                backgroundColor: activeRecommendationTab === 'nearby' ? '#111827' : '#ffffff',
-                color: activeRecommendationTab === 'nearby' ? '#ffffff' : '#6b7280',
-                fontWeight: '600',
+                padding: '0.5rem 1rem',
+                borderRadius: '20px',
+                border: '1px solid #dddddd',
+                backgroundColor: activeRecommendationTab === 'nearby' ? '#222222' : '#ffffff',
+                color: activeRecommendationTab === 'nearby' ? '#ffffff' : '#222222',
+                fontWeight: '500',
                 fontSize: '0.875rem',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                transition: 'all 0.2s'
               }}
             >
-              Nearby Vendors
+              Nearby
             </button>
             <button 
               onClick={() => handleTabChange('popular')}
               style={{
-                padding: '0.75rem 1.5rem',
-                borderRadius: '25px',
-                border: 'none',
-                backgroundColor: activeRecommendationTab === 'popular' ? '#111827' : '#ffffff',
-                color: activeRecommendationTab === 'popular' ? '#ffffff' : '#6b7280',
-                fontWeight: '600',
+                padding: '0.5rem 1rem',
+                borderRadius: '20px',
+                border: '1px solid #dddddd',
+                backgroundColor: activeRecommendationTab === 'popular' ? '#222222' : '#ffffff',
+                color: activeRecommendationTab === 'popular' ? '#ffffff' : '#222222',
+                fontWeight: '500',
                 fontSize: '0.875rem',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                transition: 'all 0.2s'
               }}
             >
-              Popular Vendors
+              Popular
             </button>
           </div>
           
           {/* Horizontal Carousel */}
           <div style={{ position: 'relative' }}>
-            {/* Navigation Buttons */}
+            {/* Navigation Buttons - Airbnb style */}
             {currentRecs.length > 3 && (
               <>
                 <button
@@ -1189,25 +1178,25 @@ function VendorProfilePage() {
                   disabled={carouselIndex === 0}
                   style={{
                     position: 'absolute',
-                    left: '10px',
+                    left: '-20px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     zIndex: 10,
-                    width: '44px',
-                    height: '44px',
+                    width: '32px',
+                    height: '32px',
                     borderRadius: '50%',
-                    border: 'none',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
                     backgroundColor: '#ffffff',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
                     cursor: carouselIndex === 0 ? 'not-allowed' : 'pointer',
-                    opacity: carouselIndex === 0 ? 0.5 : 1,
+                    opacity: carouselIndex === 0 ? 0.3 : 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     transition: 'all 0.2s'
                   }}
                 >
-                  <i className="fas fa-chevron-left" style={{ color: '#111827', fontSize: '16px' }}></i>
+                  <i className="fas fa-chevron-left" style={{ color: '#222222', fontSize: '12px' }}></i>
                 </button>
                 
                 <button
@@ -1215,34 +1204,32 @@ function VendorProfilePage() {
                   disabled={carouselIndex >= maxScroll}
                   style={{
                     position: 'absolute',
-                    right: '10px',
+                    right: '-20px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     zIndex: 10,
-                    width: '44px',
-                    height: '44px',
+                    width: '32px',
+                    height: '32px',
                     borderRadius: '50%',
-                    border: 'none',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
                     backgroundColor: '#ffffff',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
                     cursor: carouselIndex >= maxScroll ? 'not-allowed' : 'pointer',
-                    opacity: carouselIndex >= maxScroll ? 0.5 : 1,
+                    opacity: carouselIndex >= maxScroll ? 0.3 : 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     transition: 'all 0.2s'
                   }}
                 >
-                  <i className="fas fa-chevron-right" style={{ color: '#111827', fontSize: '16px' }}></i>
+                  <i className="fas fa-chevron-right" style={{ color: '#222222', fontSize: '12px' }}></i>
                 </button>
               </>
             )}
             
             {/* Carousel Container */}
             <div style={{ 
-              overflow: 'hidden',
-              padding: '0 80px', // Space for navigation buttons
-              width: '100vw'
+              overflow: 'hidden'
             }}>
               <div style={{
                 display: 'flex',
@@ -1271,7 +1258,7 @@ function VendorProfilePage() {
                   ))
                 ) : (
                   <div style={{
-                    width: '100vw',
+                    width: '100%',
                     textAlign: 'center',
                     padding: '3rem',
                     color: '#6b7280',
@@ -1288,9 +1275,6 @@ function VendorProfilePage() {
               </div>
             </div>
           </div>
-          
-          {/* Extra padding to ensure background extends */}
-          <div style={{ height: '2rem' }}></div>
         </div>
       </div>
     );
