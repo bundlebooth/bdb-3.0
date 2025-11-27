@@ -372,6 +372,45 @@ function VendorProfilePage() {
     );
   };
 
+  // Icon mapping for vendor features
+  const getFeatureIcon = (featureName, categoryName) => {
+    const iconMap = {
+      // Venue Features
+      'Indoor Ceremony Space': 'home',
+      'Outdoor Ceremony Space': 'tree',
+      'Wheelchair Accessible': 'wheelchair',
+      'Parking Available': 'parking',
+      'Garden/Outdoor Space': 'leaf',
+      'WiFi Available': 'wifi',
+      'Dance Floor': 'music',
+      'Stage/Platform': 'theater-masks',
+      'On-Site Catering': 'utensils',
+      'Sound System Included': 'volume-up',
+      'Scenic Views': 'eye',
+      'Private Dressing Rooms': 'door-closed',
+      
+      // Photography & Video
+      'Engagement Session': 'heart',
+      
+      // Music & Entertainment
+      'Live Band': 'guitar',
+      
+      // Catering & Bar
+      'Full Bar Service': 'cocktail',
+      'Beer Selection': 'beer',
+      
+      // Event Planning
+      'Contract Review': 'file-contract',
+      
+      // Beauty & Fashion Services
+      'On-Location Services': 'map-marker-alt',
+      'Airbrush Makeup': 'spray-can',
+      'Custom Gown Design': 'tshirt'
+    };
+
+    return iconMap[featureName] || iconMap[categoryName] || 'check';
+  };
+
   // Render vendor features (questionnaire)
   const renderVendorFeatures = () => {
     if (!vendorFeatures || vendorFeatures.length === 0) return null;
@@ -396,7 +435,7 @@ function VendorProfilePage() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem 1.5rem' }}>
                 {categorizedFeatures[categoryName].map((feature, idx) => (
                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                    <i className={`fas fa-${feature.FeatureIcon || 'check'}`} style={{ width: '16px', height: '16px', color: '#717171', flexShrink: 0 }}></i>
+                    <i className={`fas fa-${getFeatureIcon(feature.FeatureName, categoryName)}`} style={{ width: '14px', height: '14px', fontSize: '0.75rem', color: '#717171', flexShrink: 0 }}></i>
                     <span style={{ fontSize: '0.9375rem', color: '#222', lineHeight: 1.4 }}>{feature.FeatureName}</span>
                   </div>
                 ))}
@@ -489,13 +528,13 @@ function VendorProfilePage() {
               alignItems: 'center',
               gap: '0.5rem'
             }}>
-              <i className="fas fa-route" style={{ color: '#3b82f6', fontSize: '1rem' }}></i>
+              <i className="fas fa-route" style={{ color: '#3b82f6', fontSize: '0.875rem' }}></i>
               Areas We Serve
             </h3>
             <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
-              gap: '1rem' 
+              display: 'flex', 
+              flexWrap: 'wrap',
+              gap: '0.5rem' 
             }}>
               {serviceAreas.map((area, index) => {
                 const location = [area.CityName, area.StateProvince, area.Country].filter(Boolean).join(', ');
@@ -503,47 +542,23 @@ function VendorProfilePage() {
                   <div key={index} style={{ 
                     background: 'white', 
                     border: '1px solid #e5e7eb', 
-                    borderRadius: '12px', 
-                    padding: '1.25rem',
+                    borderRadius: '8px', 
+                    padding: '0.5rem 0.75rem',
                     transition: 'all 0.2s',
-                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    fontSize: '0.875rem'
                   }}>
-                    <div style={{ 
-                      fontWeight: 600, 
-                      color: '#111827', 
-                      marginBottom: '0.75rem', 
-                      fontSize: '1rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
-                    }}>
-                      <i className="fas fa-map-marker-alt" style={{ 
-                        color: '#3b82f6', 
-                        fontSize: '0.875rem' 
-                      }}></i>
-                      {location}
-                    </div>
-                    {(area.ServiceRadius || (area.TravelCost && parseFloat(area.TravelCost) > 0)) && (
-                      <div style={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        gap: '0.5rem', 
-                        fontSize: '0.875rem', 
-                        color: '#6b7280' 
-                      }}>
-                        {area.ServiceRadius && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <i className="fas fa-route" style={{ width: '14px', color: '#9ca3af' }}></i>
-                            <span>{area.ServiceRadius} miles radius</span>
-                          </div>
-                        )}
-                        {area.TravelCost && parseFloat(area.TravelCost) > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <i className="fas fa-dollar-sign" style={{ width: '14px', color: '#9ca3af' }}></i>
-                            <span>${parseFloat(area.TravelCost).toFixed(2)} travel fee</span>
-                          </div>
-                        )}
-                      </div>
+                    <i className="fas fa-map-marker-alt" style={{ 
+                      color: '#3b82f6', 
+                      fontSize: '0.7rem' 
+                    }}></i>
+                    <span style={{ fontWeight: 500, color: '#111827' }}>{location}</span>
+                    {area.TravelCost && parseFloat(area.TravelCost) > 0 && (
+                      <span style={{ color: '#6b7280', fontSize: '0.8rem', marginLeft: '0.25rem' }}>
+                        (${parseFloat(area.TravelCost).toFixed(0)} fee)
+                      </span>
                     )}
                   </div>
                 );
@@ -774,28 +789,57 @@ function VendorProfilePage() {
     return (
       <div className="content-section" id="reviews-section">
         {/* Header */}
-        <h2 style={{ marginBottom: '2rem' }}>Reviews for {vendorName}</h2>
+        <h2 style={{ marginBottom: '1.5rem' }}>Reviews for {vendorName}</h2>
 
-        {/* Rating Section */}
+        {/* Rating with Toggle on same row */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
-          alignItems: 'flex-start',
-          marginBottom: '1.5rem' 
+          alignItems: 'center',
+          marginBottom: '1.5rem',
+          paddingBottom: '1rem',
+          borderBottom: '1px solid var(--border)'
         }}>
-          {/* Toggle Switch - Left side */}
+          {/* Rating Display - Left side */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ 
+              fontSize: '2.5rem', 
+              fontWeight: 700, 
+              color: 'var(--text)', 
+              lineHeight: 1
+            }}>
+              {showGoogleReviews ? (googleReviews?.rating?.toFixed(1) || '4.8') : '4.9'}
+            </div>
+            <div>
+              <div style={{ 
+                fontSize: '0.9rem', 
+                color: 'var(--primary)',
+                marginBottom: '0.125rem'
+              }}>
+                {'★'.repeat(5)}
+              </div>
+              <div style={{ 
+                fontSize: '0.8rem', 
+                color: 'var(--text-light)'
+              }}>
+                Based on {showGoogleReviews ? (googleReviews?.user_ratings_total || 565) : (reviews?.length || 91)} {showGoogleReviews ? 'Google ' : ''}reviews
+              </div>
+            </div>
+          </div>
+
+          {/* Toggle Switch - Right side, same row */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             gap: '0.5rem'
           }}>
             <span style={{ 
-              fontSize: '0.8rem', 
+              fontSize: '0.75rem', 
               color: showGoogleReviews ? 'var(--text-light)' : 'var(--primary)', 
               fontWeight: showGoogleReviews ? 400 : 600,
               transition: 'all 0.2s'
             }}>
-              PlanHive Reviews
+              PlanHive
             </span>
             
             <div 
@@ -804,65 +848,36 @@ function VendorProfilePage() {
                 setCurrentReviewPage(0);
               }}
               style={{
-                width: '44px',
-                height: '22px',
+                width: '40px',
+                height: '20px',
                 backgroundColor: showGoogleReviews ? 'var(--primary)' : '#e2e8f0',
-                borderRadius: '11px',
+                borderRadius: '10px',
                 position: 'relative',
                 cursor: 'pointer',
                 transition: 'background-color 0.2s ease'
               }}
             >
               <div style={{
-                width: '18px',
-                height: '18px',
+                width: '16px',
+                height: '16px',
                 backgroundColor: 'white',
                 borderRadius: '50%',
                 position: 'absolute',
                 top: '2px',
-                left: showGoogleReviews ? '24px' : '2px',
+                left: showGoogleReviews ? '22px' : '2px',
                 transition: 'left 0.2s ease',
                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)'
               }} />
             </div>
             
             <span style={{ 
-              fontSize: '0.8rem', 
+              fontSize: '0.75rem', 
               color: showGoogleReviews ? 'var(--primary)' : 'var(--text-light)', 
               fontWeight: showGoogleReviews ? 600 : 400,
               transition: 'all 0.2s'
             }}>
-              Google Reviews
+              Google
             </span>
-          </div>
-
-          {/* Rating Display - Right side */}
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ 
-              fontSize: '1.25rem', 
-              color: 'var(--primary)',
-              lineHeight: 1,
-              marginBottom: '0.125rem'
-            }}>
-              {'★'.repeat(5)}
-            </div>
-            
-            <div style={{ 
-              fontSize: '4rem', 
-              fontWeight: 700, 
-              color: 'var(--text)', 
-              lineHeight: 0.9,
-              marginBottom: '0.25rem'
-            }}>
-              {showGoogleReviews ? (googleReviews?.rating?.toFixed(1) || '4.8') : '4.9'}
-            </div>
-
-            <div style={{ 
-              fontSize: '0.875rem', 
-              color: 'var(--text-light)'
-            }}>
-              Based on {showGoogleReviews ? (googleReviews?.user_ratings_total || 565) : (reviews?.length || 91)} {showGoogleReviews ? 'Google ' : ''}reviews
-            </div>
           </div>
         </div>
 
@@ -1256,11 +1271,14 @@ function VendorProfilePage() {
                   ))
                 ) : (
                   <div style={{
-                    flex: '1',
+                    width: '100vw',
                     textAlign: 'center',
                     padding: '3rem',
                     color: '#6b7280',
-                    minWidth: '100%'
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}>
                     <i className="fas fa-search" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
                     <div style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Loading recommendations...</div>
@@ -1419,27 +1437,77 @@ function VendorProfilePage() {
         initialSection={dashboardSection}
       />
       <div className="profile-container">
-        {/* Breadcrumb Navigation */}
-        <Breadcrumb items={[
-          profile.City || 'City',
-          categories[0]?.CategoryName || categories[0]?.Category || profile.CategoryName || profile.PrimaryCategory || profile.Category || 'Services',
-          profile.BusinessName || profile.DisplayName || 'Vendor Name',
-          'Profile'
-        ]} />
-
         {/* Back Button */}
         <button className="back-button" onClick={() => navigate(-1)}>
           <i className="fas fa-arrow-left"></i>
           <span>Back to search</span>
         </button>
 
+        {/* Breadcrumb Navigation with Save/Share */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <Breadcrumb items={[
+            profile.City || 'City',
+            categories[0]?.CategoryName || categories[0]?.Category || profile.CategoryName || profile.PrimaryCategory || profile.Category || 'Services',
+            profile.BusinessName || profile.DisplayName || 'Vendor Name',
+            'Profile'
+          ]} />
+          
+          {/* Compact Action Buttons */}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={handleToggleFavorite}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.35rem 0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                background: isFavorite ? '#fff0f0' : 'white',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                color: isFavorite ? '#e11d48' : '#222',
+                transition: 'all 0.2s'
+              }}
+            >
+              <i className={`${isFavorite ? 'fas' : 'far'} fa-heart`} style={{ fontSize: '0.75rem', color: isFavorite ? '#e11d48' : '#717171' }}></i>
+              Save
+            </button>
+            <button
+              onClick={handleShare}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.35rem 0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                background: 'white',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                color: '#222',
+                transition: 'all 0.2s'
+              }}
+            >
+              <i className="fas fa-share-alt" style={{ fontSize: '0.7rem', color: '#717171' }}></i>
+              Share
+            </button>
+          </div>
+        </div>
+
         {/* Image Gallery */}
         <VendorGallery images={images} />
 
-        {/* Vendor Title and Rating - BELOW Gallery */}
-        <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {/* Main Layout Grid - Sidebar starts at vendor name level */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 304px', gap: '4.75rem', marginTop: '1.5rem' }}>
+          {/* Left Column - Vendor Info + Content */}
+          <div>
+            {/* Vendor Title and Rating */}
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '1rem' }}>
               {/* Business Logo */}
               {(profile.LogoURL || profile.FeaturedImageURL) && (
                 <div style={{ 
@@ -1527,80 +1595,110 @@ function VendorProfilePage() {
                   <span style={{ color: '#000' }}>{profile.Tagline || profile.CategoryName || 'Event Services'}</span>
                 </div>
               </div>
-            </div>
-
-            {/* Action Buttons - Aligned to the right */}
-            <div className="vendor-profile-actions">
-              <div
-                className={`vendor-action-btn ${isFavorite ? 'active' : ''}`}
-                onClick={handleToggleFavorite}
-                title="Save to favorites"
-              >
-                <i className="fas fa-heart"></i>
-                <span>Save</span>
+                </div>
               </div>
-              <div
-                className="vendor-action-btn"
-                onClick={handleShare}
-                title="Share this vendor"
-              >
-                <i className="fas fa-share-alt"></i>
-                <span>Share</span>
+
+              {/* Social Media Icons */}
+              <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #ebebeb' }}>
+                {renderSocialMediaIcons()}
               </div>
             </div>
-          </div>
 
-          {/* Social Media Icons */}
-          <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #ebebeb' }}>
-            {renderSocialMediaIcons()}
-          </div>
-        </div>
-
-      {/* Content Layout */}
-      <div className="vendor-content-layout">
-        {/* Main Content */}
-        <div className="vendor-main-content">
-          {/* About Section */}
+            {/* Main Content */}
+            <div style={{ marginTop: '1.9rem', paddingTop: '1.9rem', borderTop: '1px solid #ebebeb' }}>
+          {/* 1. About This Vendor */}
           <div className="content-section">
             <h2>About this vendor</h2>
             <p>{profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}</p>
           </div>
 
-          {/* Location & Service Areas */}
-          {renderLocationAndServiceAreas()}
-
-          {/* Vendor Features (Questionnaire) */}
+          {/* 2. What This Place Offers (Questionnaire of Services) */}
           {renderVendorFeatures()}
 
-          {/* Enhanced Services Section */}
+          {/* 3. What We Offer (Service Pricing) */}
           {renderEnhancedServices()}
 
-          {/* Enhanced FAQs Section */}
-          {renderEnhancedFAQs()}
-
-          {/* Team Section */}
-          {renderTeam()}
-
-          {/* Portfolio Section */}
+          {/* 4. Portfolio (Media Gallery) */}
           {renderPortfolioAlbums()}
 
-          {/* Combined Reviews Section with Tabs */}
-          {renderReviewsSection()}
-        </div>
+          {/* 5. Things to Know */}
+          {renderEnhancedFAQs()}
 
-        {/* Sidebar - Reordered */}
-        <div className="vendor-sidebar">
+          {/* 6. Where You'll Find Us (Map + Cities Served) */}
+          {renderLocationAndServiceAreas()}
+
+          {/* 7. Reviews */}
+          {renderReviewsSection()}
+
+          {/* Team Section - optional at bottom */}
+              {renderTeam()}
+            </div>
+          </div>
+
+          {/* Right Column - Sidebar */}
+          <div className="vendor-sidebar">
           {/* Business Hours - First */}
           {businessHours.length > 0 && (
             <div className="sidebar-card">
-              <h3>Business Hours</h3>
+              <h3 style={{ marginBottom: '0.75rem' }}>Business Hours</h3>
+              {/* Timezone Display */}
+              {profile.TimeZone && (() => {
+                // Helper to get timezone info
+                const getTimezoneInfo = (tz) => {
+                  const tzMap = {
+                    'America/Toronto': { abbr: 'EST', offset: '-5:00' },
+                    'America/New_York': { abbr: 'EST', offset: '-5:00' },
+                    'America/Chicago': { abbr: 'CST', offset: '-6:00' },
+                    'America/Denver': { abbr: 'MST', offset: '-7:00' },
+                    'America/Los_Angeles': { abbr: 'PST', offset: '-8:00' },
+                    'America/Vancouver': { abbr: 'PST', offset: '-8:00' },
+                    'Europe/London': { abbr: 'GMT', offset: '+0:00' },
+                    'Europe/Paris': { abbr: 'CET', offset: '+1:00' },
+                    'Asia/Tokyo': { abbr: 'JST', offset: '+9:00' },
+                    'Australia/Sydney': { abbr: 'AEST', offset: '+10:00' },
+                  };
+                  return tzMap[tz] || { abbr: '', offset: '' };
+                };
+                const tzInfo = getTimezoneInfo(profile.TimeZone);
+                const abbr = profile.TimeZoneAbbr || tzInfo.abbr;
+                const offset = profile.GMTOffset || tzInfo.offset;
+                
+                return (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem', 
+                    marginBottom: '1rem',
+                    padding: '0.5rem 0',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}>
+                    <i className="fas fa-globe" style={{ fontSize: '0.8rem', color: '#5e72e4' }}></i>
+                    <span style={{ fontSize: '0.8rem', color: '#717171' }}>
+                      {profile.TimeZone}{abbr ? ` (${abbr})` : ''}{offset ? ` GMT ${offset}` : ''}
+                    </span>
+                  </div>
+                );
+              })()}
               <div style={{ fontSize: '0.9rem' }}>
                 {businessHours.map((hour, index) => {
                   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                  
+                  // Format time to 12-hour format (e.g., 5:00 PM)
+                  const formatTime = (timeStr) => {
+                    if (!timeStr) return '';
+                    const [hours, minutes] = timeStr.split(':');
+                    const hour = parseInt(hours, 10);
+                    const ampm = hour >= 12 ? 'PM' : 'AM';
+                    const hour12 = hour % 12 || 12;
+                    return `${hour12}:${minutes} ${ampm}`;
+                  };
+                  
                   return (
-                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: index < businessHours.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
-                      <span style={{ fontWeight: 500, color: '#222' }}>{dayNames[hour.DayOfWeek]}</span>
-                      <span style={{ color: '#717171' }}>{hour.IsAvailable ? `${hour.OpenTime} - ${hour.CloseTime}` : 'Closed'}</span>
+                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: index < businessHours.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
+                      <span style={{ fontWeight: 500, color: '#222', flex: '0 0 100px' }}>{dayNames[hour.DayOfWeek]}</span>
+                      <span style={{ color: '#717171', textAlign: 'center', flex: 1 }}>
+                        {hour.IsAvailable ? `${formatTime(hour.OpenTime)} - ${formatTime(hour.CloseTime)}` : 'Closed'}
+                      </span>
                     </div>
                   );
                 })}
@@ -1629,13 +1727,13 @@ function VendorProfilePage() {
             <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-light)' }}>
               Have questions? Get in touch!
             </p>
-            <button className="btn btn-outline btn-full-width" onClick={handleMessageVendor}>
+            <button className="btn btn-primary btn-full-width" onClick={handleMessageVendor}>
               <i className="fas fa-comment"></i>
               <span>Send Message</span>
             </button>
           </div>
+          </div>
         </div>
-      </div>
       
       {/* Recommendations Section */}
       {renderRecommendations()}

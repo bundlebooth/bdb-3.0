@@ -316,7 +316,7 @@ function BookingPage() {
   const category = vendorData?.categories?.[0]?.CategoryName || vendorData?.categories?.[0]?.Category || '';
   const rating = profile.AverageRating || profile.Rating || 0;
   const reviewCount = profile.ReviewCount || profile.TotalReviews || 0;
-  const profilePic = profile.ProfilePictureURL || profile.ProfilePicture || '';
+  const profilePic = profile.LogoURL || profile.FeaturedImageURL || profile.ProfilePictureURL || profile.ProfilePicture || '';
 
   // Debug logging
   console.log('Current step:', currentStep);
@@ -729,7 +729,17 @@ function BookingPage() {
           <div className="booking-summary-card">
             <div className="vendor-info" id="vendor-info">
               {profilePic ? (
-                <img src={profilePic} alt={businessName} className="vendor-image" />
+                <div style={{ 
+                  width: '80px', 
+                  height: '80px', 
+                  borderRadius: '50%', 
+                  overflow: 'hidden', 
+                  border: '2px solid #DDDDDD',
+                  background: '#f7f7f7',
+                  flexShrink: 0
+                }}>
+                  <img src={profilePic} alt={businessName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
               ) : (
                 <div className="vendor-image-placeholder">
                   <i className="fas fa-store"></i>
@@ -738,13 +748,20 @@ function BookingPage() {
               <div className="vendor-details">
                 <h3 className="vendor-name">{businessName}</h3>
                 {category && <p className="vendor-category">{category}</p>}
-                <div className="vendor-rating">
-                  <i className="fas fa-star"></i>
-                  <span>{rating > 0 ? rating.toFixed(1) : 'New'}</span>
-                  {reviewCount > 0 && (
-                    <span className="review-count">({reviewCount} review{reviewCount !== 1 ? 's' : ''})</span>
-                  )}
-                </div>
+                {rating > 0 ? (
+                  <div className="vendor-rating">
+                    <i className="fas fa-star"></i>
+                    <span>{rating.toFixed(1)}</span>
+                    {reviewCount > 0 && (
+                      <span className="review-count">({reviewCount} review{reviewCount !== 1 ? 's' : ''})</span>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.85rem', color: '#717171', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <i className="fas fa-briefcase" style={{ color: '#5e72e4' }}></i>
+                    <span>Verified Vendor</span>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -575,7 +575,7 @@ select.form-input:focus {
 .vendor-image-placeholder {
     width: 80px;
     height: 80px;
-    border-radius: var(--radius-md);
+    border-radius: 50%;
     background: var(--background-light);
     display: flex;
     align-items: center;
@@ -588,7 +588,7 @@ select.form-input:focus {
 .vendor-image {
     width: 80px;
     height: 80px;
-    border-radius: var(--radius-md);
+    border-radius: 50%;
     object-fit: cover;
 }
 
@@ -804,6 +804,7 @@ select.form-input:focus {
     .vendor-image {
         width: 60px;
         height: 60px;
+        border-radius: 50%;
     }
     
     .service-card {

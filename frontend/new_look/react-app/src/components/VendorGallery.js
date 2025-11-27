@@ -50,23 +50,14 @@ function VendorGallery({ images }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, closeLightbox, nextLightboxImage, prevLightboxImage]);
 
-  // Early return for empty images - must be after all hooks
-  if (validImages.length === 0) {
-    return (
-      <div className="image-gallery" style={{ 
-        background: '#f3f4f6', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        minHeight: '400px'
-      }}>
-        <div style={{ textAlign: 'center', color: '#9ca3af' }}>
-          <i className="fas fa-image" style={{ fontSize: '4rem', marginBottom: '1rem' }}></i>
-          <p>No images available</p>
-        </div>
-      </div>
-    );
-  }
+  // Create placeholder images if no images available
+  const placeholderImages = validImages.length === 0 ? 
+    Array(5).fill(null).map((_, index) => ({
+      url: 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png',
+      isPlaceholder: true
+    })) : validImages;
+
+  const displayImages = validImages.length === 0 ? placeholderImages : validImages;
 
   return (
     <>
@@ -74,11 +65,11 @@ function VendorGallery({ images }) {
         {/* Large Image (Left Side) */}
         <div 
           className="gallery-item large-image" 
-          onClick={() => openLightbox(0)}
-          style={{ cursor: 'pointer' }}
+          onClick={() => validImages.length > 0 ? openLightbox(0) : null}
+          style={{ cursor: validImages.length > 0 ? 'pointer' : 'default' }}
         >
           <img
-            src={getImageUrl(validImages[0])}
+            src={getImageUrl(displayImages[0])}
             alt="Main"
             style={{ objectFit: 'cover' }}
             onError={(e) => {
@@ -88,51 +79,49 @@ function VendorGallery({ images }) {
         </div>
 
         {/* Thumbnails Grid (Right Side) - 2x2 Grid */}
-        {validImages.length > 1 && (
-          <div className="thumbnails-container">
-            {[1, 2, 3, 4].map((index) => (
-              <div
-                key={index}
-                className="gallery-item"
-                onClick={() => openLightbox(index)}
-                style={{ 
-                  cursor: 'pointer',
-                  position: 'relative'
-                }}
-              >
-                {validImages[index] ? (
-                  <>
-                    <img
-                      src={getImageUrl(validImages[index])}
-                      alt={`Image ${index + 1}`}
-                      style={{ objectFit: 'cover' }}
-                      onError={(e) => {
-                        e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
-                      }}
-                    />
-                    {/* Show "Show all photos" overlay on last thumbnail if more images exist */}
-                    {index === 4 && validImages.length > 5 && (
-                      <div className="see-all-overlay">
-                        <i className="fas fa-th"></i> Show all photos
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div style={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    background: '#f3f4f6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <i className="fas fa-image" style={{ color: '#d1d5db', fontSize: '2rem' }}></i>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="thumbnails-container">
+          {[1, 2, 3, 4].map((index) => (
+            <div
+              key={index}
+              className="gallery-item"
+              onClick={() => validImages.length > index ? openLightbox(index) : null}
+              style={{ 
+                cursor: validImages.length > index ? 'pointer' : 'default',
+                position: 'relative'
+              }}
+            >
+              {displayImages[index] ? (
+                <>
+                  <img
+                    src={getImageUrl(displayImages[index])}
+                    alt={`Image ${index + 1}`}
+                    style={{ objectFit: 'cover' }}
+                    onError={(e) => {
+                      e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+                    }}
+                  />
+                  {/* Show "Show all photos" overlay on last thumbnail if more images exist */}
+                  {index === 4 && validImages.length > 5 && (
+                    <div className="see-all-overlay">
+                      <i className="fas fa-th"></i> Show all photos
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  background: '#f3f4f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <i className="fas fa-image" style={{ color: '#d1d5db', fontSize: '2rem' }}></i>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
 
         {/* Show All Photos Button */}
         {validImages.length > 1 && (

@@ -100,7 +100,13 @@
 
 .vendor-action-btn i {
     pointer-events: none;
-    font-size: 1rem;
+    font-size: 0.8rem;
+}
+
+/* Smaller icons throughout */
+.btn i,
+.sidebar-card .btn i {
+    font-size: 0.85rem;
 }
 
 @keyframes heartBeat {
@@ -291,7 +297,7 @@
 
 .vendor-sidebar {
     position: sticky;
-    top: 2rem;
+    top: 80px; /* Account for header height */
     align-self: start;
 }
 
@@ -387,7 +393,7 @@
 
 .service-icon {
     color: var(--primary);
-    font-size: 1.5rem;
+    font-size: 1.25rem;
 }
 
 /* Review Cards */
@@ -665,8 +671,8 @@
 
 .feature-item i {
     color: var(--primary);
-    font-size: 1rem;
-    min-width: 20px;
+    font-size: 0.8rem;
+    min-width: 16px;
 }
 
 /* Portfolio Grid */
@@ -730,8 +736,8 @@
 
 /* Social Media Links */
 .social-icon-small {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     display: block;
     border-radius: 4px;
     opacity: 0.8;
