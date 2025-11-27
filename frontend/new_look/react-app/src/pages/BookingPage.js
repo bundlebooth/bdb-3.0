@@ -53,7 +53,7 @@ function BookingPage() {
 
   // Scroll to top when component mounts or vendorId changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }, [vendorId]);
 
   // Load vendor data

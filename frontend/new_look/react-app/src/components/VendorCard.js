@@ -45,12 +45,24 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
     }
   }
 
-  // Rating and reviews
-  const rating = (() => {
+  // Rating and reviews - prioritize in-app reviews, fallback to Google reviews
+  const inAppRating = (() => {
     const r = parseFloat(vendor.averageRating ?? vendor.rating ?? vendor.AverageRating ?? 0);
     return isNaN(r) || r === 0 ? 0 : r;
   })();
-  const reviewCount = vendor.totalReviews ?? vendor.reviewCount ?? vendor.TotalReviews ?? 0;
+  const inAppReviewCount = vendor.totalReviews ?? vendor.reviewCount ?? vendor.TotalReviews ?? 0;
+  
+  // Google reviews fallback
+  const googleRating = (() => {
+    const r = parseFloat(vendor.GoogleRating ?? vendor.googleRating ?? 0);
+    return isNaN(r) || r === 0 ? 0 : r;
+  })();
+  const googleReviewCount = vendor.GoogleReviewCount ?? vendor.googleReviewCount ?? 0;
+  
+  // Use Google reviews if no in-app reviews
+  const rating = inAppReviewCount > 0 ? inAppRating : googleRating;
+  const reviewCount = inAppReviewCount > 0 ? inAppReviewCount : googleReviewCount;
+  const isGoogleReview = inAppReviewCount === 0 && googleReviewCount > 0;
   
   // Location
   const locCity = vendor.City || vendor.city || '';
@@ -246,7 +258,16 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
               />
             </div>
           )}
-          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span 
+            className="vendor-card-business-name"
+            style={{ 
+              flex: 1, 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              whiteSpace: 'nowrap',
+              transition: 'text-decoration 0.2s ease'
+            }}
+          >
             {vendor.BusinessName || vendor.name}
           </span>
         </div>

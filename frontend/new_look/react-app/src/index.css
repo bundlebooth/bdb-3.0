@@ -308,6 +308,39 @@ html {
     transform: scale(0.95);
 }
 
+/* Distance Slider Styling */
+.distance-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #5e72e4;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.distance-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #5e72e4;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.distance-slider::-webkit-slider-thumb:hover {
+    background: #4a5acf;
+    transform: scale(1.1);
+}
+
+.distance-slider::-moz-range-thumb:hover {
+    background: #4a5acf;
+    transform: scale(1.1);
+}
+
 /* Filter Sidebar */
 .sidebar {
     background-color: white !important;
@@ -457,6 +490,9 @@ html {
 .main-content {
     padding: 2rem;
     background-color: white !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 /* Force white background for entire viewport */
@@ -514,7 +550,38 @@ html {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.5rem;
-    padding: 0;
+    padding: 1rem 0;
+}
+
+/* Fade-in animation for vendor grid cards */
+.vendor-grid > .vendor-card {
+    animation: fadeInUp 0.4s ease-out backwards;
+}
+
+/* Stagger animation for vendor grid cards */
+.vendor-grid > .vendor-card:nth-child(1) { animation-delay: 0.05s; }
+.vendor-grid > .vendor-card:nth-child(2) { animation-delay: 0.1s; }
+.vendor-grid > .vendor-card:nth-child(3) { animation-delay: 0.15s; }
+.vendor-grid > .vendor-card:nth-child(4) { animation-delay: 0.2s; }
+.vendor-grid > .vendor-card:nth-child(5) { animation-delay: 0.25s; }
+.vendor-grid > .vendor-card:nth-child(6) { animation-delay: 0.3s; }
+.vendor-grid > .vendor-card:nth-child(7) { animation-delay: 0.35s; }
+.vendor-grid > .vendor-card:nth-child(8) { animation-delay: 0.4s; }
+.vendor-grid > .vendor-card:nth-child(9) { animation-delay: 0.45s; }
+.vendor-grid > .vendor-card:nth-child(10) { animation-delay: 0.5s; }
+.vendor-grid > .vendor-card:nth-child(11) { animation-delay: 0.55s; }
+.vendor-grid > .vendor-card:nth-child(12) { animation-delay: 0.6s; }
+.vendor-grid > .vendor-card:nth-child(n+13) { animation-delay: 0.65s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Mobile: maintain single column */
@@ -578,42 +645,51 @@ html {
     flex: 0 0 auto;
 }
 
-/* Smooth image zoom on hover */
+/* Darken overlay on hover - matching vendor profile gallery */
+.vendor-image {
+    position: relative;
+}
+
+.vendor-image::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.vendor-card:hover .vendor-image::after {
+    background: rgba(0, 0, 0, 0.1);
+}
+
 .vendor-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    display: block; /* ensure no gap under image */
+    display: block;
     position: absolute;
     inset: 0;
-    transform: scale(1);
-    transition: transform .6s cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: transform;
+    transition: none;
+    transform: none;
 }
-.vendor-card:hover .vendor-image img {
-    transform: scale(1.06);
+
+/* Underline business name on hover */
+.vendor-card:hover .vendor-card-business-name {
+    text-decoration: underline;
 }
 
 /* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
     .vendor-card,
     .vendor-card:hover,
-    .vendor-image img,
-    .vendor-card:hover .vendor-image img {
+    .vendor-image::after {
         transition: none !important;
-        transform: none !important;
     }
-}
-
-.vendor-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block; /* ensure no gap under image (duplicate rule section) */
-}
-
-.vendor-card:hover .vendor-image img {
-    transform: scale(1.05);
 }
 
 /* Map Sidebar - Same structure as filter sidebar */

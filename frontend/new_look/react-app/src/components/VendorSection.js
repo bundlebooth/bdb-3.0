@@ -94,15 +94,17 @@ function VendorSection({
       <div className="vendor-section">
         <div className="vendor-section-header">
           <div className="vendor-section-title-wrapper">
-            <h2 className="vendor-section-title">
-              <span className="vendor-section-icon" style={{ backgroundColor: `${iconConfig.color}15`, color: iconConfig.color }}>
-                <i className={`fas ${iconConfig.icon}`}></i>
-              </span>
-              {title}
-            </h2>
-            {description && (
-              <p className="vendor-section-description">{description}</p>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <h2 className="vendor-section-title" style={{ margin: 0 }}>
+                <span className="vendor-section-icon" style={{ backgroundColor: `${iconConfig.color}15`, color: iconConfig.color }}>
+                  <i className={`fas ${iconConfig.icon}`}></i>
+                </span>
+                {title}
+              </h2>
+              {description && (
+                <p className="vendor-section-description" style={{ margin: 0 }}>{description}</p>
+              )}
+            </div>
           </div>
           <div className="vendor-section-controls">
             <button 

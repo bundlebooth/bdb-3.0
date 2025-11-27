@@ -50,7 +50,7 @@ function IndexPage() {
   const [filters, setFilters] = useState({
     location: '',
     useCurrentLocation: false,
-    within50Miles: false,
+    distanceKm: 50,
     priceLevel: '',
     minRating: '',
     region: '',
@@ -95,6 +95,11 @@ function IndexPage() {
       const params = new URLSearchParams();
       params.set('limit', '8');
       
+      // Add category filter so trending vendors adjust based on selected category
+      if (currentCategory && currentCategory !== 'all') {
+        params.set('category', currentCategory);
+      }
+      
       if (filters.location) {
         params.set('city', filters.location);
       }
@@ -130,7 +135,7 @@ function IndexPage() {
       setLoadingDiscovery(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.location, userLocation, currentUser]);
+  }, [filters.location, userLocation, currentUser, currentCategory]);
 
   // EXACT match to original applyClientSideFilters (line 26091-26120)
   const applyClientSideFiltersInternal = useCallback((vendorsToFilter) => {
@@ -194,7 +199,9 @@ function IndexPage() {
         if (hasUserLocation) {
           qp.set('latitude', String(userLocation.lat));
           qp.set('longitude', String(userLocation.lng));
-          qp.set('radiusMiles', '50');
+          // Convert km to miles (1 km = 0.621371 miles)
+          const radiusMiles = Math.round(filters.distanceKm * 0.621371);
+          qp.set('radiusMiles', String(radiusMiles));
         }
         
         if (filters.priceLevel) qp.set('priceLevel', filters.priceLevel);
@@ -218,7 +225,9 @@ function IndexPage() {
         if (hasUserLocation) {
           qp.set('latitude', String(userLocation.lat));
           qp.set('longitude', String(userLocation.lng));
-          qp.set('radiusMiles', '50');
+          // Convert km to miles (1 km = 0.621371 miles)
+          const radiusMiles = Math.round(filters.distanceKm * 0.621371);
+          qp.set('radiusMiles', String(radiusMiles));
         }
         
         if (filters.priceLevel) qp.set('priceLevel', filters.priceLevel);
@@ -533,8 +542,6 @@ function IndexPage() {
 
   const handleToggleFilters = useCallback(() => {
     setSidebarCollapsed(!sidebarCollapsed);
-    const appContainer = document.getElementById('app-container');
-    if (appContainer) appContainer.classList.toggle('sidebar-collapsed');
   }, [sidebarCollapsed]);
 
   const handleToggleMap = useCallback(() => {
@@ -596,7 +603,7 @@ function IndexPage() {
       />
       <div className={`app-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''} ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'grid' }}>
         <CategoriesNav activeCategory={currentCategory} onCategoryChange={handleCategoryChange} />
-        <FilterSidebar filters={filters} onFilterChange={handleFilterChange} collapsed={sidebarCollapsed} />
+        <FilterSidebar filters={filters} onFilterChange={handleFilterChange} collapsed={sidebarCollapsed} userLocation={userLocation} />
         <main className="main-content">
           {currentUser?.vendorProfileId && (
             <>
@@ -615,8 +622,47 @@ function IndexPage() {
             </div>
             <div className="view-controls">
               <button className="mobile-filter-btn"><i className="fas fa-sliders-h"></i><span>Filters</span></button>
-              <button className="btn btn-outline" onClick={handleToggleFilters} style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}><i className="fas fa-sliders-h"></i><span>Filters</span></button>
               <select id="sort-select" style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'white', fontSize: '0.9rem', color: 'var(--text)' }}><option value="recommended">Recommended</option><option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option><option value="nearest">Nearest to Me</option><option value="rating">Highest Rated</option></select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.9rem', color: 'var(--text)' }}>{sidebarCollapsed ? 'Show filters' : 'Hide filters'}</span>
+                <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={!sidebarCollapsed} 
+                    onChange={handleToggleFilters}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: !sidebarCollapsed ? '#34D399' : '#E5E7EB',
+                    borderRadius: '24px',
+                    transition: 'background-color 0.3s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '2px'
+                  }}>
+                    <span style={{
+                      position: 'absolute',
+                      height: '20px',
+                      width: '20px',
+                      left: !sidebarCollapsed ? '22px' : '2px',
+                      backgroundColor: 'white',
+                      borderRadius: '50%',
+                      transition: 'left 0.3s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {!sidebarCollapsed && <span style={{ color: '#34D399', fontSize: '12px' }}>✓</span>}
+                    </span>
+                  </span>
+                </label>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.9rem', color: 'var(--text)' }}>{mapActive ? 'Hide map' : 'Show map'}</span>
                 <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
@@ -734,6 +780,7 @@ function IndexPage() {
                 onVendorSelect={handleVendorSelectFromMap} 
                 selectedVendorId={selectedVendorId}
                 loading={loading}
+                userLocation={userLocation}
               />
             )}
           </div>

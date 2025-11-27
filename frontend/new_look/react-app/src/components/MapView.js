@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 
-function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false }) {
+function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, userLocation = null }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
   const markerClusterRef = useRef(null);
   const infoWindowRef = useRef(null);
+  const userLocationMarkerRef = useRef(null); // Track user location marker
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [userCity, setUserCity] = useState(''); // Store user's city name
   const isInitializingRef = useRef(false); // Prevent duplicate initialization
   const previousVendorsRef = useRef([]); // Track previous vendors to prevent unnecessary updates
 
@@ -491,6 +493,78 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
     // Clustering disabled to match the desired pin style
   }, [vendors, onVendorSelect, createMiniVendorCardHTML, createMarkerIcon]);
 
+  // Update user location marker
+  const updateUserLocationMarker = useCallback(async () => {
+    if (!mapInstanceRef.current || !userLocation || !window.google) return;
+
+    // Remove existing user location marker
+    if (userLocationMarkerRef.current) {
+      userLocationMarkerRef.current.setMap(null);
+    }
+
+    const position = { lat: userLocation.lat, lng: userLocation.lng };
+
+    // Create a custom blue circle marker for user location
+    const userIcon = {
+      path: window.google.maps.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: '#4285F4',
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 3
+    };
+
+    const marker = new window.google.maps.Marker({
+      position,
+      map: mapInstanceRef.current,
+      icon: userIcon,
+      title: 'Your Location',
+      zIndex: 1000 // Ensure it's on top
+    });
+
+    userLocationMarkerRef.current = marker;
+
+    // Reverse geocode to get city name
+    const geocoder = new window.google.maps.Geocoder();
+    try {
+      const response = await geocoder.geocode({ location: position });
+      if (response.results && response.results.length > 0) {
+        // Extract city name from address components
+        for (const result of response.results) {
+          for (const component of result.address_components) {
+            if (component.types.includes('locality')) {
+              setUserCity(component.long_name);
+              
+              // Create info window for user location
+              const infoWindow = new window.google.maps.InfoWindow({
+                content: `
+                  <div style="padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                    <div style="font-weight: 600; font-size: 14px; color: #222; margin-bottom: 4px;">
+                      📍 Your Location
+                    </div>
+                    <div style="font-size: 13px; color: #666;">
+                      ${component.long_name}
+                    </div>
+                  </div>
+                `
+              });
+              
+              // Show info window on marker click
+              marker.addListener('click', () => {
+                infoWindow.open(mapInstanceRef.current, marker);
+              });
+              
+              break;
+            }
+          }
+          if (userCity) break;
+        }
+      }
+    } catch (error) {
+      console.error('Error reverse geocoding user location:', error);
+    }
+  }, [userLocation, userCity]);
+
   const highlightMarker = useCallback((vendorId) => {
     const greyIcon = createMarkerIcon('#9CA3AF', false);
     const blueIcon = createMarkerIcon('#5E72E4', true);
@@ -546,6 +620,13 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false })
       highlightMarker(selectedVendorId);
     }
   }, [selectedVendorId, mapLoaded, highlightMarker]);
+
+  // Update user location marker when userLocation changes
+  useEffect(() => {
+    if (mapLoaded && userLocation) {
+      updateUserLocationMarker();
+    }
+  }, [userLocation, mapLoaded, updateUserLocationMarker]);
 
   // Expose highlight function globally for card hover
   useEffect(() => {
