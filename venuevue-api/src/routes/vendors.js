@@ -2591,7 +2591,7 @@ router.post('/setup/step3-services', async (req, res) => {
 
         // Use the legacy stored procedure parameters (matching sp_UpsertVendorService with 11 parameters)
         serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        serviceRequest.input('CategoryName', sql.NVarChar, category.name);
+        serviceRequest.input('CategoryName', sql.NVarChar, service.categoryName || 'General');
         serviceRequest.input('ServiceName', sql.NVarChar, service.name);
         serviceRequest.input('ServiceDescription', sql.NVarChar, service.description || null);
         serviceRequest.input('Price', sql.Decimal(10, 2), derivedPrice);
