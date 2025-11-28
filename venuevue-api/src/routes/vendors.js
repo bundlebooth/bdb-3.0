@@ -2635,14 +2635,24 @@ router.post('/setup/step3-services', async (req, res) => {
     }
     
     // Handle selected predefined services
-    if (selectedPredefinedServices && selectedPredefinedServices.length > 0) {
-      // First, delete existing selected predefined services for this vendor
-      const deleteSelectedRequest = new sql.Request(pool);
-      deleteSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteSelectedRequest.query(`
-        DELETE FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID
-      `);
+    // First, delete ALL existing services for this vendor (both predefined and custom)
+    console.log(`[BACKEND] Deleting all existing services for vendor ${vendorProfileId}`);
+    const deleteServicesRequest = new sql.Request(pool);
+    deleteServicesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const deleteResult = await deleteServicesRequest.query(`
+      DELETE FROM Services WHERE VendorProfileID = @VendorProfileID
+    `);
+    console.log(`[BACKEND] Deleted ${deleteResult.rowsAffected[0]} services from Services table`);
+    
+    // Also delete from VendorSelectedServices (legacy table, may not be used anymore)
+    const deleteSelectedRequest = new sql.Request(pool);
+    deleteSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const deleteSelectedResult = await deleteSelectedRequest.query(`
+      DELETE FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID
+    `);
+    console.log(`[BACKEND] Deleted ${deleteSelectedResult.rowsAffected[0]} services from VendorSelectedServices table`);
 
+    if (selectedPredefinedServices && selectedPredefinedServices.length > 0) {
       // Insert new selected predefined services
       for (const selectedService of selectedPredefinedServices) {
         try {
