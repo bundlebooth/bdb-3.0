@@ -2652,12 +2652,40 @@ router.post('/setup/step3-services', async (req, res) => {
           console.log(`[BACKEND]   - imageURL type:`, typeof imageUrlValue);
           console.log(`[BACKEND]   - imageURL length:`, imageUrlValue ? imageUrlValue.length : 0);
           
+          // Calculate the vendor price from the pricing model
+          const baseRate = selectedService.baseRate != null ? parseFloat(selectedService.baseRate) : null;
+          const fixedPrice = selectedService.fixedPrice != null ? parseFloat(selectedService.fixedPrice) : null;
+          const pricePerPerson = selectedService.pricePerPerson != null ? parseFloat(selectedService.pricePerPerson) : null;
+          const legacyPrice = selectedService.price != null ? parseFloat(selectedService.price) : null;
+          
+          // Derive vendor price based on pricing model priority
+          let vendorPrice = null;
+          if (fixedPrice != null) {
+            vendorPrice = fixedPrice;
+          } else if (baseRate != null) {
+            vendorPrice = baseRate;
+          } else if (pricePerPerson != null) {
+            vendorPrice = pricePerPerson;
+          } else if (legacyPrice != null) {
+            vendorPrice = legacyPrice;
+          } else {
+            vendorPrice = 0; // Default fallback
+          }
+
+          console.log(`[BACKEND] Pricing calculation for ${selectedService.name}:`, {
+            baseRate,
+            fixedPrice,
+            pricePerPerson,
+            legacyPrice,
+            vendorPrice
+          });
+
           const insertSelectedRequest = new sql.Request(pool);
           insertSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
           insertSelectedRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
-          insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
+          insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), vendorPrice);
           insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
-          insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
+          insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || selectedService.baseDurationMinutes || null);
           insertSelectedRequest.input('ImageURL', sql.NVarChar, imageUrlValue);
           
           const insertResult = await insertSelectedRequest.query(`
