@@ -3112,27 +3112,47 @@ BEGIN
     -- Vendor categories (recordset 2)
     SELECT Category FROM VendorCategories WHERE VendorProfileID = @VendorProfileID ORDER BY Category;
     
-    -- Services and packages (recordset 3) - Query from VendorSelectedServices
+    -- Services and packages (recordset 3) - UPDATED TO QUERY FROM Services TABLE
     SELECT 
-        vss.VendorSelectedServiceID AS ServiceID,
+        s.ServiceID AS VendorSelectedServiceID,
+        s.LinkedPredefinedServiceID AS PredefinedServiceID,
         ps.ServiceName,
         ps.ServiceName AS Name,
-        COALESCE(vss.VendorDescription, ps.ServiceDescription) AS Description,
-        vss.VendorPrice AS Price,
-        COALESCE(vss.VendorDurationMinutes, ps.DefaultDurationMinutes) AS DurationMinutes,
+        COALESCE(s.Description, ps.ServiceDescription) AS Description,
+        -- Derive a single Price compatible with display
+        CASE 
+            WHEN s.PricingModel = 'time_based' THEN s.BaseRate
+            WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'fixed_price' THEN s.FixedPrice
+            WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'per_attendee' THEN s.PricePerPerson
+            ELSE COALESCE(s.Price, 0)
+        END AS Price,
+        COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS DurationMinutes,
         0 AS MinDuration,
-        0 AS MaxAttendees,
+        COALESCE(s.MaximumAttendees, 0) AS MaxAttendees,
         0 AS RequiresDeposit,
         0 AS DepositPercentage,
         '' AS CancellationPolicy,
-        vss.IsActive,
+        s.IsActive,
         ps.Category AS CategoryName,
         0 AS CategoryID,
-        vss.ImageURL AS PrimaryImage,
-        vss.ImageURL
-    FROM VendorSelectedServices vss
-    JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-    WHERE vss.VendorProfileID = @VendorProfileID AND vss.IsActive = 1 AND ps.IsActive = 1
+        NULL AS PrimaryImage,
+        NULL AS ImageURL,
+        -- Include unified pricing model fields for ServiceCard compatibility
+        s.PricingModel,
+        s.BaseRate,
+        s.BaseDurationMinutes,
+        s.OvertimeRatePerHour,
+        s.MinimumBookingFee,
+        s.FixedPricingType,
+        s.FixedPrice,
+        s.PricePerPerson,
+        s.MinimumAttendees,
+        s.MaximumAttendees AS Capacity
+    FROM Services s
+    LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
+    WHERE s.VendorProfileID = @VendorProfileID 
+        AND s.LinkedPredefinedServiceID IS NOT NULL 
+        AND s.IsActive = 1
     ORDER BY ps.Category, ps.DisplayOrder, ps.ServiceName;
     
     -- Vendor portfolio (recordset 4)
