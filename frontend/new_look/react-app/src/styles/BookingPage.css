@@ -282,17 +282,11 @@ select.form-input:focus {
     border-radius: var(--radius-md);
     padding: 1.25rem;
     cursor: pointer;
-    transition: all 0.2s;
     background: white;
     display: flex;
     gap: 1rem;
     align-items: flex-start;
     position: relative;
-}
-
-.service-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: var(--shadow-md);
 }
 
 .service-card.selected {

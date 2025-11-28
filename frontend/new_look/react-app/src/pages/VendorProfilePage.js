@@ -5,6 +5,8 @@ import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
 import VendorGallery from '../components/VendorGallery';
 import VendorCard from '../components/VendorCard';
+import ServiceCard from '../components/ServiceCard';
+import SkeletonLoader from '../components/SkeletonLoader';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import Footer from '../components/Footer';
@@ -626,72 +628,17 @@ function VendorProfilePage() {
     );
   };
 
-  // Render enhanced services with better formatting
+  // Render enhanced services with better formatting using unified ServiceCard
   const renderEnhancedServices = () => {
     if (!services || services.length === 0) return null;
 
     return (
       <div className="content-section">
         <h2>What we offer</h2>
-        <div>
-          {services.map((service, index) => {
-            const serviceName = service.ServiceName || service.Name || 'Unnamed Service';
-            const servicePrice = service.Price || 0;
-            const serviceDescription = service.Description || '';
-            const serviceDuration = service.DurationMinutes || 0;
-            const serviceCapacity = service.MaxAttendees || 0;
-            const categoryName = service.CategoryName || '';
-            const requiresDeposit = service.RequiresDeposit || false;
-            const depositPercentage = service.DepositPercentage || 0;
-
-            let priceDisplay = servicePrice > 0 ? `$${parseFloat(servicePrice).toFixed(2)}` : 'Contact for pricing';
-            let priceSubtext = servicePrice > 0 ? '/ per service' : '';
-
-            let durationText = '';
-            if (serviceDuration > 0) {
-              const hours = Math.floor(serviceDuration / 60);
-              const mins = serviceDuration % 60;
-              if (hours > 0 && mins > 0) {
-                durationText = `${hours} hour${hours > 1 ? 's' : ''} ${mins} min`;
-              } else if (hours > 0) {
-                durationText = `${hours} hour${hours > 1 ? 's' : ''}`;
-              } else {
-                durationText = `${mins} minutes`;
-              }
-            }
-
-            return (
-              <div key={index} className="service-package-card">
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <div className="service-image-container">
-                    <i className="fas fa-concierge-bell service-icon"></i>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <h3 className="service-card-title">{serviceName}</h3>
-                        <div className="service-card-details" style={{ marginBottom: '0.25rem' }}>
-                          {categoryName && <span><i className="fas fa-tag"></i>{categoryName}</span>}
-                          {durationText && <span><i className="fas fa-clock"></i>{durationText}</span>}
-                        </div>
-                        <div className="service-card-details">
-                          {serviceCapacity > 0 && <span><i className="fas fa-users"></i>Up to {serviceCapacity}</span>}
-                          {requiresDeposit && depositPercentage > 0 && (
-                            <span><i className="fas fa-receipt" style={{ color: 'var(--accent)' }}></i>{depositPercentage}% deposit</span>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--primary)', whiteSpace: 'nowrap' }}>{priceDisplay}</div>
-                        {priceSubtext && <div style={{ fontSize: '0.7rem', color: 'var(--text-light)', marginTop: '0.15rem' }}>{priceSubtext}</div>}
-                      </div>
-                    </div>
-                    {serviceDescription && <p className="service-card-description" style={{ marginTop: '0.5rem' }}>{serviceDescription}</p>}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {services.map((service, index) => (
+            <ServiceCard key={index} service={service} variant="display" />
+          ))}
         </div>
       </div>
     );

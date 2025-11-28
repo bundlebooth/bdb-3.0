@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../../../config';
+import ServiceCard from '../../ServiceCard';
+import SkeletonLoader from '../../SkeletonLoader';
 import { showBanner } from '../../../utils/helpers';
 
 function ServicesPackagesPanel({ onBack, vendorProfileId }) {
@@ -54,16 +56,35 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           const vendorData = await vendorServicesResponse.json();
           const selectedServices = vendorData.selectedServices || [];
           
-          // Map selected services to full service objects
+          // Map selected services to full service objects with saved pricing data
           const mappedServices = selectedServices.map(s => {
             const match = allServices.find(a => String(a.id) === String(s.PredefinedServiceID));
             if (match) {
+              // Normalize pricing model from backend (fixed_based -> fixed_price or per_attendee)
+              let normalizedPricingModel = s.PricingModel || 'time_based';
+              if (s.PricingModel === 'fixed_based') {
+                if (s.FixedPricingType === 'per_attendee') {
+                  normalizedPricingModel = 'per_attendee';
+                } else {
+                  normalizedPricingModel = 'fixed_price';
+                }
+              }
+              
               return {
                 ...match,
                 vendorPrice: s.VendorPrice,
-                vendorDuration: s.VendorDurationMinutes,
+                vendorDuration: s.VendorDurationMinutes || s.BaseDurationMinutes,
                 vendorDescription: s.VendorDescription,
-                imageURL: s.ImageURL
+                imageURL: s.ImageURL,
+                // Pull saved pricing data from database
+                pricingModel: normalizedPricingModel,
+                baseRate: s.BaseRate !== null && s.BaseRate !== undefined ? s.BaseRate : null,
+                overtimeRatePerHour: s.OvertimeRatePerHour !== null && s.OvertimeRatePerHour !== undefined ? s.OvertimeRatePerHour : null,
+                fixedPrice: s.FixedPrice !== null && s.FixedPrice !== undefined ? s.FixedPrice : null,
+                pricePerPerson: s.PricePerPerson !== null && s.PricePerPerson !== undefined ? s.PricePerPerson : null,
+                minimumAttendees: s.MinimumAttendees !== null && s.MinimumAttendees !== undefined ? s.MinimumAttendees : null,
+                maximumAttendees: s.MaximumAttendees !== null && s.MaximumAttendees !== undefined ? s.MaximumAttendees : null,
+                minimumBookingFee: s.MinimumBookingFee !== null && s.MinimumBookingFee !== undefined ? s.MinimumBookingFee : null
               };
             }
             return null;
@@ -72,6 +93,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           setServices(mappedServices);
           setSelectedCount(mappedServices.length);
           console.log('Loaded selected services:', mappedServices.length);
+          console.log('Mapped services with pricing data:', mappedServices);
         }
       }
     } catch (error) {
@@ -103,15 +125,17 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
 
   const handleEditService = (service) => {
     setEditingService(service);
+    // Pre-fill form with saved data from database
     setEditForm({
       pricingModel: service.pricingModel || 'time_based',
       vendorDuration: service.vendorDuration || service.defaultDuration || 60,
-      baseRate: service.baseRate || '',
-      overtimeRatePerHour: service.overtimeRatePerHour || '',
-      fixedPrice: service.fixedPrice || '',
-      pricePerPerson: service.pricePerPerson || '',
+      baseRate: service.baseRate !== null && service.baseRate !== undefined ? service.baseRate : '',
+      overtimeRatePerHour: service.overtimeRatePerHour !== null && service.overtimeRatePerHour !== undefined ? service.overtimeRatePerHour : '',
+      fixedPrice: service.fixedPrice !== null && service.fixedPrice !== undefined ? service.fixedPrice : '',
+      pricePerPerson: service.pricePerPerson !== null && service.pricePerPerson !== undefined ? service.pricePerPerson : '',
       minimumAttendees: service.minimumAttendees || '',
       maximumAttendees: service.maximumAttendees || '',
+      minimumBookingFee: service.minimumBookingFee || '',
       vendorDescription: service.vendorDescription || ''
     });
   };
@@ -148,14 +172,14 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           imageURL: s.imageURL || null,
           pricingModel: s.pricingModel || 'time_based',
           baseDurationMinutes: parseInt(s.vendorDuration) || s.defaultDuration || 60,
-          baseRate: s.baseRate ? parseFloat(s.baseRate) : null,
-          overtimeRatePerHour: s.overtimeRatePerHour ? parseFloat(s.overtimeRatePerHour) : null,
-          minimumBookingFee: s.minimumBookingFee ? parseFloat(s.minimumBookingFee) : null,
+          baseRate: (s.baseRate !== null && s.baseRate !== undefined && s.baseRate !== '') ? parseFloat(s.baseRate) : null,
+          overtimeRatePerHour: (s.overtimeRatePerHour !== null && s.overtimeRatePerHour !== undefined && s.overtimeRatePerHour !== '') ? parseFloat(s.overtimeRatePerHour) : null,
+          minimumBookingFee: (s.minimumBookingFee !== null && s.minimumBookingFee !== undefined && s.minimumBookingFee !== '') ? parseFloat(s.minimumBookingFee) : null,
           fixedPricingType: s.pricingModel === 'per_attendee' ? 'per_attendee' : (s.pricingModel === 'fixed_price' ? 'fixed_price' : null),
-          fixedPrice: s.fixedPrice ? parseFloat(s.fixedPrice) : null,
-          pricePerPerson: s.pricePerPerson ? parseFloat(s.pricePerPerson) : null,
-          minimumAttendees: s.minimumAttendees ? parseInt(s.minimumAttendees) : null,
-          maximumAttendees: s.maximumAttendees ? parseInt(s.maximumAttendees) : null,
+          fixedPrice: (s.fixedPrice !== null && s.fixedPrice !== undefined && s.fixedPrice !== '') ? parseFloat(s.fixedPrice) : null,
+          pricePerPerson: (s.pricePerPerson !== null && s.pricePerPerson !== undefined && s.pricePerPerson !== '') ? parseFloat(s.pricePerPerson) : null,
+          minimumAttendees: (s.minimumAttendees !== null && s.minimumAttendees !== undefined && s.minimumAttendees !== '') ? parseInt(s.minimumAttendees) : null,
+          maximumAttendees: (s.maximumAttendees !== null && s.maximumAttendees !== undefined && s.maximumAttendees !== '') ? parseInt(s.maximumAttendees) : null,
           price: s.vendorPrice || s.fixedPrice || 0
         })),
         services: services.map(s => ({
@@ -164,14 +188,14 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           imageURL: s.imageURL || null,
           pricingModel: s.pricingModel || 'time_based',
           baseDurationMinutes: parseInt(s.vendorDuration) || s.defaultDuration || 60,
-          baseRate: s.baseRate ? parseFloat(s.baseRate) : null,
-          overtimeRatePerHour: s.overtimeRatePerHour ? parseFloat(s.overtimeRatePerHour) : null,
-          minimumBookingFee: s.minimumBookingFee ? parseFloat(s.minimumBookingFee) : null,
+          baseRate: (s.baseRate !== null && s.baseRate !== undefined && s.baseRate !== '') ? parseFloat(s.baseRate) : null,
+          overtimeRatePerHour: (s.overtimeRatePerHour !== null && s.overtimeRatePerHour !== undefined && s.overtimeRatePerHour !== '') ? parseFloat(s.overtimeRatePerHour) : null,
+          minimumBookingFee: (s.minimumBookingFee !== null && s.minimumBookingFee !== undefined && s.minimumBookingFee !== '') ? parseFloat(s.minimumBookingFee) : null,
           fixedPricingType: s.pricingModel === 'per_attendee' ? 'per_attendee' : (s.pricingModel === 'fixed_price' ? 'fixed_price' : null),
-          fixedPrice: s.fixedPrice ? parseFloat(s.fixedPrice) : null,
-          pricePerPerson: s.pricePerPerson ? parseFloat(s.pricePerPerson) : null,
-          minimumAttendees: s.minimumAttendees ? parseInt(s.minimumAttendees) : null,
-          maximumAttendees: s.maximumAttendees ? parseInt(s.maximumAttendees) : null,
+          fixedPrice: (s.fixedPrice !== null && s.fixedPrice !== undefined && s.fixedPrice !== '') ? parseFloat(s.fixedPrice) : null,
+          pricePerPerson: (s.pricePerPerson !== null && s.pricePerPerson !== undefined && s.pricePerPerson !== '') ? parseFloat(s.pricePerPerson) : null,
+          minimumAttendees: (s.minimumAttendees !== null && s.minimumAttendees !== undefined && s.minimumAttendees !== '') ? parseInt(s.minimumAttendees) : null,
+          maximumAttendees: (s.maximumAttendees !== null && s.maximumAttendees !== undefined && s.maximumAttendees !== '') ? parseInt(s.maximumAttendees) : null,
           durationMinutes: parseInt(s.vendorDuration) || s.defaultDuration || 60,
           linkedPredefinedServiceId: s.id,
           categoryName: s.category || null
@@ -229,9 +253,9 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
         
         {/* Loading State */}
-        <div id="vendor-settings-services-loading" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)', display: loading ? 'block' : 'none' }}>
-          <div className="spinner" style={{ margin: '0 auto' }}></div>
-        </div>
+        {loading && (
+          <SkeletonLoader variant="service-card" count={3} />
+        )}
 
         {/* Services Container */}
         <div id="vendor-settings-services-container" style={{ display: !loading ? 'block' : 'none' }}>

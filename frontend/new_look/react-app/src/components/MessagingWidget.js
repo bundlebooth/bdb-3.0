@@ -187,47 +187,60 @@ function MessagingWidget() {
   if (!currentUser) return null;
 
   return (
-    <div className="messaging-widget">
-      {/* Chat Button - Airbnb Style */}
+    <div className="messaging-widget" style={{
+      position: 'fixed',
+      bottom: '24px',
+      right: '24px',
+      zIndex: 9999
+    }}>
+      {/* Chat Button - Fully Blue with Large Icon */}
       <div className="chat-button" onClick={toggleWidget} style={{
-        width: '60px',
-        height: '60px',
+        width: '70px',
+        height: '70px',
         borderRadius: '50%',
         background: '#5e72e4',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        boxShadow: '0 6px 20px rgba(94, 114, 228, 0.4), 0 2px 8px rgba(0,0,0,0.15)',
         cursor: 'pointer',
         transition: 'all 0.3s ease',
         position: 'relative'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'scale(1.1)';
+        e.currentTarget.style.boxShadow = '0 8px 24px rgba(94, 114, 228, 0.5), 0 4px 12px rgba(0,0,0,0.2)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
+        e.currentTarget.style.boxShadow = '0 6px 20px rgba(94, 114, 228, 0.4), 0 2px 8px rgba(0,0,0,0.15)';
       }}>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M20 2H4C2.9 2 2.01 2.9 2.01 4L2 22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="white"/>
-        </svg>
+        <i className="fas fa-comments" style={{ fontSize: '32px', color: 'white' }}></i>
         {unreadCount > 0 && (
           <span style={{
             position: 'absolute',
-            top: '-5px',
-            right: '-5px',
+            top: '8px',
+            right: '8px',
             background: '#ff385c',
             color: 'white',
-            borderRadius: '50%',
-            width: '24px',
-            height: '24px',
+            borderRadius: '8px',
+            minWidth: '16px',
+            height: '16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            border: '2px solid white'
+            fontSize: '9px',
+            fontWeight: '700',
+            border: '1.5px solid white',
+            padding: '0 3px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
           }}>
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </div>
 
-      {/* Widget Container - Airbnb Style */}
+      {/* Widget Container - Improved Positioning */}
       {isOpen && (
         <div className="widget-container" style={{ 
           display: 'flex',
@@ -235,9 +248,13 @@ function MessagingWidget() {
           width: '380px',
           height: '600px',
           borderRadius: '16px',
-          boxShadow: '0 8px 28px rgba(0,0,0,0.28)',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.3)',
           overflow: 'hidden',
-          background: 'white'
+          background: 'white',
+          position: 'absolute',
+          bottom: '80px',
+          right: '0',
+          border: '1px solid rgba(0,0,0,0.1)'
         }}>
           <div className="widget-header" style={{
             background: mainView === 'home' ? '#f7f7f7' : '#5e72e4',

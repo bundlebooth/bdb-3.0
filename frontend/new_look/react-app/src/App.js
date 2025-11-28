@@ -4,6 +4,7 @@ import IndexPage from './pages/IndexPage';
 import VendorProfilePage from './pages/VendorProfilePage';
 import BookingPage from './pages/BookingPage';
 import { AuthProvider } from './context/AuthContext';
+import './styles/MapControls.css';
 
 // Global initMap callback for Google Maps
 window.initMap = function() {

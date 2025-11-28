@@ -144,25 +144,25 @@ html {
 
 .nav-icon .badge {
     position: absolute;
-    top: -4px;
-    right: -4px;
-    background-color: var(--accent);
+    top: -3px;
+    right: -6px;
+    background-color: #ff385c;
     color: #fff;
-    border-radius: 50%;
-    width: 16px;
-    height: 16px;
-    padding: 0;
+    border-radius: 8px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 3px;
     display: none; /* hidden by default; JS will show when count > 0 */
     place-items: center; /* grid centering (when shown) */
-    font-size: 10px;
+    font-size: 8px;
     font-weight: 700;
-    line-height: 1; /* rely on grid centering */
+    line-height: 14px;
     box-sizing: border-box;
-    border: 1px solid #fff; /* thinner ring */
-    box-shadow: 0 1px 2px rgba(0,0,0,0.12);
-    transform: translate(0, 0.5px); /* slight optical nudge */
+    border: 1.5px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     text-align: center;
-    font-variant-numeric: tabular-nums; /* more even digit centering */
+    font-variant-numeric: tabular-nums;
+    z-index: 10;
 }
 
 /* Categories Navigation */
@@ -1548,12 +1548,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     border-radius: var(--radius);
     padding: 1rem;
     border: 1px solid var(--border);
-    transition: all 0.2s;
-}
-
-.service-card:hover {
-    border-color: var(--primary);
-    box-shadow: var(--shadow);
 }
 
 .service-name {
@@ -1731,11 +1725,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
 }
 
-.predefined-service-card:hover {
-    border-color: var(--primary);
-    box-shadow: var(--shadow);
-    transform: translateY(-2px);
-}
 
 .predefined-service-card.selected {
     border-color: var(--primary);
@@ -8817,12 +8806,6 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     border-radius: 12px;
     padding: 1.25rem;
     cursor: pointer;
-    transition: all 0.2s;
-}
-
-.service-card:hover {
-    border-color: var(--primary);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .service-card.selected {

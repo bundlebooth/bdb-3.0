@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
+import ServiceCard from '../components/ServiceCard';
+import SkeletonLoader from '../components/SkeletonLoader';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
@@ -591,49 +593,25 @@ function BookingPage() {
                 
                 <div id="services-list" className="services-list">
                   {loadingServices ? (
-                    <div className="loading-spinner">
-                      <i className="fas fa-spinner fa-spin"></i>
-                      <p>Loading services...</p>
-                    </div>
+                    <SkeletonLoader variant="service-card" count={3} />
                   ) : services.length === 0 ? (
-                    <div className="no-services">
-                      <i className="fas fa-info-circle"></i>
-                      <p>This vendor hasn't listed specific services yet. You can still send a booking request with your requirements.</p>
+                    <div className="no-services" style={{ padding: '3rem 2rem', textAlign: 'center' }}>
+                      <i className="fas fa-info-circle" style={{ fontSize: '3rem', color: '#d1d5db', marginBottom: '1rem' }}></i>
+                      <p style={{ color: '#6b7280', fontSize: '1rem' }}>This vendor hasn't listed specific services yet. You can still send a booking request with your requirements.</p>
                     </div>
                   ) : (
                     services.map((service) => {
                       const serviceId = service.PredefinedServiceID || service.VendorSelectedServiceID;
                       const isSelected = selectedServices.some(s => s.id === serviceId);
-                      const category = service.Category || 'Beauty & Wellness';
-                      const duration = service.VendorDurationMinutes || service.DefaultDurationMinutes || 0;
                       
                       return (
-                        <div
+                        <ServiceCard
                           key={serviceId}
-                          className={`service-card ${isSelected ? 'selected' : ''}`}
-                          onClick={() => toggleServiceSelection(service)}
-                        >
-                          <div className="service-icon-container">
-                            <i className="fas fa-spa"></i>
-                          </div>
-                          <div className="service-content">
-                            <h4 className="service-name">{service.ServiceName}</h4>
-                            <div className="service-meta">
-                              <span className="service-category">
-                                <i className="fas fa-tag"></i>
-                                {category}
-                              </span>
-                              {duration > 0 && (
-                                <span className="service-duration">
-                                  <i className="far fa-clock"></i> {formatDuration(duration)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="service-checkbox">
-                            {isSelected && <i className="fas fa-check"></i>}
-                          </div>
-                        </div>
+                          service={service}
+                          variant="selectable"
+                          isSelected={isSelected}
+                          onSelect={() => toggleServiceSelection(service)}
+                        />
                       );
                     })
                   )}
