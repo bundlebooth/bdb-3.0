@@ -3112,28 +3112,40 @@ BEGIN
     -- Vendor categories (recordset 2)
     SELECT Category FROM VendorCategories WHERE VendorProfileID = @VendorProfileID ORDER BY Category;
     
-    -- Services and packages (recordset 3) - Query from VendorSelectedServices
+    -- Services and packages (recordset 3) - Query from Services table with unified pricing
     SELECT 
-        vss.VendorSelectedServiceID AS ServiceID,
-        ps.ServiceName,
-        ps.ServiceName AS Name,
-        COALESCE(vss.VendorDescription, ps.ServiceDescription) AS Description,
-        vss.VendorPrice AS Price,
-        COALESCE(vss.VendorDurationMinutes, ps.DefaultDurationMinutes) AS DurationMinutes,
-        0 AS MinDuration,
-        0 AS MaxAttendees,
-        0 AS RequiresDeposit,
-        0 AS DepositPercentage,
-        '' AS CancellationPolicy,
-        vss.IsActive,
-        ps.Category AS CategoryName,
-        0 AS CategoryID,
-        vss.ImageURL AS PrimaryImage,
-        vss.ImageURL
-    FROM VendorSelectedServices vss
-    JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-    WHERE vss.VendorProfileID = @VendorProfileID AND vss.IsActive = 1 AND ps.IsActive = 1
-    ORDER BY ps.Category, ps.DisplayOrder, ps.ServiceName;
+        s.ServiceID,
+        s.Name AS ServiceName,
+        s.Name,
+        s.Description,
+        s.Price,
+        s.DurationMinutes,
+        s.DurationMinutes AS MinDuration,
+        s.MaxAttendees,
+        s.RequiresDeposit,
+        s.DepositPercentage,
+        s.CancellationPolicy,
+        s.IsActive,
+        sc.Name AS CategoryName,
+        s.CategoryID,
+        NULL AS PrimaryImage,
+        NULL AS ImageURL,
+        -- Unified pricing fields
+        s.PricingModel,
+        s.BaseDurationMinutes,
+        s.BaseRate,
+        s.OvertimeRatePerHour,
+        s.MinimumBookingFee,
+        s.FixedPricingType,
+        s.FixedPrice,
+        s.PricePerPerson,
+        s.MinimumAttendees,
+        s.MaximumAttendees,
+        s.LinkedPredefinedServiceID
+    FROM Services s
+    LEFT JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
+    WHERE s.VendorProfileID = @VendorProfileID AND s.IsActive = 1
+    ORDER BY sc.Name, s.Name;
     
     -- Vendor portfolio (recordset 4)
     SELECT PortfolioID, Title, Description, ImageURL, ProjectDate, DisplayOrder
@@ -3177,11 +3189,17 @@ BEGIN
     WHERE VendorProfileID = @VendorProfileID
     ORDER BY IsPrimary DESC, DisplayOrder;
 
-    -- Category-specific questions and answers (recordset 11)
-    SELECT cq.QuestionText, vad.Answer
-    FROM VendorCategoryAnswers vad
-    JOIN CategoryQuestions cq ON vad.QuestionID = cq.QuestionID
-    WHERE vad.VendorProfileID = @VendorProfileID;
+    -- Category-specific answers (recordset 11)
+    SELECT 
+        vca.AnswerID,
+        vca.QuestionID, 
+        cq.QuestionText AS Question,
+        vca.Answer,
+        cq.Category AS CategoryName
+    FROM VendorCategoryAnswers vca
+    LEFT JOIN CategoryQuestions cq ON vca.QuestionID = cq.QuestionID
+    WHERE vca.VendorProfileID = @VendorProfileID
+    ORDER BY cq.Category, vca.QuestionID;
 
     -- Is favorite for current user (recordset 12)
     IF @UserID IS NOT NULL

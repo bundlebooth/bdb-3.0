@@ -2290,75 +2290,48 @@ router.get('/:id/selected-services', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
+    // Query from Services table first (new unified pricing approach)
     const result = await request.query(`
       SELECT 
-        vss.VendorSelectedServiceID,
-        vss.PredefinedServiceID,
+        s.ServiceID AS VendorSelectedServiceID,
+        s.LinkedPredefinedServiceID AS PredefinedServiceID,
         ps.ServiceName,
         ps.ServiceDescription as PredefinedDescription,
         ps.Category,
         ps.DefaultDurationMinutes,
-        vss.VendorPrice,
-        vss.VendorDescription,
-        vss.VendorDurationMinutes,
-        vss.ImageURL,
-        vss.CreatedAt,
-        vss.UpdatedAt,
-        vss.IsActive
-      FROM VendorSelectedServices vss
-      INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
-      WHERE vss.VendorProfileID = @VendorProfileID AND vss.IsActive = 1
-      ORDER BY ps.Category, ps.DisplayOrder, ps.ServiceName
+        s.Description AS VendorDescription,
+        -- Derive a single VendorPrice compatible with settings UI
+        CASE 
+          WHEN s.PricingModel = 'time_based' THEN s.BaseRate
+          WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'fixed_price' THEN s.FixedPrice
+          WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'per_attendee' THEN s.PricePerPerson
+          ELSE s.Price
+        END AS VendorPrice,
+        COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes,
+        NULL AS ImageURL, -- Services table doesn't have ImageURL
+        s.CreatedAt,
+        s.UpdatedAt,
+        s.IsActive,
+        -- Include all unified pricing model fields
+        s.PricingModel,
+        s.BaseRate,
+        s.BaseDurationMinutes,
+        s.OvertimeRatePerHour,
+        s.MinimumBookingFee,
+        s.FixedPricingType,
+        s.FixedPrice,
+        s.PricePerPerson,
+        s.MinimumAttendees,
+        s.MaximumAttendees
+      FROM Services s
+      LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
+      WHERE s.VendorProfileID = @VendorProfileID 
+        AND s.LinkedPredefinedServiceID IS NOT NULL 
+        AND s.IsActive = 1
+      ORDER BY ps.Category, ps.ServiceName
     `);
     
     let rows = result.recordset;
-    // Fallback: if no legacy selected entries, derive from Services linked to predefined services
-    if (!rows || rows.length === 0) {
-      try {
-        const fbReq = new sql.Request(pool);
-        fbReq.input('VendorProfileID', sql.Int, vendorProfileId);
-        const fbRes = await fbReq.query(`
-          SELECT 
-            s.LinkedPredefinedServiceID AS PredefinedServiceID,
-            ps.ServiceName,
-            ps.ServiceDescription as PredefinedDescription,
-            ps.Category,
-            ps.DefaultDurationMinutes,
-            s.Description AS VendorDescription,
-            -- Derive a single VendorPrice compatible with settings UI
-            CASE 
-              WHEN s.PricingModel = 'time_based' THEN s.BaseRate
-              WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'fixed_price' THEN s.FixedPrice
-              WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'per_attendee' THEN s.PricePerPerson
-              ELSE s.Price
-            END AS VendorPrice,
-            COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes,
-            -- Include all pricing model fields
-            s.PricingModel,
-            s.BaseRate,
-            s.BaseDurationMinutes,
-            s.OvertimeRatePerHour,
-            s.MinimumBookingFee,
-            s.FixedPricingType,
-            s.FixedPrice,
-            s.PricePerPerson,
-            s.MinimumAttendees,
-            s.MaximumAttendees,
-            s.CreatedAt,
-            s.UpdatedAt,
-            s.IsActive
-          FROM Services s
-          LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
-          WHERE s.VendorProfileID = @VendorProfileID 
-            AND s.LinkedPredefinedServiceID IS NOT NULL 
-            AND s.IsActive = 1
-          ORDER BY ps.Category, ps.ServiceName
-        `);
-        rows = fbRes.recordset || [];
-      } catch (fbErr) {
-        console.warn('Fallback selected-services query failed:', fbErr?.message || fbErr);
-      }
-    }
 
     res.json({ 
       success: true, 
