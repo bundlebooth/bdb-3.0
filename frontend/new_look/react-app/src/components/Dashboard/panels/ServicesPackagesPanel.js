@@ -267,7 +267,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
           </div>
 
           <div id="vendor-settings-services-grid" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem', width: '100%' }}>
-            {services.map((service) => {
+            {services.map((service, index) => {
               const getCategoryIcon = () => {
                 const catLower = (service.category || '').toLowerCase();
                 const nameLower = (service.name || '').toLowerCase();
@@ -296,7 +296,7 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
               };
               
               return (
-                <div key={service.id} style={{ padding: '1rem', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px' }}>
+                <div key={`service-${service.id}-${index}`} style={{ padding: '1rem', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px' }}>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
                     {/* Service Icon */}
                     <div style={{

@@ -34,20 +34,45 @@ function ServiceCard({ service, variant = 'display', isSelected = false, onSelec
     }
   };
   
-  // Format pricing display
+  // Format pricing display - professional and clean
   const getPricingDisplay = () => {
     if (pricingModel === 'time_based' && baseRate) {
       const base = `$${parseFloat(baseRate).toFixed(0)}`;
-      const overtime = overtimeRate ? ` + $${parseFloat(overtimeRate).toFixed(0)}/hr` : '';
-      return { main: base, sub: overtime ? `Base rate${overtime} overtime` : 'Base rate' };
+      const overtime = overtimeRate ? `$${parseFloat(overtimeRate).toFixed(0)}` : null;
+      return { 
+        main: base,
+        sub: 'Base price',
+        overtime: overtime,
+        overtimeSub: overtime ? '/hr overtime' : null
+      };
     } else if (pricingModel === 'fixed_price' && fixedPrice) {
-      return { main: `$${parseFloat(fixedPrice).toFixed(0)}`, sub: 'Fixed price' };
+      return { 
+        main: `$${parseFloat(fixedPrice).toFixed(0)}`,
+        sub: 'Fixed price',
+        overtime: null,
+        overtimeSub: null
+      };
     } else if (pricingModel === 'per_attendee' && pricePerPerson) {
-      return { main: `$${parseFloat(pricePerPerson).toFixed(0)}`, sub: 'Per person' };
+      return { 
+        main: `$${parseFloat(pricePerPerson).toFixed(0)}`,
+        sub: 'Per person',
+        overtime: null,
+        overtimeSub: null
+      };
     } else if (fixedPrice) {
-      return { main: `$${parseFloat(fixedPrice).toFixed(0)}`, sub: 'Per service' };
+      return { 
+        main: `$${parseFloat(fixedPrice).toFixed(0)}`,
+        sub: 'Per service',
+        overtime: null,
+        overtimeSub: null
+      };
     }
-    return { main: 'Price on request', sub: '' };
+    return { 
+      main: 'Contact for pricing',
+      sub: '',
+      overtime: null,
+      overtimeSub: null
+    };
   };
   
   const pricing = getPricingDisplay();
@@ -74,42 +99,133 @@ function ServiceCard({ service, variant = 'display', isSelected = false, onSelec
   // Selectable variant (for booking page)
   if (variant === 'selectable') {
     return (
-      <div
-        className={`service-card ${isSelected ? 'selected' : ''}`}
-        onClick={onSelect}
-        style={{
-          padding: '1rem',
-          background: isSelected ? '#f0f7ff' : '#fff',
-          border: `2px solid ${isSelected ? '#5e72e4' : '#e5e7eb'}`,
-          borderRadius: '12px',
-          cursor: 'pointer',
-          display: 'flex',
-          gap: '1rem',
-          alignItems: 'center'
-        }}
-      >
-        <div style={{
-          flexShrink: 0,
-          width: '50px',
-          height: '50px',
-          borderRadius: '8px',
-          background: isSelected ? '#5e72e4' : '#f3f4f6',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          <i className={`fas ${getCategoryIcon()}`} style={{ color: isSelected ? 'white' : '#6b7280', fontSize: '1.25rem' }}></i>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#111827', margin: '0 0 0.25rem 0' }}>
-            {serviceName}
-          </h4>
-          <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem', color: '#6b7280', flexWrap: 'wrap' }}>
-            {categoryName && <span><i className="fas fa-tag" style={{ marginRight: '0.25rem' }}></i>{categoryName}</span>}
-            {durationText && <span><i className="far fa-clock" style={{ marginRight: '0.25rem' }}></i>{durationText}</span>}
-            <span style={{ fontWeight: 600, color: '#111827' }}>{pricing.main}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative' }}>
+        <div
+          className={`service-card ${isSelected ? 'selected' : ''}`}
+          onClick={onSelect}
+          style={{
+            padding: '1.25rem',
+            background: isSelected ? '#f0f7ff' : '#fff',
+            border: `2px solid ${isSelected ? '#5e72e4' : '#e5e7eb'}`,
+            borderRadius: '12px',
+            cursor: 'pointer',
+            position: 'relative',
+            flex: 1
+          }}
+        >
+          {/* Pricing positioned at top right */}
+          <div style={{ 
+            position: 'absolute',
+            top: '1.25rem',
+            right: '1.25rem',
+            textAlign: 'right', 
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: '0.25rem'
+          }}>
+            <div style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: 700, 
+              color: '#111827',
+              lineHeight: '1'
+            }}>
+              {pricing.main}
+            </div>
+            {pricing.sub && (
+              <div style={{ 
+                fontSize: '0.625rem', 
+                color: '#9ca3af',
+                fontWeight: 500,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                lineHeight: '1'
+              }}>
+                {pricing.sub}
+              </div>
+            )}
+            {pricing.overtime && (
+              <div style={{ 
+                fontSize: '0.875rem', 
+                fontWeight: 600, 
+                color: '#111827',
+                lineHeight: '1',
+                marginTop: '0.25rem'
+              }}>
+                {pricing.overtime} <span style={{ 
+                  fontSize: '0.75rem', 
+                  color: '#9ca3af',
+                  fontWeight: 400
+                }}>{pricing.overtimeSub}</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+            <div style={{
+              flexShrink: 0,
+              width: '60px',
+              height: '60px',
+              borderRadius: '10px',
+              background: '#f3f4f6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <i className={`fas ${getCategoryIcon()}`} style={{ color: '#5e72e4', fontSize: '1.5rem' }}></i>
+            </div>
+            
+            <div style={{ flex: 1, minWidth: 0, paddingRight: '120px' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', margin: '0 0 0.5rem 0' }}>
+                {serviceName}
+              </h3>
+              
+              {/* Metadata row - all on same line */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '1rem', 
+                fontSize: '0.875rem', 
+                color: '#6b7280',
+                marginBottom: serviceDescription ? '0.75rem' : 0,
+                flexWrap: 'wrap',
+                alignItems: 'center'
+              }}>
+                {categoryName && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                    <i className="fas fa-tag"></i>
+                    {categoryName}
+                  </span>
+                )}
+                {durationText && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                    <i className="fas fa-clock"></i>
+                    {durationText}
+                  </span>
+                )}
+                {capacity > 0 && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                    <i className="fas fa-users"></i>
+                    Up to {capacity}
+                  </span>
+                )}
+                {requiresDeposit && depositPercentage > 0 && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', color: '#5e72e4' }}>
+                    <i className="fas fa-receipt"></i>
+                    {depositPercentage}% deposit
+                  </span>
+                )}
+              </div>
+              
+              {serviceDescription && (
+                <p style={{ fontSize: '0.9375rem', color: '#4b5563', lineHeight: '1.6', margin: 0 }}>
+                  {serviceDescription}
+                </p>
+              )}
+            </div>
           </div>
         </div>
+        
+        {/* Selection indicator - outside the card */}
         <div style={{
           width: '24px',
           height: '24px',
@@ -119,8 +235,10 @@ function ServiceCard({ service, variant = 'display', isSelected = false, onSelec
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          flexShrink: 0
-        }}>
+          flexShrink: 0,
+          cursor: 'pointer'
+        }}
+        onClick={onSelect}>
           {isSelected && <i className="fas fa-check" style={{ color: 'white', fontSize: '0.75rem' }}></i>}
         </div>
       </div>
@@ -133,8 +251,58 @@ function ServiceCard({ service, variant = 'display', isSelected = false, onSelec
       padding: '1.25rem',
       background: '#fff',
       border: '1px solid #e5e7eb',
-      borderRadius: '12px'
+      borderRadius: '12px',
+      cursor: 'default',
+      position: 'relative'
     }}>
+      {/* Pricing positioned at top right */}
+      <div style={{ 
+        position: 'absolute',
+        top: '1.25rem',
+        right: '1.25rem',
+        textAlign: 'right', 
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: '0.25rem'
+      }}>
+        <div style={{ 
+          fontSize: '1.25rem', 
+          fontWeight: 700, 
+          color: '#111827',
+          lineHeight: '1'
+        }}>
+          {pricing.main}
+        </div>
+        {pricing.sub && (
+          <div style={{ 
+            fontSize: '0.625rem', 
+            color: '#9ca3af',
+            fontWeight: 500,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            lineHeight: '1'
+          }}>
+            {pricing.sub}
+          </div>
+        )}
+        {pricing.overtime && (
+          <div style={{ 
+            fontSize: '0.875rem', 
+            fontWeight: 600, 
+            color: '#111827',
+            lineHeight: '1',
+            marginTop: '0.25rem'
+          }}>
+            {pricing.overtime} <span style={{ 
+              fontSize: '0.75rem', 
+              color: '#9ca3af',
+              fontWeight: 400
+            }}>{pricing.overtimeSub}</span>
+          </div>
+        )}
+      </div>
+
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
         <div style={{
           flexShrink: 0,
@@ -149,22 +317,10 @@ function ServiceCard({ service, variant = 'display', isSelected = false, onSelec
           <i className={`fas ${getCategoryIcon()}`} style={{ color: '#5e72e4', fontSize: '1.5rem' }}></i>
         </div>
         
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.5rem' }}>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', margin: 0 }}>
-              {serviceName}
-            </h3>
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>
-                {pricing.main}
-              </div>
-              {pricing.sub && (
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                  {pricing.sub}
-                </div>
-              )}
-            </div>
-          </div>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: '120px' }}>
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', margin: '0 0 0.5rem 0' }}>
+            {serviceName}
+          </h3>
           
           {/* Metadata row - all on same line */}
           <div style={{ 
