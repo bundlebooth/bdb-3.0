@@ -11,6 +11,7 @@ import MapView from '../components/MapView';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
+import MessagingWidget from '../components/MessagingWidget';
 import Footer from '../components/Footer';
 import { showBanner } from '../utils/helpers';
 
@@ -34,6 +35,7 @@ function IndexPage() {
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState('dashboard');
   const [loadingMore, setLoadingMore] = useState(false);
+  const [sortBy, setSortBy] = useState('recommended');
   
   // Vendor discovery sections state
   const [discoverySections, setDiscoverySections] = useState([]);
@@ -444,7 +446,55 @@ function IndexPage() {
     setCurrentPage(1);
   }, []);
 
+  const handleSortChange = useCallback((e) => {
+    const newSortBy = e.target.value;
+    console.log('🔧 Sort changed:', newSortBy);
+    setSortBy(newSortBy);
+    
+    // Apply sorting to current vendors
+    const sorted = [...filteredVendors];
+    
+    switch (newSortBy) {
+      case 'price-low':
+        sorted.sort((a, b) => {
+          const priceA = a.PriceLevel || a.priceLevel || 0;
+          const priceB = b.PriceLevel || b.priceLevel || 0;
+          return priceA - priceB;
+        });
+        break;
+      case 'price-high':
+        sorted.sort((a, b) => {
+          const priceA = a.PriceLevel || a.priceLevel || 0;
+          const priceB = b.PriceLevel || b.priceLevel || 0;
+          return priceB - priceA;
+        });
+        break;
+      case 'rating':
+        sorted.sort((a, b) => {
+          const ratingA = a.AverageRating || a.averageRating || 0;
+          const ratingB = b.AverageRating || b.averageRating || 0;
+          return ratingB - ratingA;
+        });
+        break;
+      case 'nearest':
+        if (userLocation) {
+          sorted.sort((a, b) => {
+            const distA = a.Distance || a.distance || 999999;
+            const distB = b.Distance || b.distance || 999999;
+            return distA - distB;
+          });
+        }
+        break;
+      default:
+        // 'recommended' - keep original order
+        break;
+    }
+    
+    setFilteredVendors(sorted);
+  }, [filteredVendors, userLocation]);
+
   const handleFilterChange = useCallback((newFilters) => {
+    console.log('🔧 Filter changed:', newFilters);
     setFilters(newFilters);
     
     // Update URL with filter parameters
@@ -496,7 +546,12 @@ function IndexPage() {
     // Update URL without reloading page
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.pushState({}, '', newUrl);
-  }, []);
+    
+    // Reset to page 1 and reload vendors with new filters
+    setCurrentPage(1);
+    setServerPageNumber(1);
+    loadVendors(false);
+  }, [loadVendors]);
 
   const handleToggleFavorite = useCallback(async (vendorId) => {
     if (!currentUser) {
@@ -622,7 +677,7 @@ function IndexPage() {
             </div>
             <div className="view-controls">
               <button className="mobile-filter-btn"><i className="fas fa-sliders-h"></i><span>Filters</span></button>
-              <select id="sort-select" style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'white', fontSize: '0.9rem', color: 'var(--text)' }}><option value="recommended">Recommended</option><option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option><option value="nearest">Nearest to Me</option><option value="rating">Highest Rated</option></select>
+              <select id="sort-select" value={sortBy} onChange={handleSortChange} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'white', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}><option value="recommended">Recommended</option><option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option><option value="nearest">Nearest to Me</option><option value="rating">Highest Rated</option></select>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.9rem', color: 'var(--text)' }}>{sidebarCollapsed ? 'Show filters' : 'Hide filters'}</span>
                 <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
@@ -787,6 +842,7 @@ function IndexPage() {
         </aside>
       </div>
       <Footer />
+      <MessagingWidget />
     </div>
   );
 }

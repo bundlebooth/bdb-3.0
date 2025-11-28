@@ -4,6 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
 import ProfileModal from '../components/ProfileModal';
+import DashboardModal from '../components/DashboardModal';
+import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
+import MessagingWidget from '../components/MessagingWidget';
 import Breadcrumb from '../components/Breadcrumb';
 import '../styles/BookingPage.css';
 
@@ -21,6 +24,8 @@ function BookingPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
+  const [dashboardSection, setDashboardSection] = useState('dashboard');
 
   const [bookingData, setBookingData] = useState({
     eventName: '',
@@ -329,13 +334,28 @@ function BookingPage() {
         onSearch={(q) => console.log(q)} 
         onProfileClick={() => {
           if (currentUser) {
-            setProfileModalOpen(true);
+            setDashboardModalOpen(true);
           } else {
-            navigate('/');
+            setProfileModalOpen(true);
           }
         }} 
-        onWishlistClick={() => setProfileModalOpen(true)} 
-        onChatClick={() => setProfileModalOpen(true)} 
+        onWishlistClick={() => {
+          if (currentUser) {
+            setDashboardSection('favorites');
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
+        onChatClick={() => {
+          if (currentUser) {
+            const section = currentUser.isVendor ? 'vendor-messages' : 'messages';
+            setDashboardSection(section);
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
         onNotificationsClick={() => {}} 
       />
 
@@ -352,6 +372,16 @@ function BookingPage() {
                 vendorData.profile?.BusinessName || 'Vendor Name',
                 'Booking'
               ]} />
+            )}
+
+            {/* Setup Incomplete Banner for Vendors */}
+            {currentUser?.vendorProfileId && (
+              <SetupIncompleteBanner 
+                onContinueSetup={() => {
+                  setDashboardSection('vendor-settings');
+                  setDashboardModalOpen(true);
+                }}
+              />
             )}
 
             {/* Back Button */}
@@ -858,6 +888,16 @@ function BookingPage() {
         isOpen={profileModalOpen} 
         onClose={() => setProfileModalOpen(false)} 
       />
+      
+      {/* Dashboard Modal */}
+      <DashboardModal 
+        isOpen={dashboardModalOpen} 
+        onClose={() => setDashboardModalOpen(false)}
+        initialSection={dashboardSection}
+      />
+      
+      {/* Messaging Widget */}
+      <MessagingWidget />
     </div>
   );
 }

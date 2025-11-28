@@ -9,6 +9,8 @@ import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import Footer from '../components/Footer';
 import Breadcrumb from '../components/Breadcrumb';
+import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
+import MessagingWidget from '../components/MessagingWidget';
 import { showBanner } from '../utils/helpers';
 import './VendorProfilePage.css';
 
@@ -1427,6 +1429,16 @@ function VendorProfilePage() {
           <span>Back to search</span>
         </button>
 
+        {/* Setup Incomplete Banner for Vendors */}
+        {currentUser?.vendorProfileId && (
+          <SetupIncompleteBanner 
+            onContinueSetup={() => {
+              setDashboardSection('vendor-settings');
+              setDashboardModalOpen(true);
+            }}
+          />
+        )}
+
         {/* Breadcrumb Navigation with Save/Share */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
           <Breadcrumb items={[
@@ -1724,6 +1736,7 @@ function VendorProfilePage() {
       
       {/* Footer - No spacing */}
       <Footer />
+      <MessagingWidget />
     </div>
     </div>
   );

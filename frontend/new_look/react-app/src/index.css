@@ -7081,8 +7081,8 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     
     /* Adjust messaging widget position on mobile to not overlap with Book Now button */
     .messaging-widget {
-        bottom: 100px;
-        right: 1rem;
+        bottom: 120px !important;
+        right: 20px !important;
     }
 }
 
@@ -7097,42 +7097,50 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
     
     .messaging-widget {
-        bottom: 100px;
+        bottom: 120px !important;
     }
 }
 
 /* Messaging Widget Styles */
 .messaging-widget {
     position: fixed;
-    bottom: 0;
+    bottom: 20px;
     right: 20px;
-    z-index: 20; /* Above sticky footer */
+    z-index: 1000; /* Above everything */
 }
 
 .chat-button {
-    padding: 15px 28px;
-    background: var(--primary, #5e72e4);
-    border-radius: 12px 12px 0 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    cursor: pointer;
-    box-shadow: 0 -2px 12px rgba(94, 114, 228, 0.25);
-    transition: all 0.3s ease;
-    position: relative;
-    border: none;
+    width: 60px !important;
+    height: 60px !important;
+    background: #5e72e4 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    transition: all 0.3s ease !important;
+    position: relative !important;
+    border: none !important;
+    padding: 0 !important;
 }
 
 .chat-button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 -4px 16px rgba(94, 114, 228, 0.35);
-    background: var(--primary-dark, #4c60d3);
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(94, 114, 228, 0.4) !important;
+    background: #4c60d3 !important;
 }
 
 .chat-button i {
-    color: white;
-    font-size: 18px;
+    color: white !important;
+    font-size: 18px !important;
+}
+
+.chat-button svg {
+    width: 28px !important;
+    height: 28px !important;
+    display: block !important;
+    fill: white !important;
 }
 
 .chat-button-text {
