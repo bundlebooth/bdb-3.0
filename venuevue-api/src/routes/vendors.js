@@ -2570,109 +2570,35 @@ router.post('/setup/step3-services', async (req, res) => {
         }
         
         const serviceRequest = new sql.Request(pool);
-        serviceRequest.input('CategoryID', sql.Int, categoryId);
-        serviceRequest.input('Name', sql.NVarChar, service.name);
-        serviceRequest.input('Description', sql.NVarChar, service.description || null);
-        // Normalize and map pricing model from UI to stored procedure expectations
-        const rawModel = service.pricingModel; // 'time_based' | 'fixed_price' | 'per_attendee' from UI
-        let pricingModel = null; // 'time_based' | 'fixed_based'
-        let fixedPricingType = null; // 'fixed_price' | 'per_attendee'
-        if (rawModel === 'time_based') {
-          pricingModel = 'time_based';
-        } else if (rawModel === 'fixed_price') {
-          pricingModel = 'fixed_based';
-          fixedPricingType = 'fixed_price';
-        } else if (rawModel === 'per_attendee') {
-          pricingModel = 'fixed_based';
-          fixedPricingType = 'per_attendee';
-        } else {
-          pricingModel = service.pricingModel || null;
-          fixedPricingType = service.fixedPricingType || null;
-        }
+        
+        // Calculate derived price from the new pricing model
         const baseRate = service.baseRate != null ? parseFloat(service.baseRate) : null;
-        const baseDurationMinutes = service.baseDurationMinutes != null ? parseInt(service.baseDurationMinutes) : (service.durationMinutes || null);
-        const overtimeRatePerHour = service.overtimeRatePerHour != null ? parseFloat(service.overtimeRatePerHour) : null;
-        const minimumBookingFee = service.minimumBookingFee != null ? parseFloat(service.minimumBookingFee) : null;
         const fixedPrice = service.fixedPrice != null ? parseFloat(service.fixedPrice) : null;
         const pricePerPerson = service.pricePerPerson != null ? parseFloat(service.pricePerPerson) : null;
-        const minimumAttendees = service.minimumAttendees != null ? parseInt(service.minimumAttendees) : null;
+        const legacyPrice = service.price != null ? parseFloat(service.price) : null;
+        const derivedPrice = (fixedPrice != null) ? fixedPrice : (baseRate != null ? baseRate : (pricePerPerson != null ? pricePerPerson : legacyPrice));
+        
+        const baseDurationMinutes = service.baseDurationMinutes != null ? parseInt(service.baseDurationMinutes) : (service.durationMinutes || null);
         const maximumAttendees = service.maximumAttendees != null ? parseInt(service.maximumAttendees) : null;
 
-        // Validation: ensure required pricing fields are provided per pricing model
-        if (!pricingModel) {
-          return res.status(400).json({
-            success: false,
-            message: `Service validation failed: pricingModel is required for service '${service.name || ''}'.`
-          });
-        }
-        if (pricingModel === 'time_based') {
-          if (baseRate == null || baseDurationMinutes == null) {
-            return res.status(400).json({
-              success: false,
-              message: `Time-based service '${service.name || ''}' requires baseRate and baseDurationMinutes.`
-            });
-          }
-        } else if (pricingModel === 'fixed_based') {
-          if (fixedPricingType === 'fixed_price') {
-            if (fixedPrice == null) {
-              return res.status(400).json({
-                success: false,
-                message: `Fixed-price service '${service.name || ''}' requires fixedPrice.`
-              });
-            }
-          } else if (fixedPricingType === 'per_attendee') {
-            if (pricePerPerson == null) {
-              return res.status(400).json({
-                success: false,
-                message: `Per-attendee service '${service.name || ''}' requires pricePerPerson.`
-              });
-            }
-          } else {
-            return res.status(400).json({
-              success: false,
-              message: `Fixed-based service '${service.name || ''}' requires fixedPricingType of 'fixed_price' or 'per_attendee'.`
-            });
-          }
-        }
-
-        console.log('Upserting service', {
+        console.log('Upserting service with legacy parameters', {
           vendorProfileId,
           name: service.name,
-          pricingModel,
-          fixedPricingType,
-          baseRate,
+          derivedPrice,
           baseDurationMinutes,
-          overtimeRatePerHour,
-          minimumBookingFee,
-          fixedPrice,
-          pricePerPerson,
-          minimumAttendees,
           maximumAttendees
         });
 
-        // Backward compatible legacy fields
-        const legacyPrice = service.price != null ? parseFloat(service.price) : null;
-        const derivedPrice = (fixedPrice != null) ? fixedPrice : (baseRate != null ? baseRate : (pricePerPerson != null ? pricePerPerson : legacyPrice));
-
-        // Common fields
+        // Use the legacy stored procedure parameters (matching sp_UpsertVendorService with 11 parameters)
+        serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        serviceRequest.input('CategoryName', sql.NVarChar, category.name);
+        serviceRequest.input('ServiceName', sql.NVarChar, service.name);
+        serviceRequest.input('ServiceDescription', sql.NVarChar, service.description || null);
         serviceRequest.input('Price', sql.Decimal(10, 2), derivedPrice);
         serviceRequest.input('DurationMinutes', sql.Int, baseDurationMinutes || null);
         serviceRequest.input('MaxAttendees', sql.Int, service.maxAttendees || maximumAttendees || null);
         serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), service.depositPercentage != null ? parseFloat(service.depositPercentage) : 20);
         serviceRequest.input('CancellationPolicy', sql.NVarChar, service.cancellationPolicy || null);
-        serviceRequest.input('LinkedPredefinedServiceID', sql.Int, service.linkedPredefinedServiceId || null);
-        serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        // Unified pricing fields
-        serviceRequest.input('PricingModel', sql.NVarChar, pricingModel);
-        serviceRequest.input('BaseDurationMinutes', sql.Int, baseDurationMinutes || null);
-        serviceRequest.input('BaseRate', sql.Decimal(10, 2), baseRate);
-        serviceRequest.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour);
-        serviceRequest.input('MinimumBookingFee', sql.Decimal(10, 2), minimumBookingFee);
-        serviceRequest.input('FixedPricingType', sql.NVarChar, fixedPricingType);
-        serviceRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice);
-        serviceRequest.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson);
-        serviceRequest.input('MinimumAttendees', sql.Int, minimumAttendees);
-        serviceRequest.input('MaximumAttendees', sql.Int, maximumAttendees);
 
         // Use unified upsert stored procedure
         try {
@@ -3544,32 +3470,21 @@ router.post('/:id/services', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
-    // Use unified upsert SP for insertion
+    // Use legacy upsert SP for insertion (matching 11 parameter version)
     const request = new sql.Request(pool);
-    request.input('ServiceID', sql.Int, null);
-    request.input('VendorProfileID', sql.Int, id);
-    request.input('CategoryID', sql.Int, null);
-    request.input('Name', sql.NVarChar(255), serviceName);
-    request.input('Description', sql.NVarChar(sql.MAX), description || null);
     // derive a legacy price for compatibility
     const legacyPrice = price != null ? parseFloat(price) : null;
     const derivedPrice = (fixedPrice != null ? parseFloat(fixedPrice) : (baseRate != null ? parseFloat(baseRate) : (pricePerPerson != null ? parseFloat(pricePerPerson) : legacyPrice)));
+    
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('CategoryName', sql.NVarChar, category || 'General');
+    request.input('ServiceName', sql.NVarChar, serviceName);
+    request.input('ServiceDescription', sql.NVarChar, description || null);
     request.input('Price', sql.Decimal(10, 2), derivedPrice);
     request.input('DurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : (duration ? parseInt(duration) : null));
     request.input('MaxAttendees', sql.Int, maximumAttendees != null ? parseInt(maximumAttendees) : null);
     request.input('DepositPercentage', sql.Decimal(5, 2), 20);
     request.input('CancellationPolicy', sql.NVarChar, null);
-    request.input('LinkedPredefinedServiceID', sql.Int, null);
-    request.input('PricingModel', sql.NVarChar(20), pricingModel || null);
-    request.input('BaseDurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : null);
-    request.input('BaseRate', sql.Decimal(10, 2), baseRate != null ? parseFloat(baseRate) : null);
-    request.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour != null ? parseFloat(overtimeRatePerHour) : null);
-    request.input('MinimumBookingFee', sql.Decimal(10, 2), minimumBookingFee != null ? parseFloat(minimumBookingFee) : null);
-    request.input('FixedPricingType', sql.NVarChar(20), pricingModel === 'fixed_based' ? (fixedPricingType || null) : null);
-    request.input('FixedPrice', sql.Decimal(10, 2), pricingModel === 'fixed_based' && fixedPricingType === 'fixed_price' && fixedPrice != null ? parseFloat(fixedPrice) : null);
-    request.input('PricePerPerson', sql.Decimal(10, 2), pricingModel === 'fixed_based' && fixedPricingType === 'per_attendee' && pricePerPerson != null ? parseFloat(pricePerPerson) : null);
-    request.input('MinimumAttendees', sql.Int, pricingModel === 'fixed_based' && fixedPricingType === 'per_attendee' && minimumAttendees != null ? parseInt(minimumAttendees) : null);
-    request.input('MaximumAttendees', sql.Int, pricingModel === 'fixed_based' && fixedPricingType === 'per_attendee' && maximumAttendees != null ? parseInt(maximumAttendees) : null);
 
     const insertResult = await request.execute('dbo.sp_UpsertVendorService');
     const newServiceId = insertResult.recordset && insertResult.recordset[0] ? insertResult.recordset[0].ServiceID : null;
