@@ -2333,6 +2333,17 @@ router.get('/:id/selected-services', async (req, res) => {
               ELSE s.Price
             END AS VendorPrice,
             COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes,
+            -- Include all pricing model fields
+            s.PricingModel,
+            s.BaseRate,
+            s.BaseDurationMinutes,
+            s.OvertimeRatePerHour,
+            s.MinimumBookingFee,
+            s.FixedPricingType,
+            s.FixedPrice,
+            s.PricePerPerson,
+            s.MinimumAttendees,
+            s.MaximumAttendees,
             s.CreatedAt,
             s.UpdatedAt,
             s.IsActive
