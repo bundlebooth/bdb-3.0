@@ -2680,11 +2680,12 @@ router.post('/setup/step3-services', async (req, res) => {
             vendorPrice
           });
 
-          // Instead of VendorSelectedServices, create a full Service record to preserve all pricing data
+          // Use unified stored procedure with all pricing parameters
           const serviceRequest = new sql.Request(pool);
-          serviceRequest.input('ServiceID', sql.Int, null); // New service
+          serviceRequest.input('ServiceID', sql.Int, null);
           serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          serviceRequest.input('CategoryID', sql.Int, null); // Will be resolved by stored procedure
+          serviceRequest.input('CategoryID', sql.Int, null);
+          serviceRequest.input('CategoryName', sql.NVarChar, selectedService.categoryName || 'General');
           serviceRequest.input('Name', sql.NVarChar, selectedService.name);
           serviceRequest.input('Description', sql.NVarChar, selectedService.description || null);
           serviceRequest.input('Price', sql.Decimal(10, 2), vendorPrice);
@@ -2692,11 +2693,9 @@ router.post('/setup/step3-services', async (req, res) => {
           serviceRequest.input('MaxAttendees', sql.Int, selectedService.maximumAttendees || null);
           serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), 20);
           serviceRequest.input('CancellationPolicy', sql.NVarChar, null);
-          
-          // Add the predefined service link
           serviceRequest.input('LinkedPredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
           
-          // Add unified pricing fields to preserve BaseRate and OvertimeRate
+          // Unified pricing fields
           serviceRequest.input('PricingModel', sql.NVarChar, selectedService.pricingModel || 'time_based');
           serviceRequest.input('BaseDurationMinutes', sql.Int, selectedService.baseDurationMinutes || null);
           serviceRequest.input('BaseRate', sql.Decimal(10, 2), baseRate);
@@ -2708,7 +2707,7 @@ router.post('/setup/step3-services', async (req, res) => {
           serviceRequest.input('MinimumAttendees', sql.Int, selectedService.minimumAttendees || null);
           serviceRequest.input('MaximumAttendees', sql.Int, selectedService.maximumAttendees || null);
 
-          console.log(`[BACKEND] Creating full Service record with all pricing data for ${selectedService.name}`);
+          console.log(`[BACKEND] Creating Service with unified pricing for ${selectedService.name}`);
           
           const insertResult = await serviceRequest.execute('dbo.sp_UpsertVendorService');
           
@@ -2719,17 +2718,20 @@ router.post('/setup/step3-services', async (req, res) => {
           verifyRequest.input('VendorProfileID', sql.Int, vendorProfileId);
           verifyRequest.input('LinkedPredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
           const verifyResult = await verifyRequest.query(`
-            SELECT ServiceID, Name, BaseRate, OvertimeRatePerHour, PricingModel
-            FROM Services 
+            SELECT TOP 1 ServiceID, Name, Price, BaseRate, OvertimeRatePerHour, PricingModel, BaseDurationMinutes
+            FROM Services
             WHERE VendorProfileID = @VendorProfileID 
             AND LinkedPredefinedServiceID = @LinkedPredefinedServiceID
+            ORDER BY ServiceID DESC
           `);
           
           if (verifyResult.recordset.length > 0) {
             const savedService = verifyResult.recordset[0];
-            console.log(`[BACKEND]   - VERIFICATION: Service saved with BaseRate:`, savedService.BaseRate);
-            console.log(`[BACKEND]   - VERIFICATION: OvertimeRate:`, savedService.OvertimeRatePerHour);
-            console.log(`[BACKEND]   - VERIFICATION: PricingModel:`, savedService.PricingModel);
+            console.log(`[BACKEND]   - VERIFICATION SUCCESS: Service saved!`);
+            console.log(`[BACKEND]   - BaseRate: ${savedService.BaseRate}`);
+            console.log(`[BACKEND]   - OvertimeRate: ${savedService.OvertimeRatePerHour}`);
+            console.log(`[BACKEND]   - PricingModel: ${savedService.PricingModel}`);
+            console.log(`[BACKEND]   - BaseDuration: ${savedService.BaseDurationMinutes}`);
           } else {
             console.error(`[BACKEND]   - VERIFICATION FAILED: Service not found after insert!`);
           }
