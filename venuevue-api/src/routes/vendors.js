@@ -2520,13 +2520,15 @@ router.post('/setup/step3-services', async (req, res) => {
     
     // Handle service categories
     if (serviceCategories && serviceCategories.length > 0) {
-      // Detach existing services from categories to avoid FK constraint when deleting categories
+      // First, detach existing services from categories to avoid FK constraint when deleting categories
       const detachRequest = new sql.Request(pool);
       detachRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       await detachRequest.query(`
         UPDATE Services
         SET CategoryID = NULL
-        WHERE VendorProfileID = @VendorProfileID AND CategoryID IS NOT NULL
+        WHERE CategoryID IN (
+          SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID
+        )
       `);
 
       // Now delete existing categories
