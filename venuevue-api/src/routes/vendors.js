@@ -2697,10 +2697,14 @@ router.post('/setup/step3-services', async (req, res) => {
           serviceRequest.input('CategoryID', sql.Int, null);
           serviceRequest.input('CategoryName', sql.NVarChar, selectedService.categoryName || 'General');
           serviceRequest.input('Name', sql.NVarChar, selectedService.name);
+          serviceRequest.input('ServiceName', sql.NVarChar, selectedService.name); // Backward compatibility
           serviceRequest.input('Description', sql.NVarChar, selectedService.description || null);
+          serviceRequest.input('ServiceDescription', sql.NVarChar, selectedService.description || null); // Backward compatibility
           serviceRequest.input('Price', sql.Decimal(10, 2), vendorPrice);
           serviceRequest.input('DurationMinutes', sql.Int, selectedService.durationMinutes || selectedService.baseDurationMinutes || null);
           serviceRequest.input('MaxAttendees', sql.Int, selectedService.maximumAttendees || null);
+          serviceRequest.input('IsActive', sql.Bit, 1);
+          serviceRequest.input('RequiresDeposit', sql.Bit, 1);
           serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), 20);
           serviceRequest.input('CancellationPolicy', sql.NVarChar, null);
           serviceRequest.input('LinkedPredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
