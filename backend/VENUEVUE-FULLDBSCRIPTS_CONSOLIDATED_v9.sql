@@ -9695,3 +9695,419 @@ PRINT '============================================='
 PRINT '🚀 READY FOR PRODUCTION DEPLOYMENT 🚀'
 PRINT '============================================='
 GO
+
+-- ============================================
+-- CATEGORY FILTERING UPDATE (Nov 29, 2025)
+-- Updated stored procedures to accept @Category parameter
+-- for database-level filtering
+-- ============================================
+
+PRINT '============================================='
+PRINT '🔄 UPDATING STORED PROCEDURES WITH CATEGORY FILTERING'
+PRINT '============================================='
+GO
+-- ============================================
+-- UPDATE STORED PROCEDURES TO ACCEPT CATEGORY PARAMETER
+-- FIXED VERSION - Removes references to non-existent columns
+-- ============================================
+
+-- 1. sp_GetTrendingVendors - Add category parameter (FIXED)
+-- FIXED VERSION - Use EXISTS instead of LEFT JOIN for category filtering
+-- This prevents duplicate rows and ensures proper filtering
+
+-- 1. sp_GetTrendingVendors - FIXED with EXISTS
+CREATE OR ALTER PROCEDURE sp_GetTrendingVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AvgRating,
+        COUNT(DISTINCT r.ReviewID) AS TotalReviews,
+        COUNT(DISTINCT b.BookingID) AS TotalBookings
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID AND r.IsApproved = 1
+    LEFT JOIN Bookings b ON vp.VendorProfileID = b.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND (@City IS NULL OR vp.City = @City)
+      AND (@Category IS NULL OR EXISTS (
+          SELECT 1 FROM VendorCategories vc 
+          WHERE vc.VendorProfileID = vp.VendorProfileID 
+          AND vc.Category = @Category
+      ))
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline, 
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    ORDER BY TotalBookings DESC, AvgRating DESC;
+END
+GO
+
+-- 2. sp_GetTopRatedVendors - FIXED with EXISTS
+CREATE OR ALTER PROCEDURE sp_GetTopRatedVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        AVG(CAST(r.Rating AS DECIMAL(3,1))) AS AvgRating,
+        COUNT(DISTINCT r.ReviewID) AS TotalReviews
+    FROM VendorProfiles vp
+    INNER JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND r.IsApproved = 1
+      AND (@City IS NULL OR vp.City = @City)
+      AND (@Category IS NULL OR EXISTS (
+          SELECT 1 FROM VendorCategories vc 
+          WHERE vc.VendorProfileID = vp.VendorProfileID 
+          AND vc.Category = @Category
+      ))
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    HAVING AVG(CAST(r.Rating AS DECIMAL(3,1))) >= 4.0
+    ORDER BY AvgRating DESC, TotalReviews DESC;
+END
+GO
+
+-- 3. sp_GetResponsiveVendors - FIXED with EXISTS
+CREATE OR ALTER PROCEDURE sp_GetResponsiveVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AvgRating,
+        COUNT(DISTINCT r.ReviewID) AS TotalReviews
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID AND r.IsApproved = 1
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND (@City IS NULL OR vp.City = @City)
+      AND (@Category IS NULL OR EXISTS (
+          SELECT 1 FROM VendorCategories vc 
+          WHERE vc.VendorProfileID = vp.VendorProfileID 
+          AND vc.Category = @Category
+      ))
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    ORDER BY vp.VendorProfileID ASC;
+END
+GO
+
+-- 4. sp_GetRecentlyReviewedVendors - FIXED with EXISTS
+CREATE OR ALTER PROCEDURE sp_GetRecentlyReviewedVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @DaysBack INT = 14,
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        AVG(CAST(r.Rating AS DECIMAL(3,1))) AS AvgRating,
+        COUNT(DISTINCT r.ReviewID) AS TotalReviews,
+        MAX(r.CreatedAt) AS LastReviewDate
+    FROM VendorProfiles vp
+    INNER JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND r.IsApproved = 1
+      AND r.CreatedAt >= DATEADD(DAY, -@DaysBack, GETDATE())
+      AND (@City IS NULL OR vp.City = @City)
+      AND (@Category IS NULL OR EXISTS (
+          SELECT 1 FROM VendorCategories vc 
+          WHERE vc.VendorProfileID = vp.VendorProfileID 
+          AND vc.Category = @Category
+      ))
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    ORDER BY LastReviewDate DESC;
+END
+GO
+
+-- 5. sp_GetPremiumVendors - FIXED with EXISTS
+CREATE OR ALTER PROCEDURE sp_GetPremiumVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AvgRating,
+        COUNT(DISTINCT r.ReviewID) AS TotalReviews
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID AND r.IsApproved = 1
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND vp.IsPremium = 1
+      AND (@City IS NULL OR vp.City = @City)
+      AND (@Category IS NULL OR EXISTS (
+          SELECT 1 FROM VendorCategories vc 
+          WHERE vc.VendorProfileID = vp.VendorProfileID 
+          AND vc.Category = @Category
+      ))
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    ORDER BY AvgRating DESC, TotalReviews DESC;
+END
+GO
+
+-- 6. sp_GetMostBookedVendors - FIXED with EXISTS
+CREATE OR ALTER PROCEDURE sp_GetMostBookedVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        COUNT(DISTINCT b.BookingID) AS TotalBookings,
+        ISNULL(AVG(r.Rating), 0) AS AvgRating,
+        COUNT(DISTINCT r.ReviewID) AS TotalReviews
+    FROM VendorProfiles vp
+    LEFT JOIN Bookings b ON vp.VendorProfileID = b.VendorProfileID
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID AND r.IsApproved = 1
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND (@City IS NULL OR vp.City = @City)
+      AND (@Category IS NULL OR EXISTS (
+          SELECT 1 FROM VendorCategories vc 
+          WHERE vc.VendorProfileID = vp.VendorProfileID 
+          AND vc.Category = @Category
+      ))
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    HAVING COUNT(DISTINCT b.BookingID) > 0
+    ORDER BY TotalBookings DESC;
+END
+GO
+
+-- 7. sp_GetRecentlyAddedVendors - FIXED with EXISTS
+CREATE OR ALTER PROCEDURE sp_GetRecentlyAddedVendors
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @DaysBack INT = 30,
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        vp.CreatedAt,
+        ISNULL(AVG(r.Rating), 0) AS AvgRating,
+        COUNT(DISTINCT r.ReviewID) AS TotalReviews
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID AND r.IsApproved = 1
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND vp.CreatedAt >= DATEADD(DAY, -@DaysBack, GETDATE())
+      AND (@City IS NULL OR vp.City = @City)
+      AND (@Category IS NULL OR EXISTS (
+          SELECT 1 FROM VendorCategories vc 
+          WHERE vc.VendorProfileID = vp.VendorProfileID 
+          AND vc.Category = @Category
+      ))
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude, vp.CreatedAt
+    ORDER BY vp.CreatedAt DESC;
+END
+GO
+
+-- 8. sp_GetRecommendedVendors - FIXED with EXISTS
+CREATE OR ALTER PROCEDURE sp_GetRecommendedVendors
+    @UserID INT,
+    @Limit INT = 10,
+    @City NVARCHAR(100) = NULL,
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AvgRating,
+        COUNT(DISTINCT r.ReviewID) AS TotalReviews
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID AND r.IsApproved = 1
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND (@City IS NULL OR vp.City = @City)
+      AND (@Category IS NULL OR EXISTS (
+          SELECT 1 FROM VendorCategories vc 
+          WHERE vc.VendorProfileID = vp.VendorProfileID 
+          AND vc.Category = @Category
+      ))
+      AND NOT EXISTS (
+          SELECT 1 FROM Bookings b 
+          WHERE b.VendorProfileID = vp.VendorProfileID 
+          AND b.UserID = @UserID
+      )
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    ORDER BY AvgRating DESC, TotalReviews DESC;
+END
+GO
+
+-- 9. sp_GetVendorsNearLocation - FIXED with EXISTS
+CREATE OR ALTER PROCEDURE sp_GetVendorsNearLocation
+    @Latitude DECIMAL(10, 8),
+    @Longitude DECIMAL(11, 8),
+    @RadiusMiles INT = 25,
+    @Limit INT = 10,
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT TOP (@Limit)
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.Tagline,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.PriceLevel,
+        vp.IsPremium,
+        vp.Latitude,
+        vp.Longitude,
+        ISNULL(AVG(r.Rating), 0) AS AvgRating,
+        COUNT(DISTINCT r.ReviewID) AS TotalReviews,
+        (3959 * ACOS(
+            COS(RADIANS(@Latitude)) * COS(RADIANS(vp.Latitude)) *
+            COS(RADIANS(vp.Longitude) - RADIANS(@Longitude)) +
+            SIN(RADIANS(@Latitude)) * SIN(RADIANS(vp.Latitude))
+        )) AS DistanceMiles
+    FROM VendorProfiles vp
+    LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID AND r.IsApproved = 1
+    WHERE vp.IsCompleted = 1
+      AND vp.AcceptingBookings = 1
+      AND vp.Latitude IS NOT NULL
+      AND vp.Longitude IS NOT NULL
+      AND (@Category IS NULL OR EXISTS (
+          SELECT 1 FROM VendorCategories vc 
+          WHERE vc.VendorProfileID = vp.VendorProfileID 
+          AND vc.Category = @Category
+      ))
+    GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
+             vp.City, vp.State, vp.LogoURL, vp.PriceLevel, vp.IsPremium,
+             vp.Latitude, vp.Longitude
+    HAVING (3959 * ACOS(
+        COS(RADIANS(@Latitude)) * COS(RADIANS(vp.Latitude)) *
+        COS(RADIANS(vp.Longitude) - RADIANS(@Longitude)) +
+        SIN(RADIANS(@Latitude)) * SIN(RADIANS(vp.Latitude))
+    )) <= @RadiusMiles
+    ORDER BY DistanceMiles ASC;
+END
+GO
+
+PRINT '✅ All stored procedures updated with EXISTS clause for proper category filtering!';
+

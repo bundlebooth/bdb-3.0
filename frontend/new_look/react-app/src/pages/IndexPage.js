@@ -96,6 +96,7 @@ function IndexPage() {
       
       const params = new URLSearchParams();
       params.set('limit', '8');
+      params.set('_t', Date.now()); // Cache buster
       
       // Add category filter so trending vendors adjust based on selected category
       console.log('📋 Current category for discovery sections:', currentCategory);
@@ -449,15 +450,10 @@ function IndexPage() {
       location: filters.location
     });
     
-    if (isInitialMount.current) {
-      console.log('⏭️ Skipping discovery reload - initial mount');
-      return;
-    }
-    
+    // ALWAYS reload discovery sections when category changes (removed isInitialMount check)
     console.log('🔄 Reloading discovery sections due to category/location change');
-    // Reload discovery sections when filters or category change
     loadDiscoverySections();
-  }, [loadDiscoverySections, userLocation, filters.location, currentCategory]);
+  }, [currentCategory, filters.location]);
 
   const handleCategoryChange = useCallback((category) => {
     console.log('🎯 Category changed to:', category);

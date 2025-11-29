@@ -35,6 +35,91 @@ async function getVendorImages(vendorProfileId, pool) {
     }
 }
 
+// Helper function to get vendor categories
+async function getVendorCategories(vendorProfileId, pool) {
+    try {
+        const categoryRequest = new sql.Request(pool);
+        categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        
+        const categoryResult = await categoryRequest.query(`
+            SELECT Category
+            FROM VendorCategories
+            WHERE VendorProfileID = @VendorProfileID
+        `);
+        
+        const categories = categoryResult.recordset.map(row => row.Category);
+        console.log(`📂 Vendor ${vendorProfileId} categories from DB:`, categories);
+        return categories;
+    } catch (error) {
+        console.error('Error fetching vendor categories:', error);
+        return [];
+    }
+}
+
+// Helper function to check if vendor matches category filter
+async function vendorMatchesCategory(vendorProfileId, categoryFilter, pool, vendorData = null) {
+    if (!categoryFilter || categoryFilter === 'all') {
+        return true;
+    }
+    
+    // First, try to get categories from VendorCategories table
+    const categories = await getVendorCategories(vendorProfileId, pool);
+    
+    // If no categories found in table, check vendor's type field as fallback
+    if (categories.length === 0 && vendorData) {
+        const vendorType = vendorData.Type || vendorData.type || vendorData.Category || vendorData.category || '';
+        if (vendorType) {
+            categories.push(vendorType);
+        }
+    }
+    
+    // If still no categories, return false (vendor has no category data)
+    if (categories.length === 0) {
+        console.log(`⚠️ Vendor ${vendorProfileId} (${vendorData?.BusinessName || 'Unknown'}) has NO categories - excluding from filter`);
+        return false;
+    }
+    
+    // Map frontend category keys to database category names (multiple variations)
+    // These should match what's stored in the VendorCategories table
+    const categoryMap = {
+        'all': [], // Special case - matches everything
+        'venue': ['Venue', 'Venues', 'Event Venue', 'Wedding Venue', 'Event Space'],
+        'photo': ['Photography', 'Videography', 'Photo/Video', 'Photographer', 'Videographer', 'Photo & Video'],
+        'music': ['Music', 'DJ', 'Music/DJ', 'Musicians', 'Band', 'Live Music', 'Entertainment'],
+        'catering': ['Catering', 'Caterer', 'Food', 'Food & Beverage', 'Food Service'],
+        'entertainment': ['Entertainment', 'Entertainer', 'Performers', 'Performance'],
+        'experiences': ['Experience', 'Experiences', 'Activities', 'Activity'],
+        'decor': ['Decor', 'Decoration', 'Decorations', 'Floral', 'Flowers', 'Florist'],
+        'beauty': ['Beauty', 'Hair & Makeup', 'Makeup', 'Hair', 'Beauty Services', 'Hair and Makeup'],
+        'cake': ['Cake', 'Cakes', 'Bakery', 'Desserts', 'Dessert', 'Pastry'],
+        'transport': ['Transportation', 'Transport', 'Vehicles', 'Limo', 'Car Service', 'Vehicle'],
+        'planner': ['Planner', 'Planners', 'Event Planning', 'Wedding Planning', 'Event Planner', 'Coordinator'],
+        'fashion': ['Fashion', 'Attire', 'Clothing', 'Bridal', 'Formal Wear', 'Dress'],
+        'stationery': ['Stationery', 'Invitations', 'Printing', 'Paper Goods', 'Invitation']
+    };
+    
+    const targetCategories = categoryMap[categoryFilter] || [categoryFilter];
+    
+    // Check if vendor has any service in any of the target categories
+    const matches = categories.some(cat => {
+        if (!cat) return false;
+        const catLower = cat.toLowerCase().trim();
+        return targetCategories.some(target => {
+            const targetLower = target.toLowerCase().trim();
+            // Check for exact match or partial match
+            return catLower === targetLower || 
+                   catLower.includes(targetLower) || 
+                   targetLower.includes(catLower);
+        });
+    });
+    
+    if (!matches) {
+        console.log(`❌ Vendor ${vendorProfileId} (${vendorData?.BusinessName || 'Unknown'}) filtered out - has [${categories.join(', ')}], need [${targetCategories.join(', ')}]`);
+    }
+    
+    return matches;
+}
+
 // Helper function to format vendor data
 async function formatVendorData(vendor, pool) {
     // Fetch the primary/featured image
@@ -108,12 +193,49 @@ async function formatVendorData(vendor, pool) {
     };
 }
 
+// Helper function to translate frontend category keys to database category values
+function translateCategoryForDatabase(frontendCategory) {
+    if (!frontendCategory || frontendCategory === 'all') {
+        return null; // No filtering
+    }
+    
+    // Map frontend category keys to the PRIMARY database category names
+    // These should match the most common category name in the VendorCategories table
+    const categoryMap = {
+        'venue': 'Venue',
+        'photo': 'Photography', 
+        'music': 'Music',
+        'catering': 'Catering',
+        'entertainment': 'Entertainment',
+        'experiences': 'Experience',
+        'decor': 'Decor',
+        'beauty': 'Beauty',
+        'cake': 'Cake',
+        'transport': 'Transportation',
+        'planner': 'Event Planning',
+        'fashion': 'Fashion',
+        'stationery': 'Stationery'
+    };
+    
+    const dbCategory = categoryMap[frontendCategory];
+    console.log(`🔄 Category translation: '${frontendCategory}' -> '${dbCategory || frontendCategory}'`);
+    return dbCategory || frontendCategory;
+}
+
 // GET /api/vendor-discovery/sections
 // Returns all vendor sections for the main page
 router.get('/sections', async (req, res) => {
     try {
-        const { city, latitude, longitude, limit = 8 } = req.query;
+        const { city, latitude, longitude, limit = 8, category } = req.query;
         const pool = await poolPromise;
+        
+        console.log('🔥🔥🔥 DISCOVERY SECTIONS REQUEST 🔥🔥🔥');
+        console.log('📦 Fetching discovery sections with filters:', { city, category, latitude, longitude, limit });
+        console.log('📦 Full query params:', req.query);
+        
+        // Translate frontend category to database category
+        const dbCategory = translateCategoryForDatabase(category);
+        console.log(`🎯 Using database category: '${dbCategory}' for frontend category: '${category}'`);
         
         const sections = [];
         
@@ -123,8 +245,17 @@ router.get('/sections', async (req, res) => {
             trendingRequest.input('Limit', sql.Int, parseInt(limit));
             if (city) trendingRequest.input('City', sql.NVarChar(100), city);
             else trendingRequest.input('City', sql.NVarChar(100), null);
+            // Pass translated database category to stored procedure for database-level filtering
+            if (dbCategory) {
+                trendingRequest.input('Category', sql.NVarChar(50), dbCategory);
+                console.log(`🔥 Trending: Filtering by category at DB level: ${dbCategory} (from frontend: ${category})`);
+            } else {
+                trendingRequest.input('Category', sql.NVarChar(50), null);
+            }
             
             const trendingResult = await trendingRequest.execute('sp_GetTrendingVendors');
+            console.log(`📊 Trending: Got ${trendingResult.recordset.length} vendors from DB`);
+            
             if (trendingResult.recordset.length > 0) {
                 const vendors = await Promise.all(
                     trendingResult.recordset.map(v => formatVendorData(v, pool))
@@ -146,6 +277,11 @@ router.get('/sections', async (req, res) => {
             topRatedRequest.input('Limit', sql.Int, parseInt(limit));
             if (city) topRatedRequest.input('City', sql.NVarChar(100), city);
             else topRatedRequest.input('City', sql.NVarChar(100), null);
+            if (dbCategory) {
+                topRatedRequest.input('Category', sql.NVarChar(50), dbCategory);
+            } else {
+                topRatedRequest.input('Category', sql.NVarChar(50), null);
+            }
             
             const topRatedResult = await topRatedRequest.execute('sp_GetTopRatedVendors');
             if (topRatedResult.recordset.length > 0) {
@@ -169,6 +305,11 @@ router.get('/sections', async (req, res) => {
             responsiveRequest.input('Limit', sql.Int, parseInt(limit));
             if (city) responsiveRequest.input('City', sql.NVarChar(100), city);
             else responsiveRequest.input('City', sql.NVarChar(100), null);
+            if (dbCategory) {
+                responsiveRequest.input('Category', sql.NVarChar(50), dbCategory);
+            } else {
+                responsiveRequest.input('Category', sql.NVarChar(50), null);
+            }
             
             const responsiveResult = await responsiveRequest.execute('sp_GetResponsiveVendors');
             if (responsiveResult.recordset.length > 0) {
@@ -193,8 +334,15 @@ router.get('/sections', async (req, res) => {
             if (city) recentlyReviewedRequest.input('City', sql.NVarChar(100), city);
             else recentlyReviewedRequest.input('City', sql.NVarChar(100), null);
             recentlyReviewedRequest.input('DaysBack', sql.Int, 14);
+            if (dbCategory) {
+                recentlyReviewedRequest.input('Category', sql.NVarChar(50), dbCategory);
+            } else {
+                recentlyReviewedRequest.input('Category', sql.NVarChar(50), null);
+            }
             
             const recentlyReviewedResult = await recentlyReviewedRequest.execute('sp_GetRecentlyReviewedVendors');
+            console.log(`📝 Recently Reviewed: Got ${recentlyReviewedResult.recordset.length} vendors from DB`);
+            
             if (recentlyReviewedResult.recordset.length > 0) {
                 const vendors = await Promise.all(
                     recentlyReviewedResult.recordset.map(v => formatVendorData(v, pool))
@@ -218,8 +366,15 @@ router.get('/sections', async (req, res) => {
                 nearbyRequest.input('Longitude', sql.Decimal(11, 8), parseFloat(longitude));
                 nearbyRequest.input('RadiusMiles', sql.Int, 25);
                 nearbyRequest.input('Limit', sql.Int, parseInt(limit));
+                if (dbCategory) {
+                    nearbyRequest.input('Category', sql.NVarChar(50), dbCategory);
+                } else {
+                    nearbyRequest.input('Category', sql.NVarChar(50), null);
+                }
                 
                 const nearbyResult = await nearbyRequest.execute('sp_GetVendorsNearLocation');
+                console.log(`📍 Nearby: Got ${nearbyResult.recordset.length} vendors from DB`);
+                
                 if (nearbyResult.recordset.length > 0) {
                     const vendors = await Promise.all(
                         nearbyResult.recordset.map(v => formatVendorData(v, pool))
@@ -242,8 +397,15 @@ router.get('/sections', async (req, res) => {
             premiumRequest.input('Limit', sql.Int, parseInt(limit));
             if (city) premiumRequest.input('City', sql.NVarChar(100), city);
             else premiumRequest.input('City', sql.NVarChar(100), null);
+            if (dbCategory) {
+                premiumRequest.input('Category', sql.NVarChar(50), dbCategory);
+            } else {
+                premiumRequest.input('Category', sql.NVarChar(50), null);
+            }
             
             const premiumResult = await premiumRequest.execute('sp_GetPremiumVendors');
+            console.log(`👑 Premium: Got ${premiumResult.recordset.length} vendors from DB`);
+            
             if (premiumResult.recordset.length > 0) {
                 const vendors = await Promise.all(
                     premiumResult.recordset.map(v => formatVendorData(v, pool))
@@ -265,8 +427,15 @@ router.get('/sections', async (req, res) => {
             mostBookedRequest.input('Limit', sql.Int, parseInt(limit));
             if (city) mostBookedRequest.input('City', sql.NVarChar(100), city);
             else mostBookedRequest.input('City', sql.NVarChar(100), null);
+            if (dbCategory) {
+                mostBookedRequest.input('Category', sql.NVarChar(50), dbCategory);
+            } else {
+                mostBookedRequest.input('Category', sql.NVarChar(50), null);
+            }
             
             const mostBookedResult = await mostBookedRequest.execute('sp_GetMostBookedVendors');
+            console.log(`🔥 Most Booked: Got ${mostBookedResult.recordset.length} vendors from DB`);
+            
             if (mostBookedResult.recordset.length > 0) {
                 const vendors = await Promise.all(
                     mostBookedResult.recordset.map(v => formatVendorData(v, pool))
@@ -289,8 +458,15 @@ router.get('/sections', async (req, res) => {
             if (city) recentlyAddedRequest.input('City', sql.NVarChar(100), city);
             else recentlyAddedRequest.input('City', sql.NVarChar(100), null);
             recentlyAddedRequest.input('DaysBack', sql.Int, 30);
+            if (dbCategory) {
+                recentlyAddedRequest.input('Category', sql.NVarChar(50), dbCategory);
+            } else {
+                recentlyAddedRequest.input('Category', sql.NVarChar(50), null);
+            }
             
             const recentlyAddedResult = await recentlyAddedRequest.execute('sp_GetRecentlyAddedVendors');
+            console.log(`🆕 Recently Added: Got ${recentlyAddedResult.recordset.length} vendors from DB`);
+            
             if (recentlyAddedResult.recordset.length > 0) {
                 const vendors = await Promise.all(
                     recentlyAddedResult.recordset.map(v => formatVendorData(v, pool))
@@ -314,8 +490,15 @@ router.get('/sections', async (req, res) => {
                 recommendedRequest.input('Limit', sql.Int, parseInt(limit));
                 if (city) recommendedRequest.input('City', sql.NVarChar(100), city);
                 else recommendedRequest.input('City', sql.NVarChar(100), null);
+                if (dbCategory) {
+                    recommendedRequest.input('Category', sql.NVarChar(50), dbCategory);
+                } else {
+                    recommendedRequest.input('Category', sql.NVarChar(50), null);
+                }
                 
                 const recommendedResult = await recommendedRequest.execute('sp_GetRecommendedVendors');
+                console.log(`💡 Recommended: Got ${recommendedResult.recordset.length} vendors from DB`);
+                
                 if (recommendedResult.recordset.length > 0) {
                     const vendors = await Promise.all(
                         recommendedResult.recordset.map(v => formatVendorData(v, pool))
