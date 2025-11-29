@@ -98,8 +98,12 @@ function IndexPage() {
       params.set('limit', '8');
       
       // Add category filter so trending vendors adjust based on selected category
+      console.log('📋 Current category for discovery sections:', currentCategory);
       if (currentCategory && currentCategory !== 'all') {
+        console.log('✅ Adding category to API params:', currentCategory);
         params.set('category', currentCategory);
+      } else {
+        console.log('⚠️ No category filter applied (showing all)');
       }
       
       if (filters.location) {
@@ -144,9 +148,13 @@ function IndexPage() {
     console.log('🔧 Applying client-side filters to', vendorsToFilter.length, 'vendors');
     
     const filtered = vendorsToFilter.filter(vendor => {
-      // Category filter (line 26093-26096)
-      if (currentCategory !== 'all' && vendor.category !== currentCategory) {
-        return false;
+      // Category filter - check both category and type fields
+      if (currentCategory !== 'all') {
+        const vendorCategory = vendor.category || vendor.type || '';
+        if (vendorCategory !== currentCategory) {
+          console.log(`❌ Vendor ${vendor.name} filtered out: has "${vendorCategory}", need "${currentCategory}"`);
+          return false;
+        }
       }
       
       // Location filter - only apply text-based filter if we DON'T have user coordinates (line 26098-26107)
@@ -379,8 +387,11 @@ function IndexPage() {
 
   // Listen for dashboard open events from ProfileModal
   useEffect(() => {
-    const handleOpenDashboard = () => {
+    const handleOpenDashboard = (event) => {
       setProfileModalOpen(false);
+      if (event.detail && event.detail.section) {
+        setDashboardSection(event.detail.section);
+      }
       setDashboardModalOpen(true);
     };
     
@@ -429,19 +440,27 @@ function IndexPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendors, filters, userLocation]);
 
-  // Reload discovery sections when location changes
+  // Reload discovery sections when location or category changes
   useEffect(() => {
+    console.log('🔄 Discovery sections useEffect triggered:', {
+      isInitialMount: isInitialMount.current,
+      currentCategory,
+      userLocation,
+      location: filters.location
+    });
+    
     if (isInitialMount.current) {
+      console.log('⏭️ Skipping discovery reload - initial mount');
       return;
     }
     
-    if (userLocation || filters.location) {
-      loadDiscoverySections();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLocation, filters.location]);
+    console.log('🔄 Reloading discovery sections due to category/location change');
+    // Reload discovery sections when filters or category change
+    loadDiscoverySections();
+  }, [loadDiscoverySections, userLocation, filters.location, currentCategory]);
 
   const handleCategoryChange = useCallback((category) => {
+    console.log('🎯 Category changed to:', category);
     setCurrentCategory(category);
     setCurrentPage(1);
   }, []);

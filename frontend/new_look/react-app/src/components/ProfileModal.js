@@ -175,6 +175,15 @@ function ProfileModal({ isOpen, onClose }) {
       
       showBanner('Account created successfully!', 'success');
       onClose();
+      
+      // If vendor account, trigger dashboard modal for setup
+      if (userData.isVendor) {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('openDashboard', { 
+            detail: { section: 'vendor-settings' } 
+          }));
+        }, 500);
+      }
     } catch (error) {
       console.error('Signup error:', error);
       showBanner(error.message || 'Registration failed', 'error');

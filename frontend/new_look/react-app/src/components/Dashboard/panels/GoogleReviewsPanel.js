@@ -153,61 +153,79 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
       </button>
       
       <div className="dashboard-card">
-        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, #4285f4 0%, #34a853 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.1rem' }}>
-            <i className="fab fa-google"></i>
-          </span>
-          Google Reviews Integration
-        </h2>
-        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <i className="fab fa-google" style={{ fontSize: '1.25rem', color: '#4285f4' }}></i>
+          <h2 className="dashboard-card-title" style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#1f2937' }}>
+            Google Reviews Integration
+          </h2>
+        </div>
+        <p style={{ color: '#6b7280', marginBottom: '3rem', fontSize: '0.95rem', lineHeight: '1.5' }}>
           Display your Google Reviews directly on your VenueVue profile to build trust and credibility with potential clients.
         </p>
-        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
-        
-        {/* Info Banner */}
+
+        {/* Centered Google Icon and Connect Section */}
         <div style={{ 
-          background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', 
-          border: '1px solid #bae6fd', 
-          borderRadius: 'var(--radius)', 
-          padding: '1rem 1.25rem', 
-          marginBottom: '1.5rem',
-          display: 'flex',
-          gap: '1rem',
-          alignItems: 'flex-start'
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          padding: '3rem 2rem 2rem',
+          marginBottom: '2rem'
         }}>
-          <i className="fas fa-info-circle" style={{ color: '#0284c7', fontSize: '1.25rem', marginTop: '0.15rem' }}></i>
-          <div style={{ flex: 1 }}>
-            <h4 style={{ margin: '0 0 0.5rem 0', color: '#0c4a6e', fontSize: '0.95rem', fontWeight: 600 }}>
-              Why integrate Google Reviews?
-            </h4>
-            <p style={{ margin: 0, color: '#0369a1', fontSize: '0.875rem', lineHeight: '1.5' }}>
-              Your Google Reviews will appear on your vendor profile page, showcasing your reputation and helping clients make informed decisions. Reviews are automatically synced and displayed with ratings, reviewer names, and timestamps.
-            </p>
+          <div style={{ 
+            width: '100px', 
+            height: '100px', 
+            borderRadius: '50%', 
+            background: '#635bff', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            marginBottom: '2rem',
+            boxShadow: '0 4px 12px rgba(99, 91, 255, 0.25)'
+          }}>
+            <i className="fab fa-google" style={{ color: 'white', fontSize: '2.5rem' }}></i>
           </div>
+          
+          <h3 style={{ 
+            fontSize: '1.35rem', 
+            fontWeight: 600, 
+            color: '#1f2937', 
+            marginBottom: '1rem',
+            textAlign: 'center'
+          }}>
+            Connect with Google Reviews
+          </h3>
+          
+          <p style={{ 
+            fontSize: '0.95rem', 
+            color: '#6b7280', 
+            textAlign: 'center',
+            maxWidth: '480px',
+            lineHeight: '1.6',
+            marginBottom: '2rem'
+          }}>
+            Google Reviews help build trust and credibility with potential clients. Display your ratings and reviews directly on your VenueVue profile.
+          </p>
         </div>
 
         <form onSubmit={handleSubmit}>
           {/* Google Place ID Section */}
-          <div style={{ marginBottom: '2rem' }}>
-            <h3 className="dashboard-card-subtitle" style={{ margin: '0 0 1rem 0', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className="fas fa-map-marker-alt"></i>
-              Google Place ID
-              <span style={{ 
-                fontSize: '0.75rem', 
-                fontWeight: 500, 
-                background: '#fee2e2', 
-                color: '#991b1b', 
-                padding: '0.15rem 0.5rem', 
-                borderRadius: '4px',
-                marginLeft: '0.5rem'
-              }}>
-                Required
-              </span>
-            </h3>
-            
+          <div style={{ marginBottom: '1.5rem' }}>
             <div className="form-group">
-              <label htmlFor="google-place-id" style={{ fontWeight: 500, marginBottom: '0.5rem', display: 'block' }}>
-                Enter your Google Place ID
+              <label htmlFor="google-place-id" style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                <i className="fas fa-map-marker-alt" style={{ color: '#635bff' }}></i>
+                Google Place ID
+                <span style={{ 
+                  fontSize: '0.7rem', 
+                  fontWeight: 600, 
+                  background: '#fee2e2', 
+                  color: '#991b1b', 
+                  padding: '0.15rem 0.5rem', 
+                  borderRadius: '4px',
+                  marginLeft: '0.25rem'
+                }}>
+                  Required
+                </span>
               </label>
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
@@ -265,13 +283,13 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
                   )}
                 </button>
               </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.5rem', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem', lineHeight: '1.5' }}>
                 Your Google Place ID is a unique identifier for your business on Google Maps. 
                 <a 
                   href="https://developers.google.com/maps/documentation/places/web-service/place-id" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  style={{ color: 'var(--primary)', textDecoration: 'none', marginLeft: '0.25rem' }}
+                  style={{ color: '#635bff', textDecoration: 'none', marginLeft: '0.25rem' }}
                 >
                   Learn how to find it <i className="fas fa-external-link-alt" style={{ fontSize: '0.7rem' }}></i>
                 </a>
@@ -345,26 +363,22 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
           )}
 
           {/* Google Business URL (Optional) */}
-          <div style={{ marginBottom: '2rem' }}>
-            <h3 className="dashboard-card-subtitle" style={{ margin: '0 0 1rem 0', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <i className="fas fa-link"></i>
-              Google Business Profile URL
-              <span style={{ 
-                fontSize: '0.75rem', 
-                fontWeight: 500, 
-                background: '#e0e7ff', 
-                color: '#3730a3', 
-                padding: '0.15rem 0.5rem', 
-                borderRadius: '4px',
-                marginLeft: '0.5rem'
-              }}>
-                Optional
-              </span>
-            </h3>
-            
+          <div style={{ marginBottom: '1.5rem' }}>
             <div className="form-group">
-              <label htmlFor="google-business-url" style={{ fontWeight: 500, marginBottom: '0.5rem', display: 'block' }}>
-                Direct link to your Google Business Profile
+              <label htmlFor="google-business-url" style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                <i className="fas fa-link" style={{ color: '#635bff' }}></i>
+                Google Business Profile URL
+                <span style={{ 
+                  fontSize: '0.7rem', 
+                  fontWeight: 600, 
+                  background: '#e0e7ff', 
+                  color: '#3730a3', 
+                  padding: '0.15rem 0.5rem', 
+                  borderRadius: '4px',
+                  marginLeft: '0.25rem'
+                }}>
+                  Optional
+                </span>
               </label>
               <input
                 type="url"
@@ -374,48 +388,43 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
                 value={formData.googleBusinessUrl}
                 onChange={(e) => setFormData({ ...formData, googleBusinessUrl: e.target.value })}
               />
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.5rem', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem', lineHeight: '1.5' }}>
                 This link will be used for the "View on Google" button on your profile.
               </p>
             </div>
           </div>
 
-          {/* How to Find Your Place ID */}
-          <div style={{ 
-            background: '#fef3c7', 
-            border: '1px solid #fcd34d', 
-            borderRadius: 'var(--radius)', 
-            padding: '1rem 1.25rem', 
-            marginBottom: '2rem' 
-          }}>
-            <h4 style={{ 
-              margin: '0 0 0.75rem 0', 
-              fontSize: '0.9rem', 
-              fontWeight: 600, 
-              color: '#78350f',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <i className="fas fa-lightbulb"></i>
-              How to find your Google Place ID
-            </h4>
-            <ol style={{ margin: 0, paddingLeft: '1.25rem', color: '#92400e', fontSize: '0.85rem', lineHeight: '1.8' }}>
-              <li>Go to <a href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder" target="_blank" rel="noopener noreferrer" style={{ color: '#b45309', textDecoration: 'underline' }}>Google Place ID Finder</a></li>
-              <li>Search for your business name or address</li>
-              <li>Click on your business location on the map</li>
-              <li>Copy the Place ID that appears (starts with "ChIJ...")</li>
-              <li>Paste it in the field above and click "Verify"</li>
-            </ol>
-          </div>
-
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', paddingTop: '1.5rem', marginBottom: '2rem' }}>
             <button 
               type="submit" 
-              className="btn btn-primary"
               disabled={saving || (formData.googlePlaceId && verificationStatus !== 'success')}
-              style={{ minWidth: '150px' }}
+              style={{ 
+                minWidth: '200px',
+                padding: '0.75rem 1.5rem',
+                background: '#635bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                cursor: saving || (formData.googlePlaceId && verificationStatus !== 'success') ? 'not-allowed' : 'pointer',
+                opacity: saving || (formData.googlePlaceId && verificationStatus !== 'success') ? 0.6 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+              }}
+              onMouseEnter={(e) => {
+                if (!saving && !(formData.googlePlaceId && verificationStatus !== 'success')) {
+                  e.target.style.background = '#5348d9';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = '#635bff';
+              }}
             >
               {saving ? (
                 <>
@@ -424,8 +433,8 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
                 </>
               ) : (
                 <>
-                  <i className="fas fa-save"></i>
-                  Save Settings
+                  <i className="fab fa-google"></i>
+                  Connect Google Reviews
                 </>
               )}
             </button>
@@ -435,6 +444,97 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
                 <i className="fas fa-exclamation-triangle"></i> Please verify your Place ID before saving
               </p>
             )}
+          </div>
+
+          {/* Why integrate Google Reviews? */}
+          <div style={{ 
+            background: '#f9fafb',
+            borderRadius: '8px',
+            padding: '2rem',
+            marginTop: '2rem'
+          }}>
+            <h4 style={{ 
+              fontSize: '1.05rem', 
+              fontWeight: 600, 
+              color: '#1f2937', 
+              marginBottom: '1.5rem'
+            }}>
+              Why integrate Google Reviews?
+            </h4>
+            <ul style={{ 
+              margin: 0, 
+              padding: 0, 
+              listStyle: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.875rem'
+            }}>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <span style={{ 
+                  width: '5px', 
+                  height: '5px', 
+                  borderRadius: '50%', 
+                  background: '#374151', 
+                  marginTop: '0.5rem',
+                  flexShrink: 0
+                }}></span>
+                <span style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.6' }}>
+                  Display authentic reviews directly on your profile
+                </span>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <span style={{ 
+                  width: '5px', 
+                  height: '5px', 
+                  borderRadius: '50%', 
+                  background: '#374151', 
+                  marginTop: '0.5rem',
+                  flexShrink: 0
+                }}></span>
+                <span style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.6' }}>
+                  Build trust and credibility with potential clients
+                </span>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <span style={{ 
+                  width: '5px', 
+                  height: '5px', 
+                  borderRadius: '50%', 
+                  background: '#374151', 
+                  marginTop: '0.5rem',
+                  flexShrink: 0
+                }}></span>
+                <span style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.6' }}>
+                  Showcase your ratings and reviewer feedback
+                </span>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <span style={{ 
+                  width: '5px', 
+                  height: '5px', 
+                  borderRadius: '50%', 
+                  background: '#374151', 
+                  marginTop: '0.5rem',
+                  flexShrink: 0
+                }}></span>
+                <span style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.6' }}>
+                  Automatically sync and update your reviews
+                </span>
+              </li>
+              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <span style={{ 
+                  width: '5px', 
+                  height: '5px', 
+                  borderRadius: '50%', 
+                  background: '#374151', 
+                  marginTop: '0.5rem',
+                  flexShrink: 0
+                }}></span>
+                <span style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.6' }}>
+                  Help clients make informed booking decisions
+                </span>
+              </li>
+            </ul>
           </div>
         </form>
       </div>
