@@ -73,7 +73,7 @@ function FAQsPanel({ onBack, vendorProfileId }) {
   };
 
   const handleDeleteFAQ = async (faqId) => {
-    if (!confirm('Are you sure you want to delete this FAQ?')) return;
+    if (!window.confirm('Are you sure you want to delete this FAQ?')) return;
 
     try {
       const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/faqs/${faqId}`, {

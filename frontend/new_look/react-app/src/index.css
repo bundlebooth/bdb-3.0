@@ -683,6 +683,11 @@ html {
     text-decoration: underline;
 }
 
+/* Darken vendor card overlay on hover */
+.vendor-card:hover .vendor-card-overlay {
+    background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
 /* Respect reduced motion preferences */
 @media (prefers-reduced-motion: reduce) {
     .vendor-card,

@@ -103,7 +103,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
   };
 
   const handleDeletePhoto = async (photoId) => {
-    if (!confirm('Are you sure you want to delete this photo?')) return;
+    if (!window.confirm('Are you sure you want to delete this photo?')) return;
 
     try {
       const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/images/${photoId}`, {
@@ -193,7 +193,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
   };
 
   const handleDeleteAlbum = async (albumId) => {
-    if (!confirm('Are you sure you want to delete this album? All images in this album will also be deleted. This cannot be undone.')) {
+    if (!window.confirm('Are you sure you want to delete this album? All images in this album will also be deleted. This cannot be undone.')) {
       return;
     }
 

@@ -287,56 +287,211 @@ function ProfileModal({ isOpen, onClose }) {
 
   return (
     <div className="modal" style={{ display: 'flex' }} onClick={onClose}>
-      <div className="modal-content" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 id="profile-modal-title">
-            {view === 'login' && 'Log In'}
+      <div className="modal-content" style={{ 
+        maxWidth: '440px',
+        borderRadius: '16px',
+        padding: '0',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.15)'
+      }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{
+          padding: '24px 24px 16px 24px',
+          borderBottom: '1px solid #E5E7EB',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 id="profile-modal-title" style={{
+            fontSize: '24px',
+            fontWeight: '600',
+            color: '#1F2937',
+            margin: 0
+          }}>
+            {view === 'login' && 'Welcome to PlanHive'}
             {view === 'signup' && 'Create Account'}
             {view === 'twofa' && 'Verify Your Account'}
             {view === 'loggedIn' && 'My Account'}
           </h3>
-          <span className="close-modal" onClick={onClose}>×</span>
+          <button 
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '28px',
+              color: '#6B7280',
+              cursor: 'pointer',
+              padding: '0',
+              lineHeight: '1',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >×</button>
         </div>
         
-        <div className="modal-body">
+        <div className="modal-body" style={{ padding: '24px' }}>
           {/* Login Form */}
           {view === 'login' && (
             <form id="login-form" onSubmit={handleLogin}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Email</label>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  color: '#374151'
+                }}>Email</label>
                 <input
                   type="email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
-                  style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #D1D5DB', 
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#5B68F4'}
+                  onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
                   required
                 />
               </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Password</label>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  color: '#374151'
+                }}>Password</label>
                 <input
                   type="password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #D1D5DB', 
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                    boxSizing: 'border-box'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#5B68F4'}
+                  onBlur={(e) => e.target.style.borderColor = '#D1D5DB'}
                   required
                 />
               </div>
-              <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%', marginBottom: '1rem' }}>
+              <button 
+                type="submit" 
+                disabled={loading} 
+                style={{ 
+                  width: '100%', 
+                  padding: '14px',
+                  backgroundColor: '#5B68F4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginBottom: '16px',
+                  transition: 'background-color 0.2s',
+                  opacity: loading ? 0.7 : 1
+                }}
+                onMouseEnter={(e) => !loading && (e.target.style.backgroundColor = '#4A56E2')}
+                onMouseLeave={(e) => !loading && (e.target.style.backgroundColor = '#5B68F4')}
+              >
                 {loading ? 'Logging in...' : 'Log In'}
               </button>
-              <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                <button type="button" onClick={() => setView('signup')} style={{ background: 'none', border: 'none', color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
-                  Don't have an account? Sign up
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <span style={{ color: '#6B7280', fontSize: '14px' }}>Don't have an account? </span>
+                <button 
+                  type="button" 
+                  onClick={() => setView('signup')} 
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: '#5B68F4', 
+                    fontSize: '14px', 
+                    cursor: 'pointer', 
+                    padding: 0, 
+                    fontFamily: 'inherit',
+                    fontWeight: '500'
+                  }}
+                >
+                  Sign up
                 </button>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border)' }}></div>
-                <div style={{ padding: '0 1rem', color: 'var(--text-light)', fontSize: '0.9rem' }}>OR</div>
-                <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border)' }}></div>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+                <div style={{ flex: 1, height: '1px', backgroundColor: '#E5E7EB' }}></div>
+                <div style={{ padding: '0 16px', color: '#9CA3AF', fontSize: '14px', fontWeight: '500' }}>OR</div>
+                <div style={{ flex: 1, height: '1px', backgroundColor: '#E5E7EB' }}></div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div id="google-signin-button"></div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleGoogleLogin && handleGoogleLogin()}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    backgroundColor: 'white',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#F9FAFB'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                    <path d="M9.003 18c2.43 0 4.467-.806 5.956-2.18L12.05 13.56c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z" fill="#34A853"/>
+                    <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                    <path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335"/>
+                  </svg>
+                  Continue with Google
+                </button>
+                <button
+                  type="button"
+                  onClick={() => console.log('Facebook login')}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    backgroundColor: 'white',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#F9FAFB'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  Continue with Facebook
+                </button>
               </div>
             </form>
           )}

@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { getCategoryIconHtml, mapTypeToCategory } from '../utils/helpers';
 
 const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight }) {
+  const [isHovered, setIsHovered] = React.useState(false);
   const vendorId = vendor.VendorProfileID || vendor.id;
   
   // Image URL resolution - EXACT match to original (line 24986-24997)
@@ -80,12 +81,8 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
   const categoryIconHtml = getCategoryIconHtml(categoryKey);
 
   const handleCardClick = () => {
-    if (onView) {
-      onView(vendorId);
-    } else {
-      // Open in new tab/page when no onView handler is provided
-      window.open(`/vendor/${vendorId}`, '_blank');
-    }
+    // Always open vendor profile in new tab
+    window.open(`/vendor/${vendorId}`, '_blank');
   };
 
   const handleFavoriteClick = (e) => {
@@ -96,12 +93,14 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
   };
 
   const handleMouseEnter = () => {
+    setIsHovered(true);
     if (onHighlight) {
       onHighlight(vendorId, true);
     }
   };
 
   const handleMouseLeave = () => {
+    setIsHovered(false);
     if (onHighlight) {
       onHighlight(vendorId, false);
     }
@@ -139,7 +138,24 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
             left: 0,
             width: '100%',
             height: '100%',
-            objectFit: 'cover'
+            objectFit: 'cover',
+            transition: 'filter 0.3s ease'
+          }}
+          className="vendor-card-image"
+        />
+        {/* Hover Darkening Overlay */}
+        <div 
+          className="vendor-card-overlay"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: isHovered ? 'rgba(0, 0, 0, 0.25)' : 'rgba(0, 0, 0, 0)',
+            transition: 'background-color 0.3s ease',
+            pointerEvents: 'none',
+            zIndex: 1
           }}
         />
         
