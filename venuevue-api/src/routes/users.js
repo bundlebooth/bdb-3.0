@@ -41,7 +41,10 @@ async function ensureTwoFactorTable(pool) {
 // User Registration
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, isVendor = false } = req.body;
+    const { name, email, password, isVendor = false, accountType } = req.body;
+    
+    // Convert accountType to isVendor boolean if provided
+    const isVendorFlag = accountType === 'vendor' || isVendor;
 
     // Manual validation
     if (!name || !name.trim()) {
@@ -86,10 +89,14 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const request = pool.request();
+    
+    // Ensure proper SQL settings before executing stored procedure
+    await request.query('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON;');
+    
     request.input('Name', sql.NVarChar(100), name.trim());
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
     request.input('PasswordHash', sql.NVarChar(255), passwordHash);
-    request.input('IsVendor', sql.Bit, isVendor);
+    request.input('IsVendor', sql.Bit, isVendorFlag);
     request.input('AuthProvider', sql.NVarChar(20), 'email');
 
     const result = await request.execute('sp_RegisterUser');
@@ -97,7 +104,7 @@ router.post('/register', async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: userId, email, isVendor },
+      { id: userId, email, isVendor: isVendorFlag },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
@@ -107,7 +114,7 @@ router.post('/register', async (req, res) => {
       userId,
       name: name.trim(),
       email: email.toLowerCase().trim(),
-      isVendor,
+      isVendor: isVendorFlag,
       token
     });
 
