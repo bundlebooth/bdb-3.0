@@ -89,10 +89,6 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const request = pool.request();
-    
-    // Ensure proper SQL settings before executing stored procedure
-    await request.query('SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON;');
-    
     request.input('Name', sql.NVarChar(100), name.trim());
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
     request.input('PasswordHash', sql.NVarChar(255), passwordHash);
