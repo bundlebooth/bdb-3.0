@@ -1772,32 +1772,48 @@ BEGIN
     -- Add availability filter (day of week, start time, end time)
     IF @DayOfWeek IS NOT NULL AND @DayOfWeek != ''
     BEGIN
-        SET @SQL = @SQL + '
-        AND (
-            -- Check if vendor has business hours for this day of week
-            EXISTS (
-                SELECT 1 FROM VendorBusinessHours vbh 
-                WHERE vbh.VendorProfileID = v.VendorProfileID 
-                AND vbh.DayOfWeek = ''' + @DayOfWeek + ''' 
-                AND vbh.IsOpen = 1';
+        -- Convert day name to numeric value (0=Sunday, 1=Monday, etc.)
+        DECLARE @DayNumber TINYINT;
+        SET @DayNumber = CASE @DayOfWeek
+            WHEN 'Sunday' THEN 0
+            WHEN 'Monday' THEN 1
+            WHEN 'Tuesday' THEN 2
+            WHEN 'Wednesday' THEN 3
+            WHEN 'Thursday' THEN 4
+            WHEN 'Friday' THEN 5
+            WHEN 'Saturday' THEN 6
+            ELSE NULL
+        END;
         
-        -- If times are provided, check if they fall within business hours
-        IF @StartTime IS NOT NULL AND @EndTime IS NOT NULL
+        IF @DayNumber IS NOT NULL
         BEGIN
             SET @SQL = @SQL + '
-                AND vbh.StartTime <= ''' + CAST(@StartTime AS NVARCHAR(20)) + '''
-                AND vbh.EndTime >= ''' + CAST(@EndTime AS NVARCHAR(20)) + '''';
+            AND (
+                -- Check if vendor has business hours for this day of week
+                EXISTS (
+                    SELECT 1 FROM VendorBusinessHours vbh 
+                    WHERE vbh.VendorProfileID = v.VendorProfileID 
+                    AND vbh.DayOfWeek = ' + CAST(@DayNumber AS NVARCHAR(1)) + ' 
+                    AND vbh.IsAvailable = 1';
+            
+            -- If times are provided, check if they fall within business hours
+            IF @StartTime IS NOT NULL AND @EndTime IS NOT NULL
+            BEGIN
+                SET @SQL = @SQL + '
+                    AND vbh.OpenTime <= ''' + CAST(@StartTime AS NVARCHAR(20)) + '''
+                    AND vbh.CloseTime >= ''' + CAST(@EndTime AS NVARCHAR(20)) + '''';
+            END
+            
+            SET @SQL = @SQL + '
+                )
+                OR
+                -- If no business hours set, assume available
+                NOT EXISTS (
+                    SELECT 1 FROM VendorBusinessHours vbh2 
+                    WHERE vbh2.VendorProfileID = v.VendorProfileID
+                )
+            )';
         END
-        
-        SET @SQL = @SQL + '
-            )
-            OR
-            -- If no business hours set, assume available
-            NOT EXISTS (
-                SELECT 1 FROM VendorBusinessHours vbh2 
-                WHERE vbh2.VendorProfileID = v.VendorProfileID
-            )
-        )';
     END
     
     -- Add event date availability filter

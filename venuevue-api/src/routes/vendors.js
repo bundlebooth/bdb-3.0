@@ -4668,10 +4668,10 @@ router.post('/check-availability', async (req, res) => {
     
     // Convert date to proper format
     const eventDate = new Date(date);
-    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][eventDate.getDay()];
+    const dayNumber = eventDate.getDay(); // 0=Sunday, 1=Monday, etc.
     
     request.input('EventDate', sql.Date, eventDate);
-    request.input('DayOfWeek', sql.NVarChar(10), dayName);
+    request.input('DayOfWeek', sql.TinyInt, dayNumber);
     request.input('City', sql.NVarChar(100), city || null);
     request.input('StartTime', sql.Time, startTime || null);
     request.input('EndTime', sql.Time, endTime || null);
@@ -4704,11 +4704,11 @@ router.post('/check-availability', async (req, res) => {
             SELECT 1 FROM VendorBusinessHours vbh2 
             WHERE vbh2.VendorProfileID = vp.VendorProfileID 
             AND vbh2.DayOfWeek = @DayOfWeek 
-            AND vbh2.IsOpen = 1
+            AND vbh2.IsAvailable = 1
             -- If times are provided, check if they fall within business hours
             AND (
               @StartTime IS NULL 
-              OR (vbh2.StartTime <= @StartTime AND vbh2.EndTime >= @EndTime)
+              OR (vbh2.OpenTime <= @StartTime AND vbh2.CloseTime >= @EndTime)
             )
           )
           OR
