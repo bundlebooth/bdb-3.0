@@ -417,7 +417,8 @@ router.get('/', async (req, res) => {
   try {
     const { 
       searchTerm, 
-      category, 
+      category,
+      city, // City filter for location-based search
       minPrice, 
       maxPrice, 
       minRating,
@@ -445,7 +446,11 @@ router.get('/', async (req, res) => {
       budgetType, // 'total' | 'per_person'
       pricingModel, // 'time_based' | 'fixed_based'
       fixedPricingType, // 'fixed_price' | 'per_attendee'
-      // availability filters (not supported in this SP; use /search-by-services for time-window filtering)
+      // availability filters
+      eventDate, // Date for availability checking (YYYY-MM-DD)
+      dayOfWeek, // Day of week (e.g., 'Monday', 'Tuesday')
+      startTime, // Start time (HH:MM format)
+      endTime // End time (HH:MM format)
     } = req.query;
 
     const pool = await poolPromise;
@@ -458,6 +463,7 @@ router.get('/', async (req, res) => {
 
     request.input('SearchTerm', sql.NVarChar(100), searchTerm || null);
     request.input('Category', sql.NVarChar(50), category || null);
+    request.input('City', sql.NVarChar(100), city || null); // Pass city to stored procedure
     request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
     request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
     request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
@@ -481,7 +487,14 @@ router.get('/', async (req, res) => {
     request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
     request.input('Region', sql.NVarChar(50), region || null);
     request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
-    // Note: Do NOT pass EventDate/Start/End here. sp_SearchVendors does not accept them.
+    request.input('EventDateRaw', sql.NVarChar(50), null); // Legacy parameter
+    request.input('EventStartRaw', sql.NVarChar(20), null); // Legacy parameter
+    request.input('EventEndRaw', sql.NVarChar(20), null); // Legacy parameter
+    // Availability filters
+    request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+    request.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
+    request.input('StartTime', sql.Time, startTime || null);
+    request.input('EndTime', sql.Time, endTime || null);
 
     const result = await request.execute('sp_SearchVendors');
     
@@ -526,6 +539,9 @@ router.get('/', async (req, res) => {
       longitude: vendor.Longitude || null
     }));
 
+    // City filtering is now handled by the stored procedure
+    // No post-query filtering needed
+
     // Enhance with Cloudinary images if requested (default: true for better UX)
     if (includeImages !== 'false') {
       console.log('Enhancing vendors with Cloudinary images...');
@@ -551,7 +567,8 @@ router.get('/', async (req, res) => {
       totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0,
       pageNumber: parseInt(pageNumber) || 1,
       pageSize: parseInt(pageSize) || 10,
-      hasImages: includeImages !== 'false'
+      hasImages: includeImages !== 'false',
+      cityFilter: city || null
     });
 
   } catch (err) {
@@ -838,6 +855,7 @@ router.get('/search-by-categories', async (req, res) => {
     const {
       categories,           // comma-separated list, e.g. "Music/DJ,Catering"
       category,             // single category fallback
+      city,                 // City filter for location-based search
       minPrice,
       maxPrice,
       minRating,
@@ -860,7 +878,12 @@ router.get('/search-by-categories', async (req, res) => {
       priceLevel,
       budgetType,           // 'total' | 'per_person'
       pricingModel,         // 'time_based' | 'fixed_based'
-      fixedPricingType      // 'fixed_price' | 'per_attendee'
+      fixedPricingType,     // 'fixed_price' | 'per_attendee'
+      // availability filters
+      eventDate,            // Date for availability checking (YYYY-MM-DD)
+      dayOfWeek,            // Day of week (e.g., 'Monday', 'Tuesday')
+      startTime,            // Start time (HH:MM format)
+      endTime               // End time (HH:MM format)
     } = req.query;
 
     // Normalize incoming categories into an array
@@ -911,6 +934,7 @@ router.get('/search-by-categories', async (req, res) => {
       const request = new sql.Request(pool);
       request.input('SearchTerm', sql.NVarChar(100), null);
       request.input('Category', sql.NVarChar(50), cat);
+      request.input('City', sql.NVarChar(100), city || null); // Pass city to stored procedure
       request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
       request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
       request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
@@ -933,6 +957,14 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
       request.input('Region', sql.NVarChar(50), region || null);
       request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
+      request.input('EventDateRaw', sql.NVarChar(50), null); // Legacy parameter
+      request.input('EventStartRaw', sql.NVarChar(20), null); // Legacy parameter
+      request.input('EventEndRaw', sql.NVarChar(20), null); // Legacy parameter
+      // Availability filters
+      request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+      request.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
+      request.input('StartTime', sql.Time, startTime || null);
+      request.input('EndTime', sql.Time, endTime || null);
 
       const r = await request.execute('sp_SearchVendors');
 
@@ -973,6 +1005,9 @@ router.get('/search-by-categories', async (req, res) => {
         latitude: vendor.Latitude || null,
         longitude: vendor.Longitude || null
       }));
+
+      // City filtering is now handled by the stored procedure
+      // No post-query filtering needed
 
       if (includeImages !== 'false') {
         const batchSize = 5;

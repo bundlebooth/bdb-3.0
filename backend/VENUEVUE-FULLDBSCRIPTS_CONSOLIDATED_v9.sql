@@ -1553,6 +1553,7 @@ GO
 CREATE   PROCEDURE [dbo].[sp_SearchVendors]
     @SearchTerm NVARCHAR(100) = NULL,
     @Category NVARCHAR(50) = NULL,
+    @City NVARCHAR(100) = NULL, -- City filter for location-based search
     @MinPrice DECIMAL(10, 2) = NULL,
     @MaxPrice DECIMAL(10, 2) = NULL,
     @MinRating DECIMAL(2, 1) = NULL,
@@ -1577,7 +1578,11 @@ CREATE   PROCEDURE [dbo].[sp_SearchVendors]
     @EventStartRaw NVARCHAR(20) = NULL,
     @EventEndRaw NVARCHAR(20) = NULL,
     @Region NVARCHAR(50) = NULL, -- 'north' | 'south' | 'midwest' | 'west' | 'other'
-    @PriceLevel NVARCHAR(10) = NULL -- '$' | '$$' | '$$$'
+    @PriceLevel NVARCHAR(10) = NULL, -- '$' | '$$' | '$$$'
+    @EventDate DATE = NULL, -- Date for availability checking
+    @DayOfWeek NVARCHAR(10) = NULL, -- Day of week for availability (e.g., 'Monday', 'Tuesday')
+    @StartTime TIME = NULL, -- Start time for availability checking
+    @EndTime TIME = NULL -- End time for availability checking
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1707,6 +1712,13 @@ BEGIN
         AND EXISTS (SELECT 1 FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category = ''' + @Category + ''')';
     END
     
+    -- Add city filter
+    IF @City IS NOT NULL AND @City != ''
+    BEGIN
+        SET @SQL = @SQL + '
+        AND v.City LIKE ''%' + @City + '%''';
+    END
+    
     -- Add price filters
     IF @MinPrice IS NOT NULL
     BEGIN
@@ -1755,6 +1767,88 @@ BEGIN
     IF @PriceLevel IS NOT NULL AND @PriceLevel != ''
     BEGIN
         SET @SQL = @SQL + ' AND v.PriceLevel = ''' + @PriceLevel + '''';
+    END
+    
+    -- Add availability filter (day of week, start time, end time)
+    IF @DayOfWeek IS NOT NULL AND @DayOfWeek != ''
+    BEGIN
+        SET @SQL = @SQL + '
+        AND (
+            -- Check if vendor has business hours for this day of week
+            EXISTS (
+                SELECT 1 FROM VendorBusinessHours vbh 
+                WHERE vbh.VendorProfileID = v.VendorProfileID 
+                AND vbh.DayOfWeek = ''' + @DayOfWeek + ''' 
+                AND vbh.IsOpen = 1';
+        
+        -- If times are provided, check if they fall within business hours
+        IF @StartTime IS NOT NULL AND @EndTime IS NOT NULL
+        BEGIN
+            SET @SQL = @SQL + '
+                AND vbh.StartTime <= ''' + CAST(@StartTime AS NVARCHAR(20)) + '''
+                AND vbh.EndTime >= ''' + CAST(@EndTime AS NVARCHAR(20)) + '''';
+        END
+        
+        SET @SQL = @SQL + '
+            )
+            OR
+            -- If no business hours set, assume available
+            NOT EXISTS (
+                SELECT 1 FROM VendorBusinessHours vbh2 
+                WHERE vbh2.VendorProfileID = v.VendorProfileID
+            )
+        )';
+    END
+    
+    -- Add event date availability filter
+    IF @EventDate IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + '
+        AND (
+            -- Check availability exceptions - vendor should be available on this date
+            NOT EXISTS (
+                SELECT 1 FROM VendorAvailabilityExceptions vae
+                WHERE vae.VendorProfileID = v.VendorProfileID 
+                AND vae.Date = ''' + CAST(@EventDate AS NVARCHAR(20)) + '''
+                AND vae.IsAvailable = 0
+            )
+            OR EXISTS (
+                SELECT 1 FROM VendorAvailabilityExceptions vae
+                WHERE vae.VendorProfileID = v.VendorProfileID 
+                AND vae.Date = ''' + CAST(@EventDate AS NVARCHAR(20)) + '''
+                AND vae.IsAvailable = 1';
+        
+        -- If times are provided, check exception time ranges
+        IF @StartTime IS NOT NULL AND @EndTime IS NOT NULL
+        BEGIN
+            SET @SQL = @SQL + '
+                AND (vae.StartTime IS NULL OR (vae.StartTime <= ''' + CAST(@StartTime AS NVARCHAR(20)) + ''' AND vae.EndTime >= ''' + CAST(@EndTime AS NVARCHAR(20)) + '''))';
+        END
+        
+        SET @SQL = @SQL + '
+            )
+        )
+        AND NOT EXISTS (
+            -- Exclude if vendor has bookings that conflict with requested time
+            SELECT 1 FROM Bookings b 
+            WHERE b.VendorProfileID = v.VendorProfileID 
+            AND CAST(b.EventDate AS DATE) = ''' + CAST(@EventDate AS NVARCHAR(20)) + '''
+            AND b.Status IN (''confirmed'', ''pending'')';
+        
+        -- Check for time overlap if times are provided
+        IF @StartTime IS NOT NULL AND @EndTime IS NOT NULL
+        BEGIN
+            SET @SQL = @SQL + '
+            AND b.StartTime IS NOT NULL
+            AND (
+                -- Booking overlaps if: new start < existing end AND new end > existing start
+                ''' + CAST(@StartTime AS NVARCHAR(20)) + ''' < b.EndTime 
+                AND ''' + CAST(@EndTime AS NVARCHAR(20)) + ''' > b.StartTime
+            )';
+        END
+        
+        SET @SQL = @SQL + '
+        )';
     END
     
     -- Note: @Region parameter is ignored since Region column doesn't exist in VendorProfiles table
@@ -1844,13 +1938,15 @@ BEGIN
     
     BEGIN TRY
         EXEC sp_executesql @SQL,
-            N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), @MinRating DECIMAL(2, 1),
+            N'@SearchTerm NVARCHAR(100), @Category NVARCHAR(50), @City NVARCHAR(100), @MinPrice DECIMAL(10, 2), @MaxPrice DECIMAL(10, 2), @MinRating DECIMAL(2, 1),
               @IsPremium BIT, @IsEcoFriendly BIT, @IsAwardWinning BIT, @IsLastMinute BIT, @IsCertified BIT, @IsInsured BIT, @IsLocal BIT, @IsMobile BIT,
               @Latitude DECIMAL(10, 8), @Longitude DECIMAL(11, 8), @RadiusMiles INT, @BudgetType NVARCHAR(20), @PricingModelFilter NVARCHAR(20), @FixedPricingTypeFilter NVARCHAR(20),
-              @EventDateRaw NVARCHAR(50), @EventStartRaw NVARCHAR(20), @EventEndRaw NVARCHAR(20), @Region NVARCHAR(50), @PriceLevel NVARCHAR(10)',
-            @SearchTerm, @Category, @MinPrice, @MaxPrice, @MinRating, @IsPremium, @IsEcoFriendly, @IsAwardWinning, @IsLastMinute, @IsCertified, @IsInsured, @IsLocal, @IsMobile,
+              @EventDateRaw NVARCHAR(50), @EventStartRaw NVARCHAR(20), @EventEndRaw NVARCHAR(20), @Region NVARCHAR(50), @PriceLevel NVARCHAR(10),
+              @EventDate DATE, @DayOfWeek NVARCHAR(10), @StartTime TIME, @EndTime TIME',
+            @SearchTerm, @Category, @City, @MinPrice, @MaxPrice, @MinRating, @IsPremium, @IsEcoFriendly, @IsAwardWinning, @IsLastMinute, @IsCertified, @IsInsured, @IsLocal, @IsMobile,
             @Latitude, @Longitude, @RadiusMiles, @BudgetType, @PricingModelFilter, @FixedPricingTypeFilter,
-            @EventDateRaw, @EventStartRaw, @EventEndRaw, @Region, @PriceLevel
+            @EventDateRaw, @EventStartRaw, @EventEndRaw, @Region, @PriceLevel,
+            @EventDate, @DayOfWeek, @StartTime, @EndTime
     END TRY
     BEGIN CATCH
         DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
