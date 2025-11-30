@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   LayoutGrid, 
-  Home, 
+  School, 
   Camera, 
   Music, 
-  UtensilsCrossed, 
+  Utensils, 
   PartyPopper, 
   Star, 
   Ribbon, 
-  Heart, 
+  Scissors, 
   Cake, 
   Car, 
   ClipboardList, 
-  Shirt, 
+  ShoppingBag, 
   Mail 
 } from 'lucide-react';
 
@@ -150,7 +150,7 @@ const categories = [
   },
   { 
     key: 'venue', 
-    icon: <Home size={24} color="#a855f7" strokeWidth={2} />, 
+    icon: <School size={24} color="#a855f7" strokeWidth={2} />, 
     label: 'Venues', 
     bgColor: '#f3e8ff' 
   },
@@ -168,7 +168,7 @@ const categories = [
   },
   { 
     key: 'catering', 
-    icon: <UtensilsCrossed size={24} color="#f59e0b" strokeWidth={2} />, 
+    icon: <Utensils size={24} color="#f59e0b" strokeWidth={2} />, 
     label: 'Catering', 
     bgColor: '#fef3c7' 
   },
@@ -192,7 +192,7 @@ const categories = [
   },
   { 
     key: 'beauty', 
-    icon: <Heart size={24} color="#be185d" strokeWidth={2} />, 
+    icon: <Scissors size={24} color="#be185d" strokeWidth={2} />, 
     label: 'Beauty', 
     bgColor: '#fdf2f8' 
   },
@@ -216,7 +216,7 @@ const categories = [
   },
   { 
     key: 'fashion', 
-    icon: <Shirt size={24} color="#7c3aed" strokeWidth={2} />, 
+    icon: <ShoppingBag size={24} color="#7c3aed" strokeWidth={2} />, 
     label: 'Fashion', 
     bgColor: '#ede9fe' 
   },
@@ -327,7 +327,7 @@ function CategoriesNav({ activeCategory, onCategoryChange }) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: '8px'
+                  marginBottom: '8px' // Added spacing between icon and text
                 }}
               >
                 <div
@@ -335,7 +335,7 @@ function CategoriesNav({ activeCategory, onCategoryChange }) {
                     width: '48px',
                     height: '48px',
                     borderRadius: '50%',
-                    backgroundColor: category.bgColor,
+                    backgroundColor: category.bgColor, // Use category.bgColor for all
                     opacity: 0.4,
                     transition: 'all 0.3s ease',
                     position: 'absolute',
@@ -352,7 +352,8 @@ function CategoriesNav({ activeCategory, onCategoryChange }) {
               <span style={{
                 lineHeight: '1.2',
                 textAlign: 'center',
-                width: '100%'
+                width: '100%',
+                fontWeight: 'normal'
               }}>{category.label}</span>
             </div>
           ))}
