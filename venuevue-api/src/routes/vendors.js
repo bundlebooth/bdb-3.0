@@ -4670,11 +4670,20 @@ router.post('/check-availability', async (req, res) => {
     const eventDate = new Date(date);
     const dayNumber = eventDate.getDay(); // 0=Sunday, 1=Monday, etc.
     
+    // Convert time format from HH:MM to HH:MM:SS if needed
+    const formatTime = (time) => {
+      if (!time) return null;
+      // If time is already in HH:MM:SS format, return as is
+      if (time.split(':').length === 3) return time;
+      // If time is in HH:MM format, add :00 for seconds
+      return time + ':00';
+    };
+    
     request.input('EventDate', sql.Date, eventDate);
     request.input('DayOfWeek', sql.TinyInt, dayNumber);
     request.input('City', sql.NVarChar(100), city || null);
-    request.input('StartTime', sql.Time, startTime || null);
-    request.input('EndTime', sql.Time, endTime || null);
+    request.input('StartTime', sql.Time, formatTime(startTime));
+    request.input('EndTime', sql.Time, formatTime(endTime));
 
     // Query to find available vendors
     const result = await request.query(`
