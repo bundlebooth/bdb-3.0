@@ -4616,4 +4616,138 @@ router.post('/:vendorProfileId/google-reviews-settings', async (req, res) => {
   }
 });
 
+// Check vendor availability for a specific date and location
+router.post('/check-availability', async (req, res) => {
+  try {
+    const { date, city, dayOfWeek, startTime, endTime } = req.body;
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    // Convert date to proper format
+    const eventDate = new Date(date);
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][eventDate.getDay()];
+    
+    request.input('EventDate', sql.Date, eventDate);
+    request.input('DayOfWeek', sql.NVarChar(10), dayName);
+    request.input('City', sql.NVarChar(100), city || null);
+    request.input('StartTime', sql.Time, startTime || null);
+    request.input('EndTime', sql.Time, endTime || null);
+
+    // Query to find available vendors
+    const result = await request.query(`
+      SELECT DISTINCT
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.City,
+        vp.State,
+        vp.LogoURL,
+        vp.AverageRating,
+        vp.ReviewCount,
+        vp.IsPremium,
+        vc.CategoryName,
+        COUNT(*) OVER() as TotalCount
+      FROM VendorProfiles vp
+      LEFT JOIN VendorCategories vc ON vp.VendorProfileID = vc.VendorProfileID
+      LEFT JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
+      LEFT JOIN VendorAvailabilityExceptions vae ON vp.VendorProfileID = vae.VendorProfileID 
+        AND vae.Date = @EventDate
+      WHERE vp.IsActive = 1
+        AND vp.IsApproved = 1
+        AND (@City IS NULL OR vp.City LIKE '%' + @City + '%')
+        AND (
+          -- Check if vendor has business hours for this day of week
+          EXISTS (
+            SELECT 1 FROM VendorBusinessHours vbh2 
+            WHERE vbh2.VendorProfileID = vp.VendorProfileID 
+            AND vbh2.DayOfWeek = @DayOfWeek 
+            AND vbh2.IsOpen = 1
+            -- If times are provided, check if they fall within business hours
+            AND (
+              @StartTime IS NULL 
+              OR (vbh2.StartTime <= @StartTime AND vbh2.EndTime >= @EndTime)
+            )
+          )
+          OR
+          -- If no business hours set, assume available
+          NOT EXISTS (
+            SELECT 1 FROM VendorBusinessHours vbh3 
+            WHERE vbh3.VendorProfileID = vp.VendorProfileID
+          )
+        )
+        AND (
+          -- Check availability exceptions - vendor should be available on this date
+          vae.VendorProfileID IS NULL 
+          OR (
+            vae.IsAvailable = 1
+            -- If times are provided, check exception time ranges
+            AND (
+              @StartTime IS NULL
+              OR vae.StartTime IS NULL
+              OR (vae.StartTime <= @StartTime AND vae.EndTime >= @EndTime)
+            )
+          )
+        )
+        AND NOT EXISTS (
+          -- Exclude if vendor has bookings that conflict with requested time
+          SELECT 1 FROM Bookings b 
+          WHERE b.VendorProfileID = vp.VendorProfileID 
+          AND CAST(b.EventDate AS DATE) = @EventDate
+          AND b.Status IN ('confirmed', 'pending')
+          -- Check for time overlap if times are provided
+          AND (
+            @StartTime IS NULL
+            OR b.StartTime IS NULL
+            OR (
+              -- Booking overlaps if: new start < existing end AND new end > existing start
+              @StartTime < b.EndTime AND @EndTime > b.StartTime
+            )
+          )
+        )
+      ORDER BY 
+        vp.IsPremium DESC,
+        vp.AverageRating DESC,
+        vp.ReviewCount DESC
+    `);
+
+    const availableVendors = result.recordset.map(vendor => ({
+      vendorProfileId: vendor.VendorProfileID,
+      businessName: vendor.BusinessName,
+      displayName: vendor.DisplayName,
+      city: vendor.City,
+      state: vendor.State,
+      logoUrl: vendor.LogoURL,
+      averageRating: vendor.AverageRating,
+      reviewCount: vendor.ReviewCount,
+      isPremium: vendor.IsPremium,
+      categoryName: vendor.CategoryName
+    }));
+
+    res.json({
+      success: true,
+      availableVendors: availableVendors,
+      totalCount: availableVendors.length > 0 ? availableVendors[0].TotalCount : 0,
+      searchDate: date,
+      searchCity: city,
+      dayOfWeek: dayName
+    });
+
+  } catch (error) {
+    console.error('Error checking vendor availability:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check vendor availability',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

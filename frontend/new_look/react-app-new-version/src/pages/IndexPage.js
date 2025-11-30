@@ -619,8 +619,61 @@ function IndexPage() {
     setMapActive(!mapActive);
     document.body.classList.toggle('map-active');
     const appContainer = document.getElementById('app-container');
-    if (appContainer) appContainer.classList.toggle('map-active');
+    if (appContainer) {
+      appContainer.classList.toggle('map-active');
+    }
   }, [mapActive]);
+
+  const handleEnhancedSearch = useCallback(async (searchParams) => {
+    console.log('🔍 Enhanced search triggered:', searchParams);
+    
+    try {
+      // Update filters with location if provided
+      if (searchParams.location) {
+        const cityName = searchParams.location.split(',')[0].trim();
+        setFilters(prev => ({
+          ...prev,
+          location: cityName
+        }));
+      }
+
+      // If both location and date are provided, filter by availability
+      if (searchParams.location && searchParams.date && searchParams.availableVendors) {
+        console.log('🗓️ Filtering by availability:', {
+          date: searchParams.date,
+          location: searchParams.location,
+          availableVendors: searchParams.availableVendors.length
+        });
+
+        // Show available vendors
+        const availableVendorIds = searchParams.availableVendors.map(v => v.vendorProfileId);
+        
+        // Filter current vendors to only show available ones
+        const availableVendors = vendors.filter(vendor => 
+          availableVendorIds.includes(vendor.VendorProfileID || vendor.vendorProfileId)
+        );
+
+        setFilteredVendors(availableVendors);
+        
+        // No banner message - let the UI show "No vendors available" if empty
+      } else if (searchParams.location) {
+        // Just location search - reload vendors for that location
+        console.log('📍 Location-only search:', searchParams.location);
+        setLoading(true);
+        setServerPageNumber(1);
+        loadVendors();
+        
+        // No banner message
+      } else if (searchParams.date) {
+        // Date-only search - no message, just don't filter
+        console.log('Date selected without location');
+      }
+
+    } catch (error) {
+      console.error('Enhanced search error:', error);
+      showBanner('Search failed. Please try again.', 'error');
+    }
+  }, [vendors, setFilters, loadVendors, showBanner]);
 
   // Show ALL vendors from filteredVendors (no client-side pagination, matches original)
   const currentVendors = filteredVendors;
@@ -639,7 +692,7 @@ function IndexPage() {
   return (
     <div>
       <Header 
-        onSearch={(q) => console.log(q)} 
+        onSearch={handleEnhancedSearch} 
         onProfileClick={() => {
           if (currentUser) {
             setDashboardModalOpen(true);

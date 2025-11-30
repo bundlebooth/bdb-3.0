@@ -3,7 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import DashboardModal from './DashboardModal';
 import NotificationDropdown from './NotificationDropdown';
+import EnhancedSearchBar from './EnhancedSearchBar';
 import { getUnreadNotificationCount, updatePageTitle } from '../utils/notifications';
+import './EnhancedSearchBar.css';
 
 const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNotificationsClick }) {
   const { currentUser } = useAuth();
@@ -129,32 +131,10 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       </div>
 
       <div className="search-container">
-        <div className="search-bar" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <input
-            type="text"
-            placeholder="Search for event vendors..."
-            id="search-input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
-            style={{ flexGrow: 1, paddingLeft: '1rem', paddingRight: '2.5rem' }}
-          />
-          <button
-            id="search-button"
-            onClick={handleSearch}
-            style={{
-              position: 'absolute',
-              right: '0.5rem',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--primary)',
-              fontSize: '1.25rem'
-            }}
-          >
-            <i className="fas fa-magnifying-glass"></i>
-          </button>
-        </div>
+        <EnhancedSearchBar 
+          onSearch={onSearch} 
+          isScrolled={isScrolled}
+        />
       </div>
 
       <div className="user-nav">
