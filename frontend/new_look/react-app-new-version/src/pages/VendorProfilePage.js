@@ -1,0 +1,1692 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../config';
+import Header from '../components/Header';
+import VendorGallery from '../components/VendorGallery';
+import VendorCard from '../components/VendorCard';
+import ServiceCard from '../components/ServiceCard';
+import SkeletonLoader from '../components/SkeletonLoader';
+import ProfileModal from '../components/ProfileModal';
+import DashboardModal from '../components/DashboardModal';
+import Footer from '../components/Footer';
+import Breadcrumb from '../components/Breadcrumb';
+import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
+import MessagingWidget from '../components/MessagingWidget';
+import { showBanner } from '../utils/helpers';
+import './VendorProfilePage.css';
+
+function VendorProfilePage() {
+  const { vendorId } = useParams();
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+
+  const [vendor, setVendor] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favorites, setFavorites] = useState([]);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
+  const [dashboardSection, setDashboardSection] = useState('dashboard');
+  const [vendorFeatures, setVendorFeatures] = useState([]);
+  const [portfolioAlbums, setPortfolioAlbums] = useState([]);
+  const [recommendations, setRecommendations] = useState({ similar: [], nearby: [], popular: [] });
+  const [activeRecommendationTab, setActiveRecommendationTab] = useState('similar');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [socialMedia, setSocialMedia] = useState([]);
+  const [serviceAreas, setServiceAreas] = useState([]);
+  const [team, setTeam] = useState([]);
+  const [googleReviews, setGoogleReviews] = useState(null);
+  const [googleReviewsLoading, setGoogleReviewsLoading] = useState(false);
+  const [showGoogleReviews, setShowGoogleReviews] = useState(false);
+  const [currentReviewPage, setCurrentReviewPage] = useState(0);
+  const [reviewsPerPage] = useState(5);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+
+  const loadVendorProfile = useCallback(async () => {
+    try {
+      setLoading(true);
+      const userId = currentUser?.id || '';
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}?userId=${userId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to load vendor profile');
+      }
+
+      const data = await response.json();
+      const vendorDetails = data.data;
+      
+      setVendor(vendorDetails);
+      setIsFavorite(vendorDetails.isFavorite || false);
+      setSocialMedia(vendorDetails.socialMedia || []);
+      setServiceAreas(vendorDetails.serviceAreas || []);
+      setTeam(vendorDetails.team || []);
+      
+      // Load additional data
+      if (vendorDetails.profile?.VendorProfileID) {
+        loadVendorFeatures(vendorDetails.profile.VendorProfileID);
+        loadPortfolioAlbums(vendorDetails.profile.VendorProfileID);
+        loadRecommendations(vendorId, vendorDetails);
+        
+        // Load Google Reviews if Google Place ID exists
+        if (vendorDetails.profile.GooglePlaceId) {
+          console.log('🔍 Google Place ID found:', vendorDetails.profile.GooglePlaceId);
+          loadGoogleReviews(vendorDetails.profile.GooglePlaceId);
+        } else {
+          console.log('❌ No Google Place ID found for this vendor');
+        }
+
+        // Auto-toggle to Google Reviews if no in-app reviews
+        if (vendorDetails.reviews.length === 0 && vendorDetails.profile.GooglePlaceId) {
+          setShowGoogleReviews(true);
+        }
+      }
+      
+      // Update page title
+      document.title = `${vendorDetails.profile.BusinessName || vendorDetails.profile.DisplayName} - PlanHive`;
+    } catch (error) {
+      console.error('Error loading vendor profile:', error);
+      showBanner('Failed to load vendor profile', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [vendorId, currentUser]);
+
+  // Load vendor features (questionnaire)
+  const loadVendorFeatures = useCallback(async (vendorProfileId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setVendorFeatures(data.selectedFeatures || []);
+      }
+    } catch (error) {
+      console.error('Error loading vendor features:', error);
+    }
+  }, []);
+
+  // Load portfolio albums
+  const loadPortfolioAlbums = useCallback(async (vendorProfileId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/public`);
+      if (response.ok) {
+        const data = await response.json();
+        setPortfolioAlbums(data.albums || []);
+      }
+    } catch (error) {
+      console.error('Error loading portfolio albums:', error);
+    }
+  }, []);
+
+  // Load Google Reviews
+  const loadGoogleReviews = useCallback(async (googlePlaceId) => {
+    try {
+      setGoogleReviewsLoading(true);
+      console.log('🔍 Loading Google Reviews for Place ID:', googlePlaceId);
+      
+      const response = await fetch(`${API_BASE_URL}/vendors/google-reviews/${googlePlaceId}`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Google Reviews loaded:', data.data);
+        setGoogleReviews(data.data);
+      } else {
+        console.warn('Google Reviews not available:', response.status);
+      }
+    } catch (error) {
+      console.error('Error loading Google Reviews:', error);
+    } finally {
+      setGoogleReviewsLoading(false);
+    }
+  }, []);
+
+  // Load recommendations
+  const loadRecommendations = useCallback(async (vendorId, vendorData) => {
+    try {
+      // Load similar vendors
+      const category = vendorData.profile?.PrimaryCategory || vendorData.profile?.Category;
+      const similarUrl = category 
+        ? `${API_BASE_URL}/vendors?category=${encodeURIComponent(category)}&pageSize=8`
+        : `${API_BASE_URL}/vendors?pageSize=8&sortBy=rating`;
+      
+      const similarResponse = await fetch(similarUrl);
+      if (similarResponse.ok) {
+        const similarData = await similarResponse.json();
+        const similar = (similarData.vendors || similarData.data || []).filter(v => v.VendorProfileID != vendorId);
+        setRecommendations(prev => ({ ...prev, similar }));
+      }
+
+      // Load nearby vendors
+      const latitude = vendorData.profile?.Latitude;
+      const longitude = vendorData.profile?.Longitude;
+      if (latitude && longitude) {
+        const nearbyResponse = await fetch(
+          `${API_BASE_URL}/vendors?latitude=${latitude}&longitude=${longitude}&radiusMiles=25&pageSize=8&sortBy=nearest`
+        );
+        if (nearbyResponse.ok) {
+          const nearbyData = await nearbyResponse.json();
+          const nearby = (nearbyData.data || []).filter(v => v.VendorProfileID !== vendorId);
+          setRecommendations(prev => ({ ...prev, nearby }));
+        }
+      }
+
+      // Load popular vendors
+      const popularResponse = await fetch(`${API_BASE_URL}/vendors?pageSize=8&sortBy=rating`);
+      if (popularResponse.ok) {
+        const popularData = await popularResponse.json();
+        const popular = (popularData.data || []).filter(v => v.VendorProfileID !== vendorId);
+        setRecommendations(prev => ({ ...prev, popular }));
+      }
+    } catch (error) {
+      console.error('Error loading recommendations:', error);
+    }
+  }, []);
+
+  // Load favorites
+  const loadFavorites = useCallback(async () => {
+    if (!currentUser?.id) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorites/user/${currentUser.id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setFavorites(data.favorites || []);
+      }
+    } catch (error) {
+      console.error('Failed to load favorites:', error);
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (vendorId) {
+      loadVendorProfile();
+    }
+  }, [vendorId, loadVendorProfile]);
+
+  useEffect(() => {
+    loadFavorites();
+  }, [loadFavorites]);
+
+  // Scroll to top when component mounts or vendorId changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [vendorId]);
+
+  const handleToggleFavorite = async () => {
+    if (!currentUser) {
+      showBanner('Please log in to save favorites', 'info');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorites/toggle`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          vendorProfileId: vendorId
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to toggle favorite');
+
+      const result = await response.json();
+      setIsFavorite(result.IsFavorite);
+      showBanner(
+        result.IsFavorite ? 'Vendor saved to favorites' : 'Vendor removed from favorites',
+        'favorite'
+      );
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      showBanner('Failed to update favorites', 'error');
+    }
+  };
+
+  // Handle favorite toggle for recommendation cards
+  const handleRecommendationFavorite = async (recommendationVendorId) => {
+    if (!currentUser) {
+      showBanner('Please log in to save favorites', 'info');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/favorites/toggle`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          vendorProfileId: recommendationVendorId
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to toggle favorite');
+
+      const result = await response.json();
+      
+      // Update favorites list
+      if (result.IsFavorite) {
+        setFavorites(prev => [...prev, { vendorProfileId: recommendationVendorId }]);
+      } else {
+        setFavorites(prev => prev.filter(fav => fav.vendorProfileId !== recommendationVendorId));
+      }
+      
+      showBanner(
+        result.IsFavorite ? 'Vendor saved to favorites' : 'Vendor removed from favorites',
+        'favorite'
+      );
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      showBanner('Failed to update favorites', 'error');
+    }
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    const vendorName = vendor?.profile?.BusinessName || 'this vendor';
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: vendorName,
+          text: `Check out ${vendorName} on PlanHive!`,
+          url: url
+        });
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          copyToClipboard(url);
+        }
+      }
+    } else {
+      copyToClipboard(url);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      showBanner('Link copied to clipboard!', 'success');
+    }).catch(() => {
+      showBanner('Failed to copy link', 'error');
+    });
+  };
+
+  const handleRequestBooking = () => {
+    if (!currentUser) {
+      showBanner('Please log in to request a booking', 'info');
+      setProfileModalOpen(true);
+      return;
+    }
+    // Navigate to booking page
+    navigate(`/booking/${vendorId}`);
+  };
+
+  const handleMessageVendor = () => {
+    if (!currentUser) {
+      showBanner('Please log in to message vendors', 'info');
+      navigate('/');
+      return;
+    }
+    console.log('Message vendor:', vendorId);
+  };
+
+  // Render social media icons
+  const renderSocialMediaIcons = () => {
+    if (!socialMedia || (socialMedia.length === 0 && !profile.Website)) {
+      return null;
+    }
+
+    const platformIcons = {
+      'facebook': 'https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg',
+      'instagram': 'https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png',
+      'twitter': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/X_logo_2023.svg',
+      'x': 'https://upload.wikimedia.org/wikipedia/commons/c/ce/X_logo_2023.svg',
+      'linkedin': 'https://upload.wikimedia.org/wikipedia/commons/c/ca/LinkedIn_logo_initials.png',
+      'youtube': 'https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png'
+    };
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.75rem' }}>
+        {socialMedia.map((social, index) => {
+          const iconUrl = platformIcons[social.Platform.toLowerCase()] || 'https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg';
+          const url = social.URL.startsWith('http') ? social.URL : `https://${social.URL}`;
+          return (
+            <a key={index} href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', opacity: 0.7, transition: 'all 0.2s' }}
+               onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+               onMouseOut={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.transform = 'translateY(0)'; }}>
+              <img src={iconUrl} className="social-icon-small" alt={social.Platform} />
+            </a>
+          );
+        })}
+        {profile.Website && (
+          <a href={profile.Website.startsWith('http') ? profile.Website : `https://${profile.Website}`} target="_blank" rel="noopener noreferrer"
+             style={{ textDecoration: 'none', opacity: 0.7, transition: 'all 0.2s' }}
+             onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+             onMouseOut={(e) => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.transform = 'translateY(0)'; }}>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c4/Globe_icon.svg" className="social-icon-small" alt="Website" />
+          </a>
+        )}
+      </div>
+    );
+  };
+
+  // Icon mapping for vendor features
+  const getFeatureIcon = (featureName, categoryName) => {
+    const iconMap = {
+      // Venue Features
+      'Indoor Ceremony Space': 'home',
+      'Outdoor Ceremony Space': 'tree',
+      'Wheelchair Accessible': 'wheelchair',
+      'Parking Available': 'parking',
+      'Garden/Outdoor Space': 'leaf',
+      'WiFi Available': 'wifi',
+      'Dance Floor': 'music',
+      'Stage/Platform': 'theater-masks',
+      'On-Site Catering': 'utensils',
+      'Sound System Included': 'volume-up',
+      'Scenic Views': 'eye',
+      'Private Dressing Rooms': 'door-closed',
+      
+      // Photography & Video
+      'Engagement Session': 'heart',
+      
+      // Music & Entertainment
+      'Live Band': 'guitar',
+      
+      // Catering & Bar
+      'Full Bar Service': 'cocktail',
+      'Beer Selection': 'beer',
+      
+      // Event Planning
+      'Contract Review': 'file-contract',
+      
+      // Beauty & Fashion Services
+      'On-Location Services': 'map-marker-alt',
+      'Airbrush Makeup': 'spray-can',
+      'Custom Gown Design': 'tshirt'
+    };
+
+    return iconMap[featureName] || iconMap[categoryName] || 'check';
+  };
+
+  // Render vendor features (questionnaire)
+  const renderVendorFeatures = () => {
+    if (!vendorFeatures || vendorFeatures.length === 0) return null;
+
+    // Group features by category
+    const categorizedFeatures = {};
+    vendorFeatures.forEach(feature => {
+      const category = feature.CategoryName || 'Other';
+      if (!categorizedFeatures[category]) {
+        categorizedFeatures[category] = [];
+      }
+      categorizedFeatures[category].push(feature);
+    });
+
+    return (
+      <div className="content-section">
+        <h2>What this place offers</h2>
+        <div>
+          {Object.keys(categorizedFeatures).map((categoryName, index) => (
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '2rem', padding: '1.5rem 0', borderBottom: '1px solid #ebebeb', alignItems: 'start' }}>
+              <div style={{ fontSize: '1rem', fontWeight: 600, color: '#222' }}>{categoryName}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem 1.5rem' }}>
+                {categorizedFeatures[categoryName].map((feature, idx) => (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                    <i className={`fas fa-${getFeatureIcon(feature.FeatureName, categoryName)}`} style={{ width: '14px', height: '14px', fontSize: '0.75rem', color: '#717171', flexShrink: 0 }}></i>
+                    <span style={{ fontSize: '0.9375rem', color: '#222', lineHeight: 1.4 }}>{feature.FeatureName}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render location and service areas with enhanced Google Maps
+  const renderLocationAndServiceAreas = () => {
+    const hasLocation = profile.Latitude && profile.Longitude;
+    const hasAddress = profile.Address || profile.City;
+    const hasServiceAreas = serviceAreas && serviceAreas.length > 0;
+
+    if (!hasLocation && !hasAddress && !hasServiceAreas) return null;
+
+    return (
+      <div className="content-section" id="location-section">
+        <h2>Where you'll find us</h2>
+        
+        {/* Google Maps - Show if we have coordinates OR address */}
+        {(hasLocation || hasAddress) && (
+          <div style={{ marginBottom: '2rem' }}>
+            <div style={{ 
+              position: 'relative',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+            }}>
+              <iframe
+                width="100%"
+                height="400"
+                frameBorder="0"
+                style={{ border: 0, display: 'block' }}
+                referrerPolicy="no-referrer-when-downgrade"
+                src={hasLocation 
+                  ? `https://maps.google.com/maps?q=${profile.Latitude},${profile.Longitude}&hl=en&z=15&output=embed`
+                  : `https://maps.google.com/maps?q=${encodeURIComponent([profile.Address, profile.City, profile.State].filter(Boolean).join(', '))}&hl=en&z=15&output=embed`
+                }
+                allowFullScreen
+                loading="lazy"
+              ></iframe>
+              
+              {/* Address overlay */}
+              <div style={{ 
+                position: 'absolute',
+                bottom: '0',
+                left: '0',
+                right: '0',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.4), transparent)',
+                color: 'white',
+                padding: '1.5rem 1rem 1rem',
+                backdropFilter: 'blur(4px)'
+              }}>
+                <div style={{ 
+                  fontSize: '0.875rem', 
+                  opacity: 0.9,
+                  marginBottom: '0.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <i className="fas fa-map-marker-alt"></i>
+                  <span>Business Location</span>
+                </div>
+                <div style={{ 
+                  fontSize: '1rem', 
+                  fontWeight: '500',
+                  lineHeight: '1.4'
+                }}>
+                  {[profile.Address, profile.City, profile.State, profile.PostalCode, profile.Country].filter(Boolean).join(', ') || 'Address available upon booking'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Service Areas */}
+        {hasServiceAreas && (
+          <div>
+            <h3 style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: 600, 
+              color: '#111827',
+              marginBottom: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <i className="fas fa-route" style={{ color: '#3b82f6', fontSize: '0.875rem' }}></i>
+              Areas We Serve
+            </h3>
+            <div style={{ 
+              display: 'flex', 
+              flexWrap: 'wrap',
+              gap: '0.5rem' 
+            }}>
+              {serviceAreas.map((area, index) => {
+                const location = [area.CityName, area.StateProvince, area.Country].filter(Boolean).join(', ');
+                return (
+                  <div key={index} style={{ 
+                    background: 'white', 
+                    border: '1px solid #e5e7eb', 
+                    borderRadius: '8px', 
+                    padding: '0.5rem 0.75rem',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    fontSize: '0.875rem'
+                  }}>
+                    <i className="fas fa-map-marker-alt" style={{ 
+                      color: '#3b82f6', 
+                      fontSize: '0.7rem' 
+                    }}></i>
+                    <span style={{ fontWeight: 500, color: '#111827' }}>{location}</span>
+                    {area.TravelCost && parseFloat(area.TravelCost) > 0 && (
+                      <span style={{ color: '#6b7280', fontSize: '0.8rem', marginLeft: '0.25rem' }}>
+                        (${parseFloat(area.TravelCost).toFixed(0)} fee)
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render portfolio albums
+  const renderPortfolioAlbums = () => {
+    if (!portfolioAlbums || portfolioAlbums.length === 0) return null;
+
+    return (
+      <div className="content-section">
+        <h2>Portfolio</h2>
+        <div className="portfolio-grid">
+          {portfolioAlbums.map((album, index) => (
+            <div key={index} className="portfolio-album" onClick={() => console.log('Open album:', album.AlbumID)}>
+              <div style={{ position: 'relative', paddingTop: '66%', background: 'var(--bg-dark)' }}>
+                {album.CoverImageURL ? (
+                  <img src={album.CoverImageURL} alt={album.AlbumName} className="portfolio-album-image" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: 'var(--text-light)', opacity: 0.5 }}></i>
+                  </div>
+                )}
+                <div className="portfolio-album-badge">
+                  <i className="fas fa-images"></i> {album.ImageCount || 0}
+                </div>
+              </div>
+              <div className="portfolio-album-info">
+                <h4>{album.AlbumName}</h4>
+                {album.AlbumDescription && <p>{album.AlbumDescription}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render team members
+  const renderTeam = () => {
+    if (!team || team.length === 0) return null;
+
+    return (
+      <div className="content-section">
+        <h2>Meet the team</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+          {team.map((member, index) => (
+            <div key={index} className="team-member-card">
+              {member.PhotoURL && <img src={member.PhotoURL} alt={member.Name} className="team-member-photo" />}
+              <h4 className="team-member-name">{member.Name}</h4>
+              <p className="team-member-role">{member.Role}</p>
+              {member.Bio && <p className="team-member-bio">{member.Bio}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render enhanced services with better formatting using unified ServiceCard
+  const renderEnhancedServices = () => {
+    if (!services || services.length === 0) return null;
+
+    return (
+      <div className="content-section">
+        <h2>What we offer</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {services.map((service, index) => (
+            <ServiceCard key={index} service={service} variant="display" />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render enhanced FAQs with multiple choice support
+  const renderEnhancedFAQs = () => {
+    if (!faqs || faqs.length === 0) return null;
+
+    return (
+      <div className="content-section">
+        <h2>Things to know</h2>
+        <div>
+          {faqs.map((faq, index) => {
+            const answerType = (faq.AnswerType || '').trim().toLowerCase();
+            const hasAnswerOptions = faq.AnswerOptions && faq.AnswerOptions !== 'null' && faq.AnswerOptions !== '';
+            
+            let answerContent = null;
+
+            if ((answerType === 'multiple choice' || answerType === 'multiple_choice') && hasAnswerOptions) {
+              try {
+                let options = typeof faq.AnswerOptions === 'string' ? JSON.parse(faq.AnswerOptions) : faq.AnswerOptions;
+                
+                if (Array.isArray(options) && options.length > 0) {
+                  if (options[0] && typeof options[0] === 'object' && 'label' in options[0]) {
+                    const checkedOptions = options.filter(opt => opt.checked === true).map(opt => opt.label);
+                    
+                    if (checkedOptions.length > 0) {
+                      answerContent = (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.75rem' }}>
+                          {checkedOptions.map((label, idx) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <i className="fas fa-check" style={{ color: '#3b82f6', fontSize: '0.875rem' }}></i>
+                              <span style={{ color: '#2d3748', fontSize: '0.9375rem' }}>{label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } else {
+                      answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>No options selected</div>;
+                    }
+                  } else {
+                    answerContent = (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.75rem' }}>
+                        {options.map((option, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <i className="fas fa-check" style={{ color: '#3b82f6', fontSize: '0.875rem' }}></i>
+                            <span style={{ color: '#2d3748', fontSize: '0.9375rem' }}>{option}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
+                } else {
+                  answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>{faq.Answer || 'No answer provided'}</div>;
+                }
+              } catch (e) {
+                answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>{faq.Answer || 'No answer provided'}</div>;
+              }
+            } else {
+              answerContent = <div style={{ color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: 1.6 }}>{faq.Answer || 'No answer provided'}</div>;
+            }
+
+            return (
+              <div key={index} style={{ padding: '1.5rem 0', borderBottom: index < faqs.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '1rem', marginBottom: '0.75rem' }}>
+                  {faq.Question}
+                </div>
+                {answerContent}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // Render reviews section with toggle switch
+  const renderReviewsSection = () => {
+    const hasGoogleReviews = googleReviews && (googleReviews.reviews?.length > 0 || googleReviews.rating > 0);
+    const hasPlatformReviews = reviews && reviews.length > 0;
+    
+    // Don't show section if no reviews at all
+    if (!hasGoogleReviews && !hasPlatformReviews && !googleReviewsLoading) return null;
+
+    // Get current reviews to display
+    const currentReviews = showGoogleReviews ? (googleReviews?.reviews || []) : reviews;
+    const totalReviews = currentReviews.length;
+    const startIndex = currentReviewPage * reviewsPerPage;
+    const endIndex = startIndex + reviewsPerPage;
+    const displayedReviews = currentReviews.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(totalReviews / reviewsPerPage);
+
+    // Get vendor name
+    const vendorName = vendor?.profile?.BusinessName || vendor?.profile?.DisplayName || 'This Vendor';
+
+    return (
+      <div className="content-section" id="reviews-section">
+        {/* Header */}
+        <h2 style={{ marginBottom: '1.5rem' }}>Reviews for {vendorName}</h2>
+
+        {/* Rating with Toggle on same row */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          marginBottom: '1.5rem',
+          paddingBottom: '1rem',
+          borderBottom: '1px solid var(--border)'
+        }}>
+          {/* Rating Display - Left side */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ 
+              fontSize: '2.5rem', 
+              fontWeight: 700, 
+              color: 'var(--text)', 
+              lineHeight: 1
+            }}>
+              {showGoogleReviews ? (googleReviews?.rating?.toFixed(1) || '4.8') : '4.9'}
+            </div>
+            <div>
+              <div style={{ 
+                fontSize: '0.9rem', 
+                color: 'var(--primary)',
+                marginBottom: '0.125rem'
+              }}>
+                {'★'.repeat(5)}
+              </div>
+              <div style={{ 
+                fontSize: '0.8rem', 
+                color: 'var(--text-light)'
+              }}>
+                Based on {showGoogleReviews ? (googleReviews?.user_ratings_total || 565) : (reviews?.length || 91)} {showGoogleReviews ? 'Google ' : ''}reviews
+              </div>
+            </div>
+          </div>
+
+          {/* Toggle Switch - Right side, same row */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem'
+          }}>
+            <span style={{ 
+              fontSize: '0.75rem', 
+              color: showGoogleReviews ? 'var(--text-light)' : 'var(--primary)', 
+              fontWeight: showGoogleReviews ? 400 : 600,
+              transition: 'all 0.2s'
+            }}>
+              PlanHive
+            </span>
+            
+            <div 
+              onClick={() => {
+                setShowGoogleReviews(!showGoogleReviews);
+                setCurrentReviewPage(0);
+              }}
+              style={{
+                width: '40px',
+                height: '20px',
+                backgroundColor: showGoogleReviews ? 'var(--primary)' : '#e2e8f0',
+                borderRadius: '10px',
+                position: 'relative',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease'
+              }}
+            >
+              <div style={{
+                width: '16px',
+                height: '16px',
+                backgroundColor: 'white',
+                borderRadius: '50%',
+                position: 'absolute',
+                top: '2px',
+                left: showGoogleReviews ? '22px' : '2px',
+                transition: 'left 0.2s ease',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)'
+              }} />
+            </div>
+            
+            <span style={{ 
+              fontSize: '0.75rem', 
+              color: showGoogleReviews ? 'var(--primary)' : 'var(--text-light)', 
+              fontWeight: showGoogleReviews ? 600 : 400,
+              transition: 'all 0.2s'
+            }}>
+              Google
+            </span>
+          </div>
+        </div>
+
+        {/* Review Content */}
+        <div>
+          {googleReviewsLoading ? (
+            <div style={{ textAlign: 'center', padding: '3rem' }}>
+              <div style={{ fontSize: '0.95rem', color: 'var(--text-light)' }}>Loading reviews...</div>
+            </div>
+          ) : displayedReviews.length > 0 ? (
+            <>
+              {displayedReviews.map((review, index) => (
+                <div key={index} style={{ 
+                  padding: '1.5rem 0', 
+                  borderBottom: index < displayedReviews.length - 1 ? '1px solid var(--border)' : 'none' 
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                    {/* Reviewer Avatar */}
+                    <div style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      borderRadius: '50%', 
+                      background: showGoogleReviews && review.profile_photo_url ? `url(${review.profile_photo_url})` : 'var(--primary)', 
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 600,
+                      fontSize: '0.9rem',
+                      flexShrink: 0
+                    }}>
+                      {(!showGoogleReviews || !review.profile_photo_url) && (
+                        showGoogleReviews 
+                          ? (review.author_name?.charAt(0) || '?')
+                          : (review.ReviewerName?.charAt(0) || 'A')
+                      )}
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      {/* Reviewer Info */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>
+                          {showGoogleReviews ? (review.author_name || 'Anonymous') : (review.ReviewerName || 'Anonymous')}
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
+                          {showGoogleReviews 
+                            ? (review.relative_time_description || '')
+                            : new Date(review.CreatedAt).toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'long' 
+                              })
+                          }
+                        </div>
+                      </div>
+
+                      {/* Rating */}
+                      <div style={{ color: 'var(--primary)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                        {'★'.repeat(showGoogleReviews ? (review.rating || 0) : review.Rating)}{'☆'.repeat(5 - (showGoogleReviews ? (review.rating || 0) : review.Rating))}
+                      </div>
+
+                      {/* Review Text */}
+                      <div style={{ 
+                        color: 'var(--text)', 
+                        fontSize: '0.95rem', 
+                        lineHeight: 1.6
+                      }}>
+                        {showGoogleReviews ? (
+                          <>
+                            {review.text && (review.text.length > 300 ? `${review.text.substring(0, 300)}...` : review.text)}
+                            {review.text && review.text.length > 300 && (
+                              <button style={{ 
+                                background: 'none', 
+                                border: 'none', 
+                                color: 'var(--primary)', 
+                                cursor: 'pointer', 
+                                textDecoration: 'underline',
+                                marginLeft: '0.5rem',
+                                fontWeight: 500
+                              }}>
+                                Read more
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          review.Comment
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center',
+                  gap: '1rem',
+                  marginTop: '2rem',
+                  padding: '1.5rem 0',
+                  borderTop: '1px solid var(--border)'
+                }}>
+                  <button
+                    onClick={() => setCurrentReviewPage(Math.max(0, currentReviewPage - 1))}
+                    disabled={currentReviewPage === 0}
+                    className="btn btn-outline"
+                    style={{
+                      opacity: currentReviewPage === 0 ? 0.5 : 1,
+                      cursor: currentReviewPage === 0 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <i className="fas fa-chevron-left"></i> Previous
+                  </button>
+                  
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 500 }}>
+                    Page {currentReviewPage + 1} of {totalPages}
+                  </span>
+                  
+                  <button
+                    onClick={() => setCurrentReviewPage(Math.min(totalPages - 1, currentReviewPage + 1))}
+                    disabled={currentReviewPage === totalPages - 1}
+                    className="btn btn-outline"
+                    style={{
+                      opacity: currentReviewPage === totalPages - 1 ? 0.5 : 1,
+                      cursor: currentReviewPage === totalPages - 1 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    Next <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-light)' }}>
+              <i className="fas fa-comment" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
+              <div style={{ fontSize: '0.9rem' }}>No {showGoogleReviews ? 'Google' : 'in-app'} reviews yet.</div>
+            </div>
+          )}
+        </div>
+
+        {/* View on Google Link */}
+        {hasGoogleReviews && showGoogleReviews && googleReviews?.url && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center',
+            marginTop: '1.5rem',
+            padding: '1rem 0',
+            borderTop: '1px solid var(--border)'
+          }}>
+            <a 
+              href={googleReviews.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.5rem', 
+                color: 'var(--primary)', 
+                textDecoration: 'none', 
+                fontSize: '0.9rem', 
+                fontWeight: 500,
+                padding: '0.5rem 1rem',
+                borderRadius: 'var(--radius)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.background = 'var(--bg-light)'}
+              onMouseOut={(e) => e.target.style.background = 'transparent'}
+            >
+              <img 
+                src="https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png" 
+                alt="Google" 
+                style={{ height: '16px' }} 
+              />
+              View on Google
+              <i className="fas fa-external-link-alt" style={{ fontSize: '0.75rem' }}></i>
+            </a>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render recommendations section as horizontal carousel
+  const renderRecommendations = () => {
+    const currentRecs = recommendations[activeRecommendationTab] || [];
+    const itemWidth = 320; // Width for each card
+    const gap = 24; // 1.5rem = 24px
+    const containerPadding = 160; // Padding for navigation buttons
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1400;
+    const availableWidth = viewportWidth - containerPadding;
+    const totalContentWidth = currentRecs.length * (itemWidth + gap) - gap; // Remove last gap
+    const maxScroll = Math.max(0, totalContentWidth - availableWidth);
+
+    const handleTabChange = (tab) => {
+      setActiveRecommendationTab(tab);
+      setCarouselIndex(0); // Reset scroll when changing tabs
+    };
+
+    const scrollLeft = () => {
+      setCarouselIndex(prev => Math.max(prev - (itemWidth + gap), 0));
+    };
+
+    const scrollRight = () => {
+      setCarouselIndex(prev => Math.min(prev + (itemWidth + gap), maxScroll));
+    };
+
+    return (
+      <div style={{ 
+        padding: '3rem 0 2rem 0', 
+        marginTop: '2rem',
+        position: 'relative'
+      }}>
+        <div style={{ 
+          maxWidth: '1280px', 
+          margin: '0 auto', 
+          padding: '0 2rem' 
+        }}>
+          {/* Title - Airbnb style: smaller, left-aligned */}
+          <h2 style={{ 
+            fontSize: '1.375rem', 
+            fontWeight: '600', 
+            color: '#222222',
+            marginBottom: '1.5rem',
+            textAlign: 'left'
+          }}>
+            {activeRecommendationTab === 'similar' && 'Similar vendors'}
+            {activeRecommendationTab === 'nearby' && 'Nearby vendors'}
+            {activeRecommendationTab === 'popular' && 'Popular vendors'}
+          </h2>
+          
+          {/* Tab buttons - simplified, left-aligned */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '0.75rem',
+            marginBottom: '1.5rem',
+            flexWrap: 'wrap'
+          }}>
+            <button 
+              onClick={() => handleTabChange('similar')}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '20px',
+                border: '1px solid #dddddd',
+                backgroundColor: activeRecommendationTab === 'similar' ? '#222222' : '#ffffff',
+                color: activeRecommendationTab === 'similar' ? '#ffffff' : '#222222',
+                fontWeight: '500',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Similar
+            </button>
+            <button 
+              onClick={() => handleTabChange('nearby')}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '20px',
+                border: '1px solid #dddddd',
+                backgroundColor: activeRecommendationTab === 'nearby' ? '#222222' : '#ffffff',
+                color: activeRecommendationTab === 'nearby' ? '#ffffff' : '#222222',
+                fontWeight: '500',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Nearby
+            </button>
+            <button 
+              onClick={() => handleTabChange('popular')}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '20px',
+                border: '1px solid #dddddd',
+                backgroundColor: activeRecommendationTab === 'popular' ? '#222222' : '#ffffff',
+                color: activeRecommendationTab === 'popular' ? '#ffffff' : '#222222',
+                fontWeight: '500',
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Popular
+            </button>
+          </div>
+          
+          {/* Horizontal Carousel */}
+          <div style={{ position: 'relative' }}>
+            {/* Navigation Buttons - Airbnb style */}
+            {currentRecs.length > 3 && (
+              <>
+                <button
+                  onClick={scrollLeft}
+                  disabled={carouselIndex === 0}
+                  style={{
+                    position: 'absolute',
+                    left: '-20px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 10,
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    backgroundColor: '#ffffff',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
+                    cursor: carouselIndex === 0 ? 'not-allowed' : 'pointer',
+                    opacity: carouselIndex === 0 ? 0.3 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <i className="fas fa-chevron-left" style={{ color: '#222222', fontSize: '12px' }}></i>
+                </button>
+                
+                <button
+                  onClick={scrollRight}
+                  disabled={carouselIndex >= maxScroll}
+                  style={{
+                    position: 'absolute',
+                    right: '-20px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 10,
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    border: '1px solid rgba(0, 0, 0, 0.08)',
+                    backgroundColor: '#ffffff',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
+                    cursor: carouselIndex >= maxScroll ? 'not-allowed' : 'pointer',
+                    opacity: carouselIndex >= maxScroll ? 0.3 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <i className="fas fa-chevron-right" style={{ color: '#222222', fontSize: '12px' }}></i>
+                </button>
+              </>
+            )}
+            
+            {/* Carousel Container */}
+            <div style={{ 
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                display: 'flex',
+                transform: `translateX(-${carouselIndex}px)`,
+                transition: 'transform 0.3s ease-in-out',
+                gap: `${gap}px`,
+                width: 'fit-content'
+              }}>
+                {currentRecs.length > 0 ? (
+                  currentRecs.map((venue, index) => (
+                    <div
+                      key={venue.VendorProfileID || venue.id || index}
+                      style={{
+                        flex: `0 0 ${itemWidth}px`,
+                        width: `${itemWidth}px`,
+                        minWidth: `${itemWidth}px`
+                      }}
+                    >
+                      <VendorCard
+                        vendor={venue}
+                        isFavorite={favorites.some(fav => fav.vendorProfileId === (venue.VendorProfileID || venue.id))}
+                        onToggleFavorite={(vendorId) => handleRecommendationFavorite(vendorId)}
+                        onView={(vendorId) => navigate(`/vendor/${vendorId}`)}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div style={{
+                    width: '100%',
+                    textAlign: 'center',
+                    padding: '3rem',
+                    color: '#6b7280',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <i className="fas fa-search" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
+                    <div style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Loading recommendations...</div>
+                    <div style={{ fontSize: '0.9rem' }}>We're finding similar vendors for you</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <>
+        <Header 
+          onSearch={(q) => console.log(q)} 
+          onProfileClick={() => setProfileModalOpen(true)} 
+          onWishlistClick={() => setProfileModalOpen(true)} 
+          onChatClick={() => setProfileModalOpen(true)} 
+          onNotificationsClick={() => {}} 
+        />
+        <div className="profile-container">
+          {/* Back Button Skeleton */}
+          <div className="skeleton" style={{ width: '150px', height: '40px', borderRadius: '12px', marginBottom: '2rem' }}></div>
+
+          {/* Image Gallery Skeleton */}
+          <div className="image-gallery">
+            <div className="gallery-item large-image">
+              <div className="skeleton" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}></div>
+            </div>
+            <div className="thumbnails-container">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="gallery-item">
+                  <div className="skeleton" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Header Skeleton */}
+          <div className="vendor-profile-header">
+            <div className="vendor-profile-info" style={{ flex: 1 }}>
+              <div className="skeleton" style={{ width: '60%', height: '36px', marginBottom: '0.75rem' }}></div>
+              <div className="skeleton" style={{ width: '40%', height: '20px', marginBottom: '0.5rem' }}></div>
+            </div>
+            <div className="vendor-profile-actions">
+              <div className="skeleton" style={{ width: '44px', height: '44px', borderRadius: '50%' }}></div>
+              <div className="skeleton" style={{ width: '44px', height: '44px', borderRadius: '50%' }}></div>
+            </div>
+          </div>
+
+          {/* Content Layout Skeleton */}
+          <div className="vendor-content-layout">
+            <div className="vendor-main-content">
+              {/* About Section Skeleton */}
+              <div className="content-section">
+                <div className="skeleton" style={{ width: '200px', height: '28px', marginBottom: '1rem' }}></div>
+                <div className="skeleton" style={{ width: '100%', height: '20px', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ width: '90%', height: '20px', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ width: '80%', height: '20px' }}></div>
+              </div>
+
+              {/* Services Section Skeleton */}
+              <div className="content-section">
+                <div className="skeleton" style={{ width: '180px', height: '28px', marginBottom: '1rem' }}></div>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="service-package-card" style={{ marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                      <div className="skeleton" style={{ width: '80px', height: '80px', borderRadius: '12px' }}></div>
+                      <div style={{ flex: 1 }}>
+                        <div className="skeleton" style={{ width: '60%', height: '20px', marginBottom: '0.5rem' }}></div>
+                        <div className="skeleton" style={{ width: '100%', height: '16px', marginBottom: '0.5rem' }}></div>
+                        <div className="skeleton" style={{ width: '40%', height: '16px' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Sidebar Skeleton */}
+            <div className="vendor-sidebar">
+              <div className="sidebar-card">
+                <div className="skeleton" style={{ width: '100%', height: '48px', borderRadius: '12px', marginBottom: '1rem' }}></div>
+                <div className="skeleton" style={{ width: '100%', height: '48px', borderRadius: '12px' }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
+
+  if (!vendor) {
+    return (
+      <div className="profile-container">
+        <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-light)' }}>Vendor not found</p>
+          <button className="btn btn-primary" onClick={() => navigate('/')} style={{ marginTop: '1rem' }}>
+            Back to Search
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const profile = vendor.profile;
+  const images = vendor.images || [];
+  const services = vendor.services || [];
+  const reviews = vendor.reviews || [];
+  const faqs = vendor.faqs || [];
+  const businessHours = vendor.businessHours || [];
+  const categories = vendor.categories || [];
+
+  return (
+    <div style={{ backgroundColor: '#ffffff', minHeight: '100vh', width: '100%' }}>
+      <Header 
+        onSearch={(q) => console.log(q)} 
+        onProfileClick={() => {
+          if (currentUser) {
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
+        onWishlistClick={() => {
+          if (currentUser) {
+            setDashboardSection('favorites');
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
+        onChatClick={() => {
+          if (currentUser) {
+            const section = currentUser.isVendor ? 'vendor-messages' : 'messages';
+            setDashboardSection(section);
+            setDashboardModalOpen(true);
+          } else {
+            setProfileModalOpen(true);
+          }
+        }} 
+        onNotificationsClick={() => {}} 
+      />
+      <ProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
+      <DashboardModal 
+        isOpen={dashboardModalOpen} 
+        onClose={() => setDashboardModalOpen(false)}
+        initialSection={dashboardSection}
+      />
+      <div className="profile-container">
+        {/* Back Button */}
+        <button className="back-button" onClick={() => navigate(-1)}>
+          <i className="fas fa-arrow-left"></i>
+          <span>Back to search</span>
+        </button>
+
+        {/* Setup Incomplete Banner for Vendors */}
+        {currentUser?.vendorProfileId && (
+          <SetupIncompleteBanner 
+            onContinueSetup={() => {
+              setDashboardSection('vendor-settings');
+              setDashboardModalOpen(true);
+            }}
+          />
+        )}
+
+        {/* Breadcrumb Navigation with Save/Share */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <Breadcrumb items={[
+            profile.City || 'City',
+            categories[0]?.CategoryName || categories[0]?.Category || profile.CategoryName || profile.PrimaryCategory || profile.Category || 'Services',
+            profile.BusinessName || profile.DisplayName || 'Vendor Name',
+            'Profile'
+          ]} />
+          
+          {/* Compact Action Buttons */}
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={handleToggleFavorite}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.35rem 0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                background: isFavorite ? '#fff0f0' : 'white',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                color: isFavorite ? '#e11d48' : '#222',
+                transition: 'all 0.2s'
+              }}
+            >
+              <i className={`${isFavorite ? 'fas' : 'far'} fa-heart`} style={{ fontSize: '0.75rem', color: isFavorite ? '#e11d48' : '#717171' }}></i>
+              Save
+            </button>
+            <button
+              onClick={handleShare}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.35rem 0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                background: 'white',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                color: '#222',
+                transition: 'all 0.2s'
+              }}
+            >
+              <i className="fas fa-share-alt" style={{ fontSize: '0.7rem', color: '#717171' }}></i>
+              Share
+            </button>
+          </div>
+        </div>
+
+        {/* Image Gallery */}
+        <VendorGallery images={images} />
+
+        {/* Main Layout Grid - Sidebar starts at vendor name level */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 304px', gap: '4.75rem', marginTop: '1.5rem' }}>
+          {/* Left Column - Vendor Info + Content */}
+          <div>
+            {/* Vendor Title and Rating */}
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              {/* Business Logo */}
+              {(profile.LogoURL || profile.FeaturedImageURL) && (
+                <div style={{ 
+                  width: '80px', 
+                  height: '80px', 
+                  borderRadius: '50%', 
+                  overflow: 'hidden', 
+                  border: '2px solid var(--border)',
+                  background: 'var(--secondary)',
+                  flexShrink: 0
+                }}>
+                  <img 
+                    src={profile.LogoURL || profile.FeaturedImageURL} 
+                    alt={`${profile.BusinessName || profile.DisplayName} logo`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
+                </div>
+              )}
+              
+              <div style={{ flex: 1 }}>
+                <h1 style={{ fontSize: '1.625rem', fontWeight: 600, marginBottom: '0.5rem', color: '#222', lineHeight: 1.25 }}>
+                  {profile.BusinessName || profile.DisplayName}
+                </h1>
+              
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.95rem' }}>
+                  {/* Rating with blue star - clickable */}
+                  <span 
+                    onClick={() => {
+                      const reviewsSection = document.getElementById('reviews-section');
+                      if (reviewsSection) {
+                        reviewsSection.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '4px',
+                      cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
+                      display: 'block', 
+                      height: '14px', 
+                      width: '14px', 
+                      fill: '#0066CC'
+                    }}>
+                      <path fillRule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
+                    </svg>
+                    <span style={{ fontWeight: 600, color: '#000' }}>
+                      {reviews.length > 0 ? '4.9' : '5.0'}
+                    </span>
+                    {reviews.length > 0 && (
+                      <span style={{ color: '#717171' }}>({reviews.length})</span>
+                    )}
+                  </span>
+                  
+                  <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
+                  
+                  {/* Location - clickable */}
+                  {(profile.City || profile.State) && (
+                    <>
+                      <span 
+                        onClick={() => {
+                          const locationSection = document.getElementById('location-section');
+                          if (locationSection) {
+                            locationSection.scrollIntoView({ behavior: 'smooth' });
+                          }
+                        }}
+                        style={{ 
+                          color: '#000', 
+                          textDecoration: 'underline', 
+                          fontWeight: 500, 
+                          cursor: 'pointer' 
+                        }}
+                      >
+                        {[profile.City, profile.State, profile.Country].filter(Boolean).join(', ')}
+                      </span>
+                      <span style={{ color: '#717171', margin: '0 0.25rem' }}>·</span>
+                    </>
+                  )}
+                  
+                  {/* Category */}
+                  <span style={{ color: '#000' }}>{profile.Tagline || profile.CategoryName || 'Event Services'}</span>
+                </div>
+              </div>
+                </div>
+              </div>
+
+              {/* Social Media Icons */}
+              <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #ebebeb' }}>
+                {renderSocialMediaIcons()}
+              </div>
+            </div>
+
+            {/* Main Content */}
+            <div style={{ marginTop: '1.9rem', paddingTop: '1.9rem', borderTop: '1px solid #ebebeb' }}>
+          {/* 1. About This Vendor */}
+          <div className="content-section">
+            <h2>About this vendor</h2>
+            <p>{profile.BusinessDescription || 'Welcome to our business! We provide exceptional event services tailored to your needs.'}</p>
+          </div>
+
+          {/* 2. What This Place Offers (Questionnaire of Services) */}
+          {renderVendorFeatures()}
+
+          {/* 3. What We Offer (Service Pricing) */}
+          {renderEnhancedServices()}
+
+          {/* 4. Portfolio (Media Gallery) */}
+          {renderPortfolioAlbums()}
+
+          {/* 5. Things to Know */}
+          {renderEnhancedFAQs()}
+
+          {/* 6. Where You'll Find Us (Map + Cities Served) */}
+          {renderLocationAndServiceAreas()}
+
+          {/* 7. Reviews */}
+          {renderReviewsSection()}
+
+          {/* Team Section - optional at bottom */}
+              {renderTeam()}
+            </div>
+          </div>
+
+          {/* Right Column - Sidebar */}
+          <div className="vendor-sidebar">
+          {/* Business Hours - First */}
+          {businessHours.length > 0 && (
+            <div className="sidebar-card">
+              <h3 style={{ marginBottom: '0.75rem' }}>Business Hours</h3>
+              {/* Timezone Display */}
+              {profile.TimeZone && (() => {
+                // Helper to get timezone info
+                const getTimezoneInfo = (tz) => {
+                  const tzMap = {
+                    'America/Toronto': { abbr: 'EST', offset: '-5:00' },
+                    'America/New_York': { abbr: 'EST', offset: '-5:00' },
+                    'America/Chicago': { abbr: 'CST', offset: '-6:00' },
+                    'America/Denver': { abbr: 'MST', offset: '-7:00' },
+                    'America/Los_Angeles': { abbr: 'PST', offset: '-8:00' },
+                    'America/Vancouver': { abbr: 'PST', offset: '-8:00' },
+                    'Europe/London': { abbr: 'GMT', offset: '+0:00' },
+                    'Europe/Paris': { abbr: 'CET', offset: '+1:00' },
+                    'Asia/Tokyo': { abbr: 'JST', offset: '+9:00' },
+                    'Australia/Sydney': { abbr: 'AEST', offset: '+10:00' },
+                  };
+                  return tzMap[tz] || { abbr: '', offset: '' };
+                };
+                const tzInfo = getTimezoneInfo(profile.TimeZone);
+                const abbr = profile.TimeZoneAbbr || tzInfo.abbr;
+                const offset = profile.GMTOffset || tzInfo.offset;
+                
+                return (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem', 
+                    marginBottom: '1rem',
+                    padding: '0.5rem 0',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}>
+                    <i className="fas fa-globe" style={{ fontSize: '0.8rem', color: '#5e72e4' }}></i>
+                    <span style={{ fontSize: '0.8rem', color: '#717171' }}>
+                      {profile.TimeZone}{abbr ? ` (${abbr})` : ''}{offset ? ` GMT ${offset}` : ''}
+                    </span>
+                  </div>
+                );
+              })()}
+              <div style={{ fontSize: '0.9rem' }}>
+                {businessHours.map((hour, index) => {
+                  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                  
+                  // Format time to 12-hour format (e.g., 5:00 PM)
+                  const formatTime = (timeStr) => {
+                    if (!timeStr) return '';
+                    const [hours, minutes] = timeStr.split(':');
+                    const hour = parseInt(hours, 10);
+                    const ampm = hour >= 12 ? 'PM' : 'AM';
+                    const hour12 = hour % 12 || 12;
+                    return `${hour12}:${minutes} ${ampm}`;
+                  };
+                  
+                  return (
+                    <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: index < businessHours.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
+                      <span style={{ fontWeight: 500, color: '#222', flex: '0 0 100px' }}>{dayNames[hour.DayOfWeek]}</span>
+                      <span style={{ color: '#717171', textAlign: 'center', flex: 1 }}>
+                        {hour.IsAvailable ? `${formatTime(hour.OpenTime)} - ${formatTime(hour.CloseTime)}` : 'Closed'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Request Booking Card - Second */}
+          <div className="sidebar-card">
+            <h3>Request to Book</h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              Send a booking request to this vendor with your event details and service requirements.
+            </p>
+            <button className="btn btn-primary btn-full-width" onClick={handleRequestBooking}>
+              <i className="fas fa-calendar-check"></i>
+              <span>Request Booking</span>
+            </button>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-light)', marginTop: '0.75rem', textAlign: 'center' }}>
+              <i className="fas fa-shield-alt" style={{ color: 'var(--primary)' }}></i> Free request • No payment required
+            </p>
+          </div>
+
+          {/* Contact - Third */}
+          <div className="sidebar-card">
+            <h3>Message Vendor</h3>
+            <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-light)' }}>
+              Have questions? Get in touch!
+            </p>
+            <button className="btn btn-primary btn-full-width" onClick={handleMessageVendor}>
+              <i className="fas fa-comment"></i>
+              <span>Send Message</span>
+            </button>
+          </div>
+          </div>
+        </div>
+      
+      {/* Recommendations Section */}
+      {renderRecommendations()}
+      
+      {/* Footer - No spacing */}
+      <Footer />
+      <MessagingWidget />
+    </div>
+    </div>
+  );
+}
+
+export default VendorProfilePage;
