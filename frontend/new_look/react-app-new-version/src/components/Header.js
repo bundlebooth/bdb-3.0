@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import DashboardModal from './DashboardModal';
@@ -8,6 +9,7 @@ import { getUnreadNotificationCount, updatePageTitle } from '../utils/notificati
 import './EnhancedSearchBar.css';
 
 const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNotificationsClick }) {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [favoritesBadge, setFavoritesBadge] = useState(0);
@@ -138,6 +140,28 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       </div>
 
       <div className="user-nav">
+        {!currentUser?.isVendor && (
+          <button 
+            className="become-vendor-btn"
+            onClick={() => navigate('/become-a-vendor')}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: 'transparent',
+              color: 'var(--text)',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.95rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              marginRight: '0.5rem'
+            }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = '#f7f7f7'}
+            onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+          >
+            Become A Vendor
+          </button>
+        )}
         <div className="nav-icon" id="wishlist-btn" onClick={onWishlistClick}>
           <i className="fas fa-heart"></i>
           <span

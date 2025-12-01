@@ -13,6 +13,31 @@
   min-width: 600px;
 }
 
+/* X Close button at top right */
+.calendar-close-x {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #f0f0f0;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #666666;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.calendar-close-x:hover {
+  background-color: #e0e0e0;
+  color: #333333;
+}
+
 .calendar-content {
   display: flex;
   gap: 0;

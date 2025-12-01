@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import IndexPage from './pages/IndexPage';
 import VendorProfilePage from './pages/VendorProfilePage';
 import BookingPage from './pages/BookingPage';
+import BecomeVendorPage from './pages/BecomeVendorPage';
 import { AuthProvider } from './context/AuthContext';
 import './styles/MapControls.css';
 
@@ -41,6 +42,7 @@ function App() {
           <Route path="/" element={<IndexPage />} />
           <Route path="/vendor/:vendorId" element={<VendorProfilePage />} />
           <Route path="/booking/:vendorId" element={<BookingPage />} />
+          <Route path="/become-a-vendor" element={<BecomeVendorPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

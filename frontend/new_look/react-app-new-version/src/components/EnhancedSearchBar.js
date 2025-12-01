@@ -11,6 +11,7 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [activeField, setActiveField] = useState(null); // 'event', 'location', 'date'
   const [userLocation, setUserLocation] = useState(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [startTime, setStartTime] = useState('11:00');
@@ -70,24 +71,42 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Track if user just clicked to prevent scroll from immediately closing
+  const justClickedRef = useRef(false);
+  
   // Handle scroll to collapse search bar when expanded
   useEffect(() => {
+    let scrollTimeout;
     const handleScroll = () => {
+      // Don't collapse if user just clicked to expand
+      if (justClickedRef.current) {
+        return;
+      }
+      
       if (isExpanded) {
-        setIsExpanded(false);
-        setShowLocationDropdown(false);
-        setShowCalendar(false);
-        
-        // Clear Google Maps dropdown
-        const pacContainers = document.querySelectorAll('.pac-container');
-        pacContainers.forEach(container => {
-          container.style.display = 'none';
-        });
+        // Add a small delay to prevent accidental collapse
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          if (!justClickedRef.current) {
+            setIsExpanded(false);
+            setShowLocationDropdown(false);
+            setShowCalendar(false);
+            
+            // Clear Google Maps dropdown
+            const pacContainers = document.querySelectorAll('.pac-container');
+            pacContainers.forEach(container => {
+              container.style.display = 'none';
+            });
+          }
+        }, 150);
       }
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimeout);
+    };
   }, [isExpanded]);
 
   const loadGoogleMapsAPI = () => {
@@ -279,23 +298,53 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   };
 
   const handleSearchBarClick = () => {
+    // Prevent scroll from immediately closing
+    justClickedRef.current = true;
     setIsExpanded(true);
+    
+    // Reset after a short delay
+    setTimeout(() => {
+      justClickedRef.current = false;
+    }, 300);
   };
 
-  // Format date for display (compact version with year)
-  const formatDateDisplay = (dateString) => {
-    if (!dateString) return 'When?';
-    const date = new Date(dateString);
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const day = date.getDate();
-    const year = date.getFullYear();
-    return `${month} ${day}, ${year}`;
+  // Format date for display (compact version)
+  const formatDateDisplay = (dateString, compact = false) => {
+    if (!dateString) return compact ? 'Anytime' : 'Pick the date';
+    // Parse the date string as local date to avoid timezone issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+    const dayNum = date.getDate();
+    const yearNum = date.getFullYear();
+    return `${monthName} ${dayNum}, ${yearNum}`;
   };
 
-  // Format location for compact display (show full location)
-  const formatLocationDisplay = (locationString) => {
-    if (!locationString) return 'Where?';
-    return locationString; // Show full location like "Toronto, ON, Canada"
+  // Format location for compact display
+  const formatLocationDisplay = (locationString, compact = false) => {
+    if (!locationString) return compact ? 'Location' : 'Search cities in Canada';
+    // Truncate for compact view
+    if (compact && locationString.length > 18) {
+      return locationString.substring(0, 15) + '...';
+    }
+    return locationString;
+  };
+
+  const handleFieldClick = (field) => {
+    // Prevent scroll from immediately closing
+    justClickedRef.current = true;
+    setIsExpanded(true);
+    setActiveField(field);
+    if (field === 'date') {
+      setShowCalendar(true);
+    } else {
+      setShowCalendar(false);
+    }
+    
+    // Reset after a short delay
+    setTimeout(() => {
+      justClickedRef.current = false;
+    }, 300);
   };
 
   // Get minimum date (today)
@@ -309,37 +358,30 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
       className={`enhanced-search-container ${isScrolled ? 'scrolled' : ''} ${isExpanded ? 'expanded' : ''}`}
       ref={searchBarRef}
     >
-        <div className="enhanced-search-bar" onClick={handleSearchBarClick}>
-        {/* Compact View (default - always show unless expanded) */}
+      <div className="enhanced-search-bar">
+        {/* Compact View (collapsed state) */}
         {!isExpanded ? (
-          <div className="compact-view">
-            <div className="compact-field compact-location" onClick={handleLocationFieldClick}>
-              <span className="compact-value">{formatLocationDisplay(location)}</span>
-              {location && (
-                <button className="clear-btn" onClick={handleClearLocation} title="Clear location">
-                  <i className="fas fa-times"></i>
-                </button>
-              )}
+          <div className="compact-view" onClick={handleSearchBarClick}>
+            <div className="compact-field compact-location">
+              <span className="compact-value">{formatLocationDisplay(location, true) || 'Location'}</span>
             </div>
             <div className="compact-separator">|</div>
-            <div className="compact-field compact-date" onClick={handleDateFieldClick}>
-              <span className="compact-value">{formatDateDisplay(selectedDate)}</span>
-              {selectedDate && (
-                <button className="clear-btn" onClick={handleClearDate} title="Clear date">
-                  <i className="fas fa-times"></i>
-                </button>
-              )}
+            <div className="compact-field compact-date">
+              <span className="compact-value">{formatDateDisplay(selectedDate, true)}</span>
             </div>
-            <button className="search-btn-compact" onClick={handleSearch} title="Search">
+            <button className="search-btn-compact" onClick={(e) => { e.stopPropagation(); handleSearch(); }} title="Search">
               <i className="fas fa-search"></i>
-              <span>Search</span>
             </button>
           </div>
         ) : (
           /* Expanded View */
           <div className="expanded-view">
             {/* Location Input */}
-            <div className="search-field location-field" ref={locationRef} onClick={handleLocationFieldClick}>
+            <div 
+              className={`search-field location-field ${activeField === 'location' ? 'active' : ''}`}
+              ref={locationRef} 
+              onClick={() => handleFieldClick('location')}
+            >
               <div className="field-label">Where?</div>
               <div className="field-input-wrapper">
                 <input
@@ -349,11 +391,6 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
                   onChange={(e) => setLocation(e.target.value)}
                   onClick={(e) => e.stopPropagation()}
                 />
-                {location && (
-                  <button className="clear-field-btn" onClick={handleClearLocation} title="Clear location">
-                    <i className="fas fa-times"></i>
-                  </button>
-                )}
                 <button 
                   className="use-location-btn"
                   onClick={(e) => {
@@ -375,15 +412,14 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
             <div className="field-separator"></div>
 
             {/* Date Input */}
-            <div className="search-field date-field" ref={dateRef} onClick={handleDateFieldClick}>
+            <div 
+              className={`search-field date-field ${activeField === 'date' ? 'active' : ''}`}
+              ref={dateRef} 
+              onClick={() => handleFieldClick('date')}
+            >
               <div className="field-label">When?</div>
               <div className="field-value">
                 {formatDateDisplay(selectedDate)}
-                {selectedDate && (
-                  <button className="clear-field-btn" onClick={handleClearDate} title="Clear date">
-                    <i className="fas fa-times"></i>
-                  </button>
-                )}
               </div>
               
               {showCalendar && isExpanded && (

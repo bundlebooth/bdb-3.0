@@ -46,7 +46,11 @@ const Calendar = ({ selectedDate, onDateSelect, onClose, startTime, endTime, onT
 
   const handleDateClick = (date) => {
     if (date && date >= new Date().setHours(0, 0, 0, 0)) {
-      onDateSelect(date.toISOString().split('T')[0]);
+      // Format date in local timezone to avoid UTC conversion issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      onDateSelect(`${year}-${month}-${day}`);
       // Don't close - let user select times
     }
   };
@@ -77,7 +81,11 @@ const Calendar = ({ selectedDate, onDateSelect, onClose, startTime, endTime, onT
 
   const isDateSelected = (date) => {
     if (!date || !selectedDate) return false;
-    return date.toISOString().split('T')[0] === selectedDate;
+    // Format date in local timezone to avoid UTC conversion issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}` === selectedDate;
   };
 
   const isDateDisabled = (date) => {
@@ -89,6 +97,11 @@ const Calendar = ({ selectedDate, onDateSelect, onClose, startTime, endTime, onT
 
   return (
     <div className="calendar-popup">
+      {/* Close button at top right */}
+      <button onClick={onClose} className="calendar-close-x" title="Close">
+        <i className="fas fa-times"></i>
+      </button>
+      
       <div className="calendar-content">
         {/* Left side - Calendar */}
         <div className="calendar-left">
@@ -182,12 +195,6 @@ const Calendar = ({ selectedDate, onDateSelect, onClose, startTime, endTime, onT
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="calendar-footer">
-        <button onClick={onClose} className="calendar-close-btn">
-          Close
-        </button>
       </div>
     </div>
   );
