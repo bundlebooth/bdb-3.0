@@ -30,58 +30,104 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
   
   useEffect(() => {
     // Initialize Google Maps autocomplete after component mounts
-    initializeGoogleMaps();
+    // Add retry mechanism in case Google Maps hasn't loaded yet
+    const tryInitialize = () => {
+      if (window.google?.maps?.places) {
+        console.log('✅ Google Maps ready, initializing autocomplete...');
+        initializeGoogleMaps();
+      } else {
+        console.log('⏳ Google Maps not ready yet, retrying in 200ms...');
+        setTimeout(tryInitialize, 200);
+      }
+    };
+    
+    tryInitialize();
   }, []);
 
   const initializeGoogleMaps = () => {
+    console.log('🔍 LocationServiceAreasPanel: Checking Google Maps...', {
+      hasGoogle: !!window.google,
+      hasMaps: !!window.google?.maps,
+      hasPlaces: !!window.google?.maps?.places,
+      hasAddressInput: !!addressInputRef.current,
+      hasServiceAreaInput: !!serviceAreaInputRef.current
+    });
+
     if (!window.google || !window.google.maps || !window.google.maps.places) {
-      console.warn('Google Maps not loaded yet');
+      console.log('❌ Google Maps not ready yet');
       return;
     }
     
-    // Address Autocomplete
+    // Address Autocomplete - EXACTLY like EnhancedSearchBar
     if (addressInputRef.current && !addressAutocompleteRef.current) {
+      console.log('✅ Creating address autocomplete...');
+
       addressAutocompleteRef.current = new window.google.maps.places.Autocomplete(addressInputRef.current, {
-        fields: ['address_components', 'geometry', 'formatted_address', 'place_id', 'types'],
         types: ['address'],
-        componentRestrictions: { country: ['ca'] }
+        componentRestrictions: { country: 'ca' }
       });
       
       addressAutocompleteRef.current.addListener('place_changed', () => {
         const place = addressAutocompleteRef.current.getPlace();
-        if (!place || !place.address_components) return;
+        console.log('🎯 Address place selected:', place);
+        
+        if (!place || !place.address_components) {
+          console.log('❌ No place or address components');
+          return;
+        }
         
         const comps = place.address_components;
         const pick = (type) => comps.find(c => c.types.includes(type))?.long_name || '';
         
+        const streetNumber = pick('street_number');
+        const route = pick('route');
+        const fullAddress = streetNumber && route ? `${streetNumber} ${route}` : place.formatted_address;
+        
+        console.log('📋 Extracted address data:', {
+          fullAddress,
+          city: pick('locality') || pick('sublocality'),
+          state: pick('administrative_area_level_1'),
+          postalCode: pick('postal_code')
+        });
+        
         setFormData(prev => ({
           ...prev,
-          address: place.formatted_address || prev.address,
+          address: fullAddress || '',
           city: pick('locality') || pick('sublocality') || pick('postal_town') || pick('administrative_area_level_3') || '',
           state: pick('administrative_area_level_1') || '',
-          country: pick('country') || '',
+          country: pick('country') || 'Canada',
           postalCode: pick('postal_code') || ''
         }));
+
+        console.log('✅ Address fields updated!');
       });
+
+      console.log('✅ Address autocomplete created');
     }
     
-    // Service Area Autocomplete
+    // Service Area Autocomplete - EXACTLY like EnhancedSearchBar
     if (serviceAreaInputRef.current && !serviceAreaAutocompleteRef.current) {
+      console.log('✅ Creating service area autocomplete...');
+
       serviceAreaAutocompleteRef.current = new window.google.maps.places.Autocomplete(serviceAreaInputRef.current, {
-        fields: ['address_components', 'geometry', 'formatted_address', 'place_id', 'types'],
         types: ['(cities)'],
-        componentRestrictions: { country: ['ca'] }
+        componentRestrictions: { country: 'ca' }
       });
       
       serviceAreaAutocompleteRef.current.addListener('place_changed', () => {
         const place = serviceAreaAutocompleteRef.current.getPlace();
-        if (!place || !place.address_components) return;
+        console.log('🎯 Service area place selected:', place);
+        
+        if (!place || !place.address_components) {
+          console.log('❌ No place or address components');
+          return;
+        }
         
         const comps = place.address_components;
         const pick = (type) => comps.find(c => c.types.includes(type))?.long_name || '';
         const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || '';
         const province = pick('administrative_area_level_1') || '';
-        const country = pick('country') || formData.country || '';
+        const country = pick('country') || formData.country || 'Canada';
         const loc = place.geometry?.location;
         
         const newArea = {
@@ -96,6 +142,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           serviceRadius: 25.0
         };
         
+        console.log('📍 New service area:', newArea);
+        
         // Check for duplicates
         const exists = formData.serviceAreas.some(a => 
           (newArea.placeId && a.placeId && a.placeId === newArea.placeId) ||
@@ -108,10 +156,19 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
             ...prev,
             serviceAreas: [...prev.serviceAreas, newArea]
           }));
+          console.log('✅ Added service area:', newArea.city);
+        } else {
+          console.log('⚠️ Service area already exists');
         }
         
         setServiceAreaInput('');
+        // Clear the input field
+        if (serviceAreaInputRef.current) {
+          serviceAreaInputRef.current.value = '';
+        }
       });
+
+      console.log('✅ Service area autocomplete created');
     }
   };
   
@@ -125,7 +182,7 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
       if (response.ok) {
         const data = await response.json();
         const loc = data.location || {};
-        setFormData({
+        const newFormData = {
           address: loc.Address || '',
           city: loc.City || '',
           state: loc.State || '',
@@ -142,14 +199,19 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
             formattedAddress: a.FormattedAddress || null,
             placeType: a.PlaceType || null
           }))
-        });
+        };
+        setFormData(newFormData);
+        
+        // Manually update the address input value since we're using ref
+        if (addressInputRef.current && newFormData.address) {
+          addressInputRef.current.value = newFormData.address;
+        }
       }
     } catch (error) {
       console.error('Error loading location:', error);
     } finally {
       setLoading(false);
-      // Initialize Google Maps after data is loaded
-      setTimeout(initializeGoogleMaps, 100);
+      // Don't reinitialize - it's already initialized from the first useEffect
     }
   };
 
@@ -260,10 +322,13 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
                   type="text"
                   id="loc-address"
                   ref={addressInputRef}
-                  value={formData.address}
+                  defaultValue={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   placeholder="Start typing your address..."
                 />
+                <small style={{ color: 'var(--text-light)', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
+                  🔥 Google Maps will auto-complete your address
+                </small>
               </div>
             </div>
             <div className="form-col">
