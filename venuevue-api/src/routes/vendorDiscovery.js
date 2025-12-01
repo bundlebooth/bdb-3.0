@@ -226,11 +226,11 @@ function translateCategoryForDatabase(frontendCategory) {
 // Returns all vendor sections for the main page
 router.get('/sections', async (req, res) => {
     try {
-        const { city, latitude, longitude, limit = 8, category } = req.query;
+        const { city, latitude, longitude, limit = 8, category, eventDate, dayOfWeek, startTime, endTime } = req.query;
         const pool = await poolPromise;
         
         console.log('🔥🔥🔥 DISCOVERY SECTIONS REQUEST 🔥🔥🔥');
-        console.log('📦 Fetching discovery sections with filters:', { city, category, latitude, longitude, limit });
+        console.log('📦 Fetching discovery sections with filters:', { city, category, latitude, longitude, limit, eventDate, dayOfWeek, startTime, endTime });
         console.log('📦 Full query params:', req.query);
         
         // Translate frontend category to database category
@@ -239,21 +239,60 @@ router.get('/sections', async (req, res) => {
         
         const sections = [];
         
-        // 1. Trending Vendors
+        // Helper function to format time for SQL
+        const formatTime = (time) => {
+            if (!time) return null;
+            const timeStr = String(time).trim();
+            const parts = timeStr.split(':');
+            if (parts.length === 3) return timeStr;
+            if (parts.length === 2) return timeStr + ':00';
+            return null;
+        };
+        
+        // Calculate day number if dayOfWeek is provided
+        let dayNumber = null;
+        if (eventDate) {
+            const date = new Date(eventDate);
+            dayNumber = date.getDay(); // 0=Sunday, 1=Monday, etc.
+        }
+        
+        // 1. Trending Vendors (using sp_SearchVendors with trending sort)
         try {
             const trendingRequest = pool.request();
-            trendingRequest.input('Limit', sql.Int, parseInt(limit));
-            if (city) trendingRequest.input('City', sql.NVarChar(100), city);
-            else trendingRequest.input('City', sql.NVarChar(100), null);
-            // Pass translated database category to stored procedure for database-level filtering
-            if (dbCategory) {
-                trendingRequest.input('Category', sql.NVarChar(50), dbCategory);
-                console.log(`🔥 Trending: Filtering by category at DB level: ${dbCategory} (from frontend: ${category})`);
-            } else {
-                trendingRequest.input('Category', sql.NVarChar(50), null);
-            }
+            trendingRequest.input('SearchTerm', sql.NVarChar(100), null);
+            trendingRequest.input('Category', sql.NVarChar(50), dbCategory || null);
+            trendingRequest.input('City', sql.NVarChar(100), city || null);
+            trendingRequest.input('MinPrice', sql.Decimal(10, 2), null);
+            trendingRequest.input('MaxPrice', sql.Decimal(10, 2), null);
+            trendingRequest.input('MinRating', sql.Decimal(2, 1), null);
+            trendingRequest.input('IsPremium', sql.Bit, null);
+            trendingRequest.input('IsEcoFriendly', sql.Bit, null);
+            trendingRequest.input('IsAwardWinning', sql.Bit, null);
+            trendingRequest.input('IsLastMinute', sql.Bit, null);
+            trendingRequest.input('IsCertified', sql.Bit, null);
+            trendingRequest.input('IsInsured', sql.Bit, null);
+            trendingRequest.input('IsLocal', sql.Bit, null);
+            trendingRequest.input('IsMobile', sql.Bit, null);
+            trendingRequest.input('Latitude', sql.Decimal(10, 8), null);
+            trendingRequest.input('Longitude', sql.Decimal(11, 8), null);
+            trendingRequest.input('RadiusMiles', sql.Int, 25);
+            trendingRequest.input('PageNumber', sql.Int, 1);
+            trendingRequest.input('PageSize', sql.Int, parseInt(limit));
+            trendingRequest.input('SortBy', sql.NVarChar(50), 'trending');
+            trendingRequest.input('BudgetType', sql.NVarChar(20), null);
+            trendingRequest.input('PricingModelFilter', sql.NVarChar(20), null);
+            trendingRequest.input('FixedPricingTypeFilter', sql.NVarChar(20), null);
+            trendingRequest.input('EventDateRaw', sql.NVarChar(50), null);
+            trendingRequest.input('EventStartRaw', sql.NVarChar(20), null);
+            trendingRequest.input('EventEndRaw', sql.NVarChar(20), null);
+            trendingRequest.input('Region', sql.NVarChar(50), null);
+            trendingRequest.input('PriceLevel', sql.NVarChar(10), null);
+            trendingRequest.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+            trendingRequest.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
+            trendingRequest.input('StartTime', sql.Time, formatTime(startTime));
+            trendingRequest.input('EndTime', sql.Time, formatTime(endTime));
             
-            const trendingResult = await trendingRequest.execute('sp_GetTrendingVendors');
+            const trendingResult = await trendingRequest.execute('sp_SearchVendors');
             console.log(`📊 Trending: Got ${trendingResult.recordset.length} vendors from DB`);
             
             if (trendingResult.recordset.length > 0) {
@@ -271,19 +310,43 @@ router.get('/sections', async (req, res) => {
             console.error('Error fetching trending vendors:', err);
         }
         
-        // 2. Top Rated Vendors
+        // 2. Top Rated Vendors (using sp_SearchVendors with rating sort)
         try {
             const topRatedRequest = pool.request();
-            topRatedRequest.input('Limit', sql.Int, parseInt(limit));
-            if (city) topRatedRequest.input('City', sql.NVarChar(100), city);
-            else topRatedRequest.input('City', sql.NVarChar(100), null);
-            if (dbCategory) {
-                topRatedRequest.input('Category', sql.NVarChar(50), dbCategory);
-            } else {
-                topRatedRequest.input('Category', sql.NVarChar(50), null);
-            }
+            topRatedRequest.input('SearchTerm', sql.NVarChar(100), null);
+            topRatedRequest.input('Category', sql.NVarChar(50), dbCategory || null);
+            topRatedRequest.input('City', sql.NVarChar(100), city || null);
+            topRatedRequest.input('MinPrice', sql.Decimal(10, 2), null);
+            topRatedRequest.input('MaxPrice', sql.Decimal(10, 2), null);
+            topRatedRequest.input('MinRating', sql.Decimal(2, 1), 4.0);
+            topRatedRequest.input('IsPremium', sql.Bit, null);
+            topRatedRequest.input('IsEcoFriendly', sql.Bit, null);
+            topRatedRequest.input('IsAwardWinning', sql.Bit, null);
+            topRatedRequest.input('IsLastMinute', sql.Bit, null);
+            topRatedRequest.input('IsCertified', sql.Bit, null);
+            topRatedRequest.input('IsInsured', sql.Bit, null);
+            topRatedRequest.input('IsLocal', sql.Bit, null);
+            topRatedRequest.input('IsMobile', sql.Bit, null);
+            topRatedRequest.input('Latitude', sql.Decimal(10, 8), null);
+            topRatedRequest.input('Longitude', sql.Decimal(11, 8), null);
+            topRatedRequest.input('RadiusMiles', sql.Int, 25);
+            topRatedRequest.input('PageNumber', sql.Int, 1);
+            topRatedRequest.input('PageSize', sql.Int, parseInt(limit));
+            topRatedRequest.input('SortBy', sql.NVarChar(50), 'rating');
+            topRatedRequest.input('BudgetType', sql.NVarChar(20), null);
+            topRatedRequest.input('PricingModelFilter', sql.NVarChar(20), null);
+            topRatedRequest.input('FixedPricingTypeFilter', sql.NVarChar(20), null);
+            topRatedRequest.input('EventDateRaw', sql.NVarChar(50), null);
+            topRatedRequest.input('EventStartRaw', sql.NVarChar(20), null);
+            topRatedRequest.input('EventEndRaw', sql.NVarChar(20), null);
+            topRatedRequest.input('Region', sql.NVarChar(50), null);
+            topRatedRequest.input('PriceLevel', sql.NVarChar(10), null);
+            topRatedRequest.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+            topRatedRequest.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
+            topRatedRequest.input('StartTime', sql.Time, formatTime(startTime));
+            topRatedRequest.input('EndTime', sql.Time, formatTime(endTime));
             
-            const topRatedResult = await topRatedRequest.execute('sp_GetTopRatedVendors');
+            const topRatedResult = await topRatedRequest.execute('sp_SearchVendors');
             if (topRatedResult.recordset.length > 0) {
                 const vendors = await Promise.all(
                     topRatedResult.recordset.map(v => formatVendorData(v, pool))

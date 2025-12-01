@@ -202,32 +202,6 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   };
 
   // Check vendor availability for selected date and time
-  const checkVendorAvailability = async (date, cityName, startTime, endTime) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/vendors/check-availability`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          date: date,
-          city: cityName,
-          dayOfWeek: new Date(date).getDay(),
-          startTime: startTime,
-          endTime: endTime
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.availableVendors || [];
-      }
-    } catch (error) {
-      console.error('Error checking availability:', error);
-    }
-    return [];
-  };
-
   const handleSearch = async () => {
     if (!location && !selectedDate) {
       alert('Please select a location or date to search');
@@ -241,13 +215,6 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
       endTime: endTime,
       userLocation: userLocation
     };
-
-    // If date is selected, check availability
-    if (selectedDate && location) {
-      const cityName = location.split(',')[0].trim();
-      const availableVendors = await checkVendorAvailability(selectedDate, cityName, startTime, endTime);
-      searchParams.availableVendors = availableVendors;
-    }
 
     console.log('Search params:', searchParams);
 

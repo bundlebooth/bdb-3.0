@@ -459,44 +459,180 @@ router.get('/', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
-    const request = new sql.Request(pool);
+    // Availability filters - format times properly
+    const formatTime = (time) => {
+      if (!time) return null;
+      try {
+        const timeStr = String(time).trim();
+        const parts = timeStr.split(':');
+        if (parts.length === 3) return timeStr;
+        if (parts.length === 2) return `${timeStr}:00`;
+        return null;
+      } catch (err) {
+        console.error('Time format error:', err);
+        return null;
+      }
+    };
+    
+    const formattedStartTime = formatTime(startTime);
+    const formattedEndTime = formatTime(endTime);
+    
+    console.log('⏰ Time formatting:', { 
+      startTime, 
+      endTime, 
+      formattedStartTime, 
+      formattedEndTime 
+    });
 
-    request.input('SearchTerm', sql.NVarChar(100), searchTerm || null);
-    request.input('Category', sql.NVarChar(50), category || null);
-    request.input('City', sql.NVarChar(100), city || null); // Pass city to stored procedure
-    request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
-    request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
-    request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
-    request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
-    request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
-    request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
-    request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
-    request.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : isCertified === 'false' ? 0 : null);
-    request.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : isInsured === 'false' ? 0 : null);
-    request.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : isLocal === 'false' ? 0 : null);
-    request.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : isMobile === 'false' ? 0 : null);
-    request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
-    request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
-    request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
-    request.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
-    request.input('PageSize', sql.Int, pageSize ? parseInt(pageSize) : 10);
-    request.input('SortBy', sql.NVarChar(50), sortBy || 'recommended');
-    // unified pricing-aware filters
-    request.input('BudgetType', sql.NVarChar(20), budgetType || null);
-    request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
-    request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
-    request.input('Region', sql.NVarChar(50), region || null);
-    request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
-    request.input('EventDateRaw', sql.NVarChar(50), null); // Legacy parameter
-    request.input('EventStartRaw', sql.NVarChar(20), null); // Legacy parameter
-    request.input('EventEndRaw', sql.NVarChar(20), null); // Legacy parameter
-    // Availability filters
-    request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
-    request.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
-    request.input('StartTime', sql.Time, startTime || null);
-    request.input('EndTime', sql.Time, endTime || null);
+    let result;
+    
+    // Try stored procedure first, fall back to direct query if it fails
+    try {
+      const request = new sql.Request(pool);
 
-    const result = await request.execute('sp_SearchVendors');
+      request.input('SearchTerm', sql.NVarChar(100), searchTerm || null);
+      request.input('Category', sql.NVarChar(50), category || null);
+      request.input('City', sql.NVarChar(100), city || null);
+      request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
+      request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
+      request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
+      request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
+      request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
+      request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
+      request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
+      request.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : isCertified === 'false' ? 0 : null);
+      request.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : isInsured === 'false' ? 0 : null);
+      request.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : isLocal === 'false' ? 0 : null);
+      request.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : isMobile === 'false' ? 0 : null);
+      request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
+      request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
+      request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
+      request.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
+      request.input('PageSize', sql.Int, pageSize ? parseInt(pageSize) : 10);
+      request.input('SortBy', sql.NVarChar(50), sortBy || 'recommended');
+      request.input('BudgetType', sql.NVarChar(20), budgetType || null);
+      request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
+      request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
+      request.input('Region', sql.NVarChar(50), region || null);
+      request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
+      request.input('EventDateRaw', sql.NVarChar(50), null);
+      request.input('EventStartRaw', sql.NVarChar(20), null);
+      request.input('EventEndRaw', sql.NVarChar(20), null);
+      request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+      request.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
+      request.input('StartTime', sql.VarChar(8), formattedStartTime);
+      request.input('EndTime', sql.VarChar(8), formattedEndTime);
+
+      result = await request.execute('sp_SearchVendors');
+    } catch (spError) {
+      console.log('⚠️ Stored procedure failed, using fallback query:', spError.message);
+      
+      // Fallback: Use direct SQL query with correct column names
+      const fallbackRequest = new sql.Request(pool);
+      fallbackRequest.input('City', sql.NVarChar(100), city || null);
+      fallbackRequest.input('Category', sql.NVarChar(50), category || null);
+      fallbackRequest.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
+      fallbackRequest.input('PageSize', sql.Int, pageSize ? parseInt(pageSize) : 10);
+      fallbackRequest.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
+      fallbackRequest.input('StartTime', sql.VarChar(8), formattedStartTime);
+      fallbackRequest.input('EndTime', sql.VarChar(8), formattedEndTime);
+      fallbackRequest.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+      
+      // Convert day name to number for business hours check
+      const dayNumberMap = {
+        'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+        'Thursday': 4, 'Friday': 5, 'Saturday': 6
+      };
+      const dayNumber = dayOfWeek ? dayNumberMap[dayOfWeek] : null;
+      fallbackRequest.input('DayNumber', sql.TinyInt, dayNumber);
+      
+      let fallbackQuery = `
+        SELECT 
+          v.VendorProfileID AS id,
+          v.VendorProfileID,
+          v.BusinessName AS name,
+          v.DisplayName,
+          (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS type,
+          CONCAT(v.City, ' ', v.State) AS location,
+          v.BusinessDescription AS description,
+          v.PriceLevel AS priceLevel,
+          (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS rating,
+          (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
+          (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
+          (SELECT COUNT(*) FROM Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
+          v.LogoURL AS image,
+          v.Capacity,
+          v.Rooms,
+          v.IsPremium,
+          v.IsEcoFriendly,
+          v.IsAwardWinning,
+          v.IsLastMinute,
+          (SELECT STRING_AGG(vc.Category, ', ') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
+          v.Address,
+          v.City,
+          v.State,
+          v.Country,
+          v.PostalCode,
+          v.Latitude,
+          v.Longitude,
+          COUNT(*) OVER() AS TotalCount
+        FROM VendorProfiles v
+        JOIN Users u ON v.UserID = u.UserID
+        WHERE u.IsActive = 1 AND v.IsCompleted = 1
+      `;
+      
+      // Add city filter
+      if (city) {
+        fallbackQuery += ` AND v.City LIKE '%' + @City + '%'`;
+      }
+      
+      // Add category filter
+      if (category) {
+        fallbackQuery += ` AND EXISTS (SELECT 1 FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category = @Category)`;
+      }
+      
+      // Add business hours filter - using correct column names: OpenTime and CloseTime
+      if (dayNumber !== null) {
+        fallbackQuery += `
+          AND EXISTS (
+            SELECT 1 FROM VendorBusinessHours vbh 
+            WHERE vbh.VendorProfileID = v.VendorProfileID 
+            AND vbh.DayOfWeek = @DayNumber 
+            AND vbh.IsAvailable = 1
+        `;
+        
+        // Add time overlap check if times provided
+        if (formattedStartTime && formattedEndTime) {
+          fallbackQuery += `
+            AND vbh.OpenTime < @EndTime 
+            AND vbh.CloseTime > @StartTime
+          `;
+        }
+        
+        fallbackQuery += `)`;
+      }
+      
+      // Add event date filter to exclude vendors with conflicting bookings
+      if (eventDate) {
+        fallbackQuery += `
+          AND NOT EXISTS (
+            SELECT 1 FROM Bookings b 
+            WHERE b.VendorProfileID = v.VendorProfileID 
+            AND CAST(b.EventDate AS DATE) = @EventDate
+            AND b.Status IN ('confirmed', 'pending')
+          )
+        `;
+      }
+      
+      fallbackQuery += `
+        ORDER BY v.IsPremium DESC, rating DESC
+        OFFSET ((@PageNumber - 1) * @PageSize) ROWS
+        FETCH NEXT @PageSize ROWS ONLY
+      `;
+      
+      console.log('📝 Executing fallback query with business hours filter');
+      result = await fallbackRequest.query(fallbackQuery);
+    }
     
     let formattedVendors = result.recordset.map(vendor => ({
       id: vendor.id,
@@ -4673,58 +4809,61 @@ router.post('/check-availability', async (req, res) => {
     // Convert time format from HH:MM to HH:MM:SS if needed
     const formatTime = (time) => {
       if (!time) return null;
+      const timeStr = String(time).trim();
+      const parts = timeStr.split(':');
       // If time is already in HH:MM:SS format, return as is
-      if (time.split(':').length === 3) return time;
+      if (parts.length === 3) return timeStr;
       // If time is in HH:MM format, add :00 for seconds
-      return time + ':00';
+      if (parts.length === 2) return timeStr + ':00';
+      // If invalid format, return null
+      return null;
     };
+    
+    const formattedStartTime = formatTime(startTime);
+    const formattedEndTime = formatTime(endTime);
     
     request.input('EventDate', sql.Date, eventDate);
     request.input('DayOfWeek', sql.TinyInt, dayNumber);
     request.input('City', sql.NVarChar(100), city || null);
-    request.input('StartTime', sql.Time, formatTime(startTime));
-    request.input('EndTime', sql.Time, formatTime(endTime));
+    request.input('StartTime', sql.VarChar(8), formattedStartTime);
+    request.input('EndTime', sql.VarChar(8), formattedEndTime);
 
     // Query to find available vendors
     const result = await request.query(`
-      SELECT DISTINCT
+      SELECT
         vp.VendorProfileID,
         vp.BusinessName,
         vp.DisplayName,
         vp.City,
         vp.State,
         vp.LogoURL,
-        vp.AverageRating,
-        vp.ReviewCount,
+        (SELECT AVG(CAST(Rating AS DECIMAL(3,1))) FROM Reviews WHERE VendorProfileID = vp.VendorProfileID AND IsApproved = 1) as AverageRating,
+        (SELECT COUNT(*) FROM Reviews WHERE VendorProfileID = vp.VendorProfileID AND IsApproved = 1) as ReviewCount,
         vp.IsPremium,
-        vc.CategoryName,
+        (SELECT TOP 1 Category FROM VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as CategoryName,
         COUNT(*) OVER() as TotalCount
       FROM VendorProfiles vp
-      LEFT JOIN VendorCategories vc ON vp.VendorProfileID = vc.VendorProfileID
       LEFT JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
       LEFT JOIN VendorAvailabilityExceptions vae ON vp.VendorProfileID = vae.VendorProfileID 
         AND vae.Date = @EventDate
-      WHERE vp.IsActive = 1
-        AND vp.IsApproved = 1
-        AND (@City IS NULL OR vp.City LIKE '%' + @City + '%')
+      WHERE (@City IS NULL OR vp.City LIKE '%' + @City + '%')
         AND (
           -- Check if vendor has business hours for this day of week
-          EXISTS (
+          @DayOfWeek IS NULL
+          OR EXISTS (
             SELECT 1 FROM VendorBusinessHours vbh2 
             WHERE vbh2.VendorProfileID = vp.VendorProfileID 
             AND vbh2.DayOfWeek = @DayOfWeek 
             AND vbh2.IsAvailable = 1
-            -- If times are provided, check if they fall within business hours
+            -- If times are provided, check if business hours overlap with requested time
             AND (
               @StartTime IS NULL 
-              OR (vbh2.OpenTime <= @StartTime AND vbh2.CloseTime >= @EndTime)
+              OR @EndTime IS NULL
+              OR (
+                -- Business hours overlap if: vendor opens before search ends AND vendor closes after search starts
+                vbh2.OpenTime < @EndTime AND vbh2.CloseTime > @StartTime
+              )
             )
-          )
-          OR
-          -- If no business hours set, assume available
-          NOT EXISTS (
-            SELECT 1 FROM VendorBusinessHours vbh3 
-            WHERE vbh3.VendorProfileID = vp.VendorProfileID
           )
         )
         AND (
@@ -4741,25 +4880,16 @@ router.post('/check-availability', async (req, res) => {
           )
         )
         AND NOT EXISTS (
-          -- Exclude if vendor has bookings that conflict with requested time
+          -- Exclude if vendor has bookings on the same date
           SELECT 1 FROM Bookings b 
           WHERE b.VendorProfileID = vp.VendorProfileID 
           AND CAST(b.EventDate AS DATE) = @EventDate
           AND b.Status IN ('confirmed', 'pending')
-          -- Check for time overlap if times are provided
-          AND (
-            @StartTime IS NULL
-            OR b.StartTime IS NULL
-            OR (
-              -- Booking overlaps if: new start < existing end AND new end > existing start
-              @StartTime < b.EndTime AND @EndTime > b.StartTime
-            )
-          )
         )
       ORDER BY 
-        vp.IsPremium DESC,
-        vp.AverageRating DESC,
-        vp.ReviewCount DESC
+        IsPremium DESC,
+        AverageRating DESC,
+        ReviewCount DESC
     `);
 
     const availableVendors = result.recordset.map(vendor => ({

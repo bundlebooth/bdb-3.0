@@ -57,7 +57,12 @@ function IndexPage() {
     priceLevel: '',
     minRating: '',
     region: '',
-    tags: []
+    tags: [],
+    // Availability filters
+    eventDate: null,
+    dayOfWeek: null,
+    startTime: null,
+    endTime: null
   });
 
   const loadFavorites = useCallback(async () => {
@@ -91,9 +96,12 @@ function IndexPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadDiscoverySections = useCallback(async () => {
+  const loadDiscoverySections = useCallback(async (overrideFilters = null) => {
     try {
       setLoadingDiscovery(true);
+      
+      // Use override filters if provided, otherwise use state filters
+      const activeFilters = overrideFilters || filters;
       
       const params = new URLSearchParams();
       params.set('limit', '8');
@@ -108,8 +116,22 @@ function IndexPage() {
         console.log('⚠️ No category filter applied (showing all)');
       }
       
-      if (filters.location) {
-        params.set('city', filters.location);
+      if (activeFilters.location) {
+        params.set('city', activeFilters.location);
+      }
+      
+      // Add availability filters if present
+      if (activeFilters.eventDate) {
+        params.set('eventDate', activeFilters.eventDate);
+      }
+      if (activeFilters.dayOfWeek) {
+        params.set('dayOfWeek', activeFilters.dayOfWeek);
+      }
+      if (activeFilters.startTime) {
+        params.set('startTime', activeFilters.startTime);
+      }
+      if (activeFilters.endTime) {
+        params.set('endTime', activeFilters.endTime);
       }
       
       if (userLocation?.lat && userLocation?.lng) {
@@ -143,7 +165,7 @@ function IndexPage() {
       setLoadingDiscovery(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.location, userLocation, currentUser, currentCategory]);
+  }, [filters, userLocation, currentUser, currentCategory]);
 
   // EXACT match to original applyClientSideFilters (line 26091-26120)
   const applyClientSideFiltersInternal = useCallback((vendorsToFilter) => {
@@ -163,7 +185,10 @@ function IndexPage() {
       const hasUserCoords = userLocation?.lat && userLocation?.lng;
       if (filters.location && !hasUserCoords) {
         const location = filters.location.toLowerCase();
-        const vendorLocation = `${vendor.City || ''} ${vendor.State || ''}`.toLowerCase();
+        // Check both lowercase and uppercase property names (API returns lowercase, some code uses uppercase)
+        const vendorCity = vendor.city || vendor.City || '';
+        const vendorState = vendor.state || vendor.State || '';
+        const vendorLocation = `${vendorCity} ${vendorState}`.toLowerCase();
         if (!vendorLocation.includes(location)) {
           return false;
         }
@@ -208,6 +233,17 @@ function IndexPage() {
         qp.set('pageNumber', String(nextPage));
         qp.set('pageSize', String(serverPageSize));
         
+        // Add city filter if location is set
+        if (filters.location) {
+          qp.set('city', filters.location);
+        }
+        
+        // Add availability filters if set
+        if (filters.eventDate) qp.set('eventDate', filters.eventDate);
+        if (filters.dayOfWeek) qp.set('dayOfWeek', filters.dayOfWeek);
+        if (filters.startTime) qp.set('startTime', filters.startTime);
+        if (filters.endTime) qp.set('endTime', filters.endTime);
+        
         if (hasUserLocation) {
           qp.set('latitude', String(userLocation.lat));
           qp.set('longitude', String(userLocation.lng));
@@ -233,6 +269,17 @@ function IndexPage() {
         const qp = new URLSearchParams();
         qp.set('pageNumber', String(nextPage));
         qp.set('pageSize', String(serverPageSize));
+        
+        // Add city filter if location is set
+        if (filters.location) {
+          qp.set('city', filters.location);
+        }
+        
+        // Add availability filters if set
+        if (filters.eventDate) qp.set('eventDate', filters.eventDate);
+        if (filters.dayOfWeek) qp.set('dayOfWeek', filters.dayOfWeek);
+        if (filters.startTime) qp.set('startTime', filters.startTime);
+        if (filters.endTime) qp.set('endTime', filters.endTime);
         
         if (hasUserLocation) {
           qp.set('latitude', String(userLocation.lat));
@@ -430,9 +477,18 @@ function IndexPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.priceLevel, filters.minRating, filters.region, filters.tags]);
 
+  // Track if we're in the middle of an enhanced search to prevent useEffect from overwriting results
+  const isEnhancedSearchRef = useRef(false);
+  
   useEffect(() => {
     // Skip on initial mount - loadVendors already applies filters
     if (isInitialMount.current) {
+      return;
+    }
+    
+    // Skip if we just did an enhanced search - it already set filteredVendors directly
+    if (isEnhancedSearchRef.current) {
+      isEnhancedSearchRef.current = false;
       return;
     }
     
@@ -627,53 +683,88 @@ function IndexPage() {
   const handleEnhancedSearch = useCallback(async (searchParams) => {
     console.log('🔍 Enhanced search triggered:', searchParams);
     
+    // Mark that we're doing an enhanced search so useEffect doesn't overwrite our results
+    isEnhancedSearchRef.current = true;
+    
     try {
-      // Update filters with location if provided
-      if (searchParams.location) {
-        const cityName = searchParams.location.split(',')[0].trim();
-        setFilters(prev => ({
-          ...prev,
-          location: cityName
-        }));
+      const cityName = searchParams.location ? searchParams.location.split(',')[0].trim() : '';
+      
+      // Calculate day of week if date is provided
+      let dayOfWeek = null;
+      if (searchParams.date) {
+        const date = new Date(searchParams.date);
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        dayOfWeek = days[date.getDay()];
       }
-
-      // If both location and date are provided, filter by availability
-      if (searchParams.location && searchParams.date && searchParams.availableVendors) {
-        console.log('🗓️ Filtering by availability:', {
-          date: searchParams.date,
-          location: searchParams.location,
-          availableVendors: searchParams.availableVendors.length
-        });
-
-        // Show available vendors
-        const availableVendorIds = searchParams.availableVendors.map(v => v.vendorProfileId);
+      
+      // Update filters SYNCHRONOUSLY
+      const newFilters = {
+        ...filters,
+        location: cityName || filters.location,
+        eventDate: searchParams.date || null,
+        dayOfWeek: dayOfWeek || null,
+        startTime: searchParams.startTime || null,
+        endTime: searchParams.endTime || null
+      };
+      
+      setFilters(newFilters);
+      setServerPageNumber(1);
+      setLoading(true);
+      
+      // Reload immediately with new filters
+      try {
+        // Build query params
+        const params = new URLSearchParams();
+        params.set('page', '1');
+        params.set('limit', '20');
         
-        // Filter current vendors to only show available ones
-        const availableVendors = vendors.filter(vendor => 
-          availableVendorIds.includes(vendor.VendorProfileID || vendor.vendorProfileId)
-        );
-
-        setFilteredVendors(availableVendors);
+        if (newFilters.location) params.set('city', newFilters.location);
+        if (newFilters.eventDate) params.set('eventDate', newFilters.eventDate);
+        if (newFilters.dayOfWeek) params.set('dayOfWeek', newFilters.dayOfWeek);
+        if (newFilters.startTime) params.set('startTime', newFilters.startTime);
+        if (newFilters.endTime) params.set('endTime', newFilters.endTime);
+        if (currentCategory && currentCategory !== 'all') params.set('category', currentCategory);
         
-        // No banner message - let the UI show "No vendors available" if empty
-      } else if (searchParams.location) {
-        // Just location search - reload vendors for that location
-        console.log('📍 Location-only search:', searchParams.location);
-        setLoading(true);
-        setServerPageNumber(1);
-        loadVendors();
+        const url = `${API_BASE_URL}/vendors?${params.toString()}`;
+        console.log('🔥 FETCHING VENDORS:', url);
+        console.log('🔥 FILTERS:', newFilters);
         
-        // No banner message
-      } else if (searchParams.date) {
-        // Date-only search - no message, just don't filter
-        console.log('Date selected without location');
+        // Fetch vendors
+        const vendorsResponse = await fetch(url);
+        const vendorsData = await vendorsResponse.json();
+        
+        console.log('🔥 RESPONSE:', vendorsData);
+        
+        if (vendorsData.success && vendorsData.vendors) {
+          setVendors(vendorsData.vendors);
+          setFilteredVendors(vendorsData.vendors);
+          setServerTotalCount(vendorsData.totalCount || 0);
+          
+          console.log(`✅ Loaded ${vendorsData.vendors.length} vendors`);
+          
+          if (vendorsData.vendors.length === 0) {
+            showBanner(`No vendors found in ${cityName} for the selected criteria`, 'info');
+          } else {
+            showBanner(`Found ${vendorsData.vendors.length} vendor${vendorsData.vendors.length !== 1 ? 's' : ''}`, 'success');
+          }
+        }
+        
+        // Load discovery sections with the NEW filters (not stale state)
+        await loadDiscoverySections(newFilters);
+        
+      } catch (error) {
+        console.error('Error loading vendors:', error);
+        showBanner('Failed to load vendors', 'error');
+      } finally {
+        setLoading(false);
       }
 
     } catch (error) {
       console.error('Enhanced search error:', error);
       showBanner('Search failed. Please try again.', 'error');
+      setLoading(false);
     }
-  }, [vendors, setFilters, loadVendors, showBanner]);
+  }, [filters, currentCategory, loadDiscoverySections, showBanner]);
 
   // Show ALL vendors from filteredVendors (no client-side pagination, matches original)
   const currentVendors = filteredVendors;
