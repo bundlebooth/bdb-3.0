@@ -13,6 +13,7 @@ const BecomeVendorPage = () => {
   const [currentStep, setCurrentStep] = useState(currentUser ? 1 : 0);
   const [loading, setLoading] = useState(false);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -118,8 +119,8 @@ const BecomeVendorPage = () => {
   const steps = [
     {
       id: 'account',
-      title: 'Welcome to PlanHive',
-      subtitle: currentUser ? `Welcome, ${currentUser.name}!` : 'Please log in to continue',
+      title: currentUser ? `Welcome, ${currentUser.name}!` : 'Welcome to PlanHive',
+      subtitle: 'Please log in or create an account to continue',
       component: AccountStep,
       required: true
     },
@@ -169,7 +170,7 @@ const BecomeVendorPage = () => {
     },
     {
       id: 'questionnaire',
-      title: 'Vendor Setup Questionnaire',
+      title: 'Tell guests what your place has to offer',
       subtitle: 'Select features that describe your services',
       component: QuestionnaireStep,
       required: false,
@@ -177,40 +178,40 @@ const BecomeVendorPage = () => {
     },
     {
       id: 'gallery',
-      title: 'Gallery & Media',
-      subtitle: 'Add photos to showcase your work',
+      title: 'Add photos to showcase your work',
+      subtitle: 'You can add more photos after you publish your listing',
       component: GalleryStep,
       required: false,
       skippable: true
     },
     {
       id: 'social-media',
-      title: 'Social Media',
-      subtitle: 'Connect your social profiles',
+      title: 'Connect your social profiles',
+      subtitle: 'Link your social media to increase engagement',
       component: SocialMediaStep,
       required: false,
       skippable: true
     },
     {
       id: 'filters',
-      title: 'Popular Filters',
-      subtitle: 'Enable special badges for your profile',
+      title: 'Enable special badges for your profile',
+      subtitle: 'These help clients find you when browsing vendors',
       component: FiltersStep,
       required: false,
       skippable: true
     },
     {
       id: 'policies',
-      title: 'Policies & FAQs',
-      subtitle: 'Set your policies and answer common questions',
+      title: 'Set your policies and answer common questions',
+      subtitle: 'Help clients understand your terms and conditions',
       component: PoliciesStep,
       required: false,
       skippable: true
     },
     {
       id: 'review',
-      title: 'Review & Complete',
-      subtitle: 'Review your information and complete setup',
+      title: 'Review your information',
+      subtitle: 'Make sure everything looks good before completing setup',
       component: ReviewStep,
       required: true
     }
@@ -284,13 +285,21 @@ const BecomeVendorPage = () => {
     }
 
     if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentStep(currentStep + 1);
+        setIsTransitioning(false);
+      }, 300);
     }
   };
 
   const handleBack = () => {
     if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentStep(currentStep - 1);
+        setIsTransitioning(false);
+      }, 300);
     }
   };
 
@@ -401,7 +410,7 @@ const BecomeVendorPage = () => {
       </div>
 
       <main className="become-vendor-main">
-        <div className="step-container">
+        <div className={`step-container ${isTransitioning ? 'fade-out' : ''}`} key={currentStep}>
           <div className="step-header">
             <h1 className="step-title">{steps[currentStep].title}</h1>
             <p className="step-subtitle">{steps[currentStep].subtitle}</p>
@@ -434,6 +443,7 @@ const BecomeVendorPage = () => {
           >
             Back
           </button>
+          
           
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             {steps[currentStep]?.skippable && (
@@ -838,74 +848,123 @@ function LocationStep({ formData, onInputChange, googleMapsLoaded }) {
   const serviceAreaInputRef = React.useRef(null);
   const addressAutocompleteRef = React.useRef(null);
   const serviceAreaAutocompleteRef = React.useRef(null);
+  const initializedRef = React.useRef(false); // Prevent double initialization
   const [serviceAreaInput, setServiceAreaInput] = React.useState('');
 
   React.useEffect(() => {
-    if (!window.google || !window.google.maps || !window.google.maps.places) {
+    // Prevent double initialization in React Strict Mode
+    if (initializedRef.current) {
+      console.log('⚠️ Already initialized, skipping...');
       return;
     }
-    
-    // Address Autocomplete - same as main page
-    if (addressInputRef.current && !addressAutocompleteRef.current) {
-      // Clear existing autocomplete if it exists
-      if (addressAutocompleteRef.current) {
-        window.google.maps.event.clearInstanceListeners(addressAutocompleteRef.current);
+
+    // Wait for Google Maps to be ready
+    const initAutocomplete = () => {
+      console.log('🔍 LocationStep: Checking Google Maps...', {
+        hasGoogle: !!window.google,
+        hasMaps: !!window.google?.maps,
+        hasPlaces: !!window.google?.maps?.places,
+        hasAddressInput: !!addressInputRef.current,
+        hasServiceAreaInput: !!serviceAreaInputRef.current
+      });
+
+      if (!window.google || !window.google.maps || !window.google.maps.places) {
+        console.log('⏳ Google Maps not ready yet, retrying in 200ms...');
+        setTimeout(initAutocomplete, 200);
+        return;
       }
+      
+      // Address Autocomplete - EXACTLY like EnhancedSearchBar
+      if (addressInputRef.current && !addressAutocompleteRef.current) {
+        console.log('✅ Creating address autocomplete...');
+        initializedRef.current = true; // Mark as initialized
 
-      const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
-        types: ['address'],
-        componentRestrictions: { country: 'ca' }
-      });
+        const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+          types: ['address'],
+          componentRestrictions: { country: 'ca' }
+        });
 
-      addressAutocompleteRef.current = autocomplete;
+        addressAutocompleteRef.current = autocomplete;
 
-      autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-        if (!place || !place.address_components) return;
-        
-        const comps = place.address_components;
-        const pick = (type) => comps.find(c => c.types.includes(type))?.long_name || '';
-        
-        onInputChange('address', place.formatted_address || '');
-        onInputChange('city', pick('locality') || pick('sublocality') || '');
-        onInputChange('province', pick('administrative_area_level_1') || '');
-        onInputChange('country', pick('country') || 'Canada');
-        onInputChange('postalCode', pick('postal_code') || '');
-        
-        const loc = place.geometry?.location;
-        if (loc) {
-          onInputChange('latitude', typeof loc.lat === 'function' ? loc.lat() : loc.lat);
-          onInputChange('longitude', typeof loc.lng === 'function' ? loc.lng() : loc.lng);
-        }
-      });
-    }
-    
-    // Service Area Autocomplete - same as main page
-    if (serviceAreaInputRef.current && !serviceAreaAutocompleteRef.current) {
-      // Clear existing autocomplete if it exists
-      if (serviceAreaAutocompleteRef.current) {
-        window.google.maps.event.clearInstanceListeners(serviceAreaAutocompleteRef.current);
-      }
-
-      const autocomplete = new window.google.maps.places.Autocomplete(serviceAreaInputRef.current, {
-        types: ['(cities)'],
-        componentRestrictions: { country: 'ca' }
-      });
-
-      serviceAreaAutocompleteRef.current = autocomplete;
-
-      autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-        if (place.formatted_address) {
-          const areas = formData.serviceAreas || [];
-          if (!areas.includes(place.formatted_address)) {
-            onInputChange('serviceAreas', [...areas, place.formatted_address]);
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          console.log('🎯 Address place selected:', place);
+          
+          if (!place || !place.address_components) {
+            console.log('❌ No place or address components');
+            return;
           }
-          setServiceAreaInput('');
-        }
-      });
-    }
-  }, [googleMapsLoaded]);
+          
+          const comps = place.address_components;
+          const pick = (type) => comps.find(c => c.types.includes(type))?.long_name || '';
+          
+          const streetNumber = pick('street_number');
+          const route = pick('route');
+          const fullAddress = streetNumber && route ? `${streetNumber} ${route}` : place.formatted_address;
+          
+          console.log('📋 Extracted address data:', {
+            fullAddress,
+            city: pick('locality') || pick('sublocality'),
+            province: pick('administrative_area_level_1'),
+            postal: pick('postal_code')
+          });
+
+          onInputChange('address', fullAddress || '');
+          onInputChange('city', pick('locality') || pick('sublocality') || '');
+          onInputChange('province', pick('administrative_area_level_1') || '');
+          onInputChange('country', pick('country') || 'Canada');
+          onInputChange('postalCode', pick('postal_code') || '');
+          
+          const loc = place.geometry?.location;
+          if (loc) {
+            const lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
+            const lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
+            console.log('🗺️ Coordinates:', { lat, lng });
+            onInputChange('latitude', lat);
+            onInputChange('longitude', lng);
+          }
+
+          console.log('✅ Address fields updated!');
+        });
+
+        console.log('✅ Address autocomplete created');
+      }
+      
+      // Service Area Autocomplete - EXACTLY like EnhancedSearchBar
+      if (serviceAreaInputRef.current && !serviceAreaAutocompleteRef.current) {
+        console.log('✅ Creating service area autocomplete...');
+
+        const autocomplete = new window.google.maps.places.Autocomplete(serviceAreaInputRef.current, {
+          types: ['(cities)'],
+          componentRestrictions: { country: 'ca' }
+        });
+
+        serviceAreaAutocompleteRef.current = autocomplete;
+
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          console.log('🎯 Service area place selected:', place);
+          
+          if (place.formatted_address) {
+            const areas = formData.serviceAreas || [];
+            if (!areas.includes(place.formatted_address)) {
+              onInputChange('serviceAreas', [...areas, place.formatted_address]);
+              console.log('✅ Added service area:', place.formatted_address);
+            }
+            setServiceAreaInput('');
+            // Clear the input field
+            if (serviceAreaInputRef.current) {
+              serviceAreaInputRef.current.value = '';
+            }
+          }
+        });
+
+        console.log('✅ Service area autocomplete created');
+      }
+    };
+
+    initAutocomplete();
+  }, []); // EMPTY DEPENDENCY ARRAY - only run once!
 
   const handleAddServiceArea = () => {
     const raw = serviceAreaInput.trim();
@@ -930,11 +989,11 @@ function LocationStep({ formData, onInputChange, googleMapsLoaded }) {
           type="text"
           className="form-input"
           ref={addressInputRef}
-          value={formData.address || ''}
+          defaultValue={formData.address || ''}
           onChange={(e) => onInputChange('address', e.target.value)}
           placeholder="Start typing your address..."
         />
-        <small className="form-help">Google Maps will auto-complete your address</small>
+        <small className="form-help">🔥 Google Maps will auto-complete your address</small>
       </div>
 
       <div className="form-row">
@@ -943,9 +1002,10 @@ function LocationStep({ formData, onInputChange, googleMapsLoaded }) {
           <input
             type="text"
             className="form-input"
-            value={formData.city}
+            value={formData.city || ''}
             onChange={(e) => onInputChange('city', e.target.value)}
             placeholder="Toronto"
+            readOnly={false}
           />
         </div>
         <div className="form-group">
@@ -953,9 +1013,10 @@ function LocationStep({ formData, onInputChange, googleMapsLoaded }) {
           <input
             type="text"
             className="form-input"
-            value={formData.province}
+            value={formData.province || ''}
             onChange={(e) => onInputChange('province', e.target.value)}
             placeholder="Ontario"
+            readOnly={false}
           />
         </div>
       </div>
@@ -966,9 +1027,10 @@ function LocationStep({ formData, onInputChange, googleMapsLoaded }) {
           <input
             type="text"
             className="form-input"
-            value={formData.postalCode}
+            value={formData.postalCode || ''}
             onChange={(e) => onInputChange('postalCode', e.target.value)}
             placeholder="M5H 2N2"
+            readOnly={false}
           />
         </div>
         <div className="form-group">
@@ -979,6 +1041,7 @@ function LocationStep({ formData, onInputChange, googleMapsLoaded }) {
             value={formData.country || 'Canada'}
             onChange={(e) => onInputChange('country', e.target.value)}
             placeholder="Canada"
+            readOnly={false}
           />
         </div>
       </div>
@@ -1184,33 +1247,952 @@ function ServicesStep({ formData, setFormData }) {
   );
 }
 
-// Placeholder components for remaining steps - these need full implementation
-function BusinessHoursStep({ formData, onInputChange }) {
-  return <div className="business-hours-step"><p>Business Hours Step - Implementation needed</p></div>;
+// Business Hours Step - Full Implementation
+function BusinessHoursStep({ formData, setFormData }) {
+  const daysOfWeek = [
+    { key: 'monday', label: 'Monday' },
+    { key: 'tuesday', label: 'Tuesday' },
+    { key: 'wednesday', label: 'Wednesday' },
+    { key: 'thursday', label: 'Thursday' },
+    { key: 'friday', label: 'Friday' },
+    { key: 'saturday', label: 'Saturday' },
+    { key: 'sunday', label: 'Sunday' }
+  ];
+
+  const handleHourChange = (day, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      businessHours: {
+        ...prev.businessHours,
+        [day]: {
+          ...prev.businessHours[day],
+          [field]: value
+        }
+      }
+    }));
+  };
+
+  const handleToggleClosed = (day) => {
+    setFormData(prev => ({
+      ...prev,
+      businessHours: {
+        ...prev.businessHours,
+        [day]: {
+          ...prev.businessHours[day],
+          isAvailable: !prev.businessHours[day].isAvailable
+        }
+      }
+    }));
+  };
+
+  return (
+    <div className="business-hours-step">
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <i className="fas fa-info-circle" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Set Your Regular Hours</h3>
+          </div>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            These hours will be displayed on your public profile. You can still accept bookings outside these hours by arrangement.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {daysOfWeek.map(day => (
+            <div
+              key={day.key}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '120px 1fr auto',
+                gap: '1rem',
+                alignItems: 'center',
+                padding: '1.25rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '12px',
+                background: formData.businessHours[day.key]?.isAvailable === false ? '#f9fafb' : 'white',
+                transition: 'all 0.2s'
+              }}
+            >
+              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{day.label}</div>
+              
+              {formData.businessHours[day.key]?.isAvailable !== false ? (
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 500 }}>Open:</label>
+                    <input
+                      type="time"
+                      value={formData.businessHours[day.key]?.openTime || '09:00'}
+                      onChange={(e) => handleHourChange(day.key, 'openTime', e.target.value)}
+                      style={{ 
+                        padding: '0.5rem', 
+                        border: '1px solid var(--border)', 
+                        borderRadius: '8px',
+                        fontSize: '0.9rem'
+                      }}
+                    />
+                  </div>
+                  <span style={{ color: 'var(--text-light)', fontWeight: 600 }}>-</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 500 }}>Close:</label>
+                    <input
+                      type="time"
+                      value={formData.businessHours[day.key]?.closeTime || '17:00'}
+                      onChange={(e) => handleHourChange(day.key, 'closeTime', e.target.value)}
+                      style={{ 
+                        padding: '0.5rem', 
+                        border: '1px solid var(--border)', 
+                        borderRadius: '8px',
+                        fontSize: '0.9rem'
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-light)', fontStyle: 'italic', fontSize: '0.95rem' }}>
+                  Closed
+                </div>
+              )}
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.businessHours[day.key]?.isAvailable === false}
+                  onChange={() => handleToggleClosed(day.key)}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Closed</span>
+              </label>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
+// Questionnaire Step - Full Implementation
 function QuestionnaireStep({ formData, setFormData }) {
-  return <div className="questionnaire-step"><p>Questionnaire Step - Implementation needed</p></div>;
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadQuestionnaire();
+  }, [formData.primaryCategory, formData.additionalCategories]);
+
+  const loadQuestionnaire = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/vendor-features/all-grouped`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('Error loading questionnaire:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleFeatureSelection = (featureId) => {
+    setFormData(prev => {
+      const currentFeatures = prev.selectedFeatures || [];
+      const newFeatures = currentFeatures.includes(featureId)
+        ? currentFeatures.filter(id => id !== featureId)
+        : [...currentFeatures, featureId];
+      
+      return { ...prev, selectedFeatures: newFeatures };
+    });
+  };
+
+  const getFeatureIcon = (iconName) => {
+    if (!iconName) return 'check';
+    const iconMap = {
+      'church': 'church', 'chef-hat': 'hat-chef', 'accessibility': 'wheelchair',
+      'car-front': 'car', 'speaker': 'volume-up', 'wifi': 'wifi', 'trees': 'tree',
+      'eye': 'eye', 'disc': 'circle', 'presentation': 'chalkboard', 'door-closed': 'door-closed',
+      'bed': 'bed', 'plane': 'plane', 'users': 'users', 'camera-off': 'camera',
+      'zap': 'bolt', 'heart': 'heart', 'file': 'file', 'images': 'images',
+      'printer': 'print', 'book-open': 'book-open', 'video': 'video', 'film': 'film',
+      'radio': 'broadcast-tower', 'mic': 'microphone', 'volume-2': 'volume-up',
+      'lightbulb': 'lightbulb', 'glass-water': 'glass-martini', 'list-music': 'list',
+      'guitar': 'guitar', 'mic-vocal': 'microphone-alt', 'lamp': 'lamp', 'cloud': 'cloud',
+      'truck': 'truck', 'badge-check': 'check-circle', 'leaf': 'leaf', 'wheat-off': 'ban',
+      'utensils-crossed': 'utensils', 'wine': 'wine-glass', 'arrow-right-circle': 'arrow-circle-right',
+      'beer': 'beer', 'scroll-text': 'scroll', 'cake': 'birthday-cake', 'coffee': 'coffee',
+      'flower': 'flower', 'hexagon': 'hexagon', 'rainbow': 'rainbow', 'trending-up': 'arrow-up',
+      'armchair': 'couch', 'layers': 'layer-group', 'lamp-desk': 'lamp', 'wallpaper': 'image',
+      'signpost': 'sign', 'flame': 'fire', 'circle': 'circle', 'drama': 'theater-masks',
+      'wand': 'magic', 'flame-kindling': 'fire-alt', 'person-standing': 'walking',
+      'baby': 'baby', 'gamepad-2': 'gamepad', 'bus': 'bus', 'bus-front': 'bus',
+      'key-round': 'key', 'move': 'arrows-alt', 'palette': 'palette', 'scissors': 'cut',
+      'spray-can': 'spray-can', 'calendar-check': 'calendar-check', 'map-pin': 'map-marker-alt',
+      'users-round': 'users', 'hand': 'hand-paper', 'clipboard-check': 'clipboard-check',
+      'clipboard-list': 'clipboard-list', 'calendar-days': 'calendar-alt', 'handshake': 'handshake',
+      'dollar-sign': 'dollar-sign', 'clock': 'clock'
+    };
+    return iconMap[iconName] || iconName.replace('fa-', '');
+  };
+
+  const getCategoryIcon = (icon) => {
+    if (!icon) return 'list';
+    return icon.replace('fa-', '');
+  };
+
+  const getFilteredCategories = () => {
+    const vendorCategories = [formData.primaryCategory, ...(formData.additionalCategories || [])].filter(Boolean);
+    
+    if (vendorCategories.length === 0) {
+      return categories.filter(cat => !cat.applicableVendorCategories || cat.applicableVendorCategories === 'all');
+    }
+    
+    return categories.filter(category => {
+      if (!category.applicableVendorCategories) return true;
+      if (category.applicableVendorCategories === 'all') return true;
+      
+      const applicableList = category.applicableVendorCategories.split(',').map(c => c.trim().toLowerCase());
+      return vendorCategories.some(vendorCat => applicableList.includes(vendorCat.toLowerCase()));
+    });
+  };
+
+  const filteredCategories = getFilteredCategories();
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem' }}>
+        <div className="spinner" style={{ margin: '0 auto' }}></div>
+        <p style={{ marginTop: '1rem', color: 'var(--text-light)' }}>Loading features...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="questionnaire-step">
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <i className="fas fa-clipboard-check" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Select Your Features</h3>
+          </div>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Choose the features and services that apply to your business. This helps clients understand what you offer.
+          </p>
+        </div>
+
+        {filteredCategories.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem', background: '#f9fafb', borderRadius: '12px', border: '2px dashed #e5e7eb' }}>
+            <i className="fas fa-info-circle" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>
+            <p style={{ color: 'var(--text-light)', fontSize: '1.1rem', margin: 0 }}>
+              No features available for your selected categories yet.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '2rem' }}>
+            {filteredCategories.map(category => {
+              if (!category.features || category.features.length === 0) return null;
+              
+              return (
+                <div key={category.categoryName} style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '2px solid #f3f4f6' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                      <i className={`fas fa-${getCategoryIcon(category.categoryIcon)}`}></i>
+                    </div>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{category.categoryName}</h3>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '0.75rem' }}>
+                    {category.features.map(feature => {
+                      const isSelected = (formData.selectedFeatures || []).includes(feature.featureID);
+                      return (
+                        <div
+                          key={feature.featureID}
+                          onClick={() => toggleFeatureSelection(feature.featureID)}
+                          style={{
+                            padding: '0.75rem 1rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            borderRadius: '8px',
+                            border: isSelected ? '1px solid var(--primary)' : '1px solid #e5e7eb',
+                            background: isSelected ? '#f0f9ff' : 'white'
+                          }}
+                        >
+                          <i className={`fas fa-${getFeatureIcon(feature.featureIcon)}`} style={{ color: 'var(--primary)', fontSize: '1.1rem', flexShrink: 0 }}></i>
+                          <span style={{ fontSize: '0.9rem', color: '#374151', flex: 1, fontWeight: isSelected ? 600 : 400 }}>{feature.featureName}</span>
+                          {isSelected && (
+                            <i className="fas fa-check-circle" style={{ color: 'var(--primary)', fontSize: '1.1rem' }}></i>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {filteredCategories.length > 0 && (
+          <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.95rem' }}>
+              <i className="fas fa-check-circle" style={{ color: 'var(--primary)' }}></i>
+              <span><strong>{(formData.selectedFeatures || []).length}</strong> features selected</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
+// Gallery Step - Full Implementation
 function GalleryStep({ formData, setFormData }) {
-  return <div className="gallery-step"><p>Gallery Step - Implementation needed</p></div>;
+  const [uploading, setUploading] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    try {
+      setUploading(true);
+      
+      // For now, we'll just store the file names/URLs in formData
+      // In production, you'd upload to a server or cloud storage
+      const fileURLs = files.map(file => URL.createObjectURL(file));
+      
+      setFormData(prev => ({
+        ...prev,
+        photoURLs: [...(prev.photoURLs || []), ...fileURLs]
+      }));
+      
+      showBanner('Photos added successfully!', 'success');
+    } catch (error) {
+      console.error('Error uploading:', error);
+      showBanner('Failed to add photos', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleAddPhotoByUrl = () => {
+    if (!urlInput.trim()) {
+      showBanner('Please enter a valid URL', 'error');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      photoURLs: [...(prev.photoURLs || []), urlInput.trim()]
+    }));
+    
+    setUrlInput('');
+    showBanner('Photo added successfully!', 'success');
+  };
+
+  const handleDeletePhoto = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      photoURLs: prev.photoURLs.filter((_, i) => i !== index)
+    }));
+    showBanner('Photo removed', 'success');
+  };
+
+  return (
+    <div className="gallery-step">
+      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <i className="fas fa-images" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Showcase Your Work</h3>
+          </div>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Add photos to showcase your work and attract more clients. You can upload files or add images by URL.
+          </p>
+        </div>
+
+        {/* Photo Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+          {(formData.photoURLs || []).length === 0 ? (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', background: '#f9fafb', borderRadius: '12px', border: '2px dashed #e5e7eb' }}>
+              <i className="fas fa-images" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>
+              <p style={{ color: 'var(--text-light)', margin: 0 }}>No photos added yet</p>
+            </div>
+          ) : (
+            (formData.photoURLs || []).map((url, index) => (
+              <div
+                key={index}
+                style={{
+                  position: 'relative',
+                  aspectRatio: '1',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  border: '1px solid #e5e7eb',
+                  background: '#f3f4f6'
+                }}
+              >
+                <img
+                  src={url}
+                  alt={`Gallery ${index + 1}`}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af"><i class="fas fa-image" style="font-size:2rem"></i></div>';
+                  }}
+                />
+                <button
+                  onClick={() => handleDeletePhoto(index)}
+                  style={{
+                    position: 'absolute',
+                    top: '0.5rem',
+                    right: '0.5rem',
+                    background: 'rgba(239, 68, 68, 0.9)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '32px'
+                  }}
+                >
+                  <i className="fas fa-trash"></i>
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Upload Controls */}
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
+          {/* File Upload */}
+          <div style={{ padding: '1.5rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            <h4 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className="fas fa-upload"></i> Upload Photos
+            </h4>
+            <input
+              type="file"
+              id="photo-upload-input"
+              multiple
+              accept="image/*"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
+            <button
+              className="btn btn-outline"
+              onClick={() => document.getElementById('photo-upload-input').click()}
+              disabled={uploading}
+              style={{ width: '100%', padding: '0.875rem', fontSize: '1rem' }}
+            >
+              {uploading ? (
+                <>
+                  <span className="spinner-small"></span> Uploading...
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-cloud-upload-alt"></i> Choose Files
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* URL Input */}
+          <div style={{ padding: '1.5rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            <h4 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className="fas fa-link"></i> Add Image by URL
+            </h4>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <input
+                type="url"
+                placeholder="https://example.com/image.jpg"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '0.875rem 1rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem'
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddPhotoByUrl();
+                  }
+                }}
+              />
+              <button
+                className="btn btn-primary"
+                onClick={handleAddPhotoByUrl}
+                style={{ padding: '0.875rem 1.5rem' }}
+              >
+                <i className="fas fa-plus"></i> Add
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
+// Social Media Step - Full Implementation
 function SocialMediaStep({ formData, onInputChange }) {
-  return <div className="social-media-step"><p>Social Media Step - Implementation needed</p></div>;
+  const socialPlatforms = [
+    { key: 'facebook', label: 'Facebook', icon: 'fab fa-facebook', color: '#1877F2', prefix: 'facebook.com/' },
+    { key: 'instagram', label: 'Instagram', icon: 'fab fa-instagram', color: '#E4405F', prefix: 'instagram.com/' },
+    { key: 'twitter', label: 'X (Twitter)', icon: 'fab fa-x-twitter', color: '#000000', prefix: 'x.com/' },
+    { key: 'linkedin', label: 'LinkedIn', icon: 'fab fa-linkedin', color: '#0077B5', prefix: 'linkedin.com/in/' },
+    { key: 'youtube', label: 'YouTube', icon: 'fab fa-youtube', color: '#FF0000', prefix: 'youtube.com/' },
+    { key: 'tiktok', label: 'TikTok', icon: 'fab fa-tiktok', color: '#000000', prefix: 'tiktok.com/@' }
+  ];
+
+  return (
+    <div className="social-media-step">
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <i className="fas fa-share-alt" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Connect Your Social Media</h3>
+          </div>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Link your social media profiles to increase engagement and make it easier for clients to connect with you.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gap: '1.25rem' }}>
+          {socialPlatforms.map(platform => (
+            <div key={platform.key} style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.25rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', fontSize: '0.95rem', fontWeight: 600 }}>
+                <i className={platform.icon} style={{ color: platform.color, fontSize: '1.5rem' }}></i>
+                {platform.label}
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', overflow: 'hidden' }}>
+                <span style={{ padding: '0.875rem 1rem', color: '#6b7280', fontSize: '0.9rem', backgroundColor: '#f9fafb', borderRight: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>
+                  {platform.prefix}
+                </span>
+                <input
+                  type="text"
+                  placeholder={`your${platform.key}`}
+                  value={formData[platform.key] || ''}
+                  onChange={(e) => onInputChange(platform.key, e.target.value)}
+                  style={{
+                    border: 'none',
+                    outline: 'none',
+                    padding: '0.875rem 1rem',
+                    flex: 1,
+                    fontSize: '0.95rem',
+                    background: 'transparent'
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function FiltersStep({ formData, onInputChange, filterOptions }) {
-  return <div className="filters-step"><p>Filters Step - Implementation needed</p></div>;
+// Filters Step - Full Implementation
+function FiltersStep({ formData, setFormData, filterOptions }) {
+  const handleToggleFilter = (filterId) => {
+    setFormData(prev => {
+      const currentFilters = prev.selectedFilters || [];
+      const newFilters = currentFilters.includes(filterId)
+        ? currentFilters.filter(f => f !== filterId)
+        : [...currentFilters, filterId];
+      
+      return { ...prev, selectedFilters: newFilters };
+    });
+  };
+
+  return (
+    <div className="filters-step">
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <i className="fas fa-tags" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Enable Special Badges</h3>
+          </div>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Select badges that apply to your business. These help clients find you when browsing and filtering vendors.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {filterOptions.map(filter => {
+            const isSelected = (formData.selectedFilters || []).includes(filter.id);
+            return (
+              <div
+                key={filter.id}
+                onClick={() => handleToggleFilter(filter.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  padding: '1.25rem',
+                  background: isSelected ? '#f0f9ff' : 'white',
+                  border: isSelected ? '2px solid var(--primary)' : '1px solid #e5e7eb',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => {}}
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '10px',
+                  background: filter.color + '20',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <i className={`fas ${filter.icon}`} style={{ color: filter.color, fontSize: '1.5rem' }}></i>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.25rem', color: '#111827' }}>
+                    {filter.label}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
+                    {filter.description || `Enable ${filter.label} badge for your profile`}
+                  </div>
+                </div>
+                {isSelected && (
+                  <i className="fas fa-check-circle" style={{ color: 'var(--primary)', fontSize: '1.5rem' }}></i>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.95rem' }}>
+          <i className="fas fa-check-circle" style={{ color: 'var(--primary)' }}></i>
+          <span><strong>{(formData.selectedFilters || []).length}</strong> badges selected</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
+// Policies Step - Full Implementation
 function PoliciesStep({ formData, onInputChange, setFormData }) {
-  return <div className="policies-step"><p>Policies Step - Implementation needed</p></div>;
+  const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
+
+  const handleAddFaq = () => {
+    if (!newFaq.question.trim() || !newFaq.answer.trim()) {
+      showBanner('Please fill in both question and answer', 'error');
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      faqs: [...(prev.faqs || []), { ...newFaq, id: Date.now() }]
+    }));
+
+    setNewFaq({ question: '', answer: '' });
+    showBanner('FAQ added successfully!', 'success');
+  };
+
+  const handleDeleteFaq = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      faqs: prev.faqs.filter((_, i) => i !== index)
+    }));
+  };
+
+  return (
+    <div className="policies-step">
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <i className="fas fa-file-contract" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Set Your Policies</h3>
+          </div>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Define your business policies and answer common questions to help clients understand your terms.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gap: '2rem' }}>
+          {/* Cancellation Policy */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', fontSize: '1rem' }}>
+              <i className="fas fa-ban" style={{ color: 'var(--primary)', marginRight: '0.5rem' }}></i>
+              Cancellation Policy
+            </label>
+            <textarea
+              placeholder="Describe your cancellation policy (e.g., 'Full refund if cancelled 30 days before event...')"
+              value={formData.cancellationPolicy || ''}
+              onChange={(e) => onInputChange('cancellationPolicy', e.target.value)}
+              rows="4"
+              style={{
+                width: '100%',
+                padding: '0.875rem 1rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                resize: 'vertical',
+                fontFamily: 'inherit'
+              }}
+            />
+          </div>
+
+          {/* Deposit & Payment */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+            <div style={{ display: 'grid', gap: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', fontSize: '1rem' }}>
+                  <i className="fas fa-percentage" style={{ color: 'var(--primary)', marginRight: '0.5rem' }}></i>
+                  Deposit Percentage
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g., 25"
+                  min="0"
+                  max="100"
+                  value={formData.depositPercentage || ''}
+                  onChange={(e) => onInputChange('depositPercentage', e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.875rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem'
+                  }}
+                />
+                <small style={{ display: 'block', marginTop: '0.5rem', color: '#6b7280', fontSize: '0.85rem' }}>
+                  Percentage of total cost required as deposit
+                </small>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', fontSize: '1rem' }}>
+                  <i className="fas fa-credit-card" style={{ color: 'var(--primary)', marginRight: '0.5rem' }}></i>
+                  Payment Terms
+                </label>
+                <textarea
+                  placeholder="Describe your payment terms (e.g., '25% deposit required, balance due 7 days before event...')"
+                  value={formData.paymentTerms || ''}
+                  onChange={(e) => onInputChange('paymentTerms', e.target.value)}
+                  rows="3"
+                  style={{
+                    width: '100%',
+                    padding: '0.875rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem',
+                    resize: 'vertical',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* FAQs */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+            <h4 style={{ margin: '0 0 1.5rem', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <i className="fas fa-question-circle" style={{ color: 'var(--primary)' }}></i>
+              Frequently Asked Questions
+            </h4>
+
+            {/* Existing FAQs */}
+            {(formData.faqs || []).length > 0 && (
+              <div style={{ marginBottom: '1.5rem', display: 'grid', gap: '1rem' }}>
+                {formData.faqs.map((faq, index) => (
+                  <div key={faq.id || index} style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
+                        <span style={{ 
+                          width: '24px', 
+                          height: '24px', 
+                          borderRadius: '50%', 
+                          background: 'var(--primary)', 
+                          color: 'white', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          flexShrink: 0
+                        }}>
+                          Q
+                        </span>
+                        <strong style={{ fontSize: '0.95rem' }}>{faq.question}</strong>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteFaq(index)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: 'pointer',
+                          padding: '0.25rem',
+                          fontSize: '1rem'
+                        }}
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                    <div style={{ paddingLeft: '2rem', color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+                      {faq.answer}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add New FAQ */}
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  Question
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Do you travel for events?"
+                  value={newFaq.question}
+                  onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  Answer
+                </label>
+                <textarea
+                  placeholder="Provide a detailed answer..."
+                  value={newFaq.answer}
+                  onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
+                  rows="3"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    fontSize: '0.95rem',
+                    resize: 'vertical',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+              <button
+                onClick={handleAddFaq}
+                className="btn btn-outline"
+                style={{ justifySelf: 'start' }}
+              >
+                <i className="fas fa-plus"></i> Add FAQ
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
+// Review Step - Full Implementation
 function ReviewStep({ formData, categories }) {
-  return <div className="review-step"><p>Review Step - Implementation needed</p></div>;
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : categoryId;
+  };
+
+  const allCategories = [formData.primaryCategory, ...(formData.additionalCategories || [])].filter(Boolean);
+
+  return (
+    <div className="review-step">
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f0f9ff', borderRadius: '12px', border: '1px solid #3b82f6' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <i className="fas fa-check-circle" style={{ color: '#3b82f6', fontSize: '1.5rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600 }}>Review Your Information</h3>
+          </div>
+          <p style={{ margin: 0, color: '#1e40af', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Please review your vendor profile information before submitting. You can always edit these details later from your dashboard.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gap: '1.5rem' }}>
+          {/* Business Information */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+            <h4 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)' }}>
+              <i className="fas fa-building"></i> Business Information
+            </h4>
+            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
+              <div><strong>Business Name:</strong> {formData.businessName || 'Not provided'}</div>
+              <div><strong>Display Name:</strong> {formData.displayName || 'Not provided'}</div>
+              <div><strong>Categories:</strong> {allCategories.map(getCategoryName).join(', ') || 'Not selected'}</div>
+              <div><strong>Description:</strong> {formData.businessDescription || 'Not provided'}</div>
+              <div><strong>Years in Business:</strong> {formData.yearsInBusiness || 'Not provided'}</div>
+            </div>
+          </div>
+
+          {/* Contact & Location */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+            <h4 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)' }}>
+              <i className="fas fa-map-marker-alt"></i> Contact & Location
+            </h4>
+            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
+              <div><strong>Email:</strong> {formData.email || 'Not provided'}</div>
+              <div><strong>Phone:</strong> {formData.businessPhone || 'Not provided'}</div>
+              <div><strong>Website:</strong> {formData.website || 'Not provided'}</div>
+              <div><strong>Address:</strong> {formData.address || 'Not provided'}</div>
+              <div><strong>City:</strong> {formData.city || 'Not provided'}</div>
+              <div><strong>Province:</strong> {formData.province || 'Not provided'}</div>
+              <div><strong>Service Areas:</strong> {(formData.serviceAreas || []).join(', ') || 'Not specified'}</div>
+            </div>
+          </div>
+
+          {/* Additional Details */}
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
+            <h4 style={{ margin: '0 0 1rem', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)' }}>
+              <i className="fas fa-info-circle"></i> Additional Details
+            </h4>
+            <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.95rem' }}>
+              <div><strong>Features Selected:</strong> {(formData.selectedFeatures || []).length} features</div>
+              <div><strong>Photos Added:</strong> {(formData.photoURLs || []).length} photos</div>
+              <div><strong>Social Media:</strong> {Object.keys(formData).filter(k => ['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok'].includes(k) && formData[k]).length} platforms connected</div>
+              <div><strong>Badges:</strong> {(formData.selectedFilters || []).length} badges enabled</div>
+              <div><strong>FAQs:</strong> {(formData.faqs || []).length} questions added</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #f59e0b' }}>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <i className="fas fa-lightbulb" style={{ color: '#d97706', fontSize: '1.25rem', flexShrink: 0 }}></i>
+            <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
+              <strong>Ready to go live?</strong> Click "Complete Setup" to create your vendor profile. You'll be redirected to your dashboard where you can manage your profile, view bookings, and connect with clients.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default BecomeVendorPage;
