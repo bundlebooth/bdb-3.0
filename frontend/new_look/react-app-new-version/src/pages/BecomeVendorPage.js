@@ -1261,7 +1261,11 @@ function LocationStep({ formData, onInputChange, setFormData, provinces, googleM
 function ServicesStep({ formData, setFormData }) {
   const [availableServices, setAvailableServices] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedServiceIds, setSelectedServiceIds] = useState(new Set());
+  const [showModal, setShowModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editingServiceId, setEditingServiceId] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingService, setEditingService] = useState(null);
 
   useEffect(() => {
     loadServices();
@@ -1298,37 +1302,81 @@ function ServicesStep({ formData, setFormData }) {
     }
   };
 
-  const handleServiceToggle = (service) => {
-    const newSet = new Set(selectedServiceIds);
-    if (newSet.has(service.id)) {
-      newSet.delete(service.id);
+  const handleServiceSelect = (service) => {
+    const isAlreadySelected = formData.selectedServices.some(s => s.serviceId === service.id);
+    
+    if (!isAlreadySelected) {
+      const newService = {
+        serviceId: service.id,
+        serviceName: service.name,
+        category: service.category,
+        pricingModel: 'hourly',
+        baseRate: '',
+        baseDuration: '2',
+        overtimeRate: '',
+        description: ''
+      };
+      
       setFormData(prev => ({
         ...prev,
-        selectedServices: prev.selectedServices.filter(s => s.serviceId !== service.id)
+        selectedServices: [...prev.selectedServices, newService]
       }));
-    } else {
-      newSet.add(service.id);
-      setFormData(prev => ({
-        ...prev,
-        selectedServices: [...prev.selectedServices, {
-          serviceId: service.id,
-          serviceName: service.name,
-          price: 0,
-          pricingModel: 'fixed_price'
-        }]
-      }));
+      
+      // Auto-open edit mode for new service
+      setEditingServiceId(service.id);
     }
-    setSelectedServiceIds(newSet);
+    setShowModal(false);
+    setSearchQuery('');
   };
 
-  const handlePriceChange = (serviceId, price) => {
+  const handleRemoveService = (serviceId) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedServices: prev.selectedServices.filter(s => s.serviceId !== serviceId)
+    }));
+    if (editingServiceId === serviceId) {
+      setEditingServiceId(null);
+    }
+  };
+
+  const handleServiceUpdate = (serviceId, field, value) => {
     setFormData(prev => ({
       ...prev,
       selectedServices: prev.selectedServices.map(s =>
-        s.serviceId === serviceId ? { ...s, price: parseFloat(price) || 0 } : s
+        s.serviceId === serviceId ? { ...s, [field]: value } : s
       )
     }));
   };
+
+  const handleEditService = (service) => {
+    setEditingService({ ...service });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEditedService = () => {
+    if (editingService) {
+      setFormData(prev => ({
+        ...prev,
+        selectedServices: prev.selectedServices.map(s =>
+          s.serviceId === editingService.serviceId ? editingService : s
+        )
+      }));
+      setShowEditModal(false);
+      setEditingService(null);
+    }
+  };
+
+  const handleEditModalUpdate = (field, value) => {
+    setEditingService(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const filteredServices = availableServices.filter(service => 
+    service.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    !formData.selectedServices.some(s => s.serviceId === service.id)
+  );
 
   if (loading) {
     return <div className="loading">Loading services...</div>;
@@ -1336,53 +1384,394 @@ function ServicesStep({ formData, setFormData }) {
 
   return (
     <div className="services-step">
-      <div className="step-info-banner">
-        <p>💡 Select the services you offer and set your pricing. You can add more services later.</p>
+      <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <i className="fas fa-info-circle" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Select Your Services</h3>
+        </div>
+        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+          Select the services you offer and set your pricing. You can add more services later.
+        </p>
       </div>
 
-      {availableServices.length === 0 ? (
-        <div className="no-services">
-          <p>No services available for your selected categories. You can add custom services later in your dashboard.</p>
-        </div>
-      ) : (
-        <div className="services-list">
-          {availableServices.map(service => {
-            const isSelected = selectedServiceIds.has(service.id);
-            const selectedService = formData.selectedServices.find(s => s.serviceId === service.id);
+      {/* Selected Services List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem', width: '100%' }}>
+        {formData.selectedServices.map((service, index) => {
+          const isEditing = editingServiceId === service.serviceId;
+          
+          const getCategoryIcon = () => {
+            const catLower = (service.category || '').toLowerCase();
+            const nameLower = (service.serviceName || '').toLowerCase();
             
-            return (
-              <div key={service.id} className={`service-item ${isSelected ? 'selected' : ''}`}>
-                <div className="service-header">
-                  <label className="service-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleServiceToggle(service)}
-                    />
-                    <span className="service-name">{service.name}</span>
-                  </label>
-                  <span className="service-category-badge">{service.category}</span>
-                </div>
-                {service.description && (
-                  <p className="service-description">{service.description}</p>
-                )}
-                {isSelected && (
-                  <div className="service-pricing">
-                    <label>Your Price (CAD)</label>
-                    <input
-                      type="number"
-                      value={selectedService?.price || ''}
-                      onChange={(e) => handlePriceChange(service.id, e.target.value)}
-                      className="form-input"
-                      placeholder="0.00"
-                      min="0"
-                      step="0.01"
-                    />
+            if (catLower.includes('photo') || nameLower.includes('photo')) return 'fa-camera';
+            if (catLower.includes('video') || nameLower.includes('video')) return 'fa-video';
+            if (catLower.includes('music') || catLower.includes('dj') || nameLower.includes('music') || nameLower.includes('dj')) return 'fa-music';
+            if (catLower.includes('cater') || nameLower.includes('food') || nameLower.includes('cater')) return 'fa-utensils';
+            if (catLower.includes('venue') || nameLower.includes('venue') || nameLower.includes('space')) return 'fa-building';
+            if (catLower.includes('decor') || catLower.includes('floral') || nameLower.includes('decor') || nameLower.includes('flower')) return 'fa-leaf';
+            if (catLower.includes('entertainment') || nameLower.includes('perform')) return 'fa-masks-theater';
+            if (catLower.includes('transport') || nameLower.includes('transport')) return 'fa-car';
+            if (catLower.includes('beauty') || catLower.includes('wellness') || nameLower.includes('makeup') || nameLower.includes('spa')) return 'fa-spa';
+            return 'fa-concierge-bell';
+          };
+          
+          const getPricingDisplay = () => {
+            if (service.pricingModel === 'hourly' && service.baseRate) {
+              return `$${parseFloat(service.baseRate).toFixed(0)} base + $${parseFloat(service.overtimeRate || 0).toFixed(0)}/hr overtime`;
+            } else if (service.pricingModel === 'fixed' && service.baseRate) {
+              return `$${parseFloat(service.baseRate).toFixed(0)} fixed`;
+            } else if (service.pricingModel === 'per_person' && service.baseRate) {
+              return `$${parseFloat(service.baseRate).toFixed(0)}/person`;
+            }
+            return 'Not configured';
+          };
+          
+          return (
+            <React.Fragment key={`service-${service.serviceId}-${index}`}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ 
+                  flex: 1,
+                  padding: '1.25rem', 
+                  background: '#fff', 
+                  border: '1px solid #e5e7eb', 
+                  borderRadius: '12px',
+                  position: 'relative'
+                }}>
+                  {/* Pricing positioned at top right - matching vendor profile */}
+                  <div style={{ 
+                    position: 'absolute',
+                    top: '1.25rem',
+                    right: '1.25rem',
+                    textAlign: 'right', 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: '0.25rem'
+                  }}>
+                    <div style={{ 
+                      fontSize: '1.25rem', 
+                      fontWeight: 700, 
+                      color: '#111827',
+                      lineHeight: '1'
+                    }}>
+                      {service.baseRate ? `$${parseFloat(service.baseRate).toFixed(0)}` : '$0'}
+                    </div>
+                    <div style={{ 
+                      fontSize: '0.625rem', 
+                      color: '#9ca3af',
+                      fontWeight: 500,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      lineHeight: '1'
+                    }}>
+                      {service.pricingModel === 'hourly' ? 'BASE PRICE' : service.pricingModel === 'fixed' ? 'FIXED PRICE' : 'PER PERSON'}
+                    </div>
+                    {service.pricingModel === 'hourly' && service.overtimeRate && (
+                      <div style={{ 
+                        fontSize: '0.875rem', 
+                        fontWeight: 600, 
+                        color: '#111827',
+                        lineHeight: '1',
+                        marginTop: '0.25rem'
+                      }}>
+                        ${parseFloat(service.overtimeRate).toFixed(0)} <span style={{ 
+                          fontSize: '0.75rem', 
+                          color: '#9ca3af',
+                          fontWeight: 400
+                        }}>/hr overtime</span>
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                    {/* Service Icon */}
+                    <div style={{
+                      flexShrink: 0,
+                      width: '60px',
+                      height: '60px',
+                      borderRadius: '10px',
+                      background: '#f3f4f6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <i className={`fas ${getCategoryIcon()}`} style={{ color: '#5e72e4', fontSize: '1.5rem' }}></i>
+                    </div>
+                    
+                    {/* Service Details */}
+                    <div style={{ flex: 1, minWidth: 0, paddingRight: '120px' }}>
+                      <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', margin: '0 0 0.5rem 0' }}>
+                        {service.serviceName}
+                      </h3>
+                      
+                      {/* Metadata row - all on same line */}
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '1rem', 
+                        fontSize: '0.875rem', 
+                        color: '#6b7280',
+                        marginBottom: service.description ? '0.75rem' : 0,
+                        flexWrap: 'wrap',
+                        alignItems: 'center'
+                      }}>
+                        {service.category && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                            <i className="fas fa-tag"></i>
+                            {service.category}
+                          </span>
+                        )}
+                        {service.baseDuration && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                            <i className="fas fa-clock"></i>
+                            {service.baseDuration >= 1 
+                              ? Math.floor(service.baseDuration) + 'h' + (service.baseDuration % 1 > 0 ? ' ' + Math.round((service.baseDuration % 1) * 60) + 'm' : '')
+                              : (service.baseDuration * 60) + 'm'}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {service.description && (
+                        <p style={{ fontSize: '0.9375rem', color: '#4b5563', lineHeight: '1.6', margin: 0 }}>
+                          {service.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Action Buttons - Outside card on the right */}
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '0.375rem',
+                  flexShrink: 0
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => handleEditService(service)}
+                    title="Edit"
+                    style={{ 
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: 'white',
+                      color: '#5e72e4',
+                      border: '1.5px solid #5e72e4',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.75rem',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = '#5e72e4';
+                      e.currentTarget.style.color = 'white';
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'white';
+                      e.currentTarget.style.color = '#5e72e4';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <i className="fas fa-edit"></i>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveService(service.serviceId)}
+                    title="Remove"
+                    style={{ 
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      background: 'white',
+                      color: '#dc2626',
+                      border: '1.5px solid #dc2626',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.75rem',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = '#dc2626';
+                      e.currentTarget.style.color = 'white';
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'white';
+                      e.currentTarget.style.color = '#dc2626';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                  >
+                    <i className="fas fa-trash"></i>
+                  </button>
+                </div>
               </div>
-            );
-          })}
+
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* Add Service Button */}
+      <button
+        type="button"
+        className="btn-add-service"
+        onClick={() => setShowModal(true)}
+      >
+        + Add Service
+      </button>
+
+      {/* Service Selection Modal */}
+      {showModal && (
+        <div className="service-modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="service-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="service-modal-header">
+              <h3>Add Service</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="service-modal-search">
+              <input
+                type="text"
+                placeholder="Search services..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="service-modal-list">
+              {filteredServices.length === 0 ? (
+                <div className="no-results">
+                  {searchQuery ? 'No services found matching your search.' : 'All available services have been added.'}
+                </div>
+              ) : (
+                filteredServices.map(service => (
+                  <div
+                    key={service.id}
+                    className="service-modal-item"
+                    onClick={() => handleServiceSelect(service)}
+                  >
+                    <span className="service-modal-name">{service.name}</span>
+                    <span className="service-modal-category">{service.category}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Service Modal */}
+      {showEditModal && editingService && (
+        <div className="service-modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="service-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="service-modal-header">
+              <h3>Edit Service: {editingService.serviceName}</h3>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowEditModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="service-modal-content">
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Pricing Model</label>
+                  <select
+                    value={editingService.pricingModel || 'hourly'}
+                    onChange={(e) => handleEditModalUpdate('pricingModel', e.target.value)}
+                    className="form-input"
+                  >
+                    <option value="hourly">Hourly Rate</option>
+                    <option value="fixed">Fixed Price</option>
+                    <option value="per_person">Per Person</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Base Duration (hours)</label>
+                  <input
+                    type="number"
+                    value={editingService.baseDuration || ''}
+                    onChange={(e) => handleEditModalUpdate('baseDuration', e.target.value)}
+                    className="form-input"
+                    placeholder="2"
+                    min="0"
+                    step="0.5"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Base Rate ($)</label>
+                  <input
+                    type="number"
+                    value={editingService.baseRate || ''}
+                    onChange={(e) => handleEditModalUpdate('baseRate', e.target.value)}
+                    className="form-input"
+                    placeholder="100"
+                    min="0"
+                    step="1"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Overtime Rate ($/hr)</label>
+                  <input
+                    type="number"
+                    value={editingService.overtimeRate || ''}
+                    onChange={(e) => handleEditModalUpdate('overtimeRate', e.target.value)}
+                    className="form-input"
+                    placeholder="100"
+                    min="0"
+                    step="1"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  value={editingService.description || ''}
+                  onChange={(e) => handleEditModalUpdate('description', e.target.value)}
+                  className="form-textarea"
+                  rows="3"
+                  placeholder="Describe what's included in this service..."
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleSaveEditedService}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1614,17 +2003,7 @@ function QuestionnaireStep({ formData, setFormData }) {
 
   return (
     <div className="questionnaire-step">
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <i className="fas fa-clipboard-check" style={{ color: 'var(--primary)', fontSize: '1.25rem' }}></i>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Select Your Features</h3>
-          </div>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            Choose the features and services that apply to your business. This helps clients understand what you offer.
-          </p>
-        </div>
-
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         {filteredCategories.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '3rem', background: '#f9fafb', borderRadius: '12px', border: '2px dashed #e5e7eb' }}>
             <i className="fas fa-info-circle" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>
@@ -1633,42 +2012,68 @@ function QuestionnaireStep({ formData, setFormData }) {
             </p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: '2rem' }}>
+          <div style={{ display: 'grid', gap: '2.5rem' }}>
             {filteredCategories.map(category => {
               if (!category.features || category.features.length === 0) return null;
               
               return (
-                <div key={category.categoryName} style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '2px solid #f3f4f6' }}>
-                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-                      <i className={`fas fa-${getCategoryIcon(category.categoryIcon)}`}></i>
-                    </div>
-                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{category.categoryName}</h3>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '0.75rem' }}>
+                <div key={category.categoryName} style={{ background: 'white', borderRadius: '16px', padding: '2rem' }}>
+                  <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', fontWeight: 600, color: '#1f2937' }}>
+                    {category.categoryName}
+                  </h3>
+                  <div className="features-grid-3col">
                     {category.features.map(feature => {
                       const isSelected = (formData.selectedFeatures || []).includes(feature.featureID);
                       return (
-                        <div
-                          key={feature.featureID}
-                          onClick={() => toggleFeatureSelection(feature.featureID)}
-                          style={{
-                            padding: '0.75rem 1rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            borderRadius: '8px',
-                            border: isSelected ? '1px solid var(--primary)' : '1px solid #e5e7eb',
-                            background: isSelected ? '#f0f9ff' : 'white'
-                          }}
-                        >
-                          <i className={`fas fa-${getFeatureIcon(feature.featureIcon)}`} style={{ color: 'var(--primary)', fontSize: '1.1rem', flexShrink: 0 }}></i>
-                          <span style={{ fontSize: '0.9rem', color: '#374151', flex: 1, fontWeight: isSelected ? 600 : 400 }}>{feature.featureName}</span>
-                          {isSelected && (
-                            <i className="fas fa-check-circle" style={{ color: 'var(--primary)', fontSize: '1.1rem' }}></i>
-                          )}
+                        <div key={feature.featureID} style={{ display: 'flex' }}>
+                          <div
+                            onClick={() => toggleFeatureSelection(feature.featureID)}
+                            style={{
+                              padding: '1rem 1.25rem',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.875rem',
+                              borderRadius: '10px',
+                              border: '1px solid #e5e7eb',
+                              background: isSelected ? '#f0f9ff' : 'white',
+                              boxShadow: isSelected ? '0 1px 3px rgba(0, 123, 255, 0.1)' : 'none',
+                              width: '100%'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.borderColor = '#d1d5db';
+                                e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isSelected) {
+                                e.currentTarget.style.borderColor = '#e5e7eb';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }
+                            }}
+                          >
+                            <i 
+                              className={`fas fa-${getFeatureIcon(feature.featureIcon)}`} 
+                              style={{ 
+                                color: isSelected ? 'var(--primary)' : '#6366f1', 
+                                fontSize: '1.25rem', 
+                                flexShrink: 0,
+                                width: '24px',
+                                textAlign: 'center'
+                              }}
+                            ></i>
+                            <span style={{ 
+                              fontSize: '0.9375rem', 
+                              color: '#374151', 
+                              flex: 1, 
+                              fontWeight: isSelected ? 600 : 500,
+                              lineHeight: 1.4
+                            }}>
+                              {feature.featureName}
+                            </span>
+                          </div>
                         </div>
                       );
                     })}
@@ -1680,7 +2085,7 @@ function QuestionnaireStep({ formData, setFormData }) {
         )}
 
         {filteredCategories.length > 0 && (
-          <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ marginTop: '2rem', padding: '1rem 1.25rem', background: '#f8f9fa', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.95rem' }}>
               <i className="fas fa-check-circle" style={{ color: 'var(--primary)' }}></i>
               <span><strong>{(formData.selectedFeatures || []).length}</strong> features selected</span>
