@@ -1426,15 +1426,34 @@
   }
 }
 
-/* Google Maps Autocomplete Dropdown Styling */
+/* Google Maps Autocomplete Dropdown Styling - EXACT COPY FROM WORKING TEST PAGE */
 .pac-container {
-  background: white !important;
-  z-index: 99999 !important;
-  border: 1px solid #DDDDDD !important;
+  background-color: white !important;
+  z-index: 9999999 !important;
+  border: 2px solid #007bff !important;
   border-radius: 8px !important;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
   margin-top: 4px !important;
   font-family: inherit !important;
+  pointer-events: auto !important;
+  position: absolute !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: auto !important;
+  min-width: 300px !important;
+}
+
+/* Ensure parent containers don't hide dropdown */
+.location-step,
+.step-container,
+.become-vendor-main {
+  overflow: visible !important;
+}
+
+/* Ensure pac-container is never hidden */
+.pac-container:not(:empty) {
+  display: block !important;
 }
 
 .pac-item {
@@ -1443,6 +1462,8 @@
   border-bottom: 1px solid #EBEBEB !important;
   font-size: 14px !important;
   line-height: 1.4 !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
 .pac-item:last-child {
@@ -1450,7 +1471,7 @@
 }
 
 .pac-item:hover {
-  background: #F7F7F7 !important;
+  background: #f0f8ff !important;
 }
 
 .pac-item-selected {
@@ -1469,10 +1490,161 @@
 
 .pac-icon {
   margin-top: 2px !important;
+  margin-right: 10px !important;
+}
+
+/* Hide the "powered by Google" logo if needed */
+.pac-logo::after {
+  display: none !important;
+}
+
+/* Ensure the become-vendor-main doesn't clip the dropdown */
+.become-vendor-main {
+  overflow: visible !important;
+}
+
+.step-container {
+  overflow: visible !important;
+}
+
+.step-content {
+  overflow: visible !important;
+}
+
+.location-step {
+  overflow: visible !important;
+}
+
+.location-step .form-group {
+  overflow: visible !important;
+  position: relative;
 }
 
 /* Ensure dropdown appears above other elements */
+
+/* CRITICAL FIX: Override EnhancedSearchBar.css that hides pac-container globally */
+/* Google appends .pac-container to body, so we need to override with higher specificity */
+body .pac-container {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Make sure it's not hidden by the search bar rule */
+.enhanced-search-container:not(.expanded) ~ .pac-container {
+  display: block !important;
+}
+
+body:not(:has(.enhanced-search-container.expanded)) .pac-container {
+  display: block !important;
+}
+
+/* Location Step Styles */
 .location-step {
-  position: relative;
-  z-index: 1;
+  width: 100%;
+}
+
+.location-step .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.location-step .form-input,
+.location-step .form-select {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: all 0.2s;
+  background: white;
+}
+
+.location-step .form-input:focus,
+.location-step .form-select:focus {
+  outline: none;
+  border-color: #222222;
+  box-shadow: 0 0 0 1px #222222;
+}
+
+.location-step .form-input[readonly] {
+  background-color: #f9fafb;
+  cursor: default;
+}
+
+/* Service Area Tags */
+.service-area-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #f0f9ff;
+  border: 1px solid #3b82f6;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  color: #1e40af;
+  margin: 0.25rem;
+}
+
+.service-area-tag button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 0.25rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+}
+
+.service-area-tag button:hover {
+  color: #dc2626;
+}
+
+/* Add Button for Service Areas */
+.location-step .btn-add-area {
+  padding: 0.875rem 1.5rem;
+  background-color: #6366f1;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.location-step .btn-add-area:hover {
+  background-color: #4f46e5;
+}
+
+/* Empty State for Service Areas */
+.location-step .empty-service-areas {
+  padding: 1.5rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 2px dashed #e5e7eb;
+  text-align: center;
+  color: #6b7280;
+}
+
+/* Responsive for Location Step */
+@media (max-width: 768px) {
+  .location-step .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .location-step .service-area-input-row {
+    flex-direction: column;
+  }
+  
+  .location-step .btn-add-area {
+    width: 100%;
+    justify-content: center;
+  }
 }

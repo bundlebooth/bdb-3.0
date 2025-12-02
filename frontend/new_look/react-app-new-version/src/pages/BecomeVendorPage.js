@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import { showBanner } from '../utils/helpers';
+import SimpleWorkingLocationStep from '../components/SimpleWorkingLocationStep';
 import './BecomeVendorPage.css';
 
-const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
+// Google Maps API Key is imported from config.js
 
 const BecomeVendorPage = () => {
   const navigate = useNavigate();
@@ -149,7 +150,7 @@ const BecomeVendorPage = () => {
       id: 'location',
       title: 'Where are you located?',
       subtitle: 'Set your business address and service areas',
-      component: LocationStep,
+      component: SimpleWorkingLocationStep,
       required: true
     },
     {
@@ -277,9 +278,19 @@ const BecomeVendorPage = () => {
       showBanner('Please enter your business phone number', 'error');
       return;
     }
+    
+    // Validation for location step (step 4)
     if (currentStep === 4) {
-      if (!formData.city || !formData.province) {
-        showBanner('Please enter your city and province', 'error');
+      if (!formData.city.trim()) {
+        showBanner('Please enter your city', 'error');
+        return;
+      }
+      if (!formData.province.trim()) {
+        showBanner('Please select your province', 'error');
+        return;
+      }
+      if (formData.serviceAreas.length === 0) {
+        showBanner('Please add at least one service area', 'error');
         return;
       }
     }
@@ -843,58 +854,77 @@ function ContactStep({ formData, onInputChange }) {
   );
 }
 
-function LocationStep({ formData, onInputChange, googleMapsLoaded }) {
-  const addressInputRef = React.useRef(null);
-  const serviceAreaInputRef = React.useRef(null);
-  const addressAutocompleteRef = React.useRef(null);
-  const serviceAreaAutocompleteRef = React.useRef(null);
-  const initializedRef = React.useRef(false); // Prevent double initialization
-  const [serviceAreaInput, setServiceAreaInput] = React.useState('');
+// Location Step - With Google Places API Integration
+function LocationStep({ formData, onInputChange, setFormData, provinces, googleMapsLoaded }) {
+  const addressInputRef = useRef(null);
+  const serviceAreaInputRef = useRef(null);
+  const addressAutocompleteRef = useRef(null);
+  const serviceAreaAutocompleteRef = useRef(null);
+  const [serviceAreaInput, setServiceAreaInput] = useState('');
 
-  React.useEffect(() => {
-    // Prevent double initialization in React Strict Mode
-    if (initializedRef.current) {
-      console.log('⚠️ Already initialized, skipping...');
+  // Initialize Google Places Autocomplete - EXACTLY like LocationServiceAreasPanel
+  useEffect(() => {
+    // Add retry mechanism in case Google Maps hasn't loaded yet
+    const tryInitialize = () => {
+      if (window.google?.maps?.places) {
+        console.log('✅ Google Maps ready, initializing autocomplete...');
+        // Add small delay to ensure DOM elements are ready
+        setTimeout(() => {
+          initializeGoogleMaps();
+        }, 100);
+      } else {
+        console.log('⏳ Google Maps not ready yet, retrying in 200ms...');
+        setTimeout(tryInitialize, 200);
+      }
+    };
+    
+    tryInitialize();
+    
+    // Cleanup
+    return () => {
+      if (addressAutocompleteRef.current) {
+        window.google?.maps?.event?.clearInstanceListeners(addressAutocompleteRef.current);
+      }
+      if (serviceAreaAutocompleteRef.current) {
+        window.google?.maps?.event?.clearInstanceListeners(serviceAreaAutocompleteRef.current);
+      }
+    };
+  }, []); // Empty dependency - only run once on mount
+
+  const initializeGoogleMaps = () => {
+    console.log('🎉 Google Maps API loaded successfully!');
+    console.log('🔍 LocationStep: Checking Google Maps...', {
+      hasGoogle: !!window.google,
+      hasMaps: !!window.google?.maps,
+      hasPlaces: !!window.google?.maps?.places,
+      hasAddressInput: !!addressInputRef.current,
+      hasServiceAreaInput: !!serviceAreaInputRef.current
+    });
+
+    if (!window.google || !window.google.maps || !window.google.maps.places) {
+      console.error('❌ Google Maps not ready yet');
       return;
     }
-
-    // Wait for Google Maps to be ready
-    const initAutocomplete = () => {
-      console.log('🔍 LocationStep: Checking Google Maps...', {
-        hasGoogle: !!window.google,
-        hasMaps: !!window.google?.maps,
-        hasPlaces: !!window.google?.maps?.places,
-        hasAddressInput: !!addressInputRef.current,
-        hasServiceAreaInput: !!serviceAreaInputRef.current
-      });
-
-      if (!window.google || !window.google.maps || !window.google.maps.places) {
-        console.log('⏳ Google Maps not ready yet, retrying in 200ms...');
-        setTimeout(initAutocomplete, 200);
-        return;
-      }
+    
+    if (!addressInputRef.current) {
+      console.error('❌ Address input ref not ready');
+      return;
+    }
+    
+    // Address Autocomplete - EXACT COPY FROM WORKING TEST PAGE
+    try {
+      console.log('✅ Creating address autocomplete for:', addressInputRef.current);
       
-      // Address Autocomplete - EXACTLY like EnhancedSearchBar
-      if (addressInputRef.current && !addressAutocompleteRef.current) {
-        console.log('✅ Creating address autocomplete...');
-        initializedRef.current = true; // Mark as initialized
-
-        const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
-          types: ['address'],
-          componentRestrictions: { country: 'ca' }
-        });
-
-        addressAutocompleteRef.current = autocomplete;
-
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          console.log('🎯 Address place selected:', place);
-          
-          if (!place || !place.address_components) {
-            console.log('❌ No place or address components');
-            return;
-          }
-          
+      addressAutocompleteRef.current = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+        types: ['address'],
+        componentRestrictions: { country: 'ca' }
+      });
+      
+      addressAutocompleteRef.current.addListener('place_changed', function() {
+        const place = addressAutocompleteRef.current.getPlace();
+        console.log('🎯 Address selected:', place);
+        
+        if (place.address_components) {
           const comps = place.address_components;
           const pick = (type) => comps.find(c => c.types.includes(type))?.long_name || '';
           
@@ -906,158 +936,231 @@ function LocationStep({ formData, onInputChange, googleMapsLoaded }) {
             fullAddress,
             city: pick('locality') || pick('sublocality'),
             province: pick('administrative_area_level_1'),
-            postal: pick('postal_code')
+            postalCode: pick('postal_code')
           });
-
-          onInputChange('address', fullAddress || '');
-          onInputChange('city', pick('locality') || pick('sublocality') || '');
-          onInputChange('province', pick('administrative_area_level_1') || '');
-          onInputChange('country', pick('country') || 'Canada');
-          onInputChange('postalCode', pick('postal_code') || '');
           
-          const loc = place.geometry?.location;
-          if (loc) {
-            const lat = typeof loc.lat === 'function' ? loc.lat() : loc.lat;
-            const lng = typeof loc.lng === 'function' ? loc.lng() : loc.lng;
-            console.log('🗺️ Coordinates:', { lat, lng });
-            onInputChange('latitude', lat);
-            onInputChange('longitude', lng);
-          }
-
-          console.log('✅ Address fields updated!');
-        });
-
-        console.log('✅ Address autocomplete created');
-      }
+          // Update form data
+          setFormData(prev => ({
+            ...prev,
+            address: fullAddress || '',
+            city: pick('locality') || pick('sublocality') || pick('postal_town') || '',
+            province: pick('administrative_area_level_1') || '',
+            country: pick('country') || 'Canada',
+            postalCode: pick('postal_code') || '',
+            latitude: place.geometry?.location?.lat() || null,
+            longitude: place.geometry?.location?.lng() || null
+          }));
+          
+          console.log('✅ Address fields updated in React state!');
+        }
+      });
       
-      // Service Area Autocomplete - EXACTLY like EnhancedSearchBar
-      if (serviceAreaInputRef.current && !serviceAreaAutocompleteRef.current) {
-        console.log('✅ Creating service area autocomplete...');
-
-        const autocomplete = new window.google.maps.places.Autocomplete(serviceAreaInputRef.current, {
+      console.log('✅ Address autocomplete initialized');
+    } catch (error) {
+      console.error('❌ Error initializing address autocomplete:', error);
+    }
+    
+    // Service Area Autocomplete - EXACT COPY FROM WORKING TEST PAGE
+    if (serviceAreaInputRef.current) {
+      try {
+        console.log('✅ Creating city autocomplete for:', serviceAreaInputRef.current);
+        
+        serviceAreaAutocompleteRef.current = new window.google.maps.places.Autocomplete(serviceAreaInputRef.current, {
           types: ['(cities)'],
           componentRestrictions: { country: 'ca' }
         });
-
-        serviceAreaAutocompleteRef.current = autocomplete;
-
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          console.log('🎯 Service area place selected:', place);
+        
+        serviceAreaAutocompleteRef.current.addListener('place_changed', function() {
+          const place = serviceAreaAutocompleteRef.current.getPlace();
+          console.log('🎯 City selected:', place);
           
-          if (place.formatted_address) {
-            const areas = formData.serviceAreas || [];
-            if (!areas.includes(place.formatted_address)) {
-              onInputChange('serviceAreas', [...areas, place.formatted_address]);
-              console.log('✅ Added service area:', place.formatted_address);
+          if (place.address_components) {
+            const comps = place.address_components;
+            const pick = (type) => comps.find(c => c.types.includes(type))?.long_name || '';
+            const city = pick('locality') || pick('postal_town') || '';
+            const areaToAdd = city || place.name || place.formatted_address?.split(',')[0];
+            
+            if (areaToAdd && !formData.serviceAreas.includes(areaToAdd)) {
+              setFormData(prev => ({
+                ...prev,
+                serviceAreas: [...prev.serviceAreas, areaToAdd]
+              }));
+              console.log('✅ Added service area:', areaToAdd);
             }
-            setServiceAreaInput('');
-            // Clear the input field
+            
             if (serviceAreaInputRef.current) {
               serviceAreaInputRef.current.value = '';
             }
           }
         });
-
-        console.log('✅ Service area autocomplete created');
+        
+        console.log('✅ City autocomplete initialized');
+      } catch (error) {
+        console.error('❌ Error initializing city autocomplete:', error);
       }
-    };
-
-    initAutocomplete();
-  }, []); // EMPTY DEPENDENCY ARRAY - only run once!
-
-  const handleAddServiceArea = () => {
-    const raw = serviceAreaInput.trim();
-    if (!raw) return;
-    const areas = formData.serviceAreas || [];
-    if (!areas.includes(raw)) {
-      onInputChange('serviceAreas', [...areas, raw]);
     }
-    setServiceAreaInput('');
   };
 
-  const handleRemoveServiceArea = (index) => {
-    const areas = formData.serviceAreas || [];
-    onInputChange('serviceAreas', areas.filter((_, i) => i !== index));
+  const handleAddServiceArea = () => {
+    const inputValue = serviceAreaInputRef.current?.value?.trim();
+    if (inputValue && !formData.serviceAreas.includes(inputValue)) {
+      setFormData(prev => ({
+        ...prev,
+        serviceAreas: [...prev.serviceAreas, inputValue]
+      }));
+      if (serviceAreaInputRef.current) {
+        serviceAreaInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveServiceArea = (area) => {
+    setFormData(prev => ({
+      ...prev,
+      serviceAreas: prev.serviceAreas.filter(a => a !== area)
+    }));
   };
 
   return (
     <div className="location-step">
-      <div className="form-group">
-        <label>Street Address *</label>
-        <input
-          type="text"
-          className="form-input"
-          ref={addressInputRef}
-          defaultValue={formData.address || ''}
-          onChange={(e) => onInputChange('address', e.target.value)}
-          placeholder="Start typing your address..."
-        />
-        <small className="form-help">🔥 Google Maps will auto-complete your address</small>
-      </div>
+      <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+        {/* Street Address with Google Autocomplete */}
+        <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+            Street Address <span style={{ color: 'red' }}>*</span>
+          </label>
+          <input
+            ref={addressInputRef}
+            type="text"
+            className="form-input"
+            placeholder="Start typing your address..."
+            style={{
+              width: '100%',
+              padding: '0.875rem 1rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '0.95rem'
+            }}
+          />
+          <small style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', color: '#f59e0b', fontSize: '0.85rem' }}>
+            <span>🔥</span> Start typing your address and Google will suggest it!
+          </small>
+        </div>
 
-      <div className="form-row">
-        <div className="form-group">
-          <label>City *</label>
-          <input
-            type="text"
-            className="form-input"
-            value={formData.city || ''}
-            onChange={(e) => onInputChange('city', e.target.value)}
-            placeholder="Toronto"
-            readOnly={false}
-          />
-        </div>
-        <div className="form-group">
-          <label>Province *</label>
-          <input
-            type="text"
-            className="form-input"
-            value={formData.province || ''}
-            onChange={(e) => onInputChange('province', e.target.value)}
-            placeholder="Ontario"
-            readOnly={false}
-          />
-        </div>
-      </div>
-
-      <div className="form-row">
-        <div className="form-group">
-          <label>Postal Code *</label>
-          <input
-            type="text"
-            className="form-input"
-            value={formData.postalCode || ''}
-            onChange={(e) => onInputChange('postalCode', e.target.value)}
-            placeholder="M5H 2N2"
-            readOnly={false}
-          />
-        </div>
-        <div className="form-group">
-          <label>Country</label>
-          <input
-            type="text"
-            className="form-input"
-            value={formData.country || 'Canada'}
-            onChange={(e) => onInputChange('country', e.target.value)}
-            placeholder="Canada"
-            readOnly={false}
-          />
-        </div>
-      </div>
-
-      <div className="form-group" style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid #EBEBEB' }}>
-        <label>Service Areas *</label>
-        <p className="form-help">Add the cities or regions where you offer your services</p>
-        <div className="form-row" style={{ marginBottom: '1rem' }}>
-          <div className="form-group" style={{ flex: 1 }}>
+        {/* City and Province Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div className="form-group">
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+              City <span style={{ color: 'red' }}>*</span>
+            </label>
             <input
               type="text"
+              value={formData.city}
+              onChange={(e) => onInputChange('city', e.target.value)}
               className="form-input"
+              placeholder="Toronto"
+              style={{
+                width: '100%',
+                padding: '0.875rem 1rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                backgroundColor: '#f3f4f6'
+              }}
+            />
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+              Province <span style={{ color: 'red' }}>*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.province}
+              onChange={(e) => onInputChange('province', e.target.value)}
+              className="form-input"
+              placeholder="Ontario"
+              style={{
+                width: '100%',
+                padding: '0.875rem 1rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                backgroundColor: '#f3f4f6'
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Postal Code and Country Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+          <div className="form-group">
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+              Postal Code <span style={{ color: 'red' }}>*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.postalCode}
+              onChange={(e) => onInputChange('postalCode', e.target.value)}
+              className="form-input"
+              placeholder="M5H 2N2"
+              style={{
+                width: '100%',
+                padding: '0.875rem 1rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                backgroundColor: '#f3f4f6'
+              }}
+            />
+          </div>
+          <div className="form-group">
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+              Country
+            </label>
+            <input
+              type="text"
+              value={formData.country}
+              onChange={(e) => onInputChange('country', e.target.value)}
+              className="form-input"
+              placeholder="Canada"
+              style={{
+                width: '100%',
+                padding: '0.875rem 1rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                backgroundColor: '#f3f4f6'
+              }}
+              readOnly
+            />
+          </div>
+        </div>
+
+        {/* Divider */}
+        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '2rem 0' }} />
+
+        {/* Service Areas Section */}
+        <div className="form-group">
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+            Service Areas <span style={{ color: 'red' }}>*</span>
+          </label>
+          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            Add the cities or regions where you offer your services
+          </p>
+          
+          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+            <input
               ref={serviceAreaInputRef}
+              type="text"
+              className="form-input"
               placeholder="Start typing a city name..."
-              value={serviceAreaInput || ''}
-              onChange={(e) => setServiceAreaInput(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '0.875rem 1rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '0.95rem'
+              }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -1065,56 +1168,95 @@ function LocationStep({ formData, onInputChange, googleMapsLoaded }) {
                 }
               }}
             />
-          </div>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handleAddServiceArea}
-            style={{ padding: '0.875rem 1.5rem', whiteSpace: 'nowrap' }}
-          >
-            <i className="fas fa-plus" style={{ marginRight: '0.5rem' }}></i>Add
-          </button>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', minHeight: '2rem' }}>
-          {(formData.serviceAreas || []).map((area, index) => (
-            <span
-              key={index}
+            <button
+              type="button"
+              onClick={handleAddServiceArea}
               style={{
-                display: 'inline-flex',
+                padding: '0.875rem 1.5rem',
+                backgroundColor: '#6366f1',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                padding: '0.5rem 0.875rem',
-                background: '#F7F7F7',
-                border: '1px solid #DDDDDD',
-                color: '#222222',
-                borderRadius: '8px',
-                fontSize: '0.9rem',
-                fontWeight: 500
+                transition: 'background-color 0.2s'
               }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#4f46e5'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#6366f1'}
             >
-              {area}
-              <button
-                type="button"
-                onClick={() => handleRemoveServiceArea(index)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#999',
-                  cursor: 'pointer',
-                  padding: '0',
-                  fontSize: '1.3rem',
-                  lineHeight: 1
-                }}
-              >
-                ×
-              </button>
-            </span>
-          ))}
+              <i className="fas fa-plus"></i> Add
+            </button>
+          </div>
+
+          <small style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: '#f59e0b', fontSize: '0.85rem' }}>
+            <span>🔥</span> Start typing a city name and Google will suggest it!
+          </small>
+
+          {/* Service Areas Tags */}
+          {formData.serviceAreas.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem' }}>
+              {formData.serviceAreas.map((area, index) => (
+                <div
+                  key={index}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#f0f9ff',
+                    border: '1px solid #3b82f6',
+                    borderRadius: '20px',
+                    fontSize: '0.9rem',
+                    color: '#1e40af'
+                  }}
+                >
+                  <i className="fas fa-map-marker-alt" style={{ fontSize: '0.8rem' }}></i>
+                  {area}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveServiceArea(area)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#ef4444',
+                      cursor: 'pointer',
+                      padding: '0',
+                      marginLeft: '0.25rem',
+                      fontSize: '0.9rem',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {formData.serviceAreas.length === 0 && (
+            <div style={{ 
+              padding: '1.5rem', 
+              background: '#f9fafb', 
+              borderRadius: '8px', 
+              border: '2px dashed #e5e7eb',
+              textAlign: 'center',
+              color: '#6b7280'
+            }}>
+              <i className="fas fa-map-marked-alt" style={{ fontSize: '1.5rem', marginBottom: '0.5rem', display: 'block' }}></i>
+              No service areas added yet. Add cities where you provide services.
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
+
 
 function ServicesStep({ formData, setFormData }) {
   const [availableServices, setAvailableServices] = useState([]);
