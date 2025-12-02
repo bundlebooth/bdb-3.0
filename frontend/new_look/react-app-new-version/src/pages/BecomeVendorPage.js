@@ -27,6 +27,9 @@ const BecomeVendorPage = () => {
     displayName: '',
     businessDescription: '',
     yearsInBusiness: '',
+    tagline: '',
+    priceRange: '',
+    profileLogo: '',
     
     // Contact
     businessPhone: '',
@@ -56,6 +59,7 @@ const BecomeVendorPage = () => {
       saturday: { isAvailable: false, openTime: '10:00', closeTime: '16:00' },
       sunday: { isAvailable: false, openTime: '10:00', closeTime: '16:00' }
     },
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     
     // Vendor Questionnaire
     selectedFeatures: [],
@@ -82,16 +86,21 @@ const BecomeVendorPage = () => {
     faqs: []
   });
 
-  // Available categories - matching database
+  // Available categories - matching main page
   const availableCategories = [
-    { id: 'Venue', name: 'Venue', icon: '🏛️', description: 'Event spaces and locations' },
+    { id: 'Venue', name: 'Venues', icon: '🏛️', description: 'Event spaces and locations' },
+    { id: 'Photography', name: 'Photo/Video', icon: '📸', description: 'Photography and videography' },
+    { id: 'Music', name: 'Music/DJ', icon: '🎵', description: 'Music and DJ services' },
     { id: 'Catering', name: 'Catering', icon: '🍽️', description: 'Food and beverage services' },
-    { id: 'Photography', name: 'Photography', icon: '📸', description: 'Photography and videography' },
-    { id: 'Music', name: 'Music/DJ', icon: '🎵', description: 'Music and entertainment' },
-    { id: 'Decorations', name: 'Decorations', icon: '🎨', description: 'Event decorations and styling' },
     { id: 'Entertainment', name: 'Entertainment', icon: '🎭', description: 'Performers and entertainers' },
-    { id: 'Planning', name: 'Event Planning', icon: '📋', description: 'Event planning and coordination' },
-    { id: 'Rentals', name: 'Rentals', icon: '🎪', description: 'Equipment and furniture rentals' }
+    { id: 'Experiences', name: 'Experiences', icon: '⭐', description: 'Unique event experiences' },
+    { id: 'Decorations', name: 'Decorations', icon: '🎨', description: 'Event decorations and styling' },
+    { id: 'Beauty', name: 'Beauty', icon: '💄', description: 'Hair, makeup, and beauty services' },
+    { id: 'Cake', name: 'Cake', icon: '🎂', description: 'Wedding and event cakes' },
+    { id: 'Transportation', name: 'Transportation', icon: '🚗', description: 'Event transportation services' },
+    { id: 'Planning', name: 'Planners', icon: '📋', description: 'Event planning and coordination' },
+    { id: 'Fashion', name: 'Fashion', icon: '👗', description: 'Wedding and event fashion' },
+    { id: 'Stationery', name: 'Stationery', icon: '✉️', description: 'Invitations and stationery' }
   ];
 
   const canadianProvinces = [
@@ -765,8 +774,59 @@ function CategoriesStep({ formData, onInputChange, categories }) {
 // Remaining Step Components
 
 function BusinessDetailsStep({ formData, onInputChange }) {
+  const [logoPreview, setLogoPreview] = useState(formData.profileLogo || '');
+
+  const handleLogoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result);
+        onInputChange('profileLogo', reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="business-details-step">
+      <div className="form-group">
+        <label>Profile Logo</label>
+        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1 }}>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleLogoUpload}
+              className="form-input"
+              style={{ padding: '0.5rem' }}
+            />
+            <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
+              Upload your business logo (JPG, PNG, or GIF)
+            </p>
+          </div>
+          {logoPreview && (
+            <div style={{ 
+              width: '100px', 
+              height: '100px', 
+              borderRadius: '50%', 
+              overflow: 'hidden',
+              border: '2px solid #e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#f9fafb'
+            }}>
+              <img 
+                src={logoPreview} 
+                alt="Logo preview" 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="form-group">
         <label>Business Name *</label>
         <input
@@ -790,6 +850,21 @@ function BusinessDetailsStep({ formData, onInputChange }) {
       </div>
 
       <div className="form-group">
+        <label>Tagline</label>
+        <input
+          type="text"
+          value={formData.tagline}
+          onChange={(e) => onInputChange('tagline', e.target.value)}
+          className="form-input"
+          placeholder="A catchy phrase that describes your business"
+          maxLength="100"
+        />
+        <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
+          {formData.tagline?.length || 0}/100 characters
+        </p>
+      </div>
+
+      <div className="form-group">
         <label>Business Description</label>
         <textarea
           value={formData.businessDescription}
@@ -798,6 +873,24 @@ function BusinessDetailsStep({ formData, onInputChange }) {
           rows="5"
           placeholder="Tell clients about your business, what makes you unique, and what they can expect..."
         />
+      </div>
+
+      <div className="form-group">
+        <label>Price Range</label>
+        <select
+          value={formData.priceRange}
+          onChange={(e) => onInputChange('priceRange', e.target.value)}
+          className="form-input"
+        >
+          <option value="">Select price range</option>
+          <option value="$">$ - Budget Friendly</option>
+          <option value="$$">$$ - Moderate</option>
+          <option value="$$$">$$$ - Premium</option>
+          <option value="$$$$">$$$$ - Luxury</option>
+        </select>
+        <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem' }}>
+          Help clients understand your pricing level
+        </p>
       </div>
 
       <div className="form-group">
@@ -1790,6 +1883,30 @@ function BusinessHoursStep({ formData, setFormData }) {
     { key: 'sunday', label: 'Sunday' }
   ];
 
+  // Common timezones
+  const timezones = [
+    'America/New_York',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'America/Anchorage',
+    'Pacific/Honolulu',
+    'America/Toronto',
+    'America/Vancouver',
+    'America/Edmonton',
+    'America/Winnipeg',
+    'America/Halifax',
+    'America/St_Johns',
+    'Europe/London',
+    'Europe/Paris',
+    'Europe/Berlin',
+    'Asia/Tokyo',
+    'Asia/Shanghai',
+    'Asia/Dubai',
+    'Australia/Sydney',
+    'Pacific/Auckland'
+  ];
+
   const handleHourChange = (day, field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -1816,6 +1933,13 @@ function BusinessHoursStep({ formData, setFormData }) {
     }));
   };
 
+  const handleTimezoneChange = (timezone) => {
+    setFormData(prev => ({
+      ...prev,
+      timezone: timezone
+    }));
+  };
+
   return (
     <div className="business-hours-step">
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -1826,6 +1950,36 @@ function BusinessHoursStep({ formData, setFormData }) {
           </div>
           <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
             These hours will be displayed on your public profile. You can still accept bookings outside these hours by arrangement.
+          </p>
+        </div>
+
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <i className="fas fa-globe" style={{ color: 'var(--primary)', fontSize: '1rem' }}></i>
+            <label style={{ fontSize: '0.95rem', fontWeight: 600, color: '#374151' }}>Timezone</label>
+          </div>
+          <select
+            value={formData.timezone || ''}
+            onChange={(e) => handleTimezoneChange(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              fontSize: '0.9rem',
+              background: 'white',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="">Select timezone...</option>
+            {timezones.map(tz => (
+              <option key={tz} value={tz}>
+                {tz.replace(/_/g, ' ')}
+              </option>
+            ))}
+          </select>
+          <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem', marginBottom: 0 }}>
+            This timezone will be displayed to customers viewing your profile
           </p>
         </div>
 
@@ -2017,11 +2171,11 @@ function QuestionnaireStep({ formData, setFormData }) {
               if (!category.features || category.features.length === 0) return null;
               
               return (
-                <div key={category.categoryName} style={{ background: 'white', borderRadius: '16px', padding: '2rem' }}>
-                  <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', fontWeight: 600, color: '#1f2937' }}>
+                <div key={category.categoryName} style={{ background: 'white', borderRadius: '16px', padding: '2rem 0' }}>
+                  <h3 style={{ margin: '0 0 1.5rem 0', padding: '0 2rem', fontSize: '1.25rem', fontWeight: 600, color: '#1f2937' }}>
                     {category.categoryName}
                   </h3>
-                  <div className="features-grid-3col">
+                  <div className="features-grid-3col" style={{ padding: '0 2rem' }}>
                     {category.features.map(feature => {
                       const isSelected = (formData.selectedFeatures || []).includes(feature.featureID);
                       return (
@@ -2036,7 +2190,7 @@ function QuestionnaireStep({ formData, setFormData }) {
                               alignItems: 'center',
                               gap: '0.875rem',
                               borderRadius: '10px',
-                              border: '1px solid #e5e7eb',
+                              border: isSelected ? '2px solid var(--primary)' : '1px solid #e5e7eb',
                               background: isSelected ? '#f0f9ff' : 'white',
                               boxShadow: isSelected ? '0 1px 3px rgba(0, 123, 255, 0.1)' : 'none',
                               width: '100%'

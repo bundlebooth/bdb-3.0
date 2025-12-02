@@ -259,7 +259,42 @@ router.get('/:id/bookings/all', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.execute('sp_GetVendorBookingsAll');
+    
+    // Use direct query instead of stored procedure to avoid view dependency issues
+    const result = await request.query(`
+      SELECT 
+        b.BookingID,
+        b.VendorProfileID,
+        b.UserID,
+        u.Name AS ClientName,
+        u.Email AS ClientEmail,
+        u.Phone AS ClientPhone,
+        b.EventDate,
+        b.EndDate,
+        b.Status,
+        b.TotalAmount,
+        b.DepositAmount,
+        b.DepositPaid,
+        b.FullAmountPaid,
+        b.AttendeeCount,
+        b.SpecialRequests,
+        b.EventLocation AS Location,
+        b.EventName,
+        b.EventType,
+        b.TimeZone,
+        b.CreatedAt,
+        b.UpdatedAt,
+        (SELECT TOP 1 c.ConversationID FROM Conversations c WHERE c.UserID = b.UserID AND c.VendorProfileID = b.VendorProfileID) AS ConversationID,
+        COALESCE(
+          (SELECT TOP 1 bs.ServiceName FROM BookingServices bs WHERE bs.BookingID = b.BookingID ORDER BY bs.BookingServiceID),
+          'Service'
+        ) AS ServiceName
+      FROM Bookings b
+      LEFT JOIN Users u ON b.UserID = u.UserID
+      WHERE b.VendorProfileID = @VendorProfileID
+      ORDER BY b.EventDate DESC
+    `);
+    
     res.json(result.recordset);
   } catch (err) {
     console.error('Get all vendor bookings error:', err);

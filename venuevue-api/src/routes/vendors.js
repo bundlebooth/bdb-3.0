@@ -1311,6 +1311,594 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
   }
 });
 
+// Create or update vendor profile (for onboarding flow)
+router.post('/profile', async (req, res) => {
+  try {
+    const {
+      userId,
+      businessName,
+      displayName,
+      businessDescription,
+      businessPhone,
+      website,
+      yearsInBusiness,
+      address,
+      city,
+      state,
+      country,
+      postalCode,
+      categories,
+      serviceAreas
+    } = req.body;
+
+    // Validation
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    if (!businessName || !displayName || !businessPhone || !city || !state) {
+      return res.status(400).json({
+        success: false,
+        message: 'Required fields: businessName, displayName, businessPhone, city, state'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    // Check if vendor profile already exists
+    const checkRequest = new sql.Request(pool);
+    checkRequest.input('UserID', sql.Int, parseInt(userId));
+    const checkResult = await checkRequest.query(`
+      SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID
+    `);
+
+    let vendorProfileId;
+
+    if (checkResult.recordset.length > 0) {
+      // Update existing profile
+      vendorProfileId = checkResult.recordset[0].VendorProfileID;
+      
+      const updateRequest = new sql.Request(pool);
+      updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      updateRequest.input('BusinessName', sql.NVarChar(100), businessName);
+      updateRequest.input('DisplayName', sql.NVarChar(100), displayName);
+      updateRequest.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription || '');
+      updateRequest.input('BusinessPhone', sql.NVarChar(20), businessPhone);
+      updateRequest.input('Website', sql.NVarChar(255), website || null);
+      updateRequest.input('YearsInBusiness', sql.Int, parseInt(yearsInBusiness) || 1);
+      updateRequest.input('Address', sql.NVarChar(255), address || null);
+      updateRequest.input('City', sql.NVarChar(100), city);
+      updateRequest.input('State', sql.NVarChar(50), state);
+      updateRequest.input('Country', sql.NVarChar(50), country || 'Canada');
+      updateRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
+
+      await updateRequest.query(`
+        UPDATE VendorProfiles SET
+          BusinessName = @BusinessName,
+          DisplayName = @DisplayName,
+          BusinessDescription = @BusinessDescription,
+          BusinessPhone = @BusinessPhone,
+          Website = @Website,
+          YearsInBusiness = @YearsInBusiness,
+          Address = @Address,
+          City = @City,
+          State = @State,
+          Country = @Country,
+          PostalCode = @PostalCode,
+          UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+
+    } else {
+      // Create new profile using sp_RegisterVendor
+      const createRequest = new sql.Request(pool);
+      createRequest.input('UserID', sql.Int, parseInt(userId));
+      createRequest.input('BusinessName', sql.NVarChar(100), businessName);
+      createRequest.input('DisplayName', sql.NVarChar(100), displayName);
+      createRequest.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription || '');
+      createRequest.input('BusinessPhone', sql.NVarChar(20), businessPhone);
+      createRequest.input('Website', sql.NVarChar(255), website || null);
+      createRequest.input('YearsInBusiness', sql.Int, parseInt(yearsInBusiness) || 1);
+      createRequest.input('Address', sql.NVarChar(255), address || null);
+      createRequest.input('City', sql.NVarChar(100), city);
+      createRequest.input('State', sql.NVarChar(50), state);
+      createRequest.input('Country', sql.NVarChar(50), country || 'Canada');
+      createRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
+      createRequest.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categories || []));
+      createRequest.input('Services', sql.NVarChar(sql.MAX), JSON.stringify([]));
+
+      const result = await createRequest.execute('sp_RegisterVendor');
+      
+      if (!result.recordset[0].Success) {
+        throw new Error('Failed to create vendor profile');
+      }
+      
+      vendorProfileId = result.recordset[0].VendorProfileID;
+    }
+
+    // Update categories if provided
+    if (categories && categories.length > 0) {
+      // Delete existing categories
+      const deleteCategoriesRequest = new sql.Request(pool);
+      deleteCategoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteCategoriesRequest.query(`
+        DELETE FROM VendorCategories WHERE VendorProfileID = @VendorProfileID
+      `);
+
+      // Insert new categories
+      for (const category of categories) {
+        const categoryRequest = new sql.Request(pool);
+        categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        categoryRequest.input('CategoryName', sql.NVarChar(50), category);
+        
+        await categoryRequest.query(`
+          INSERT INTO VendorCategories (VendorProfileID, CategoryName, CreatedAt)
+          VALUES (@VendorProfileID, @CategoryName, GETDATE())
+        `);
+      }
+    }
+
+    // Update service areas if provided
+    if (serviceAreas && serviceAreas.length > 0) {
+      // Delete existing service areas
+      const deleteAreasRequest = new sql.Request(pool);
+      deleteAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteAreasRequest.query(`
+        DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID
+      `);
+
+      // Insert new service areas
+      for (const area of serviceAreas) {
+        const areaRequest = new sql.Request(pool);
+        areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        areaRequest.input('AreaName', sql.NVarChar(100), area);
+        
+        await areaRequest.query(`
+          INSERT INTO VendorServiceAreas (VendorProfileID, AreaName, IsActive, CreatedAt)
+          VALUES (@VendorProfileID, @AreaName, 1, GETDATE())
+        `);
+      }
+    }
+
+    // Update user to be a vendor
+    const updateUserRequest = new sql.Request(pool);
+    updateUserRequest.input('UserID', sql.Int, parseInt(userId));
+    await updateUserRequest.query(`
+      UPDATE Users SET IsVendor = 1 WHERE UserID = @UserID
+    `);
+
+    // Handle services if provided
+    if (services && services.length > 0) {
+      for (const service of services) {
+        try {
+          const serviceRequest = new sql.Request(pool);
+          serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          serviceRequest.input('CategoryName', sql.NVarChar(50), categories[0] || 'General');
+          serviceRequest.input('ServiceName', sql.NVarChar(100), service.name);
+          serviceRequest.input('ServiceDescription', sql.NVarChar(sql.MAX), service.description || '');
+          serviceRequest.input('Price', sql.Decimal(10, 2), service.price || 0);
+          serviceRequest.input('DurationMinutes', sql.Int, service.duration || 60);
+          serviceRequest.input('MaxAttendees', sql.Int, null);
+          serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), depositPercentage || null);
+          serviceRequest.input('CancellationPolicy', sql.NVarChar(sql.MAX), cancellationPolicy || null);
+
+          await serviceRequest.execute('sp_UpsertVendorService');
+        } catch (serviceError) {
+          console.error('Error adding service:', serviceError);
+        }
+      }
+    }
+
+    // Handle business hours if provided
+    if (businessHours) {
+      const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      for (const day of days) {
+        if (businessHours[day]) {
+          try {
+            const hoursRequest = new sql.Request(pool);
+            hoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+            hoursRequest.input('DayOfWeek', sql.NVarChar(10), day.charAt(0).toUpperCase() + day.slice(1));
+            hoursRequest.input('IsAvailable', sql.Bit, businessHours[day].isAvailable);
+            hoursRequest.input('OpenTime', sql.Time, businessHours[day].openTime + ':00');
+            hoursRequest.input('CloseTime', sql.Time, businessHours[day].closeTime + ':00');
+
+            await hoursRequest.query(`
+              IF EXISTS (SELECT 1 FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek)
+                UPDATE VendorBusinessHours SET IsAvailable = @IsAvailable, OpenTime = @OpenTime, CloseTime = @CloseTime
+                WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek
+              ELSE
+                INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, IsAvailable, OpenTime, CloseTime)
+                VALUES (@VendorProfileID, @DayOfWeek, @IsAvailable, @OpenTime, @CloseTime)
+            `);
+          } catch (hoursError) {
+            console.error('Error setting business hours:', hoursError);
+          }
+        }
+      }
+    }
+
+    // Handle FAQs if provided
+    if (faqs && faqs.length > 0) {
+      for (const faq of faqs) {
+        try {
+          const faqRequest = new sql.Request(pool);
+          faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          faqRequest.input('Question', sql.NVarChar(500), faq.question);
+          faqRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
+
+          await faqRequest.query(`
+            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, IsActive, CreatedAt)
+            VALUES (@VendorProfileID, @Question, @Answer, 1, GETDATE())
+          `);
+        } catch (faqError) {
+          console.error('Error adding FAQ:', faqError);
+        }
+      }
+    }
+
+    // Update additional profile fields
+    if (licenseNumber || insuranceVerified || teamSize || languages || certifications) {
+      const updateDetailsRequest = new sql.Request(pool);
+      updateDetailsRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      if (licenseNumber) updateDetailsRequest.input('LicenseNumber', sql.NVarChar(50), licenseNumber);
+      if (insuranceVerified !== undefined) updateDetailsRequest.input('InsuranceVerified', sql.Bit, insuranceVerified);
+      if (teamSize) updateDetailsRequest.input('TeamSize', sql.Int, parseInt(teamSize));
+
+      let updateQuery = 'UPDATE VendorProfiles SET ';
+      const updates = [];
+      if (licenseNumber) updates.push('LicenseNumber = @LicenseNumber');
+      if (insuranceVerified !== undefined) updates.push('InsuranceVerified = @InsuranceVerified');
+      if (teamSize) updates.push('TeamSize = @TeamSize');
+      if (updates.length > 0) {
+        updateQuery += updates.join(', ') + ' WHERE VendorProfileID = @VendorProfileID';
+        await updateDetailsRequest.query(updateQuery);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Vendor profile created successfully',
+      vendorProfileId: vendorProfileId
+    });
+
+  } catch (err) {
+    console.error('Vendor profile creation error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create vendor profile',
+      error: err.message
+    });
+  }
+});
+
+// Complete vendor onboarding - handles all onboarding data in one request
+router.post('/onboarding', async (req, res) => {
+  try {
+    const {
+      userId,
+      primaryCategory,
+      categories,
+      businessName,
+      displayName,
+      businessDescription,
+      yearsInBusiness,
+      tagline,
+      priceRange,
+      profileLogo,
+      businessPhone,
+      website,
+      email,
+      address,
+      city,
+      province,
+      state,
+      country,
+      postalCode,
+      latitude,
+      longitude,
+      serviceAreas,
+      selectedServices,
+      businessHours,
+      timezone,
+      selectedFeatures,
+      photoURLs,
+      socialMedia,
+      selectedFilters,
+      cancellationPolicy,
+      depositPercentage,
+      paymentTerms,
+      faqs
+    } = req.body;
+
+    console.log('📝 Onboarding request received for user:', userId);
+
+    // Validation
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
+
+    if (!businessName || !displayName || !businessPhone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Required fields: businessName, displayName, businessPhone'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    if (!pool.connected) {
+      throw new Error('Database connection not established');
+    }
+
+    // Check if vendor profile already exists
+    const checkRequest = new sql.Request(pool);
+    checkRequest.input('UserID', sql.Int, parseInt(userId));
+    const checkResult = await checkRequest.query(`
+      SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID
+    `);
+
+    let vendorProfileId;
+    // Remove duplicates from categories array
+    const allCategories = [...new Set([primaryCategory, ...(categories || [])].filter(Boolean))];
+
+    if (checkResult.recordset.length > 0) {
+      // Update existing profile
+      vendorProfileId = checkResult.recordset[0].VendorProfileID;
+      console.log('✏️ Updating existing vendor profile:', vendorProfileId);
+      
+      const updateRequest = new sql.Request(pool);
+      updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      updateRequest.input('BusinessName', sql.NVarChar(100), businessName);
+      updateRequest.input('DisplayName', sql.NVarChar(100), displayName);
+      updateRequest.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription || '');
+      updateRequest.input('BusinessPhone', sql.NVarChar(20), businessPhone);
+      updateRequest.input('Website', sql.NVarChar(255), website || null);
+      updateRequest.input('YearsInBusiness', sql.Int, parseInt(yearsInBusiness) || 1);
+      updateRequest.input('Address', sql.NVarChar(255), address || null);
+      updateRequest.input('City', sql.NVarChar(100), city || '');
+      updateRequest.input('State', sql.NVarChar(50), state || province || '');
+      updateRequest.input('Country', sql.NVarChar(50), country || 'Canada');
+      updateRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
+      updateRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
+      updateRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
+      updateRequest.input('Tagline', sql.NVarChar(255), tagline || null);
+      updateRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
+      updateRequest.input('ProfileLogo', sql.NVarChar(255), profileLogo || null);
+
+      await updateRequest.query(`
+        UPDATE VendorProfiles SET
+          BusinessName = @BusinessName,
+          DisplayName = @DisplayName,
+          BusinessDescription = @BusinessDescription,
+          BusinessPhone = @BusinessPhone,
+          Website = @Website,
+          YearsInBusiness = @YearsInBusiness,
+          Address = @Address,
+          City = @City,
+          State = @State,
+          Country = @Country,
+          PostalCode = @PostalCode,
+          Latitude = @Latitude,
+          Longitude = @Longitude,
+          Tagline = @Tagline,
+          PriceLevel = @PriceLevel,
+          LogoURL = @ProfileLogo,
+          UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+
+    } else {
+      // Create new profile
+      console.log('➕ Creating new vendor profile');
+      const createRequest = new sql.Request(pool);
+      createRequest.input('UserID', sql.Int, parseInt(userId));
+      createRequest.input('BusinessName', sql.NVarChar(100), businessName);
+      createRequest.input('DisplayName', sql.NVarChar(100), displayName);
+      createRequest.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription || '');
+      createRequest.input('BusinessPhone', sql.NVarChar(20), businessPhone);
+      createRequest.input('Website', sql.NVarChar(255), website || null);
+      createRequest.input('YearsInBusiness', sql.Int, parseInt(yearsInBusiness) || 1);
+      createRequest.input('Address', sql.NVarChar(255), address || null);
+      createRequest.input('City', sql.NVarChar(100), city || '');
+      createRequest.input('State', sql.NVarChar(50), state || province || '');
+      createRequest.input('Country', sql.NVarChar(50), country || 'Canada');
+      createRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
+      createRequest.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(allCategories));
+      createRequest.input('Services', sql.NVarChar(sql.MAX), JSON.stringify([]));
+
+      const result = await createRequest.execute('sp_RegisterVendor');
+      
+      if (!result.recordset[0].Success) {
+        throw new Error('Failed to create vendor profile');
+      }
+      
+      vendorProfileId = result.recordset[0].VendorProfileID;
+      console.log('✅ Created vendor profile:', vendorProfileId);
+
+      // Update additional fields not in sp_RegisterVendor
+      const updateExtraRequest = new sql.Request(pool);
+      updateExtraRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      updateExtraRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
+      updateExtraRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
+      updateExtraRequest.input('Tagline', sql.NVarChar(255), tagline || null);
+      updateExtraRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
+      updateExtraRequest.input('ProfileLogo', sql.NVarChar(255), profileLogo || null);
+
+      await updateExtraRequest.query(`
+        UPDATE VendorProfiles SET
+          Latitude = @Latitude,
+          Longitude = @Longitude,
+          Tagline = @Tagline,
+          PriceLevel = @PriceLevel,
+          LogoURL = @ProfileLogo
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+    }
+
+    // Update categories
+    if (allCategories && allCategories.length > 0) {
+      const deleteCategoriesRequest = new sql.Request(pool);
+      deleteCategoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteCategoriesRequest.query(`
+        DELETE FROM VendorCategories WHERE VendorProfileID = @VendorProfileID
+      `);
+
+      for (const category of allCategories) {
+        const categoryRequest = new sql.Request(pool);
+        categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        categoryRequest.input('Category', sql.NVarChar(50), category);
+        
+        await categoryRequest.query(`
+          INSERT INTO VendorCategories (VendorProfileID, Category)
+          VALUES (@VendorProfileID, @Category)
+        `);
+      }
+      console.log('✅ Updated categories');
+    }
+
+    // Update service areas
+    if (serviceAreas && serviceAreas.length > 0) {
+      const deleteAreasRequest = new sql.Request(pool);
+      deleteAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteAreasRequest.query(`
+        DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID
+      `);
+
+      for (const area of serviceAreas) {
+        const areaRequest = new sql.Request(pool);
+        areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        areaRequest.input('GooglePlaceID', sql.NVarChar(100), area.placeId || '');
+        areaRequest.input('CityName', sql.NVarChar(100), area.city || area);
+        areaRequest.input('StateProvince', sql.NVarChar(100), area.province || area.state || '');
+        areaRequest.input('Country', sql.NVarChar(100), area.country || 'Canada');
+        areaRequest.input('Latitude', sql.Decimal(9, 6), area.latitude || null);
+        areaRequest.input('Longitude', sql.Decimal(9, 6), area.longitude || null);
+        areaRequest.input('ServiceRadius', sql.Decimal(10, 2), area.serviceRadius || 25.0);
+        areaRequest.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || null);
+        areaRequest.input('PlaceType', sql.NVarChar(50), area.placeType || null);
+        
+        await areaRequest.query(`
+          INSERT INTO VendorServiceAreas (VendorProfileID, GooglePlaceID, CityName, [State/Province], Country, Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, IsActive)
+          VALUES (@VendorProfileID, @GooglePlaceID, @CityName, @StateProvince, @Country, @Latitude, @Longitude, @ServiceRadius, @FormattedAddress, @PlaceType, 1)
+        `);
+      }
+      console.log('✅ Updated service areas');
+    }
+
+    // Update business hours and timezone
+    if (businessHours) {
+      // Map day names to TINYINT (0=Sunday, 1=Monday, etc.)
+      const dayMapping = {
+        'sunday': 0,
+        'monday': 1,
+        'tuesday': 2,
+        'wednesday': 3,
+        'thursday': 4,
+        'friday': 5,
+        'saturday': 6
+      };
+
+      for (const [dayName, dayNumber] of Object.entries(dayMapping)) {
+        if (businessHours[dayName]) {
+          const dayData = businessHours[dayName];
+          const hoursRequest = new sql.Request(pool);
+          hoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          hoursRequest.input('DayOfWeek', sql.TinyInt, dayNumber);
+          hoursRequest.input('IsAvailable', sql.Bit, dayData.isAvailable !== false);
+          
+          // For closed days, use default times; otherwise use provided times
+          const openTime = (dayData.isAvailable !== false && dayData.openTime) ? dayData.openTime : '09:00';
+          const closeTime = (dayData.isAvailable !== false && dayData.closeTime) ? dayData.closeTime : '17:00';
+          
+          hoursRequest.input('OpenTime', sql.VarChar(8), openTime);
+          hoursRequest.input('CloseTime', sql.VarChar(8), closeTime);
+          hoursRequest.input('Timezone', sql.NVarChar(100), timezone || 'America/New_York');
+
+          await hoursRequest.query(`
+            IF EXISTS (SELECT 1 FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek)
+              UPDATE VendorBusinessHours SET IsAvailable = @IsAvailable, OpenTime = @OpenTime, CloseTime = @CloseTime, Timezone = @Timezone
+              WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek
+            ELSE
+              INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, IsAvailable, OpenTime, CloseTime, Timezone)
+              VALUES (@VendorProfileID, @DayOfWeek, @IsAvailable, @OpenTime, @CloseTime, @Timezone)
+          `);
+        }
+      }
+      console.log('✅ Updated business hours with timezone');
+    }
+
+    // Update social media
+    if (socialMedia) {
+      // Delete existing social media entries
+      const deleteSocialRequest = new sql.Request(pool);
+      deleteSocialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteSocialRequest.query(`
+        DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID
+      `);
+
+      // Insert new social media entries
+      const platforms = {
+        'Facebook': socialMedia.facebook,
+        'Instagram': socialMedia.instagram,
+        'Twitter': socialMedia.twitter,
+        'LinkedIn': socialMedia.linkedin,
+        'YouTube': socialMedia.youtube,
+        'TikTok': socialMedia.tiktok
+      };
+
+      let displayOrder = 0;
+      for (const [platform, url] of Object.entries(platforms)) {
+        if (url && url.trim()) {
+          const socialRequest = new sql.Request(pool);
+          socialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          socialRequest.input('Platform', sql.NVarChar(50), platform);
+          socialRequest.input('URL', sql.NVarChar(255), url);
+          socialRequest.input('DisplayOrder', sql.Int, displayOrder++);
+
+          await socialRequest.query(`
+            INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
+            VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
+          `);
+        }
+      }
+      console.log('✅ Updated social media');
+    }
+
+    // Update user to be a vendor
+    const updateUserRequest = new sql.Request(pool);
+    updateUserRequest.input('UserID', sql.Int, parseInt(userId));
+    await updateUserRequest.query(`
+      UPDATE Users SET IsVendor = 1 WHERE UserID = @UserID
+    `);
+
+    console.log('✅ Vendor onboarding completed successfully');
+
+    res.status(200).json({
+      success: true,
+      message: 'Vendor onboarding completed successfully',
+      vendorProfileId: vendorProfileId
+    });
+
+  } catch (err) {
+    console.error('❌ Vendor onboarding error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to complete vendor onboarding',
+      error: err.message
+    });
+  }
+});
+
 // Check vendor registration status
 router.get('/status', async (req, res) => {
   try {
