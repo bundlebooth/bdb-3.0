@@ -147,6 +147,18 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
           longitude: place.geometry?.location?.lng(),
           city: place.formatted_address
         });
+        
+        // Immediately hide Google Maps dropdown
+        const pacContainers = document.querySelectorAll('.pac-container');
+        pacContainers.forEach(container => {
+          container.style.display = 'none';
+        });
+        
+        // Remove focus from input to clear any outline
+        if (input) {
+          input.blur();
+        }
+        
         // Collapse search bar after selection
         setTimeout(() => {
           setIsExpanded(false);

@@ -107,27 +107,66 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
       const place = serviceAreaAutocomplete.getPlace();
       console.log('🎯 Service area selected:', place);
       
-      if (place.formatted_address) {
-        const areaToAdd = place.formatted_address;
+      if (place.address_components) {
+        const comps = place.address_components;
+        const pick = (type) => comps.find(c => c.types.includes(type))?.long_name || '';
+        const city = pick('locality') || pick('postal_town') || pick('administrative_area_level_3') || '';
+        const province = pick('administrative_area_level_1') || '';
+        const country = pick('country') || 'Canada';
+        const loc = place.geometry?.location;
         
-        setFormData(prev => ({
-          ...prev,
-          serviceAreas: [...(prev.serviceAreas || []), areaToAdd]
-        }));
+        const newArea = {
+          placeId: place.place_id || null,
+          city,
+          province,
+          country,
+          latitude: loc ? (typeof loc.lat === 'function' ? loc.lat() : loc.lat) : null,
+          longitude: loc ? (typeof loc.lng === 'function' ? loc.lng() : loc.lng) : null,
+          formattedAddress: place.formatted_address || [city, province, country].filter(Boolean).join(', '),
+          placeType: Array.isArray(place.types) ? place.types[0] : 'locality',
+          serviceRadius: 25.0
+        };
+        
+        // Check for duplicates
+        const exists = (formData.serviceAreas || []).some(a => 
+          (newArea.placeId && a.placeId && a.placeId === newArea.placeId) ||
+          (a.city && a.city.toLowerCase() === newArea.city.toLowerCase() && 
+           a.province && a.province.toLowerCase() === newArea.province.toLowerCase())
+        );
+        
+        if (!exists) {
+          setFormData(prev => ({
+            ...prev,
+            serviceAreas: [...(prev.serviceAreas || []), newArea]
+          }));
+          console.log('✅ Service area added:', newArea.city);
+        } else {
+          console.log('⚠️ Service area already exists');
+        }
         
         // Clear input
         serviceAreaInput.value = '';
-        console.log('✅ Service area added:', areaToAdd);
+        
+        // Hide Google Maps dropdown
+        const pacContainers = document.querySelectorAll('.pac-container');
+        pacContainers.forEach(container => {
+          container.style.display = 'none';
+        });
+        
+        // Remove focus from input
+        if (serviceAreaInput) {
+          serviceAreaInput.blur();
+        }
       }
     });
     
     console.log('✅ Service area autocomplete initialized');
   };
 
-  const handleRemoveServiceArea = (area) => {
+  const handleRemoveServiceArea = (index) => {
     setFormData(prev => ({
       ...prev,
-      serviceAreas: prev.serviceAreas.filter(a => a !== area)
+      serviceAreas: prev.serviceAreas.filter((_, i) => i !== index)
     }));
   };
 
@@ -156,9 +195,6 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
               }}
             />
           </div>
-          <small style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', color: '#f59e0b', fontSize: '0.85rem' }}>
-            <span>🔥</span> Start typing your address and Google will suggest it!
-          </small>
         </div>
 
         {/* City and Province Row */}
@@ -170,9 +206,9 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
             <input
               type="text"
               value={formData.city || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+              readOnly
               className="form-input"
-              placeholder="Toronto"
+              placeholder="Auto-filled from address"
               style={{
                 width: '100%',
                 padding: '0.875rem 1rem',
@@ -180,7 +216,8 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
                 borderRadius: '8px',
                 fontSize: '0.95rem',
                 backgroundColor: '#f3f4f6',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                cursor: 'not-allowed'
               }}
             />
           </div>
@@ -191,9 +228,9 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
             <input
               type="text"
               value={formData.province || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, province: e.target.value }))}
+              readOnly
               className="form-input"
-              placeholder="Ontario"
+              placeholder="Auto-filled from address"
               style={{
                 width: '100%',
                 padding: '0.875rem 1rem',
@@ -201,7 +238,8 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
                 borderRadius: '8px',
                 fontSize: '0.95rem',
                 backgroundColor: '#f3f4f6',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                cursor: 'not-allowed'
               }}
             />
           </div>
@@ -216,9 +254,9 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
             <input
               type="text"
               value={formData.postalCode || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, postalCode: e.target.value }))}
+              readOnly
               className="form-input"
-              placeholder="M5H 2N2"
+              placeholder="Auto-filled from address"
               style={{
                 width: '100%',
                 padding: '0.875rem 1rem',
@@ -226,7 +264,8 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
                 borderRadius: '8px',
                 fontSize: '0.95rem',
                 backgroundColor: '#f3f4f6',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                cursor: 'not-allowed'
               }}
             />
           </div>
@@ -264,81 +303,66 @@ function SimpleWorkingLocationStep({ formData, setFormData }) {
             Add the cities or regions where you offer your services
           </p>
           
-          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div ref={serviceAreaInputRef} style={{ flex: 1 }}>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Start typing a city name..."
-                autoComplete="off"
-                style={{
-                  width: '100%',
-                  padding: '0.875rem 1rem',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  fontSize: '0.95rem',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-            <button
-              type="button"
+          <div ref={serviceAreaInputRef} style={{ marginBottom: '1rem' }}>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Start typing a city name..."
+              autoComplete="off"
               style={{
-                padding: '0.875rem 1.5rem',
-                backgroundColor: '#6366f1',
-                color: 'white',
-                border: 'none',
+                width: '100%',
+                padding: '0.875rem 1rem',
+                border: '1px solid #e5e7eb',
                 borderRadius: '8px',
                 fontSize: '0.95rem',
-                fontWeight: 600,
-                cursor: 'pointer'
+                boxSizing: 'border-box'
               }}
-            >
-              Add
-            </button>
+            />
           </div>
 
-          <small style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: '#f59e0b', fontSize: '0.85rem' }}>
-            <span>🔥</span> Start typing a city name and Google will suggest it!
-          </small>
-
-          {/* Service Areas Tags */}
+          {/* Service Areas Tags - Matching Business Profile Style */}
           {formData.serviceAreas && formData.serviceAreas.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem' }}>
-              {formData.serviceAreas.map((area, index) => (
-                <div
-                  key={index}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    backgroundColor: '#f0f9ff',
-                    border: '1px solid #3b82f6',
-                    borderRadius: '20px',
-                    fontSize: '0.9rem',
-                    color: '#1e40af'
-                  }}
-                >
-                  <i className="fas fa-map-marker-alt" style={{ fontSize: '0.8rem' }}></i>
-                  {area}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveServiceArea(area)}
+              {formData.serviceAreas.map((area, index) => {
+                const label = [area.city, area.province || area.state].filter(Boolean).join(', ');
+                return (
+                  <span
+                    key={index}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#ef4444',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                      padding: '0',
-                      marginLeft: '0.25rem'
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0.875rem',
+                      background: '#f0f4ff',
+                      border: '1px solid #d0ddff',
+                      color: '#333',
+                      borderRadius: '8px',
+                      fontSize: '0.9rem',
+                      fontWeight: 500
                     }}
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
+                    {label}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveServiceArea(index)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#999',
+                        cursor: 'pointer',
+                        padding: '0',
+                        fontSize: '1.3rem',
+                        lineHeight: 1,
+                        marginLeft: '4px'
+                      }}
+                      onMouseOver={(e) => e.target.style.color = '#ef4444'}
+                      onMouseOut={(e) => e.target.style.color = '#999'}
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
             </div>
           )}
         </div>

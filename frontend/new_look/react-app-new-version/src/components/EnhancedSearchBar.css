@@ -372,6 +372,17 @@
   padding: 8px 0 !important;
   width: auto !important;
   min-width: 300px !important;
+  outline: none !important;
+}
+
+/* Ensure pac-container is completely hidden when display:none */
+.pac-container[style*="display: none"],
+.pac-container[style*="display:none"] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Hide Google Maps dropdown when search is collapsed */
