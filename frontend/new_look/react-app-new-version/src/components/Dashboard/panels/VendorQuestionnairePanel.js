@@ -21,14 +21,26 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
       setLoading(true);
       
       // Load vendor profile to get categories
-      const profileRes = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/profile-details`, {
+      const profileRes = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (profileRes.ok) {
-        const profile = await profileRes.json();
-        const categoriesStr = profile.Categories || '';
-        const catArray = categoriesStr.split(',').map(c => c.trim()).filter(Boolean);
+        const result = await profileRes.json();
+        console.log('Profile result:', result);
+        
+        // Handle nested structure from /vendors/:id endpoint
+        const profile = result.data?.profile || result.profile || result;
+        const categories = result.data?.categories || result.categories || [];
+        
+        // Get category names from categories array or fallback to Categories string
+        let catArray = [];
+        if (Array.isArray(categories) && categories.length > 0) {
+          catArray = categories.map(cat => cat.Category || cat.CategoryName || cat);
+        } else if (profile.Categories) {
+          catArray = profile.Categories.split(',').map(c => c.trim()).filter(Boolean);
+        }
+        
         setVendorCategories(catArray);
         console.log('Vendor categories:', catArray);
       }

@@ -175,29 +175,31 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
   const loadLocationData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/location`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/location`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (response.ok) {
         const data = await response.json();
-        const loc = data.location || {};
+        console.log('Location data loaded:', data);
+        
+        // The /vendors/:id/location endpoint returns data directly (not nested)
         const newFormData = {
-          address: loc.Address || '',
-          city: loc.City || '',
-          state: loc.State || '',
-          postalCode: loc.PostalCode || '',
-          country: loc.Country || '',
+          address: data.address || '',
+          city: data.city || '',
+          state: data.state || '',
+          postalCode: data.postalCode || '',
+          country: data.country || 'Canada',
           serviceAreas: (data.serviceAreas || []).map(a => ({
-            placeId: a.GooglePlaceID || null,
-            city: a.CityName || '',
-            province: a.StateProvince || '',
-            country: a.Country || '',
-            latitude: a.Latitude ?? null,
-            longitude: a.Longitude ?? null,
-            serviceRadius: a.ServiceRadius ?? 25.0,
-            formattedAddress: a.FormattedAddress || null,
-            placeType: a.PlaceType || null
+            placeId: a.placeId || a.GooglePlaceID || null,
+            city: a.city || a.CityName || '',
+            province: a.province || a.StateProvince || '',
+            country: a.country || a.Country || '',
+            latitude: a.latitude ?? a.Latitude ?? null,
+            longitude: a.longitude ?? a.Longitude ?? null,
+            serviceRadius: a.serviceRadius ?? a.ServiceRadius ?? 25.0,
+            formattedAddress: a.formattedAddress || a.FormattedAddress || null,
+            placeType: a.placeType || a.PlaceType || null
           }))
         };
         setFormData(newFormData);
@@ -259,7 +261,7 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
         serviceAreas: formData.serviceAreas
       };
       
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/location`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/location`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

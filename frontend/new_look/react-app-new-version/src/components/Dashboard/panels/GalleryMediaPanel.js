@@ -26,27 +26,28 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
       console.log('Loading photos for vendorProfileId:', vendorProfileId);
       
       // Load images
-      const photosResponse = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/images`, {
+      const photosResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (photosResponse.ok) {
         const photosData = await photosResponse.json();
+        console.log('Photos data:', photosData);
         // Response is an array of images
         const images = Array.isArray(photosData) ? photosData : [];
         console.log('Loaded images:', images.length);
         setPhotos(images.map(img => ({
-          id: img.ImageID,
-          url: img.ImageURL,
-          caption: img.Caption,
-          isPrimary: img.IsPrimary
+          id: img.id || img.ImageID,
+          url: img.url || img.ImageURL,
+          caption: img.caption || img.Caption,
+          isPrimary: img.isPrimary || img.IsPrimary
         })));
       } else {
         console.error('Failed to load images:', photosResponse.status);
       }
       
       // Load albums
-      const albumsResponse = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums`, {
+      const albumsResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/portfolio/albums`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -80,7 +81,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
       const formData = new FormData();
       files.forEach(file => formData.append('images', file));
 
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/images`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -106,7 +107,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
     if (!window.confirm('Are you sure you want to delete this photo?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/images/${photoId}`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images/${photoId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
@@ -123,7 +124,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
 
   const handleSetPrimary = async (photoId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/images/${photoId}/set-primary`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images/${photoId}/set-primary`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
@@ -170,7 +171,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
         isPublic: albumForm.isPublic
       };
 
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/upsert`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/portfolio/albums/upsert`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +199,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/portfolio/albums/${albumId}`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/portfolio/albums/${albumId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
@@ -222,7 +223,7 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/images/url`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/images/url`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

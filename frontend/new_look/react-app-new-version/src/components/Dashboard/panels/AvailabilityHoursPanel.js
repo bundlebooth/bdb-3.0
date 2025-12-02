@@ -36,17 +36,41 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
   const loadHours = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/hours`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (response.ok) {
-        const data = await response.json();
-        if (data.hours) {
-          setHours(data.hours);
+        const result = await response.json();
+        console.log('Vendor data:', result);
+        
+        // Handle nested structure from /vendors/:id endpoint
+        const profile = result.data?.profile || result.profile || result;
+        const businessHours = result.data?.businessHours || result.businessHours || [];
+        
+        // Set timezone from profile
+        if (profile.Timezone) {
+          setTimezone(profile.Timezone);
         }
-        if (data.timezone) {
-          setTimezone(data.timezone);
+        
+        // Convert business hours array to object format
+        if (businessHours.length > 0) {
+          const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+          const hoursObj = {};
+          
+          businessHours.forEach(bh => {
+            const dayName = dayMap[bh.DayOfWeek];
+            if (dayName) {
+              hoursObj[dayName] = {
+                open: bh.OpenTime ? bh.OpenTime.substring(0, 5) : '09:00',
+                close: bh.CloseTime ? bh.CloseTime.substring(0, 5) : '17:00',
+                closed: !bh.IsAvailable
+              };
+            }
+          });
+          
+          // Merge with defaults for any missing days
+          setHours(prev => ({ ...prev, ...hoursObj }));
         }
       }
     } catch (error) {
@@ -80,34 +104,27 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
     e.preventDefault();
     
     try {
-      // Convert hours object to array format for API
-      const hoursArray = Object.entries(hours).map(([day, data]) => ({
-        dayOfWeek: day,
+      // Convert day names to DayOfWeek numbers (0=Sunday, 1=Monday, etc.)
+      const dayMap = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+      const businessHoursData = Object.entries(hours).map(([day, data]) => ({
+        dayOfWeek: dayMap[day],
         openTime: data.open,
         closeTime: data.close,
         isAvailable: !data.closed
       }));
 
-      // Send each day separately as the API expects
-      const promises = hoursArray.map(dayData =>
-        fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/business-hours/upsert`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify(dayData)
+      const response = await fetch(`${API_BASE_URL}/vendors/setup/step4-business-hours`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          vendorProfileId,
+          timezone,
+          businessHours: businessHoursData
         })
-      );
-
-      const responses = await Promise.all(promises);
-      const allSuccess = responses.every(r => r.ok);
-      
-      if (!allSuccess) {
-        throw new Error('Failed to update some hours');
-      }
-
-      const response = { ok: true };
+      });
       
       if (response.ok) {
         showBanner('Business hours updated successfully!', 'success');

@@ -18,13 +18,21 @@ function FAQsPanel({ onBack, vendorProfileId }) {
   const loadFAQs = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/faqs`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (response.ok) {
         const data = await response.json();
-        setFaqs(data.faqs || []);
+        console.log('FAQs data:', data);
+        // The endpoint returns an array directly
+        const faqsArray = Array.isArray(data) ? data : (data.faqs || []);
+        setFaqs(faqsArray.map(faq => ({
+          id: faq.id || faq.FAQID,
+          question: faq.question || faq.Question,
+          answer: faq.answer || faq.Answer,
+          displayOrder: faq.displayOrder || faq.DisplayOrder
+        })));
       }
     } catch (error) {
       console.error('Error loading FAQs:', error);
@@ -43,14 +51,14 @@ function FAQsPanel({ onBack, vendorProfileId }) {
 
     try {
       // Load existing FAQs first
-      const existingResponse = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/faqs`);
+      const existingResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs`);
       const existingData = existingResponse.ok ? await existingResponse.json() : { faqs: [] };
       const existingFaqs = existingData.faqs || [];
       
       // Add new FAQ to the list
       const updatedFaqs = [...existingFaqs, { question: newFaq.question, answer: newFaq.answer }];
       
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/faqs/upsert`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +84,7 @@ function FAQsPanel({ onBack, vendorProfileId }) {
     if (!window.confirm('Are you sure you want to delete this FAQ?')) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/faqs/${faqId}`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/faqs/${faqId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });

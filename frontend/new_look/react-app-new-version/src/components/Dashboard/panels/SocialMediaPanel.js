@@ -24,19 +24,19 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
   const loadSocialMedia = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/social`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/social`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (response.ok) {
         const data = await response.json();
         setFormData({
-          facebook: data.FacebookUrl || '',
-          instagram: data.InstagramUrl || '',
-          twitter: data.TwitterUrl || '',
-          linkedin: data.LinkedInUrl || '',
-          youtube: data.YouTubeUrl || '',
-          tiktok: data.TikTokUrl || ''
+          facebook: data.facebook || '',
+          instagram: data.instagram || '',
+          twitter: data.twitter || '',
+          linkedin: data.linkedin || '',
+          youtube: data.youtube || '',
+          tiktok: data.tiktok || ''
         });
       }
     } catch (error) {
@@ -50,19 +50,19 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
     e.preventDefault();
     
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/social`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/social`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          FacebookUrl: formData.facebook,
-          InstagramUrl: formData.instagram,
-          TwitterUrl: formData.twitter,
-          LinkedInUrl: formData.linkedin,
-          YouTubeUrl: formData.youtube,
-          TikTokUrl: formData.tiktok
+          facebook: formData.facebook,
+          instagram: formData.instagram,
+          twitter: formData.twitter,
+          linkedin: formData.linkedin,
+          youtube: formData.youtube,
+          tiktok: formData.tiktok
         })
       });
       

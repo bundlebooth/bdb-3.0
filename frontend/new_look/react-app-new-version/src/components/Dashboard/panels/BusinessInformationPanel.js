@@ -105,16 +105,27 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     try {
       setLoading(true);
       console.log('Loading profile for vendorProfileId:', vendorProfileId);
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/profile-details`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       console.log('Profile response status:', response.status);
       
       if (response.ok) {
-        const profile = await response.json();
-        console.log('Profile data loaded:', profile);
-        const categoriesArray = profile.Categories ? profile.Categories.split(',').map(c => c.trim()) : [];
+        const result = await response.json();
+        console.log('Profile data loaded:', result);
+        
+        // Handle nested structure from /vendors/:id endpoint
+        const profile = result.data?.profile || result.profile || result;
+        const categories = result.data?.categories || result.categories || [];
+        
+        // Get category names from categories array or fallback to Categories string
+        let categoriesArray = [];
+        if (Array.isArray(categories) && categories.length > 0) {
+          categoriesArray = categories.map(cat => cat.Category || cat.CategoryName || cat);
+        } else if (profile.Categories) {
+          categoriesArray = profile.Categories.split(',').map(c => c.trim());
+        }
         
         setFormData({
           businessName: profile.BusinessName || '',

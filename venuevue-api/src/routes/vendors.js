@@ -2675,6 +2675,88 @@ router.post('/setup/step3-gallery', async (req, res) => {
   }
 });
 
+// Step 4: Business Hours
+router.post('/setup/step4-business-hours', async (req, res) => {
+  try {
+    const { vendorProfileId, timezone, businessHours } = req.body;
+
+    if (!vendorProfileId || !businessHours || !Array.isArray(businessHours)) {
+      return res.status(400).json({
+        success: false,
+        message: 'vendorProfileId and businessHours array are required'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Update timezone in VendorProfiles (if column exists)
+    if (timezone) {
+      try {
+        const timezoneRequest = new sql.Request(pool);
+        timezoneRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        timezoneRequest.input('Timezone', sql.NVarChar, timezone);
+        
+        await timezoneRequest.query(`
+          UPDATE VendorProfiles 
+          SET Timezone = @Timezone, UpdatedAt = GETDATE()
+          WHERE VendorProfileID = @VendorProfileID
+        `);
+      } catch (tzErr) {
+        console.log('Note: Timezone column may not exist in VendorProfiles:', tzErr.message);
+        // Continue even if timezone update fails
+      }
+    }
+
+    // Delete existing business hours
+    const deleteRequest = new sql.Request(pool);
+    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    await deleteRequest.query(`
+      DELETE FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID
+    `);
+
+    // Insert new business hours with Timezone
+    for (const hour of businessHours) {
+      try {
+        const insertRequest = new sql.Request(pool);
+        insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        insertRequest.input('DayOfWeek', sql.TinyInt, hour.dayOfWeek);
+        
+        // Ensure time format is HH:MM:SS for SQL Server TIME type
+        const openTime = hour.openTime && hour.openTime.length === 5 ? `${hour.openTime}:00` : hour.openTime;
+        const closeTime = hour.closeTime && hour.closeTime.length === 5 ? `${hour.closeTime}:00` : hour.closeTime;
+        
+        console.log(`Inserting business hour - Day: ${hour.dayOfWeek}, Open: ${openTime}, Close: ${closeTime}, Available: ${hour.isAvailable}`);
+        
+        insertRequest.input('OpenTime', sql.VarChar(8), openTime);
+        insertRequest.input('CloseTime', sql.VarChar(8), closeTime);
+        insertRequest.input('IsAvailable', sql.Bit, hour.isAvailable);
+        insertRequest.input('Timezone', sql.NVarChar, timezone || 'America/Toronto');
+
+        await insertRequest.query(`
+          INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone)
+          VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable, @Timezone)
+        `);
+      } catch (hourErr) {
+        console.error(`Error inserting hour for day ${hour.dayOfWeek}:`, hourErr);
+        throw hourErr;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Business hours updated successfully'
+    });
+
+  } catch (err) {
+    console.error('Business hours update error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update business hours',
+      error: err.message
+    });
+  }
+});
+
 // Debug endpoint to get valid service IDs for troubleshooting
 router.get('/debug/service-ids', async (req, res) => {
   try {
@@ -5509,6 +5591,384 @@ router.post('/check-availability', async (req, res) => {
       message: 'Failed to check vendor availability',
       error: error.message
     });
+  }
+});
+
+// ===== BUSINESS PROFILE MANAGEMENT ENDPOINTS =====
+
+// Get vendor social media
+router.get('/:id/social', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.query(`
+      SELECT Platform, URL, DisplayOrder
+      FROM VendorSocialMedia
+      WHERE VendorProfileID = @VendorProfileID
+      ORDER BY DisplayOrder
+    `);
+    
+    // Convert to object format expected by frontend
+    const socialMedia = {
+      facebook: '',
+      instagram: '',
+      twitter: '',
+      linkedin: '',
+      youtube: '',
+      tiktok: ''
+    };
+    
+    result.recordset.forEach(row => {
+      const platform = row.Platform.toLowerCase();
+      socialMedia[platform] = row.URL;
+    });
+    
+    res.json(socialMedia);
+  } catch (error) {
+    console.error('Error fetching social media:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch social media', error: error.message });
+  }
+});
+
+// Save vendor social media
+router.post('/:id/social', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const { facebook, instagram, twitter, linkedin, youtube, tiktok } = req.body;
+    const pool = await poolPromise;
+    
+    // Delete existing entries
+    const deleteRequest = new sql.Request(pool);
+    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    await deleteRequest.query(`DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID`);
+    
+    // Insert new entries
+    const platforms = { Facebook: facebook, Instagram: instagram, Twitter: twitter, LinkedIn: linkedin, YouTube: youtube, TikTok: tiktok };
+    let displayOrder = 0;
+    
+    for (const [platform, url] of Object.entries(platforms)) {
+      if (url && url.trim()) {
+        const insertRequest = new sql.Request(pool);
+        insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        insertRequest.input('Platform', sql.NVarChar(50), platform);
+        insertRequest.input('URL', sql.NVarChar(255), url);
+        insertRequest.input('DisplayOrder', sql.Int, displayOrder++);
+        
+        await insertRequest.query(`
+          INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
+          VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
+        `);
+      }
+    }
+    
+    res.json({ success: true, message: 'Social media saved successfully' });
+  } catch (error) {
+    console.error('Error saving social media:', error);
+    res.status(500).json({ success: false, message: 'Failed to save social media', error: error.message });
+  }
+});
+
+// Get vendor location and service areas
+router.get('/:id/location', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    // Get vendor profile location
+    const profileResult = await request.query(`
+      SELECT Address, City, State, Country, PostalCode, Latitude, Longitude
+      FROM VendorProfiles
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    // Get service areas
+    const areasResult = await request.query(`
+      SELECT GooglePlaceID, CityName, [State/Province] as StateProvince, Country, 
+             Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, IsActive
+      FROM VendorServiceAreas
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    res.json({
+      address: profileResult.recordset[0]?.Address || '',
+      city: profileResult.recordset[0]?.City || '',
+      state: profileResult.recordset[0]?.State || '',
+      country: profileResult.recordset[0]?.Country || '',
+      postalCode: profileResult.recordset[0]?.PostalCode || '',
+      latitude: profileResult.recordset[0]?.Latitude || null,
+      longitude: profileResult.recordset[0]?.Longitude || null,
+      serviceAreas: areasResult.recordset.map(area => ({
+        placeId: area.GooglePlaceID,
+        city: area.CityName,
+        province: area.StateProvince,
+        country: area.Country,
+        latitude: area.Latitude,
+        longitude: area.Longitude,
+        serviceRadius: area.ServiceRadius,
+        formattedAddress: area.FormattedAddress,
+        placeType: area.PlaceType,
+        isActive: area.IsActive
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching location:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch location', error: error.message });
+  }
+});
+
+// Save vendor location and service areas
+router.post('/:id/location', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const { address, city, state, country, postalCode, latitude, longitude, serviceAreas } = req.body;
+    const pool = await poolPromise;
+    
+    // Update vendor profile location
+    const updateRequest = new sql.Request(pool);
+    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    updateRequest.input('Address', sql.NVarChar(255), address || null);
+    updateRequest.input('City', sql.NVarChar(100), city || '');
+    updateRequest.input('State', sql.NVarChar(50), state || '');
+    updateRequest.input('Country', sql.NVarChar(50), country || 'Canada');
+    updateRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
+    updateRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
+    updateRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
+    
+    await updateRequest.query(`
+      UPDATE VendorProfiles
+      SET Address = @Address, City = @City, State = @State, Country = @Country,
+          PostalCode = @PostalCode, Latitude = @Latitude, Longitude = @Longitude,
+          UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    // Delete existing service areas
+    const deleteRequest = new sql.Request(pool);
+    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    await deleteRequest.query(`DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID`);
+    
+    // Insert new service areas
+    if (Array.isArray(serviceAreas) && serviceAreas.length > 0) {
+      for (const area of serviceAreas) {
+        const areaRequest = new sql.Request(pool);
+        areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        areaRequest.input('GooglePlaceID', sql.NVarChar(100), area.placeId || '');
+        areaRequest.input('CityName', sql.NVarChar(100), area.city || '');
+        areaRequest.input('StateProvince', sql.NVarChar(100), area.province || area.state || '');
+        areaRequest.input('Country', sql.NVarChar(100), area.country || 'Canada');
+        areaRequest.input('Latitude', sql.Decimal(9, 6), area.latitude || null);
+        areaRequest.input('Longitude', sql.Decimal(9, 6), area.longitude || null);
+        areaRequest.input('ServiceRadius', sql.Decimal(10, 2), area.serviceRadius || 25.0);
+        areaRequest.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || null);
+        areaRequest.input('PlaceType', sql.NVarChar(50), area.placeType || null);
+        
+        await areaRequest.query(`
+          INSERT INTO VendorServiceAreas (VendorProfileID, GooglePlaceID, CityName, [State/Province], Country, Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, IsActive)
+          VALUES (@VendorProfileID, @GooglePlaceID, @CityName, @StateProvince, @Country, @Latitude, @Longitude, @ServiceRadius, @FormattedAddress, @PlaceType, 1)
+        `);
+      }
+    }
+    
+    res.json({ success: true, message: 'Location and service areas saved successfully' });
+  } catch (error) {
+    console.error('Error saving location:', error);
+    res.status(500).json({ success: false, message: 'Failed to save location', error: error.message });
+  }
+});
+
+// Get vendor filters/badges
+router.get('/:id/filters', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.query(`
+      SELECT IsPremium, IsVerified, IsTopRated, IsFeatured, IsNew, IsPopular
+      FROM VendorProfiles
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    const profile = result.recordset[0] || {};
+    res.json({
+      isPremium: profile.IsPremium || false,
+      isVerified: profile.IsVerified || false,
+      isTopRated: profile.IsTopRated || false,
+      isFeatured: profile.IsFeatured || false,
+      isNew: profile.IsNew || false,
+      isPopular: profile.IsPopular || false
+    });
+  } catch (error) {
+    console.error('Error fetching filters:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch filters', error: error.message });
+  }
+});
+
+// Save vendor filters/badges
+router.put('/:id/filters', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const { isPremium, isVerified, isTopRated, isFeatured, isNew, isPopular } = req.body;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('IsPremium', sql.Bit, isPremium || false);
+    request.input('IsVerified', sql.Bit, isVerified || false);
+    request.input('IsTopRated', sql.Bit, isTopRated || false);
+    request.input('IsFeatured', sql.Bit, isFeatured || false);
+    request.input('IsNew', sql.Bit, isNew || false);
+    request.input('IsPopular', sql.Bit, isPopular || false);
+    
+    await request.query(`
+      UPDATE VendorProfiles
+      SET IsPremium = @IsPremium, IsVerified = @IsVerified, IsTopRated = @IsTopRated,
+          IsFeatured = @IsFeatured, IsNew = @IsNew, IsPopular = @IsPopular,
+          UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    res.json({ success: true, message: 'Filters saved successfully' });
+  } catch (error) {
+    console.error('Error saving filters:', error);
+    res.status(500).json({ success: false, message: 'Failed to save filters', error: error.message });
+  }
+});
+
+// Get vendor FAQs
+router.get('/:id/faqs', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.query(`
+      SELECT FAQID, Question, Answer, DisplayOrder
+      FROM VendorFAQs
+      WHERE VendorProfileID = @VendorProfileID
+      ORDER BY DisplayOrder
+    `);
+    
+    res.json(result.recordset.map(faq => ({
+      id: faq.FAQID,
+      question: faq.Question,
+      answer: faq.Answer,
+      displayOrder: faq.DisplayOrder
+    })));
+  } catch (error) {
+    console.error('Error fetching FAQs:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch FAQs', error: error.message });
+  }
+});
+
+// Save vendor FAQs
+router.post('/:id/faqs', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const { faqs } = req.body;
+    const pool = await poolPromise;
+    
+    // Delete existing FAQs
+    const deleteRequest = new sql.Request(pool);
+    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    await deleteRequest.query(`DELETE FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID`);
+    
+    // Insert new FAQs
+    if (Array.isArray(faqs) && faqs.length > 0) {
+      for (let i = 0; i < faqs.length; i++) {
+        const faq = faqs[i];
+        const insertRequest = new sql.Request(pool);
+        insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        insertRequest.input('Question', sql.NVarChar(500), faq.question);
+        insertRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
+        insertRequest.input('DisplayOrder', sql.Int, i);
+        
+        await insertRequest.query(`
+          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder)
+          VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder)
+        `);
+      }
+    }
+    
+    res.json({ success: true, message: 'FAQs saved successfully' });
+  } catch (error) {
+    console.error('Error saving FAQs:', error);
+    res.status(500).json({ success: false, message: 'Failed to save FAQs', error: error.message });
+  }
+});
+
+// Get vendor images
+router.get('/:id/images', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.query(`
+      SELECT ImageID, ImageURL, Caption, IsPrimary, DisplayOrder, AlbumID
+      FROM VendorImages
+      WHERE VendorProfileID = @VendorProfileID
+      ORDER BY DisplayOrder
+    `);
+    
+    res.json(result.recordset.map(img => ({
+      id: img.ImageID,
+      url: img.ImageURL,
+      caption: img.Caption,
+      isPrimary: img.IsPrimary,
+      displayOrder: img.DisplayOrder,
+      albumId: img.AlbumID
+    })));
+  } catch (error) {
+    console.error('Error fetching images:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch images', error: error.message });
+  }
+});
+
+// Upload vendor logo
+router.post('/:id/logo', upload.single('logo'), async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+    
+    // Upload to Cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: 'vendor-logos',
+      transformation: [{ width: 500, height: 500, crop: 'limit' }]
+    });
+    
+    // Update vendor profile with logo URL
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('LogoURL', sql.NVarChar(255), result.secure_url);
+    
+    await request.query(`
+      UPDATE VendorProfiles
+      SET LogoURL = @LogoURL, UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    res.json({ success: true, logoUrl: result.secure_url });
+  } catch (error) {
+    console.error('Error uploading logo:', error);
+    res.status(500).json({ success: false, message: 'Failed to upload logo', error: error.message });
   }
 });
 

@@ -29,7 +29,7 @@ function PopularFiltersPanel({ onBack, vendorProfileId }) {
   const loadFilters = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/filters`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/filters`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -56,7 +56,7 @@ function PopularFiltersPanel({ onBack, vendorProfileId }) {
     e.preventDefault();
     
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/filters`, {
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/filters`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
