@@ -577,12 +577,26 @@ router.get('/connect/dashboard/:vendorProfileId', async (req, res) => {
       });
     }
 
-    // Create login link for Stripe Express dashboard
-    const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
+    // Check account type to determine dashboard access method
+    const account = await stripe.accounts.retrieve(stripeAccountId);
+    
+    // For OAuth/Standard accounts, redirect to Stripe's standard dashboard
+    // For Express accounts, create a login link
+    let dashboardUrl;
+    
+    if (account.type === 'express') {
+      // Express accounts can use login links
+      const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
+      dashboardUrl = loginLink.url;
+    } else {
+      // Standard/OAuth accounts use Stripe's standard dashboard
+      dashboardUrl = `https://dashboard.stripe.com/${stripeAccountId}`;
+    }
 
     res.json({
       success: true,
-      dashboardUrl: loginLink.url
+      dashboardUrl: dashboardUrl,
+      url: dashboardUrl
     });
 
   } catch (error) {

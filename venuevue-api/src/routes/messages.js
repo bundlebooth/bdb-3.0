@@ -148,10 +148,6 @@ router.get('/conversations/user/:userId', async (req, res) => {
             WHEN c.UserID = @UserID THEN 'vendor'
             ELSE 'user'
           END AS OtherPartyType,
-          CASE 
-            WHEN c.UserID = @UserID THEN v.LogoURL
-            ELSE u.ProfilePictureURL
-          END AS OtherPartyAvatar,
           m.Content AS LastMessageContent,
           m.CreatedAt AS LastMessageCreatedAt,
           COUNT(CASE WHEN m2.IsRead = 0 AND m2.SenderID != @UserID THEN 1 END) AS UnreadCount
@@ -167,7 +163,7 @@ router.get('/conversations/user/:userId', async (req, res) => {
           )
         LEFT JOIN Messages m2 ON c.ConversationID = m2.ConversationID
         WHERE c.UserID = @UserID OR v.UserID = @UserID
-        GROUP BY c.ConversationID, c.CreatedAt, u.Name, v.BusinessName, c.UserID, m.Content, m.CreatedAt, v.LogoURL, u.ProfilePictureURL
+        GROUP BY c.ConversationID, c.CreatedAt, u.Name, v.BusinessName, c.UserID, m.Content, m.CreatedAt
         ORDER BY m.CreatedAt DESC
       `);
 
@@ -176,7 +172,6 @@ router.get('/conversations/user/:userId', async (req, res) => {
       id: conv.ConversationID,
       createdAt: conv.CreatedAt,
       OtherPartyName: conv.OtherPartyName,
-      OtherPartyAvatar: conv.OtherPartyAvatar,
       lastMessageContent: conv.LastMessageContent || '',
       lastMessageCreatedAt: conv.LastMessageCreatedAt || conv.CreatedAt,
       unreadCount: conv.UnreadCount || 0

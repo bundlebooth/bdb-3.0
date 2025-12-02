@@ -23,7 +23,7 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
   const loadStripeStatus = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/stripe-status`, {
+      const response = await fetch(`${API_BASE_URL}/payments/connect/status/${vendorProfileId}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -40,18 +40,16 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
 
   const handleConnectStripe = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/stripe-onboard`, {
-        method: 'POST',
+      const response = await fetch(`${API_BASE_URL}/payments/connect/onboard/${vendorProfileId}`, {
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       
       if (response.ok) {
         const data = await response.json();
-        if (data.url) {
-          window.location.href = data.url;
+        if (data.authUrl || data.url) {
+          window.location.href = data.authUrl || data.url;
         }
       } else {
         throw new Error('Failed to start onboarding');
@@ -64,18 +62,16 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
 
   const handleManageStripe = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/stripe-dashboard`, {
-        method: 'POST',
+      const response = await fetch(`${API_BASE_URL}/payments/connect/dashboard/${vendorProfileId}`, {
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       
       if (response.ok) {
         const data = await response.json();
-        if (data.url) {
-          window.open(data.url, '_blank');
+        if (data.dashboardUrl || data.url) {
+          window.open(data.dashboardUrl || data.url, '_blank');
         }
       }
     } catch (error) {
@@ -155,17 +151,31 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
           </div>
         ) : (
           <div>
-            <div style={{ padding: '2rem', background: '#f0fdf4', borderRadius: 'var(--radius)', border: '1px solid #86efac', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: '#16a34a' }}></i>
-                <div>
-                  <h3 style={{ margin: 0, color: '#16a34a' }}>Stripe Connected</h3>
-                  <p style={{ margin: '0.25rem 0 0', color: '#15803d', fontSize: '0.9rem' }}>
-                    Your Stripe account is active and ready to receive payments
-                  </p>
+            {stripeStatus.detailsSubmitted ? (
+              <div style={{ padding: '2rem', background: '#f0fdf4', borderRadius: 'var(--radius)', border: '1px solid #86efac', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                  <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: '#16a34a' }}></i>
+                  <div>
+                    <h3 style={{ margin: 0, color: '#16a34a' }}>Stripe Connected</h3>
+                    <p style={{ margin: '0.25rem 0 0', color: '#15803d', fontSize: '0.9rem' }}>
+                      Your Stripe account is active and ready to receive payments
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div style={{ padding: '2rem', background: '#fef3c7', borderRadius: 'var(--radius)', border: '1px solid #fbbf24', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                  <i className="fas fa-exclamation-triangle" style={{ fontSize: '2rem', color: '#d97706' }}></i>
+                  <div>
+                    <h3 style={{ margin: 0, color: '#d97706' }}>Setup Incomplete</h3>
+                    <p style={{ margin: '0.25rem 0 0', color: '#92400e', fontSize: '0.9rem' }}>
+                      You need to complete your Stripe account setup to accept payments
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#f9fafb', borderRadius: 'var(--radius)' }}>
@@ -194,8 +204,22 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
 
             <button className="btn btn-primary" onClick={handleManageStripe}>
               <i className="fas fa-external-link-alt" style={{ marginRight: '0.5rem' }}></i>
-              Manage Stripe Account
+              {stripeStatus.detailsSubmitted ? 'Manage Stripe Account' : 'Complete Stripe Setup'}
             </button>
+            
+            {!stripeStatus.detailsSubmitted && (
+              <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: 'var(--radius)', fontSize: '0.9rem', color: 'var(--text-light)' }}>
+                <p style={{ margin: 0 }}>
+                  <strong>Next steps:</strong> Click the button above to open your Stripe dashboard and complete the following:
+                </p>
+                <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.5rem' }}>
+                  <li>Verify your business information</li>
+                  <li>Add your bank account details</li>
+                  <li>Complete identity verification</li>
+                  <li>Submit tax information (if required)</li>
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>

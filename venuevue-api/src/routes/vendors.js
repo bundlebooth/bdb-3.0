@@ -417,8 +417,7 @@ router.get('/', async (req, res) => {
   try {
     const { 
       searchTerm, 
-      category,
-      city, // City filter for location-based search
+      category, 
       minPrice, 
       maxPrice, 
       minRating,
@@ -446,11 +445,7 @@ router.get('/', async (req, res) => {
       budgetType, // 'total' | 'per_person'
       pricingModel, // 'time_based' | 'fixed_based'
       fixedPricingType, // 'fixed_price' | 'per_attendee'
-      // availability filters
-      eventDate, // Date for availability checking (YYYY-MM-DD)
-      dayOfWeek, // Day of week (e.g., 'Monday', 'Tuesday')
-      startTime, // Start time (HH:MM format)
-      endTime // End time (HH:MM format)
+      // availability filters (not supported in this SP; use /search-by-services for time-window filtering)
     } = req.query;
 
     const pool = await poolPromise;
@@ -459,180 +454,36 @@ router.get('/', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
-    // Availability filters - format times properly
-    const formatTime = (time) => {
-      if (!time) return null;
-      try {
-        const timeStr = String(time).trim();
-        const parts = timeStr.split(':');
-        if (parts.length === 3) return timeStr;
-        if (parts.length === 2) return `${timeStr}:00`;
-        return null;
-      } catch (err) {
-        console.error('Time format error:', err);
-        return null;
-      }
-    };
-    
-    const formattedStartTime = formatTime(startTime);
-    const formattedEndTime = formatTime(endTime);
-    
-    console.log('⏰ Time formatting:', { 
-      startTime, 
-      endTime, 
-      formattedStartTime, 
-      formattedEndTime 
-    });
+    const request = new sql.Request(pool);
 
-    let result;
-    
-    // Try stored procedure first, fall back to direct query if it fails
-    try {
-      const request = new sql.Request(pool);
+    request.input('SearchTerm', sql.NVarChar(100), searchTerm || null);
+    request.input('Category', sql.NVarChar(50), category || null);
+    request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
+    request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
+    request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
+    request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
+    request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
+    request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
+    request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
+    request.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : isCertified === 'false' ? 0 : null);
+    request.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : isInsured === 'false' ? 0 : null);
+    request.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : isLocal === 'false' ? 0 : null);
+    request.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : isMobile === 'false' ? 0 : null);
+    request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
+    request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
+    request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
+    request.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
+    request.input('PageSize', sql.Int, pageSize ? parseInt(pageSize) : 10);
+    request.input('SortBy', sql.NVarChar(50), sortBy || 'recommended');
+    // unified pricing-aware filters
+    request.input('BudgetType', sql.NVarChar(20), budgetType || null);
+    request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
+    request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
+    request.input('Region', sql.NVarChar(50), region || null);
+    request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
+    // Note: Do NOT pass EventDate/Start/End here. sp_SearchVendors does not accept them.
 
-      request.input('SearchTerm', sql.NVarChar(100), searchTerm || null);
-      request.input('Category', sql.NVarChar(50), category || null);
-      request.input('City', sql.NVarChar(100), city || null);
-      request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
-      request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
-      request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
-      request.input('IsPremium', sql.Bit, isPremium === 'true' ? 1 : isPremium === 'false' ? 0 : null);
-      request.input('IsEcoFriendly', sql.Bit, isEcoFriendly === 'true' ? 1 : isEcoFriendly === 'false' ? 0 : null);
-      request.input('IsAwardWinning', sql.Bit, isAwardWinning === 'true' ? 1 : isAwardWinning === 'false' ? 0 : null);
-      request.input('IsLastMinute', sql.Bit, isLastMinute === 'true' ? 1 : isLastMinute === 'false' ? 0 : null);
-      request.input('IsCertified', sql.Bit, isCertified === 'true' ? 1 : isCertified === 'false' ? 0 : null);
-      request.input('IsInsured', sql.Bit, isInsured === 'true' ? 1 : isInsured === 'false' ? 0 : null);
-      request.input('IsLocal', sql.Bit, isLocal === 'true' ? 1 : isLocal === 'false' ? 0 : null);
-      request.input('IsMobile', sql.Bit, isMobile === 'true' ? 1 : isMobile === 'false' ? 0 : null);
-      request.input('Latitude', sql.Decimal(10, 8), latitude ? parseFloat(latitude) : null);
-      request.input('Longitude', sql.Decimal(11, 8), longitude ? parseFloat(longitude) : null);
-      request.input('RadiusMiles', sql.Int, radiusMiles ? parseInt(radiusMiles) : 25);
-      request.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
-      request.input('PageSize', sql.Int, pageSize ? parseInt(pageSize) : 10);
-      request.input('SortBy', sql.NVarChar(50), sortBy || 'recommended');
-      request.input('BudgetType', sql.NVarChar(20), budgetType || null);
-      request.input('PricingModelFilter', sql.NVarChar(20), pricingModel || null);
-      request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
-      request.input('Region', sql.NVarChar(50), region || null);
-      request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
-      request.input('EventDateRaw', sql.NVarChar(50), null);
-      request.input('EventStartRaw', sql.NVarChar(20), null);
-      request.input('EventEndRaw', sql.NVarChar(20), null);
-      request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
-      request.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
-      request.input('StartTime', sql.VarChar(8), formattedStartTime);
-      request.input('EndTime', sql.VarChar(8), formattedEndTime);
-
-      result = await request.execute('sp_SearchVendors');
-    } catch (spError) {
-      console.log('⚠️ Stored procedure failed, using fallback query:', spError.message);
-      
-      // Fallback: Use direct SQL query with correct column names
-      const fallbackRequest = new sql.Request(pool);
-      fallbackRequest.input('City', sql.NVarChar(100), city || null);
-      fallbackRequest.input('Category', sql.NVarChar(50), category || null);
-      fallbackRequest.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
-      fallbackRequest.input('PageSize', sql.Int, pageSize ? parseInt(pageSize) : 10);
-      fallbackRequest.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
-      fallbackRequest.input('StartTime', sql.VarChar(8), formattedStartTime);
-      fallbackRequest.input('EndTime', sql.VarChar(8), formattedEndTime);
-      fallbackRequest.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
-      
-      // Convert day name to number for business hours check
-      const dayNumberMap = {
-        'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
-        'Thursday': 4, 'Friday': 5, 'Saturday': 6
-      };
-      const dayNumber = dayOfWeek ? dayNumberMap[dayOfWeek] : null;
-      fallbackRequest.input('DayNumber', sql.TinyInt, dayNumber);
-      
-      let fallbackQuery = `
-        SELECT 
-          v.VendorProfileID AS id,
-          v.VendorProfileID,
-          v.BusinessName AS name,
-          v.DisplayName,
-          (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS type,
-          CONCAT(v.City, ' ', v.State) AS location,
-          v.BusinessDescription AS description,
-          v.PriceLevel AS priceLevel,
-          (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS rating,
-          (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
-          (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
-          (SELECT COUNT(*) FROM Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
-          v.LogoURL AS image,
-          v.Capacity,
-          v.Rooms,
-          v.IsPremium,
-          v.IsEcoFriendly,
-          v.IsAwardWinning,
-          v.IsLastMinute,
-          (SELECT STRING_AGG(vc.Category, ', ') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
-          v.Address,
-          v.City,
-          v.State,
-          v.Country,
-          v.PostalCode,
-          v.Latitude,
-          v.Longitude,
-          COUNT(*) OVER() AS TotalCount
-        FROM VendorProfiles v
-        JOIN Users u ON v.UserID = u.UserID
-        WHERE u.IsActive = 1 AND v.IsCompleted = 1
-      `;
-      
-      // Add city filter
-      if (city) {
-        fallbackQuery += ` AND v.City LIKE '%' + @City + '%'`;
-      }
-      
-      // Add category filter
-      if (category) {
-        fallbackQuery += ` AND EXISTS (SELECT 1 FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category = @Category)`;
-      }
-      
-      // Add business hours filter - using correct column names: OpenTime and CloseTime
-      if (dayNumber !== null) {
-        fallbackQuery += `
-          AND EXISTS (
-            SELECT 1 FROM VendorBusinessHours vbh 
-            WHERE vbh.VendorProfileID = v.VendorProfileID 
-            AND vbh.DayOfWeek = @DayNumber 
-            AND vbh.IsAvailable = 1
-        `;
-        
-        // Add time overlap check if times provided
-        if (formattedStartTime && formattedEndTime) {
-          fallbackQuery += `
-            AND vbh.OpenTime < @EndTime 
-            AND vbh.CloseTime > @StartTime
-          `;
-        }
-        
-        fallbackQuery += `)`;
-      }
-      
-      // Add event date filter to exclude vendors with conflicting bookings
-      if (eventDate) {
-        fallbackQuery += `
-          AND NOT EXISTS (
-            SELECT 1 FROM Bookings b 
-            WHERE b.VendorProfileID = v.VendorProfileID 
-            AND CAST(b.EventDate AS DATE) = @EventDate
-            AND b.Status IN ('confirmed', 'pending')
-          )
-        `;
-      }
-      
-      fallbackQuery += `
-        ORDER BY v.IsPremium DESC, rating DESC
-        OFFSET ((@PageNumber - 1) * @PageSize) ROWS
-        FETCH NEXT @PageSize ROWS ONLY
-      `;
-      
-      console.log('📝 Executing fallback query with business hours filter');
-      result = await fallbackRequest.query(fallbackQuery);
-    }
+    const result = await request.execute('sp_SearchVendors');
     
     let formattedVendors = result.recordset.map(vendor => ({
       id: vendor.id,
@@ -675,9 +526,6 @@ router.get('/', async (req, res) => {
       longitude: vendor.Longitude || null
     }));
 
-    // City filtering is now handled by the stored procedure
-    // No post-query filtering needed
-
     // Enhance with Cloudinary images if requested (default: true for better UX)
     if (includeImages !== 'false') {
       console.log('Enhancing vendors with Cloudinary images...');
@@ -703,8 +551,7 @@ router.get('/', async (req, res) => {
       totalCount: result.recordset.length > 0 ? result.recordset[0].TotalCount : 0,
       pageNumber: parseInt(pageNumber) || 1,
       pageSize: parseInt(pageSize) || 10,
-      hasImages: includeImages !== 'false',
-      cityFilter: city || null
+      hasImages: includeImages !== 'false'
     });
 
   } catch (err) {
@@ -991,7 +838,6 @@ router.get('/search-by-categories', async (req, res) => {
     const {
       categories,           // comma-separated list, e.g. "Music/DJ,Catering"
       category,             // single category fallback
-      city,                 // City filter for location-based search
       minPrice,
       maxPrice,
       minRating,
@@ -1014,12 +860,7 @@ router.get('/search-by-categories', async (req, res) => {
       priceLevel,
       budgetType,           // 'total' | 'per_person'
       pricingModel,         // 'time_based' | 'fixed_based'
-      fixedPricingType,     // 'fixed_price' | 'per_attendee'
-      // availability filters
-      eventDate,            // Date for availability checking (YYYY-MM-DD)
-      dayOfWeek,            // Day of week (e.g., 'Monday', 'Tuesday')
-      startTime,            // Start time (HH:MM format)
-      endTime               // End time (HH:MM format)
+      fixedPricingType      // 'fixed_price' | 'per_attendee'
     } = req.query;
 
     // Normalize incoming categories into an array
@@ -1070,7 +911,6 @@ router.get('/search-by-categories', async (req, res) => {
       const request = new sql.Request(pool);
       request.input('SearchTerm', sql.NVarChar(100), null);
       request.input('Category', sql.NVarChar(50), cat);
-      request.input('City', sql.NVarChar(100), city || null); // Pass city to stored procedure
       request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
       request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
       request.input('MinRating', sql.Decimal(2, 1), minRating ? parseFloat(minRating) : null);
@@ -1093,14 +933,6 @@ router.get('/search-by-categories', async (req, res) => {
       request.input('FixedPricingTypeFilter', sql.NVarChar(20), fixedPricingType || null);
       request.input('Region', sql.NVarChar(50), region || null);
       request.input('PriceLevel', sql.NVarChar(10), priceLevel || null);
-      request.input('EventDateRaw', sql.NVarChar(50), null); // Legacy parameter
-      request.input('EventStartRaw', sql.NVarChar(20), null); // Legacy parameter
-      request.input('EventEndRaw', sql.NVarChar(20), null); // Legacy parameter
-      // Availability filters
-      request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
-      request.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
-      request.input('StartTime', sql.Time, startTime || null);
-      request.input('EndTime', sql.Time, endTime || null);
 
       const r = await request.execute('sp_SearchVendors');
 
@@ -1141,9 +973,6 @@ router.get('/search-by-categories', async (req, res) => {
         latitude: vendor.Latitude || null,
         longitude: vendor.Longitude || null
       }));
-
-      // City filtering is now handled by the stored procedure
-      // No post-query filtering needed
 
       if (includeImages !== 'false') {
         const batchSize = 5;
@@ -1307,594 +1136,6 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
       success: false,
       message: 'Registration failed. Please try again.',
       error: err.message 
-    });
-  }
-});
-
-// Create or update vendor profile (for onboarding flow)
-router.post('/profile', async (req, res) => {
-  try {
-    const {
-      userId,
-      businessName,
-      displayName,
-      businessDescription,
-      businessPhone,
-      website,
-      yearsInBusiness,
-      address,
-      city,
-      state,
-      country,
-      postalCode,
-      categories,
-      serviceAreas
-    } = req.body;
-
-    // Validation
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: 'User ID is required'
-      });
-    }
-
-    if (!businessName || !displayName || !businessPhone || !city || !state) {
-      return res.status(400).json({
-        success: false,
-        message: 'Required fields: businessName, displayName, businessPhone, city, state'
-      });
-    }
-
-    const pool = await poolPromise;
-    
-    if (!pool.connected) {
-      throw new Error('Database connection not established');
-    }
-
-    // Check if vendor profile already exists
-    const checkRequest = new sql.Request(pool);
-    checkRequest.input('UserID', sql.Int, parseInt(userId));
-    const checkResult = await checkRequest.query(`
-      SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID
-    `);
-
-    let vendorProfileId;
-
-    if (checkResult.recordset.length > 0) {
-      // Update existing profile
-      vendorProfileId = checkResult.recordset[0].VendorProfileID;
-      
-      const updateRequest = new sql.Request(pool);
-      updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      updateRequest.input('BusinessName', sql.NVarChar(100), businessName);
-      updateRequest.input('DisplayName', sql.NVarChar(100), displayName);
-      updateRequest.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription || '');
-      updateRequest.input('BusinessPhone', sql.NVarChar(20), businessPhone);
-      updateRequest.input('Website', sql.NVarChar(255), website || null);
-      updateRequest.input('YearsInBusiness', sql.Int, parseInt(yearsInBusiness) || 1);
-      updateRequest.input('Address', sql.NVarChar(255), address || null);
-      updateRequest.input('City', sql.NVarChar(100), city);
-      updateRequest.input('State', sql.NVarChar(50), state);
-      updateRequest.input('Country', sql.NVarChar(50), country || 'Canada');
-      updateRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
-
-      await updateRequest.query(`
-        UPDATE VendorProfiles SET
-          BusinessName = @BusinessName,
-          DisplayName = @DisplayName,
-          BusinessDescription = @BusinessDescription,
-          BusinessPhone = @BusinessPhone,
-          Website = @Website,
-          YearsInBusiness = @YearsInBusiness,
-          Address = @Address,
-          City = @City,
-          State = @State,
-          Country = @Country,
-          PostalCode = @PostalCode,
-          UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @VendorProfileID
-      `);
-
-    } else {
-      // Create new profile using sp_RegisterVendor
-      const createRequest = new sql.Request(pool);
-      createRequest.input('UserID', sql.Int, parseInt(userId));
-      createRequest.input('BusinessName', sql.NVarChar(100), businessName);
-      createRequest.input('DisplayName', sql.NVarChar(100), displayName);
-      createRequest.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription || '');
-      createRequest.input('BusinessPhone', sql.NVarChar(20), businessPhone);
-      createRequest.input('Website', sql.NVarChar(255), website || null);
-      createRequest.input('YearsInBusiness', sql.Int, parseInt(yearsInBusiness) || 1);
-      createRequest.input('Address', sql.NVarChar(255), address || null);
-      createRequest.input('City', sql.NVarChar(100), city);
-      createRequest.input('State', sql.NVarChar(50), state);
-      createRequest.input('Country', sql.NVarChar(50), country || 'Canada');
-      createRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
-      createRequest.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(categories || []));
-      createRequest.input('Services', sql.NVarChar(sql.MAX), JSON.stringify([]));
-
-      const result = await createRequest.execute('sp_RegisterVendor');
-      
-      if (!result.recordset[0].Success) {
-        throw new Error('Failed to create vendor profile');
-      }
-      
-      vendorProfileId = result.recordset[0].VendorProfileID;
-    }
-
-    // Update categories if provided
-    if (categories && categories.length > 0) {
-      // Delete existing categories
-      const deleteCategoriesRequest = new sql.Request(pool);
-      deleteCategoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteCategoriesRequest.query(`
-        DELETE FROM VendorCategories WHERE VendorProfileID = @VendorProfileID
-      `);
-
-      // Insert new categories
-      for (const category of categories) {
-        const categoryRequest = new sql.Request(pool);
-        categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        categoryRequest.input('CategoryName', sql.NVarChar(50), category);
-        
-        await categoryRequest.query(`
-          INSERT INTO VendorCategories (VendorProfileID, CategoryName, CreatedAt)
-          VALUES (@VendorProfileID, @CategoryName, GETDATE())
-        `);
-      }
-    }
-
-    // Update service areas if provided
-    if (serviceAreas && serviceAreas.length > 0) {
-      // Delete existing service areas
-      const deleteAreasRequest = new sql.Request(pool);
-      deleteAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteAreasRequest.query(`
-        DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID
-      `);
-
-      // Insert new service areas
-      for (const area of serviceAreas) {
-        const areaRequest = new sql.Request(pool);
-        areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        areaRequest.input('AreaName', sql.NVarChar(100), area);
-        
-        await areaRequest.query(`
-          INSERT INTO VendorServiceAreas (VendorProfileID, AreaName, IsActive, CreatedAt)
-          VALUES (@VendorProfileID, @AreaName, 1, GETDATE())
-        `);
-      }
-    }
-
-    // Update user to be a vendor
-    const updateUserRequest = new sql.Request(pool);
-    updateUserRequest.input('UserID', sql.Int, parseInt(userId));
-    await updateUserRequest.query(`
-      UPDATE Users SET IsVendor = 1 WHERE UserID = @UserID
-    `);
-
-    // Handle services if provided
-    if (services && services.length > 0) {
-      for (const service of services) {
-        try {
-          const serviceRequest = new sql.Request(pool);
-          serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          serviceRequest.input('CategoryName', sql.NVarChar(50), categories[0] || 'General');
-          serviceRequest.input('ServiceName', sql.NVarChar(100), service.name);
-          serviceRequest.input('ServiceDescription', sql.NVarChar(sql.MAX), service.description || '');
-          serviceRequest.input('Price', sql.Decimal(10, 2), service.price || 0);
-          serviceRequest.input('DurationMinutes', sql.Int, service.duration || 60);
-          serviceRequest.input('MaxAttendees', sql.Int, null);
-          serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), depositPercentage || null);
-          serviceRequest.input('CancellationPolicy', sql.NVarChar(sql.MAX), cancellationPolicy || null);
-
-          await serviceRequest.execute('sp_UpsertVendorService');
-        } catch (serviceError) {
-          console.error('Error adding service:', serviceError);
-        }
-      }
-    }
-
-    // Handle business hours if provided
-    if (businessHours) {
-      const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-      for (const day of days) {
-        if (businessHours[day]) {
-          try {
-            const hoursRequest = new sql.Request(pool);
-            hoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-            hoursRequest.input('DayOfWeek', sql.NVarChar(10), day.charAt(0).toUpperCase() + day.slice(1));
-            hoursRequest.input('IsAvailable', sql.Bit, businessHours[day].isAvailable);
-            hoursRequest.input('OpenTime', sql.Time, businessHours[day].openTime + ':00');
-            hoursRequest.input('CloseTime', sql.Time, businessHours[day].closeTime + ':00');
-
-            await hoursRequest.query(`
-              IF EXISTS (SELECT 1 FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek)
-                UPDATE VendorBusinessHours SET IsAvailable = @IsAvailable, OpenTime = @OpenTime, CloseTime = @CloseTime
-                WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek
-              ELSE
-                INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, IsAvailable, OpenTime, CloseTime)
-                VALUES (@VendorProfileID, @DayOfWeek, @IsAvailable, @OpenTime, @CloseTime)
-            `);
-          } catch (hoursError) {
-            console.error('Error setting business hours:', hoursError);
-          }
-        }
-      }
-    }
-
-    // Handle FAQs if provided
-    if (faqs && faqs.length > 0) {
-      for (const faq of faqs) {
-        try {
-          const faqRequest = new sql.Request(pool);
-          faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          faqRequest.input('Question', sql.NVarChar(500), faq.question);
-          faqRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
-
-          await faqRequest.query(`
-            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, IsActive, CreatedAt)
-            VALUES (@VendorProfileID, @Question, @Answer, 1, GETDATE())
-          `);
-        } catch (faqError) {
-          console.error('Error adding FAQ:', faqError);
-        }
-      }
-    }
-
-    // Update additional profile fields
-    if (licenseNumber || insuranceVerified || teamSize || languages || certifications) {
-      const updateDetailsRequest = new sql.Request(pool);
-      updateDetailsRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      if (licenseNumber) updateDetailsRequest.input('LicenseNumber', sql.NVarChar(50), licenseNumber);
-      if (insuranceVerified !== undefined) updateDetailsRequest.input('InsuranceVerified', sql.Bit, insuranceVerified);
-      if (teamSize) updateDetailsRequest.input('TeamSize', sql.Int, parseInt(teamSize));
-
-      let updateQuery = 'UPDATE VendorProfiles SET ';
-      const updates = [];
-      if (licenseNumber) updates.push('LicenseNumber = @LicenseNumber');
-      if (insuranceVerified !== undefined) updates.push('InsuranceVerified = @InsuranceVerified');
-      if (teamSize) updates.push('TeamSize = @TeamSize');
-      if (updates.length > 0) {
-        updateQuery += updates.join(', ') + ' WHERE VendorProfileID = @VendorProfileID';
-        await updateDetailsRequest.query(updateQuery);
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Vendor profile created successfully',
-      vendorProfileId: vendorProfileId
-    });
-
-  } catch (err) {
-    console.error('Vendor profile creation error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create vendor profile',
-      error: err.message
-    });
-  }
-});
-
-// Complete vendor onboarding - handles all onboarding data in one request
-router.post('/onboarding', async (req, res) => {
-  try {
-    const {
-      userId,
-      primaryCategory,
-      categories,
-      businessName,
-      displayName,
-      businessDescription,
-      yearsInBusiness,
-      tagline,
-      priceRange,
-      profileLogo,
-      businessPhone,
-      website,
-      email,
-      address,
-      city,
-      province,
-      state,
-      country,
-      postalCode,
-      latitude,
-      longitude,
-      serviceAreas,
-      selectedServices,
-      businessHours,
-      timezone,
-      selectedFeatures,
-      photoURLs,
-      socialMedia,
-      selectedFilters,
-      cancellationPolicy,
-      depositPercentage,
-      paymentTerms,
-      faqs
-    } = req.body;
-
-    console.log('📝 Onboarding request received for user:', userId);
-
-    // Validation
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: 'User ID is required'
-      });
-    }
-
-    if (!businessName || !displayName || !businessPhone) {
-      return res.status(400).json({
-        success: false,
-        message: 'Required fields: businessName, displayName, businessPhone'
-      });
-    }
-
-    const pool = await poolPromise;
-    
-    if (!pool.connected) {
-      throw new Error('Database connection not established');
-    }
-
-    // Check if vendor profile already exists
-    const checkRequest = new sql.Request(pool);
-    checkRequest.input('UserID', sql.Int, parseInt(userId));
-    const checkResult = await checkRequest.query(`
-      SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID
-    `);
-
-    let vendorProfileId;
-    // Remove duplicates from categories array
-    const allCategories = [...new Set([primaryCategory, ...(categories || [])].filter(Boolean))];
-
-    if (checkResult.recordset.length > 0) {
-      // Update existing profile
-      vendorProfileId = checkResult.recordset[0].VendorProfileID;
-      console.log('✏️ Updating existing vendor profile:', vendorProfileId);
-      
-      const updateRequest = new sql.Request(pool);
-      updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      updateRequest.input('BusinessName', sql.NVarChar(100), businessName);
-      updateRequest.input('DisplayName', sql.NVarChar(100), displayName);
-      updateRequest.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription || '');
-      updateRequest.input('BusinessPhone', sql.NVarChar(20), businessPhone);
-      updateRequest.input('Website', sql.NVarChar(255), website || null);
-      updateRequest.input('YearsInBusiness', sql.Int, parseInt(yearsInBusiness) || 1);
-      updateRequest.input('Address', sql.NVarChar(255), address || null);
-      updateRequest.input('City', sql.NVarChar(100), city || '');
-      updateRequest.input('State', sql.NVarChar(50), state || province || '');
-      updateRequest.input('Country', sql.NVarChar(50), country || 'Canada');
-      updateRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
-      updateRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
-      updateRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
-      updateRequest.input('Tagline', sql.NVarChar(255), tagline || null);
-      updateRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
-      updateRequest.input('ProfileLogo', sql.NVarChar(255), profileLogo || null);
-
-      await updateRequest.query(`
-        UPDATE VendorProfiles SET
-          BusinessName = @BusinessName,
-          DisplayName = @DisplayName,
-          BusinessDescription = @BusinessDescription,
-          BusinessPhone = @BusinessPhone,
-          Website = @Website,
-          YearsInBusiness = @YearsInBusiness,
-          Address = @Address,
-          City = @City,
-          State = @State,
-          Country = @Country,
-          PostalCode = @PostalCode,
-          Latitude = @Latitude,
-          Longitude = @Longitude,
-          Tagline = @Tagline,
-          PriceLevel = @PriceLevel,
-          LogoURL = @ProfileLogo,
-          UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @VendorProfileID
-      `);
-
-    } else {
-      // Create new profile
-      console.log('➕ Creating new vendor profile');
-      const createRequest = new sql.Request(pool);
-      createRequest.input('UserID', sql.Int, parseInt(userId));
-      createRequest.input('BusinessName', sql.NVarChar(100), businessName);
-      createRequest.input('DisplayName', sql.NVarChar(100), displayName);
-      createRequest.input('BusinessDescription', sql.NVarChar(sql.MAX), businessDescription || '');
-      createRequest.input('BusinessPhone', sql.NVarChar(20), businessPhone);
-      createRequest.input('Website', sql.NVarChar(255), website || null);
-      createRequest.input('YearsInBusiness', sql.Int, parseInt(yearsInBusiness) || 1);
-      createRequest.input('Address', sql.NVarChar(255), address || null);
-      createRequest.input('City', sql.NVarChar(100), city || '');
-      createRequest.input('State', sql.NVarChar(50), state || province || '');
-      createRequest.input('Country', sql.NVarChar(50), country || 'Canada');
-      createRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
-      createRequest.input('Categories', sql.NVarChar(sql.MAX), JSON.stringify(allCategories));
-      createRequest.input('Services', sql.NVarChar(sql.MAX), JSON.stringify([]));
-
-      const result = await createRequest.execute('sp_RegisterVendor');
-      
-      if (!result.recordset[0].Success) {
-        throw new Error('Failed to create vendor profile');
-      }
-      
-      vendorProfileId = result.recordset[0].VendorProfileID;
-      console.log('✅ Created vendor profile:', vendorProfileId);
-
-      // Update additional fields not in sp_RegisterVendor
-      const updateExtraRequest = new sql.Request(pool);
-      updateExtraRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      updateExtraRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
-      updateExtraRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
-      updateExtraRequest.input('Tagline', sql.NVarChar(255), tagline || null);
-      updateExtraRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
-      updateExtraRequest.input('ProfileLogo', sql.NVarChar(255), profileLogo || null);
-
-      await updateExtraRequest.query(`
-        UPDATE VendorProfiles SET
-          Latitude = @Latitude,
-          Longitude = @Longitude,
-          Tagline = @Tagline,
-          PriceLevel = @PriceLevel,
-          LogoURL = @ProfileLogo
-        WHERE VendorProfileID = @VendorProfileID
-      `);
-    }
-
-    // Update categories
-    if (allCategories && allCategories.length > 0) {
-      const deleteCategoriesRequest = new sql.Request(pool);
-      deleteCategoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteCategoriesRequest.query(`
-        DELETE FROM VendorCategories WHERE VendorProfileID = @VendorProfileID
-      `);
-
-      for (const category of allCategories) {
-        const categoryRequest = new sql.Request(pool);
-        categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        categoryRequest.input('Category', sql.NVarChar(50), category);
-        
-        await categoryRequest.query(`
-          INSERT INTO VendorCategories (VendorProfileID, Category)
-          VALUES (@VendorProfileID, @Category)
-        `);
-      }
-      console.log('✅ Updated categories');
-    }
-
-    // Update service areas
-    if (serviceAreas && serviceAreas.length > 0) {
-      const deleteAreasRequest = new sql.Request(pool);
-      deleteAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteAreasRequest.query(`
-        DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID
-      `);
-
-      for (const area of serviceAreas) {
-        const areaRequest = new sql.Request(pool);
-        areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        areaRequest.input('GooglePlaceID', sql.NVarChar(100), area.placeId || '');
-        areaRequest.input('CityName', sql.NVarChar(100), area.city || area);
-        areaRequest.input('StateProvince', sql.NVarChar(100), area.province || area.state || '');
-        areaRequest.input('Country', sql.NVarChar(100), area.country || 'Canada');
-        areaRequest.input('Latitude', sql.Decimal(9, 6), area.latitude || null);
-        areaRequest.input('Longitude', sql.Decimal(9, 6), area.longitude || null);
-        areaRequest.input('ServiceRadius', sql.Decimal(10, 2), area.serviceRadius || 25.0);
-        areaRequest.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || null);
-        areaRequest.input('PlaceType', sql.NVarChar(50), area.placeType || null);
-        
-        await areaRequest.query(`
-          INSERT INTO VendorServiceAreas (VendorProfileID, GooglePlaceID, CityName, [State/Province], Country, Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, IsActive)
-          VALUES (@VendorProfileID, @GooglePlaceID, @CityName, @StateProvince, @Country, @Latitude, @Longitude, @ServiceRadius, @FormattedAddress, @PlaceType, 1)
-        `);
-      }
-      console.log('✅ Updated service areas');
-    }
-
-    // Update business hours and timezone
-    if (businessHours) {
-      // Map day names to TINYINT (0=Sunday, 1=Monday, etc.)
-      const dayMapping = {
-        'sunday': 0,
-        'monday': 1,
-        'tuesday': 2,
-        'wednesday': 3,
-        'thursday': 4,
-        'friday': 5,
-        'saturday': 6
-      };
-
-      for (const [dayName, dayNumber] of Object.entries(dayMapping)) {
-        if (businessHours[dayName]) {
-          const dayData = businessHours[dayName];
-          const hoursRequest = new sql.Request(pool);
-          hoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          hoursRequest.input('DayOfWeek', sql.TinyInt, dayNumber);
-          hoursRequest.input('IsAvailable', sql.Bit, dayData.isAvailable !== false);
-          
-          // For closed days, use default times; otherwise use provided times
-          const openTime = (dayData.isAvailable !== false && dayData.openTime) ? dayData.openTime : '09:00';
-          const closeTime = (dayData.isAvailable !== false && dayData.closeTime) ? dayData.closeTime : '17:00';
-          
-          hoursRequest.input('OpenTime', sql.VarChar(8), openTime);
-          hoursRequest.input('CloseTime', sql.VarChar(8), closeTime);
-          hoursRequest.input('Timezone', sql.NVarChar(100), timezone || 'America/New_York');
-
-          await hoursRequest.query(`
-            IF EXISTS (SELECT 1 FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek)
-              UPDATE VendorBusinessHours SET IsAvailable = @IsAvailable, OpenTime = @OpenTime, CloseTime = @CloseTime, Timezone = @Timezone
-              WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek
-            ELSE
-              INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, IsAvailable, OpenTime, CloseTime, Timezone)
-              VALUES (@VendorProfileID, @DayOfWeek, @IsAvailable, @OpenTime, @CloseTime, @Timezone)
-          `);
-        }
-      }
-      console.log('✅ Updated business hours with timezone');
-    }
-
-    // Update social media
-    if (socialMedia) {
-      // Delete existing social media entries
-      const deleteSocialRequest = new sql.Request(pool);
-      deleteSocialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteSocialRequest.query(`
-        DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID
-      `);
-
-      // Insert new social media entries
-      const platforms = {
-        'Facebook': socialMedia.facebook,
-        'Instagram': socialMedia.instagram,
-        'Twitter': socialMedia.twitter,
-        'LinkedIn': socialMedia.linkedin,
-        'YouTube': socialMedia.youtube,
-        'TikTok': socialMedia.tiktok
-      };
-
-      let displayOrder = 0;
-      for (const [platform, url] of Object.entries(platforms)) {
-        if (url && url.trim()) {
-          const socialRequest = new sql.Request(pool);
-          socialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          socialRequest.input('Platform', sql.NVarChar(50), platform);
-          socialRequest.input('URL', sql.NVarChar(255), url);
-          socialRequest.input('DisplayOrder', sql.Int, displayOrder++);
-
-          await socialRequest.query(`
-            INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
-            VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
-          `);
-        }
-      }
-      console.log('✅ Updated social media');
-    }
-
-    // Update user to be a vendor
-    const updateUserRequest = new sql.Request(pool);
-    updateUserRequest.input('UserID', sql.Int, parseInt(userId));
-    await updateUserRequest.query(`
-      UPDATE Users SET IsVendor = 1 WHERE UserID = @UserID
-    `);
-
-    console.log('✅ Vendor onboarding completed successfully');
-
-    res.status(200).json({
-      success: true,
-      message: 'Vendor onboarding completed successfully',
-      vendorProfileId: vendorProfileId
-    });
-
-  } catch (err) {
-    console.error('❌ Vendor onboarding error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to complete vendor onboarding',
-      error: err.message
     });
   }
 });
@@ -2675,88 +1916,6 @@ router.post('/setup/step3-gallery', async (req, res) => {
   }
 });
 
-// Step 4: Business Hours
-router.post('/setup/step4-business-hours', async (req, res) => {
-  try {
-    const { vendorProfileId, timezone, businessHours } = req.body;
-
-    if (!vendorProfileId || !businessHours || !Array.isArray(businessHours)) {
-      return res.status(400).json({
-        success: false,
-        message: 'vendorProfileId and businessHours array are required'
-      });
-    }
-
-    const pool = await poolPromise;
-    
-    // Update timezone in VendorProfiles (if column exists)
-    if (timezone) {
-      try {
-        const timezoneRequest = new sql.Request(pool);
-        timezoneRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        timezoneRequest.input('Timezone', sql.NVarChar, timezone);
-        
-        await timezoneRequest.query(`
-          UPDATE VendorProfiles 
-          SET Timezone = @Timezone, UpdatedAt = GETDATE()
-          WHERE VendorProfileID = @VendorProfileID
-        `);
-      } catch (tzErr) {
-        console.log('Note: Timezone column may not exist in VendorProfiles:', tzErr.message);
-        // Continue even if timezone update fails
-      }
-    }
-
-    // Delete existing business hours
-    const deleteRequest = new sql.Request(pool);
-    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.query(`
-      DELETE FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Insert new business hours with Timezone
-    for (const hour of businessHours) {
-      try {
-        const insertRequest = new sql.Request(pool);
-        insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        insertRequest.input('DayOfWeek', sql.TinyInt, hour.dayOfWeek);
-        
-        // Ensure time format is HH:MM:SS for SQL Server TIME type
-        const openTime = hour.openTime && hour.openTime.length === 5 ? `${hour.openTime}:00` : hour.openTime;
-        const closeTime = hour.closeTime && hour.closeTime.length === 5 ? `${hour.closeTime}:00` : hour.closeTime;
-        
-        console.log(`Inserting business hour - Day: ${hour.dayOfWeek}, Open: ${openTime}, Close: ${closeTime}, Available: ${hour.isAvailable}`);
-        
-        insertRequest.input('OpenTime', sql.VarChar(8), openTime);
-        insertRequest.input('CloseTime', sql.VarChar(8), closeTime);
-        insertRequest.input('IsAvailable', sql.Bit, hour.isAvailable);
-        insertRequest.input('Timezone', sql.NVarChar, timezone || 'America/Toronto');
-
-        await insertRequest.query(`
-          INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone)
-          VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable, @Timezone)
-        `);
-      } catch (hourErr) {
-        console.error(`Error inserting hour for day ${hour.dayOfWeek}:`, hourErr);
-        throw hourErr;
-      }
-    }
-
-    res.json({
-      success: true,
-      message: 'Business hours updated successfully'
-    });
-
-  } catch (err) {
-    console.error('Business hours update error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update business hours',
-      error: err.message
-    });
-  }
-});
-
 // Debug endpoint to get valid service IDs for troubleshooting
 router.get('/debug/service-ids', async (req, res) => {
   try {
@@ -3131,48 +2290,64 @@ router.get('/:id/selected-services', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    // Query from Services table first (new unified pricing approach)
     const result = await request.query(`
       SELECT 
-        s.ServiceID AS VendorSelectedServiceID,
-        s.LinkedPredefinedServiceID AS PredefinedServiceID,
+        vss.VendorSelectedServiceID,
+        vss.PredefinedServiceID,
         ps.ServiceName,
         ps.ServiceDescription as PredefinedDescription,
         ps.Category,
         ps.DefaultDurationMinutes,
-        s.Description AS VendorDescription,
-        -- Derive a single VendorPrice compatible with settings UI
-        CASE 
-          WHEN s.PricingModel = 'time_based' THEN s.BaseRate
-          WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'fixed_price' THEN s.FixedPrice
-          WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'per_attendee' THEN s.PricePerPerson
-          ELSE s.Price
-        END AS VendorPrice,
-        COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes,
-        NULL AS ImageURL, -- Services table doesn't have ImageURL
-        s.CreatedAt,
-        s.UpdatedAt,
-        s.IsActive,
-        -- Include all unified pricing model fields
-        s.PricingModel,
-        s.BaseRate,
-        s.BaseDurationMinutes,
-        s.OvertimeRatePerHour,
-        s.MinimumBookingFee,
-        s.FixedPricingType,
-        s.FixedPrice,
-        s.PricePerPerson,
-        s.MinimumAttendees,
-        s.MaximumAttendees
-      FROM Services s
-      LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
-      WHERE s.VendorProfileID = @VendorProfileID 
-        AND s.LinkedPredefinedServiceID IS NOT NULL 
-        AND s.IsActive = 1
-      ORDER BY ps.Category, ps.ServiceName
+        vss.VendorPrice,
+        vss.VendorDescription,
+        vss.VendorDurationMinutes,
+        vss.ImageURL,
+        vss.CreatedAt,
+        vss.UpdatedAt,
+        vss.IsActive
+      FROM VendorSelectedServices vss
+      INNER JOIN PredefinedServices ps ON vss.PredefinedServiceID = ps.PredefinedServiceID
+      WHERE vss.VendorProfileID = @VendorProfileID AND vss.IsActive = 1
+      ORDER BY ps.Category, ps.DisplayOrder, ps.ServiceName
     `);
     
     let rows = result.recordset;
+    // Fallback: if no legacy selected entries, derive from Services linked to predefined services
+    if (!rows || rows.length === 0) {
+      try {
+        const fbReq = new sql.Request(pool);
+        fbReq.input('VendorProfileID', sql.Int, vendorProfileId);
+        const fbRes = await fbReq.query(`
+          SELECT 
+            s.LinkedPredefinedServiceID AS PredefinedServiceID,
+            ps.ServiceName,
+            ps.ServiceDescription as PredefinedDescription,
+            ps.Category,
+            ps.DefaultDurationMinutes,
+            s.Description AS VendorDescription,
+            -- Derive a single VendorPrice compatible with settings UI
+            CASE 
+              WHEN s.PricingModel = 'time_based' THEN s.BaseRate
+              WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'fixed_price' THEN s.FixedPrice
+              WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'per_attendee' THEN s.PricePerPerson
+              ELSE s.Price
+            END AS VendorPrice,
+            COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes,
+            s.CreatedAt,
+            s.UpdatedAt,
+            s.IsActive
+          FROM Services s
+          LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
+          WHERE s.VendorProfileID = @VendorProfileID 
+            AND s.LinkedPredefinedServiceID IS NOT NULL 
+            AND s.IsActive = 1
+          ORDER BY ps.Category, ps.ServiceName
+        `);
+        rows = fbRes.recordset || [];
+      } catch (fbErr) {
+        console.warn('Fallback selected-services query failed:', fbErr?.message || fbErr);
+      }
+    }
 
     res.json({ 
       success: true, 
@@ -3334,15 +2509,13 @@ router.post('/setup/step3-services', async (req, res) => {
     
     // Handle service categories
     if (serviceCategories && serviceCategories.length > 0) {
-      // First, detach existing services from categories to avoid FK constraint when deleting categories
+      // Detach existing services from categories to avoid FK constraint when deleting categories
       const detachRequest = new sql.Request(pool);
       detachRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       await detachRequest.query(`
         UPDATE Services
         SET CategoryID = NULL
-        WHERE CategoryID IN (
-          SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID
-        )
+        WHERE VendorProfileID = @VendorProfileID AND CategoryID IS NOT NULL
       `);
 
       // Now delete existing categories
@@ -3386,35 +2559,109 @@ router.post('/setup/step3-services', async (req, res) => {
         }
         
         const serviceRequest = new sql.Request(pool);
-        
-        // Calculate derived price from the new pricing model
+        serviceRequest.input('CategoryID', sql.Int, categoryId);
+        serviceRequest.input('Name', sql.NVarChar, service.name);
+        serviceRequest.input('Description', sql.NVarChar, service.description || null);
+        // Normalize and map pricing model from UI to stored procedure expectations
+        const rawModel = service.pricingModel; // 'time_based' | 'fixed_price' | 'per_attendee' from UI
+        let pricingModel = null; // 'time_based' | 'fixed_based'
+        let fixedPricingType = null; // 'fixed_price' | 'per_attendee'
+        if (rawModel === 'time_based') {
+          pricingModel = 'time_based';
+        } else if (rawModel === 'fixed_price') {
+          pricingModel = 'fixed_based';
+          fixedPricingType = 'fixed_price';
+        } else if (rawModel === 'per_attendee') {
+          pricingModel = 'fixed_based';
+          fixedPricingType = 'per_attendee';
+        } else {
+          pricingModel = service.pricingModel || null;
+          fixedPricingType = service.fixedPricingType || null;
+        }
         const baseRate = service.baseRate != null ? parseFloat(service.baseRate) : null;
+        const baseDurationMinutes = service.baseDurationMinutes != null ? parseInt(service.baseDurationMinutes) : (service.durationMinutes || null);
+        const overtimeRatePerHour = service.overtimeRatePerHour != null ? parseFloat(service.overtimeRatePerHour) : null;
+        const minimumBookingFee = service.minimumBookingFee != null ? parseFloat(service.minimumBookingFee) : null;
         const fixedPrice = service.fixedPrice != null ? parseFloat(service.fixedPrice) : null;
         const pricePerPerson = service.pricePerPerson != null ? parseFloat(service.pricePerPerson) : null;
-        const legacyPrice = service.price != null ? parseFloat(service.price) : null;
-        const derivedPrice = (fixedPrice != null) ? fixedPrice : (baseRate != null ? baseRate : (pricePerPerson != null ? pricePerPerson : legacyPrice));
-        
-        const baseDurationMinutes = service.baseDurationMinutes != null ? parseInt(service.baseDurationMinutes) : (service.durationMinutes || null);
+        const minimumAttendees = service.minimumAttendees != null ? parseInt(service.minimumAttendees) : null;
         const maximumAttendees = service.maximumAttendees != null ? parseInt(service.maximumAttendees) : null;
 
-        console.log('Upserting service with legacy parameters', {
+        // Validation: ensure required pricing fields are provided per pricing model
+        if (!pricingModel) {
+          return res.status(400).json({
+            success: false,
+            message: `Service validation failed: pricingModel is required for service '${service.name || ''}'.`
+          });
+        }
+        if (pricingModel === 'time_based') {
+          if (baseRate == null || baseDurationMinutes == null) {
+            return res.status(400).json({
+              success: false,
+              message: `Time-based service '${service.name || ''}' requires baseRate and baseDurationMinutes.`
+            });
+          }
+        } else if (pricingModel === 'fixed_based') {
+          if (fixedPricingType === 'fixed_price') {
+            if (fixedPrice == null) {
+              return res.status(400).json({
+                success: false,
+                message: `Fixed-price service '${service.name || ''}' requires fixedPrice.`
+              });
+            }
+          } else if (fixedPricingType === 'per_attendee') {
+            if (pricePerPerson == null) {
+              return res.status(400).json({
+                success: false,
+                message: `Per-attendee service '${service.name || ''}' requires pricePerPerson.`
+              });
+            }
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: `Fixed-based service '${service.name || ''}' requires fixedPricingType of 'fixed_price' or 'per_attendee'.`
+            });
+          }
+        }
+
+        console.log('Upserting service', {
           vendorProfileId,
           name: service.name,
-          derivedPrice,
+          pricingModel,
+          fixedPricingType,
+          baseRate,
           baseDurationMinutes,
+          overtimeRatePerHour,
+          minimumBookingFee,
+          fixedPrice,
+          pricePerPerson,
+          minimumAttendees,
           maximumAttendees
         });
 
-        // Use the legacy stored procedure parameters (matching sp_UpsertVendorService with 11 parameters)
-        serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        serviceRequest.input('CategoryName', sql.NVarChar, service.categoryName || 'General');
-        serviceRequest.input('ServiceName', sql.NVarChar, service.name);
-        serviceRequest.input('ServiceDescription', sql.NVarChar, service.description || null);
+        // Backward compatible legacy fields
+        const legacyPrice = service.price != null ? parseFloat(service.price) : null;
+        const derivedPrice = (fixedPrice != null) ? fixedPrice : (baseRate != null ? baseRate : (pricePerPerson != null ? pricePerPerson : legacyPrice));
+
+        // Common fields
         serviceRequest.input('Price', sql.Decimal(10, 2), derivedPrice);
         serviceRequest.input('DurationMinutes', sql.Int, baseDurationMinutes || null);
         serviceRequest.input('MaxAttendees', sql.Int, service.maxAttendees || maximumAttendees || null);
         serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), service.depositPercentage != null ? parseFloat(service.depositPercentage) : 20);
         serviceRequest.input('CancellationPolicy', sql.NVarChar, service.cancellationPolicy || null);
+        serviceRequest.input('LinkedPredefinedServiceID', sql.Int, service.linkedPredefinedServiceId || null);
+        serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        // Unified pricing fields
+        serviceRequest.input('PricingModel', sql.NVarChar, pricingModel);
+        serviceRequest.input('BaseDurationMinutes', sql.Int, baseDurationMinutes || null);
+        serviceRequest.input('BaseRate', sql.Decimal(10, 2), baseRate);
+        serviceRequest.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour);
+        serviceRequest.input('MinimumBookingFee', sql.Decimal(10, 2), minimumBookingFee);
+        serviceRequest.input('FixedPricingType', sql.NVarChar, fixedPricingType);
+        serviceRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice);
+        serviceRequest.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson);
+        serviceRequest.input('MinimumAttendees', sql.Int, minimumAttendees);
+        serviceRequest.input('MaximumAttendees', sql.Int, maximumAttendees);
 
         // Use unified upsert stored procedure
         try {
@@ -3449,24 +2696,14 @@ router.post('/setup/step3-services', async (req, res) => {
     }
     
     // Handle selected predefined services
-    // First, delete ALL existing services for this vendor (both predefined and custom)
-    console.log(`[BACKEND] Deleting all existing services for vendor ${vendorProfileId}`);
-    const deleteServicesRequest = new sql.Request(pool);
-    deleteServicesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const deleteResult = await deleteServicesRequest.query(`
-      DELETE FROM Services WHERE VendorProfileID = @VendorProfileID
-    `);
-    console.log(`[BACKEND] Deleted ${deleteResult.rowsAffected[0]} services from Services table`);
-    
-    // Also delete from VendorSelectedServices (legacy table, may not be used anymore)
-    const deleteSelectedRequest = new sql.Request(pool);
-    deleteSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const deleteSelectedResult = await deleteSelectedRequest.query(`
-      DELETE FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID
-    `);
-    console.log(`[BACKEND] Deleted ${deleteSelectedResult.rowsAffected[0]} services from VendorSelectedServices table`);
-
     if (selectedPredefinedServices && selectedPredefinedServices.length > 0) {
+      // First, delete existing selected predefined services for this vendor
+      const deleteSelectedRequest = new sql.Request(pool);
+      deleteSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteSelectedRequest.query(`
+        DELETE FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID
+      `);
+
       // Insert new selected predefined services
       for (const selectedService of selectedPredefinedServices) {
         try {
@@ -3476,92 +2713,40 @@ router.post('/setup/step3-services', async (req, res) => {
           console.log(`[BACKEND]   - imageURL type:`, typeof imageUrlValue);
           console.log(`[BACKEND]   - imageURL length:`, imageUrlValue ? imageUrlValue.length : 0);
           
-          // Calculate the vendor price from the pricing model
-          const baseRate = selectedService.baseRate != null ? parseFloat(selectedService.baseRate) : null;
-          const fixedPrice = selectedService.fixedPrice != null ? parseFloat(selectedService.fixedPrice) : null;
-          const pricePerPerson = selectedService.pricePerPerson != null ? parseFloat(selectedService.pricePerPerson) : null;
-          const legacyPrice = selectedService.price != null ? parseFloat(selectedService.price) : null;
+          const insertSelectedRequest = new sql.Request(pool);
+          insertSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          insertSelectedRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
+          insertSelectedRequest.input('VendorPrice', sql.Decimal(10, 2), selectedService.price);
+          insertSelectedRequest.input('VendorDescription', sql.NVarChar, selectedService.description || null);
+          insertSelectedRequest.input('VendorDurationMinutes', sql.Int, selectedService.durationMinutes || null);
+          insertSelectedRequest.input('ImageURL', sql.NVarChar, imageUrlValue);
           
-          // Derive vendor price based on pricing model priority
-          let vendorPrice = null;
-          if (fixedPrice != null) {
-            vendorPrice = fixedPrice;
-          } else if (baseRate != null) {
-            vendorPrice = baseRate;
-          } else if (pricePerPerson != null) {
-            vendorPrice = pricePerPerson;
-          } else if (legacyPrice != null) {
-            vendorPrice = legacyPrice;
-          } else {
-            vendorPrice = 0; // Default fallback
-          }
-
-          console.log(`[BACKEND] Pricing calculation for ${selectedService.name}:`, {
-            baseRate,
-            fixedPrice,
-            pricePerPerson,
-            legacyPrice,
-            vendorPrice
-          });
-
-          // Use unified stored procedure with all pricing parameters
-          const serviceRequest = new sql.Request(pool);
-          serviceRequest.input('ServiceID', sql.Int, null);
-          serviceRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          serviceRequest.input('CategoryID', sql.Int, null);
-          serviceRequest.input('CategoryName', sql.NVarChar, selectedService.categoryName || 'General');
-          serviceRequest.input('Name', sql.NVarChar, selectedService.name);
-          serviceRequest.input('ServiceName', sql.NVarChar, selectedService.name); // Backward compatibility
-          serviceRequest.input('Description', sql.NVarChar, selectedService.description || null);
-          serviceRequest.input('ServiceDescription', sql.NVarChar, selectedService.description || null); // Backward compatibility
-          serviceRequest.input('Price', sql.Decimal(10, 2), vendorPrice);
-          serviceRequest.input('DurationMinutes', sql.Int, selectedService.durationMinutes || selectedService.baseDurationMinutes || null);
-          serviceRequest.input('MaxAttendees', sql.Int, selectedService.maximumAttendees || null);
-          serviceRequest.input('IsActive', sql.Bit, 1);
-          serviceRequest.input('RequiresDeposit', sql.Bit, 1);
-          serviceRequest.input('DepositPercentage', sql.Decimal(5, 2), 20);
-          serviceRequest.input('CancellationPolicy', sql.NVarChar, null);
-          serviceRequest.input('LinkedPredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
-          
-          // Unified pricing fields
-          serviceRequest.input('PricingModel', sql.NVarChar, selectedService.pricingModel || 'time_based');
-          serviceRequest.input('BaseDurationMinutes', sql.Int, selectedService.baseDurationMinutes || null);
-          serviceRequest.input('BaseRate', sql.Decimal(10, 2), baseRate);
-          serviceRequest.input('OvertimeRatePerHour', sql.Decimal(10, 2), selectedService.overtimeRatePerHour != null ? parseFloat(selectedService.overtimeRatePerHour) : null);
-          serviceRequest.input('MinimumBookingFee', sql.Decimal(10, 2), selectedService.minimumBookingFee != null ? parseFloat(selectedService.minimumBookingFee) : null);
-          serviceRequest.input('FixedPricingType', sql.NVarChar, selectedService.fixedPricingType || null);
-          serviceRequest.input('FixedPrice', sql.Decimal(10, 2), fixedPrice);
-          serviceRequest.input('PricePerPerson', sql.Decimal(10, 2), pricePerPerson);
-          serviceRequest.input('MinimumAttendees', sql.Int, selectedService.minimumAttendees || null);
-          serviceRequest.input('MaximumAttendees', sql.Int, selectedService.maximumAttendees || null);
-
-          console.log(`[BACKEND] Creating Service with unified pricing for ${selectedService.name}`);
-          
-          const insertResult = await serviceRequest.execute('dbo.sp_UpsertVendorService');
+          const insertResult = await insertSelectedRequest.query(`
+            INSERT INTO VendorSelectedServices 
+            (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, ImageURL, CreatedAt)
+            VALUES 
+            (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, @ImageURL, GETDATE())
+          `);
           
           console.log(`[BACKEND]   - Insert result:`, insertResult.rowsAffected);
           
           // VERIFY: Read back what was actually saved
           const verifyRequest = new sql.Request(pool);
           verifyRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          verifyRequest.input('LinkedPredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
+          verifyRequest.input('PredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
           const verifyResult = await verifyRequest.query(`
-            SELECT TOP 1 ServiceID, Name, Price, BaseRate, OvertimeRatePerHour, PricingModel, BaseDurationMinutes
-            FROM Services
+            SELECT VendorSelectedServiceID, ImageURL 
+            FROM VendorSelectedServices 
             WHERE VendorProfileID = @VendorProfileID 
-            AND LinkedPredefinedServiceID = @LinkedPredefinedServiceID
-            ORDER BY ServiceID DESC
+            AND PredefinedServiceID = @PredefinedServiceID
           `);
           
           if (verifyResult.recordset.length > 0) {
-            const savedService = verifyResult.recordset[0];
-            console.log(`[BACKEND]   - VERIFICATION SUCCESS: Service saved!`);
-            console.log(`[BACKEND]   - BaseRate: ${savedService.BaseRate}`);
-            console.log(`[BACKEND]   - OvertimeRate: ${savedService.OvertimeRatePerHour}`);
-            console.log(`[BACKEND]   - PricingModel: ${savedService.PricingModel}`);
-            console.log(`[BACKEND]   - BaseDuration: ${savedService.BaseDurationMinutes}`);
+            const savedImageURL = verifyResult.recordset[0].ImageURL;
+            console.log(`[BACKEND]   - VERIFICATION: ImageURL in DB:`, savedImageURL);
+            console.log(`[BACKEND]   - VERIFICATION: Match:`, savedImageURL === imageUrlValue);
           } else {
-            console.error(`[BACKEND]   - VERIFICATION FAILED: Service not found after insert!`);
+            console.error(`[BACKEND]   - VERIFICATION FAILED: Row not found after insert!`);
           }
           
         } catch (insertError) {
@@ -4348,21 +3533,32 @@ router.post('/:id/services', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
-    // Use legacy upsert SP for insertion (matching 11 parameter version)
+    // Use unified upsert SP for insertion
     const request = new sql.Request(pool);
+    request.input('ServiceID', sql.Int, null);
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('CategoryID', sql.Int, null);
+    request.input('Name', sql.NVarChar(255), serviceName);
+    request.input('Description', sql.NVarChar(sql.MAX), description || null);
     // derive a legacy price for compatibility
     const legacyPrice = price != null ? parseFloat(price) : null;
     const derivedPrice = (fixedPrice != null ? parseFloat(fixedPrice) : (baseRate != null ? parseFloat(baseRate) : (pricePerPerson != null ? parseFloat(pricePerPerson) : legacyPrice)));
-    
-    request.input('VendorProfileID', sql.Int, id);
-    request.input('CategoryName', sql.NVarChar, category || 'General');
-    request.input('ServiceName', sql.NVarChar, serviceName);
-    request.input('ServiceDescription', sql.NVarChar, description || null);
     request.input('Price', sql.Decimal(10, 2), derivedPrice);
     request.input('DurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : (duration ? parseInt(duration) : null));
     request.input('MaxAttendees', sql.Int, maximumAttendees != null ? parseInt(maximumAttendees) : null);
     request.input('DepositPercentage', sql.Decimal(5, 2), 20);
     request.input('CancellationPolicy', sql.NVarChar, null);
+    request.input('LinkedPredefinedServiceID', sql.Int, null);
+    request.input('PricingModel', sql.NVarChar(20), pricingModel || null);
+    request.input('BaseDurationMinutes', sql.Int, baseDurationMinutes != null ? parseInt(baseDurationMinutes) : null);
+    request.input('BaseRate', sql.Decimal(10, 2), baseRate != null ? parseFloat(baseRate) : null);
+    request.input('OvertimeRatePerHour', sql.Decimal(10, 2), overtimeRatePerHour != null ? parseFloat(overtimeRatePerHour) : null);
+    request.input('MinimumBookingFee', sql.Decimal(10, 2), minimumBookingFee != null ? parseFloat(minimumBookingFee) : null);
+    request.input('FixedPricingType', sql.NVarChar(20), pricingModel === 'fixed_based' ? (fixedPricingType || null) : null);
+    request.input('FixedPrice', sql.Decimal(10, 2), pricingModel === 'fixed_based' && fixedPricingType === 'fixed_price' && fixedPrice != null ? parseFloat(fixedPrice) : null);
+    request.input('PricePerPerson', sql.Decimal(10, 2), pricingModel === 'fixed_based' && fixedPricingType === 'per_attendee' && pricePerPerson != null ? parseFloat(pricePerPerson) : null);
+    request.input('MinimumAttendees', sql.Int, pricingModel === 'fixed_based' && fixedPricingType === 'per_attendee' && minimumAttendees != null ? parseInt(minimumAttendees) : null);
+    request.input('MaximumAttendees', sql.Int, pricingModel === 'fixed_based' && fixedPricingType === 'per_attendee' && maximumAttendees != null ? parseInt(maximumAttendees) : null);
 
     const insertResult = await request.execute('dbo.sp_UpsertVendorService');
     const newServiceId = insertResult.recordset && insertResult.recordset[0] ? insertResult.recordset[0].ServiceID : null;
@@ -5454,521 +4650,6 @@ router.post('/:vendorProfileId/google-reviews-settings', async (req, res) => {
       message: 'Failed to save settings',
       error: error.message
     });
-  }
-});
-
-// Check vendor availability for a specific date and location
-router.post('/check-availability', async (req, res) => {
-  try {
-    const { date, city, dayOfWeek, startTime, endTime } = req.body;
-
-    if (!date) {
-      return res.status(400).json({
-        success: false,
-        message: 'Date is required'
-      });
-    }
-
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    
-    // Convert date to proper format
-    const eventDate = new Date(date);
-    const dayNumber = eventDate.getDay(); // 0=Sunday, 1=Monday, etc.
-    
-    // Convert time format from HH:MM to HH:MM:SS if needed
-    const formatTime = (time) => {
-      if (!time) return null;
-      const timeStr = String(time).trim();
-      const parts = timeStr.split(':');
-      // If time is already in HH:MM:SS format, return as is
-      if (parts.length === 3) return timeStr;
-      // If time is in HH:MM format, add :00 for seconds
-      if (parts.length === 2) return timeStr + ':00';
-      // If invalid format, return null
-      return null;
-    };
-    
-    const formattedStartTime = formatTime(startTime);
-    const formattedEndTime = formatTime(endTime);
-    
-    request.input('EventDate', sql.Date, eventDate);
-    request.input('DayOfWeek', sql.TinyInt, dayNumber);
-    request.input('City', sql.NVarChar(100), city || null);
-    request.input('StartTime', sql.VarChar(8), formattedStartTime);
-    request.input('EndTime', sql.VarChar(8), formattedEndTime);
-
-    // Query to find available vendors
-    const result = await request.query(`
-      SELECT
-        vp.VendorProfileID,
-        vp.BusinessName,
-        vp.DisplayName,
-        vp.City,
-        vp.State,
-        vp.LogoURL,
-        (SELECT AVG(CAST(Rating AS DECIMAL(3,1))) FROM Reviews WHERE VendorProfileID = vp.VendorProfileID AND IsApproved = 1) as AverageRating,
-        (SELECT COUNT(*) FROM Reviews WHERE VendorProfileID = vp.VendorProfileID AND IsApproved = 1) as ReviewCount,
-        vp.IsPremium,
-        (SELECT TOP 1 Category FROM VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as CategoryName,
-        COUNT(*) OVER() as TotalCount
-      FROM VendorProfiles vp
-      LEFT JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
-      LEFT JOIN VendorAvailabilityExceptions vae ON vp.VendorProfileID = vae.VendorProfileID 
-        AND vae.Date = @EventDate
-      WHERE (@City IS NULL OR vp.City LIKE '%' + @City + '%')
-        AND (
-          -- Check if vendor has business hours for this day of week
-          @DayOfWeek IS NULL
-          OR EXISTS (
-            SELECT 1 FROM VendorBusinessHours vbh2 
-            WHERE vbh2.VendorProfileID = vp.VendorProfileID 
-            AND vbh2.DayOfWeek = @DayOfWeek 
-            AND vbh2.IsAvailable = 1
-            -- If times are provided, check if business hours overlap with requested time
-            AND (
-              @StartTime IS NULL 
-              OR @EndTime IS NULL
-              OR (
-                -- Business hours overlap if: vendor opens before search ends AND vendor closes after search starts
-                vbh2.OpenTime < @EndTime AND vbh2.CloseTime > @StartTime
-              )
-            )
-          )
-        )
-        AND (
-          -- Check availability exceptions - vendor should be available on this date
-          vae.VendorProfileID IS NULL 
-          OR (
-            vae.IsAvailable = 1
-            -- If times are provided, check exception time ranges
-            AND (
-              @StartTime IS NULL
-              OR vae.StartTime IS NULL
-              OR (vae.StartTime <= @StartTime AND vae.EndTime >= @EndTime)
-            )
-          )
-        )
-        AND NOT EXISTS (
-          -- Exclude if vendor has bookings on the same date
-          SELECT 1 FROM Bookings b 
-          WHERE b.VendorProfileID = vp.VendorProfileID 
-          AND CAST(b.EventDate AS DATE) = @EventDate
-          AND b.Status IN ('confirmed', 'pending')
-        )
-      ORDER BY 
-        IsPremium DESC,
-        AverageRating DESC,
-        ReviewCount DESC
-    `);
-
-    const availableVendors = result.recordset.map(vendor => ({
-      vendorProfileId: vendor.VendorProfileID,
-      businessName: vendor.BusinessName,
-      displayName: vendor.DisplayName,
-      city: vendor.City,
-      state: vendor.State,
-      logoUrl: vendor.LogoURL,
-      averageRating: vendor.AverageRating,
-      reviewCount: vendor.ReviewCount,
-      isPremium: vendor.IsPremium,
-      categoryName: vendor.CategoryName
-    }));
-
-    res.json({
-      success: true,
-      availableVendors: availableVendors,
-      totalCount: availableVendors.length > 0 ? availableVendors[0].TotalCount : 0,
-      searchDate: date,
-      searchCity: city,
-      dayOfWeek: dayName
-    });
-
-  } catch (error) {
-    console.error('Error checking vendor availability:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to check vendor availability',
-      error: error.message
-    });
-  }
-});
-
-// ===== BUSINESS PROFILE MANAGEMENT ENDPOINTS =====
-
-// Get vendor social media
-router.get('/:id/social', async (req, res) => {
-  try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const pool = await poolPromise;
-    
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const result = await request.query(`
-      SELECT Platform, URL, DisplayOrder
-      FROM VendorSocialMedia
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DisplayOrder
-    `);
-    
-    // Convert to object format expected by frontend
-    const socialMedia = {
-      facebook: '',
-      instagram: '',
-      twitter: '',
-      linkedin: '',
-      youtube: '',
-      tiktok: ''
-    };
-    
-    result.recordset.forEach(row => {
-      const platform = row.Platform.toLowerCase();
-      socialMedia[platform] = row.URL;
-    });
-    
-    res.json(socialMedia);
-  } catch (error) {
-    console.error('Error fetching social media:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch social media', error: error.message });
-  }
-});
-
-// Save vendor social media
-router.post('/:id/social', async (req, res) => {
-  try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const { facebook, instagram, twitter, linkedin, youtube, tiktok } = req.body;
-    const pool = await poolPromise;
-    
-    // Delete existing entries
-    const deleteRequest = new sql.Request(pool);
-    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.query(`DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID`);
-    
-    // Insert new entries
-    const platforms = { Facebook: facebook, Instagram: instagram, Twitter: twitter, LinkedIn: linkedin, YouTube: youtube, TikTok: tiktok };
-    let displayOrder = 0;
-    
-    for (const [platform, url] of Object.entries(platforms)) {
-      if (url && url.trim()) {
-        const insertRequest = new sql.Request(pool);
-        insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        insertRequest.input('Platform', sql.NVarChar(50), platform);
-        insertRequest.input('URL', sql.NVarChar(255), url);
-        insertRequest.input('DisplayOrder', sql.Int, displayOrder++);
-        
-        await insertRequest.query(`
-          INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
-          VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
-        `);
-      }
-    }
-    
-    res.json({ success: true, message: 'Social media saved successfully' });
-  } catch (error) {
-    console.error('Error saving social media:', error);
-    res.status(500).json({ success: false, message: 'Failed to save social media', error: error.message });
-  }
-});
-
-// Get vendor location and service areas
-router.get('/:id/location', async (req, res) => {
-  try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const pool = await poolPromise;
-    
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    // Get vendor profile location
-    const profileResult = await request.query(`
-      SELECT Address, City, State, Country, PostalCode, Latitude, Longitude
-      FROM VendorProfiles
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-    
-    // Get service areas
-    const areasResult = await request.query(`
-      SELECT GooglePlaceID, CityName, [State/Province] as StateProvince, Country, 
-             Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, IsActive
-      FROM VendorServiceAreas
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-    
-    res.json({
-      address: profileResult.recordset[0]?.Address || '',
-      city: profileResult.recordset[0]?.City || '',
-      state: profileResult.recordset[0]?.State || '',
-      country: profileResult.recordset[0]?.Country || '',
-      postalCode: profileResult.recordset[0]?.PostalCode || '',
-      latitude: profileResult.recordset[0]?.Latitude || null,
-      longitude: profileResult.recordset[0]?.Longitude || null,
-      serviceAreas: areasResult.recordset.map(area => ({
-        placeId: area.GooglePlaceID,
-        city: area.CityName,
-        province: area.StateProvince,
-        country: area.Country,
-        latitude: area.Latitude,
-        longitude: area.Longitude,
-        serviceRadius: area.ServiceRadius,
-        formattedAddress: area.FormattedAddress,
-        placeType: area.PlaceType,
-        isActive: area.IsActive
-      }))
-    });
-  } catch (error) {
-    console.error('Error fetching location:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch location', error: error.message });
-  }
-});
-
-// Save vendor location and service areas
-router.post('/:id/location', async (req, res) => {
-  try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const { address, city, state, country, postalCode, latitude, longitude, serviceAreas } = req.body;
-    const pool = await poolPromise;
-    
-    // Update vendor profile location
-    const updateRequest = new sql.Request(pool);
-    updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    updateRequest.input('Address', sql.NVarChar(255), address || null);
-    updateRequest.input('City', sql.NVarChar(100), city || '');
-    updateRequest.input('State', sql.NVarChar(50), state || '');
-    updateRequest.input('Country', sql.NVarChar(50), country || 'Canada');
-    updateRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
-    updateRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
-    updateRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
-    
-    await updateRequest.query(`
-      UPDATE VendorProfiles
-      SET Address = @Address, City = @City, State = @State, Country = @Country,
-          PostalCode = @PostalCode, Latitude = @Latitude, Longitude = @Longitude,
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-    
-    // Delete existing service areas
-    const deleteRequest = new sql.Request(pool);
-    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.query(`DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID`);
-    
-    // Insert new service areas
-    if (Array.isArray(serviceAreas) && serviceAreas.length > 0) {
-      for (const area of serviceAreas) {
-        const areaRequest = new sql.Request(pool);
-        areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        areaRequest.input('GooglePlaceID', sql.NVarChar(100), area.placeId || '');
-        areaRequest.input('CityName', sql.NVarChar(100), area.city || '');
-        areaRequest.input('StateProvince', sql.NVarChar(100), area.province || area.state || '');
-        areaRequest.input('Country', sql.NVarChar(100), area.country || 'Canada');
-        areaRequest.input('Latitude', sql.Decimal(9, 6), area.latitude || null);
-        areaRequest.input('Longitude', sql.Decimal(9, 6), area.longitude || null);
-        areaRequest.input('ServiceRadius', sql.Decimal(10, 2), area.serviceRadius || 25.0);
-        areaRequest.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || null);
-        areaRequest.input('PlaceType', sql.NVarChar(50), area.placeType || null);
-        
-        await areaRequest.query(`
-          INSERT INTO VendorServiceAreas (VendorProfileID, GooglePlaceID, CityName, [State/Province], Country, Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, IsActive)
-          VALUES (@VendorProfileID, @GooglePlaceID, @CityName, @StateProvince, @Country, @Latitude, @Longitude, @ServiceRadius, @FormattedAddress, @PlaceType, 1)
-        `);
-      }
-    }
-    
-    res.json({ success: true, message: 'Location and service areas saved successfully' });
-  } catch (error) {
-    console.error('Error saving location:', error);
-    res.status(500).json({ success: false, message: 'Failed to save location', error: error.message });
-  }
-});
-
-// Get vendor filters/badges
-router.get('/:id/filters', async (req, res) => {
-  try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const pool = await poolPromise;
-    
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const result = await request.query(`
-      SELECT IsPremium, IsVerified, IsTopRated, IsFeatured, IsNew, IsPopular
-      FROM VendorProfiles
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-    
-    const profile = result.recordset[0] || {};
-    res.json({
-      isPremium: profile.IsPremium || false,
-      isVerified: profile.IsVerified || false,
-      isTopRated: profile.IsTopRated || false,
-      isFeatured: profile.IsFeatured || false,
-      isNew: profile.IsNew || false,
-      isPopular: profile.IsPopular || false
-    });
-  } catch (error) {
-    console.error('Error fetching filters:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch filters', error: error.message });
-  }
-});
-
-// Save vendor filters/badges
-router.put('/:id/filters', async (req, res) => {
-  try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const { isPremium, isVerified, isTopRated, isFeatured, isNew, isPopular } = req.body;
-    const pool = await poolPromise;
-    
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('IsPremium', sql.Bit, isPremium || false);
-    request.input('IsVerified', sql.Bit, isVerified || false);
-    request.input('IsTopRated', sql.Bit, isTopRated || false);
-    request.input('IsFeatured', sql.Bit, isFeatured || false);
-    request.input('IsNew', sql.Bit, isNew || false);
-    request.input('IsPopular', sql.Bit, isPopular || false);
-    
-    await request.query(`
-      UPDATE VendorProfiles
-      SET IsPremium = @IsPremium, IsVerified = @IsVerified, IsTopRated = @IsTopRated,
-          IsFeatured = @IsFeatured, IsNew = @IsNew, IsPopular = @IsPopular,
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-    
-    res.json({ success: true, message: 'Filters saved successfully' });
-  } catch (error) {
-    console.error('Error saving filters:', error);
-    res.status(500).json({ success: false, message: 'Failed to save filters', error: error.message });
-  }
-});
-
-// Get vendor FAQs
-router.get('/:id/faqs', async (req, res) => {
-  try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const pool = await poolPromise;
-    
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const result = await request.query(`
-      SELECT FAQID, Question, Answer, DisplayOrder
-      FROM VendorFAQs
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DisplayOrder
-    `);
-    
-    res.json(result.recordset.map(faq => ({
-      id: faq.FAQID,
-      question: faq.Question,
-      answer: faq.Answer,
-      displayOrder: faq.DisplayOrder
-    })));
-  } catch (error) {
-    console.error('Error fetching FAQs:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch FAQs', error: error.message });
-  }
-});
-
-// Save vendor FAQs
-router.post('/:id/faqs', async (req, res) => {
-  try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const { faqs } = req.body;
-    const pool = await poolPromise;
-    
-    // Delete existing FAQs
-    const deleteRequest = new sql.Request(pool);
-    deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.query(`DELETE FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID`);
-    
-    // Insert new FAQs
-    if (Array.isArray(faqs) && faqs.length > 0) {
-      for (let i = 0; i < faqs.length; i++) {
-        const faq = faqs[i];
-        const insertRequest = new sql.Request(pool);
-        insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        insertRequest.input('Question', sql.NVarChar(500), faq.question);
-        insertRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
-        insertRequest.input('DisplayOrder', sql.Int, i);
-        
-        await insertRequest.query(`
-          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder)
-          VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder)
-        `);
-      }
-    }
-    
-    res.json({ success: true, message: 'FAQs saved successfully' });
-  } catch (error) {
-    console.error('Error saving FAQs:', error);
-    res.status(500).json({ success: false, message: 'Failed to save FAQs', error: error.message });
-  }
-});
-
-// Get vendor images
-router.get('/:id/images', async (req, res) => {
-  try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const pool = await poolPromise;
-    
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    
-    const result = await request.query(`
-      SELECT ImageID, ImageURL, Caption, IsPrimary, DisplayOrder, AlbumID
-      FROM VendorImages
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DisplayOrder
-    `);
-    
-    res.json(result.recordset.map(img => ({
-      id: img.ImageID,
-      url: img.ImageURL,
-      caption: img.Caption,
-      isPrimary: img.IsPrimary,
-      displayOrder: img.DisplayOrder,
-      albumId: img.AlbumID
-    })));
-  } catch (error) {
-    console.error('Error fetching images:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch images', error: error.message });
-  }
-});
-
-// Upload vendor logo
-router.post('/:id/logo', upload.single('logo'), async (req, res) => {
-  try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
-    }
-    
-    // Upload to Cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: 'vendor-logos',
-      transformation: [{ width: 500, height: 500, crop: 'limit' }]
-    });
-    
-    // Update vendor profile with logo URL
-    const pool = await poolPromise;
-    const request = new sql.Request(pool);
-    request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('LogoURL', sql.NVarChar(255), result.secure_url);
-    
-    await request.query(`
-      UPDATE VendorProfiles
-      SET LogoURL = @LogoURL, UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-    
-    res.json({ success: true, logoUrl: result.secure_url });
-  } catch (error) {
-    console.error('Error uploading logo:', error);
-    res.status(500).json({ success: false, message: 'Failed to upload logo', error: error.message });
   }
 });
 
