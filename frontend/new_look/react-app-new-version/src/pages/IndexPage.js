@@ -7,6 +7,7 @@ import CategoriesNav from '../components/CategoriesNav';
 import FilterModal from '../components/FilterModal';
 import VendorGrid from '../components/VendorGrid';
 import VendorSection from '../components/VendorSection';
+import VendorSectionSkeleton from '../components/VendorSectionSkeleton';
 import MapView from '../components/MapView';
 import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
@@ -911,9 +912,17 @@ function IndexPage() {
           <div className="map-overlay"></div>
           
           {/* Vendor Discovery Sections */}
-          {!loadingDiscovery && discoverySections.length > 0 && (
-            <div className="vendor-discovery-sections">
-              {discoverySections.map((section) => (
+          <div className="vendor-discovery-sections">
+            {loadingDiscovery ? (
+              // Show skeleton loaders while discovery sections are loading
+              <>
+                <VendorSectionSkeleton />
+                <VendorSectionSkeleton />
+                <VendorSectionSkeleton />
+              </>
+            ) : (
+              // Show actual discovery sections when loaded
+              discoverySections.length > 0 && discoverySections.map((section) => (
                 <VendorSection
                   key={section.id}
                   title={section.title}
@@ -924,9 +933,9 @@ function IndexPage() {
                   onViewVendor={handleViewVendor}
                   onHighlightVendor={handleHighlightVendor}
                 />
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
           
           {/* Main Vendor Grid */}
           <VendorGrid vendors={currentVendors} loading={loading} loadingMore={loadingMore} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewVendor={handleViewVendor} onHighlightVendor={handleHighlightVendor} />
