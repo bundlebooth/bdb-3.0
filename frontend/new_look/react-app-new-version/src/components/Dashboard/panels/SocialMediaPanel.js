@@ -13,6 +13,18 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
     tiktok: ''
   });
 
+  // Clear form data when vendorProfileId changes
+  useEffect(() => {
+    setFormData({
+      facebook: '',
+      instagram: '',
+      twitter: '',
+      linkedin: '',
+      youtube: '',
+      tiktok: ''
+    });
+  }, [vendorProfileId]);
+
   useEffect(() => {
     if (vendorProfileId) {
       loadSocialMedia();

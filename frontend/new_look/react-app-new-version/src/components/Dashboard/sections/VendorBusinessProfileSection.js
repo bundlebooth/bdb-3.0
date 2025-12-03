@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import BusinessInformationPanel from '../panels/BusinessInformationPanel';
 import LocationServiceAreasPanel from '../panels/LocationServiceAreasPanel';
@@ -16,7 +16,35 @@ function VendorBusinessProfileSection() {
   const { currentUser } = useAuth();
   const [activePanel, setActivePanel] = useState(null);
   
-  const vendorProfileId = currentUser?.vendorProfileId || currentUser?.id;
+  // NO FALLBACK - must have vendorProfileId
+  const vendorProfileId = currentUser?.vendorProfileId;
+  
+  // Don't render if no vendorProfileId
+  if (!vendorProfileId) {
+    console.error('❌ No vendorProfileId found for user:', currentUser);
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>
+        <h2>Vendor Profile Not Found</h2>
+        <p>Please complete your vendor registration first.</p>
+      </div>
+    );
+  }
+
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 VendorBusinessProfileSection - currentUser changed:', {
+      userId: currentUser?.id,
+      vendorProfileId: currentUser?.vendorProfileId,
+      calculatedVendorId: vendorProfileId,
+      activePanel
+    });
+  }, [currentUser, vendorProfileId, activePanel]);
+
+  // Close any open panel when user changes to prevent showing old data
+  useEffect(() => {
+    console.log('🚪 Closing active panel due to user change');
+    setActivePanel(null);
+  }, [currentUser?.id, currentUser?.vendorProfileId]);
 
   const profileCards = [
     { id: 'vendor-profile-panel', icon: 'fa-building', title: 'Business Information', description: 'Update your business details, categories, and description' },
@@ -33,29 +61,30 @@ function VendorBusinessProfileSection() {
   ];
 
   const renderPanel = () => {
+    // Use vendorProfileId as key to force component remount when vendor changes
     switch (activePanel) {
       case 'vendor-profile-panel':
-        return <BusinessInformationPanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <BusinessInformationPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-location-panel':
-        return <LocationServiceAreasPanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <LocationServiceAreasPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-services-panel':
-        return <ServicesPackagesPanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <ServicesPackagesPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-social-panel':
-        return <SocialMediaPanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <SocialMediaPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-additional-details-panel':
-        return <VendorQuestionnairePanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <VendorQuestionnairePanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-photos-panel':
-        return <GalleryMediaPanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <GalleryMediaPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-faqs-panel':
-        return <FAQsPanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <FAQsPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-availability-panel':
-        return <AvailabilityHoursPanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <AvailabilityHoursPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-google-reviews-panel':
-        return <GoogleReviewsPanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <GoogleReviewsPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-stripe-panel':
-        return <StripeSetupPanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <StripeSetupPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       case 'vendor-popular-filters-panel':
-        return <PopularFiltersPanel onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
+        return <PopularFiltersPanel key={vendorProfileId} onBack={() => setActivePanel(null)} vendorProfileId={vendorProfileId} />;
       default:
         return null;
     }

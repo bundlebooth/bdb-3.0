@@ -61,6 +61,12 @@ function VendorDashboard({ activeSection, onSectionChange, onLogout }) {
     }
   }, [currentUser]);
 
+  // Clear data when user changes
+  useEffect(() => {
+    setDashboardData(null);
+    setLoading(true);
+  }, [currentUser?.id, currentUser?.vendorProfileId]);
+
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);

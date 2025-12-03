@@ -14,6 +14,17 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
   const [editingService, setEditingService] = useState(null);
   const [editForm, setEditForm] = useState({});
 
+  // Clear state when vendorProfileId changes
+  useEffect(() => {
+    setServices([]);
+    setAvailableServices([]);
+    setSelectedCount(0);
+    setShowServicePicker(false);
+    setSearchQuery('');
+    setEditingService(null);
+    setEditForm({});
+  }, [vendorProfileId]);
+
   useEffect(() => {
     if (vendorProfileId) {
       loadServices();

@@ -20,6 +20,19 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
   const addressAutocompleteRef = useRef(null);
   const serviceAreaAutocompleteRef = useRef(null);
 
+  // Clear form data when vendorProfileId changes
+  useEffect(() => {
+    setFormData({
+      address: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: '',
+      serviceAreas: []
+    });
+    setServiceAreaInput('');
+  }, [vendorProfileId]);
+
   useEffect(() => {
     if (vendorProfileId) {
       loadLocationData();

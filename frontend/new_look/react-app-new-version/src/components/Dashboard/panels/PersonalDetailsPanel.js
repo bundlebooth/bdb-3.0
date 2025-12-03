@@ -19,6 +19,20 @@ function PersonalDetailsPanel({ onBack }) {
     confirmPassword: ''
   });
 
+  // Clear form data when user changes
+  useEffect(() => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      profilePicture: '',
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    });
+  }, [currentUser?.id]);
+
   useEffect(() => {
     loadUserData();
   }, [currentUser]);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PersonalDetailsPanel from '../panels/PersonalDetailsPanel';
 import CommunicationPreferencesPanel from '../panels/CommunicationPreferencesPanel';
 import SecurityPanel from '../panels/SecurityPanel';
@@ -8,6 +8,11 @@ import { useAuth } from '../../../context/AuthContext';
 function VendorSettingsSection() {
   const { currentUser } = useAuth();
   const [activePanel, setActivePanel] = useState(null);
+
+  // Close any open panel when user changes
+  useEffect(() => {
+    setActivePanel(null);
+  }, [currentUser?.id, currentUser?.vendorProfileId]);
 
   const settingsCards = [
     { 
@@ -41,15 +46,18 @@ function VendorSettingsSection() {
   ];
 
   const renderPanel = () => {
+    const userId = currentUser?.id;
+    const vendorId = currentUser?.vendorProfileId;
+    
     switch (activePanel) {
       case 'personal-details':
-        return <PersonalDetailsPanel onBack={() => setActivePanel(null)} />;
+        return <PersonalDetailsPanel key={userId} onBack={() => setActivePanel(null)} />;
       case 'business-information':
-        return <BusinessInformationPanel onBack={() => setActivePanel(null)} vendorProfileId={currentUser?.vendorProfileId} />;
+        return <BusinessInformationPanel key={vendorId} onBack={() => setActivePanel(null)} vendorProfileId={vendorId} />;
       case 'communication-preferences':
-        return <CommunicationPreferencesPanel onBack={() => setActivePanel(null)} />;
+        return <CommunicationPreferencesPanel key={userId} onBack={() => setActivePanel(null)} />;
       case 'security':
-        return <SecurityPanel onBack={() => setActivePanel(null)} />;
+        return <SecurityPanel key={userId} onBack={() => setActivePanel(null)} />;
       default:
         return null;
     }

@@ -8,6 +8,16 @@ function DashboardModal({ isOpen, onClose, initialSection = 'dashboard' }) {
 
   const isVendor = currentUser?.userType === 'vendor' || currentUser?.isVendor;
 
+  // Reset section when user changes
+  useEffect(() => {
+    if (currentUser) {
+      const defaultSection = currentUser.isVendor || currentUser.userType === 'vendor' 
+        ? 'vendor-dashboard' 
+        : 'dashboard';
+      setActiveSection(defaultSection);
+    }
+  }, [currentUser?.id, currentUser?.vendorProfileId]);
+
   useEffect(() => {
     if (isOpen) {
       setActiveSection(initialSection);

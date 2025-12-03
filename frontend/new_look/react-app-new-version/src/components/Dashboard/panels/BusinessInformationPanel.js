@@ -23,6 +23,39 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
     logoUrl: ''
   });
 
+  // Debug: Log when component mounts/unmounts
+  useEffect(() => {
+    console.log('📝 BusinessInformationPanel MOUNTED with vendorProfileId:', vendorProfileId);
+    return () => {
+      console.log('📝 BusinessInformationPanel UNMOUNTED for vendorProfileId:', vendorProfileId);
+    };
+  }, []);
+
+  // Debug: Log when vendorProfileId changes
+  useEffect(() => {
+    console.log('🔄 BusinessInformationPanel - vendorProfileId changed to:', vendorProfileId);
+  }, [vendorProfileId]);
+
+  // Clear form data when vendorProfileId changes
+  useEffect(() => {
+    console.log('🧹 Clearing form data for vendorProfileId:', vendorProfileId);
+    // Reset form to default values when vendor changes
+    setFormData({
+      businessName: '',
+      displayName: '',
+      email: '',
+      phone: '',
+      website: '',
+      yearsInBusiness: 0,
+      description: '',
+      tagline: '',
+      category: '',
+      additionalCategories: [],
+      priceLevel: '$$',
+      logoUrl: ''
+    });
+  }, [vendorProfileId]);
+
   useEffect(() => {
     loadCategories();
     if (vendorProfileId) {
@@ -104,6 +137,23 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
   const loadProfileData = async () => {
     try {
       setLoading(true);
+      
+      // CRITICAL: Clear old data FIRST before loading new data
+      setFormData({
+        businessName: '',
+        displayName: '',
+        email: '',
+        phone: '',
+        website: '',
+        yearsInBusiness: 0,
+        description: '',
+        tagline: '',
+        category: '',
+        additionalCategories: [],
+        priceLevel: '$$',
+        logoUrl: ''
+      });
+      
       console.log('Loading profile for vendorProfileId:', vendorProfileId);
       const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -118,6 +168,16 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
         // Handle nested structure from /vendors/:id endpoint
         const profile = result.data?.profile || result.profile || result;
         const categories = result.data?.categories || result.categories || [];
+        
+        // CRITICAL DEBUG: Check what VendorProfileID the API returned
+        console.log('⚠️ API returned VendorProfileID:', profile.VendorProfileID);
+        console.log('⚠️ We requested vendorProfileId:', vendorProfileId);
+        console.log('⚠️ BusinessName in response:', profile.BusinessName);
+        
+        if (profile.VendorProfileID && profile.VendorProfileID !== vendorProfileId) {
+          console.error('🚨 MISMATCH! API returned different vendor data!');
+          console.error('   Requested:', vendorProfileId, 'Got:', profile.VendorProfileID);
+        }
         
         // Get category names from categories array or fallback to Categories string
         let categoriesArray = [];

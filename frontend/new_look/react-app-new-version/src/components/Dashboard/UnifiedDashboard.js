@@ -114,6 +114,14 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout }) {
     }
   }, [currentUser]);
 
+  // Clear data when user changes
+  useEffect(() => {
+    // Reset all data when user changes
+    setClientData(null);
+    setVendorData(null);
+    setLoading(true);
+  }, [currentUser?.id, currentUser?.vendorProfileId]);
+
   // Load data on mount
   useEffect(() => {
     loadClientData();

@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import PersonalDetailsPanel from '../panels/PersonalDetailsPanel';
 import CommunicationPreferencesPanel from '../panels/CommunicationPreferencesPanel';
 import SecurityPanel from '../panels/SecurityPanel';
 
 function ClientSettingsSection() {
+  const { currentUser } = useAuth();
   const [activePanel, setActivePanel] = useState(null);
+
+  // Close any open panel when user changes
+  useEffect(() => {
+    setActivePanel(null);
+  }, [currentUser?.id]);
 
   const settingsCards = [
     { 
@@ -31,13 +38,15 @@ function ClientSettingsSection() {
   ];
 
   const renderPanel = () => {
+    const userId = currentUser?.id;
+    
     switch (activePanel) {
       case 'personal-details':
-        return <PersonalDetailsPanel onBack={() => setActivePanel(null)} />;
+        return <PersonalDetailsPanel key={userId} onBack={() => setActivePanel(null)} />;
       case 'communication-preferences':
-        return <CommunicationPreferencesPanel onBack={() => setActivePanel(null)} />;
+        return <CommunicationPreferencesPanel key={userId} onBack={() => setActivePanel(null)} />;
       case 'security':
-        return <SecurityPanel onBack={() => setActivePanel(null)} />;
+        return <SecurityPanel key={userId} onBack={() => setActivePanel(null)} />;
       default:
         return null;
     }

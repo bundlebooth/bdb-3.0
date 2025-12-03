@@ -7,6 +7,12 @@ function FAQsPanel({ onBack, vendorProfileId }) {
   const [faqs, setFaqs] = useState([]);
   const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
 
+  // Clear state when vendorProfileId changes
+  useEffect(() => {
+    setFaqs([]);
+    setNewFaq({ question: '', answer: '' });
+  }, [vendorProfileId]);
+
   useEffect(() => {
     if (vendorProfileId) {
       loadFAQs();

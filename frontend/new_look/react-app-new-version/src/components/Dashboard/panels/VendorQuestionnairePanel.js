@@ -8,6 +8,13 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
   const [selectedFeatureIds, setSelectedFeatureIds] = useState(new Set());
   const [vendorCategories, setVendorCategories] = useState([]);
 
+  // Clear state when vendorProfileId changes
+  useEffect(() => {
+    setCategories([]);
+    setSelectedFeatureIds(new Set());
+    setVendorCategories([]);
+  }, [vendorProfileId]);
+
   useEffect(() => {
     if (vendorProfileId) {
       loadQuestionnaire();

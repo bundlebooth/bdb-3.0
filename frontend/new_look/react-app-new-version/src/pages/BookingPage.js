@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import Header from '../components/Header';
 import ServiceCard from '../components/ServiceCard';
 import SkeletonLoader from '../components/SkeletonLoader';
@@ -10,7 +10,9 @@ import DashboardModal from '../components/DashboardModal';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
 import Breadcrumb from '../components/Breadcrumb';
+import BookingCalendar from '../components/BookingCalendar';
 import '../styles/BookingPage.css';
+import '../components/Calendar.css';
 
 function BookingPage() {
   const { vendorId } = useParams();
@@ -28,13 +30,17 @@ function BookingPage() {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState('dashboard');
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [vendorAvailability, setVendorAvailability] = useState(null);
+  const locationInputRef = useRef(null);
+  const autocompleteRef = useRef(null);
 
   const [bookingData, setBookingData] = useState({
     eventName: '',
     eventType: '',
     eventDate: '',
-    eventTime: '',
-    eventEndTime: '',
+    eventTime: '11:00',
+    eventEndTime: '17:00',
     attendeeCount: '',
     eventLocation: '',
     specialRequests: ''
@@ -42,6 +48,8 @@ function BookingPage() {
 
   // Initialize page
   useEffect(() => {
+    console.log('🚀 BookingPage useEffect running, vendorId:', vendorId);
+    
     if (!vendorId) {
       alert('No vendor selected. Redirecting to home page.');
       navigate('/');
@@ -55,8 +63,26 @@ function BookingPage() {
       dateInput.setAttribute('min', today);
     }
 
+    console.log('📞 About to call loadVendorData and loadVendorAvailability');
     loadVendorData();
+    loadVendorAvailability();
   }, [vendorId, navigate]);
+
+  // Load Google Maps API for location autocomplete
+  useEffect(() => {
+    if (window.google && window.google.maps && window.google.maps.places) {
+      initializeGooglePlaces();
+    } else {
+      loadGoogleMapsAPI();
+    }
+  }, []);
+
+  // Initialize Google Places when location input is rendered
+  useEffect(() => {
+    if (locationInputRef.current && window.google && window.google.maps && window.google.maps.places) {
+      initializeGooglePlaces();
+    }
+  }, [currentStep]);
 
   // Scroll to top when component mounts or vendorId changes
   useEffect(() => {
@@ -97,6 +123,66 @@ function BookingPage() {
       });
     }
   }, [vendorId]);
+
+  // Load vendor availability (business hours and exceptions)
+  const loadVendorAvailability = useCallback(async () => {
+    try {
+      console.log('🔄 Loading vendor availability for vendor:', vendorId);
+      const response = await fetch(`${API_BASE_URL}/vendors/${vendorId}/availability`);
+      if (response.ok) {
+        const data = await response.json();
+        setVendorAvailability(data);
+        console.log('✅ Vendor availability loaded:', data);
+        console.log('📅 Business hours count:', data.businessHours?.length || 0);
+        console.log('🚫 Exceptions count:', data.exceptions?.length || 0);
+        if (data.businessHours && data.businessHours.length > 0) {
+          console.log('📋 Sample business hour:', data.businessHours[0]);
+        }
+      } else {
+        console.error('❌ Failed to load availability, status:', response.status);
+      }
+    } catch (error) {
+      console.error('❌ Error loading vendor availability:', error);
+    }
+  }, [vendorId]);
+
+  // Load Google Maps API
+  const loadGoogleMapsAPI = () => {
+    if (window.google) return;
+    
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeGooglePlaces;
+    document.head.appendChild(script);
+  };
+
+  // Initialize Google Places Autocomplete
+  const initializeGooglePlaces = () => {
+    if (!locationInputRef.current) return;
+    
+    // Clear existing autocomplete if it exists
+    if (autocompleteRef.current) {
+      window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
+    }
+
+    const autocomplete = new window.google.maps.places.Autocomplete(locationInputRef.current, {
+      componentRestrictions: { country: 'ca' } // Restrict to Canada
+    });
+
+    autocompleteRef.current = autocomplete;
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place.formatted_address) {
+        setBookingData(prev => ({
+          ...prev,
+          eventLocation: place.formatted_address
+        }));
+      }
+    });
+  };
 
   // Load vendor services
   const loadVendorServices = useCallback(async () => {
@@ -148,6 +234,29 @@ function BookingPage() {
       ...prev,
       [fieldName]: value
     }));
+  };
+
+  // Handle calendar date selection
+  const handleCalendarDateSelect = (date) => {
+    setBookingData(prev => ({
+      ...prev,
+      eventDate: date
+    }));
+  };
+
+  // Handle time change from calendar
+  const handleTimeChange = (type, value) => {
+    if (type === 'start') {
+      setBookingData(prev => ({
+        ...prev,
+        eventTime: value
+      }));
+    } else {
+      setBookingData(prev => ({
+        ...prev,
+        eventEndTime: value
+      }));
+    }
   };
 
   // Toggle service selection
@@ -475,92 +584,98 @@ function BookingPage() {
                   </select>
                 </div>
 
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div className="form-group">
-                    <label htmlFor="event-date" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                      Event Date <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="date"
-                      id="event-date"
-                      className="form-input"
-                      style={{ 
-                        width: '100%', 
-                        padding: '0.75rem 1rem', 
-                        border: '1px solid #ddd', 
-                        borderRadius: '8px', 
-                        fontSize: '1rem',
-                        display: 'block',
-                        backgroundColor: 'white'
-                      }}
-                      value={bookingData.eventDate}
-                      onChange={handleInputChange}
-                      required
-                    />
+                <div className="form-group" style={{ marginBottom: '1.5rem', position: 'relative' }}>
+                  <label htmlFor="event-date" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
+                    Event Date & Time <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <div 
+                    onClick={() => setShowCalendar(true)}
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem 1rem', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '8px', 
+                      fontSize: '1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      backgroundColor: 'white',
+                      cursor: 'pointer',
+                      minHeight: '48px'
+                    }}
+                  >
+                    <i className="fas fa-calendar" style={{ color: '#717171' }}></i>
+                    <span style={{ color: bookingData.eventDate ? '#222' : '#999' }}>
+                      {bookingData.eventDate ? (
+                        <>
+                          {formatDate(bookingData.eventDate)} at {formatTime(bookingData.eventTime)}
+                          {bookingData.eventEndTime && ` - ${formatTime(bookingData.eventEndTime)}`}
+                        </>
+                      ) : (
+                        'Select date and time'
+                      )}
+                    </span>
                   </div>
-                  <div className="form-group">
-                    <label htmlFor="event-time" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                      Start Time <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
-                    </label>
-                    <input
-                      type="time"
-                      id="event-time"
-                      className="form-input"
-                      style={{ 
-                        width: '100%', 
-                        padding: '0.75rem 1rem', 
-                        border: '1px solid #ddd', 
-                        borderRadius: '8px', 
-                        fontSize: '1rem',
-                        display: 'block',
-                        backgroundColor: 'white'
-                      }}
-                      value={bookingData.eventTime}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
+                  
+                  {showCalendar && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 1000, marginTop: '0.5rem' }}>
+                      <BookingCalendar
+                        selectedDate={bookingData.eventDate}
+                        onDateSelect={handleCalendarDateSelect}
+                        onClose={() => setShowCalendar(false)}
+                        startTime={bookingData.eventTime}
+                        endTime={bookingData.eventEndTime}
+                        onTimeChange={handleTimeChange}
+                        vendorAvailability={vendorAvailability}
+                      />
+                    </div>
+                  )}
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="event-end-time" className="form-label">
-                      End Time (Optional)
-                    </label>
-                    <input
-                      type="time"
-                      id="event-end-time"
-                      className="form-input"
-                      value={bookingData.eventEndTime}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="attendee-count" className="form-label">
-                      Number of Guests <span className="required-asterisk">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      id="attendee-count"
-                      className="form-input"
-                      placeholder="50"
-                      min="1"
-                      value={bookingData.attendeeCount}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="event-location" className="form-label">
-                    Event Location <span className="required-asterisk">*</span>
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label htmlFor="attendee-count" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
+                    Number of Guests <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <input
+                    type="number"
+                    id="attendee-count"
+                    className="form-input"
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem 1rem', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '8px', 
+                      fontSize: '1rem',
+                      display: 'block',
+                      backgroundColor: 'white'
+                    }}
+                    placeholder="50"
+                    min="1"
+                    value={bookingData.attendeeCount}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label htmlFor="event-location" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
+                    Event Location <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    ref={locationInputRef}
                     type="text"
                     id="event-location"
                     className="form-input"
-                    placeholder="Enter address or venue"
+                    style={{ 
+                      width: '100%', 
+                      padding: '0.75rem 1rem', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '8px', 
+                      fontSize: '1rem',
+                      display: 'block',
+                      backgroundColor: 'white'
+                    }}
+                    placeholder="Enter address or city (Canada only)"
                     value={bookingData.eventLocation}
                     onChange={handleInputChange}
                     required
