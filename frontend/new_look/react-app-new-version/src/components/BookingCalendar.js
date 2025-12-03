@@ -13,6 +13,7 @@ const BookingCalendar = ({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [localStartTime, setLocalStartTime] = useState(startTime || '11:00');
   const [localEndTime, setLocalEndTime] = useState(endTime || '17:00');
+  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -54,11 +55,20 @@ const BookingCalendar = ({
 
   const handleDateClick = (date) => {
     if (date && !isDateDisabled(date)) {
-      // Format date in local timezone to avoid UTC conversion issues
+      // Format date as YYYY-MM-DD in local timezone
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
-      onDateSelect(`${year}-${month}-${day}`);
+      const formattedDate = `${year}-${month}-${day}`;
+      
+      console.log('📅 Date clicked:', date);
+      console.log('📅 Day of week:', date.getDay(), ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()]);
+      console.log('📅 Formatted date:', formattedDate);
+      
+      onDateSelect(formattedDate);
+      
+      // Update available time slots based on business hours for this day
+      updateAvailableTimeSlots(date);
       // Don't close - let user select times
     }
   };
@@ -68,6 +78,24 @@ const BookingCalendar = ({
       setLocalStartTime(value);
       if (onTimeChange) {
         onTimeChange('start', value);
+      }
+      
+      // If end time is before or equal to new start time, adjust it
+      const [startHour, startMin] = value.split(':').map(Number);
+      const [endHour, endMin] = localEndTime.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMin;
+      const endMinutes = endHour * 60 + endMin;
+      
+      if (endMinutes <= startMinutes) {
+        // Find next available slot after start time
+        const nextSlotIndex = availableTimeSlots.findIndex(slot => slot === value) + 1;
+        if (nextSlotIndex < availableTimeSlots.length) {
+          const newEndTime = availableTimeSlots[nextSlotIndex];
+          setLocalEndTime(newEndTime);
+          if (onTimeChange) {
+            onTimeChange('end', newEndTime);
+          }
+        }
       }
     } else {
       setLocalEndTime(value);
@@ -97,6 +125,133 @@ const BookingCalendar = ({
   };
 
   // Check if date is disabled based on vendor availability
+  // Get available time slots for a given date based on business hours
+  const updateAvailableTimeSlots = (date) => {
+    console.log('🕐 updateAvailableTimeSlots called for date:', date);
+    
+    if (!date || !vendorAvailability?.businessHours) {
+      console.log('⚠️ No date or business hours available');
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+    console.log('📅 Day of week:', dayOfWeek, ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek]);
+    console.log('📋 All business hours:', vendorAvailability.businessHours);
+    
+    const dayHours = vendorAvailability.businessHours.find(bh => bh.DayOfWeek === dayOfWeek);
+    console.log('🔍 Found business hours for this day:', dayHours);
+    
+    if (!dayHours || !dayHours.IsAvailable) {
+      console.log('❌ Vendor not available on this day');
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    // Parse OpenTime and CloseTime (can be ISO timestamp or time string)
+    const parseTime = (timeStr) => {
+      if (!timeStr) return null;
+      
+      // Check if it's an ISO timestamp (contains 'T')
+      if (timeStr.includes('T')) {
+        const date = new Date(timeStr);
+        // Use local time (getHours) instead of UTC to respect timezone
+        return {
+          hour: date.getHours(),
+          minute: date.getMinutes()
+        };
+      }
+      
+      // Otherwise parse as time string "HH:MM:SS"
+      const parts = timeStr.split(':');
+      return {
+        hour: parseInt(parts[0]),
+        minute: parseInt(parts[1] || 0)
+      };
+    };
+
+    const openTime = parseTime(dayHours.OpenTime);
+    const closeTime = parseTime(dayHours.CloseTime);
+    console.log('⏰ Open time:', openTime, 'Close time:', closeTime);
+
+    if (!openTime || !closeTime) {
+      console.log('❌ Invalid open/close times');
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    // Generate time slots in 30-minute intervals within business hours (including close time)
+    const slots = [];
+    let currentHour = openTime.hour;
+    let currentMinute = openTime.minute;
+
+    const closeMinutes = closeTime.hour * 60 + closeTime.minute;
+
+    while (true) {
+      const currentMinutes = currentHour * 60 + currentMinute;
+      if (currentMinutes > closeMinutes) break; // Changed >= to > to include close time
+
+      const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+      slots.push(timeStr);
+
+      // Increment by 30 minutes
+      currentMinute += 30;
+      if (currentMinute >= 60) {
+        currentMinute = 0;
+        currentHour++;
+      }
+    }
+
+    console.log('✅ Generated time slots:', slots);
+    setAvailableTimeSlots(slots);
+    
+    // Update start and end times if they're outside business hours
+    if (slots.length > 0) {
+      const startTimeInSlots = slots.includes(localStartTime);
+      const endTimeInSlots = slots.includes(localEndTime);
+      
+      console.log('🔄 Current start time:', localStartTime, 'in slots?', startTimeInSlots);
+      console.log('🔄 Current end time:', localEndTime, 'in slots?', endTimeInSlots);
+      
+      if (!startTimeInSlots) {
+        const newStartTime = slots[0];
+        console.log('⚡ Adjusting start time to:', newStartTime);
+        setLocalStartTime(newStartTime);
+        if (onTimeChange) {
+          onTimeChange('start', newStartTime);
+        }
+      }
+      
+      if (!endTimeInSlots) {
+        const newEndTime = slots[Math.min(6, slots.length - 1)]; // Default to 6 slots (3 hours) or last slot
+        console.log('⚡ Adjusting end time to:', newEndTime);
+        setLocalEndTime(newEndTime);
+        if (onTimeChange) {
+          onTimeChange('end', newEndTime);
+        }
+      }
+    }
+  };
+
+  // Update available time slots when selected date changes
+  useEffect(() => {
+    if (selectedDate) {
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      updateAvailableTimeSlots(date);
+    }
+  }, [selectedDate, vendorAvailability]);
+
+  // Sync local times with parent props
+  useEffect(() => {
+    if (startTime && startTime !== localStartTime) {
+      setLocalStartTime(startTime);
+    }
+    if (endTime && endTime !== localEndTime) {
+      setLocalEndTime(endTime);
+    }
+  }, [startTime, endTime]);
+
   const isDateDisabled = (date) => {
     if (!date) return true;
     
@@ -160,114 +315,54 @@ const BookingCalendar = ({
         <i className="fas fa-times"></i>
       </button>
       
-      <div className="calendar-content">
-        {/* Left side - Calendar */}
-        <div className="calendar-left">
-          <div className="calendar-header">
-            <button onClick={handlePrevMonth} className="calendar-nav-btn">
-              <i className="fas fa-chevron-left"></i>
-            </button>
-            <h3 className="calendar-title">
-              {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
-            </h3>
-            <button onClick={handleNextMonth} className="calendar-nav-btn">
-              <i className="fas fa-chevron-right"></i>
-            </button>
-          </div>
+      <div className="calendar-section">
+        <div className="calendar-header">
+          <button onClick={handlePrevMonth} className="calendar-nav-btn">
+            <i className="fas fa-chevron-left"></i>
+          </button>
+          <h3 className="calendar-title">
+            {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
+          </h3>
+          <button onClick={handleNextMonth} className="calendar-nav-btn">
+            <i className="fas fa-chevron-right"></i>
+          </button>
+        </div>
 
-          <div className="calendar-grid">
-            {dayNames.map((day) => (
-              <div key={day} className="calendar-day-header">
-                {day}
-              </div>
-            ))}
-            
-            {days.map((date, index) => (
-              <button
-                key={index}
-                className={`calendar-day ${
-                  date ? (isDateSelected(date) ? 'selected' : isDateDisabled(date) ? 'disabled' : 'available') : 'empty'
-                }`}
-                onClick={() => handleDateClick(date)}
-                disabled={!date || isDateDisabled(date)}
-                title={date && isDateDisabled(date) ? 'Vendor not available' : ''}
-              >
-                {date ? date.getDate() : ''}
-              </button>
-            ))}
-          </div>
+        <div className="calendar-grid">
+          {dayNames.map((day) => (
+            <div key={day} className="calendar-day-header">
+              {day}
+            </div>
+          ))}
           
-          {vendorAvailability && (
-            <div style={{ 
-              marginTop: '1rem', 
-              padding: '0.75rem', 
-              backgroundColor: '#f0f9ff', 
-              borderRadius: '8px',
-              fontSize: '0.85rem',
-              color: '#0369a1'
-            }}>
-              <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
-              Only dates when vendor is available are shown
-            </div>
-          )}
+          {days.map((date, index) => (
+            <button
+              key={index}
+              className={`calendar-day ${
+                date ? (isDateSelected(date) ? 'selected' : isDateDisabled(date) ? 'disabled' : 'available') : 'empty'
+              }`}
+              onClick={() => handleDateClick(date)}
+              disabled={!date || isDateDisabled(date)}
+              title={date && isDateDisabled(date) ? 'Vendor not available' : ''}
+            >
+              {date ? date.getDate() : ''}
+            </button>
+          ))}
         </div>
-
-        {/* Right side - Time Selection - Always show */}
-        <div className="calendar-right">
-          <div className="time-selection">
-            <div className="time-duration">{calculateDuration()}</div>
-            
-            <div className="time-inputs">
-            <div className="time-input-group">
-              <label>
-                <i className="fas fa-clock"></i> Start time
-              </label>
-              <select 
-                value={localStartTime} 
-                onChange={(e) => handleTimeChange('start', e.target.value)}
-                className="time-select"
-              >
-                {Array.from({ length: 48 }, (_, i) => {
-                  const hour = Math.floor(i / 2);
-                  const min = i % 2 === 0 ? '00' : '30';
-                  const time = `${hour.toString().padStart(2, '0')}:${min}`;
-                  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                  const period = hour < 12 ? 'AM' : 'PM';
-                  return (
-                    <option key={time} value={time}>
-                      {displayHour}:{min} {period}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            <div className="time-input-group">
-              <label>
-                <i className="fas fa-clock"></i> End time
-              </label>
-              <select 
-                value={localEndTime} 
-                onChange={(e) => handleTimeChange('end', e.target.value)}
-                className="time-select"
-              >
-                {Array.from({ length: 48 }, (_, i) => {
-                  const hour = Math.floor(i / 2);
-                  const min = i % 2 === 0 ? '00' : '30';
-                  const time = `${hour.toString().padStart(2, '0')}:${min}`;
-                  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-                  const period = hour < 12 ? 'AM' : 'PM';
-                  return (
-                    <option key={time} value={time}>
-                      {displayHour}:{min} {period}
-                    </option>
-                  );
-                })}
-              </select>
-              </div>
-            </div>
+        
+        {vendorAvailability && (
+          <div style={{ 
+            marginTop: '1rem', 
+            padding: '0.75rem', 
+            backgroundColor: '#f0f9ff', 
+            borderRadius: '8px',
+            fontSize: '0.85rem',
+            color: '#0369a1'
+          }}>
+            <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
+            Only dates when vendor is available are shown
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

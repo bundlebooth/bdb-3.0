@@ -31,6 +31,7 @@ function BookingPage() {
   const [dashboardModalOpen, setDashboardModalOpen] = useState(false);
   const [dashboardSection, setDashboardSection] = useState('dashboard');
   const [showCalendar, setShowCalendar] = useState(false);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState([]);
   const [vendorAvailability, setVendorAvailability] = useState(null);
   const locationInputRef = useRef(null);
   const autocompleteRef = useRef(null);
@@ -259,6 +260,146 @@ function BookingPage() {
     }
   };
 
+  // Generate available time slots based on business hours for selected date
+  const updateAvailableTimeSlots = useCallback((dateString) => {
+    console.log('🕐 updateAvailableTimeSlots called with:', dateString);
+    console.log('📦 vendorAvailability:', vendorAvailability);
+    
+    if (!dateString) {
+      console.log('⚠️ No date provided');
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    if (!vendorAvailability) {
+      console.log('⚠️ No vendor availability data');
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    if (!vendorAvailability.businessHours) {
+      console.log('⚠️ No business hours in vendor availability');
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday (JavaScript standard)
+    
+    console.log('📅 Generating time slots for:', dateString);
+    console.log('📅 JavaScript day of week:', dayOfWeek, ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek]);
+    console.log('📋 All business hours:', vendorAvailability.businessHours);
+    console.log('📋 Looking for DayOfWeek:', dayOfWeek);
+    
+    // Try to find business hours - check if database uses 0-6 or 1-7
+    let dayHours = vendorAvailability.businessHours.find(bh => bh.DayOfWeek === dayOfWeek);
+    
+    // If not found and it's Sunday (0), try looking for day 7 (some databases use 1-7 where Sunday=7)
+    if (!dayHours && dayOfWeek === 0) {
+      console.log('🔄 Sunday not found at 0, trying 7...');
+      dayHours = vendorAvailability.businessHours.find(bh => bh.DayOfWeek === 7);
+    }
+    console.log('🔍 Found hours for this day:', dayHours);
+    
+    if (!dayHours) {
+      console.log('❌ No business hours found for day', dayOfWeek);
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    if (!dayHours.IsAvailable) {
+      console.log('❌ Vendor not available on this day');
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    // Parse OpenTime and CloseTime (can be ISO timestamp or time string)
+    const parseTime = (timeStr) => {
+      if (!timeStr) return null;
+      
+      // Check if it's an ISO timestamp (contains 'T')
+      if (timeStr.includes('T')) {
+        const date = new Date(timeStr);
+        // Use local time (getHours) instead of UTC to respect timezone
+        return {
+          hour: date.getHours(),
+          minute: date.getMinutes()
+        };
+      }
+      
+      // Otherwise parse as time string "HH:MM:SS"
+      const parts = timeStr.split(':');
+      return {
+        hour: parseInt(parts[0]),
+        minute: parseInt(parts[1] || 0)
+      };
+    };
+
+    const openTime = parseTime(dayHours.OpenTime);
+    const closeTime = parseTime(dayHours.CloseTime);
+    console.log('⏰ Open:', openTime, 'Close:', closeTime);
+
+    if (!openTime || !closeTime) {
+      console.log('❌ Invalid open/close times');
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    // Generate 30-minute interval slots (including close time)
+    const slots = [];
+    let currentHour = openTime.hour;
+    let currentMinute = openTime.minute;
+    const closeMinutes = closeTime.hour * 60 + closeTime.minute;
+
+    while (true) {
+      const currentMinutes = currentHour * 60 + currentMinute;
+      if (currentMinutes > closeMinutes) break; // Changed >= to > to include close time
+
+      const timeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+      slots.push(timeStr);
+
+      currentMinute += 30;
+      if (currentMinute >= 60) {
+        currentMinute = 0;
+        currentHour++;
+      }
+    }
+
+    console.log('✅ Generated slots:', slots);
+    setAvailableTimeSlots(slots);
+
+    // Auto-set start and end times to first and default end slot
+    if (slots.length > 0) {
+      const newStartTime = slots[0];
+      const endIndex = Math.min(6, slots.length - 1); // Default 3 hours
+      const newEndTime = slots[endIndex];
+      
+      console.log('⚡ Setting start time to:', newStartTime);
+      console.log('⚡ Setting end time to:', newEndTime);
+      
+      setBookingData(prev => ({ 
+        ...prev, 
+        eventTime: newStartTime,
+        eventEndTime: newEndTime
+      }));
+    }
+  }, [vendorAvailability]);
+
+  // Update time slots when event date changes
+  useEffect(() => {
+    console.log('🎯 useEffect triggered - eventDate:', bookingData.eventDate, 'vendorAvailability:', !!vendorAvailability);
+    if (bookingData.eventDate && vendorAvailability) {
+      console.log('🔄 Event date changed, updating time slots:', bookingData.eventDate);
+      updateAvailableTimeSlots(bookingData.eventDate);
+    }
+  }, [bookingData.eventDate, vendorAvailability, updateAvailableTimeSlots]);
+
+  // Log when availableTimeSlots changes
+  useEffect(() => {
+    console.log('🎰 availableTimeSlots updated:', availableTimeSlots);
+  }, [availableTimeSlots]);
+
   // Toggle service selection
   const toggleServiceSelection = (service) => {
     const serviceId = service.PredefinedServiceID || service.VendorSelectedServiceID;
@@ -404,13 +545,44 @@ function BookingPage() {
   // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const dateObj = new Date(dateString);
+    // Parse date components to avoid timezone issues
+    const [year, month, day] = dateString.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day);
     return dateObj.toLocaleDateString('en-US', { 
       weekday: 'short', 
       year: 'numeric', 
       month: 'short', 
       day: 'numeric' 
     });
+  };
+
+  // Get timezone info from vendor data
+  const getVendorTimezoneInfo = () => {
+    const profile = vendorData?.profile || {};
+    const timezone = profile.TimeZone || 'America/Toronto';
+    const abbr = profile.TimeZoneAbbr;
+    
+    // If we have the abbreviation from the database, use it
+    if (abbr) {
+      return { timezone, abbr };
+    }
+    
+    // Otherwise, try to get it dynamically
+    try {
+      const date = new Date();
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        timeZoneName: 'short'
+      });
+      const parts = formatter.formatToParts(date);
+      const tzPart = parts.find(part => part.type === 'timeZoneName');
+      return { 
+        timezone, 
+        abbr: tzPart ? tzPart.value : 'EST' 
+      };
+    } catch (error) {
+      return { timezone, abbr: 'EST' };
+    }
   };
 
   // Format service duration
@@ -584,9 +756,10 @@ function BookingPage() {
                   </select>
                 </div>
 
+                {/* Event Date with Calendar Popup */}
                 <div className="form-group" style={{ marginBottom: '1.5rem', position: 'relative' }}>
                   <label htmlFor="event-date" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
-                    Event Date & Time <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
+                    Event Date <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
                   </label>
                   <div 
                     onClick={() => setShowCalendar(true)}
@@ -606,14 +779,7 @@ function BookingPage() {
                   >
                     <i className="fas fa-calendar" style={{ color: '#717171' }}></i>
                     <span style={{ color: bookingData.eventDate ? '#222' : '#999' }}>
-                      {bookingData.eventDate ? (
-                        <>
-                          {formatDate(bookingData.eventDate)} at {formatTime(bookingData.eventTime)}
-                          {bookingData.eventEndTime && ` - ${formatTime(bookingData.eventEndTime)}`}
-                        </>
-                      ) : (
-                        'Select date and time'
-                      )}
+                      {bookingData.eventDate ? formatDate(bookingData.eventDate) : 'Select date'}
                     </span>
                   </div>
                   
@@ -621,17 +787,162 @@ function BookingPage() {
                     <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 1000, marginTop: '0.5rem' }}>
                       <BookingCalendar
                         selectedDate={bookingData.eventDate}
-                        onDateSelect={handleCalendarDateSelect}
+                        onDateSelect={(date) => {
+                          console.log('📆 Calendar date selected:', date);
+                          handleCalendarDateSelect(date);
+                          console.log('🔄 Calling updateAvailableTimeSlots with:', date);
+                          updateAvailableTimeSlots(date);
+                          setShowCalendar(false);
+                        }}
                         onClose={() => setShowCalendar(false)}
-                        startTime={bookingData.eventTime}
-                        endTime={bookingData.eventEndTime}
-                        onTimeChange={handleTimeChange}
                         vendorAvailability={vendorAvailability}
                       />
                     </div>
                   )}
                 </div>
 
+                {/* Timezone Note */}
+                {bookingData.eventDate && vendorData && (() => {
+                  const tzInfo = getVendorTimezoneInfo();
+                  return (
+                    <div style={{ 
+                      marginBottom: '1rem', 
+                      padding: '0.75rem 1rem', 
+                      backgroundColor: '#f0f9ff', 
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      fontSize: '0.9rem',
+                      color: '#1e40af'
+                    }}>
+                      <i className="fas fa-info-circle"></i>
+                      <span>
+                        All times are shown in the vendor's timezone: <strong>{tzInfo.timezone} ({tzInfo.abbr})</strong>
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {/* Start Time and End Time in Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                  {/* Start Time */}
+                  <div className="form-group">
+                    <label htmlFor="event-time" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
+                      Start Time <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <select
+                      id="event-time"
+                      className="form-input"
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.75rem 1rem', 
+                        border: '1px solid #ddd', 
+                        borderRadius: '8px', 
+                        fontSize: '1rem',
+                        display: 'block',
+                        backgroundColor: bookingData.eventDate ? 'white' : '#f5f5f5',
+                        cursor: bookingData.eventDate ? 'pointer' : 'not-allowed'
+                      }}
+                      value={bookingData.eventTime}
+                      onChange={handleInputChange}
+                      disabled={!bookingData.eventDate}
+                      required
+                    >
+                      {bookingData.eventDate ? (
+                        availableTimeSlots.length > 0 ? (
+                          availableTimeSlots.map((time) => {
+                            const [hour, min] = time.split(':').map(Number);
+                            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                            const period = hour < 12 ? 'AM' : 'PM';
+                            return (
+                              <option key={time} value={time}>
+                                {displayHour}:{min.toString().padStart(2, '0')} {period}
+                              </option>
+                            );
+                          })
+                        ) : (
+                          // Fallback: Show default business hours (9 AM - 5 PM) if no slots generated
+                          Array.from({ length: 17 }, (_, i) => {
+                            const totalMinutes = 540 + (i * 30); // Start at 9:00 AM (540 minutes)
+                            const hour = Math.floor(totalMinutes / 60);
+                            const min = totalMinutes % 60;
+                            if (hour >= 17) return null; // Stop at 5 PM
+                            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                            const period = hour < 12 ? 'AM' : 'PM';
+                            const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+                            return (
+                              <option key={timeStr} value={timeStr}>
+                                {displayHour}:{min.toString().padStart(2, '0')} {period}
+                              </option>
+                            );
+                          }).filter(Boolean)
+                        )
+                      ) : (
+                        <option value="">Select a date first</option>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* End Time */}
+                  <div className="form-group">
+                    <label htmlFor="event-end-time" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
+                      End Time (Optional)
+                    </label>
+                    <select
+                      id="event-end-time"
+                      className="form-input"
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.75rem 1rem', 
+                        border: '1px solid #ddd', 
+                        borderRadius: '8px', 
+                        fontSize: '1rem',
+                        display: 'block',
+                        backgroundColor: bookingData.eventDate ? 'white' : '#f5f5f5',
+                        cursor: bookingData.eventDate ? 'pointer' : 'not-allowed'
+                      }}
+                      value={bookingData.eventEndTime}
+                      onChange={handleInputChange}
+                      disabled={!bookingData.eventDate}
+                    >
+                      {bookingData.eventDate ? (
+                        (availableTimeSlots.length > 0 ? availableTimeSlots : 
+                          Array.from({ length: 17 }, (_, i) => {
+                            const totalMinutes = 540 + (i * 30);
+                            const hour = Math.floor(totalMinutes / 60);
+                            const min = totalMinutes % 60;
+                            if (hour >= 17) return null;
+                            return `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+                          }).filter(Boolean)
+                        )
+                          .filter((time) => {
+                            if (!bookingData.eventTime) return true;
+                            const [startHour, startMin] = bookingData.eventTime.split(':').map(Number);
+                            const [timeHour, timeMin] = time.split(':').map(Number);
+                            const startMinutes = startHour * 60 + startMin;
+                            const timeMinutes = timeHour * 60 + timeMin;
+                            return timeMinutes > startMinutes;
+                          })
+                          .map((time) => {
+                            const [hour, min] = time.split(':').map(Number);
+                            const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+                            const period = hour < 12 ? 'AM' : 'PM';
+                            return (
+                              <option key={time} value={time}>
+                                {displayHour}:{min.toString().padStart(2, '0')} {period}
+                              </option>
+                            );
+                          })
+                      ) : (
+                        <option value="">Select a date first</option>
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Number of Guests */}
                 <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                   <label htmlFor="attendee-count" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>
                     Number of Guests <span className="required-asterisk" style={{ color: '#ef4444' }}>*</span>
@@ -656,6 +967,7 @@ function BookingPage() {
                     required
                   />
                 </div>
+
 
                 <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                   <label htmlFor="event-location" className="form-label" style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#222' }}>

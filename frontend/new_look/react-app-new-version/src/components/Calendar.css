@@ -2,15 +2,15 @@
 .calendar-popup {
   position: absolute;
   top: calc(100% + 12px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   background: white;
   border: 1px solid #dddddd;
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
   z-index: 9999;
   padding: 0;
-  min-width: 600px;
+  min-width: 320px;
+  max-width: 380px;
 }
 
 /* X Close button at top right */
@@ -41,6 +41,32 @@
 .calendar-content {
   display: flex;
   gap: 0;
+}
+
+.calendar-content-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.calendar-section {
+  padding: 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.time-section {
+  padding: 24px;
+  background-color: #fafafa;
+  border-radius: 0 0 16px 16px;
+}
+
+.time-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5e5e5;
 }
 
 .calendar-left {
@@ -154,13 +180,16 @@
 }
 
 .time-duration {
-  text-align: center;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: #222222;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  color: var(--primary, #007bff);
+}
+
+.time-section .time-duration {
+  text-align: right;
+  margin: 0;
+  padding: 0;
+  border: none;
 }
 
 .time-inputs {
@@ -169,8 +198,15 @@
   gap: 20px;
 }
 
+.time-inputs-horizontal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
 .time-input-group {
   flex: 1;
+  min-width: 0;
 }
 
 .time-input-group label {
@@ -208,6 +244,12 @@
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
+.time-select:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .calendar-footer {
   display: flex;
   justify-content: flex-end;
@@ -234,10 +276,27 @@
 }
 
 /* Responsive */
+@media (max-width: 768px) {
+  .calendar-popup {
+    min-width: 320px;
+    max-width: 95vw;
+  }
+  
+  .calendar-section,
+  .time-section {
+    padding: 16px;
+  }
+  
+  .time-inputs-horizontal {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
 @media (max-width: 480px) {
   .calendar-popup {
     min-width: 280px;
-    padding: 16px;
+    padding: 0;
   }
   
   .calendar-title {
@@ -252,5 +311,15 @@
   .calendar-day-header {
     font-size: 11px;
     padding: 6px 4px;
+  }
+  
+  .time-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .time-section-header .time-duration {
+    text-align: left;
   }
 }
