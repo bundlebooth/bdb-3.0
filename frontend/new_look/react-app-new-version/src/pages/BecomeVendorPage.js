@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import { showBanner } from '../utils/helpers';
+import { parseQueryParams, trackPageView } from '../utils/urlHelpers';
 import SimpleWorkingLocationStep from '../components/SimpleWorkingLocationStep';
 import './BecomeVendorPage.css';
 
@@ -279,6 +280,13 @@ const BecomeVendorPage = () => {
       
       return () => clearInterval(checkGoogle);
     }
+    
+    // Track page view with query parameters
+    const queryParams = parseQueryParams(location.search);
+    trackPageView('Become a Vendor', {
+      step: currentStep,
+      ...queryParams
+    });
   }, []);
 
   useEffect(() => {

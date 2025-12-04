@@ -40,8 +40,9 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<IndexPage />} />
-          <Route path="/vendor/:vendorId" element={<VendorProfilePage />} />
-          <Route path="/booking/:vendorId" element={<BookingPage />} />
+          {/* Support both old format (/vendor/138) and new format (/vendor/business-name-138) */}
+          <Route path="/vendor/:vendorSlug" element={<VendorProfilePage />} />
+          <Route path="/booking/:vendorSlug" element={<BookingPage />} />
           <Route path="/become-a-vendor" element={<BecomeVendorPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

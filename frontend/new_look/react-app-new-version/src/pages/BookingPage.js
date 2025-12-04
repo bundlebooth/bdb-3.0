@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import Header from '../components/Header';
@@ -11,13 +11,18 @@ import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
 import Breadcrumb from '../components/Breadcrumb';
 import BookingCalendar from '../components/BookingCalendar';
+import { extractVendorIdFromSlug, parseQueryParams, trackPageView } from '../utils/urlHelpers';
 import '../styles/BookingPage.css';
 import '../components/Calendar.css';
 
 function BookingPage() {
-  const { vendorId } = useParams();
+  const { vendorSlug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
+  
+  // Extract vendor ID from slug (supports both "138" and "business-name-138")
+  const vendorId = extractVendorIdFromSlug(vendorSlug) || vendorSlug;
 
   // State Management
   const [currentStep, setCurrentStep] = useState(1);

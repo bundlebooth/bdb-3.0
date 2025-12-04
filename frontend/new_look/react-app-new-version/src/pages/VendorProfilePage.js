@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import Header from '../components/Header';
@@ -14,11 +14,16 @@ import Breadcrumb from '../components/Breadcrumb';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
 import { showBanner } from '../utils/helpers';
+import { extractVendorIdFromSlug, parseQueryParams, trackPageView, buildBookingUrl } from '../utils/urlHelpers';
 import './VendorProfilePage.css';
 
 function VendorProfilePage() {
-  const { vendorId } = useParams();
+  const { vendorSlug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Extract vendor ID from slug (supports both "138" and "business-name-138")
+  const vendorId = extractVendorIdFromSlug(vendorSlug) || vendorSlug;
   const { currentUser } = useAuth();
 
   const [vendor, setVendor] = useState(null);
@@ -86,13 +91,22 @@ function VendorProfilePage() {
       
       // Update page title
       document.title = `${vendorDetails.profile.BusinessName || vendorDetails.profile.DisplayName} - PlanHive`;
+      
+      // Track page view with URL parameters
+      const queryParams = parseQueryParams(location.search);
+      trackPageView('Vendor Profile', {
+        vendorId,
+        vendorName: vendorDetails.profile.BusinessName,
+        category: vendorDetails.profile.PrimaryCategory,
+        ...queryParams
+      });
     } catch (error) {
       console.error('Error loading vendor profile:', error);
       showBanner('Failed to load vendor profile', 'error');
     } finally {
       setLoading(false);
     }
-  }, [vendorId, currentUser]);
+  }, [vendorId, currentUser, location.search]);
 
   // Load vendor features (questionnaire)
   const loadVendorFeatures = useCallback(async (vendorProfileId) => {
@@ -323,8 +337,17 @@ function VendorProfilePage() {
       setProfileModalOpen(true);
       return;
     }
-    // Navigate to booking page
-    navigate(`/booking/${vendorId}`);
+    // Build professional booking URL with slug and tracking
+    const bookingUrl = buildBookingUrl(
+      { 
+        VendorProfileID: vendorId, 
+        BusinessName: vendor?.BusinessName || vendor?.Name || 'vendor'
+      },
+      {
+        source: 'profile'
+      }
+    );
+    navigate(bookingUrl);
   };
 
   const handleMessageVendor = () => {

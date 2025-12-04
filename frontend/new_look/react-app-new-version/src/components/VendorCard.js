@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { getCategoryIconHtml, mapTypeToCategory } from '../utils/helpers';
+import { buildVendorProfileUrl } from '../utils/urlHelpers';
 
 const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight }) {
   const [isHovered, setIsHovered] = React.useState(false);
@@ -82,8 +83,15 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
   const categoryIconHtml = getCategoryIconHtml(categoryKey);
 
   const handleCardClick = () => {
+    // Build professional URL with slug and tracking parameters
+    const url = buildVendorProfileUrl(vendor, {
+      source: 'search',
+      category: primaryCategory,
+      previousSection: '1000' // Similar to Airbnb's tracking
+    });
+    
     // Always open vendor profile in new tab
-    window.open(`/vendor/${vendorId}`, '_blank');
+    window.open(url, '_blank');
   };
 
   const handleFavoriteClick = (e) => {

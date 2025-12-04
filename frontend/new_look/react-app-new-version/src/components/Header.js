@@ -6,6 +6,7 @@ import DashboardModal from './DashboardModal';
 import NotificationDropdown from './NotificationDropdown';
 import EnhancedSearchBar from './EnhancedSearchBar';
 import { getUnreadNotificationCount, updatePageTitle } from '../utils/notifications';
+import { buildBecomeVendorUrl } from '../utils/urlHelpers';
 import './EnhancedSearchBar.css';
 
 const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNotificationsClick }) {
@@ -170,7 +171,10 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         {!currentUser?.isVendor && (
           <button 
             className="become-vendor-btn"
-            onClick={() => navigate('/become-a-vendor')}
+            onClick={() => {
+              const url = buildBecomeVendorUrl({ source: 'header', ref: 'homepage' });
+              navigate(url);
+            }}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: 'transparent',
@@ -194,7 +198,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             className="complete-profile-btn"
             onClick={() => {
               // Force open in new tab to avoid state conflicts
-              window.open('/become-a-vendor', '_blank');
+              const url = buildBecomeVendorUrl({ source: 'header', ref: 'complete_profile' });
+              window.open(url, '_blank');
             }}
             style={{
               padding: '0.5rem 1rem',
