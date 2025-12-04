@@ -18,6 +18,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const [dashboardOpen, setDashboardOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [profileIncomplete, setProfileIncomplete] = useState(false);
   const notificationBtnRef = useRef(null);
 
   // Clear any dashboard hash on mount to prevent auto-opening
@@ -56,6 +57,32 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Check vendor profile completion status
+  useEffect(() => {
+    if (!currentUser?.isVendor || !currentUser?.id) {
+      setProfileIncomplete(false);
+      return;
+    }
+
+    const checkProfileStatus = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/vendor/${currentUser.id}/setup-status`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const isComplete = data.allRequiredComplete ?? data?.setupStatus?.allRequiredComplete;
+          setProfileIncomplete(!isComplete);
+        }
+      } catch (error) {
+        console.error('Failed to check profile status:', error);
+      }
+    };
+
+    checkProfileStatus();
+  }, [currentUser]);
 
   // Load notification badges
   useEffect(() => {
@@ -162,6 +189,41 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             Become A Vendor
           </button>
         )}
+        {currentUser?.isVendor && profileIncomplete && (
+          <button 
+            className="complete-profile-btn"
+            onClick={() => {
+              // Force open in new tab to avoid state conflicts
+              window.open('/become-a-vendor', '_blank');
+            }}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#fff8e1',
+              color: '#f57c00',
+              border: '1px solid #ffe0b2',
+              borderRadius: '8px',
+              fontSize: '0.95rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              marginRight: '0.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#ffecb3';
+              e.target.style.borderColor = '#ffcc80';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#fff8e1';
+              e.target.style.borderColor = '#ffe0b2';
+            }}
+          >
+            <i className="fas fa-exclamation-triangle" style={{ fontSize: '0.9rem' }}></i>
+            Complete Profile Setup
+          </button>
+        )}
         <div className="nav-icon" id="wishlist-btn" onClick={onWishlistClick}>
           <i className="fas fa-heart"></i>
           <span
@@ -219,7 +281,10 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
       </div>
 
       {/* Dashboard Modal */}
-      <DashboardModal isOpen={dashboardOpen} onClose={() => setDashboardOpen(false)} />
+      <DashboardModal 
+        isOpen={dashboardOpen} 
+        onClose={() => setDashboardOpen(false)} 
+      />
       
       {/* Notification Dropdown */}
       <NotificationDropdown 

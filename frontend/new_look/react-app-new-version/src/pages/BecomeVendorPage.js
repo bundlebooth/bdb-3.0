@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import { showBanner } from '../utils/helpers';
@@ -10,11 +10,33 @@ import './BecomeVendorPage.css';
 
 const BecomeVendorPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser, setCurrentUser } = useAuth();
-  const [currentStep, setCurrentStep] = useState(currentUser ? 1 : 0);
+  
+  // Initialize to step 1 (welcome page) if user is logged in, unless there's a target step
+  const getInitialStep = () => {
+    if (!currentUser) return 0;
+    
+    // Check if we're returning from a save (stored in sessionStorage)
+    const savedStep = sessionStorage.getItem('vendorOnboardingStep');
+    if (savedStep) {
+      sessionStorage.removeItem('vendorOnboardingStep'); // Clear it after reading
+      return parseInt(savedStep);
+    }
+    
+    // If coming from "Complete Profile Setup", always start at step 1
+    if (location.state?.resetToFirst) return 1;
+    // If there's a target step, we'll handle it in useEffect
+    return 1;
+  };
+  
+  const [currentStep, setCurrentStep] = useState(getInitialStep());
   const [loading, setLoading] = useState(false);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [existingVendorData, setExistingVendorData] = useState(null);
+  const [isExistingVendor, setIsExistingVendor] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -253,9 +275,361 @@ const BecomeVendorPage = () => {
     }
   }, [currentUser]);
 
+  // Fetch existing vendor profile data if user is already a vendor
+  useEffect(() => {
+    const fetchExistingVendorData = async () => {
+      console.log('🔍 Checking if should load vendor data...');
+      console.log('currentUser:', currentUser);
+      console.log('currentUser.isVendor:', currentUser?.isVendor);
+      console.log('currentUser.vendorProfileId:', currentUser?.vendorProfileId);
+      
+      if (!currentUser || !currentUser.isVendor || !currentUser.vendorProfileId) {
+        console.log('❌ Not loading vendor data - conditions not met');
+        return;
+      }
+
+      try {
+        setLoadingProfile(true);
+        console.log('✅ Fetching existing vendor profile for user:', currentUser.id);
+
+        const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch vendor profile');
+        }
+
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          console.log('Existing vendor data loaded:', result.data);
+          setExistingVendorData(result.data);
+          setIsExistingVendor(true);
+
+          // Pre-populate form with existing data
+          const profile = result.data.profile;
+          const categories = result.data.categories || [];
+          const services = result.data.services || [];
+          const businessHours = result.data.businessHours || [];
+          const serviceAreas = result.data.serviceAreas || [];
+          const socialMedia = result.data.socialMedia?.[0] || {};
+          const images = result.data.images || [];
+
+          // Map business hours from database format to form format
+          const hoursMap = {};
+          businessHours.forEach(hour => {
+            const day = hour.DayOfWeek?.toLowerCase();
+            if (day) {
+              hoursMap[day] = {
+                isAvailable: hour.IsAvailable || false,
+                openTime: hour.OpenTime || '09:00',
+                closeTime: hour.CloseTime || '17:00'
+              };
+            }
+          });
+
+          // Extract primary and additional categories
+          console.log('📂 Categories from database:', categories);
+          
+          // Use 'Category' property instead of 'CategoryName'
+          const primaryCat = categories.find(c => c.IsPrimary)?.Category || categories[0]?.Category || '';
+          const additionalCats = categories.filter(c => !c.IsPrimary).map(c => c.Category);
+          console.log('📂 Primary category:', primaryCat);
+          console.log('📂 Additional categories:', additionalCats);
+
+          // Map service areas to simple format
+          const mappedServiceAreas = serviceAreas.map(area => ({
+            id: area.VendorServiceAreaID,
+            name: area.CityName,
+            state: area.StateProvince,
+            country: area.Country
+          }));
+
+          // Extract photo URLs from images
+          const photoURLs = images.map(img => img.ImageURL || img.imageUrl).filter(Boolean);
+
+          const updatedFormData = {
+            ...formData,
+            // Categories
+            primaryCategory: primaryCat,
+            additionalCategories: additionalCats,
+            
+            // Business Details
+            businessName: profile.BusinessName || '',
+            displayName: profile.DisplayName || profile.BusinessName || '',
+            businessDescription: profile.BusinessDescription || '',
+            yearsInBusiness: profile.YearsInBusiness?.toString() || '',
+            tagline: profile.Tagline || '',
+            priceRange: profile.PriceRange || '',
+            profileLogo: profile.ProfileLogo || profile.LogoURL || '',
+            
+            // Contact
+            businessPhone: profile.BusinessPhone || '',
+            website: profile.Website || '',
+            email: profile.BusinessEmail || currentUser.email || '',
+            
+            // Location
+            address: profile.Address || '',
+            city: profile.City || '',
+            province: profile.State || '',
+            country: profile.Country || 'Canada',
+            postalCode: profile.PostalCode || '',
+            latitude: profile.Latitude || null,
+            longitude: profile.Longitude || null,
+            serviceAreas: mappedServiceAreas,
+            
+            // Services
+            selectedServices: services.map(s => ({
+              id: s.VendorServiceID,
+              categoryName: s.CategoryName,
+              serviceName: s.ServiceName,
+              description: s.ServiceDescription,
+              price: s.Price,
+              duration: s.DurationMinutes,
+              maxAttendees: s.MaxAttendees
+            })),
+            
+            // Business Hours
+            businessHours: {
+              monday: hoursMap.monday || { isAvailable: true, openTime: '09:00', closeTime: '17:00' },
+              tuesday: hoursMap.tuesday || { isAvailable: true, openTime: '09:00', closeTime: '17:00' },
+              wednesday: hoursMap.wednesday || { isAvailable: true, openTime: '09:00', closeTime: '17:00' },
+              thursday: hoursMap.thursday || { isAvailable: true, openTime: '09:00', closeTime: '17:00' },
+              friday: hoursMap.friday || { isAvailable: true, openTime: '09:00', closeTime: '17:00' },
+              saturday: hoursMap.saturday || { isAvailable: false, openTime: '10:00', closeTime: '16:00' },
+              sunday: hoursMap.sunday || { isAvailable: false, openTime: '10:00', closeTime: '16:00' }
+            },
+            
+            // Gallery
+            photoURLs: photoURLs,
+            
+            // Social Media
+            facebook: socialMedia.FacebookURL || '',
+            instagram: socialMedia.InstagramURL || '',
+            twitter: socialMedia.TwitterURL || '',
+            linkedin: socialMedia.LinkedInURL || '',
+            youtube: socialMedia.YouTubeURL || '',
+            tiktok: socialMedia.TikTokURL || '',
+            
+            // Policies
+            cancellationPolicy: profile.CancellationPolicy || '',
+            depositPercentage: profile.DepositPercentage?.toString() || '',
+            paymentTerms: profile.PaymentTerms || ''
+          };
+
+          console.log('📝 Setting formData with loaded data:', updatedFormData);
+          setFormData(updatedFormData);
+
+          showBanner('Your existing profile data has been loaded', 'success');
+        }
+      } catch (error) {
+        console.error('Error fetching vendor profile:', error);
+        // Don't show error banner - just let them fill out the form
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchExistingVendorData();
+  }, [currentUser]);
+
+  // Handle navigation from SetupIncompleteBanner with targetStep
+  useEffect(() => {
+    // Only handle targetStep navigation (resetToFirst is handled in getInitialStep)
+    if (location.state?.targetStep && steps.length > 0 && !location.state?.resetToFirst) {
+      const targetStepIndex = steps.findIndex(s => s.id === location.state.targetStep);
+      if (targetStepIndex !== -1) {
+        console.log('Navigating to target step:', location.state.targetStep);
+        setCurrentStep(targetStepIndex);
+      }
+      // Clear the state after using it
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state?.targetStep, steps]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Save progress without moving to next step
+  const handleSaveProgress = async () => {
+    if (!currentUser) {
+      showBanner('Please log in first', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const allCategories = [formData.primaryCategory, ...formData.additionalCategories].filter(Boolean);
+
+      // Format service areas properly - backend expects city, state, country properties
+      const formattedServiceAreas = formData.serviceAreas.length > 0 
+        ? formData.serviceAreas.map(area => {
+            if (typeof area === 'string') {
+              return { 
+                city: area, 
+                state: formData.province, 
+                country: 'Canada',
+                placeId: '' // Empty string for placeId
+              };
+            }
+            return {
+              city: area.name || area.city || area,
+              state: area.state || area.province || formData.province,
+              country: area.country || 'Canada',
+              placeId: area.placeId ? String(area.placeId) : (area.id ? String(area.id) : ''), // Convert to string
+              latitude: area.latitude || null,
+              longitude: area.longitude || null
+            };
+          })
+        : [{ 
+            city: formData.city, 
+            state: formData.province, 
+            country: 'Canada',
+            placeId: '' // Empty string for placeId
+          }];
+
+      const vendorData = {
+        userId: currentUser.id,
+        businessName: formData.businessName,
+        displayName: formData.displayName || formData.businessName,
+        businessDescription: formData.businessDescription,
+        yearsInBusiness: formData.yearsInBusiness ? parseInt(formData.yearsInBusiness) : null,
+        tagline: formData.tagline,
+        priceRange: formData.priceRange,
+        profileLogo: formData.profileLogo,
+        businessPhone: formData.businessPhone,
+        website: formData.website,
+        email: formData.email || currentUser.email,
+        address: formData.address || null,
+        city: formData.city,
+        province: formData.province,
+        country: formData.country || 'Canada',
+        postalCode: formData.postalCode || null,
+        latitude: formData.latitude,
+        longitude: formData.longitude,
+        primaryCategory: formData.primaryCategory,
+        categories: allCategories,
+        serviceAreas: formattedServiceAreas,
+        selectedServices: formData.selectedServices,
+        businessHours: formData.businessHours,
+        timezone: formData.timezone,
+        selectedFeatures: formData.selectedFeatures,
+        photoURLs: formData.photoURLs,
+        socialMedia: {
+          facebook: formData.facebook,
+          instagram: formData.instagram,
+          twitter: formData.twitter,
+          linkedin: formData.linkedin,
+          youtube: formData.youtube,
+          tiktok: formData.tiktok
+        },
+        filters: formData.selectedFilters,
+        cancellationPolicy: formData.cancellationPolicy,
+        depositPercentage: formData.depositPercentage ? parseInt(formData.depositPercentage) : null,
+        paymentTerms: formData.paymentTerms,
+        faqs: formData.faqs
+      };
+
+      // Always use POST - the backend handles both create and update
+      const endpoint = `${API_BASE_URL}/vendors/onboarding`;
+      
+      console.log('Sending save request to:', endpoint);
+      console.log('Vendor data being saved:', JSON.stringify(vendorData, null, 2));
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(vendorData)
+      });
+
+      console.log('Save response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Save failed - Response:', errorText);
+        let errorMessage = 'Failed to save progress';
+        try {
+          const error = JSON.parse(errorText);
+          errorMessage = error.message || error.error || errorMessage;
+        } catch (e) {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log('✅ Save successful! Result:', result);
+      console.log('VendorProfileId:', result.vendorProfileId);
+      
+      // ALWAYS update currentUser with vendorProfileId (for both new and existing)
+      if (result.vendorProfileId) {
+        console.log('Updating currentUser with vendorProfileId:', result.vendorProfileId);
+        
+        setCurrentUser(prev => ({
+          ...prev,
+          vendorProfileId: result.vendorProfileId,
+          isVendor: true
+        }));
+        setIsExistingVendor(true);
+        
+        // Update localStorage as well
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        storedUser.vendorProfileId = result.vendorProfileId;
+        storedUser.isVendor = true;
+        localStorage.setItem('user', JSON.stringify(storedUser));
+        
+        console.log('Updated localStorage user:', storedUser);
+      }
+
+      showBanner('Progress saved successfully! You can continue editing or move to the next step.', 'success');
+    } catch (error) {
+      console.error('Save error:', error);
+      console.error('Error details:', error.message);
+      showBanner(error.message || 'Failed to save progress', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check if a step is completed based on form data
+  const isStepCompleted = (stepId) => {
+    if (!isExistingVendor) return false;
+
+    switch (stepId) {
+      case 'account':
+        return !!currentUser;
+      case 'categories':
+        return !!formData.primaryCategory;
+      case 'business-details':
+        return !!(formData.businessName && formData.displayName);
+      case 'contact':
+        return !!formData.businessPhone;
+      case 'location':
+        return !!(formData.city && formData.province && formData.serviceAreas.length > 0);
+      case 'services':
+        return formData.selectedServices.length > 0;
+      case 'business-hours':
+        return Object.values(formData.businessHours).some(h => h.isAvailable);
+      case 'questionnaire':
+        return formData.selectedFeatures.length > 0;
+      case 'gallery':
+        return formData.photoURLs.length > 0;
+      case 'social-media':
+        return !!(formData.facebook || formData.instagram || formData.twitter || formData.linkedin);
+      case 'filters':
+        return formData.selectedFilters.length > 0;
+      case 'policies':
+        return !!(formData.cancellationPolicy || formData.depositPercentage || formData.paymentTerms);
+      default:
+        return false;
+    }
   };
 
   const handleAccountCreated = (userData) => {
@@ -268,39 +642,45 @@ const BecomeVendorPage = () => {
   };
 
   const handleNext = () => {
-    // Validation
+    // Only validate required steps
+    const currentStepData = steps[currentStep];
+    
     if (currentStep === 0 && !currentUser) {
       showBanner('Please log in to continue', 'error');
       return;
     }
-    if (currentStep === 1 && !formData.primaryCategory) {
-      showBanner('Please select a primary category', 'error');
-      return;
-    }
-    if (currentStep === 2) {
-      if (!formData.businessName.trim() || !formData.displayName.trim()) {
-        showBanner('Please enter business name and display name', 'error');
-        return;
-      }
-    }
-    if (currentStep === 3 && !formData.businessPhone.trim()) {
-      showBanner('Please enter your business phone number', 'error');
-      return;
-    }
     
-    // Validation for location step (step 4)
-    if (currentStep === 4) {
-      if (!formData.city.trim()) {
-        showBanner('Please enter your city', 'error');
+    // Only validate if step is required and not skippable
+    if (currentStepData?.required && !currentStepData?.skippable) {
+      if (currentStep === 1 && !formData.primaryCategory) {
+        showBanner('Please select a primary category', 'error');
         return;
       }
-      if (!formData.province.trim()) {
-        showBanner('Please select your province', 'error');
+      if (currentStep === 2) {
+        if (!formData.businessName.trim() || !formData.displayName.trim()) {
+          showBanner('Please enter business name and display name', 'error');
+          return;
+        }
+      }
+      if (currentStep === 3 && !formData.businessPhone.trim()) {
+        showBanner('Please enter your business phone number', 'error');
         return;
       }
-      if (formData.serviceAreas.length === 0) {
-        showBanner('Please add at least one service area', 'error');
-        return;
+      
+      // Validation for location step (step 4)
+      if (currentStep === 4) {
+        if (!formData.city.trim()) {
+          showBanner('Please enter your city', 'error');
+          return;
+        }
+        if (!formData.province.trim()) {
+          showBanner('Please select your province', 'error');
+          return;
+        }
+        if (formData.serviceAreas.length === 0) {
+          showBanner('Please add at least one service area', 'error');
+          return;
+        }
       }
     }
 
@@ -334,6 +714,33 @@ const BecomeVendorPage = () => {
 
       const allCategories = [formData.primaryCategory, ...formData.additionalCategories].filter(Boolean);
 
+      // Format service areas properly - backend expects city, state, country properties
+      const formattedServiceAreas = formData.serviceAreas.length > 0 
+        ? formData.serviceAreas.map(area => {
+            if (typeof area === 'string') {
+              return { 
+                city: area, 
+                state: formData.province, 
+                country: 'Canada',
+                placeId: '' // Empty string for placeId
+              };
+            }
+            return {
+              city: area.name || area.city || area,
+              state: area.state || area.province || formData.province,
+              country: area.country || 'Canada',
+              placeId: area.placeId ? String(area.placeId) : (area.id ? String(area.id) : ''), // Convert to string
+              latitude: area.latitude || null,
+              longitude: area.longitude || null
+            };
+          })
+        : [{ 
+            city: formData.city, 
+            state: formData.province, 
+            country: 'Canada',
+            placeId: '' // Empty string for placeId
+          }];
+
       const vendorData = {
         userId: currentUser.id,
         businessName: formData.businessName,
@@ -345,15 +752,17 @@ const BecomeVendorPage = () => {
         address: formData.address || null,
         city: formData.city,
         state: formData.province,
+        province: formData.province,
         country: formData.country,
         postalCode: formData.postalCode || null,
         latitude: formData.latitude,
         longitude: formData.longitude,
         primaryCategory: formData.primaryCategory,
         categories: allCategories,
-        serviceAreas: formData.serviceAreas.length > 0 ? formData.serviceAreas : [formData.city],
+        serviceAreas: formattedServiceAreas,
         selectedServices: formData.selectedServices,
         businessHours: formData.businessHours,
+        timezone: formData.timezone,
         selectedFeatures: formData.selectedFeatures,
         photoURLs: formData.photoURLs,
         socialMedia: {
@@ -371,8 +780,13 @@ const BecomeVendorPage = () => {
         faqs: formData.faqs
       };
 
-      const response = await fetch(`${API_BASE_URL}/vendors/onboarding`, {
-        method: 'POST',
+      // Always use POST - the backend handles both create and update
+      const endpoint = `${API_BASE_URL}/vendors/onboarding`;
+      
+      const method = 'POST';
+
+      const response = await fetch(endpoint, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -382,7 +796,7 @@ const BecomeVendorPage = () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to create vendor profile');
+        throw new Error(error.message || `Failed to ${isExistingVendor ? 'update' : 'create'} vendor profile`);
       }
 
       const result = await response.json();
@@ -390,10 +804,15 @@ const BecomeVendorPage = () => {
       setCurrentUser(prev => ({
         ...prev,
         isVendor: true,
-        vendorProfileId: result.vendorProfileId
+        vendorProfileId: result.vendorProfileId || currentUser.vendorProfileId
       }));
 
-      showBanner('Vendor profile created successfully! 🎉', 'success');
+      showBanner(
+        isExistingVendor 
+          ? 'Vendor profile updated successfully! 🎉' 
+          : 'Vendor profile created successfully! 🎉', 
+        'success'
+      );
       
       setTimeout(() => {
         navigate('/?dashboard=vendor-business-profile');
@@ -414,10 +833,23 @@ const BecomeVendorPage = () => {
     <div className="become-vendor-page">
       <header className="become-vendor-header">
         <div className="header-content">
-          <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
-            <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '50px', width: 'auto' }} />
+          <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+            <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '40px', width: 'auto' }} />
           </div>
           <div className="header-actions">
+            {isExistingVendor && (
+              <span style={{ 
+                marginRight: '1rem', 
+                color: '#10b981', 
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <i className="fas fa-check-circle"></i>
+                Editing Profile
+              </span>
+            )}
             <button className="btn-text" onClick={() => navigate('/')}>
               Exit
             </button>
@@ -425,32 +857,69 @@ const BecomeVendorPage = () => {
         </div>
       </header>
 
-      <div className="progress-container">
-        <div className="progress-bar" style={{ width: `${progress}%` }}></div>
+      <div className="progress-container" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
+        <div className="progress-bar" style={{ 
+          width: `${progress}%`,
+          background: '#5e72e4'
+        }}></div>
       </div>
 
       <main className="become-vendor-main">
-        <div className={`step-container ${isTransitioning ? 'fade-out' : ''}`} key={currentStep}>
-          <div className="step-header">
-            <h1 className="step-title">{steps[currentStep].title}</h1>
-            <p className="step-subtitle">{steps[currentStep].subtitle}</p>
+        {loadingProfile ? (
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
+            <div className="spinner-small" style={{ margin: '0 auto 1rem' }}></div>
+            <p>Loading your profile data...</p>
           </div>
+        ) : (
+          <div className={`step-container ${isTransitioning ? 'fade-out' : ''}`} key={currentStep}>
+            <div className="step-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <h1 className="step-title">{steps[currentStep].title}</h1>
+                {isExistingVendor && isStepCompleted(steps[currentStep].id) && (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    background: '#10b981',
+                    color: 'white',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
+                    fontWeight: '600'
+                  }}>
+                    <i className="fas fa-check-circle"></i>
+                    Completed
+                  </span>
+                )}
+              </div>
+              <p className="step-subtitle">
+                {isExistingVendor && isStepCompleted(steps[currentStep].id) 
+                  ? 'This section is already set up. You can review and update if needed.' 
+                  : steps[currentStep].subtitle}
+              </p>
+            </div>
 
-          <div className="step-content">
-            <CurrentStepComponent
-              formData={formData}
-              onInputChange={handleInputChange}
-              setFormData={setFormData}
-              categories={availableCategories}
-              provinces={canadianProvinces}
-              cities={canadianCities}
-              filterOptions={filterOptions}
-              googleMapsLoaded={googleMapsLoaded}
-              currentUser={currentUser}
-              onAccountCreated={handleAccountCreated}
-            />
+            <div className="step-content">
+              <CurrentStepComponent
+                formData={formData}
+                onInputChange={handleInputChange}
+                setFormData={setFormData}
+                categories={availableCategories}
+                provinces={canadianProvinces}
+                cities={canadianCities}
+                filterOptions={filterOptions}
+                googleMapsLoaded={googleMapsLoaded}
+                currentUser={currentUser}
+                onAccountCreated={handleAccountCreated}
+                isExistingVendor={isExistingVendor}
+                isCompleted={isStepCompleted(steps[currentStep].id)}
+                steps={steps}
+                isStepCompleted={isStepCompleted}
+                setCurrentStep={setCurrentStep}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       <footer className="become-vendor-footer">
@@ -466,6 +935,23 @@ const BecomeVendorPage = () => {
           
           
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            {currentUser && currentStep > 0 && (
+              <button
+                className="btn-save"
+                onClick={handleSaveProgress}
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="spinner-small"></span>
+                ) : (
+                  <>
+                    <i className="fas fa-save"></i>
+                    Save
+                  </>
+                )}
+              </button>
+            )}
+            
             {steps[currentStep]?.skippable && (
               <button
                 className="btn-skip"
@@ -484,7 +970,7 @@ const BecomeVendorPage = () => {
               {loading ? (
                 <span className="spinner-small"></span>
               ) : currentStep === steps.length - 1 ? (
-                'Complete Setup'
+                isExistingVendor ? 'Save Changes' : 'Complete Setup'
               ) : (
                 'Next'
               )}
@@ -499,7 +985,7 @@ const BecomeVendorPage = () => {
 // STEP COMPONENTS BELOW
 // Due to file size, I'll add these as inline components
 
-function AccountStep({ currentUser, setFormData, formData, onAccountCreated }) {
+function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isExistingVendor, steps, isStepCompleted, setCurrentStep }) {
   const [mode, setMode] = useState('signup'); // 'signup' or 'login'
   const [accountData, setAccountData] = useState({
     name: '',
@@ -512,18 +998,145 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated }) {
   if (currentUser) {
     return (
       <div className="account-step">
-        <div className="welcome-card">
-          <div className="success-icon">
-            <i className="fas fa-check-circle"></i>
-          </div>
-          <h2>Welcome, {currentUser.name}!</h2>
-          <p>Let's set up your vendor profile and start getting bookings.</p>
-          <div className="account-info">
-            <div className="info-item">
-              <i className="fas fa-envelope"></i>
-              <span>{currentUser.email}</span>
+        <div style={{ padding: '2rem 1rem' }}>
+
+          {/* Section Progress Indicators */}
+          {isExistingVendor && steps && (
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'flex-start',
+              padding: '16px',
+              background: '#fffbeb',
+              border: '1px solid #fde68a',
+              borderRadius: '8px',
+              margin: '1rem auto',
+              maxWidth: '900px'
+            }}>
+              <div style={{ fontSize: '20px', lineHeight: 1, color: '#D97706' }}>
+                <i className="fas fa-triangle-exclamation"></i>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '8px' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>Setup Incomplete</div>
+                    <div style={{ fontSize: '.9rem', color: '#92400e' }}>
+                      Your profile will not be visible to clients until all required steps are complete.
+                    </div>
+                  </div>
+                </div>
+                
+                {steps.filter(step => step.id !== 'account' && step.id !== 'review' && !isStepCompleted(step.id)).length > 0 && (
+                  <div style={{ marginTop: '8px' }}>
+                    <div style={{ fontWeight: 600, color: '#7c2d12', marginBottom: '6px', fontSize: '.9rem' }}>Incomplete</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {steps.filter(step => step.id !== 'account' && step.id !== 'review' && !isStepCompleted(step.id)).slice(0, 6).map((step) => (
+                        <span
+                          key={step.id}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: '#ffedd5',
+                            color: '#7c2d12',
+                            border: '1px solid #fed7aa',
+                            borderRadius: '999px',
+                            padding: '4px 10px',
+                            fontSize: '.85rem',
+                            whiteSpace: 'nowrap',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => {
+                            const stepIndex = steps.findIndex(s => s.id === step.id);
+                            if (stepIndex !== -1) {
+                              setCurrentStep(stepIndex);
+                            }
+                          }}
+                          title={`Click to complete: ${step.title}`}
+                        >
+                          <i className="fas fa-circle-xmark"></i>
+                          {step.title}
+                        </span>
+                      ))}
+                      {steps.filter(step => step.id !== 'account' && step.id !== 'review' && !isStepCompleted(step.id)).length > 6 && (
+                        <span style={{ fontSize: '.85rem', color: '#7c2d12' }}>
+                          +{steps.filter(step => step.id !== 'account' && step.id !== 'review' && !isStepCompleted(step.id)).length - 6} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                <div style={{ marginTop: '10px' }}>
+                  <div style={{ fontWeight: 600, color: '#166534', marginBottom: '6px', fontSize: '.9rem' }}>
+                    Completed ({steps.filter(step => step.id !== 'account' && step.id !== 'review' && isStepCompleted(step.id)).length}/{steps.filter(step => step.id !== 'account' && step.id !== 'review').length})
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {steps.filter(step => step.id !== 'account' && step.id !== 'review' && isStepCompleted(step.id)).slice(0, 6).map((step) => (
+                      <span
+                        key={step.id}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: '#d1fae5',
+                          color: '#065f46',
+                          border: '1px solid #6ee7b7',
+                          borderRadius: '999px',
+                          padding: '4px 10px',
+                          fontSize: '.85rem',
+                          whiteSpace: 'nowrap',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => {
+                          const stepIndex = steps.findIndex(s => s.id === step.id);
+                          if (stepIndex !== -1) {
+                            setCurrentStep(stepIndex);
+                          }
+                        }}
+                        title={`Review: ${step.title}`}
+                      >
+                        <i className="fas fa-circle-check"></i>
+                        {step.title}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {!isExistingVendor && (
+            <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: '#5e72e4',
+                marginBottom: '1rem'
+              }}>
+                <i className="fas fa-check-circle" style={{ fontSize: '2.5rem', color: 'white' }}></i>
+              </div>
+              <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#1f2937', fontWeight: '600' }}>Welcome, {currentUser.name}!</h2>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>Let's set up your vendor profile and start getting bookings.</p>
+              <div style={{ 
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                background: '#f3f4f6',
+                borderRadius: '8px',
+                color: '#6b7280',
+                fontSize: '0.9rem'
+              }}>
+                <i className="fas fa-envelope"></i>
+                <span>{currentUser.email}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -708,6 +1321,11 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated }) {
 }
 
 function CategoriesStep({ formData, onInputChange, categories }) {
+  // Add logging to debug category loading
+  console.log('📋 CategoriesStep - formData.primaryCategory:', formData.primaryCategory);
+  console.log('📋 CategoriesStep - formData.additionalCategories:', formData.additionalCategories);
+  console.log('📋 CategoriesStep - Available categories:', categories.map(c => c.id));
+
   const handlePrimaryChange = (categoryId) => {
     onInputChange('primaryCategory', categoryId);
     const newAdditional = formData.additionalCategories.filter(c => c !== categoryId);
@@ -728,44 +1346,51 @@ function CategoriesStep({ formData, onInputChange, categories }) {
     <div className="categories-step">
       <h3 style={{ marginBottom: '1.5rem', color: '#222', fontSize: '1.125rem', fontWeight: '600' }}>Primary Category *</h3>
       <div className="categories-grid">
-        {categories.map(category => (
-          <div
-            key={category.id}
-            className={`category-card ${formData.primaryCategory === category.id ? 'selected primary' : ''}`}
-            onClick={() => handlePrimaryChange(category.id)}
-          >
-            <div className="category-icon">{category.icon}</div>
-            <div className="category-card-content">
-              <h4 className="category-name">{category.name}</h4>
-              <p className="category-description">{category.description}</p>
-            </div>
-            {formData.primaryCategory === category.id && (
-              <i className="fas fa-check-circle" style={{ fontSize: '1.5rem', color: '#222222' }}></i>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <h3 style={{ marginTop: '2.5rem', marginBottom: '1.5rem', color: '#222', fontSize: '1.125rem', fontWeight: '600' }}>Additional Categories (Optional)</h3>
-      <div className="categories-grid">
-        {categories
-          .filter(c => c.id !== formData.primaryCategory)
-          .map(category => (
+        {categories.map(category => {
+          const isSelected = formData.primaryCategory === category.id;
+          console.log(`Category ${category.id}: isSelected=${isSelected}, formData.primaryCategory=${formData.primaryCategory}`);
+          return (
             <div
               key={category.id}
-              className={`category-card ${formData.additionalCategories.includes(category.id) ? 'selected' : ''}`}
-              onClick={() => handleAdditionalToggle(category.id)}
+              className={`category-card ${isSelected ? 'selected primary' : ''}`}
+              onClick={() => handlePrimaryChange(category.id)}
             >
               <div className="category-icon">{category.icon}</div>
               <div className="category-card-content">
                 <h4 className="category-name">{category.name}</h4>
                 <p className="category-description">{category.description}</p>
               </div>
-              {formData.additionalCategories.includes(category.id) && (
+              {isSelected && (
                 <i className="fas fa-check-circle" style={{ fontSize: '1.5rem', color: '#222222' }}></i>
               )}
             </div>
-          ))}
+          );
+        })}
+      </div>
+
+      <h3 style={{ marginTop: '2.5rem', marginBottom: '1.5rem', color: '#222', fontSize: '1.125rem', fontWeight: '600' }}>Additional Categories (Optional)</h3>
+      <div className="categories-grid">
+        {categories
+          .filter(c => c.id !== formData.primaryCategory)
+          .map(category => {
+            const isSelected = formData.additionalCategories.includes(category.id);
+            return (
+              <div
+                key={category.id}
+                className={`category-card ${isSelected ? 'selected' : ''}`}
+                onClick={() => handleAdditionalToggle(category.id)}
+              >
+                <div className="category-icon">{category.icon}</div>
+                <div className="category-card-content">
+                  <h4 className="category-name">{category.name}</h4>
+                  <p className="category-description">{category.description}</p>
+                </div>
+                {isSelected && (
+                  <i className="fas fa-check-circle" style={{ fontSize: '1.5rem', color: '#222222' }}></i>
+                )}
+              </div>
+            );
+          })}
       </div>
     </div>
   );
@@ -1361,12 +1986,28 @@ function ServicesStep({ formData, setFormData }) {
   const [editingService, setEditingService] = useState(null);
 
   useEffect(() => {
+    console.log('🔄 ServicesStep useEffect triggered');
+    console.log('🔄 Primary category:', formData.primaryCategory);
+    console.log('🔄 Additional categories:', formData.additionalCategories);
     loadServices();
-  }, [formData.primaryCategory, formData.additionalCategories]);
+  }, [formData.primaryCategory, JSON.stringify(formData.additionalCategories)]);
 
   const loadServices = async () => {
     try {
       setLoading(true);
+      const allCategories = [formData.primaryCategory, ...formData.additionalCategories].filter(Boolean);
+      
+      console.log('ServicesStep - Loading services for categories:', allCategories);
+      console.log('ServicesStep - formData.primaryCategory:', formData.primaryCategory);
+      console.log('ServicesStep - formData.additionalCategories:', formData.additionalCategories);
+      
+      if (allCategories.length === 0) {
+        console.warn('ServicesStep - No categories selected yet');
+        setAvailableServices([]);
+        setLoading(false);
+        return;
+      }
+      
       const response = await fetch(`${API_BASE_URL}/vendors/predefined-services`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
@@ -1375,17 +2016,19 @@ function ServicesStep({ formData, setFormData }) {
         const data = await response.json();
         const servicesByCategory = data.servicesByCategory || {};
         
-        const allCategories = [formData.primaryCategory, ...formData.additionalCategories].filter(Boolean);
-        
         const filteredServices = [];
         allCategories.forEach(category => {
           if (servicesByCategory[category]) {
+            console.log(`Found ${servicesByCategory[category].length} services for category: ${category}`);
             servicesByCategory[category].forEach(service => {
               filteredServices.push({ ...service, category });
             });
+          } else {
+            console.warn(`No services found for category: ${category}`);
           }
         });
         
+        console.log('ServicesStep - Total filtered services:', filteredServices.length);
         setAvailableServices(filteredServices);
       }
     } catch (error) {
