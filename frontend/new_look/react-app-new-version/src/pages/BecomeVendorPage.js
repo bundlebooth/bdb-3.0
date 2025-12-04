@@ -233,6 +233,22 @@ const BecomeVendorPage = () => {
       skippable: true
     },
     {
+      id: 'stripe',
+      title: 'Connect Stripe for Payments',
+      subtitle: 'Set up payment processing to accept online payments',
+      component: StripeStep,
+      required: false,
+      skippable: true
+    },
+    {
+      id: 'google-reviews',
+      title: 'Connect Google Reviews',
+      subtitle: 'Display your Google Business reviews on your profile',
+      component: GoogleReviewsStep,
+      required: false,
+      skippable: true
+    },
+    {
       id: 'policies',
       title: 'Set your policies and answer common questions',
       subtitle: 'Help clients understand your terms and conditions',
@@ -834,7 +850,7 @@ const BecomeVendorPage = () => {
       <header className="become-vendor-header">
         <div className="header-content">
           <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-            <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '40px', width: 'auto' }} />
+            <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '50px', width: 'auto' }} />
           </div>
           <div className="header-actions">
             {isExistingVendor && (
@@ -857,7 +873,7 @@ const BecomeVendorPage = () => {
         </div>
       </header>
 
-      <div className="progress-container" style={{ position: 'sticky', top: 0, zIndex: 100 }}>
+      <div className="progress-container">
         <div className="progress-bar" style={{ 
           width: `${progress}%`,
           background: '#5e72e4'
@@ -875,7 +891,7 @@ const BecomeVendorPage = () => {
             <div className="step-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <h1 className="step-title">{steps[currentStep].title}</h1>
-                {isExistingVendor && isStepCompleted(steps[currentStep].id) && (
+                {isExistingVendor && currentStep > 0 && isStepCompleted(steps[currentStep].id) && (
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1991,6 +2007,18 @@ function ServicesStep({ formData, setFormData }) {
     console.log('🔄 Additional categories:', formData.additionalCategories);
     loadServices();
   }, [formData.primaryCategory, JSON.stringify(formData.additionalCategories)]);
+
+  // Prevent scrolling when modal is open
+  useEffect(() => {
+    if (showModal || showEditModal) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [showModal, showEditModal]);
 
   const loadServices = async () => {
     try {
@@ -3229,6 +3257,264 @@ function FiltersStep({ formData, setFormData, filterOptions }) {
         <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.95rem' }}>
           <i className="fas fa-check-circle" style={{ color: 'var(--primary)' }}></i>
           <span><strong>{(formData.selectedFilters || []).length}</strong> badges selected</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Stripe Connect Step
+function StripeStep({ formData, setFormData }) {
+  const [stripeConnected, setStripeConnected] = useState(false);
+
+  const handleConnectStripe = () => {
+    showBanner('Stripe Connect will be available after profile creation. You can set it up from your dashboard.', 'info');
+  };
+
+  return (
+    <div className="stripe-step">
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <i className="fab fa-stripe" style={{ color: '#635bff', fontSize: '1.5rem' }}></i>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Connect Stripe for Payments</h3>
+          </div>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Set up payment processing to accept online payments from clients securely through Stripe.
+          </p>
+        </div>
+
+        <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', padding: '3rem', textAlign: 'center' }}>
+          <div style={{
+            width: '96px',
+            height: '96px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #635bff 0%, #5469d4 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1.5rem'
+          }}>
+            <i className="fab fa-stripe" style={{ color: 'white', fontSize: '3rem' }}></i>
+          </div>
+          
+          <h4 style={{ margin: '0 0 0.75rem', fontSize: '1.5rem', fontWeight: 600, color: '#111827' }}>
+            Stripe Connect
+          </h4>
+          <p style={{ margin: '0 0 2rem', color: '#6b7280', fontSize: '1rem', lineHeight: 1.6, maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>
+            Accept payments securely through Stripe. Connect your account to receive payments from clients directly through the platform. Stripe handles all payment processing, security, and compliance.
+          </p>
+          
+          <button
+            onClick={handleConnectStripe}
+            className="btn btn-primary"
+            style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '0.75rem',
+              padding: '1rem 2rem',
+              fontSize: '1.05rem',
+              background: 'linear-gradient(135deg, #635bff 0%, #5469d4 100%)',
+              border: 'none'
+            }}
+          >
+            <i className="fab fa-stripe" style={{ fontSize: '1.5rem' }}></i>
+            {stripeConnected ? 'Manage Stripe Account' : 'Connect Stripe Account'}
+          </button>
+          
+          {stripeConnected && (
+            <div style={{ marginTop: '2rem', padding: '1rem 1.5rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}>
+              <i className="fas fa-check-circle" style={{ color: '#16a34a', fontSize: '1.25rem' }}></i>
+              <span style={{ color: '#15803d', fontSize: '1rem', fontWeight: 500 }}>Stripe account connected successfully!</span>
+            </div>
+          )}
+
+          <div style={{ marginTop: '3rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', textAlign: 'left' }}>
+            <h5 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+              Why connect Stripe?
+            </h5>
+            <ul style={{ margin: 0, paddingLeft: '1.5rem', color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.8 }}>
+              <li>Accept credit cards, debit cards, and digital wallets</li>
+              <li>Secure payment processing with industry-leading security</li>
+              <li>Automatic payouts to your bank account</li>
+              <li>Built-in fraud protection and dispute management</li>
+              <li>Detailed transaction reporting and analytics</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #fbbf24' }}>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <i className="fas fa-info-circle" style={{ color: '#d97706', fontSize: '1.25rem', flexShrink: 0 }}></i>
+            <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
+              <strong>Note:</strong> You can skip this step for now and set up Stripe later from your dashboard. However, connecting Stripe is required to accept online payments from clients.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Google Reviews Step
+function GoogleReviewsStep({ formData, setFormData }) {
+  const [googlePlaceId, setGooglePlaceId] = useState(formData.googlePlaceId || '');
+  const [verifying, setVerifying] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState(null);
+
+  const handleVerifyGooglePlace = async () => {
+    if (!googlePlaceId.trim()) {
+      showBanner('Please enter a Google Place ID', 'error');
+      return;
+    }
+
+    setVerifying(true);
+    setVerificationStatus(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/google-reviews/${googlePlaceId}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (response.ok) {
+        setVerificationStatus('success');
+        setFormData(prev => ({ ...prev, googlePlaceId }));
+        showBanner('✓ Valid Google Place ID! Your reviews will be displayed on your profile.', 'success');
+      } else {
+        setVerificationStatus('error');
+        showBanner('Invalid Google Place ID. Please check and try again.', 'error');
+      }
+    } catch (error) {
+      console.error('Error verifying Place ID:', error);
+      setVerificationStatus('error');
+      showBanner('Failed to verify Place ID. Please try again.', 'error');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  return (
+    <div className="google-reviews-step">
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+            </svg>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Connect Google Reviews</h3>
+          </div>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', lineHeight: 1.6 }}>
+            Display your Google Business reviews on your profile to build trust and credibility with potential clients.
+          </p>
+        </div>
+
+        <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', padding: '3rem' }}>
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div style={{
+              width: '96px',
+              height: '96px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc05 75%, #ea4335 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem'
+            }}>
+              <svg width="48" height="48" viewBox="0 0 24 24">
+                <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            </div>
+            
+            <h4 style={{ margin: '0 0 0.75rem', fontSize: '1.5rem', fontWeight: 600, color: '#111827' }}>
+              Google Reviews Integration
+            </h4>
+            <p style={{ margin: '0 0 2rem', color: '#6b7280', fontSize: '1rem', lineHeight: 1.6, maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>
+              Showcase your Google Business reviews to build trust with potential clients. Your star rating and recent reviews will be displayed on your profile.
+            </p>
+          </div>
+
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.75rem', fontSize: '1rem', color: '#374151' }}>
+              Google Place ID
+            </label>
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
+              <input
+                type="text"
+                placeholder="Enter your Google Place ID"
+                value={googlePlaceId}
+                onChange={(e) => setGooglePlaceId(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '0.875rem 1rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '1rem'
+                }}
+              />
+              <button
+                onClick={handleVerifyGooglePlace}
+                disabled={verifying || !googlePlaceId.trim()}
+                className="btn btn-primary"
+                style={{ minWidth: '120px', padding: '0.875rem 1.5rem' }}
+              >
+                {verifying ? (
+                  <span className="spinner-small"></span>
+                ) : (
+                  <>
+                    <i className="fas fa-check"></i> Verify
+                  </>
+                )}
+              </button>
+            </div>
+            <small style={{ display: 'block', color: '#6b7280', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+              <a href="https://developers.google.com/maps/documentation/places/web-service/place-id" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}>
+                <i className="fas fa-external-link-alt" style={{ marginRight: '0.5rem' }}></i>
+                How to find your Google Place ID
+              </a>
+            </small>
+
+            {verificationStatus === 'success' && (
+              <div style={{ padding: '1rem 1.5rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <i className="fas fa-check-circle" style={{ color: '#16a34a', fontSize: '1.25rem' }}></i>
+                <span style={{ color: '#15803d', fontSize: '1rem', fontWeight: 500 }}>Google reviews connected successfully!</span>
+              </div>
+            )}
+
+            {verificationStatus === 'error' && (
+              <div style={{ padding: '1rem 1.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <i className="fas fa-exclamation-circle" style={{ color: '#dc2626', fontSize: '1.25rem' }}></i>
+                <span style={{ color: '#991b1b', fontSize: '1rem', fontWeight: 500 }}>Invalid Place ID. Please check and try again.</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: '3rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px' }}>
+            <h5 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+              Benefits of connecting Google Reviews:
+            </h5>
+            <ul style={{ margin: 0, paddingLeft: '1.5rem', color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.8 }}>
+              <li>Build trust with potential clients through authentic reviews</li>
+              <li>Display your star rating prominently on your profile</li>
+              <li>Showcase recent customer feedback automatically</li>
+              <li>Improve your visibility in search results</li>
+              <li>Stand out from competitors without reviews</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #fbbf24' }}>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <i className="fas fa-info-circle" style={{ color: '#d97706', fontSize: '1.25rem', flexShrink: 0 }}></i>
+            <div style={{ fontSize: '0.9rem', color: '#78350f', lineHeight: 1.6 }}>
+              <strong>Note:</strong> You can skip this step for now and set up Google Reviews later from your dashboard. However, displaying reviews helps build trust and credibility with potential clients.
+            </div>
+          </div>
         </div>
       </div>
     </div>

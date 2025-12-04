@@ -12,26 +12,31 @@
 .become-vendor-header {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 101;
   background-color: #ffffff;
   border-bottom: 1px solid #ebebeb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .become-vendor-header .header-content {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 1rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 1rem 2rem;
 }
 
 .become-vendor-header .logo {
   cursor: pointer;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .become-vendor-header .logo img {
-  height: 40px;
+  height: 50px;
   width: auto;
 }
 
@@ -59,12 +64,15 @@
 
 /* Progress Bar */
 .progress-container {
-  position: sticky;
+  position: fixed;
   top: 73px;
-  z-index: 99;
+  left: 0;
+  right: 0;
+  z-index: 100;
   width: 100%;
   height: 6px;
   background-color: #f3f4f6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .progress-bar {
@@ -83,6 +91,7 @@
   padding: 3rem 2rem 2rem;
   width: 100%;
   min-height: calc(100vh - 200px);
+  margin-top: 6px; /* Account for fixed progress bar */
 }
 
 .step-container {
@@ -200,7 +209,8 @@
 
 
 .btn-back,
-.btn-next {
+.btn-next,
+.btn-save {
   padding: 0.875rem 1.75rem;
   font-size: 1rem;
   font-weight: 600;
@@ -209,6 +219,10 @@
   transition: all 0.2s;
   border: none;
   min-width: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .btn-back {
@@ -226,16 +240,19 @@
   cursor: not-allowed;
 }
 
-.btn-next {
+.btn-next,
+.btn-save {
   background: #222222;
   color: #ffffff;
 }
 
-.btn-next:hover:not(:disabled) {
+.btn-next:hover:not(:disabled),
+.btn-save:hover:not(:disabled) {
   background: #000000;
 }
 
-.btn-next:disabled {
+.btn-next:disabled,
+.btn-save:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   background: #EBEBEB;
@@ -2103,4 +2120,11 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
   .features-grid-3col {
     grid-template-columns: 1fr;
   }
+}
+
+/* Prevent scrolling when modal is open */
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
 }
