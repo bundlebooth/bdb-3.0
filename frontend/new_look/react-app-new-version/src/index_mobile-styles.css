@@ -8827,7 +8827,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 /* ============================================
    7. VENDOR SECTION CARDS - Mobile 2-Column Grid (Same as main grid)
    ============================================ */
-@media (max-width: 768px) {
+@media screen and (max-width: 768px) {
     .vendor-section {
         margin-bottom: 1.5rem !important;
         padding: 0.75rem !important;
@@ -8892,43 +8892,49 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
     
     .vendor-section-scroll-container {
-        overflow: hidden !important;
+        overflow: visible !important;
         width: 100% !important;
     }
     
-    /* 2-COLUMN GRID - Same as main vendor grid */
-    .vendor-section-grid {
+    /* FORCE 2-COLUMN GRID */
+    .vendor-section .vendor-section-scroll-container .vendor-section-grid {
         display: grid !important;
         grid-template-columns: repeat(2, 1fr) !important;
         gap: 0.75rem !important;
         width: 100% !important;
         transform: none !important;
+        flex-wrap: wrap !important;
     }
     
-    /* Cards fill grid cells */
-    .vendor-section-card-wrapper {
+    /* FORCE Cards to fill grid cells */
+    .vendor-section .vendor-section-grid .vendor-section-card-wrapper {
         width: 100% !important;
-        min-width: unset !important;
-        max-width: unset !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
         flex: unset !important;
         display: block !important;
     }
     
     /* Limit to 4 cards visible (2 rows) */
-    .vendor-section-card-wrapper:nth-child(n+5) {
+    .vendor-section .vendor-section-grid .vendor-section-card-wrapper:nth-child(n+5) {
         display: none !important;
     }
     
-    /* Ensure vendor cards fill wrapper */
-    .vendor-section-card-wrapper .vendor-card {
+    /* FORCE vendor cards to fill wrapper */
+    .vendor-section-card-wrapper > .vendor-card,
+    .vendor-section-card-wrapper > div {
         width: 100% !important;
+        max-width: 100% !important;
     }
     
     /* Match vendor card image height to main grid */
     .vendor-section-card-wrapper .vendor-card .vendor-card-image,
-    .vendor-section-card-wrapper .vendor-card .card-image-container {
+    .vendor-section-card-wrapper .vendor-card .card-image-container,
+    .vendor-section-card-wrapper .vendor-card img {
         height: 140px !important;
         min-height: 140px !important;
+        max-height: 140px !important;
+        object-fit: cover !important;
     }
 }
 

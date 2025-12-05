@@ -169,63 +169,82 @@
 
 @media (max-width: 768px) {
   .vendor-section-title {
-    font-size: 1.25rem;
-    gap: 0.625rem;
-  }
-  
-  .vendor-section-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-  }
-  
-  .vendor-section-icon i {
     font-size: 1rem;
-  }
-  
-  .vendor-section-show-all {
-    font-size: 0.8125rem;
-  }
-  
-  .vendor-section-nav {
-    display: none;
-  }
-  
-  .vendor-section-grid {
-    gap: 0.875rem;
-  }
-  
-  .vendor-section-card-wrapper {
-    width: 240px;
-  }
-}
-
-@media (max-width: 480px) {
-  .vendor-section-title {
-    font-size: 1.125rem;
     gap: 0.5rem;
   }
   
   .vendor-section-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 7px;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
   }
   
   .vendor-section-icon i {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
   }
   
   .vendor-section-show-all {
     font-size: 0.75rem;
   }
   
-  .vendor-section-card-wrapper {
-    width: 240px;
+  .vendor-section-nav {
+    display: flex;
+  }
+  
+  /* MOBILE: 2-column grid layout */
+  .vendor-section-scroll-container {
+    overflow: visible;
   }
   
   .vendor-section-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
+    width: 100%;
+    transform: none !important;
+  }
+  
+  .vendor-section-card-wrapper {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex: unset;
+  }
+  
+  /* Limit to 4 cards (2 rows) */
+  .vendor-section-card-wrapper:nth-child(n+5) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .vendor-section-title {
+    font-size: 0.95rem;
+    gap: 0.5rem;
+  }
+  
+  .vendor-section-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+  }
+  
+  .vendor-section-icon i {
+    font-size: 0.7rem;
+  }
+  
+  .vendor-section-show-all {
+    font-size: 0.7rem;
+  }
+  
+  /* Keep 2-column grid on small screens */
+  .vendor-section-card-wrapper {
+    width: 100%;
+  }
+  
+  .vendor-section-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
   }
 }
 

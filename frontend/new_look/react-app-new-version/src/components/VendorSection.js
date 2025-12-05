@@ -27,6 +27,12 @@ function VendorSection({
   const calculateVisibleCount = () => {
     if (!scrollContainerRef.current) return 4;
     const containerWidth = scrollContainerRef.current.offsetWidth;
+    
+    // On mobile (768px or less), show 4 cards for 2x2 grid
+    if (window.innerWidth <= 768) {
+      return 4;
+    }
+    
     const cardWidth = 250; // Larger card size to match reference
     const gap = 16;
     // Less conservative margin to fit more cards

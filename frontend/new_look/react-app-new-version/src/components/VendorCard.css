@@ -1,0 +1,56 @@
+/* FORCE VendorCard Mobile Fixes - OVERRIDE ALL */
+@media (max-width: 768px) {
+  .vendor-card {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  
+  .vendor-card-content {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    padding: 10px 0 4px 0 !important;
+  }
+  
+  /* FORCE remove borders from ALL vendor card elements */
+  .vendor-card,
+  .vendor-card *,
+  .vendor-card > div,
+  .vendor-card > div > div,
+  .vendor-card-content,
+  .vendor-card-content > div {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* FORCE image container clean */
+  .vendor-card > div:first-child {
+    border: none !important;
+    outline: none !important;
+    border-radius: 12px !important;
+  }
+  
+  /* FORCE remove borders from image */
+  .vendor-card-image {
+    border: none !important;
+    outline: none !important;
+  }
+  
+  /* FORCE no borders on text elements */
+  .vendor-card-business-name,
+  .vendor-card div {
+    border: none !important;
+    outline: none !important;
+  }
+  
+  /* FORCE vendor grid to be clean */
+  .vendor-grid .vendor-card {
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
