@@ -1704,6 +1704,18 @@ function VendorProfilePage() {
       {/* Recommendations Section */}
       {renderRecommendations()}
       
+      {/* Mobile Sticky Booking Bar */}
+      <div className="sticky-booking-bar">
+        <div className="price-info">
+          <span className="price">
+            {profile?.StartingPrice ? `From $${profile.StartingPrice}` : 'Contact for pricing'}
+          </span>
+        </div>
+        <button className="book-btn" onClick={handleRequestBooking}>
+          Request to book
+        </button>
+      </div>
+      
       {/* Footer - No spacing */}
       <Footer />
       <MessagingWidget />

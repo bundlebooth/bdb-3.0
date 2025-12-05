@@ -8381,3 +8381,970 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
 }
 
+/* ============================================
+   MOBILE UI FIXES - Complete Overhaul
+   ============================================ */
+
+@media (max-width: 768px) {
+    /* ----------------------------------------
+       1. HEADER - Sign in button to the right
+       ---------------------------------------- */
+    .header {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 0.5rem 0.75rem !important;
+        gap: 0.5rem !important;
+        flex-wrap: nowrap !important;
+    }
+    
+    .header .logo {
+        flex: 0 0 auto !important;
+        order: 1 !important;
+    }
+    
+    .header .logo img {
+        height: 28px !important;
+    }
+    
+    .header .search-container {
+        flex: 1 1 auto !important;
+        order: 2 !important;
+        margin: 0 0.5rem !important;
+        min-width: 0 !important;
+        max-width: none !important;
+    }
+    
+    .header .user-nav {
+        flex: 0 0 auto !important;
+        order: 3 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+    }
+    
+    /* Hide non-essential nav items on mobile, keep profile button */
+    .header .user-nav .become-vendor-btn,
+    .header .user-nav .complete-profile-btn {
+        display: none !important;
+    }
+    
+    .header .user-nav .nav-icon {
+        display: none !important;
+    }
+    
+    /* Only show profile button */
+    .header .user-nav #profile-btn {
+        display: flex !important;
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 0.85rem !important;
+    }
+    
+    /* ----------------------------------------
+       2. SEARCH BAR - Compact & Aesthetic
+       ---------------------------------------- */
+    .enhanced-search-container {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+    
+    .enhanced-search-container .enhanced-search-bar {
+        max-width: 100% !important;
+        border-radius: 24px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        border: 1px solid #e0e0e0 !important;
+        background: #f7f7f7 !important;
+    }
+    
+    .enhanced-search-container .compact-view {
+        padding: 6px 6px 6px 12px !important;
+        gap: 0 !important;
+    }
+    
+    .enhanced-search-container .compact-field {
+        padding: 4px 8px !important;
+    }
+    
+    .enhanced-search-container .compact-value {
+        font-size: 13px !important;
+        color: #222 !important;
+        font-weight: 400 !important;
+    }
+    
+    .enhanced-search-container .compact-separator {
+        color: #ccc !important;
+        padding: 0 4px !important;
+        font-size: 12px !important;
+    }
+    
+    .enhanced-search-container .search-btn-compact {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 12px !important;
+        background: var(--primary, #5e72e4) !important;
+        flex-shrink: 0 !important;
+    }
+    
+    /* Expanded search bar on mobile - Compact professional design */
+    .enhanced-search-container.expanded .enhanced-search-bar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: 280px !important;
+        border-radius: 0 0 16px 16px !important;
+        z-index: 9999 !important;
+        background: white !important;
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 1rem !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .enhanced-search-container.expanded .expanded-view {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+        padding: 0 !important;
+        height: auto !important;
+    }
+    
+    .enhanced-search-container.expanded .search-field {
+        background: #f7f7f7 !important;
+        border-radius: 12px !important;
+        padding: 0.75rem 1rem !important;
+        border: 1px solid #e0e0e0 !important;
+        flex: 0 0 auto !important;
+    }
+    
+    .enhanced-search-container.expanded .search-field .field-label {
+        font-size: 11px !important;
+        margin-bottom: 2px !important;
+    }
+    
+    .enhanced-search-container.expanded .search-field .field-value,
+    .enhanced-search-container.expanded .search-field .field-input-wrapper input {
+        font-size: 14px !important;
+    }
+    
+    .enhanced-search-container.expanded .search-field.active {
+        border-color: var(--primary, #5e72e4) !important;
+        background: white !important;
+    }
+    
+    .enhanced-search-container.expanded .field-separator {
+        display: none !important;
+    }
+    
+    .enhanced-search-container.expanded .search-btn {
+        margin-top: 0.5rem !important;
+        width: 100% !important;
+        padding: 0.875rem !important;
+        border-radius: 12px !important;
+        font-size: 0.95rem !important;
+    }
+    
+    /* Backdrop when search is expanded */
+    .enhanced-search-container.expanded::before {
+        content: '' !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0, 0, 0, 0.4) !important;
+        z-index: -1 !important;
+    }
+    
+    /* ----------------------------------------
+       3. VENDOR CARDS - Clean, no borders
+       ---------------------------------------- */
+    .vendor-card {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        margin-bottom: 1.5rem !important;
+    }
+    
+    /* Image container */
+    .vendor-card > div:first-child {
+        border-radius: 12px !important;
+        overflow: hidden !important;
+    }
+    
+    /* Card content - no borders, clean text */
+    .vendor-card > div:last-child {
+        padding: 8px 0 0 0 !important;
+        border: none !important;
+        background: transparent !important;
+    }
+    
+    /* Business name link style */
+    .vendor-card .vendor-card-business-name {
+        font-size: 14px !important;
+        color: #0066CC !important;
+        font-weight: 400 !important;
+    }
+    
+    /* Price, rating, response time row */
+    .vendor-card > div:last-child > div:nth-child(2) {
+        font-size: 13px !important;
+        color: #222 !important;
+        border: none !important;
+        background: transparent !important;
+    }
+    
+    /* Location text */
+    .vendor-card > div:last-child > div:last-child {
+        font-size: 13px !important;
+        color: #222 !important;
+    }
+    
+    /* Vendor grid - 2 columns on mobile */
+    .vendor-grid,
+    .vendors-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 1rem !important;
+        padding: 0 !important;
+    }
+    
+    /* Single column on very small screens */
+    @media (max-width: 480px) {
+        .vendor-grid,
+        .vendors-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+    
+    /* ----------------------------------------
+       4. MAP - Show Map Button (Hidden by default)
+       ---------------------------------------- */
+    .map-sidebar {
+        display: none !important;
+    }
+    
+    .content-wrapper .map-sidebar {
+        display: none !important;
+    }
+    
+    /* Hide desktop map toggle */
+    .view-controls > div:last-child {
+        display: none !important;
+    }
+    
+    /* Main content full width on mobile */
+    .main-content {
+        width: 100% !important;
+        padding: 1rem !important;
+    }
+    
+    .content-wrapper {
+        flex-direction: column !important;
+    }
+    
+    /* Content header adjustments */
+    .content-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .content-header .results-title {
+        font-size: 1.25rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+    
+    .content-header .results-count {
+        font-size: 0.875rem !important;
+        color: #666 !important;
+    }
+    
+    .view-controls {
+        width: 100% !important;
+        display: flex !important;
+        gap: 0.5rem !important;
+        flex-wrap: wrap !important;
+    }
+    
+    .view-controls .filter-btn {
+        flex: 1 !important;
+        justify-content: center !important;
+    }
+    
+    .view-controls #sort-select {
+        flex: 1 !important;
+    }
+}
+
+/* ============================================
+   5. MOBILE MAP BUTTON - Floating "Show Map"
+   ============================================ */
+.mobile-map-button {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-map-button {
+        display: flex !important;
+        position: fixed !important;
+        bottom: 20px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        background: #222 !important;
+        color: white !important;
+        padding: 12px 20px !important;
+        border-radius: 24px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        align-items: center !important;
+        gap: 8px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        z-index: 100 !important;
+        border: none !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .mobile-map-button:hover {
+        background: #333 !important;
+        transform: translateX(-50%) scale(1.02) !important;
+    }
+    
+    .mobile-map-button i {
+        font-size: 14px !important;
+    }
+}
+
+/* ============================================
+   6. FULLSCREEN MAP OVERLAY (Mobile)
+   ============================================ */
+.mobile-map-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: white;
+    z-index: 99999;
+    flex-direction: column;
+}
+
+.mobile-map-overlay.active {
+    display: flex !important;
+}
+
+/* Close button floating on top of map */
+.mobile-map-overlay .map-header {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+.mobile-map-overlay .map-header h3 {
+    display: none;
+}
+
+.mobile-map-overlay .close-map-btn {
+    background: white;
+    border: none;
+    font-size: 20px;
+    color: #222;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: background 0.2s;
+}
+
+.mobile-map-overlay .close-map-btn:hover {
+    background: #f5f5f5;
+}
+
+/* Map takes full screen */
+.mobile-map-overlay .map-content {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.mobile-map-overlay .map-content > div {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+}
+
+/* Ensure MapView component fills container */
+.mobile-map-overlay .map-content .map-view-container,
+.mobile-map-overlay .map-content [class*="map"] {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Google Map specific */
+.mobile-map-overlay .map-content .gm-style {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Override MapView inline styles for fullscreen */
+.mobile-map-overlay .map-content > div[style] {
+    min-height: 100% !important;
+    height: 100% !important;
+}
+
+.mobile-map-overlay .map-content #map-view {
+    min-height: 100% !important;
+    height: 100% !important;
+}
+
+/* ============================================
+   7. VENDOR SECTION CARDS - Mobile 2-Column Grid (Same as main grid)
+   ============================================ */
+@media (max-width: 768px) {
+    .vendor-section {
+        margin-bottom: 1.5rem !important;
+        padding: 0.75rem !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .vendor-section-header {
+        padding: 0 !important;
+        margin-bottom: 0.75rem !important;
+        flex-wrap: nowrap !important;
+        gap: 0.5rem !important;
+    }
+    
+    .vendor-section-title {
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+    }
+    
+    .vendor-section-icon {
+        width: 22px !important;
+        height: 22px !important;
+    }
+    
+    .vendor-section-icon i {
+        font-size: 0.7rem !important;
+    }
+    
+    .vendor-section-description {
+        font-size: 0.75rem !important;
+        color: #666 !important;
+        display: none !important;
+    }
+    
+    /* Show navigation controls on mobile */
+    .vendor-section-controls {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+    }
+    
+    .vendor-section-nav {
+        display: flex !important;
+        gap: 0.35rem !important;
+    }
+    
+    .vendor-section-nav-btn {
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 50% !important;
+        border: 1px solid #ddd !important;
+        background: white !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 0.6rem !important;
+    }
+    
+    .vendor-section-show-all {
+        font-size: 0.75rem !important;
+    }
+    
+    .vendor-section-scroll-container {
+        overflow: hidden !important;
+        width: 100% !important;
+    }
+    
+    /* 2-COLUMN GRID - Same as main vendor grid */
+    .vendor-section-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem !important;
+        width: 100% !important;
+        transform: none !important;
+    }
+    
+    /* Cards fill grid cells */
+    .vendor-section-card-wrapper {
+        width: 100% !important;
+        min-width: unset !important;
+        max-width: unset !important;
+        flex: unset !important;
+        display: block !important;
+    }
+    
+    /* Limit to 4 cards visible (2 rows) */
+    .vendor-section-card-wrapper:nth-child(n+5) {
+        display: none !important;
+    }
+    
+    /* Ensure vendor cards fill wrapper */
+    .vendor-section-card-wrapper .vendor-card {
+        width: 100% !important;
+    }
+    
+    /* Match vendor card image height to main grid */
+    .vendor-section-card-wrapper .vendor-card .vendor-card-image,
+    .vendor-section-card-wrapper .vendor-card .card-image-container {
+        height: 140px !important;
+        min-height: 140px !important;
+    }
+}
+
+/* ============================================
+   8. CATEGORIES NAV - Mobile Compact
+   ============================================ */
+@media (max-width: 768px) {
+    .categories-nav {
+        padding: 0.5rem 0.75rem !important;
+        top: 45px !important;
+    }
+    
+    .categories-nav.scrolled {
+        top: 40px !important;
+    }
+    
+    .category-item {
+        padding: 0.4rem 0.6rem !important;
+        min-width: 50px !important;
+    }
+    
+    .category-item i {
+        font-size: 1.25rem !important;
+    }
+    
+    .category-item span {
+        font-size: 0.7rem !important;
+    }
+}
+
+/* ============================================
+   9. VENDOR PROFILE PAGE - Mobile Redesign
+   Like TagVenue reference: Full-width image, clean layout
+   ============================================ */
+
+/* Hide sticky booking bar on desktop */
+.sticky-booking-bar {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    /* Show sticky booking bar on mobile */
+    .sticky-booking-bar {
+        display: flex !important;
+    }
+    
+    /* Profile container - proper padding on mobile */
+    .profile-container {
+        padding: 0 1rem !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+    }
+    
+    /* Hide back button and breadcrumb on mobile */
+    .profile-container .back-button,
+    .profile-container .breadcrumb {
+        display: none !important;
+    }
+    
+    /* CRITICAL: Force single column layout on mobile */
+    .vendor-content-layout {
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: 1fr !important;
+        gap: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Main content column - full width with padding */
+    .vendor-content-layout > div:first-child {
+        width: 100% !important;
+        order: 1 !important;
+        padding: 0 !important;
+    }
+    
+    /* Sidebar - full width, below main content */
+    .vendor-sidebar {
+        width: 100% !important;
+        position: static !important;
+        order: 2 !important;
+        padding: 0 !important;
+        margin-top: 1rem !important;
+    }
+    
+    /* Business Hours - show as full-width section on mobile */
+    .vendor-sidebar .sidebar-card:first-child {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 0 1rem 0 !important;
+        padding: 1rem !important;
+        border: none !important;
+        border-top: 1px solid #ebebeb !important;
+        border-bottom: 1px solid #ebebeb !important;
+        border-radius: 0 !important;
+        background: white !important;
+    }
+    
+    /* Hide Request Booking sidebar card - using sticky bar instead */
+    .vendor-sidebar .sidebar-card:nth-child(2) {
+        display: none !important;
+    }
+    
+    /* Keep Message Vendor card visible */
+    .vendor-sidebar .sidebar-card:nth-child(3) {
+        margin-bottom: 1rem !important;
+        border-radius: 12px !important;
+    }
+    
+    /* Image Gallery - Full width carousel style (breaks out of padding) */
+    .image-gallery {
+        width: calc(100% + 2rem) !important;
+        height: 280px !important;
+        margin-left: -1rem !important;
+        margin-right: -1rem !important;
+        border-radius: 0 !important;
+        display: block !important;
+        position: relative !important;
+        overflow: hidden !important;
+    }
+    
+    .image-gallery > .gallery-item.large-image {
+        width: 100% !important;
+        height: 100% !important;
+        flex: none !important;
+        border-radius: 0 !important;
+    }
+    
+    .image-gallery > .gallery-item.large-image img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+    }
+    
+    /* Hide thumbnails on mobile - show only main image */
+    .image-gallery > .thumbnails-container {
+        display: none !important;
+    }
+    
+    /* Image counter badge */
+    .show-all-photos-btn {
+        position: absolute !important;
+        bottom: 12px !important;
+        right: 12px !important;
+        background: rgba(0, 0, 0, 0.7) !important;
+        color: white !important;
+        padding: 6px 12px !important;
+        border-radius: 6px !important;
+        font-size: 0.8rem !important;
+        border: none !important;
+    }
+    
+    /* Vendor Profile Header - Clean mobile layout */
+    .vendor-profile-header {
+        padding: 1rem !important;
+        margin-bottom: 0 !important;
+        border-bottom: none !important;
+        flex-direction: column !important;
+        gap: 0.5rem !important;
+    }
+    
+    .vendor-profile-info {
+        width: 100% !important;
+    }
+    
+    .vendor-profile-info h1 {
+        font-size: 1.35rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 0.25rem !important;
+        line-height: 1.3 !important;
+    }
+    
+    /* Category and type info */
+    .vendor-profile-info .vendor-category-type {
+        font-size: 0.9rem !important;
+        color: #008489 !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    /* Rating and reviews row */
+    .vendor-profile-info .vendor-rating-row {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        font-size: 0.9rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .vendor-profile-info .vendor-rating-row .rating-stars {
+        color: #222 !important;
+    }
+    
+    .vendor-profile-info .vendor-rating-row .review-count {
+        color: #008489 !important;
+        text-decoration: underline !important;
+    }
+    
+    /* Location row */
+    .vendor-profile-info .vendor-location-row {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.25rem !important;
+        font-size: 0.9rem !important;
+        color: #222 !important;
+    }
+    
+    .vendor-profile-info .vendor-location-row .show-map-link {
+        color: #008489 !important;
+        text-decoration: underline !important;
+        margin-left: 0.25rem !important;
+    }
+    
+    /* Hide action buttons on mobile header */
+    .vendor-profile-actions {
+        display: none !important;
+    }
+    
+    /* Main content layout - single column */
+    .profile-main-content {
+        display: flex !important;
+        flex-direction: column !important;
+        padding: 0 1rem !important;
+    }
+    
+    .profile-main-content .content-column {
+        width: 100% !important;
+        order: 1 !important;
+    }
+    
+    .profile-main-content .sidebar-column {
+        width: 100% !important;
+        order: 2 !important;
+        position: relative !important;
+    }
+    
+    /* Features/Amenities row - horizontal scroll */
+    .vendor-features-grid,
+    .amenities-grid {
+        display: flex !important;
+        overflow-x: auto !important;
+        gap: 1.5rem !important;
+        padding: 1rem 0 !important;
+        border-top: 1px solid #ebebeb !important;
+        border-bottom: 1px solid #ebebeb !important;
+        margin: 0 -1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+    
+    .vendor-features-grid::-webkit-scrollbar,
+    .amenities-grid::-webkit-scrollbar {
+        display: none !important;
+    }
+    
+    .vendor-feature-item,
+    .amenity-item {
+        flex: 0 0 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        min-width: 70px !important;
+    }
+    
+    .vendor-feature-item i,
+    .amenity-item i {
+        font-size: 1.25rem !important;
+        margin-bottom: 0.25rem !important;
+        color: #222 !important;
+    }
+    
+    .vendor-feature-item span,
+    .amenity-item span {
+        font-size: 0.75rem !important;
+        color: #222 !important;
+        white-space: nowrap !important;
+    }
+    
+    /* Content sections */
+    .content-section {
+        padding: 1.25rem 0 !important;
+        border-bottom: 1px solid #ebebeb !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .content-section h2 {
+        font-size: 1.1rem !important;
+        font-weight: 600 !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .content-section p {
+        font-size: 0.95rem !important;
+        line-height: 1.5 !important;
+        color: #222 !important;
+    }
+    
+    /* Pricing section - prominent display */
+    .pricing-section,
+    .sidebar-card.pricing-card {
+        background: #f7f7f7 !important;
+        border-radius: 12px !important;
+        padding: 1.25rem !important;
+        margin: 1rem 0 !important;
+    }
+    
+    .pricing-row {
+        display: flex !important;
+        justify-content: space-around !important;
+        gap: 1rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .pricing-item {
+        text-align: center !important;
+    }
+    
+    .pricing-item .price {
+        font-size: 1.5rem !important;
+        font-weight: 600 !important;
+        color: #222 !important;
+    }
+    
+    .pricing-item .price-label {
+        font-size: 0.85rem !important;
+        color: #717171 !important;
+    }
+    
+    /* Request to Book button - sticky at bottom */
+    .sticky-booking-bar {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        background: white !important;
+        padding: 1rem !important;
+        border-top: 1px solid #ebebeb !important;
+        z-index: 100 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 1rem !important;
+    }
+    
+    .sticky-booking-bar .price-info {
+        font-size: 0.9rem !important;
+    }
+    
+    .sticky-booking-bar .price-info .price {
+        font-weight: 600 !important;
+    }
+    
+    .sticky-booking-bar .book-btn {
+        background: #5e72e4 !important;
+        color: white !important;
+        padding: 0.875rem 1.5rem !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        border: none !important;
+        flex-shrink: 0 !important;
+    }
+    
+    /* Hide desktop sidebar booking card */
+    .sidebar-column .sidebar-card:first-child {
+        display: none !important;
+    }
+    
+    /* Services section */
+    .services-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    
+    .service-package-card {
+        padding: 1rem !important;
+        border: 1px solid #ebebeb !important;
+        border-radius: 12px !important;
+    }
+    
+    /* Reviews section */
+    .reviews-section {
+        padding: 1.25rem 0 !important;
+    }
+    
+    .review-card {
+        padding: 1rem 0 !important;
+        border-bottom: 1px solid #ebebeb !important;
+    }
+    
+    /* Map section */
+    .map-section {
+        margin: 0 -1rem !important;
+        padding: 1.25rem 1rem !important;
+    }
+    
+    .map-section .map-container {
+        height: 200px !important;
+        border-radius: 12px !important;
+        overflow: hidden !important;
+    }
+    
+    /* Recommendations section */
+    .recommendations-section {
+        padding: 1.25rem 0 !important;
+    }
+    
+    .recommendations-section h2 {
+        font-size: 1.1rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Add padding at bottom for sticky bar */
+    .profile-container {
+        padding-bottom: 80px !important;
+    }
+}
+

@@ -38,6 +38,7 @@ function IndexPage() {
   const [dashboardSection, setDashboardSection] = useState('dashboard');
   const [loadingMore, setLoadingMore] = useState(false);
   const [sortBy, setSortBy] = useState('recommended');
+  const [mobileMapOpen, setMobileMapOpen] = useState(false); // Mobile fullscreen map
   
   // Vendor discovery sections state
   const [discoverySections, setDiscoverySections] = useState([]);
@@ -1004,6 +1005,41 @@ function IndexPage() {
         </aside>
         </div>
       </div>
+      
+      {/* Mobile Map Button - Floating */}
+      <button 
+        className="mobile-map-button"
+        onClick={() => setMobileMapOpen(true)}
+      >
+        <i className="fas fa-map"></i>
+        <span>Show map</span>
+      </button>
+      
+      {/* Mobile Fullscreen Map Overlay */}
+      <div className={`mobile-map-overlay ${mobileMapOpen ? 'active' : ''}`}>
+        <div className="map-header">
+          <button 
+            className="close-map-btn"
+            onClick={() => setMobileMapOpen(false)}
+            aria-label="Close map"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="map-content">
+          <MapView 
+            vendors={filteredVendors} 
+            onVendorSelect={(vendor) => {
+              setMobileMapOpen(false);
+              handleVendorSelectFromMap(vendor);
+            }} 
+            selectedVendorId={selectedVendorId}
+            loading={loading}
+            userLocation={userLocation}
+          />
+        </div>
+      </div>
+      
       <Footer />
       <MessagingWidget />
     </div>

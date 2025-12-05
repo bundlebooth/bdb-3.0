@@ -64,7 +64,6 @@ html {
     flex: 1;
     width: 100% !important;
     min-height: calc(100vh - 200px);
-    border: 5px solid red !important;
 }
 
 .content-wrapper .main-content {
@@ -72,17 +71,15 @@ html {
     width: 65% !important;
     min-width: 0; /* Allows flex item to shrink */
     padding: 2rem !important;
-    background-color: yellow !important;
-    border: 3px solid green !important;
+    background-color: white !important;
 }
 
 .content-wrapper .map-sidebar {
     width: 35% !important;
     flex-shrink: 0 !important;
-    background-color: lightblue !important;
+    background-color: #f8f9fa !important;
     border-left: 1px solid #e5e7eb;
     min-height: 400px !important;
-    border: 3px solid purple !important;
 }
 
 /* Header */
