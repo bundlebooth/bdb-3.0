@@ -1467,7 +1467,7 @@ function VendorProfilePage() {
         <VendorGallery images={images} />
 
         {/* Main Layout Grid - Sidebar starts at vendor name level */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 304px', gap: '4.75rem', marginTop: '1.5rem' }}>
+        <div className="vendor-profile-layout">
           {/* Left Column - Vendor Info + Content */}
           <div>
             {/* Vendor Title and Rating */}
