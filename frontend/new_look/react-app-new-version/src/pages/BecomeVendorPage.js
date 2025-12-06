@@ -661,8 +661,17 @@ const BecomeVendorPage = () => {
     setCurrentUser(userData);
     window.currentUser = userData;
     
-    // Move to next step
-    setCurrentStep(1);
+    // If user is an existing vendor with a profile, stay on step 0 (welcome)
+    // to let the useEffect fetch their data and show the progress indicators
+    // This matches the behavior of "Complete Profile Setup" button
+    if (userData.isVendor && userData.vendorProfileId) {
+      console.log('Existing vendor logged in, staying on welcome step to load profile data');
+      setCurrentStep(0);
+      // The useEffect will fetch vendor data and show progress indicators
+    } else {
+      // New vendor - move to next step (categories)
+      setCurrentStep(1);
+    }
   };
 
   const handleNext = () => {
@@ -1019,13 +1028,16 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
   });
   const [loading, setLoading] = useState(false);
 
+  // Check if user is an existing vendor (either from state or from currentUser data)
+  const isVendorWithProfile = isExistingVendor || (currentUser?.isVendor && currentUser?.vendorProfileId);
+
   if (currentUser) {
     return (
       <div className="account-step">
         <div style={{ padding: '2rem 1rem' }}>
 
           {/* Section Progress Indicators */}
-          {isExistingVendor && steps && (
+          {isVendorWithProfile && steps && (
             <div style={{
               display: 'flex',
               gap: '12px',
@@ -1130,7 +1142,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
             </div>
           )}
 
-          {!isExistingVendor && (
+          {!isVendorWithProfile && (
             <div style={{ textAlign: 'center', padding: '2rem 0' }}>
               <div style={{ 
                 display: 'inline-flex',
@@ -1213,15 +1225,18 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
       // Store token
       localStorage.setItem('token', data.token);
       
-      // Create user object
+      // Create user object - check if user is already a vendor from API response
+      const existingVendorProfileId = data.vendorProfileId || data.user?.vendorProfileId;
+      const isExistingVendor = data.isVendor || data.user?.isVendor || !!existingVendorProfileId;
+      
       const userData = {
         id: data.userId || data.user?.id,
         userId: data.userId || data.user?.id,
         name: accountData.name || data.user?.name || data.name,
         email: accountData.email || data.user?.email || data.email,
-        userType: 'vendor',
-        isVendor: true,
-        vendorProfileId: data.vendorProfileId || data.user?.vendorProfileId
+        userType: isExistingVendor ? 'vendor' : 'client',
+        isVendor: isExistingVendor,
+        vendorProfileId: existingVendorProfileId
       };
       
       // Store user session
