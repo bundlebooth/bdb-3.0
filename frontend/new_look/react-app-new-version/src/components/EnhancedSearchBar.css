@@ -185,6 +185,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  position: relative;
 }
 
 .field-input-wrapper input {
@@ -505,16 +506,12 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
 @media (max-width: 768px) {
   .enhanced-search-container {
     max-width: 100%;
-    padding: 0 12px;
+    padding: 0 16px;
   }
   
+  /* Keep compact view as pill style - no changes needed, use default styles */
   .enhanced-search-container .enhanced-search-bar {
     max-width: 100%;
-  }
-  
-  .enhanced-search-container.expanded .enhanced-search-bar {
-    max-width: 100%;
-    border-radius: 24px;
   }
   
   .compact-view {
@@ -529,16 +526,53 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
     font-size: 13px;
   }
   
+  .compact-field-icon {
+    display: none;
+  }
+  
+  .compact-field::before {
+    display: none;
+  }
+  
+  /* Only expanded view gets the stacked mobile layout */
+  .enhanced-search-container.expanded .enhanced-search-bar {
+    max-width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+    background: transparent;
+  }
+  
   .expanded-view {
     flex-direction: column;
-    padding: 12px;
-    gap: 8px;
+    padding: 0;
+    gap: 12px;
+    background: transparent;
   }
   
   .search-field {
     width: 100%;
-    padding: 12px 16px;
-    border-radius: 12px;
+    padding: 14px 18px;
+    border-radius: 16px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  
+  .search-field:hover {
+    background: white;
+  }
+  
+  .search-field.active {
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  
+  .field-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #4361ee;
+    margin-bottom: 4px;
   }
   
   .field-separator {
@@ -547,9 +581,16 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
   
   .search-btn {
     width: 100%;
-    padding: 14px 24px;
-    border-radius: 30px;
+    padding: 16px 24px;
+    border-radius: 50px;
     margin-top: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    background: #4361ee;
+  }
+  
+  .search-btn:hover {
+    background: #3451de;
   }
   
   .search-btn-text {
@@ -557,11 +598,24 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
   }
   
   .field-input-wrapper input {
-    font-size: 16px; /* Prevent zoom on iOS */
+    font-size: 15px; /* Prevent zoom on iOS */
+    color: #666;
+  }
+  
+  .field-input-wrapper input::placeholder {
+    color: #666;
   }
   
   .field-value {
-    font-size: 16px;
+    font-size: 15px;
+    color: #666;
+  }
+  
+  .use-location-btn {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
   }
 }
 
@@ -570,12 +624,16 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
     padding: 0 16px;
   }
   
-  .search-field {
-    padding: 12px 16px;
+  .compact-field {
+    padding: 14px 18px;
   }
   
-  .field-header {
-    font-size: 11px;
+  .search-field {
+    padding: 14px 18px;
+  }
+  
+  .field-label {
+    font-size: 12px;
   }
   
   .field-content input,
@@ -584,8 +642,8 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
   }
   
   .search-btn {
-    padding: 14px;
-    font-size: 15px;
+    padding: 16px;
+    font-size: 16px;
   }
 }
 
@@ -626,4 +684,38 @@ body:not(:has(.enhanced-search-container.expanded)) .pac-container {
 
 .dropdown-menu::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+/* Backdrop overlay for mobile search */
+.search-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .search-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
+    z-index: 100;
+    animation: fadeIn 0.2s ease;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  .enhanced-search-container.expanded {
+    position: relative;
+    z-index: 102;
+    padding-top: 20px;
+  }
 }

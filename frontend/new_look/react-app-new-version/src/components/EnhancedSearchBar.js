@@ -366,11 +366,14 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   };
 
   return (
-    <div 
-      className={`enhanced-search-container ${isScrolled ? 'scrolled' : ''} ${isExpanded ? 'expanded' : ''}`}
-      ref={searchBarRef}
-    >
-      <div className="enhanced-search-bar">
+    <>
+      {/* Backdrop overlay for mobile */}
+      {isExpanded && <div className="search-backdrop" onClick={() => setIsExpanded(false)} />}
+      <div 
+        className={`enhanced-search-container ${isScrolled ? 'scrolled' : ''} ${isExpanded ? 'expanded' : ''}`}
+        ref={searchBarRef}
+      >
+        <div className="enhanced-search-bar">
         {/* Compact View (collapsed state) */}
         {!isExpanded ? (
           <div className="compact-view" onClick={handleSearchBarClick}>
@@ -454,7 +457,8 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
