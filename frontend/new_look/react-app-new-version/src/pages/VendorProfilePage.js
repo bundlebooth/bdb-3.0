@@ -457,9 +457,9 @@ function VendorProfilePage() {
         <h2>What this place offers</h2>
         <div>
           {Object.keys(categorizedFeatures).map((categoryName, index) => (
-            <div key={index} style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '2rem', padding: '1.5rem 0', borderBottom: '1px solid #ebebeb', alignItems: 'start' }}>
+            <div key={index} style={{ display: 'grid', gridTemplateColumns: '180px 1fr', gap: '2rem', padding: '1.5rem 0', borderBottom: '1px solid #ebebeb', alignItems: 'start' }} className="vendor-feature-row">
               <div style={{ fontSize: '1rem', fontWeight: 600, color: '#222' }}>{categoryName}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem 1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem 1.5rem' }} className="vendor-feature-grid">
                 {categorizedFeatures[categoryName].map((feature, idx) => (
                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
                     <i className={`fas fa-${getFeatureIcon(feature.FeatureName, categoryName)}`} style={{ width: '14px', height: '14px', fontSize: '0.75rem', color: '#717171', flexShrink: 0 }}></i>

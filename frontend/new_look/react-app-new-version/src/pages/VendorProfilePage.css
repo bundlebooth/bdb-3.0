@@ -912,6 +912,19 @@
         box-sizing: border-box;
     }
     
+    /* Vendor features section - keep 2-column layout but wrap features */
+    .vendor-feature-row {
+        grid-template-columns: 140px 1fr !important;
+        gap: 1rem !important;
+    }
+    
+    .vendor-feature-grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        grid-template-columns: unset !important;
+        gap: 0.75rem 1.5rem !important;
+    }
+    
     /* Portfolio grid responsive */
     .portfolio-grid {
         grid-template-columns: 1fr;
