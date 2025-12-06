@@ -199,17 +199,13 @@ function IndexPage() {
       return true;
     });
     
-    console.log('✨ Filtered vendors count:', filtered.length);
     setFilteredVendors(filtered);
     setCurrentPage(1); // Reset to first page (line 26112)
   }, [currentCategory, filters.location, userLocation]);
 
   const loadVendors = useCallback(async (append = false) => {
     // Prevent concurrent API calls
-    if (isLoadingRef.current) {
-      console.log('⏭️ Skipping loadVendors - already loading');
-      return;
-    }
+    if (isLoadingRef.current) return;
     
     isLoadingRef.current = true;
     
@@ -362,7 +358,6 @@ function IndexPage() {
           byId.set(String(key || Math.random()), v);
         }
         updatedVendors = Array.from(byId.values());
-        console.log('🔄 Appending vendors. Before:', vendors.length, 'After merge:', merged.length, 'After dedupe:', updatedVendors.length);
         setVendors(updatedVendors);
         setServerPageNumber(nextPage);
       } else {
@@ -372,7 +367,7 @@ function IndexPage() {
       }
       setServerTotalCount(totalCount);
       
-      // Apply client-side filters (line 26297)
+      // Apply client-side filters
       applyClientSideFiltersInternal(updatedVendors);
     } catch (error) {
       console.error('❌ Error loading vendors:', error);
@@ -387,11 +382,9 @@ function IndexPage() {
 
   const initializePage = useCallback(async () => {
     if (hasLoadedOnce.current) {
-      console.log('⏭️ Skipping initializePage - already initialized');
       return; // Prevent duplicate initialization
     }
     hasLoadedOnce.current = true;
-    console.log('🚀 Initializing page...');
     
     tryGetUserLocation();
     if (currentUser) {
@@ -399,8 +392,7 @@ function IndexPage() {
     }
     await loadDiscoverySections();
     await loadVendors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadDiscoverySections, loadVendors, tryGetUserLocation, loadFavorites, currentUser]);
 
   // Load filters from URL on mount
   useEffect(() => {
@@ -660,7 +652,9 @@ function IndexPage() {
   const handleViewVendor = useCallback((vendorId) => navigate(`/vendor/${vendorId}`), [navigate]);
 
   const handleHighlightVendor = useCallback((vendorId, highlight) => {
-    if (window.highlightMapMarker) window.highlightMapMarker(vendorId, highlight);
+    if (window.highlightMapMarker) {
+      window.highlightMapMarker(vendorId, highlight);
+    }
   }, []);
 
   const handleVendorSelectFromMap = useCallback((vendorId) => {

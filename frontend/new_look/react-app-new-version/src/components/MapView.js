@@ -473,6 +473,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     });
 
     console.log('📍 Total markers added:', markersRef.current.length);
+    console.log('📍 Marker vendor IDs:', markersRef.current.map(m => m.vendorId));
 
     // Fit map to markers
     if (hasValidMarkers) {
@@ -565,7 +566,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     }
   }, [userLocation, userCity]);
 
-  const highlightMarker = useCallback((vendorId) => {
+  const highlightMarker = useCallback((vendorId, shouldAnimate = false) => {
     const greyIcon = createMarkerIcon('#9CA3AF', false);
     const blueIcon = createMarkerIcon('#5E72E4', true);
     
@@ -576,8 +577,11 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
           scaledSize: new window.google.maps.Size(28, 42),
           anchor: new window.google.maps.Point(14, 42)
         });
-        marker.setAnimation(window.google.maps.Animation.BOUNCE);
-        setTimeout(() => marker.setAnimation(null), 2000);
+        // Only animate if explicitly requested (e.g., when clicking from list)
+        if (shouldAnimate) {
+          marker.setAnimation(window.google.maps.Animation.BOUNCE);
+          setTimeout(() => marker.setAnimation(null), 2000);
+        }
       } else {
         marker.setIcon({
           url: greyIcon,
@@ -598,9 +602,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
 
   // Update markers when vendors change
   useEffect(() => {
-    if (!mapLoaded || vendors.length === 0) {
-      return;
-    }
+    if (!mapLoaded || vendors.length === 0) return;
     
     // Check if vendors actually changed to prevent unnecessary updates
     const vendorsChanged = vendors.length !== previousVendorsRef.current.length ||
@@ -609,7 +611,10 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
         return !prev || (v.VendorProfileID || v.id) !== (prev.VendorProfileID || prev.id);
       });
     
-    if (vendorsChanged) {
+    // Also update if we have vendors but no markers (initial load case)
+    const needsInitialMarkers = vendors.length > 0 && markersRef.current.length === 0;
+    
+    if (vendorsChanged || needsInitialMarkers) {
       previousVendorsRef.current = vendors;
       updateMarkers();
     }
@@ -617,7 +622,7 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
 
   useEffect(() => {
     if (mapLoaded && selectedVendorId) {
-      highlightMarker(selectedVendorId);
+      highlightMarker(selectedVendorId, true); // Animate when selected from map
     }
   }, [selectedVendorId, mapLoaded, highlightMarker]);
 
@@ -629,27 +634,70 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
   }, [userLocation, mapLoaded, updateUserLocationMarker]);
 
   // Expose highlight function globally for card hover
+  // Use a registry pattern to support multiple MapView instances (desktop + mobile)
   useEffect(() => {
+    if (!window._mapViewInstances) {
+      window._mapViewInstances = [];
+    }
+    
+    const instanceId = Math.random().toString(36).substr(2, 9);
+    const instance = {
+      id: instanceId,
+      markersRef: markersRef,
+      createMarkerIcon: createMarkerIcon
+    };
+    
+    window._mapViewInstances.push(instance);
+    
+    // Global function that updates markers on ALL map instances
     window.highlightMapMarker = (vendorId, highlight) => {
-      if (highlight) {
-        highlightMarker(vendorId);
-      } else {
-        // Reset all markers to grey
-        const greyIcon = createMarkerIcon('#9CA3AF', false);
-        markersRef.current.forEach(marker => {
-          marker.setIcon({
-            url: greyIcon,
-            scaledSize: new window.google.maps.Size(20, 30),
-            anchor: new window.google.maps.Point(10, 30)
+      if (!window.google) return;
+      
+      window._mapViewInstances.forEach((inst) => {
+        const markers = inst.markersRef?.current;
+        if (!markers || markers.length === 0) return;
+        
+        const greyIcon = inst.createMarkerIcon('#9CA3AF', false);
+        const blueIcon = inst.createMarkerIcon('#5E72E4', true);
+        
+        if (highlight) {
+          markers.forEach(marker => {
+            if (String(marker.vendorId) === String(vendorId)) {
+              marker.setIcon({
+                url: blueIcon,
+                scaledSize: new window.google.maps.Size(28, 42),
+                anchor: new window.google.maps.Point(14, 42)
+              });
+            } else {
+              marker.setIcon({
+                url: greyIcon,
+                scaledSize: new window.google.maps.Size(20, 30),
+                anchor: new window.google.maps.Point(10, 30)
+              });
+            }
           });
-        });
-      }
+        } else {
+          markers.forEach(marker => {
+            marker.setIcon({
+              url: greyIcon,
+              scaledSize: new window.google.maps.Size(20, 30),
+              anchor: new window.google.maps.Point(10, 30)
+            });
+          });
+        }
+      });
     };
 
     return () => {
-      delete window.highlightMapMarker;
+      if (window._mapViewInstances) {
+        window._mapViewInstances = window._mapViewInstances.filter(inst => inst.id !== instanceId);
+      }
+      if (window._mapViewInstances?.length === 0) {
+        delete window.highlightMapMarker;
+        delete window._mapViewInstances;
+      }
     };
-  }, [highlightMarker, createMarkerIcon]);
+  }, [createMarkerIcon]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '500px' }}>
