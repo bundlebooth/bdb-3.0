@@ -102,10 +102,14 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
       </button>
       <div className="dashboard-card">
         <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', fontSize: '1.1rem' }}>
-            <i className="fab fa-stripe"></i>
+          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" 
+              alt="Stripe" 
+              style={{ width: '20px', height: '20px', objectFit: 'contain' }}
+            />
           </span>
-          Stripe Connect
+          Stripe Setup
         </h2>
         <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
           Connect your Stripe account to accept payments from customers.
@@ -114,112 +118,200 @@ function StripeSetupPanel({ onBack, vendorProfileId }) {
 
         {!stripeStatus.connected ? (
           <div>
-            <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-              <div style={{ 
-                width: '80px', 
-                height: '80px', 
-                margin: '0 auto 1.5rem', 
-                borderRadius: '50%', 
-                background: '#635bff', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center' 
-              }}>
-                <i className="fab fa-stripe" style={{ fontSize: '2.5rem', color: 'white' }}></i>
+            {/* Status Card */}
+            <div style={{ 
+              background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)', 
+              border: '1px solid #e5e7eb', 
+              borderRadius: 'var(--radius)', 
+              padding: '1.5rem', 
+              marginBottom: '1.5rem' 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ 
+                  width: '48px', 
+                  height: '48px', 
+                  borderRadius: '50%', 
+                  background: '#f3f4f6', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <i className="fas fa-link" style={{ fontSize: '1.25rem', color: '#9ca3af' }}></i>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#374151' }}>
+                    Not Connected
+                  </h4>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                    Connect your Stripe account to start accepting payments
+                  </p>
+                </div>
               </div>
-              <h3 style={{ marginBottom: '1rem' }}>Connect with Stripe</h3>
-              <p style={{ color: 'var(--text-light)', marginBottom: '2rem', maxWidth: '500px', margin: '0 auto 2rem' }}>
-                Stripe is a secure payment processor that allows you to accept credit cards, debit cards, and other payment methods. 
-                Setting up takes just a few minutes.
-              </p>
-              <button className="btn btn-primary" onClick={handleConnectStripe} style={{ fontSize: '1.1rem', padding: '0.75rem 2rem' }}>
-                <i className="fab fa-stripe" style={{ marginRight: '0.5rem' }}></i>
-                Connect Stripe Account
-              </button>
             </div>
 
-            <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f9fafb', borderRadius: 'var(--radius)' }}>
-              <h4 style={{ marginBottom: '1rem', fontSize: '1rem' }}>Why connect Stripe?</h4>
-              <ul style={{ margin: 0, paddingLeft: '1.5rem', color: 'var(--text-light)' }}>
-                <li style={{ marginBottom: '0.5rem' }}>Accept payments directly through the platform</li>
-                <li style={{ marginBottom: '0.5rem' }}>Secure and PCI-compliant payment processing</li>
-                <li style={{ marginBottom: '0.5rem' }}>Automatic payouts to your bank account</li>
-                <li style={{ marginBottom: '0.5rem' }}>Support for multiple payment methods</li>
-                <li>Detailed transaction reporting</li>
-              </ul>
+            {/* Features Grid */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(2, 1fr)', 
+              gap: '1rem',
+              marginBottom: '1.5rem'
+            }}>
+              <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <i className="fas fa-credit-card" style={{ color: '#635bff', marginTop: '2px' }}></i>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>Accept Payments</p>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>Credit cards, debit cards & more</p>
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <i className="fas fa-shield-alt" style={{ color: '#635bff', marginTop: '2px' }}></i>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>Secure & PCI Compliant</p>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>Industry-standard security</p>
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <i className="fas fa-university" style={{ color: '#635bff', marginTop: '2px' }}></i>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>Automatic Payouts</p>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>Direct to your bank account</p>
+                </div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                <i className="fas fa-chart-line" style={{ color: '#635bff', marginTop: '2px' }}></i>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>Transaction Reports</p>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>Detailed analytics & insights</p>
+                </div>
+              </div>
             </div>
+
+            {/* Connect Button */}
+            <button 
+              onClick={handleConnectStripe} 
+              style={{ 
+                padding: '0.75rem 2rem',
+                background: '#635bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.95rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <img 
+                src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" 
+                alt="Stripe" 
+                style={{ width: '16px', height: '16px', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
+              />
+              Connect Stripe Account
+            </button>
+            <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.75rem', lineHeight: '1.5' }}>
+              You'll be redirected to Stripe to complete the setup process.
+            </p>
           </div>
         ) : (
           <div>
-            {stripeStatus.detailsSubmitted ? (
-              <div style={{ padding: '2rem', background: '#f0fdf4', borderRadius: 'var(--radius)', border: '1px solid #86efac', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                  <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: '#16a34a' }}></i>
-                  <div>
-                    <h3 style={{ margin: 0, color: '#16a34a' }}>Stripe Connected</h3>
-                    <p style={{ margin: '0.25rem 0 0', color: '#15803d', fontSize: '0.9rem' }}>
-                      Your Stripe account is active and ready to receive payments
-                    </p>
-                  </div>
+            {/* Status Card */}
+            <div style={{ 
+              background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)', 
+              border: `1px solid ${stripeStatus.detailsSubmitted ? '#86efac' : '#fbbf24'}`, 
+              borderRadius: 'var(--radius)', 
+              padding: '1.5rem', 
+              marginBottom: '1.5rem' 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ 
+                  width: '48px', 
+                  height: '48px', 
+                  borderRadius: '50%', 
+                  background: stripeStatus.detailsSubmitted ? '#dcfce7' : '#fef3c7', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <i className={`fas ${stripeStatus.detailsSubmitted ? 'fa-check-circle' : 'fa-exclamation-triangle'}`} 
+                     style={{ fontSize: '1.25rem', color: stripeStatus.detailsSubmitted ? '#16a34a' : '#d97706' }}></i>
                 </div>
-              </div>
-            ) : (
-              <div style={{ padding: '2rem', background: '#fef3c7', borderRadius: 'var(--radius)', border: '1px solid #fbbf24', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                  <i className="fas fa-exclamation-triangle" style={{ fontSize: '2rem', color: '#d97706' }}></i>
-                  <div>
-                    <h3 style={{ margin: 0, color: '#d97706' }}>Setup Incomplete</h3>
-                    <p style={{ margin: '0.25rem 0 0', color: '#92400e', fontSize: '0.9rem' }}>
-                      You need to complete your Stripe account setup to accept payments
-                    </p>
-                  </div>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: stripeStatus.detailsSubmitted ? '#16a34a' : '#d97706' }}>
+                    {stripeStatus.detailsSubmitted ? 'Connected' : 'Setup Incomplete'}
+                  </h4>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                    {stripeStatus.detailsSubmitted 
+                      ? 'Your Stripe account is active and ready to receive payments' 
+                      : 'Complete your Stripe setup to start accepting payments'}
+                  </p>
                 </div>
-              </div>
-            )}
-
-            <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#f9fafb', borderRadius: 'var(--radius)' }}>
-                <span style={{ fontWeight: 500 }}>Account ID:</span>
-                <span style={{ fontFamily: 'monospace', color: 'var(--text-light)' }}>{stripeStatus.accountId}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#f9fafb', borderRadius: 'var(--radius)' }}>
-                <span style={{ fontWeight: 500 }}>Details Submitted:</span>
-                <span style={{ color: stripeStatus.detailsSubmitted ? '#16a34a' : '#dc2626' }}>
-                  {stripeStatus.detailsSubmitted ? '✓ Yes' : '✗ No'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#f9fafb', borderRadius: 'var(--radius)' }}>
-                <span style={{ fontWeight: 500 }}>Charges Enabled:</span>
-                <span style={{ color: stripeStatus.chargesEnabled ? '#16a34a' : '#dc2626' }}>
-                  {stripeStatus.chargesEnabled ? '✓ Yes' : '✗ No'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#f9fafb', borderRadius: 'var(--radius)' }}>
-                <span style={{ fontWeight: 500 }}>Payouts Enabled:</span>
-                <span style={{ color: stripeStatus.payoutsEnabled ? '#16a34a' : '#dc2626' }}>
-                  {stripeStatus.payoutsEnabled ? '✓ Yes' : '✗ No'}
-                </span>
               </div>
             </div>
 
-            <button className="btn btn-primary" onClick={handleManageStripe}>
-              <i className="fas fa-external-link-alt" style={{ marginRight: '0.5rem' }}></i>
+            {/* Account Details Grid */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(2, 1fr)', 
+              gap: '1rem',
+              marginBottom: '1.5rem'
+            }}>
+              <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.25rem' }}>Account ID</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: '#374151', fontFamily: 'monospace' }}>
+                  {stripeStatus.accountId?.slice(0, 12)}...
+                </p>
+              </div>
+              <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.25rem' }}>Details Submitted</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: stripeStatus.detailsSubmitted ? '#16a34a' : '#dc2626' }}>
+                  {stripeStatus.detailsSubmitted ? '✓ Complete' : '✗ Incomplete'}
+                </p>
+              </div>
+              <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.25rem' }}>Charges Enabled</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: stripeStatus.chargesEnabled ? '#16a34a' : '#dc2626' }}>
+                  {stripeStatus.chargesEnabled ? '✓ Enabled' : '✗ Disabled'}
+                </p>
+              </div>
+              <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.25rem' }}>Payouts Enabled</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, color: stripeStatus.payoutsEnabled ? '#16a34a' : '#dc2626' }}>
+                  {stripeStatus.payoutsEnabled ? '✓ Enabled' : '✗ Disabled'}
+                </p>
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <button 
+              onClick={handleManageStripe}
+              style={{ 
+                padding: '0.75rem 2rem',
+                background: '#635bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '0.95rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fas fa-external-link-alt"></i>
               {stripeStatus.detailsSubmitted ? 'Manage Stripe Account' : 'Complete Stripe Setup'}
             </button>
-            
-            {!stripeStatus.detailsSubmitted && (
-              <div style={{ marginTop: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: 'var(--radius)', fontSize: '0.9rem', color: 'var(--text-light)' }}>
-                <p style={{ margin: 0 }}>
-                  <strong>Next steps:</strong> Click the button above to open your Stripe dashboard and complete the following:
-                </p>
-                <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.5rem' }}>
-                  <li>Verify your business information</li>
-                  <li>Add your bank account details</li>
-                  <li>Complete identity verification</li>
-                  <li>Submit tax information (if required)</li>
-                </ul>
-              </div>
-            )}
+            <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.75rem', lineHeight: '1.5' }}>
+              {stripeStatus.detailsSubmitted 
+                ? 'View your Stripe dashboard to manage payouts and settings.'
+                : 'You\'ll be redirected to Stripe to complete the remaining steps.'}
+            </p>
           </div>
         )}
       </div>

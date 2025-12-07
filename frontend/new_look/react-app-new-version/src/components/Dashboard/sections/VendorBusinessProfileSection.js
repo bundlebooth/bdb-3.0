@@ -57,7 +57,7 @@ function VendorBusinessProfileSection() {
     { id: 'vendor-faqs-panel', icon: 'fa-question-circle', title: 'FAQs', description: 'Create frequently asked questions' },
     { id: 'vendor-availability-panel', icon: 'fa-clock', title: 'Availability & Hours', description: 'Set your business hours and availability' },
     { id: 'vendor-google-reviews-panel', icon: 'fa-google', title: 'Google Reviews Integration', description: 'Display your Google Reviews on your profile', iconClass: 'fab', useGoogleLogo: true },
-    { id: 'vendor-stripe-panel', icon: 'fa-stripe', title: 'Stripe Setup', description: 'Connect your Stripe account to receive payments', iconClass: 'fab' },
+    { id: 'vendor-stripe-panel', icon: 'fa-stripe', title: 'Stripe Setup', description: 'Connect your Stripe account to receive payments', iconClass: 'fab', useStripeLogo: true },
     { id: 'vendor-popular-filters-panel', icon: 'fa-tags', title: 'Popular Filters', description: 'Enable special badges that help clients find your business' }
   ];
 
@@ -117,6 +117,12 @@ function VendorBusinessProfileSection() {
                       src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" 
                       alt="Google" 
                       style={{ width: '24px', height: '24px' }}
+                    />
+                  ) : card.useStripeLogo ? (
+                    <img 
+                      src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" 
+                      alt="Stripe" 
+                      style={{ width: '24px', height: '24px', objectFit: 'contain' }}
                     />
                   ) : (
                     <i className={`${card.iconClass || 'fas'} ${card.icon}`}></i>
