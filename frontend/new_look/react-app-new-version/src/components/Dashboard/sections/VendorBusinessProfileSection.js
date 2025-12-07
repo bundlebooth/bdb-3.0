@@ -56,7 +56,7 @@ function VendorBusinessProfileSection() {
     { id: 'vendor-social-panel', icon: 'fa-share-alt', title: 'Social Media & Booking', description: 'Connect your social profiles and booking link' },
     { id: 'vendor-faqs-panel', icon: 'fa-question-circle', title: 'FAQs', description: 'Create frequently asked questions' },
     { id: 'vendor-availability-panel', icon: 'fa-clock', title: 'Availability & Hours', description: 'Set your business hours and availability' },
-    { id: 'vendor-google-reviews-panel', icon: 'fa-google', title: 'Google Reviews Integration', description: 'Display your Google Reviews on your profile', iconClass: 'fab' },
+    { id: 'vendor-google-reviews-panel', icon: 'fa-google', title: 'Google Reviews Integration', description: 'Display your Google Reviews on your profile', iconClass: 'fab', useGoogleLogo: true },
     { id: 'vendor-stripe-panel', icon: 'fa-stripe', title: 'Stripe Setup', description: 'Connect your Stripe account to receive payments', iconClass: 'fab' },
     { id: 'vendor-popular-filters-panel', icon: 'fa-tags', title: 'Popular Filters', description: 'Enable special badges that help clients find your business' }
   ];
@@ -112,7 +112,15 @@ function VendorBusinessProfileSection() {
                 style={{ cursor: 'pointer' }}
               >
                 <div className="settings-card-icon">
-                  <i className={`${card.iconClass || 'fas'} ${card.icon}`}></i>
+                  {card.useGoogleLogo ? (
+                    <img 
+                      src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" 
+                      alt="Google" 
+                      style={{ width: '24px', height: '24px' }}
+                    />
+                  ) : (
+                    <i className={`${card.iconClass || 'fas'} ${card.icon}`}></i>
+                  )}
                 </div>
                 <h3 className="settings-card-title">{card.title}</h3>
                 <p className="settings-card-description">{card.description}</p>
