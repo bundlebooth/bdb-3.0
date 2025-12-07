@@ -1340,7 +1340,15 @@ function VendorProfilePage() {
       <div className="profile-container">
         <div style={{ padding: '2rem', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-light)' }}>Vendor not found</p>
-          <button className="btn btn-primary" onClick={() => navigate('/')} style={{ marginTop: '1rem' }}>
+          <button className="btn btn-primary" onClick={() => {
+            // If this page was opened in a new tab, close it
+            // Otherwise, navigate to home
+            if (window.opener || window.history.length <= 1) {
+              window.close();
+            } else {
+              navigate('/');
+            }
+          }} style={{ marginTop: '1rem' }}>
             Back to Search
           </button>
         </div>
@@ -1393,8 +1401,16 @@ function VendorProfilePage() {
         initialSection={dashboardSection}
       />
       <div className="profile-container">
-        {/* Back Button */}
-        <button className="back-button" onClick={() => navigate(-1)}>
+        {/* Back Button - Close tab and go back to main page */}
+        <button className="back-button" onClick={() => {
+          // If this page was opened in a new tab, close it
+          // Otherwise, navigate back
+          if (window.opener || window.history.length <= 1) {
+            window.close();
+          } else {
+            navigate(-1);
+          }
+        }}>
           <i className="fas fa-arrow-left"></i>
           <span>Back to search</span>
         </button>

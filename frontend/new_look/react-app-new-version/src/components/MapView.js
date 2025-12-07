@@ -740,12 +740,9 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
                 borderTopColor: '#3b82f6',
                 borderRadius: '50%',
                 animation: 'spin 0.8s linear infinite',
-                margin: '0 auto 16px'
+                margin: '0 auto'
               }}
             />
-            <div style={{ fontSize: '15px', fontWeight: '500', color: '#6b7280' }}>
-              Loading map...
-            </div>
           </div>
         </div>
       )}

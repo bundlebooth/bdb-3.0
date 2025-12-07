@@ -652,6 +652,28 @@ function BookingPage() {
         {/* Left Side - Booking Form */}
         <div className="booking-form-section">
           <div className="booking-form-wrapper">
+            {/* Back Button - Above Breadcrumb */}
+            <button 
+              className="back-button" 
+              onClick={goBackToVendor}
+              style={{ 
+                marginBottom: '1rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                background: 'transparent',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '0.95rem',
+                color: '#222'
+              }}
+            >
+              <i className="fas fa-arrow-left"></i>
+              Back to Vendor
+            </button>
+
             {/* Breadcrumb Navigation */}
             {vendorData && (
               <Breadcrumb items={[
@@ -671,28 +693,6 @@ function BookingPage() {
                 }}
               />
             )}
-
-            {/* Back Button */}
-            <button 
-              className="back-button" 
-              onClick={goBackToVendor}
-              style={{ 
-                marginBottom: '1.5rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.5rem 1rem',
-                background: 'transparent',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '0.95rem',
-                color: '#222'
-              }}
-            >
-              <i className="fas fa-arrow-left"></i>
-              Back to Vendor
-            </button>
             
             <h1 className="booking-title">Request to book</h1>
             

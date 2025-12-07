@@ -228,7 +228,7 @@ const categories = [
   }
 ];
 
-function CategoriesNav({ activeCategory, onCategoryChange }) {
+function CategoriesNav({ activeCategory, onCategoryChange, loading = false }) {
   const [showScrollButtons, setShowScrollButtons] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const wrapperRef = useRef(null);
@@ -310,53 +310,98 @@ function CategoriesNav({ activeCategory, onCategoryChange }) {
       </button>
       <div className="categories-list-wrapper" ref={wrapperRef}>
         <div className="categories-list" ref={listRef}>
-          {categories.map((category) => (
-            <div
-              key={category.key}
-              className={`category-item ${activeCategory === category.key ? 'active' : ''}`}
-              data-category={category.key}
-              onClick={() => onCategoryChange(category.key)}
-              title={category.label}
-            >
-              <div 
-                className="icon-wrapper"
-                style={{
-                  position: 'relative',
-                  width: '50px',
-                  height: '40px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '8px' // Added spacing between icon and text
-                }}
+          {loading ? (
+            // Skeleton loading state
+            Array.from({ length: 14 }).map((_, index) => (
+              <div
+                key={`skeleton-${index}`}
+                className="category-item"
+                style={{ pointerEvents: 'none' }}
               >
-                <div
+                <div 
+                  className="icon-wrapper"
                   style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    backgroundColor: category.bgColor, // Use category.bgColor for all
-                    opacity: 0.4,
-                    transition: 'all 0.3s ease',
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 1
+                    position: 'relative',
+                    width: '50px',
+                    height: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '8px'
+                  }}
+                >
+                  <div
+                    className="skeleton"
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: '#e5e7eb',
+                      animation: 'pulse 1.5s ease-in-out infinite'
+                    }}
+                  ></div>
+                </div>
+                <div 
+                  className="skeleton"
+                  style={{
+                    width: '60px',
+                    height: '12px',
+                    borderRadius: '6px',
+                    backgroundColor: '#e5e7eb',
+                    animation: 'pulse 1.5s ease-in-out infinite'
                   }}
                 ></div>
-                <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {category.icon}
-                </div>
               </div>
-              <span style={{
-                lineHeight: '1.2',
-                textAlign: 'center',
-                width: '100%',
-                fontWeight: 'normal'
-              }}>{category.label}</span>
-            </div>
-          ))}
+            ))
+          ) : (
+            categories.map((category) => (
+              <div
+                key={category.key}
+                className={`category-item ${activeCategory === category.key ? 'active' : ''}`}
+                data-category={category.key}
+                onClick={() => onCategoryChange(category.key)}
+                title={category.label}
+              >
+                <div 
+                  className="icon-wrapper"
+                  style={{
+                    position: 'relative',
+                    width: '50px',
+                    height: '40px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '8px'
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: category.bgColor,
+                      opacity: 0.4,
+                      transition: 'all 0.3s ease',
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 1
+                    }}
+                  ></div>
+                  <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {category.icon}
+                  </div>
+                </div>
+                <span style={{
+                  lineHeight: '1.2',
+                  textAlign: 'center',
+                  width: '100%',
+                  fontWeight: 'normal'
+                }}>{category.label}</span>
+              </div>
+            ))
+          )}
         </div>
         <div className="category-indicator" ref={indicatorRef} id="category-indicator"></div>
       </div>

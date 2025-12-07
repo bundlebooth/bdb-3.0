@@ -821,7 +821,7 @@ function IndexPage() {
         vendorCount={serverTotalCount}
       />
       <div className={`app-container sidebar-collapsed ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-        <CategoriesNav activeCategory={currentCategory} onCategoryChange={handleCategoryChange} />
+        <CategoriesNav activeCategory={currentCategory} onCategoryChange={handleCategoryChange} loading={loading} />
         <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1 }}>
           <main className="main-content" style={{ width: mapActive ? '65%' : '100%', padding: '2rem', overflowY: 'auto', transition: 'width 0.25s ease' }}>
           {currentUser?.vendorProfileId && (
@@ -840,68 +840,72 @@ function IndexPage() {
               <p className="results-count">{loading ? <span className="skeleton" style={{ display: 'inline-block', height: '16px', width: '150px', borderRadius: '6px', marginTop: '8px' }}></span> : `${serverTotalCount} vendors available`}</p>
             </div>
             <div className="view-controls">
-              <button 
-                className="filter-btn" 
-                onClick={() => setFilterModalOpen(true)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  borderRadius: '8px',
-                  border: '1px solid #ddd',
-                  backgroundColor: 'white',
-                  fontSize: '0.9rem',
-                  color: '#222',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s',
-                  fontWeight: 500
-                }}
-              >
-                <i className="fas fa-sliders-h"></i>
-                <span>Filters</span>
-              </button>
-              <select id="sort-select" value={sortBy} onChange={handleSortChange} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'white', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}><option value="recommended">Recommended</option><option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option><option value="nearest">Nearest to Me</option><option value="rating">Highest Rated</option></select>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.9rem', color: 'var(--text)' }}>{mapActive ? 'Hide map' : 'Show map'}</span>
-                <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={mapActive} 
-                    onChange={handleToggleMap}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: mapActive ? '#34D399' : '#E5E7EB',
-                    borderRadius: '24px',
-                    transition: 'background-color 0.3s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '2px'
-                  }}>
-                    <span style={{
-                      position: 'absolute',
-                      height: '20px',
-                      width: '20px',
-                      left: mapActive ? '22px' : '2px',
+              {!loading && (
+                <>
+                  <button 
+                    className="filter-btn" 
+                    onClick={() => setFilterModalOpen(true)}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '8px',
+                      border: '1px solid #ddd',
                       backgroundColor: 'white',
-                      borderRadius: '50%',
-                      transition: 'left 0.3s',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      fontSize: '0.9rem',
+                      color: '#222',
+                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      {mapActive && <span style={{ color: '#34D399', fontSize: '12px' }}>✓</span>}
-                    </span>
-                  </span>
-                </label>
-              </div>
+                      gap: '0.5rem',
+                      transition: 'all 0.2s',
+                      fontWeight: 500
+                    }}
+                  >
+                    <i className="fas fa-sliders-h"></i>
+                    <span>Filters</span>
+                  </button>
+                  <select id="sort-select" value={sortBy} onChange={handleSortChange} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'white', fontSize: '0.9rem', color: 'var(--text)', cursor: 'pointer' }}><option value="recommended">Recommended</option><option value="price-low">Price: Low to High</option><option value="price-high">Price: High to Low</option><option value="nearest">Nearest to Me</option><option value="rating">Highest Rated</option></select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text)' }}>{mapActive ? 'Hide map' : 'Show map'}</span>
+                    <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={mapActive} 
+                        onChange={handleToggleMap}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                      />
+                      <span style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: mapActive ? '#34D399' : '#E5E7EB',
+                        borderRadius: '24px',
+                        transition: 'background-color 0.3s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '2px'
+                      }}>
+                        <span style={{
+                          position: 'absolute',
+                          height: '20px',
+                          width: '20px',
+                          left: mapActive ? '22px' : '2px',
+                          backgroundColor: 'white',
+                          borderRadius: '50%',
+                          transition: 'left 0.3s',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {mapActive && <span style={{ color: '#34D399', fontSize: '12px' }}>✓</span>}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className="map-overlay"></div>

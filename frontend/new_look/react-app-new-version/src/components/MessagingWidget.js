@@ -215,12 +215,9 @@ function MessagingWidget() {
         e.currentTarget.style.transform = 'scale(1)';
         e.currentTarget.style.boxShadow = '0 4px 16px rgba(94, 114, 228, 0.3), 0 2px 6px rgba(0,0,0,0.1)';
       }}>
-        {/* Custom Chat Icon */}
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="white" style={{ color: 'white' }}>
-          <path d="M20 2H4C2.9 2 2 2.9 2 4V16C2 17.1 2.9 18 4 18H6L10 22L14 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z"/>
-          <circle cx="8" cy="10" r="1.5" fill="#5e72e4"/>
-          <circle cx="12" cy="10" r="1.5" fill="#5e72e4"/>
-          <circle cx="16" cy="10" r="1.5" fill="#5e72e4"/>
+        {/* Simple Chat Bubble Icon - Outlined Style */}
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
         {unreadCount > 0 && (
           <span style={{
