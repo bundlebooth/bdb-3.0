@@ -153,60 +153,20 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
       </button>
       
       <div className="dashboard-card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <i className="fab fa-google" style={{ fontSize: '1.25rem', color: '#4285f4' }}></i>
-          <h2 className="dashboard-card-title" style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#1f2937' }}>
-            Google Reviews Integration
-          </h2>
-        </div>
-        <p style={{ color: '#6b7280', marginBottom: '3rem', fontSize: '0.95rem', lineHeight: '1.5' }}>
+        <h2 className="dashboard-card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img 
+              src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" 
+              alt="Google" 
+              style={{ width: '20px', height: '20px' }}
+            />
+          </span>
+          Google Reviews Integration
+        </h2>
+        <p style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
           Display your Google Reviews directly on your VenueVue profile to build trust and credibility with potential clients.
         </p>
-
-        {/* Centered Google Icon and Connect Section */}
-        <div style={{ 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          padding: '3rem 2rem 2rem',
-          marginBottom: '2rem'
-        }}>
-          <div style={{ 
-            width: '100px', 
-            height: '100px', 
-            borderRadius: '50%', 
-            background: '#635bff', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            marginBottom: '2rem',
-            boxShadow: '0 4px 12px rgba(99, 91, 255, 0.25)'
-          }}>
-            <i className="fab fa-google" style={{ color: 'white', fontSize: '2.5rem' }}></i>
-          </div>
-          
-          <h3 style={{ 
-            fontSize: '1.35rem', 
-            fontWeight: 600, 
-            color: '#1f2937', 
-            marginBottom: '1rem',
-            textAlign: 'center'
-          }}>
-            Connect with Google Reviews
-          </h3>
-          
-          <p style={{ 
-            fontSize: '0.95rem', 
-            color: '#6b7280', 
-            textAlign: 'center',
-            maxWidth: '480px',
-            lineHeight: '1.6',
-            marginBottom: '2rem'
-          }}>
-            Google Reviews help build trust and credibility with potential clients. Display your ratings and reviews directly on your VenueVue profile.
-          </p>
-        </div>
+        <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
 
         <form onSubmit={handleSubmit}>
           {/* Google Place ID Section */}
@@ -259,21 +219,35 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
                 </div>
                 <button 
                   type="button"
-                  className="btn btn-outline"
                   onClick={handleVerifyClick}
                   disabled={!formData.googlePlaceId || verifying}
                   style={{ 
-                    minWidth: '120px',
+                    minWidth: '100px',
+                    padding: '0.5rem 1rem',
+                    background: verificationStatus === 'success' ? '#10b981' : '#635bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                    cursor: !formData.googlePlaceId || verifying ? 'not-allowed' : 'pointer',
+                    opacity: !formData.googlePlaceId || verifying ? 0.6 : 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '0.5rem'
+                    gap: '0.5rem',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   {verifying ? (
                     <>
-                      <div className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></div>
+                      <div className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px', borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }}></div>
                       Verifying...
+                    </>
+                  ) : verificationStatus === 'success' ? (
+                    <>
+                      <i className="fas fa-check"></i>
+                      Verified
                     </>
                   ) : (
                     <>
@@ -362,180 +336,41 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
             </div>
           )}
 
-          {/* Google Business URL (Optional) */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div className="form-group">
-              <label htmlFor="google-business-url" style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
-                <i className="fas fa-link" style={{ color: '#635bff' }}></i>
-                Google Business Profile URL
-                <span style={{ 
-                  fontSize: '0.7rem', 
-                  fontWeight: 600, 
-                  background: '#e0e7ff', 
-                  color: '#3730a3', 
-                  padding: '0.15rem 0.5rem', 
-                  borderRadius: '4px',
-                  marginLeft: '0.25rem'
-                }}>
-                  Optional
-                </span>
-              </label>
-              <input
-                type="url"
-                id="google-business-url"
-                className="form-control"
-                placeholder="https://www.google.com/maps/place/..."
-                value={formData.googleBusinessUrl}
-                onChange={(e) => setFormData({ ...formData, googleBusinessUrl: e.target.value })}
-              />
-              <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem', lineHeight: '1.5' }}>
-                This link will be used for the "View on Google" button on your profile.
-              </p>
+          {/* Save Button - Only show when verified */}
+          {verificationStatus === 'success' && (
+            <div style={{ paddingTop: '1.5rem', marginBottom: '2rem' }}>
+              <button 
+                type="submit" 
+                disabled={saving}
+                style={{ 
+                  padding: '0.75rem 2rem',
+                  background: '#635bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '0.95rem',
+                  fontWeight: 500,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  opacity: saving ? 0.6 : 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {saving ? (
+                  <>
+                    <div className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px', borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }}></div>
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </button>
             </div>
-          </div>
+          )}
 
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', paddingTop: '1.5rem', marginBottom: '2rem' }}>
-            <button 
-              type="submit" 
-              disabled={saving || (formData.googlePlaceId && verificationStatus !== 'success')}
-              style={{ 
-                minWidth: '200px',
-                padding: '0.75rem 1.5rem',
-                background: '#635bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '0.95rem',
-                fontWeight: 600,
-                cursor: saving || (formData.googlePlaceId && verificationStatus !== 'success') ? 'not-allowed' : 'pointer',
-                opacity: saving || (formData.googlePlaceId && verificationStatus !== 'success') ? 0.6 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-              }}
-              onMouseEnter={(e) => {
-                if (!saving && !(formData.googlePlaceId && verificationStatus !== 'success')) {
-                  e.target.style.background = '#5348d9';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = '#635bff';
-              }}
-            >
-              {saving ? (
-                <>
-                  <div className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px', marginRight: '0.5rem' }}></div>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <i className="fab fa-google"></i>
-                  Connect Google Reviews
-                </>
-              )}
-            </button>
-            
-            {formData.googlePlaceId && verificationStatus !== 'success' && (
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#dc2626' }}>
-                <i className="fas fa-exclamation-triangle"></i> Please verify your Place ID before saving
-              </p>
-            )}
-          </div>
-
-          {/* Why integrate Google Reviews? */}
-          <div style={{ 
-            background: '#f9fafb',
-            borderRadius: '8px',
-            padding: '2rem',
-            marginTop: '2rem'
-          }}>
-            <h4 style={{ 
-              fontSize: '1.05rem', 
-              fontWeight: 600, 
-              color: '#1f2937', 
-              marginBottom: '1.5rem'
-            }}>
-              Why integrate Google Reviews?
-            </h4>
-            <ul style={{ 
-              margin: 0, 
-              padding: 0, 
-              listStyle: 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.875rem'
-            }}>
-              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                <span style={{ 
-                  width: '5px', 
-                  height: '5px', 
-                  borderRadius: '50%', 
-                  background: '#374151', 
-                  marginTop: '0.5rem',
-                  flexShrink: 0
-                }}></span>
-                <span style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.6' }}>
-                  Display authentic reviews directly on your profile
-                </span>
-              </li>
-              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                <span style={{ 
-                  width: '5px', 
-                  height: '5px', 
-                  borderRadius: '50%', 
-                  background: '#374151', 
-                  marginTop: '0.5rem',
-                  flexShrink: 0
-                }}></span>
-                <span style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.6' }}>
-                  Build trust and credibility with potential clients
-                </span>
-              </li>
-              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                <span style={{ 
-                  width: '5px', 
-                  height: '5px', 
-                  borderRadius: '50%', 
-                  background: '#374151', 
-                  marginTop: '0.5rem',
-                  flexShrink: 0
-                }}></span>
-                <span style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.6' }}>
-                  Showcase your ratings and reviewer feedback
-                </span>
-              </li>
-              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                <span style={{ 
-                  width: '5px', 
-                  height: '5px', 
-                  borderRadius: '50%', 
-                  background: '#374151', 
-                  marginTop: '0.5rem',
-                  flexShrink: 0
-                }}></span>
-                <span style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.6' }}>
-                  Automatically sync and update your reviews
-                </span>
-              </li>
-              <li style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                <span style={{ 
-                  width: '5px', 
-                  height: '5px', 
-                  borderRadius: '50%', 
-                  background: '#374151', 
-                  marginTop: '0.5rem',
-                  flexShrink: 0
-                }}></span>
-                <span style={{ fontSize: '0.9rem', color: '#4b5563', lineHeight: '1.6' }}>
-                  Help clients make informed booking decisions
-                </span>
-              </li>
-            </ul>
-          </div>
         </form>
       </div>
     </div>
