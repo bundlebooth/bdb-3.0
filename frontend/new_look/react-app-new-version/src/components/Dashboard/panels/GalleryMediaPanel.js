@@ -602,6 +602,13 @@ function GalleryMediaPanel({ onBack, vendorProfileId }) {
           </div>
         )}
 
+        {/* Save Button */}
+        <div style={{ marginTop: '2rem' }}>
+          <button className="btn btn-primary">
+            Save
+          </button>
+        </div>
+
       </div>
     </div>
   );

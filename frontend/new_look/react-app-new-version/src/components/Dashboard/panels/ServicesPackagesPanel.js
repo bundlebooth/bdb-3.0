@@ -417,9 +417,9 @@ function ServicesPackagesPanel({ onBack, vendorProfileId }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
+          <div style={{ marginTop: '2rem' }}>
             <button className="btn btn-primary" id="vendor-settings-save-services" onClick={handleSaveServices}>
-              Save Services
+              Save
             </button>
           </div>
         </div>

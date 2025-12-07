@@ -276,9 +276,8 @@ function AvailabilityHoursPanel({ onBack, vendorProfileId }) {
             </div>
           </div>
 
-          <button className="btn btn-primary" id="save-business-hours-btn" onClick={handleSubmit} style={{ marginTop: '1.5rem', width: '100%', padding: '0.875rem' }}>
-            <i className="fas fa-save" style={{ marginRight: '0.5rem' }}></i>
-            Save Business Hours
+          <button className="btn btn-primary" id="save-business-hours-btn" onClick={handleSubmit}>
+            Save
           </button>
         </form>
       </div>

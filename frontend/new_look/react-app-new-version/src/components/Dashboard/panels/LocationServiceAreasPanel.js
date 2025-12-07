@@ -494,8 +494,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
-            Save Location
+          <button type="submit" className="btn btn-primary">
+            Save
           </button>
         </form>
       </div>

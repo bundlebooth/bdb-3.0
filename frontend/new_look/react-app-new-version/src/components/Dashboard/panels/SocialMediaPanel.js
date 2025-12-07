@@ -247,7 +247,7 @@ function SocialMediaPanel({ onBack, vendorProfileId }) {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary">Save Social</button>
+          <button type="submit" className="btn btn-primary">Save</button>
         </form>
       </div>
     </div>

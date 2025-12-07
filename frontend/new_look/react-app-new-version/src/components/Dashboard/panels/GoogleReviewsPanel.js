@@ -169,208 +169,133 @@ function GoogleReviewsPanel({ onBack, vendorProfileId }) {
         <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '1.5rem 0' }} />
 
         <form onSubmit={handleSubmit}>
-          {/* Google Place ID Section */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div className="form-group">
-              <label htmlFor="google-place-id" style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
-                <i className="fas fa-map-marker-alt" style={{ color: '#635bff' }}></i>
-                Google Place ID
-                <span style={{ 
-                  fontSize: '0.7rem', 
-                  fontWeight: 600, 
-                  background: '#fee2e2', 
-                  color: '#991b1b', 
-                  padding: '0.15rem 0.5rem', 
-                  borderRadius: '4px',
-                  marginLeft: '0.25rem'
-                }}>
-                  Required
-                </span>
-              </label>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <input
-                    type="text"
-                    id="google-place-id"
-                    className="form-control"
-                    placeholder="e.g., ChIJN1t_tDeuEmsRUsoyG83frY4"
-                    value={formData.googlePlaceId}
-                    onChange={(e) => {
-                      setFormData({ ...formData, googlePlaceId: e.target.value });
-                      setVerificationStatus(null);
-                      setPreviewData(null);
-                    }}
-                    style={{ 
-                      borderColor: verificationStatus === 'success' ? '#10b981' : verificationStatus === 'error' ? '#ef4444' : 'var(--border)'
-                    }}
-                  />
-                  {verificationStatus === 'success' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', color: '#10b981', fontSize: '0.875rem' }}>
-                      <i className="fas fa-check-circle"></i>
-                      <span>Valid Place ID verified</span>
-                    </div>
-                  )}
-                  {verificationStatus === 'error' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', color: '#ef4444', fontSize: '0.875rem' }}>
-                      <i className="fas fa-times-circle"></i>
-                      <span>Invalid Place ID</span>
-                    </div>
-                  )}
-                </div>
-                <button 
-                  type="button"
-                  onClick={handleVerifyClick}
-                  disabled={!formData.googlePlaceId || verifying}
-                  style={{ 
-                    minWidth: '100px',
-                    padding: '0.5rem 1rem',
-                    background: verificationStatus === 'success' ? '#10b981' : '#635bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '0.9rem',
-                    fontWeight: 500,
-                    cursor: !formData.googlePlaceId || verifying ? 'not-allowed' : 'pointer',
-                    opacity: !formData.googlePlaceId || verifying ? 0.6 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    transition: 'all 0.2s ease'
+          <div className="form-row">
+            <div className="form-col" style={{ flex: 1 }}>
+              <div className="form-group">
+                <label htmlFor="google-place-id">Google Place ID <span style={{ color: 'red' }}>*</span></label>
+                <input
+                  type="text"
+                  id="google-place-id"
+                  placeholder="e.g., ChIJN1t_tDeuEmsRUsoyG83frY4"
+                  value={formData.googlePlaceId}
+                  onChange={(e) => {
+                    setFormData({ ...formData, googlePlaceId: e.target.value });
+                    setVerificationStatus(null);
+                    setPreviewData(null);
                   }}
-                >
-                  {verifying ? (
-                    <>
-                      <div className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px', borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }}></div>
-                      Verifying...
-                    </>
-                  ) : verificationStatus === 'success' ? (
-                    <>
-                      <i className="fas fa-check"></i>
-                      Verified
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-check"></i>
-                      Verify
-                    </>
-                  )}
-                </button>
+                />
               </div>
-              <p style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.5rem', lineHeight: '1.5' }}>
-                Your Google Place ID is a unique identifier for your business on Google Maps. 
-                <a 
-                  href="https://developers.google.com/maps/documentation/places/web-service/place-id" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  style={{ color: '#635bff', textDecoration: 'none', marginLeft: '0.25rem' }}
-                >
-                  Learn how to find it <i className="fas fa-external-link-alt" style={{ fontSize: '0.7rem' }}></i>
-                </a>
-              </p>
+            </div>
+            <div className="form-col" style={{ flex: 'none', display: 'flex', alignItems: 'flex-end', paddingBottom: '1rem' }}>
+              <button 
+                type="button"
+                className="btn btn-outline"
+                onClick={handleVerifyClick}
+                disabled={!formData.googlePlaceId || verifying}
+                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+              >
+                {verifying ? 'Verifying...' : 'Verify'}
+              </button>
             </div>
           </div>
 
-          {/* Preview Section */}
+          {verificationStatus === 'success' && (
+            <p style={{ color: '#10b981', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i> Verified successfully
+            </p>
+          )}
+          {verificationStatus === 'error' && (
+            <p style={{ color: '#ef4444', fontSize: '0.9rem', marginBottom: '1rem' }}>
+              <i className="fas fa-times-circle" style={{ color: '#ef4444' }}></i> Invalid Place ID
+            </p>
+          )}
+
+          <p style={{ color: 'var(--text-light)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+            Find your Place ID at{' '}
+            <a href="https://developers.google.com/maps/documentation/places/web-service/place-id" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>
+              Google's Place ID Finder
+            </a>
+          </p>
+
+          {/* Preview Section - Only show when verified */}
           {previewData && (
-            <div style={{ 
-              background: 'linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)', 
-              border: '1px solid #e5e7eb', 
-              borderRadius: 'var(--radius)', 
-              padding: '1.5rem', 
-              marginBottom: '2rem' 
-            }}>
-              <h4 style={{ 
-                margin: '0 0 1rem 0', 
-                fontSize: '0.95rem', 
-                fontWeight: 600, 
-                color: 'var(--text)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <i className="fas fa-eye" style={{ color: 'var(--primary)' }}></i>
-                Preview
-              </h4>
+            <>
+              <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '2rem 0' }} />
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>
-                    {(previewData.rating || 0).toFixed(1)}
-                  </div>
-                  <div style={{ color: '#fbbc04', fontSize: '1.1rem', letterSpacing: '1px' }}>
-                    {'★'.repeat(Math.floor(previewData.rating || 0))}{'☆'.repeat(5 - Math.floor(previewData.rating || 0))}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>
-                    {(previewData.user_ratings_total || 0).toLocaleString()} reviews
+              <label style={{ display: 'block', marginBottom: '1rem' }}>Google Reviews Preview</label>
+              
+              {/* Google Reviews Card - matches VendorProfilePage style */}
+              <div style={{ 
+                border: '1px solid var(--border)', 
+                borderRadius: 'var(--radius)', 
+                padding: '1.5rem',
+                background: '#f9fafb',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                  <img 
+                    src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" 
+                    alt="Google" 
+                    style={{ width: '32px', height: '32px' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>Google Reviews</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>Verified business reviews</div>
                   </div>
                 </div>
                 
-                <div style={{ flex: 1, minWidth: '200px' }}>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-light)', lineHeight: '1.6' }}>
-                    <i className="fas fa-check-circle" style={{ color: '#10b981', marginRight: '0.5rem' }}></i>
-                    Your Google Reviews will be displayed on your vendor profile page
-                  </p>
-                  {previewData.url && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ 
+                    fontSize: '2.5rem', 
+                    fontWeight: 700, 
+                    color: 'var(--text)', 
+                    lineHeight: 1
+                  }}>
+                    {(previewData.rating || 0).toFixed(1)}
+                  </div>
+                  <div>
+                    <div style={{ 
+                      fontSize: '1rem', 
+                      color: '#fbbc04',
+                      marginBottom: '0.125rem'
+                    }}>
+                      {'★'.repeat(Math.round(previewData.rating || 0))}{'☆'.repeat(5 - Math.round(previewData.rating || 0))}
+                    </div>
+                    <div style={{ 
+                      fontSize: '0.85rem', 
+                      color: 'var(--text-light)'
+                    }}>
+                      Based on {(previewData.user_ratings_total || 0).toLocaleString()} reviews
+                    </div>
+                  </div>
+                </div>
+                
+                {previewData.url && (
+                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
                     <a 
                       href={previewData.url} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      style={{ 
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        marginTop: '0.75rem',
-                        fontSize: '0.875rem',
-                        color: 'var(--primary)',
-                        textDecoration: 'none'
-                      }}
+                      style={{ fontSize: '0.85rem', color: 'var(--primary)' }}
                     >
-                      <i className="fab fa-google"></i>
-                      View on Google Maps
-                      <i className="fas fa-external-link-alt" style={{ fontSize: '0.7rem' }}></i>
+                      View on Google Maps <i className="fas fa-external-link-alt" style={{ fontSize: '0.7rem' }}></i>
                     </a>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Save Button - Only show when verified */}
-          {verificationStatus === 'success' && (
-            <div style={{ paddingTop: '1.5rem', marginBottom: '2rem' }}>
-              <button 
-                type="submit" 
-                disabled={saving}
-                style={{ 
-                  padding: '0.75rem 2rem',
-                  background: '#635bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '0.95rem',
-                  fontWeight: 500,
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                  opacity: saving ? 0.6 : 1,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {saving ? (
-                  <>
-                    <div className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px', borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }}></div>
-                    Saving...
-                  </>
-                ) : (
-                  'Save Changes'
+                  </div>
                 )}
-              </button>
-            </div>
+              </div>
+              
+            </>
           )}
 
+          <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '2rem 0' }} />
+
+          <button 
+            type="submit" 
+            className="btn btn-primary"
+            disabled={saving || !formData.googlePlaceId || verificationStatus !== 'success'}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </form>
       </div>
     </div>

@@ -257,7 +257,7 @@ function CommunicationPreferencesPanel({ onBack }) {
 
           <div style={{ marginTop: '2rem' }}>
             <button type="submit" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Save Preferences'}
+              {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
         </form>

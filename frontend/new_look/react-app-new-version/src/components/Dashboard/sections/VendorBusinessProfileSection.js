@@ -97,7 +97,11 @@ function VendorBusinessProfileSection() {
         <div className="settings-category">
           <div id="business-profile-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h2 className="settings-category-title" style={{ marginBottom: 0 }}>Business Profile Management</h2>
-            <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', padding: '0.6rem 1rem' }}>
+            <button 
+              className="btn btn-outline" 
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', padding: '0.6rem 1rem' }}
+              onClick={() => window.open(`/vendor/${vendorProfileId}`, '_blank')}
+            >
               <i className="fas fa-external-link-alt"></i>
               View your profile
             </button>

@@ -405,7 +405,7 @@ function PersonalDetailsPanel({ onBack }) {
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </form>
       </div>

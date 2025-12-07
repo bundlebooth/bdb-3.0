@@ -525,7 +525,7 @@ function BusinessInformationPanel({ onBack, vendorProfileId }) {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary">Save Changes</button>
+          <button type="submit" className="btn btn-primary">Save</button>
         </form>
       </div>
     </div>

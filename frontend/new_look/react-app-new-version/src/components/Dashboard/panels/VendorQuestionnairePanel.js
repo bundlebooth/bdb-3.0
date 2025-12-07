@@ -327,19 +327,13 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
         </div>
         
         {filteredCategories.length > 0 && (
-          <div style={{ marginTop: '2.5rem', paddingTop: '2rem', borderTop: '2px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ color: 'var(--text-light)', fontSize: '0.95rem' }}>
-              <i className="fas fa-info-circle" style={{ color: 'var(--primary)' }}></i>
-              {' '}
-              <span>{selectedFeatureIds.size} features selected</span>
-            </div>
+          <div style={{ marginTop: '2rem' }}>
             <button
               type="button"
               className="btn btn-primary"
               onClick={handleSubmit}
-              style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
             >
-              <i className="fas fa-check"></i> Save Selections
+              Save
             </button>
           </div>
         )}

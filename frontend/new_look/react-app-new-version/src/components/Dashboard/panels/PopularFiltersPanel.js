@@ -129,8 +129,8 @@ function PopularFiltersPanel({ onBack, vendorProfileId }) {
             ))}
           </div>
 
-          <button type="submit" className="btn btn-primary" style={{ marginTop: '2rem' }}>
-            <i className="fas fa-save"></i> Save Filter Settings
+          <button type="submit" className="btn btn-primary">
+            Save
           </button>
         </form>
       </div>

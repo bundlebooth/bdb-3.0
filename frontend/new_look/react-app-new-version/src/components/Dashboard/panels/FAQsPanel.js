@@ -184,7 +184,7 @@ function FAQsPanel({ onBack, vendorProfileId }) {
         </div>
         <div style={{ marginTop: '1rem' }}>
           <button id="add-faq-btn" className="btn btn-outline" onClick={handleAddFAQ}>Add FAQ</button>
-          <button id="save-faqs-btn" className="btn btn-primary" style={{ marginLeft: '0.5rem' }}>Save FAQs</button>
+          <button id="save-faqs-btn" className="btn btn-primary" style={{ marginLeft: '0.5rem' }}>Save</button>
         </div>
       </div>
     </div>
