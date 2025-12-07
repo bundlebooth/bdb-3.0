@@ -8,17 +8,61 @@ function VendorRequestsSection() {
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedDetails, setExpandedDetails] = useState({});
+  const [vendorProfileId, setVendorProfileId] = useState(null);
+
+  // Fetch vendor profile ID first
+  useEffect(() => {
+    getVendorProfileId();
+  }, [currentUser]);
+
+  // Load bookings when vendorProfileId is available
+  useEffect(() => {
+    if (vendorProfileId) {
+      loadBookings();
+    }
+  }, [vendorProfileId]);
+
+  const getVendorProfileId = async () => {
+    if (!currentUser?.id) {
+      setLoading(false);
+      return;
+    }
+    
+    // First check if vendorProfileId is already on currentUser
+    if (currentUser?.vendorProfileId) {
+      setVendorProfileId(currentUser.vendorProfileId);
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Got vendor profile:', data);
+        setVendorProfileId(data.vendorProfileId);
+      } else {
+        console.log('No vendor profile found for user');
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error getting vendor profile:', error);
+      setLoading(false);
+    }
+  };
 
   const loadBookings = useCallback(async () => {
-    if (!currentUser?.vendorProfileId) {
-      console.log('No vendorProfileId found:', currentUser);
+    if (!vendorProfileId) {
+      console.log('No vendorProfileId found');
+      setLoading(false);
       return;
     }
     
     try {
       setLoading(true);
-      console.log('Fetching vendor bookings for vendorProfileId:', currentUser.vendorProfileId);
-      const resp = await fetch(`${API_BASE_URL}/vendor/${currentUser.vendorProfileId}/bookings/all`, {
+      console.log('Fetching vendor bookings for vendorProfileId:', vendorProfileId);
+      const resp = await fetch(`${API_BASE_URL}/vendor/${vendorProfileId}/bookings/all`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -48,11 +92,7 @@ function VendorRequestsSection() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
-
-  useEffect(() => {
-    loadBookings();
-  }, [loadBookings]);
+  }, [vendorProfileId]);
 
   const getFilteredBookings = () => {
     const acceptedStatuses = new Set(['accepted', 'approved', 'confirmed', 'paid']);

@@ -133,7 +133,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
       }}
     >
       {/* Image Container */}
-      <div style={{ position: 'relative', width: '100%', paddingTop: '66.67%', overflow: 'hidden', borderRadius: '12px' }}>
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '3 / 2', overflow: 'hidden', borderRadius: '12px' }}>
         <img
           src={imageUrl}
           alt={vendor.BusinessName || vendor.name}
@@ -141,12 +141,10 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
             e.target.src = 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
           }}
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
             width: '100%',
             height: '100%',
             objectFit: 'cover',
+            objectPosition: 'center',
             transition: 'filter 0.3s ease'
           }}
           className="vendor-card-image"

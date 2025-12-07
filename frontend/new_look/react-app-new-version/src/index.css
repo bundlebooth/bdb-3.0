@@ -575,11 +575,11 @@ html {
     }
 }
 
-/* Mobile: maintain single column */
+/* Mobile: 2-column grid to match vendor discover section */
 @media (max-width: 768px) {
     .vendor-grid {
-        grid-template-columns: 1fr !important;
-        gap: 1rem;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem;
     }
 }
 
@@ -3262,8 +3262,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 
 .notifications-dropdown .notification-item.unread {
-    background-color: #eff6ff;
-    border-left: 3px solid var(--primary);
+    background-color: #f9fafb;
 }
 
 .dropdown-footer {
@@ -8132,9 +8131,10 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         font-size: 0.85rem;
     }
 
-    /* Vendor grid - single column on mobile */
+    /* Vendor grid - 2 columns on mobile to match vendor discover */
     .vendor-grid {
-        gap: 1rem;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem;
     }
 
     /* Vendor cards optimized for mobile (planvus style) */

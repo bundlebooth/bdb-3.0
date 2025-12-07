@@ -244,7 +244,6 @@ function NotificationDropdown({ isOpen, onClose, anchorEl }) {
                 style={{
                   padding: '16px 20px',
                   borderBottom: '1px solid #f3f4f6',
-                  borderLeft: isUnread ? '4px solid #5e72e4' : '4px solid transparent',
                   cursor: isUnread ? 'pointer' : 'default',
                   backgroundColor: isUnread ? '#f9fafb' : 'white',
                   transition: 'background-color 0.15s',

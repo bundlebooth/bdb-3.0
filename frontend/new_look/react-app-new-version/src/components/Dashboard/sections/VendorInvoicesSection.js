@@ -248,12 +248,52 @@ function VendorInvoicesSection() {
                     return (
                       <tr key={b.InvoiceID || b.BookingID || `invoice-${b.InvoiceNumber}-${dateStr}`} style={{ borderBottom: '1px solid var(--border, #e5e7eb)' }}>
                         <td className="nowrap ta-center" style={{ whiteSpace: 'nowrap', padding: '6px 8px', border: '1px solid var(--border, #e5e7eb)', background: 'var(--secondary, #fff)', textAlign: 'center' }}>
-                          <div className="inv-actions" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <button className="btn btn-outline btn-sm" title="View invoice" aria-label="View invoice" style={{ margin: 0 }}>
-                              <i className="fa-solid fa-eye" aria-hidden="true"></i>
+                          <div className="inv-actions" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                            <button 
+                              className="btn btn-icon" 
+                              title="View invoice" 
+                              aria-label="View invoice" 
+                              onClick={() => {
+                                // Open invoice view modal or navigate to invoice page
+                                console.log('View invoice:', b.InvoiceID || b.InvoiceNumber);
+                                alert(`Viewing invoice: ${b.InvoiceNumber || b.InvoiceID}`);
+                              }}
+                              style={{ 
+                                margin: 0, 
+                                padding: '6px', 
+                                background: 'transparent', 
+                                border: 'none', 
+                                cursor: 'pointer',
+                                color: '#6b7280',
+                                transition: 'color 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#5e72e4'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
+                            >
+                              <i className="fa-solid fa-eye" aria-hidden="true" style={{ fontSize: '16px' }}></i>
                             </button>
-                            <button className="btn btn-outline btn-sm" title="Download PDF" aria-label="Download PDF" style={{ margin: 0 }}>
-                              <i className="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i>
+                            <button 
+                              className="btn btn-icon" 
+                              title="Download PDF" 
+                              aria-label="Download PDF" 
+                              onClick={() => {
+                                // Download invoice as PDF
+                                console.log('Download invoice:', b.InvoiceID || b.InvoiceNumber);
+                                alert(`Downloading invoice: ${b.InvoiceNumber || b.InvoiceID}`);
+                              }}
+                              style={{ 
+                                margin: 0, 
+                                padding: '6px', 
+                                background: 'transparent', 
+                                border: 'none', 
+                                cursor: 'pointer',
+                                color: '#6b7280',
+                                transition: 'color 0.2s'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#5e72e4'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}
+                            >
+                              <i className="fa-solid fa-cloud-arrow-down" aria-hidden="true" style={{ fontSize: '16px' }}></i>
                             </button>
                           </div>
                         </td>

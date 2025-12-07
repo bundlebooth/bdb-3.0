@@ -140,7 +140,7 @@ const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, fav
           <div style={{ 
             position: 'relative', 
             width: '100%', 
-            paddingTop: '66.67%', 
+            aspectRatio: '3 / 2', 
             overflow: 'hidden', 
             borderRadius: '12px',
             background: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
