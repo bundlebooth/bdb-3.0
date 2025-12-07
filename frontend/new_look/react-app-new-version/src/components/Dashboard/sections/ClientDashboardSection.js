@@ -139,9 +139,56 @@ function ClientDashboardSection({ data, loading, onSectionChange }) {
   if (loading) {
     return (
       <div id="dashboard-section">
-        <div className="vendor-stats">
-          <div style={{ textAlign: 'center', padding: '3rem' }}>
-            <div className="spinner" style={{ margin: '0 auto' }}></div>
+        {/* Skeleton Loading for KPI Cards */}
+        <div className="vendor-stats stats-top-grid" id="client-stats">
+          <div className="kpi-grid two-col">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="kpi-card" style={{ padding: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: '12px' }}></div>
+                  <div style={{ flex: 1 }}>
+                    <div className="skeleton" style={{ width: '60px', height: '28px', marginBottom: '8px', borderRadius: '6px' }}></div>
+                    <div className="skeleton" style={{ width: '100px', height: '14px', borderRadius: '4px' }}></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="kpi-card calendar-tile full-height" style={{ padding: '1.25rem' }}>
+            <div className="skeleton" style={{ width: '120px', height: '20px', marginBottom: '1rem', borderRadius: '4px' }}></div>
+            <div style={{ textAlign: 'center' }}>
+              <div className="skeleton" style={{ width: '80px', height: '16px', margin: '0 auto 0.5rem', borderRadius: '4px' }}></div>
+              <div className="skeleton" style={{ width: '60px', height: '48px', margin: '0 auto', borderRadius: '8px' }}></div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Skeleton Loading for Cards */}
+        <div className="overview-grid">
+          <div className="dashboard-card">
+            <div className="skeleton" style={{ width: '150px', height: '20px', marginBottom: '1.5rem', borderRadius: '4px' }}></div>
+            {[1, 2, 3].map((i) => (
+              <div key={i} style={{ display: 'flex', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                <div className="skeleton" style={{ width: '50px', height: '60px', borderRadius: '8px' }}></div>
+                <div style={{ flex: 1 }}>
+                  <div className="skeleton" style={{ width: '80%', height: '14px', marginBottom: '8px', borderRadius: '4px' }}></div>
+                  <div className="skeleton" style={{ width: '60%', height: '12px', marginBottom: '6px', borderRadius: '4px' }}></div>
+                  <div className="skeleton" style={{ width: '40%', height: '12px', borderRadius: '4px' }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="dashboard-card">
+            <div className="skeleton" style={{ width: '150px', height: '20px', marginBottom: '1.5rem', borderRadius: '4px' }}></div>
+            {[1, 2, 3].map((i) => (
+              <div key={i} style={{ display: 'flex', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                <div className="skeleton" style={{ width: '40px', height: '40px', borderRadius: '50%' }}></div>
+                <div style={{ flex: 1 }}>
+                  <div className="skeleton" style={{ width: '70%', height: '14px', marginBottom: '8px', borderRadius: '4px' }}></div>
+                  <div className="skeleton" style={{ width: '90%', height: '12px', borderRadius: '4px' }}></div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -233,17 +280,7 @@ function ClientDashboardSection({ data, loading, onSectionChange }) {
           </div>
         </div>
         <div className="dashboard-card">
-          <div className="dashboard-card-title-row">
-            <h2 className="dashboard-card-title">Recent Messages</h2>
-            <button 
-              className="btn btn-outline" 
-              id="open-all-messages-btn-client" 
-              style={{ padding: '.5rem .9rem' }}
-              onClick={() => handleKPIClick('messages')}
-            >
-              Open Messages
-            </button>
-          </div>
+          <h2 className="dashboard-card-title">Recent Messages</h2>
           <div id="client-recent-messages" className="message-preview-list dashboard-fixed-list">
             {loadingMessages ? (
               <div style={{ textAlign: 'center', padding: '2rem' }}>

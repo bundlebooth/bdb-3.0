@@ -332,12 +332,7 @@ function VendorProfilePage() {
   };
 
   const handleRequestBooking = () => {
-    if (!currentUser) {
-      showBanner('Please log in to request a booking', 'info');
-      setProfileModalOpen(true);
-      return;
-    }
-    // Build professional booking URL with slug and tracking
+    // Allow navigation to booking page without login - login will be required at submission
     const bookingUrl = buildBookingUrl(
       { 
         VendorProfileID: vendorId, 
@@ -1722,13 +1717,49 @@ function VendorProfilePage() {
       
       {/* Mobile Sticky Booking Bar */}
       <div className="sticky-booking-bar">
-        <div className="price-info">
-          <span className="price">
-            {profile?.StartingPrice ? `From $${profile.StartingPrice}` : 'Contact for pricing'}
-          </span>
-        </div>
-        <button className="book-btn" onClick={handleRequestBooking}>
-          Request to book
+        <button 
+          className="message-btn" 
+          onClick={handleMessageVendor}
+          style={{
+            flex: 1,
+            padding: '12px 16px',
+            background: 'white',
+            border: '1px solid #5e72e4',
+            borderRadius: '8px',
+            color: '#5e72e4',
+            fontWeight: '600',
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            cursor: 'pointer'
+          }}
+        >
+          <i className="fas fa-comment"></i>
+          Message
+        </button>
+        <button 
+          className="book-btn" 
+          onClick={handleRequestBooking}
+          style={{
+            flex: 1,
+            padding: '12px 16px',
+            background: '#5e72e4',
+            border: 'none',
+            borderRadius: '8px',
+            color: 'white',
+            fontWeight: '600',
+            fontSize: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            cursor: 'pointer'
+          }}
+        >
+          <i className="fas fa-calendar-check"></i>
+          Request Booking
         </button>
       </div>
       

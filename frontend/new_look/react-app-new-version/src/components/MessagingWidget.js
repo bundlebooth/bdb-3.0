@@ -215,10 +215,11 @@ function MessagingWidget() {
         e.currentTarget.style.transform = 'scale(1)';
         e.currentTarget.style.boxShadow = '0 4px 16px rgba(94, 114, 228, 0.3), 0 2px 6px rgba(0,0,0,0.1)';
       }}>
-        {/* Simple Chat Bubble Icon - Outlined Style */}
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
+        {/* Chat Icon using Font Awesome */}
+        <i className="fas fa-comment" style={{ 
+          fontSize: '24px', 
+          color: 'white'
+        }}></i>
         {unreadCount > 0 && (
           <span style={{
             position: 'absolute',

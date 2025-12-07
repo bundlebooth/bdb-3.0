@@ -674,6 +674,10 @@ function IndexPage() {
     if (appContainer) {
       appContainer.classList.toggle('map-active');
     }
+    // Use requestAnimationFrame to ensure DOM has updated before triggering resize
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
   }, [mapActive]);
 
   const handleEnhancedSearch = useCallback(async (searchParams) => {
@@ -823,7 +827,7 @@ function IndexPage() {
       <div className={`app-container sidebar-collapsed ${mapActive ? 'map-active' : ''}`} id="app-container" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
         <CategoriesNav activeCategory={currentCategory} onCategoryChange={handleCategoryChange} loading={loading} />
         <div className="content-wrapper" style={{ display: 'flex', width: '100%', flex: 1 }}>
-          <main className="main-content" style={{ width: mapActive ? '65%' : '100%', padding: '2rem', overflowY: 'auto', transition: 'width 0.25s ease' }}>
+          <main className="main-content" style={{ width: mapActive ? '65%' : '100%', padding: '2rem', overflowY: 'auto' }}>
           {currentUser?.vendorProfileId && (
             <>
               <SetupIncompleteBanner 
@@ -923,7 +927,7 @@ function IndexPage() {
               // Show actual discovery sections when loaded
               discoverySections.length > 0 && discoverySections.map((section) => (
                 <VendorSection
-                  key={section.id}
+                  key={`${section.id}-${mapActive}`}
                   title={section.title}
                   description={section.description}
                   vendors={section.vendors}
@@ -1004,14 +1008,16 @@ function IndexPage() {
         </div>
       </div>
       
-      {/* Mobile Map Button - Floating */}
-      <button 
-        className="mobile-map-button"
-        onClick={() => setMobileMapOpen(true)}
-      >
-        <i className="fas fa-map"></i>
-        <span>Show map</span>
-      </button>
+      {/* Mobile Map Button - Floating - Only show when no modals are open */}
+      {!dashboardModalOpen && !profileModalOpen && !filterModalOpen && (
+        <button 
+          className="mobile-map-button"
+          onClick={() => setMobileMapOpen(true)}
+        >
+          <i className="fas fa-map"></i>
+          <span>Show map</span>
+        </button>
+      )}
       
       {/* Mobile Fullscreen Map Overlay */}
       <div className={`mobile-map-overlay ${mobileMapOpen ? 'active' : ''}`}>

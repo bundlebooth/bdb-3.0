@@ -5442,22 +5442,26 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         margin-bottom: 0.25rem !important;
     }
     
-    .dashboard-menu a {
-        justify-content: center !important;
-        padding: 0.6rem 0.25rem !important;
-        font-size: 1.1rem !important;
-    }
-    
-    .dashboard-menu a i {
-        margin: 0 !important;
-    }
-    
-    .dashboard-menu a:not(i) {
-        font-size: 0 !important;
-    }
-    
-    .dashboard-menu .menu-heading {
+    /* Hide default sidebar on mobile - we use slide-out menu instead */
+    .dashboard-sidebar:not(.dashboard-sidebar-mobile) {
         display: none !important;
+    }
+    
+    /* Slide-out mobile menu should show full text */
+    .dashboard-sidebar-mobile .dashboard-menu a {
+        justify-content: flex-start !important;
+        padding: 0.75rem 1rem !important;
+        font-size: 0.95rem !important;
+    }
+    
+    .dashboard-sidebar-mobile .dashboard-menu a i {
+        margin-right: 0.75rem !important;
+        width: 20px !important;
+        text-align: center !important;
+    }
+    
+    .dashboard-sidebar-mobile .dashboard-menu .menu-heading {
+        display: block !important;
     }
 
     .dashboard-content {
@@ -5466,7 +5470,7 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     }
     
     .dashboard-header {
-        padding: 0.75rem !important;
+        display: none !important; /* Hide on mobile - title is in modal header */
     }
     
     .dashboard-title {
@@ -7061,6 +7065,18 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     font-size: 18px;
 }
 
+.chat-button svg {
+    width: 26px;
+    height: 26px;
+    display: block;
+    fill: none;
+    stroke: white;
+}
+
+.chat-button svg path {
+    stroke: white;
+}
+
 .chat-button-text {
     color: white;
     font-weight: 600;
@@ -8322,63 +8338,9 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 @media (max-width: 992px) { .vv-footer .vv-wrap { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 600px) { .vv-footer .vv-wrap { grid-template-columns: 1fr; } .vv-footer .vv-social a { width: 32px; height: 32px; } }
 
-/* Vendor Card Load Animations - Optimized for Performance */
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translate3d(0, 20px, 0); /* Use translate3d for GPU acceleration */
-    }
-    to {
-        opacity: 1;
-        transform: translate3d(0, 0, 0);
-    }
-}
-
-@keyframes skeleton-shimmer {
-    0% {
-        background-position: 200% 0;
-    }
-    100% {
-        background-position: -200% 0;
-    }
-}
-
-/* Apply animation to vendor cards on load - Optimized */
+/* Vendor cards - no animation, immediate display */
 .vendor-card {
-    animation: fadeInUp 0.4s ease-out forwards; /* Reduced from 0.6s to 0.4s */
-    opacity: 0;
-    will-change: opacity, transform; /* Hint browser for optimization */
-}
-
-/* Reduced stagger delays for faster perceived load */
-.vendor-card:nth-child(1) { animation-delay: 0.02s; }
-.vendor-card:nth-child(2) { animation-delay: 0.04s; }
-.vendor-card:nth-child(3) { animation-delay: 0.06s; }
-.vendor-card:nth-child(4) { animation-delay: 0.08s; }
-.vendor-card:nth-child(5) { animation-delay: 0.1s; }
-.vendor-card:nth-child(6) { animation-delay: 0.12s; }
-.vendor-card:nth-child(7) { animation-delay: 0.14s; }
-.vendor-card:nth-child(8) { animation-delay: 0.16s; }
-.vendor-card:nth-child(9) { animation-delay: 0.18s; }
-.vendor-card:nth-child(10) { animation-delay: 0.2s; }
-.vendor-card:nth-child(11) { animation-delay: 0.22s; }
-.vendor-card:nth-child(12) { animation-delay: 0.24s; }
-
-/* For cards beyond 12, minimal delay */
-.vendor-card:nth-child(n+13) { animation-delay: 0.26s; }
-
-/* Remove will-change after animation completes to free resources */
-.vendor-card {
-    animation: fadeInUp 0.4s ease-out forwards;
-}
-
-/* Respect reduced motion preferences */
-@media (prefers-reduced-motion: reduce) {
-    .vendor-card {
-        animation: none !important;
-        opacity: 1 !important;
-        will-change: auto !important;
-    }
+    opacity: 1;
 }
 
 /* ============================================

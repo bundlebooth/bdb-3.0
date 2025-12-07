@@ -490,8 +490,8 @@ function BookingPage() {
   // Submit booking
   const submitBookingRequest = async () => {
     if (!currentUser || !currentUser.id) {
-      alert('You must be logged in to send a booking request. Please log in and try again.');
-      navigate('/');
+      // Open profile modal for login instead of redirecting
+      setProfileModalOpen(true);
       return;
     }
 
@@ -1270,8 +1270,17 @@ function BookingPage() {
       {showSuccessModal && (
         <div id="success-modal" className="modal">
           <div className="modal-content success-modal-content">
-            <div className="success-icon">
-              <i className="fas fa-check-circle"></i>
+            <div className="success-icon" style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: '#10b981',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.5rem'
+            }}>
+              <i className="fas fa-check" style={{ fontSize: '28px', color: 'white' }}></i>
             </div>
             <h2>Request Sent Successfully!</h2>
             <p>Your booking request has been sent to the vendor. They will review your request and respond within 24 hours.</p>

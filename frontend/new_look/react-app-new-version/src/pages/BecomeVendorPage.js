@@ -1260,100 +1260,335 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
     }
   };
 
+  // Consistent modal-style login matching ProfileModal
   return (
     <div className="account-step">
-      <div className="auth-container">
-        <div className="auth-header">
-          <h2>{mode === 'signup' ? 'Create Your Vendor Account' : 'Welcome Back'}</h2>
-          <p>{mode === 'signup' ? 'Join thousands of vendors on PlanHive' : 'Log in to continue setting up your profile'}</p>
+      <div style={{ 
+        maxWidth: '440px',
+        margin: '0 auto',
+        background: 'white',
+        borderRadius: '16px',
+        padding: '0',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+        border: '1px solid #E5E7EB'
+      }}>
+        <div style={{
+          padding: '24px 24px 16px 24px',
+          borderBottom: '1px solid #E5E7EB'
+        }}>
+          <h3 style={{
+            fontSize: '24px',
+            fontWeight: '600',
+            color: '#1F2937',
+            margin: 0
+          }}>
+            Welcome to PlanHive
+          </h3>
         </div>
-
-        <div className="auth-tabs">
-          <button
-            className={`auth-tab ${mode === 'signup' ? 'active' : ''}`}
-            onClick={() => setMode('signup')}
-          >
-            Sign Up
-          </button>
-          <button
-            className={`auth-tab ${mode === 'login' ? 'active' : ''}`}
-            onClick={() => setMode('login')}
-          >
-            Log In
-          </button>
+        
+        <div style={{ padding: '24px' }}>
+          {mode === 'login' ? (
+            <form onSubmit={handleAccountSubmit}>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  color: '#374151'
+                }}>Email</label>
+                <input
+                  type="email"
+                  value={accountData.email}
+                  onChange={(e) => setAccountData({ ...accountData, email: e.target.value })}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #D1D5DB', 
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    background: '#FFFEF0'
+                  }}
+                  required
+                />
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  color: '#374151'
+                }}>Password</label>
+                <input
+                  type="password"
+                  value={accountData.password}
+                  onChange={(e) => setAccountData({ ...accountData, password: e.target.value })}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #D1D5DB', 
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    background: '#FFFEF0'
+                  }}
+                  required
+                />
+              </div>
+              <button 
+                type="submit" 
+                disabled={loading} 
+                style={{ 
+                  width: '100%', 
+                  padding: '14px',
+                  backgroundColor: '#5B68F4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginBottom: '16px',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                {loading ? 'Logging in...' : 'Log In'}
+              </button>
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <span style={{ color: '#6B7280', fontSize: '14px' }}>Don't have an account? </span>
+                <button 
+                  type="button" 
+                  onClick={() => setMode('signup')} 
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: '#5B68F4', 
+                    fontSize: '14px', 
+                    cursor: 'pointer', 
+                    padding: 0, 
+                    fontFamily: 'inherit',
+                    fontWeight: '500'
+                  }}
+                >
+                  Sign up
+                </button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+                <div style={{ flex: 1, height: '1px', backgroundColor: '#E5E7EB' }}></div>
+                <div style={{ padding: '0 16px', color: '#9CA3AF', fontSize: '14px', fontWeight: '500' }}>OR</div>
+                <div style={{ flex: 1, height: '1px', backgroundColor: '#E5E7EB' }}></div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button
+                  type="button"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    backgroundColor: 'white',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                    <path d="M9.003 18c2.43 0 4.467-.806 5.956-2.18L12.05 13.56c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z" fill="#34A853"/>
+                    <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                    <path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335"/>
+                  </svg>
+                  Continue with Google
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    backgroundColor: 'white',
+                    border: '1px solid #D1D5DB',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  Continue with Facebook
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleAccountSubmit}>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  color: '#374151'
+                }}>Full Name *</label>
+                <input
+                  type="text"
+                  value={accountData.name}
+                  onChange={(e) => setAccountData({ ...accountData, name: e.target.value })}
+                  placeholder="John Doe"
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #D1D5DB', 
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                  required
+                />
+              </div>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  color: '#374151'
+                }}>Email *</label>
+                <input
+                  type="email"
+                  value={accountData.email}
+                  onChange={(e) => setAccountData({ ...accountData, email: e.target.value })}
+                  placeholder="your@email.com"
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #D1D5DB', 
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    background: '#FFFEF0'
+                  }}
+                  required
+                />
+              </div>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  color: '#374151'
+                }}>Password *</label>
+                <input
+                  type="password"
+                  value={accountData.password}
+                  onChange={(e) => setAccountData({ ...accountData, password: e.target.value })}
+                  placeholder="••••••••"
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #D1D5DB', 
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    background: '#FFFEF0'
+                  }}
+                  required
+                  minLength="6"
+                />
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '8px', 
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  color: '#374151'
+                }}>Confirm Password *</label>
+                <input
+                  type="password"
+                  value={accountData.confirmPassword}
+                  onChange={(e) => setAccountData({ ...accountData, confirmPassword: e.target.value })}
+                  placeholder="••••••••"
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #D1D5DB', 
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                  required
+                  minLength="6"
+                />
+              </div>
+              <button 
+                type="submit" 
+                disabled={loading} 
+                style={{ 
+                  width: '100%', 
+                  padding: '14px',
+                  backgroundColor: '#5B68F4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  marginBottom: '16px',
+                  opacity: loading ? 0.7 : 1
+                }}
+              >
+                {loading ? 'Creating Account...' : 'Create Account & Continue'}
+              </button>
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <span style={{ color: '#6B7280', fontSize: '14px' }}>Already have an account? </span>
+                <button 
+                  type="button" 
+                  onClick={() => setMode('login')} 
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: '#5B68F4', 
+                    fontSize: '14px', 
+                    cursor: 'pointer', 
+                    padding: 0, 
+                    fontFamily: 'inherit',
+                    fontWeight: '500'
+                  }}
+                >
+                  Log in
+                </button>
+              </div>
+              <p style={{ 
+                textAlign: 'center', 
+                fontSize: '12px', 
+                color: '#9CA3AF',
+                margin: 0
+              }}>
+                By signing up, you agree to our <a href="#" style={{ color: '#5B68F4' }}>Terms of Service</a> and <a href="#" style={{ color: '#5B68F4' }}>Privacy Policy</a>
+              </p>
+            </form>
+          )}
         </div>
-
-        <form onSubmit={handleAccountSubmit} className="auth-form">
-          {mode === 'signup' && (
-            <div className="form-group">
-              <label>Full Name *</label>
-              <input
-                type="text"
-                value={accountData.name}
-                onChange={(e) => setAccountData({ ...accountData, name: e.target.value })}
-                className="form-input"
-                placeholder="John Doe"
-                required
-              />
-            </div>
-          )}
-
-          <div className="form-group">
-            <label>Email *</label>
-            <input
-              type="email"
-              value={accountData.email}
-              onChange={(e) => setAccountData({ ...accountData, email: e.target.value })}
-              className="form-input"
-              placeholder="your@email.com"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Password *</label>
-            <input
-              type="password"
-              value={accountData.password}
-              onChange={(e) => setAccountData({ ...accountData, password: e.target.value })}
-              className="form-input"
-              placeholder="••••••••"
-              required
-              minLength="6"
-            />
-          </div>
-
-          {mode === 'signup' && (
-            <div className="form-group">
-              <label>Confirm Password *</label>
-              <input
-                type="password"
-                value={accountData.confirmPassword}
-                onChange={(e) => setAccountData({ ...accountData, confirmPassword: e.target.value })}
-                className="form-input"
-                placeholder="••••••••"
-                required
-                minLength="6"
-              />
-            </div>
-          )}
-
-          <button type="submit" className="btn-auth-submit" disabled={loading}>
-            {loading ? (
-              <span className="spinner-small"></span>
-            ) : mode === 'signup' ? (
-              'Create Account & Continue'
-            ) : (
-              'Log In & Continue'
-            )}
-          </button>
-
-          {mode === 'signup' && (
-            <p className="auth-terms">
-              By signing up, you agree to our Terms of Service and Privacy Policy
-            </p>
-          )}
-        </form>
       </div>
     </div>
   );

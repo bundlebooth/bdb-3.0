@@ -23,7 +23,7 @@ import VendorReviewsSection from './sections/VendorReviewsSection';
 import VendorAnalyticsSection from './sections/VendorAnalyticsSection';
 import VendorSettingsSection from './sections/VendorSettingsSection';
 
-function UnifiedDashboard({ activeSection, onSectionChange, onLogout }) {
+function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenuOpen, setMobileMenuOpen }) {
   const { currentUser } = useAuth();
   const { notificationCount } = useNotifications();
   const [clientData, setClientData] = useState(null);
@@ -211,6 +211,8 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout }) {
         onSectionChange={onSectionChange}
         onLogout={onLogout}
         unified={true}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
       />
       <main className="dashboard-content" style={{ overflowY: 'auto', flex: 1 }}>
         <div className="dashboard-header">

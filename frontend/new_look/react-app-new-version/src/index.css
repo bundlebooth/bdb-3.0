@@ -4424,14 +4424,30 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
 }
 .overview-grid {
     display: grid;
-    grid-template-columns: 1fr minmax(320px, 420px);
+    grid-template-columns: 1fr 1fr;
     gap: 1.25rem;
-    align-items: start;
+    align-items: stretch;
     width: 100%;
     max-width: 100%;
     margin: 0 auto;
 }
-.overview-grid > * { min-width: 0; }
+.overview-grid > .dashboard-card {
+    min-width: 0;
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+}
+.overview-grid > .dashboard-card .dashboard-fixed-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.overview-grid > .dashboard-card .dashboard-fixed-list .empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 @media (max-width: 1200px) {
     .overview-grid { grid-template-columns: 1fr; }
 }
@@ -7116,7 +7132,12 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
     width: 28px !important;
     height: 28px !important;
     display: block !important;
-    fill: white !important;
+    fill: none !important;
+    stroke: white !important;
+}
+
+.chat-button svg path {
+    stroke: white !important;
 }
 
 .chat-button-text {
