@@ -26,15 +26,17 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
   const loadQuestionnaire = async () => {
     try {
       setLoading(true);
+      console.log('[Questionnaire] Loading for vendorProfileId:', vendorProfileId);
       
       // Load vendor profile to get categories
       const profileRes = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
+      console.log('[Questionnaire] Profile response status:', profileRes.status);
       if (profileRes.ok) {
         const result = await profileRes.json();
-        console.log('Profile result:', result);
+        console.log('[Questionnaire] Profile result:', result);
         
         // Handle nested structure from /vendors/:id endpoint
         const profile = result.data?.profile || result.profile || result;
@@ -53,30 +55,35 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
       }
       
       // Fetch all features grouped by category
+      console.log('[Questionnaire] Fetching all-grouped features...');
       const response = await fetch(`${API_BASE_URL}/vendor-features/all-grouped`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
+      console.log('[Questionnaire] all-grouped response status:', response.status);
       if (!response.ok) throw new Error('Failed to load questionnaire');
       
       const data = await response.json();
       const allCategories = data.categories || [];
       setCategories(allCategories);
-      console.log('Loaded feature categories:', allCategories.length);
+      console.log('[Questionnaire] Loaded feature categories:', allCategories.length);
       
       // Load vendor's existing selections
       if (vendorProfileId) {
+        console.log('[Questionnaire] Fetching vendor selections...');
         const selectionsResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         
+        console.log('[Questionnaire] Selections response status:', selectionsResponse.status);
         if (selectionsResponse.ok) {
           const selectionsData = await selectionsResponse.json();
+          console.log('[Questionnaire] Selections data:', selectionsData);
           const selectedIds = new Set(
-            selectionsData.selectedFeatures.map(f => f.FeatureID)
+            (selectionsData.selectedFeatures || []).map(f => f.FeatureID)
           );
           setSelectedFeatureIds(selectedIds);
-          console.log('Loaded selected features:', selectedIds.size);
+          console.log('[Questionnaire] Loaded selected features:', selectedIds.size);
         }
       }
     } catch (error) {
@@ -104,6 +111,10 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
         throw new Error('Vendor profile ID not found');
       }
       
+      const featureIdsArray = Array.from(selectedFeatureIds);
+      console.log('[Questionnaire] Saving features:', featureIdsArray);
+      console.log('[Questionnaire] Saving to vendorProfileId:', vendorProfileId);
+      
       const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
         method: 'POST',
         headers: {
@@ -111,17 +122,21 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          featureIds: Array.from(selectedFeatureIds)
+          featureIds: featureIdsArray
         })
       });
+      
+      console.log('[Questionnaire] Save response status:', response.status);
+      const responseData = await response.json();
+      console.log('[Questionnaire] Save response data:', responseData);
       
       if (response.ok) {
         showBanner('Features saved successfully!', 'success');
       } else {
-        throw new Error('Failed to save features');
+        throw new Error(responseData.message || 'Failed to save features');
       }
     } catch (error) {
-      console.error('Error saving features:', error);
+      console.error('[Questionnaire] Error saving features:', error);
       showBanner('Failed to save changes: ' + error.message, 'error');
     }
   };
@@ -233,26 +248,10 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
     return icon.replace('fa-', '').replace('fas ', '').replace('far ', '');
   };
   
-  // Filter categories based on vendor's selected categories
+  // Show ALL categories - vendors can select any features regardless of their business type
+  // This allows more flexibility and ensures vendors can highlight all relevant features
   const getFilteredCategories = () => {
-    if (!vendorCategories || vendorCategories.length === 0) {
-      // Show categories marked as 'all' only
-      return categories.filter(cat => 
-        !cat.applicableVendorCategories || cat.applicableVendorCategories === 'all'
-      );
-    }
-    
-    return categories.filter(category => {
-      if (!category.applicableVendorCategories) return true;
-      if (category.applicableVendorCategories === 'all') return true;
-      
-      const applicableList = category.applicableVendorCategories.split(',').map(c => c.trim().toLowerCase());
-      const hasMatch = vendorCategories.some(vendorCat => 
-        applicableList.includes(vendorCat.toLowerCase())
-      );
-      
-      return hasMatch;
-    });
+    return categories;
   };
   
   const filteredCategories = getFilteredCategories();

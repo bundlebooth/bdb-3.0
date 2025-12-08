@@ -348,6 +348,7 @@ const BecomeVendorPage = () => {
           const businessHours = result.data.businessHours || [];
           const images = result.data.images || [];
           const selectedFeatures = result.data.selectedFeatures || [];
+          const faqs = result.data.faqs || [];
           
           // Social media - convert from array format to object format
           let socialMedia = {};
@@ -465,10 +466,15 @@ const BecomeVendorPage = () => {
             youtube: socialMedia.youtube || '',
             tiktok: socialMedia.tiktok || '',
             
-            // Policies
+            // Policies & FAQs
             cancellationPolicy: profile.CancellationPolicy || '',
             depositPercentage: profile.DepositPercentage?.toString() || '',
             paymentTerms: profile.PaymentTerms || '',
+            faqs: faqs.map(faq => ({
+              id: faq.id || faq.FAQID,
+              question: faq.question || faq.Question,
+              answer: faq.answer || faq.Answer
+            })),
             
             // Google Reviews
             googlePlaceId: profile.GooglePlaceId || ''
@@ -495,10 +501,13 @@ const BecomeVendorPage = () => {
             });
             if (filtersRes.ok) {
               const filtersData = await filtersRes.json();
-              if (filtersData.isPremium || filtersData.isFeatured) {
+              // Check for filters string first, then fall back to boolean fields
+              if (filtersData.filters) {
+                updatedFormData.selectedFilters = filtersData.filters.split(',').filter(f => f.trim());
+              } else if (filtersData.isPremium || filtersData.isFeatured) {
                 updatedFormData.selectedFilters = ['filter-premium'];
               }
-              console.log('🏷️ Filters loaded:', filtersData);
+              console.log('🏷️ Filters loaded:', updatedFormData.selectedFilters);
             }
           } catch (e) {
             console.log('Could not fetch filters:', e);
@@ -3013,36 +3022,42 @@ function QuestionnaireStep({ formData, setFormData, currentUser }) {
   const loadQuestionnaire = async () => {
     try {
       setLoading(true);
+      console.log('[BecomeVendor Questionnaire] Loading... vendorProfileId:', currentUser?.vendorProfileId);
       
       // Fetch all features grouped by category
       const response = await fetch(`${API_BASE_URL}/vendor-features/all-grouped`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
+      console.log('[BecomeVendor Questionnaire] all-grouped response:', response.status);
       if (response.ok) {
         const data = await response.json();
         setCategories(data.categories || []);
+        console.log('[BecomeVendor Questionnaire] Loaded categories:', data.categories?.length);
       }
       
       // Load vendor's existing selections if vendorProfileId exists
       if (currentUser?.vendorProfileId) {
+        console.log('[BecomeVendor Questionnaire] Fetching vendor selections...');
         const selectionsResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         
+        console.log('[BecomeVendor Questionnaire] Selections response:', selectionsResponse.status);
         if (selectionsResponse.ok) {
           const selectionsData = await selectionsResponse.json();
+          console.log('[BecomeVendor Questionnaire] Selections data:', selectionsData);
           const selectedIds = new Set(
             selectionsData.selectedFeatures?.map(f => f.FeatureID) || []
           );
           setSelectedFeatureIds(selectedIds);
           // Also update formData
           setFormData(prev => ({ ...prev, selectedFeatures: Array.from(selectedIds) }));
-          console.log('Loaded selected features:', selectedIds.size);
+          console.log('[BecomeVendor Questionnaire] Loaded selected features:', selectedIds.size);
         }
       }
     } catch (error) {
-      console.error('Error loading questionnaire:', error);
+      console.error('[BecomeVendor Questionnaire] Error loading:', error);
     } finally {
       setLoading(false);
     }
@@ -3070,6 +3085,10 @@ function QuestionnaireStep({ formData, setFormData, currentUser }) {
     
     setSaving(true);
     try {
+      const featureIdsArray = Array.from(selectedFeatureIds);
+      console.log('[BecomeVendor Questionnaire] Saving features:', featureIdsArray);
+      console.log('[BecomeVendor Questionnaire] To vendorProfileId:', currentUser.vendorProfileId);
+      
       const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
         method: 'POST',
         headers: {
@@ -3077,17 +3096,21 @@ function QuestionnaireStep({ formData, setFormData, currentUser }) {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          featureIds: Array.from(selectedFeatureIds)
+          featureIds: featureIdsArray
         })
       });
+      
+      console.log('[BecomeVendor Questionnaire] Save response:', response.status);
+      const responseData = await response.json();
+      console.log('[BecomeVendor Questionnaire] Save response data:', responseData);
       
       if (response.ok) {
         showBanner('Features saved successfully!', 'success');
       } else {
-        throw new Error('Failed to save features');
+        throw new Error(responseData.message || 'Failed to save features');
       }
     } catch (error) {
-      console.error('Error saving features:', error);
+      console.error('[BecomeVendor Questionnaire] Error saving:', error);
       showBanner('Failed to save features: ' + error.message, 'error');
     } finally {
       setSaving(false);
@@ -3128,20 +3151,9 @@ function QuestionnaireStep({ formData, setFormData, currentUser }) {
     return icon.replace('fa-', '');
   };
 
+  // Show ALL categories - vendors can select any features regardless of their business type
   const getFilteredCategories = () => {
-    const vendorCategories = [formData.primaryCategory, ...(formData.additionalCategories || [])].filter(Boolean);
-    
-    if (vendorCategories.length === 0) {
-      return categories.filter(cat => !cat.applicableVendorCategories || cat.applicableVendorCategories === 'all');
-    }
-    
-    return categories.filter(category => {
-      if (!category.applicableVendorCategories) return true;
-      if (category.applicableVendorCategories === 'all') return true;
-      
-      const applicableList = category.applicableVendorCategories.split(',').map(c => c.trim().toLowerCase());
-      return vendorCategories.some(vendorCat => applicableList.includes(vendorCat.toLowerCase()));
-    });
+    return categories;
   };
 
   const filteredCategories = getFilteredCategories();
