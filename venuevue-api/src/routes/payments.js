@@ -14,6 +14,88 @@ function isStripeConfigured() {
          !process.env.STRIPE_PUBLISHABLE_KEY.includes('placeholder');
 }
 
+// ===== STRIPE CONNECT ONBOARDING =====
+
+// 1. INITIATE STRIPE CONNECT (for vendor onboarding)
+router.post('/connect', async (req, res) => {
+  try {
+    const { userId, vendorProfileId } = req.body;
+
+    if (!userId || !vendorProfileId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID and Vendor Profile ID are required'
+      });
+    }
+
+    // Check if Stripe is configured
+    if (!isStripeConfigured()) {
+      return res.status(503).json({
+        success: false,
+        message: 'Stripe is not configured. Please contact support.'
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Check if vendor already has a Stripe account
+    const vendorCheck = await pool.request()
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query('SELECT StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+
+    if (!vendorCheck.recordset.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found'
+      });
+    }
+
+    let stripeAccountId = vendorCheck.recordset[0].StripeAccountID;
+
+    // If no Stripe account exists, create one
+    if (!stripeAccountId) {
+      const account = await stripe.accounts.create({
+        type: 'express',
+        country: 'CA', // Canada
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+      });
+
+      stripeAccountId = account.id;
+
+      // Save Stripe Account ID to database
+      await pool.request()
+        .input('VendorProfileID', sql.Int, vendorProfileId)
+        .input('StripeAccountID', sql.NVarChar(100), stripeAccountId)
+        .query('UPDATE VendorProfiles SET StripeAccountID = @StripeAccountID WHERE VendorProfileID = @VendorProfileID');
+    }
+
+    // Create account link for onboarding
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const accountLink = await stripe.accountLinks.create({
+      account: stripeAccountId,
+      refresh_url: `${frontendUrl}/become-a-vendor?stripe=refresh`,
+      return_url: `${frontendUrl}/become-a-vendor?stripe=success`,
+      type: 'account_onboarding',
+    });
+
+    return res.json({
+      success: true,
+      url: accountLink.url,
+      accountId: stripeAccountId
+    });
+
+  } catch (error) {
+    console.error('Stripe Connect error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to initiate Stripe connection'
+    });
+  }
+});
+
 async function getInvoiceTotalsCents(bookingId) {
   const pool = await poolPromise;
   try { if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') { await invoicesRouter.upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true }); } } catch (_) {}
@@ -577,26 +659,12 @@ router.get('/connect/dashboard/:vendorProfileId', async (req, res) => {
       });
     }
 
-    // Check account type to determine dashboard access method
-    const account = await stripe.accounts.retrieve(stripeAccountId);
-    
-    // For OAuth/Standard accounts, redirect to Stripe's standard dashboard
-    // For Express accounts, create a login link
-    let dashboardUrl;
-    
-    if (account.type === 'express') {
-      // Express accounts can use login links
-      const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
-      dashboardUrl = loginLink.url;
-    } else {
-      // Standard/OAuth accounts use Stripe's standard dashboard
-      dashboardUrl = `https://dashboard.stripe.com/${stripeAccountId}`;
-    }
+    // Create login link for Stripe Express dashboard
+    const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
 
     res.json({
       success: true,
-      dashboardUrl: dashboardUrl,
-      url: dashboardUrl
+      dashboardUrl: loginLink.url
     });
 
   } catch (error) {

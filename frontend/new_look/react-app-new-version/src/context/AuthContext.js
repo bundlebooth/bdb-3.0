@@ -114,14 +114,40 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function handleGoogleLogin(credential) {
+  async function handleGoogleLogin(credential, accountType = null) {
     try {
+      // Decode the credential to get user info
+      const decodeJwt = (token) => {
+        try {
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => 
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join(''));
+          return JSON.parse(jsonPayload);
+        } catch (error) {
+          console.error('Error decoding JWT:', error);
+          return null;
+        }
+      };
+
+      const decoded = decodeJwt(credential);
+      if (!decoded) {
+        throw new Error('Failed to decode Google credential');
+      }
+
       const response = await fetch(`${API_BASE_URL}/users/social-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ credential })
+        body: JSON.stringify({ 
+          email: decoded.email,
+          name: decoded.name,
+          authProvider: 'google',
+          avatar: decoded.picture,
+          accountType: accountType  // Pass account type if provided
+        })
       });
 
       if (!response.ok) {
@@ -141,10 +167,12 @@ export function AuthProvider({ children }) {
         name: data.name || data.email?.split('@')[0] || 'User',
         email: data.email,
         userType: data.isVendor ? 'vendor' : 'client',
-        isVendor: data.isVendor || false
+        isVendor: data.isVendor || false,
+        vendorProfileId: data.vendorProfileId || null
       };
       
       setCurrentUser(userData);
+      localStorage.setItem('userSession', JSON.stringify(userData));
       updateUserInterface(userData);
       
       return userData;

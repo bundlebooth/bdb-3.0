@@ -41,7 +41,10 @@ async function ensureTwoFactorTable(pool) {
 // User Registration
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, isVendor = false } = req.body;
+    const { name, email, password, isVendor = false, accountType } = req.body;
+    
+    // Convert accountType to isVendor boolean if provided
+    const isVendorFlag = accountType === 'vendor' || isVendor;
 
     // Manual validation
     if (!name || !name.trim()) {
@@ -89,7 +92,7 @@ router.post('/register', async (req, res) => {
     request.input('Name', sql.NVarChar(100), name.trim());
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
     request.input('PasswordHash', sql.NVarChar(255), passwordHash);
-    request.input('IsVendor', sql.Bit, isVendor);
+    request.input('IsVendor', sql.Bit, isVendorFlag);
     request.input('AuthProvider', sql.NVarChar(20), 'email');
 
     const result = await request.execute('sp_RegisterUser');
@@ -97,7 +100,7 @@ router.post('/register', async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: userId, email, isVendor },
+      { id: userId, email, isVendor: isVendorFlag },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
@@ -107,7 +110,7 @@ router.post('/register', async (req, res) => {
       userId,
       name: name.trim(),
       email: email.toLowerCase().trim(),
-      isVendor,
+      isVendor: isVendorFlag,
       token
     });
 
@@ -147,14 +150,16 @@ router.post('/login', async (req, res) => {
 
     const result = await request.query(`
       SELECT 
-        UserID, 
-        Name, 
-        Email, 
-        PasswordHash, 
-        IsVendor,
-        IsActive
-      FROM Users 
-      WHERE Email = @Email
+        u.UserID, 
+        u.Name, 
+        u.Email, 
+        u.PasswordHash, 
+        u.IsVendor,
+        u.IsActive,
+        v.VendorProfileID
+      FROM Users u
+      LEFT JOIN VendorProfiles v ON u.UserID = v.UserID
+      WHERE u.Email = @Email
     `);
     
     if (result.recordset.length === 0) {
@@ -218,6 +223,7 @@ router.post('/login', async (req, res) => {
       name: user.Name,
       email: user.Email,
       isVendor: user.IsVendor,
+      vendorProfileId: user.VendorProfileID || null,
       token
     });
 
@@ -280,7 +286,12 @@ router.post('/login/verify-2fa', async (req, res) => {
       .query('UPDATE UserTwoFactorCodes SET IsUsed = 1, Attempts = Attempts + 1 WHERE CodeID = @CodeID');
     const ures = await pool.request()
       .input('UserID', sql.Int, decoded.id)
-      .query(`SELECT UserID, Name, Email, IsVendor FROM Users WHERE UserID = @UserID`);
+      .query(`
+        SELECT u.UserID, u.Name, u.Email, u.IsVendor, v.VendorProfileID
+        FROM Users u
+        LEFT JOIN VendorProfiles v ON u.UserID = v.UserID
+        WHERE u.UserID = @UserID
+      `);
     if (ures.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -290,7 +301,7 @@ router.post('/login/verify-2fa', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
-    res.json({ success: true, userId: u.UserID, name: u.Name, email: u.Email, isVendor: u.IsVendor, token });
+    res.json({ success: true, userId: u.UserID, name: u.Name, email: u.Email, isVendor: u.IsVendor, vendorProfileId: u.VendorProfileID || null, token });
   } catch (err) {
     console.error('Verify 2FA error:', err);
     res.status(500).json({ success: false, message: 'Verification failed', error: err.message });
@@ -330,10 +341,10 @@ router.post('/login/resend-2fa', async (req, res) => {
   }
 });
 
-// NEW: Endpoint for social login
+// NEW: Endpoint for social login with account type selection
 router.post('/social-login', async (req, res) => {
   try {
-    const { email, name, authProvider, avatar } = req.body;
+    const { email, name, authProvider, avatar, isVendor = false, accountType } = req.body;
 
     if (!email || !name || !authProvider) {
       return res.status(400).json({
@@ -342,12 +353,16 @@ router.post('/social-login', async (req, res) => {
       });
     }
 
+    // Convert accountType to isVendor boolean if provided
+    const isVendorFlag = accountType === 'vendor' || isVendor;
+
     const pool = await poolPromise;
     const request = pool.request();
-    request.input('Email', sql.NVarChar(100), email);
+    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
     request.input('Name', sql.NVarChar(100), name);
     request.input('AuthProvider', sql.NVarChar(20), authProvider);
-    request.input('Avatar', sql.NVarChar(255), avatar || null);
+    request.input('ProfileImageURL', sql.NVarChar(255), avatar || null);
+    request.input('IsVendor', sql.Bit, isVendorFlag);
 
     const result = await request.execute('sp_RegisterSocialUser');
     const user = result.recordset[0];
@@ -369,6 +384,8 @@ router.post('/social-login', async (req, res) => {
       name: user.Name,
       email: user.Email,
       isVendor: user.IsVendor,
+      isNewUser: user.IsNewUser || false,  // Return whether this is a new user
+      vendorProfileId: user.VendorProfileID || null,
       token
     });
 
@@ -377,6 +394,51 @@ router.post('/social-login', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Social login failed',
+      error: err.message
+    });
+  }
+});
+
+// Check if email exists (for Google Sign-In flow)
+router.get('/check-email', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
+
+    const result = await request.query(`
+      SELECT UserID, IsVendor 
+      FROM Users 
+      WHERE Email = @Email
+    `);
+
+    if (result.recordset.length > 0) {
+      res.json({
+        success: true,
+        exists: true,
+        isVendor: result.recordset[0].IsVendor
+      });
+    } else {
+      res.json({
+        success: true,
+        exists: false
+      });
+    }
+
+  } catch (err) {
+    console.error('Check email error:', err);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check email',
       error: err.message
     });
   }
