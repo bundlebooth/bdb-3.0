@@ -61,13 +61,51 @@ router.get('/category/:categoryKey', async (req, res) => {
 router.get('/all-grouped', async (req, res) => {
   try {
     const pool = await poolPromise;
-    const result = await pool.request()
-      .execute('sp_GetAllVendorFeaturesGrouped');
+    let result;
+    
+    try {
+      result = await pool.request()
+        .execute('sp_GetAllVendorFeaturesGrouped');
+    } catch (spError) {
+      // Stored procedure doesn't exist, try direct query
+      console.log('[vendor-features] sp_GetAllVendorFeaturesGrouped not found, trying direct query');
+      try {
+        result = await pool.request().query(`
+          SELECT 
+            c.CategoryID,
+            c.CategoryName,
+            c.CategoryKey,
+            c.CategoryDescription,
+            c.CategoryIcon,
+            c.ApplicableVendorCategories,
+            c.DisplayOrder AS CategoryOrder,
+            f.FeatureID,
+            f.FeatureName,
+            f.FeatureKey,
+            f.FeatureDescription,
+            f.FeatureIcon,
+            f.DisplayOrder AS FeatureOrder
+          FROM VendorFeatureCategories c
+          LEFT JOIN VendorFeatures f ON c.CategoryID = f.CategoryID AND f.IsActive = 1
+          WHERE c.IsActive = 1
+          ORDER BY c.DisplayOrder, c.CategoryName, f.DisplayOrder, f.FeatureName
+        `);
+      } catch (tableError) {
+        // Tables don't exist, return empty categories
+        console.log('[vendor-features] VendorFeatureCategories table not found, returning empty');
+        return res.json({
+          success: true,
+          categories: []
+        });
+      }
+    }
     
     // Group the results by category
     const grouped = {};
-    result.recordset.forEach(row => {
+    (result.recordset || []).forEach(row => {
       const catKey = row.CategoryKey;
+      if (!catKey) return;
+      
       if (!grouped[catKey]) {
         grouped[catKey] = {
           categoryID: row.CategoryID,
@@ -118,15 +156,56 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
   try {
     const { vendorProfileId } = req.params;
     const pool = await poolPromise;
+    let result;
     
-    const result = await pool.request()
-      .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-      .execute('sp_GetVendorSelectedFeatures');
+    try {
+      result = await pool.request()
+        .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+        .execute('sp_GetVendorSelectedFeatures');
+    } catch (spError) {
+      // Stored procedure doesn't exist, try direct query
+      console.log('[vendor-features] sp_GetVendorSelectedFeatures not found, trying direct query');
+      try {
+        result = await pool.request()
+          .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+          .query(`
+            SELECT 
+              vsf.VendorFeatureSelectionID,
+              vsf.VendorProfileID,
+              vsf.FeatureID,
+              f.FeatureName,
+              f.FeatureKey,
+              f.FeatureDescription,
+              f.FeatureIcon,
+              c.CategoryID,
+              c.CategoryName,
+              c.CategoryKey,
+              c.CategoryIcon,
+              vsf.CreatedAt AS SelectedAt
+            FROM VendorSelectedFeatures vsf
+            JOIN VendorFeatures f ON vsf.FeatureID = f.FeatureID
+            JOIN VendorFeatureCategories c ON f.CategoryID = c.CategoryID
+            WHERE vsf.VendorProfileID = @VendorProfileID
+              AND f.IsActive = 1
+            ORDER BY c.DisplayOrder, f.DisplayOrder
+          `);
+      } catch (tableError) {
+        // Tables don't exist, return empty
+        console.log('[vendor-features] VendorSelectedFeatures table not found, returning empty');
+        return res.json({
+          success: true,
+          selectedFeatures: [],
+          groupedByCategory: []
+        });
+      }
+    }
     
     // Group by category
     const grouped = {};
-    result.recordset.forEach(row => {
+    (result.recordset || []).forEach(row => {
       const catKey = row.CategoryKey;
+      if (!catKey) return;
+      
       if (!grouped[catKey]) {
         grouped[catKey] = {
           categoryID: row.CategoryID,
@@ -150,7 +229,7 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
     
     res.json({
       success: true,
-      selectedFeatures: result.recordset,
+      selectedFeatures: result.recordset || [],
       groupedByCategory: categories
     });
   } catch (error) {
@@ -184,24 +263,60 @@ router.post('/vendor/:vendorProfileId', async (req, res) => {
     // Convert array to comma-separated string
     const featureIdsStr = featureIds.length > 0 ? featureIds.join(',') : '';
     
-    const result = await pool.request()
-      .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-      .input('FeatureIDs', sql.NVarChar(sql.MAX), featureIdsStr)
-      .execute('sp_SaveVendorFeatureSelections');
-    
-    const status = result.recordset[0];
-    
-    if (status.Status === 'success') {
-      res.json({
-        success: true,
-        message: status.Message,
-        selectionCount: status.SelectionCount
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: status.Message
-      });
+    let result;
+    try {
+      result = await pool.request()
+        .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+        .input('FeatureIDs', sql.NVarChar(sql.MAX), featureIdsStr)
+        .execute('sp_SaveVendorFeatureSelections');
+      
+      const status = result.recordset[0];
+      
+      if (status.Status === 'success') {
+        res.json({
+          success: true,
+          message: status.Message,
+          selectionCount: status.SelectionCount
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: status.Message
+        });
+      }
+    } catch (spError) {
+      // Stored procedure doesn't exist, try direct SQL
+      console.log('[vendor-features] sp_SaveVendorFeatureSelections not found, trying direct SQL');
+      try {
+        // Delete existing selections
+        await pool.request()
+          .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+          .query('DELETE FROM VendorSelectedFeatures WHERE VendorProfileID = @VendorProfileID');
+        
+        // Insert new selections if any
+        if (featureIds.length > 0) {
+          for (const featureId of featureIds) {
+            await pool.request()
+              .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+              .input('FeatureID', sql.Int, parseInt(featureId))
+              .query('INSERT INTO VendorSelectedFeatures (VendorProfileID, FeatureID) VALUES (@VendorProfileID, @FeatureID)');
+          }
+        }
+        
+        res.json({
+          success: true,
+          message: 'Feature selections saved successfully',
+          selectionCount: featureIds.length
+        });
+      } catch (tableError) {
+        // Tables don't exist
+        console.log('[vendor-features] VendorSelectedFeatures table not found:', tableError.message);
+        res.status(500).json({
+          success: false,
+          message: 'Feature tables not set up in database. Please run the database migration scripts.',
+          error: tableError.message
+        });
+      }
     }
   } catch (error) {
     console.error('Error saving vendor feature selections:', error);

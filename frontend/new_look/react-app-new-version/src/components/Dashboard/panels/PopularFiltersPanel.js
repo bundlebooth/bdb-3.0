@@ -29,16 +29,21 @@ function PopularFiltersPanel({ onBack, vendorProfileId }) {
   const loadFilters = async () => {
     try {
       setLoading(true);
+      console.log('[PopularFiltersPanel] Loading filters for vendorProfileId:', vendorProfileId);
       const response = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/filters`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
+      console.log('[PopularFiltersPanel] Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        setSelectedFilters(data.filters ? data.filters.split(',') : []);
+        console.log('[PopularFiltersPanel] Loaded data:', data);
+        const filters = data.filters ? data.filters.split(',').filter(f => f) : [];
+        console.log('[PopularFiltersPanel] Parsed filters:', filters);
+        setSelectedFilters(filters);
       }
     } catch (error) {
-      console.error('Error loading filters:', error);
+      console.error('[PopularFiltersPanel] Error loading filters:', error);
     } finally {
       setLoading(false);
     }

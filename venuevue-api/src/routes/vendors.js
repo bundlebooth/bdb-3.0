@@ -2333,14 +2333,16 @@ router.get('/profile', async (req, res) => {
       console.warn('Setup progress query failed, using defaults:', progressError.message);
     }
 
-    // Fetch StripeAccountID and GooglePlaceID directly (not in stored procedure)
+    // Fetch StripeAccountID, GooglePlaceID, and filter fields directly (not in stored procedure)
     let stripeAccountId = null;
     let googlePlaceId = null;
+    let selectedFilters = [];
     try {
       const extraFieldsRequest = new sql.Request(pool);
       extraFieldsRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
       const extraFieldsResult = await extraFieldsRequest.query(`
-        SELECT StripeAccountID, GooglePlaceID, IsPremium, IsFeatured
+        SELECT StripeAccountID, GooglePlaceID, IsPremium, IsFeatured, 
+               IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured, Filters
         FROM VendorProfiles
         WHERE VendorProfileID = @VendorProfileID
       `);
@@ -2352,7 +2354,27 @@ router.get('/profile', async (req, res) => {
         profileData.profile.GooglePlaceID = googlePlaceId;
         profileData.profile.IsPremium = extraFields.IsPremium;
         profileData.profile.IsFeatured = extraFields.IsFeatured;
-        console.log('[Profile] StripeAccountID:', stripeAccountId, 'GooglePlaceID:', googlePlaceId);
+        profileData.profile.IsEcoFriendly = extraFields.IsEcoFriendly;
+        profileData.profile.IsAwardWinning = extraFields.IsAwardWinning;
+        profileData.profile.IsLastMinute = extraFields.IsLastMinute;
+        profileData.profile.IsCertified = extraFields.IsCertified;
+        profileData.profile.IsInsured = extraFields.IsInsured;
+        
+        // Build selectedFilters array from boolean fields and Filters string
+        // This matches the format used in BecomeVendorPage
+        if (extraFields.Filters) {
+          selectedFilters = extraFields.Filters.split(',').filter(f => f.trim());
+        } else {
+          // Fall back to building from boolean fields
+          if (extraFields.IsPremium || extraFields.IsFeatured) selectedFilters.push('filter-premium');
+          if (extraFields.IsEcoFriendly) selectedFilters.push('filter-eco-friendly');
+          if (extraFields.IsAwardWinning) selectedFilters.push('filter-award-winning');
+          if (extraFields.IsLastMinute) selectedFilters.push('filter-last-minute');
+          if (extraFields.IsCertified) selectedFilters.push('filter-certified');
+          if (extraFields.IsInsured) selectedFilters.push('filter-insured');
+        }
+        
+        console.log('[Profile] StripeAccountID:', stripeAccountId, 'GooglePlaceID:', googlePlaceId, 'selectedFilters:', selectedFilters);
       }
     } catch (extraFieldsError) {
       console.error('Extra fields query failed:', extraFieldsError.message);
@@ -2366,6 +2388,7 @@ router.get('/profile', async (req, res) => {
       googlePlaceId: googlePlaceId,
       data: {
         ...profileData,
+        selectedFilters: selectedFilters,
         setupProgress: setupProgress,
         user: {
           userId: user.UserID,
@@ -5970,27 +5993,42 @@ router.get('/:id/filters', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    // Query only columns that exist - use minimal set
+    // Query the actual badge columns that exist in the database
     let result;
     try {
       result = await request.query(`
-        SELECT IsPremium, IsFeatured
+        SELECT IsPremium, IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured, IsLocal, IsMobile
         FROM VendorProfiles
         WHERE VendorProfileID = @VendorProfileID
       `);
+      const profile = result.recordset[0] || {};
+      
+      // Reconstruct filters from boolean flags
+      const filterList = [];
+      if (profile.IsPremium) filterList.push('filter-premium');
+      if (profile.IsEcoFriendly) filterList.push('filter-eco-friendly');
+      if (profile.IsAwardWinning) filterList.push('filter-award-winning');
+      if (profile.IsLastMinute) filterList.push('filter-last-minute');
+      if (profile.IsCertified) filterList.push('filter-certified');
+      if (profile.IsInsured) filterList.push('filter-insured');
+      if (profile.IsLocal) filterList.push('filter-local');
+      if (profile.IsMobile) filterList.push('filter-accessible'); // Map IsMobile to accessible
+      
+      res.json({
+        filters: filterList.join(','),
+        isPremium: profile.IsPremium || false,
+        isEcoFriendly: profile.IsEcoFriendly || false,
+        isAwardWinning: profile.IsAwardWinning || false,
+        isLastMinute: profile.IsLastMinute || false,
+        isCertified: profile.IsCertified || false,
+        isInsured: profile.IsInsured || false,
+        isLocal: profile.IsLocal || false,
+        isMobile: profile.IsMobile || false
+      });
     } catch (colError) {
       console.error('Error querying filters:', colError);
-      result = { recordset: [{}] };
+      res.json({ filters: '', isPremium: false });
     }
-    
-    const profile = result.recordset[0] || {};
-    
-    // Return available filter data
-    res.json({
-      filters: '',
-      isPremium: profile.IsPremium || false,
-      isFeatured: profile.IsFeatured || false
-    });
   } catch (error) {
     console.error('Error fetching filters:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch filters', error: error.message });
@@ -6001,26 +6039,44 @@ router.get('/:id/filters', async (req, res) => {
 router.put('/:id/filters', async (req, res) => {
   try {
     const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const { filters, isPremium, isVerified, isTopRated, isFeatured, isNew, isPopular } = req.body;
+    const { filters } = req.body;
     const pool = await poolPromise;
     
-    // Handle comma-separated filters string (from dashboard/onboarding)
+    // Parse the comma-separated filters string
+    const filterList = filters ? filters.split(',').filter(f => f) : [];
+    
+    // Map filter IDs to database columns
+    const isPremium = filterList.includes('filter-premium');
+    const isEcoFriendly = filterList.includes('filter-eco-friendly');
+    const isAwardWinning = filterList.includes('filter-award-winning');
+    const isLastMinute = filterList.includes('filter-last-minute');
+    const isCertified = filterList.includes('filter-certified');
+    const isInsured = filterList.includes('filter-insured');
+    const isLocal = filterList.includes('filter-local');
+    const isMobile = filterList.includes('filter-accessible'); // Map accessible to IsMobile
+    
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('IsPremium', sql.Bit, isPremium);
+    request.input('IsEcoFriendly', sql.Bit, isEcoFriendly);
+    request.input('IsAwardWinning', sql.Bit, isAwardWinning);
+    request.input('IsLastMinute', sql.Bit, isLastMinute);
+    request.input('IsCertified', sql.Bit, isCertified);
+    request.input('IsInsured', sql.Bit, isInsured);
+    request.input('IsLocal', sql.Bit, isLocal);
+    request.input('IsMobile', sql.Bit, isMobile);
     
-    if (filters !== undefined) {
-      const filterList = filters ? filters.split(',') : [];
-      request.input('IsPremium', sql.Bit, filterList.includes('filter-premium'));
-      request.input('IsFeatured', sql.Bit, filterList.includes('filter-eco-friendly') || filterList.includes('filter-featured'));
-    } else {
-      request.input('IsPremium', sql.Bit, isPremium || false);
-      request.input('IsFeatured', sql.Bit, isFeatured || false);
-    }
-    
-    // Use only columns that exist in the database
     await request.query(`
       UPDATE VendorProfiles
-      SET IsPremium = @IsPremium, IsFeatured = @IsFeatured, UpdatedAt = GETDATE()
+      SET IsPremium = @IsPremium, 
+          IsEcoFriendly = @IsEcoFriendly, 
+          IsAwardWinning = @IsAwardWinning, 
+          IsLastMinute = @IsLastMinute, 
+          IsCertified = @IsCertified, 
+          IsInsured = @IsInsured, 
+          IsLocal = @IsLocal, 
+          IsMobile = @IsMobile,
+          UpdatedAt = GETDATE()
       WHERE VendorProfileID = @VendorProfileID
     `);
     

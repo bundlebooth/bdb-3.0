@@ -26,17 +26,19 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
   const loadQuestionnaire = async () => {
     try {
       setLoading(true);
-      console.log('[Questionnaire] Loading for vendorProfileId:', vendorProfileId);
+      console.log('[VendorQuestionnairePanel] ===== LOADING START ====');
+      console.log('[VendorQuestionnairePanel] vendorProfileId:', vendorProfileId);
+      console.log('[VendorQuestionnairePanel] API_BASE_URL:', API_BASE_URL);
       
       // Load vendor profile to get categories
       const profileRes = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
-      console.log('[Questionnaire] Profile response status:', profileRes.status);
+      console.log('[VendorQuestionnairePanel] Profile response status:', profileRes.status);
       if (profileRes.ok) {
         const result = await profileRes.json();
-        console.log('[Questionnaire] Profile result:', result);
+        console.log('[VendorQuestionnairePanel] Profile result:', result);
         
         // Handle nested structure from /vendors/:id endpoint
         const profile = result.data?.profile || result.profile || result;
@@ -55,40 +57,47 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
       }
       
       // Fetch all features grouped by category
-      console.log('[Questionnaire] Fetching all-grouped features...');
+      console.log('[VendorQuestionnairePanel] Fetching all-grouped features...');
       const response = await fetch(`${API_BASE_URL}/vendor-features/all-grouped`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
-      console.log('[Questionnaire] all-grouped response status:', response.status);
-      if (!response.ok) throw new Error('Failed to load questionnaire');
+      console.log('[VendorQuestionnairePanel] all-grouped response status:', response.status);
+      if (!response.ok) {
+        console.error('[VendorQuestionnairePanel] Failed to load features, status:', response.status);
+        throw new Error('Failed to load questionnaire');
+      }
       
       const data = await response.json();
+      console.log('[VendorQuestionnairePanel] Raw API response:', data);
       const allCategories = data.categories || [];
+      console.log('[VendorQuestionnairePanel] Parsed categories count:', allCategories.length);
+      console.log('[VendorQuestionnairePanel] First category:', allCategories[0]);
       setCategories(allCategories);
-      console.log('[Questionnaire] Loaded feature categories:', allCategories.length);
       
       // Load vendor's existing selections
       if (vendorProfileId) {
-        console.log('[Questionnaire] Fetching vendor selections...');
+        console.log('[VendorQuestionnairePanel] Fetching vendor selections...');
         const selectionsResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         
-        console.log('[Questionnaire] Selections response status:', selectionsResponse.status);
+        console.log('[VendorQuestionnairePanel] Selections response status:', selectionsResponse.status);
         if (selectionsResponse.ok) {
           const selectionsData = await selectionsResponse.json();
-          console.log('[Questionnaire] Selections data:', selectionsData);
+          console.log('[VendorQuestionnairePanel] Selections data:', selectionsData);
           const selectedIds = new Set(
             (selectionsData.selectedFeatures || []).map(f => f.FeatureID)
           );
           setSelectedFeatureIds(selectedIds);
-          console.log('[Questionnaire] Loaded selected features:', selectedIds.size);
+          console.log('[VendorQuestionnairePanel] Loaded selected features:', selectedIds.size);
         }
       }
+      console.log('[VendorQuestionnairePanel] ===== LOADING COMPLETE ====');
     } catch (error) {
-      console.error('Error loading questionnaire:', error);
+      console.error('[VendorQuestionnairePanel] ERROR loading questionnaire:', error);
     } finally {
+      console.log('[VendorQuestionnairePanel] Setting loading to false');
       setLoading(false);
     }
   };
@@ -255,6 +264,9 @@ function VendorQuestionnairePanel({ onBack, vendorProfileId }) {
   };
   
   const filteredCategories = getFilteredCategories();
+  
+  // Debug logging for render
+  console.log('[VendorQuestionnairePanel] RENDER - loading:', loading, 'categories:', categories.length, 'filteredCategories:', filteredCategories.length);
 
   return (
     <div>

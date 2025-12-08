@@ -701,24 +701,70 @@ const BecomeVendorPage = () => {
       console.log('✅ Save successful! Result:', result);
       console.log('VendorProfileId:', result.vendorProfileId);
       
+      const vendorProfileId = result.vendorProfileId;
+      
       // ALWAYS update currentUser with vendorProfileId (for both new and existing)
-      if (result.vendorProfileId) {
-        console.log('Updating currentUser with vendorProfileId:', result.vendorProfileId);
+      if (vendorProfileId) {
+        console.log('Updating currentUser with vendorProfileId:', vendorProfileId);
         
         setCurrentUser(prev => ({
           ...prev,
-          vendorProfileId: result.vendorProfileId,
+          vendorProfileId: vendorProfileId,
           isVendor: true
         }));
         setIsExistingVendor(true);
         
         // Update localStorage as well
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-        storedUser.vendorProfileId = result.vendorProfileId;
+        storedUser.vendorProfileId = vendorProfileId;
         storedUser.isVendor = true;
         localStorage.setItem('user', JSON.stringify(storedUser));
         
         console.log('Updated localStorage user:', storedUser);
+        
+        // Also save features to dedicated endpoint if any are selected
+        if (formData.selectedFeatures && formData.selectedFeatures.length > 0) {
+          console.log('[Save] Saving features to dedicated endpoint:', formData.selectedFeatures);
+          try {
+            const featuresResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({ featureIds: formData.selectedFeatures })
+            });
+            if (featuresResponse.ok) {
+              console.log('[Save] Features saved successfully');
+            } else {
+              console.error('[Save] Failed to save features:', await featuresResponse.text());
+            }
+          } catch (featuresError) {
+            console.error('[Save] Error saving features:', featuresError);
+          }
+        }
+        
+        // Also save filters to dedicated endpoint if any are selected
+        if (formData.selectedFilters && formData.selectedFilters.length > 0) {
+          console.log('[Save] Saving filters to dedicated endpoint:', formData.selectedFilters);
+          try {
+            const filtersResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/filters`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+              },
+              body: JSON.stringify({ filters: formData.selectedFilters.join(',') })
+            });
+            if (filtersResponse.ok) {
+              console.log('[Save] Filters saved successfully');
+            } else {
+              console.error('[Save] Failed to save filters:', await filtersResponse.text());
+            }
+          } catch (filtersError) {
+            console.error('[Save] Error saving filters:', filtersError);
+          }
+        }
       }
 
       showBanner('Progress saved successfully! You can continue editing or move to the next step.', 'success');
@@ -3022,18 +3068,23 @@ function QuestionnaireStep({ formData, setFormData, currentUser }) {
   const loadQuestionnaire = async () => {
     try {
       setLoading(true);
-      console.log('[BecomeVendor Questionnaire] Loading... vendorProfileId:', currentUser?.vendorProfileId);
+      console.log('[BecomeVendor Questionnaire] ===== LOADING START =====');
+      console.log('[BecomeVendor Questionnaire] vendorProfileId:', currentUser?.vendorProfileId);
+      console.log('[BecomeVendor Questionnaire] API_BASE_URL:', API_BASE_URL);
       
       // Fetch all features grouped by category
       const response = await fetch(`${API_BASE_URL}/vendor-features/all-grouped`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
-      console.log('[BecomeVendor Questionnaire] all-grouped response:', response.status);
+      console.log('[BecomeVendor Questionnaire] all-grouped response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('[BecomeVendor Questionnaire] Raw data:', data);
+        console.log('[BecomeVendor Questionnaire] Categories count:', data.categories?.length);
         setCategories(data.categories || []);
-        console.log('[BecomeVendor Questionnaire] Loaded categories:', data.categories?.length);
+      } else {
+        console.error('[BecomeVendor Questionnaire] Failed to fetch, status:', response.status);
       }
       
       // Load vendor's existing selections if vendorProfileId exists
@@ -3157,6 +3208,13 @@ function QuestionnaireStep({ formData, setFormData, currentUser }) {
   };
 
   const filteredCategories = getFilteredCategories();
+  
+  // Debug logging
+  console.log('[BecomeVendor Questionnaire] RENDER - loading:', loading, 'categories:', categories.length, 'filteredCategories:', filteredCategories.length);
+  if (filteredCategories.length > 0) {
+    console.log('[BecomeVendor Questionnaire] First category:', filteredCategories[0]);
+    console.log('[BecomeVendor Questionnaire] First feature:', filteredCategories[0]?.features?.[0]);
+  }
 
   if (loading) {
     return (
@@ -3812,18 +3870,22 @@ function FiltersStep({ formData, setFormData, filterOptions, currentUser }) {
   const loadFilters = async () => {
     try {
       setLoading(true);
+      console.log('[FiltersStep] Loading filters for vendorProfileId:', currentUser.vendorProfileId);
       const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/filters`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
+      console.log('[FiltersStep] Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('[FiltersStep] Loaded data:', data);
         const filters = data.filters ? data.filters.split(',').filter(f => f) : [];
+        console.log('[FiltersStep] Parsed filters:', filters);
         setSelectedFilters(filters);
         setFormData(prev => ({ ...prev, selectedFilters: filters }));
       }
     } catch (error) {
-      console.error('Error loading filters:', error);
+      console.error('[FiltersStep] Error loading filters:', error);
     } finally {
       setLoading(false);
     }
