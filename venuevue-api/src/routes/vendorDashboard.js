@@ -37,7 +37,8 @@ async function computeSetupStatusByUserId(userId) {
   const prof = await req.query(`
     SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, LogoURL,
            DepositRequirements, PaymentMethods, PaymentTerms, LicenseNumber, InsuranceVerified,
-           IsVerified, IsCompleted, AcceptingBookings
+           IsVerified, IsCompleted, AcceptingBookings, GooglePlaceID,
+           IsPremium, IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured
     FROM VendorProfiles WHERE UserID = @UserID`);
   if (!prof.recordset.length) return { exists: false, message: 'Vendor profile not found' };
   const p = prof.recordset[0];
@@ -57,35 +58,74 @@ async function computeSetupStatusByUserId(userId) {
   const c = counts.recordset[0] || {};
   const stripeStatus = await getStripeStatus(pool, vId);
 
+  // Steps matching BecomeVendorPage (13 steps total, excluding account and review)
   const steps = {
-    basics: !!(p.BusinessName && p.BusinessEmail && p.BusinessPhone && (c.CategoriesCount||0) > 0),
+    // categories: What services do you offer?
+    categories: (c.CategoriesCount || 0) > 0,
+    // basics (business-details): Tell us about your business
+    basics: !!(p.BusinessName && p.BusinessEmail && p.BusinessPhone),
+    // contact: How can clients reach you?
+    contact: !!(p.BusinessEmail && p.BusinessPhone),
+    // location: Where are you located?
     location: !!p.Address && (c.ServiceAreaCount || 0) > 0,
-    additionalDetails: (c.CategoryAnswerCount || 0) > 0,
-    social: (c.SocialCount || 0) > 0,
+    // servicesPackages (services): What services do you provide?
     servicesPackages: ((c.ServicesCount || 0) > 0) || ((c.PackageCount || 0) > 0),
-    faq: (c.FAQCount || 0) > 0,
-    gallery: !!p.LogoURL || (c.ImagesCount || 0) > 0,
+    // availability (business-hours): When are you available?
     availability: (c.HoursCount || 0) > 0,
+    // additionalDetails (questionnaire): Tell guests what your place has to offer
+    additionalDetails: (c.CategoryAnswerCount || 0) > 0,
+    // gallery: Add photos to showcase your work
+    gallery: !!p.LogoURL || (c.ImagesCount || 0) > 0,
+    // social (social-media): Connect your social profiles
+    social: (c.SocialCount || 0) > 0,
+    // filters: Enable special badges for your profile (check if any filter flag is set)
+    filters: !!(p.IsPremium || p.IsEcoFriendly || p.IsAwardWinning || p.IsLastMinute || p.IsCertified || p.IsInsured),
+    // stripe: Connect Stripe for Payments
+    stripe: (stripeStatus.connected && stripeStatus.chargesEnabled && stripeStatus.payoutsEnabled),
+    // google-reviews: Connect Google Reviews
+    'google-reviews': !!p.GooglePlaceID,
+    // faq (policies): FAQ Section
+    faq: (c.FAQCount || 0) > 0,
     // OPTIONAL STEPS: verification and policies are tracked but NOT required for profile completion
     verification: !!(p.InsuranceVerified || p.LicenseNumber),
-    policies: !!(p.PaymentMethods && p.PaymentTerms),
-    stripe: (stripeStatus.connected && stripeStatus.chargesEnabled && stripeStatus.payoutsEnabled)
+    policies: !!(p.PaymentMethods && p.PaymentTerms)
   };
+  
+  // Labels matching EXACTLY the BecomeVendorPage step titles
   const labels = {
-    basics: 'Business Basics',
-    location: 'Location Information',
-    additionalDetails: 'Additional Details',
-    social: 'Social Media',
-    servicesPackages: 'Services & Packages',
+    categories: 'What services do you offer?',
+    basics: 'Tell us about your business',
+    contact: 'How can clients reach you?',
+    location: 'Where are you located?',
+    servicesPackages: 'What services do you provide?',
+    availability: 'When are you available?',
+    additionalDetails: 'Tell guests what your place has to offer',
+    gallery: 'Add photos to showcase your work',
+    social: 'Connect your social profiles',
+    filters: 'Enable special badges for your profile',
+    stripe: 'Connect Stripe for Payments',
+    'google-reviews': 'Connect Google Reviews',
     faq: 'FAQ Section',
-    gallery: 'Gallery & Media',
-    availability: 'Availability & Scheduling',
     verification: 'Verification & legal',
-    policies: 'Policies',
-    stripe: 'Stripe payouts'
+    policies: 'Policies'
   };
-  // Required steps for profile completion (verification and policies are OPTIONAL)
-  const requiredOrder = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','stripe'];
+  
+  // Required steps for profile completion (13 steps matching BecomeVendorPage, excluding account and review)
+  const requiredOrder = [
+    'categories',        // What services do you offer?
+    'basics',            // Tell us about your business
+    'contact',           // How can clients reach you?
+    'location',          // Where are you located?
+    'servicesPackages',  // What services do you provide?
+    'availability',      // When are you available?
+    'additionalDetails', // Tell guests what your place has to offer
+    'gallery',           // Add photos to showcase your work
+    'social',            // Connect your social profiles
+    'filters',           // Enable special badges for your profile
+    'stripe',            // Connect Stripe for Payments
+    'google-reviews',    // Connect Google Reviews
+    'faq'                // FAQ Section
+  ];
   const incompleteSteps = requiredOrder.filter(k => !steps[k]).map(k => ({ key: k, label: labels[k] }));
   const allRequiredComplete = incompleteSteps.length === 0;
   const canGoPublic = allRequiredComplete;

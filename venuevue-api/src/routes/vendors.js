@@ -1614,7 +1614,8 @@ router.post('/onboarding', async (req, res) => {
       cancellationPolicy,
       depositPercentage,
       paymentTerms,
-      faqs
+      faqs,
+      googlePlaceId
     } = req.body;
 
     console.log('📝 Onboarding request received for user:', userId);
@@ -1808,6 +1809,21 @@ router.post('/onboarding', async (req, res) => {
         'saturday': 6
       };
 
+      // Helper function to extract time from various formats
+      const extractTime = (timeValue, defaultTime = '09:00') => {
+        if (!timeValue) return defaultTime;
+        // If it's an ISO date string like "1970-01-01T09:00:00.000Z", extract the time
+        if (typeof timeValue === 'string' && timeValue.includes('T')) {
+          const match = timeValue.match(/T(\d{2}:\d{2})/);
+          return match ? match[1] : defaultTime;
+        }
+        // If it's already a time string like "09:00" or "09:00:00", take first 5 chars
+        if (typeof timeValue === 'string') {
+          return timeValue.substring(0, 5);
+        }
+        return defaultTime;
+      };
+
       for (const [dayName, dayNumber] of Object.entries(dayMapping)) {
         if (businessHours[dayName]) {
           const dayData = businessHours[dayName];
@@ -1817,8 +1833,8 @@ router.post('/onboarding', async (req, res) => {
           hoursRequest.input('IsAvailable', sql.Bit, dayData.isAvailable !== false);
           
           // For closed days, use default times; otherwise use provided times
-          const openTime = (dayData.isAvailable !== false && dayData.openTime) ? dayData.openTime : '09:00';
-          const closeTime = (dayData.isAvailable !== false && dayData.closeTime) ? dayData.closeTime : '17:00';
+          const openTime = (dayData.isAvailable !== false && dayData.openTime) ? extractTime(dayData.openTime, '09:00') : '09:00';
+          const closeTime = (dayData.isAvailable !== false && dayData.closeTime) ? extractTime(dayData.closeTime, '17:00') : '17:00';
           
           hoursRequest.input('OpenTime', sql.VarChar(8), openTime);
           hoursRequest.input('CloseTime', sql.VarChar(8), closeTime);
@@ -1872,6 +1888,80 @@ router.post('/onboarding', async (req, res) => {
         }
       }
       console.log('✅ Updated social media');
+    }
+
+    // Save selected features (questionnaire)
+    if (selectedFeatures && Array.isArray(selectedFeatures) && selectedFeatures.length > 0) {
+      try {
+        // Delete existing feature selections
+        const deleteFeatureRequest = new sql.Request(pool);
+        deleteFeatureRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        await deleteFeatureRequest.query(`
+          DELETE FROM VendorSelectedFeatures WHERE VendorProfileID = @VendorProfileID
+        `);
+
+        // Insert new feature selections
+        for (const featureId of selectedFeatures) {
+          const featureRequest = new sql.Request(pool);
+          featureRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+          featureRequest.input('FeatureID', sql.Int, parseInt(featureId));
+          await featureRequest.query(`
+            INSERT INTO VendorSelectedFeatures (VendorProfileID, FeatureID, SelectedAt)
+            VALUES (@VendorProfileID, @FeatureID, GETDATE())
+          `);
+        }
+        console.log('✅ Updated selected features (questionnaire):', selectedFeatures.length, 'features');
+      } catch (featureError) {
+        console.warn('⚠️ Could not save features (table may not exist):', featureError.message);
+        // Don't fail the whole request if features table doesn't exist
+      }
+    }
+
+    // Save photo URLs to VendorImages
+    if (photoURLs && Array.isArray(photoURLs) && photoURLs.length > 0) {
+      try {
+        // Don't delete existing images, just add new ones that don't exist
+        for (const url of photoURLs) {
+          if (url && url.trim()) {
+            const imageRequest = new sql.Request(pool);
+            imageRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+            imageRequest.input('ImageURL', sql.NVarChar(500), url.trim());
+            
+            // Check if image already exists
+            const existsResult = await imageRequest.query(`
+              SELECT ImageID FROM VendorImages 
+              WHERE VendorProfileID = @VendorProfileID AND ImageURL = @ImageURL
+            `);
+            
+            if (existsResult.recordset.length === 0) {
+              await imageRequest.query(`
+                INSERT INTO VendorImages (VendorProfileID, ImageURL, IsPrimary, CreatedAt)
+                VALUES (@VendorProfileID, @ImageURL, 0, GETDATE())
+              `);
+            }
+          }
+        }
+        console.log('✅ Updated photo gallery:', photoURLs.length, 'photos');
+      } catch (imageError) {
+        console.warn('⚠️ Could not save images:', imageError.message);
+      }
+    }
+
+    // Save Google Place ID for Google Reviews
+    if (googlePlaceId) {
+      try {
+        const googleRequest = new sql.Request(pool);
+        googleRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        googleRequest.input('GooglePlaceId', sql.NVarChar(100), googlePlaceId);
+        await googleRequest.query(`
+          UPDATE VendorProfiles 
+          SET GooglePlaceId = @GooglePlaceId
+          WHERE VendorProfileID = @VendorProfileID
+        `);
+        console.log('✅ Updated Google Place ID');
+      } catch (googleError) {
+        console.warn('⚠️ Could not save Google Place ID:', googleError.message);
+      }
     }
 
     // Update user to be a vendor
@@ -2181,21 +2271,41 @@ router.get('/profile', async (req, res) => {
       console.warn('Service areas query failed, using empty array:', serviceAreasError.message);
       serviceAreas = [];
     }
+
+    // Get selected features (questionnaire) for this vendor
+    let selectedFeatures = [];
+    try {
+      const featuresRequest = new sql.Request(pool);
+      featuresRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+      const featuresResult = await featuresRequest.query(`
+        SELECT FeatureID FROM VendorSelectedFeatures 
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+      selectedFeatures = featuresResult.recordset.map(f => f.FeatureID);
+    } catch (featuresError) {
+      console.warn('Selected features query failed, using empty array:', featuresError.message);
+      selectedFeatures = [];
+    }
     
     // Structure the comprehensive profile data
+    // Stored procedure sp_GetVendorDetails returns recordsets in this order:
+    // 0: Profile, 1: Categories, 2: Services, 3: Portfolio, 4: Reviews, 5: FAQs,
+    // 6: Team, 7: Social Media, 8: Business Hours, 9: Images, 10: Category Answers,
+    // 11: Is Favorite, 12: Available Slots
     const profileData = {
       profile: profileResult.recordsets[0][0] || {},
       categories: profileResult.recordsets[1] || [],
       services: profileResult.recordsets[2] || [],
-      addOns: profileResult.recordsets[3] || [],
-      portfolio: profileResult.recordsets[4] || [],
-      reviews: profileResult.recordsets[5] || [],
-      faqs: profileResult.recordsets[6] || [],
-      team: profileResult.recordsets[7] || [],
-      socialMedia: profileResult.recordsets[8] || [],
-      businessHours: profileResult.recordsets[9] || [],
+      portfolio: profileResult.recordsets[3] || [],
+      reviews: profileResult.recordsets[4] || [],
+      faqs: profileResult.recordsets[5] || [],
+      team: profileResult.recordsets[6] || [],
+      socialMedia: profileResult.recordsets[7] || [],
+      businessHours: profileResult.recordsets[8] || [],
       serviceAreas: serviceAreas,
-      images: galleryImages, // Use directly fetched gallery images
+      images: galleryImages.length > 0 ? galleryImages : (profileResult.recordsets[9] || []),
+      selectedFeatures: selectedFeatures,
+      categoryAnswers: profileResult.recordsets[10] || [],
       isFavorite: profileResult.recordsets[11] ? profileResult.recordsets[11][0]?.IsFavorite || false : false,
       availableSlots: profileResult.recordsets[12] || []
     };
@@ -2223,10 +2333,37 @@ router.get('/profile', async (req, res) => {
       console.warn('Setup progress query failed, using defaults:', progressError.message);
     }
 
+    // Fetch StripeAccountID and GooglePlaceID directly (not in stored procedure)
+    let stripeAccountId = null;
+    let googlePlaceId = null;
+    try {
+      const extraFieldsRequest = new sql.Request(pool);
+      extraFieldsRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
+      const extraFieldsResult = await extraFieldsRequest.query(`
+        SELECT StripeAccountID, GooglePlaceID, IsPremium, IsFeatured
+        FROM VendorProfiles
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+      if (extraFieldsResult.recordset.length > 0) {
+        const extraFields = extraFieldsResult.recordset[0];
+        stripeAccountId = extraFields.StripeAccountID;
+        googlePlaceId = extraFields.GooglePlaceID;
+        profileData.profile.StripeAccountID = stripeAccountId;
+        profileData.profile.GooglePlaceID = googlePlaceId;
+        profileData.profile.IsPremium = extraFields.IsPremium;
+        profileData.profile.IsFeatured = extraFields.IsFeatured;
+        console.log('[Profile] StripeAccountID:', stripeAccountId, 'GooglePlaceID:', googlePlaceId);
+      }
+    } catch (extraFieldsError) {
+      console.error('Extra fields query failed:', extraFieldsError.message);
+    }
+
     // Return successful response with vendor profile data
     res.json({
       success: true,
       vendorProfileId: user.VendorProfileID,
+      stripeAccountId: stripeAccountId,
+      googlePlaceId: googlePlaceId,
       data: {
         ...profileData,
         setupProgress: setupProgress,
@@ -5833,20 +5970,26 @@ router.get('/:id/filters', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.query(`
-      SELECT IsPremium, IsVerified, IsTopRated, IsFeatured, IsNew, IsPopular
-      FROM VendorProfiles
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    // Query only columns that exist - use minimal set
+    let result;
+    try {
+      result = await request.query(`
+        SELECT IsPremium, IsFeatured
+        FROM VendorProfiles
+        WHERE VendorProfileID = @VendorProfileID
+      `);
+    } catch (colError) {
+      console.error('Error querying filters:', colError);
+      result = { recordset: [{}] };
+    }
     
     const profile = result.recordset[0] || {};
+    
+    // Return available filter data
     res.json({
+      filters: '',
       isPremium: profile.IsPremium || false,
-      isVerified: profile.IsVerified || false,
-      isTopRated: profile.IsTopRated || false,
-      isFeatured: profile.IsFeatured || false,
-      isNew: profile.IsNew || false,
-      isPopular: profile.IsPopular || false
+      isFeatured: profile.IsFeatured || false
     });
   } catch (error) {
     console.error('Error fetching filters:', error);
@@ -5858,23 +6001,26 @@ router.get('/:id/filters', async (req, res) => {
 router.put('/:id/filters', async (req, res) => {
   try {
     const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
-    const { isPremium, isVerified, isTopRated, isFeatured, isNew, isPopular } = req.body;
+    const { filters, isPremium, isVerified, isTopRated, isFeatured, isNew, isPopular } = req.body;
     const pool = await poolPromise;
     
+    // Handle comma-separated filters string (from dashboard/onboarding)
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
-    request.input('IsPremium', sql.Bit, isPremium || false);
-    request.input('IsVerified', sql.Bit, isVerified || false);
-    request.input('IsTopRated', sql.Bit, isTopRated || false);
-    request.input('IsFeatured', sql.Bit, isFeatured || false);
-    request.input('IsNew', sql.Bit, isNew || false);
-    request.input('IsPopular', sql.Bit, isPopular || false);
     
+    if (filters !== undefined) {
+      const filterList = filters ? filters.split(',') : [];
+      request.input('IsPremium', sql.Bit, filterList.includes('filter-premium'));
+      request.input('IsFeatured', sql.Bit, filterList.includes('filter-eco-friendly') || filterList.includes('filter-featured'));
+    } else {
+      request.input('IsPremium', sql.Bit, isPremium || false);
+      request.input('IsFeatured', sql.Bit, isFeatured || false);
+    }
+    
+    // Use only columns that exist in the database
     await request.query(`
       UPDATE VendorProfiles
-      SET IsPremium = @IsPremium, IsVerified = @IsVerified, IsTopRated = @IsTopRated,
-          IsFeatured = @IsFeatured, IsNew = @IsNew, IsPopular = @IsPopular,
-          UpdatedAt = GETDATE()
+      SET IsPremium = @IsPremium, IsFeatured = @IsFeatured, UpdatedAt = GETDATE()
       WHERE VendorProfileID = @VendorProfileID
     `);
     
@@ -5949,6 +6095,29 @@ router.post('/:id/faqs', async (req, res) => {
   }
 });
 
+// Delete a specific FAQ
+router.delete('/:id/faqs/:faqId', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const { faqId } = req.params;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('FAQID', sql.Int, faqId);
+    
+    await request.query(`
+      DELETE FROM VendorFAQs 
+      WHERE VendorProfileID = @VendorProfileID AND FAQID = @FAQID
+    `);
+    
+    res.json({ success: true, message: 'FAQ deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting FAQ:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete FAQ', error: error.message });
+  }
+});
+
 // Get vendor images
 router.get('/:id/images', async (req, res) => {
   try {
@@ -5976,6 +6145,138 @@ router.get('/:id/images', async (req, res) => {
   } catch (error) {
     console.error('Error fetching images:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch images', error: error.message });
+  }
+});
+
+// Upload vendor images
+router.post('/:id/images', upload.array('images', 10), async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const pool = await poolPromise;
+    
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'No files uploaded' });
+    }
+    
+    const uploadedImages = [];
+    
+    // Get max display order
+    const orderRequest = new sql.Request(pool);
+    orderRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const orderResult = await orderRequest.query(`
+      SELECT ISNULL(MAX(DisplayOrder), -1) + 1 as NextOrder
+      FROM VendorImages
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    let nextOrder = orderResult.recordset[0].NextOrder;
+    
+    for (const file of req.files) {
+      try {
+        // Upload to Cloudinary
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: 'vendor-images',
+          transformation: [{ width: 1200, height: 1200, crop: 'limit' }]
+        });
+        
+        // Insert into database
+        const insertRequest = new sql.Request(pool);
+        insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        insertRequest.input('ImageURL', sql.NVarChar(500), result.secure_url);
+        insertRequest.input('DisplayOrder', sql.Int, nextOrder);
+        
+        const insertResult = await insertRequest.query(`
+          INSERT INTO VendorImages (VendorProfileID, ImageURL, DisplayOrder, IsPrimary)
+          OUTPUT INSERTED.ImageID
+          VALUES (@VendorProfileID, @ImageURL, @DisplayOrder, 0)
+        `);
+        
+        uploadedImages.push({
+          id: insertResult.recordset[0].ImageID,
+          url: result.secure_url
+        });
+        
+        nextOrder++;
+      } catch (uploadError) {
+        console.error('Error uploading image:', uploadError);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `${uploadedImages.length} image(s) uploaded successfully`,
+      images: uploadedImages
+    });
+  } catch (error) {
+    console.error('Error uploading images:', error);
+    res.status(500).json({ success: false, message: 'Failed to upload images', error: error.message });
+  }
+});
+
+// Delete vendor image
+router.delete('/:id/images/:imageId', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const { imageId } = req.params;
+    const pool = await poolPromise;
+    
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('ImageID', sql.Int, imageId);
+    
+    await request.query(`
+      DELETE FROM VendorImages 
+      WHERE VendorProfileID = @VendorProfileID AND ImageID = @ImageID
+    `);
+    
+    res.json({ success: true, message: 'Image deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    res.status(500).json({ success: false, message: 'Failed to delete image', error: error.message });
+  }
+});
+
+// Add image by URL
+router.post('/:id/images/url', async (req, res) => {
+  try {
+    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const { url, caption } = req.body;
+    const pool = await poolPromise;
+    
+    if (!url) {
+      return res.status(400).json({ success: false, message: 'URL is required' });
+    }
+    
+    // Get max display order
+    const orderRequest = new sql.Request(pool);
+    orderRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const orderResult = await orderRequest.query(`
+      SELECT ISNULL(MAX(DisplayOrder), -1) + 1 as NextOrder
+      FROM VendorImages
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    const nextOrder = orderResult.recordset[0].NextOrder;
+    
+    // Insert the image
+    const insertRequest = new sql.Request(pool);
+    insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    insertRequest.input('ImageURL', sql.NVarChar(500), url);
+    insertRequest.input('Caption', sql.NVarChar(255), caption || null);
+    insertRequest.input('DisplayOrder', sql.Int, nextOrder);
+    
+    const result = await insertRequest.query(`
+      INSERT INTO VendorImages (VendorProfileID, ImageURL, Caption, DisplayOrder, IsPrimary)
+      OUTPUT INSERTED.ImageID
+      VALUES (@VendorProfileID, @ImageURL, @Caption, @DisplayOrder, 0)
+    `);
+    
+    res.json({ 
+      success: true, 
+      message: 'Image added successfully',
+      imageId: result.recordset[0].ImageID
+    });
+  } catch (error) {
+    console.error('Error adding image by URL:', error);
+    res.status(500).json({ success: false, message: 'Failed to add image', error: error.message });
   }
 });
 
