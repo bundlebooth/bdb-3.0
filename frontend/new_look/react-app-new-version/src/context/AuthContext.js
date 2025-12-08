@@ -98,6 +98,11 @@ export function AuthProvider({ children }) {
     window.currentUser = userData;
     localStorage.setItem('userSession', JSON.stringify(userData));
     
+    // Clear the setup banner dismiss flag so it shows on every login
+    if (userData.id) {
+      localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userData.id}`);
+    }
+    
     // Update UI elements
     updateUserInterface(userData);
     
@@ -173,6 +178,12 @@ export function AuthProvider({ children }) {
       
       setCurrentUser(userData);
       localStorage.setItem('userSession', JSON.stringify(userData));
+      
+      // Clear the setup banner dismiss flag so it shows on every login
+      if (userData.id) {
+        localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userData.id}`);
+      }
+      
       updateUserInterface(userData);
       
       return userData;

@@ -460,19 +460,39 @@ const BecomeVendorPage = () => {
     fetchExistingVendorData();
   }, [currentUser]);
 
-  // Handle navigation from SetupIncompleteBanner with targetStep
+  // Handle navigation from SetupIncompleteBanner with targetStep (via URL param or state)
   useEffect(() => {
-    // Only handle targetStep navigation (resetToFirst is handled in getInitialStep)
-    if (location.state?.targetStep && steps.length > 0 && !location.state?.resetToFirst) {
-      const targetStepIndex = steps.findIndex(s => s.id === location.state.targetStep);
+    // Check URL query parameter first (for new tab navigation)
+    const urlParams = new URLSearchParams(location.search);
+    const stepFromUrl = urlParams.get('step');
+    
+    // Check state (for same-tab navigation)
+    const stepFromState = location.state?.targetStep;
+    
+    const targetStep = stepFromUrl || stepFromState;
+    
+    if (targetStep && steps.length > 0 && !location.state?.resetToFirst) {
+      const targetStepIndex = steps.findIndex(s => s.id === targetStep);
       if (targetStepIndex !== -1) {
-        console.log('Navigating to target step:', location.state.targetStep);
+        console.log('Navigating to target step:', targetStep);
         setCurrentStep(targetStepIndex);
       }
-      // Clear the state after using it
-      window.history.replaceState({}, document.title);
+      // Clear the state after using it (but keep URL param visible)
+      if (stepFromState) {
+        window.history.replaceState({}, document.title);
+      }
     }
-  }, [location.state?.targetStep, steps]);
+  }, [location.search, location.state?.targetStep, steps]);
+  
+  // Update URL when step changes to keep it in sync
+  useEffect(() => {
+    if (steps.length > 0 && currentStep >= 0) {
+      const currentStepId = steps[currentStep]?.id;
+      if (currentStepId) {
+        window.history.replaceState({}, document.title, `/become-a-vendor?step=${currentStepId}`);
+      }
+    }
+  }, [currentStep, steps]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -899,9 +919,8 @@ const BecomeVendorPage = () => {
 
       <main className="become-vendor-main">
         {loadingProfile ? (
-          <div style={{ textAlign: 'center', padding: '3rem' }}>
-            <div className="spinner-small" style={{ margin: '0 auto 1rem' }}></div>
-            <p>Loading your profile data...</p>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+            <div className="spinner"></div>
           </div>
         ) : (
           <div className={`step-container ${isTransitioning ? 'fade-out' : ''}`} key={currentStep}>
@@ -3077,9 +3096,8 @@ function QuestionnaireStep({ formData, setFormData }) {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <div className="spinner" style={{ margin: '0 auto' }}></div>
-        <p style={{ marginTop: '1rem', color: 'var(--text-light)' }}>Loading features...</p>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+        <div className="spinner"></div>
       </div>
     );
   }

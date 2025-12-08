@@ -104,8 +104,10 @@ function SetupIncompleteBanner({ onContinueSetup }) {
     }
   };
   
+  // Short, clean labels for the banner (matching the screenshot style)
   const getLabelForKey = (key) => {
     const labelMap = {
+      // Backend keys mapped to short banner labels
       basics: 'Business Basics',
       location: 'Location Information',
       additionalDetails: 'Additional Details',
@@ -114,7 +116,18 @@ function SetupIncompleteBanner({ onContinueSetup }) {
       faq: 'FAQ Section',
       gallery: 'Gallery & Media',
       availability: 'Availability & Scheduling',
-      stripe: 'Stripe Payouts'
+      stripe: 'Stripe Payouts',
+      // BecomeVendorPage step IDs mapped to short banner labels
+      categories: 'Service Categories',
+      'business-details': 'Business Basics',
+      contact: 'Contact Information',
+      services: 'Services & Packages',
+      'business-hours': 'Availability & Scheduling',
+      questionnaire: 'Additional Details',
+      'social-media': 'Social Media',
+      filters: 'Special Badges',
+      policies: 'FAQ Section',
+      'google-reviews': 'Google Reviews'
     };
     return labelMap[key] || key;
   };
@@ -126,30 +139,41 @@ function SetupIncompleteBanner({ onContinueSetup }) {
   };
 
   const handleContinue = () => {
-    // Navigate to BecomeVendorPage instead of opening dashboard
-    navigate('/become-vendor');
+    // Open BecomeVendorPage in a new tab
+    window.open('/become-a-vendor', '_blank');
   };
 
   const handleSectionClick = (stepKey) => {
     // Map backend step keys to BecomeVendorPage step IDs
+    // BecomeVendorPage steps: account, categories, business-details, contact, location, 
+    // services, business-hours, questionnaire, gallery, social-media, filters, stripe, google-reviews, policies, review
     const stepMapping = {
-      'basics': 'categories',
+      'basics': 'business-details',
       'location': 'location',
-      'additionalDetails': 'business-details',
+      'additionalDetails': 'questionnaire',
       'social': 'social-media',
       'servicesPackages': 'services',
       'faq': 'policies',
       'gallery': 'gallery',
       'availability': 'business-hours',
-      'stripe': 'policies'
+      'stripe': 'stripe',
+      // Direct mappings for BecomeVendorPage step IDs (in case they're already correct)
+      'categories': 'categories',
+      'business-details': 'business-details',
+      'contact': 'contact',
+      'services': 'services',
+      'business-hours': 'business-hours',
+      'questionnaire': 'questionnaire',
+      'social-media': 'social-media',
+      'filters': 'filters',
+      'policies': 'policies',
+      'google-reviews': 'google-reviews'
     };
     
-    const targetStep = stepMapping[stepKey];
-    if (targetStep) {
-      navigate('/become-vendor', { state: { targetStep } });
-    } else {
-      navigate('/become-vendor');
-    }
+    const targetStep = stepMapping[stepKey] || stepKey;
+    console.log('Opening become-a-vendor in new tab with targetStep:', targetStep, 'from stepKey:', stepKey);
+    // Open in new tab with targetStep as URL parameter
+    window.open(`/become-a-vendor?step=${targetStep}`, '_blank');
   };
 
   if (!setupStatus || dismissed || setupStatus.isComplete) return null;
@@ -158,17 +182,29 @@ function SetupIncompleteBanner({ onContinueSetup }) {
   const completedSteps = setupStatus.completedSteps || [];
   const totalSteps = setupStatus.totalSteps || 0;
 
+  // Short, clean labels for the banner (same as getLabelForKey)
   const stepLabels = {
+    // Backend keys mapped to short banner labels
     basics: 'Business Basics',
     location: 'Location Information',
-    services: 'Services & Packages',
-    servicesPackages: 'Services & Packages',
     additionalDetails: 'Additional Details',
-    availability: 'Availability & Scheduling',
-    gallery: 'Gallery & Media',
     social: 'Social Media',
+    servicesPackages: 'Services & Packages',
     faq: 'FAQ Section',
-    stripe: 'Stripe Payouts'
+    gallery: 'Gallery & Media',
+    availability: 'Availability & Scheduling',
+    stripe: 'Stripe Payouts',
+    // BecomeVendorPage step IDs mapped to short banner labels
+    categories: 'Service Categories',
+    'business-details': 'Business Basics',
+    contact: 'Contact Information',
+    services: 'Services & Packages',
+    'business-hours': 'Availability & Scheduling',
+    questionnaire: 'Additional Details',
+    'social-media': 'Social Media',
+    filters: 'Special Badges',
+    policies: 'FAQ Section',
+    'google-reviews': 'Google Reviews'
   };
 
   return (
@@ -186,25 +222,40 @@ function SetupIncompleteBanner({ onContinueSetup }) {
         <i className="fas fa-triangle-exclamation"></i>
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '8px' }}>
           <div>
             <div style={{ fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>Setup Incomplete</div>
             <div style={{ fontSize: '.9rem', color: '#92400e' }}>
               Your profile will not be visible to clients until all required steps are complete.
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button 
-              className="btn btn-primary" 
-              style={{ padding: '.5rem .9rem' }}
               onClick={handleContinue}
+              style={{
+                background: '#5e72e4',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '8px 16px',
+                fontSize: '.9rem',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
             >
               Complete Profile
             </button>
             <button 
-              className="btn btn-outline" 
-              style={{ padding: '.5rem .9rem' }}
               onClick={handleDismiss}
+              style={{
+                background: 'transparent',
+                color: '#1f2937',
+                border: 'none',
+                padding: '8px 16px',
+                fontSize: '.9rem',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
             >
               Dismiss
             </button>

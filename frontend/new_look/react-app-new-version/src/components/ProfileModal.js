@@ -135,6 +135,11 @@ function ProfileModal({ isOpen, onClose }) {
       setCurrentUser(userData);
       window.currentUser = userData;
       localStorage.setItem('userSession', JSON.stringify(userData));
+      
+      // Clear the setup banner dismiss flag so it shows on every login
+      if (userData.id) {
+        localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userData.id}`);
+      }
 
       showBanner('Successfully signed in with Google!', 'success');
       onClose();
@@ -262,6 +267,11 @@ function ProfileModal({ isOpen, onClose }) {
       window.currentUser = userData;
       localStorage.setItem('userSession', JSON.stringify(userData));
       
+      // Clear the setup banner dismiss flag so it shows on every login
+      if (userData.id) {
+        localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userData.id}`);
+      }
+      
       showBanner('Successfully logged in!', 'success');
       onClose();
     } catch (error) {
@@ -324,6 +334,11 @@ function ProfileModal({ isOpen, onClose }) {
       window.currentUser = userData;
       localStorage.setItem('userSession', JSON.stringify(userData));
       
+      // Clear the setup banner dismiss flag so it shows on every login
+      if (userData.id) {
+        localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userData.id}`);
+      }
+      
       showBanner('Account created successfully!', 'success');
       onClose();
       
@@ -382,6 +397,11 @@ function ProfileModal({ isOpen, onClose }) {
       setCurrentUser(userData);
       window.currentUser = userData;
       localStorage.setItem('userSession', JSON.stringify(userData));
+      
+      // Clear the setup banner dismiss flag so it shows on every login
+      if (userData.id) {
+        localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${userData.id}`);
+      }
       
       showBanner('Successfully verified!', 'success');
       onClose();
