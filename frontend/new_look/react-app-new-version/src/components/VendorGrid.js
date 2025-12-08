@@ -10,35 +10,28 @@ const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, fav
       <div 
         className="vendor-grid" 
         id="vendor-grid"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-          gap: '1.5rem',
-          padding: '1rem 0',
-          justifyContent: 'start'
-        }}
       >
         {Array(12).fill(0).map((_, index) => (
           <div 
             key={index} 
+            className="vendor-card-skeleton"
             style={{
               width: '100%',
-              maxWidth: '240px',
               display: 'flex',
               flexDirection: 'column',
               background: 'transparent',
               cursor: 'default'
             }}
           >
-            {/* Large image block */}
+            {/* Large image block - 3:2 aspect ratio to match VendorCard */}
             <div style={{ 
               width: '100%', 
-              height: '160px',
+              aspectRatio: '3 / 2',
               background: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
               backgroundSize: '200% 100%',
               animation: 'skeleton-shimmer 1.5s infinite',
-              borderRadius: '8px',
-              marginBottom: '12px'
+              borderRadius: '12px',
+              marginBottom: '10px'
             }}></div>
             
             {/* Title line */}
@@ -99,13 +92,6 @@ const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, fav
     <div 
       className="vendor-grid" 
       id="vendor-grid"
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-        gap: '1.5rem',
-        padding: '1rem 0',
-        width: '100%'
-      }}
     >
       {vendors.map((vendor) => {
         const vendorId = vendor.VendorProfileID || vendor.id;
@@ -127,9 +113,9 @@ const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, fav
       {loadingMore && Array(3).fill(0).map((_, index) => (
         <div 
           key={`loading-${index}`} 
+          className="vendor-card-skeleton"
           style={{
             width: '100%',
-            maxWidth: '260px',
             display: 'flex',
             flexDirection: 'column',
             background: 'transparent',

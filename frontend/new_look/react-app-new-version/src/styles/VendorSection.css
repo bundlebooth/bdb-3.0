@@ -155,7 +155,7 @@
 
 .vendor-section-card-wrapper {
   flex: 0 0 auto;
-  width: 250px;
+  width: 240px;
   opacity: 1;
   transform: translateY(0);
 }
@@ -163,7 +163,7 @@
 /* Responsive adjustments */
 @media (max-width: 1200px) {
   .vendor-section-card-wrapper {
-    width: 260px;
+    width: 240px;
   }
 }
 

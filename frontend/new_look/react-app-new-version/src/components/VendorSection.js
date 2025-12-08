@@ -33,7 +33,7 @@ function VendorSection({
       return 4;
     }
     
-    const cardWidth = 250; // Larger card size to match reference
+    const cardWidth = 240; // Match main grid minmax(240px, 1fr)
     const gap = 16;
     // Less conservative margin to fit more cards
     const availableWidth = containerWidth - 20; // Reduced safety margin

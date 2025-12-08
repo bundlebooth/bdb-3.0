@@ -8889,14 +8889,23 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         max-width: 100% !important;
     }
     
-    /* Match vendor card image height to main grid */
+    /* Match vendor card image to main grid - use aspect-ratio instead of fixed height */
+    .vendor-section-card-wrapper .vendor-card > div:first-child {
+        aspect-ratio: 3 / 2 !important;
+        height: auto !important;
+        min-height: unset !important;
+        max-height: unset !important;
+    }
+    
     .vendor-section-card-wrapper .vendor-card .vendor-card-image,
     .vendor-section-card-wrapper .vendor-card .card-image-container,
     .vendor-section-card-wrapper .vendor-card img {
-        height: 140px !important;
-        min-height: 140px !important;
-        max-height: 140px !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: unset !important;
+        max-height: unset !important;
         object-fit: cover !important;
+        object-position: center !important;
     }
 }
 
