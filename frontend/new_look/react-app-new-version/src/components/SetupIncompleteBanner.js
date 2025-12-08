@@ -198,33 +198,9 @@ function SetupIncompleteBanner({
     const profile = vendorData.profile || vendorData;
     const categories = vendorData.categories || [];
     const services = vendorData.services || [];
-    
-    // Note: API returns data in wrong fields due to stored procedure order
-    // socialMedia field actually contains businessHours data (has DayOfWeek, OpenTime)
-    // businessHours field actually contains images data (has ImageID, ImageURL)
-    // Detect by checking field names
-    let businessHours = [];
-    let socialMedia = [];
-    let images = vendorData.images || [];
-    
-    // Check what's in vendorData.socialMedia
-    if (vendorData.socialMedia?.length > 0 && vendorData.socialMedia[0]?.DayOfWeek !== undefined) {
-      // socialMedia field contains business hours
-      businessHours = vendorData.socialMedia;
-    } else {
-      socialMedia = vendorData.socialMedia || [];
-    }
-    
-    // Check what's in vendorData.businessHours
-    if (vendorData.businessHours?.length > 0 && vendorData.businessHours[0]?.ImageURL !== undefined) {
-      // businessHours field contains images - use it if images is empty
-      if (images.length === 0) {
-        images = vendorData.businessHours;
-      }
-    } else if (vendorData.businessHours?.length > 0 && vendorData.businessHours[0]?.DayOfWeek !== undefined) {
-      businessHours = vendorData.businessHours;
-    }
-    
+    const businessHours = vendorData.businessHours || [];
+    const images = vendorData.images || [];
+    const socialMedia = vendorData.socialMedia || [];
     const faqs = vendorData.faqs || [];
     const categoryAnswers = vendorData.categoryAnswers || vendorData.selectedFeatures || [];
     const serviceAreas = vendorData.serviceAreas || [];

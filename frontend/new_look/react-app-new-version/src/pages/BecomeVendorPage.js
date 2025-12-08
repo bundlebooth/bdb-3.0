@@ -345,29 +345,20 @@ const BecomeVendorPage = () => {
           const categories = result.data.categories || [];
           const services = result.data.services || [];
           const serviceAreas = result.data.serviceAreas || [];
-          
-          // Note: API returns data in wrong fields due to stored procedure order
-          // Detect by checking field names
-          let businessHours = [];
-          let socialMedia = {};
-          let images = result.data.images || [];
-          
-          // Check what's in result.data.socialMedia - might be business hours
-          if (result.data.socialMedia?.length > 0 && result.data.socialMedia[0]?.DayOfWeek !== undefined) {
-            businessHours = result.data.socialMedia;
-          } else if (result.data.socialMedia?.length > 0) {
-            socialMedia = result.data.socialMedia[0] || {};
-          }
-          
-          // Check what's in result.data.businessHours - might be images
-          if (result.data.businessHours?.length > 0 && result.data.businessHours[0]?.ImageURL !== undefined) {
-            if (images.length === 0) {
-              images = result.data.businessHours;
-            }
-          } else if (result.data.businessHours?.length > 0 && result.data.businessHours[0]?.DayOfWeek !== undefined) {
-            businessHours = result.data.businessHours;
-          }
+          const businessHours = result.data.businessHours || [];
+          const images = result.data.images || [];
           const selectedFeatures = result.data.selectedFeatures || [];
+          
+          // Social media - convert from array format to object format
+          let socialMedia = {};
+          if (result.data.socialMedia?.length > 0) {
+            result.data.socialMedia.forEach(sm => {
+              const platform = sm.Platform?.toLowerCase();
+              if (platform) {
+                socialMedia[platform] = sm.URL || '';
+              }
+            });
+          }
 
           console.log('📋 Selected features from database:', selectedFeatures);
 
@@ -466,13 +457,13 @@ const BecomeVendorPage = () => {
             // Questionnaire (selected features)
             selectedFeatures: selectedFeatures,
             
-            // Social Media
-            facebook: socialMedia.FacebookURL || '',
-            instagram: socialMedia.InstagramURL || '',
-            twitter: socialMedia.TwitterURL || '',
-            linkedin: socialMedia.LinkedInURL || '',
-            youtube: socialMedia.YouTubeURL || '',
-            tiktok: socialMedia.TikTokURL || '',
+            // Social Media (keys are lowercase from our mapping above)
+            facebook: socialMedia.facebook || '',
+            instagram: socialMedia.instagram || '',
+            twitter: socialMedia.twitter || '',
+            linkedin: socialMedia.linkedin || '',
+            youtube: socialMedia.youtube || '',
+            tiktok: socialMedia.tiktok || '',
             
             // Policies
             cancellationPolicy: profile.CancellationPolicy || '',
@@ -511,6 +502,25 @@ const BecomeVendorPage = () => {
             }
           } catch (e) {
             console.log('Could not fetch filters:', e);
+          }
+
+          // Fetch social media from dedicated endpoint (more reliable than profile API)
+          try {
+            const socialRes = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/social`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (socialRes.ok) {
+              const socialData = await socialRes.json();
+              updatedFormData.facebook = socialData.facebook || '';
+              updatedFormData.instagram = socialData.instagram || '';
+              updatedFormData.twitter = socialData.twitter || '';
+              updatedFormData.linkedin = socialData.linkedin || '';
+              updatedFormData.youtube = socialData.youtube || '';
+              updatedFormData.tiktok = socialData.tiktok || '';
+              console.log('📱 Social media loaded:', socialData);
+            }
+          } catch (e) {
+            console.log('Could not fetch social media:', e);
           }
 
           console.log('📝 Setting formData with loaded data:', updatedFormData);
@@ -3593,8 +3603,19 @@ function GalleryStep({ formData, setFormData, currentUser }) {
   );
 }
 
-// Social Media Step - Full Implementation
-function SocialMediaStep({ formData, onInputChange }) {
+// Social Media Step - Full Implementation (uses dedicated API like dashboard)
+function SocialMediaStep({ formData, onInputChange, setFormData, currentUser }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [localData, setLocalData] = useState({
+    facebook: '',
+    instagram: '',
+    twitter: '',
+    linkedin: '',
+    youtube: '',
+    tiktok: ''
+  });
+
   const socialPlatforms = [
     { key: 'facebook', label: 'Facebook', icon: 'fab fa-facebook', color: '#1877F2', prefix: 'facebook.com/' },
     { key: 'instagram', label: 'Instagram', icon: 'fab fa-instagram', color: '#E4405F', prefix: 'instagram.com/' },
@@ -3603,6 +3624,93 @@ function SocialMediaStep({ formData, onInputChange }) {
     { key: 'youtube', label: 'YouTube', icon: 'fab fa-youtube', color: '#FF0000', prefix: 'youtube.com/' },
     { key: 'tiktok', label: 'TikTok', icon: 'fab fa-tiktok', color: '#000000', prefix: 'tiktok.com/@' }
   ];
+
+  // Load existing social media from API
+  useEffect(() => {
+    if (currentUser?.vendorProfileId) {
+      loadSocialMedia();
+    } else {
+      // Use formData if no vendorProfileId
+      setLocalData({
+        facebook: formData.facebook || '',
+        instagram: formData.instagram || '',
+        twitter: formData.twitter || '',
+        linkedin: formData.linkedin || '',
+        youtube: formData.youtube || '',
+        tiktok: formData.tiktok || ''
+      });
+      setLoading(false);
+    }
+  }, [currentUser?.vendorProfileId]);
+
+  const loadSocialMedia = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/social`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const newData = {
+          facebook: data.facebook || '',
+          instagram: data.instagram || '',
+          twitter: data.twitter || '',
+          linkedin: data.linkedin || '',
+          youtube: data.youtube || '',
+          tiktok: data.tiktok || ''
+        };
+        setLocalData(newData);
+        // Update formData too
+        setFormData(prev => ({ ...prev, ...newData }));
+      }
+    } catch (error) {
+      console.error('Error loading social media:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (key, value) => {
+    setLocalData(prev => ({ ...prev, [key]: value }));
+    onInputChange(key, value);
+  };
+
+  const handleSave = async () => {
+    if (!currentUser?.vendorProfileId) return;
+    
+    try {
+      setSaving(true);
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/social`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(localData)
+      });
+      
+      if (response.ok) {
+        showBanner('Social media links saved successfully!', 'success');
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (error) {
+      console.error('Error saving social media:', error);
+      showBanner('Failed to save social media links', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem' }}>
+        <div className="spinner" style={{ margin: '0 auto' }}></div>
+        <p style={{ marginTop: '1rem', color: '#6b7280' }}>Loading social media...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="social-media-step">
@@ -3631,8 +3739,8 @@ function SocialMediaStep({ formData, onInputChange }) {
                 <input
                   type="text"
                   placeholder={`your${platform.key}`}
-                  value={formData[platform.key] || ''}
-                  onChange={(e) => onInputChange(platform.key, e.target.value)}
+                  value={localData[platform.key] || ''}
+                  onChange={(e) => handleChange(platform.key, e.target.value)}
                   style={{
                     border: 'none',
                     outline: 'none',
@@ -3646,6 +3754,28 @@ function SocialMediaStep({ formData, onInputChange }) {
             </div>
           ))}
         </div>
+
+        {currentUser?.vendorProfileId && (
+          <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                padding: '0.875rem 2rem',
+                backgroundColor: 'var(--primary)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: saving ? 0.7 : 1
+              }}
+            >
+              {saving ? 'Saving...' : 'Save Social Media'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
