@@ -118,10 +118,62 @@ function SetupIncompleteBanner({
           console.log('[SetupBanner] Could not fetch vendor features:', e);
         }
 
+        // Fetch Stripe status
+        let stripeConnected = false;
+        try {
+          const stripeRes = await fetch(`${API_BASE_URL}/payments/connect/status/${currentUser.vendorProfileId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (stripeRes.ok) {
+            const stripeData = await stripeRes.json();
+            stripeConnected = stripeData.connected || false;
+            console.log('[SetupBanner] Stripe status:', stripeData, 'connected:', stripeConnected);
+          }
+        } catch (e) {
+          console.log('[SetupBanner] Could not fetch Stripe status:', e);
+        }
+
+        // Fetch Google Reviews settings
+        let googlePlaceId = null;
+        try {
+          const googleRes = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/google-reviews-settings`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (googleRes.ok) {
+            const googleData = await googleRes.json();
+            // API returns GooglePlaceId (capital letters)
+            googlePlaceId = googleData.GooglePlaceId || googleData.placeId || googleData.googlePlaceId || null;
+            console.log('[SetupBanner] Google Reviews data:', googleData, 'placeId:', googlePlaceId);
+          }
+        } catch (e) {
+          console.log('[SetupBanner] Could not fetch Google Reviews settings:', e);
+        }
+
+        // Fetch Filters
+        let filtersData = {};
+        try {
+          const filtersRes = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/filters`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (filtersRes.ok) {
+            filtersData = await filtersRes.json();
+          }
+        } catch (e) {
+          console.log('[SetupBanner] Could not fetch filters:', e);
+        }
+
         console.log('[SetupBanner] Setting vendor data with', Object.keys(result.data).length, 'keys');
+        console.log('[SetupBanner] Profile StripeAccountID:', result.data.profile?.StripeAccountID);
+        console.log('[SetupBanner] Profile GooglePlaceID:', result.data.profile?.GooglePlaceID);
+        console.log('[SetupBanner] Fetched stripeConnected:', stripeConnected);
+        console.log('[SetupBanner] Fetched googlePlaceId:', googlePlaceId);
         setVendorData({
           ...result.data,
-          categoryAnswers
+          categoryAnswers,
+          stripeConnected,
+          googlePlaceId,
+          filtersString: filtersData.filters || '',
+          ...filtersData
         });
       } else {
         console.log('[SetupBanner] No data in result');
@@ -167,12 +219,16 @@ function SetupIncompleteBanner({
       case 'social-media':
         return socialMedia.length > 0;
       case 'filters':
-        return !!(profile.IsPremium || profile.IsEcoFriendly || profile.IsAwardWinning || 
-                  profile.IsLastMinute || profile.IsCertified || profile.IsInsured);
+        // Check both the filters string and boolean fields
+        return !!(vendorData.filtersString || profile.IsPremium || profile.IsEcoFriendly || profile.IsAwardWinning || 
+                  profile.IsLastMinute || profile.IsCertified || profile.IsInsured || 
+                  vendorData.isPremium || vendorData.isVerified || vendorData.isTopRated);
       case 'stripe':
-        return !!(profile.StripeAccountID);
+        // Use the fetched stripeConnected status from dedicated endpoint
+        return !!(vendorData.stripeConnected || profile.StripeAccountID);
       case 'google-reviews':
-        return !!(profile.GooglePlaceID);
+        // Use the fetched googlePlaceId from dedicated endpoint
+        return !!(vendorData.googlePlaceId || profile.GooglePlaceID);
       case 'policies':
         // Match BecomeVendorPage: cancellationPolicy || depositPercentage || paymentTerms
         return !!(profile.CancellationPolicy || profile.DepositPercentage || profile.PaymentTerms || faqs.length > 0);
@@ -297,9 +353,11 @@ function SetupIncompleteBanner({
         
         {incompleteSteps.length > 0 && (
           <div style={{ marginTop: '8px' }}>
-            <div style={{ fontWeight: 600, color: '#7c2d12', marginBottom: '6px', fontSize: '.9rem' }}>Incomplete</div>
+            <div style={{ fontWeight: 600, color: '#7c2d12', marginBottom: '6px', fontSize: '.9rem' }}>
+              Incomplete ({incompleteSteps.length}/{totalSteps})
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {incompleteSteps.slice(0, 6).map((step) => {
+              {incompleteSteps.map((step) => {
                 const stepKey = step.key || step;
                 return (
                   <span
@@ -325,11 +383,6 @@ function SetupIncompleteBanner({
                   </span>
                 );
               })}
-              {incompleteSteps.length > 6 && (
-                <span style={{ fontSize: '.85rem', color: '#7c2d12' }}>
-                  +{incompleteSteps.length - 6} more
-                </span>
-              )}
             </div>
           </div>
         )}
@@ -339,7 +392,7 @@ function SetupIncompleteBanner({
             Completed ({completedSteps.length}/{totalSteps})
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {completedSteps.slice(0, 6).map((step) => {
+            {completedSteps.map((step) => {
               const stepKey = step.key || step;
               return (
                 <span
