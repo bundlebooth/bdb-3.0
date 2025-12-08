@@ -5,6 +5,7 @@ import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../config';
 import { showBanner } from '../utils/helpers';
 import { parseQueryParams, trackPageView } from '../utils/urlHelpers';
 import SimpleWorkingLocationStep from '../components/SimpleWorkingLocationStep';
+import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import './BecomeVendorPage.css';
 
 // Google Maps API Key is imported from config.js
@@ -106,7 +107,13 @@ const BecomeVendorPage = () => {
     cancellationPolicy: '',
     depositPercentage: '',
     paymentTerms: '',
-    faqs: []
+    faqs: [],
+    
+    // Google Reviews
+    googlePlaceId: '',
+    
+    // Stripe
+    stripeConnected: false
   });
 
   // Available categories - matching main page
@@ -341,6 +348,9 @@ const BecomeVendorPage = () => {
           const serviceAreas = result.data.serviceAreas || [];
           const socialMedia = result.data.socialMedia?.[0] || {};
           const images = result.data.images || [];
+          const selectedFeatures = result.data.selectedFeatures || [];
+
+          console.log('📋 Selected features from database:', selectedFeatures);
 
           // Map business hours from database format to form format
           const hoursMap = {};
@@ -430,6 +440,9 @@ const BecomeVendorPage = () => {
             // Gallery
             photoURLs: photoURLs,
             
+            // Questionnaire (selected features)
+            selectedFeatures: selectedFeatures,
+            
             // Social Media
             facebook: socialMedia.FacebookURL || '',
             instagram: socialMedia.InstagramURL || '',
@@ -441,7 +454,10 @@ const BecomeVendorPage = () => {
             // Policies
             cancellationPolicy: profile.CancellationPolicy || '',
             depositPercentage: profile.DepositPercentage?.toString() || '',
-            paymentTerms: profile.PaymentTerms || ''
+            paymentTerms: profile.PaymentTerms || '',
+            
+            // Google Reviews
+            googlePlaceId: profile.GooglePlaceId || ''
           };
 
           console.log('📝 Setting formData with loaded data:', updatedFormData);
@@ -575,7 +591,8 @@ const BecomeVendorPage = () => {
         cancellationPolicy: formData.cancellationPolicy,
         depositPercentage: formData.depositPercentage ? parseInt(formData.depositPercentage) : null,
         paymentTerms: formData.paymentTerms,
-        faqs: formData.faqs
+        faqs: formData.faqs,
+        googlePlaceId: formData.googlePlaceId
       };
 
       // Always use POST - the backend handles both create and update
@@ -669,8 +686,12 @@ const BecomeVendorPage = () => {
         return !!(formData.facebook || formData.instagram || formData.twitter || formData.linkedin);
       case 'filters':
         return formData.selectedFilters.length > 0;
+      case 'stripe':
+        return !!formData.stripeConnected;
+      case 'google-reviews':
+        return !!formData.googlePlaceId;
       case 'policies':
-        return !!(formData.cancellationPolicy || formData.depositPercentage || formData.paymentTerms);
+        return !!(formData.cancellationPolicy || formData.depositPercentage || formData.paymentTerms || (formData.faqs && formData.faqs.length > 0));
       default:
         return false;
     }
@@ -830,7 +851,8 @@ const BecomeVendorPage = () => {
         cancellationPolicy: formData.cancellationPolicy,
         depositPercentage: formData.depositPercentage ? parseInt(formData.depositPercentage) : null,
         paymentTerms: formData.paymentTerms,
-        faqs: formData.faqs
+        faqs: formData.faqs,
+        googlePlaceId: formData.googlePlaceId
       };
 
       // Always use POST - the backend handles both create and update
@@ -1055,110 +1077,20 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
       <div className="account-step">
         <div style={{ padding: '2rem 1rem' }}>
 
-          {/* Section Progress Indicators */}
+          {/* Section Progress Indicators - Using shared SetupIncompleteBanner component */}
           {isVendorWithProfile && steps && (
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              alignItems: 'flex-start',
-              padding: '16px',
-              background: '#fffbeb',
-              border: '1px solid #fde68a',
-              borderRadius: '8px',
-              margin: '1rem auto',
-              maxWidth: '900px'
-            }}>
-              <div style={{ fontSize: '20px', lineHeight: 1, color: '#D97706' }}>
-                <i className="fas fa-triangle-exclamation"></i>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '8px' }}>
-                  <div>
-                    <div style={{ fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>Setup Incomplete</div>
-                    <div style={{ fontSize: '.9rem', color: '#92400e' }}>
-                      Your profile will not be visible to clients until all required steps are complete.
-                    </div>
-                  </div>
-                </div>
-                
-                {steps.filter(step => step.id !== 'account' && step.id !== 'review' && !isStepCompleted(step.id)).length > 0 && (
-                  <div style={{ marginTop: '8px' }}>
-                    <div style={{ fontWeight: 600, color: '#7c2d12', marginBottom: '6px', fontSize: '.9rem' }}>Incomplete</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {steps.filter(step => step.id !== 'account' && step.id !== 'review' && !isStepCompleted(step.id)).slice(0, 6).map((step) => (
-                        <span
-                          key={step.id}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            background: '#ffedd5',
-                            color: '#7c2d12',
-                            border: '1px solid #fed7aa',
-                            borderRadius: '999px',
-                            padding: '4px 10px',
-                            fontSize: '.85rem',
-                            whiteSpace: 'nowrap',
-                            cursor: 'pointer'
-                          }}
-                          onClick={() => {
-                            const stepIndex = steps.findIndex(s => s.id === step.id);
-                            if (stepIndex !== -1) {
-                              setCurrentStep(stepIndex);
-                            }
-                          }}
-                          title={`Click to complete: ${step.title}`}
-                        >
-                          <i className="fas fa-circle-xmark"></i>
-                          {step.title}
-                        </span>
-                      ))}
-                      {steps.filter(step => step.id !== 'account' && step.id !== 'review' && !isStepCompleted(step.id)).length > 6 && (
-                        <span style={{ fontSize: '.85rem', color: '#7c2d12' }}>
-                          +{steps.filter(step => step.id !== 'account' && step.id !== 'review' && !isStepCompleted(step.id)).length - 6} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                <div style={{ marginTop: '10px' }}>
-                  <div style={{ fontWeight: 600, color: '#166534', marginBottom: '6px', fontSize: '.9rem' }}>
-                    Completed ({steps.filter(step => step.id !== 'account' && step.id !== 'review' && isStepCompleted(step.id)).length}/{steps.filter(step => step.id !== 'account' && step.id !== 'review').length})
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {steps.filter(step => step.id !== 'account' && step.id !== 'review' && isStepCompleted(step.id)).slice(0, 6).map((step) => (
-                      <span
-                        key={step.id}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          background: '#d1fae5',
-                          color: '#065f46',
-                          border: '1px solid #6ee7b7',
-                          borderRadius: '999px',
-                          padding: '4px 10px',
-                          fontSize: '.85rem',
-                          whiteSpace: 'nowrap',
-                          cursor: 'pointer'
-                        }}
-                        onClick={() => {
-                          const stepIndex = steps.findIndex(s => s.id === step.id);
-                          if (stepIndex !== -1) {
-                            setCurrentStep(stepIndex);
-                          }
-                        }}
-                        title={`Review: ${step.title}`}
-                      >
-                        <i className="fas fa-circle-check"></i>
-                        {step.title}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SetupIncompleteBanner
+              steps={steps}
+              isStepCompleted={isStepCompleted}
+              onStepClick={(stepKey) => {
+                const stepIndex = steps.findIndex(s => s.id === stepKey);
+                if (stepIndex !== -1) {
+                  setCurrentStep(stepIndex);
+                }
+              }}
+              hideButtons={true}
+              maxWidth="900px"
+            />
           )}
 
           {!isVendorWithProfile && (
@@ -3004,18 +2936,22 @@ function BusinessHoursStep({ formData, setFormData }) {
   );
 }
 
-// Questionnaire Step - Full Implementation
-function QuestionnaireStep({ formData, setFormData }) {
+// Questionnaire Step - Full Implementation (uses dedicated API like dashboard)
+function QuestionnaireStep({ formData, setFormData, currentUser }) {
   const [categories, setCategories] = useState([]);
+  const [selectedFeatureIds, setSelectedFeatureIds] = useState(new Set(formData.selectedFeatures || []));
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadQuestionnaire();
-  }, [formData.primaryCategory, formData.additionalCategories]);
+  }, [formData.primaryCategory, formData.additionalCategories, currentUser?.vendorProfileId]);
 
   const loadQuestionnaire = async () => {
     try {
       setLoading(true);
+      
+      // Fetch all features grouped by category
       const response = await fetch(`${API_BASE_URL}/vendor-features/all-grouped`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
@@ -3023,6 +2959,24 @@ function QuestionnaireStep({ formData, setFormData }) {
       if (response.ok) {
         const data = await response.json();
         setCategories(data.categories || []);
+      }
+      
+      // Load vendor's existing selections if vendorProfileId exists
+      if (currentUser?.vendorProfileId) {
+        const selectionsResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        
+        if (selectionsResponse.ok) {
+          const selectionsData = await selectionsResponse.json();
+          const selectedIds = new Set(
+            selectionsData.selectedFeatures?.map(f => f.FeatureID) || []
+          );
+          setSelectedFeatureIds(selectedIds);
+          // Also update formData
+          setFormData(prev => ({ ...prev, selectedFeatures: Array.from(selectedIds) }));
+          console.log('Loaded selected features:', selectedIds.size);
+        }
       }
     } catch (error) {
       console.error('Error loading questionnaire:', error);
@@ -3032,14 +2986,49 @@ function QuestionnaireStep({ formData, setFormData }) {
   };
 
   const toggleFeatureSelection = (featureId) => {
-    setFormData(prev => {
-      const currentFeatures = prev.selectedFeatures || [];
-      const newFeatures = currentFeatures.includes(featureId)
-        ? currentFeatures.filter(id => id !== featureId)
-        : [...currentFeatures, featureId];
-      
-      return { ...prev, selectedFeatures: newFeatures };
+    setSelectedFeatureIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(featureId)) {
+        newSet.delete(featureId);
+      } else {
+        newSet.add(featureId);
+      }
+      // Update formData as well
+      setFormData(prevData => ({ ...prevData, selectedFeatures: Array.from(newSet) }));
+      return newSet;
     });
+  };
+
+  const handleSaveFeatures = async () => {
+    if (!currentUser?.vendorProfileId) {
+      showBanner('Please complete your basic profile first', 'warning');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          featureIds: Array.from(selectedFeatureIds)
+        })
+      });
+      
+      if (response.ok) {
+        showBanner('Features saved successfully!', 'success');
+      } else {
+        throw new Error('Failed to save features');
+      }
+    } catch (error) {
+      console.error('Error saving features:', error);
+      showBanner('Failed to save features: ' + error.message, 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getFeatureIcon = (iconName) => {
@@ -3124,7 +3113,7 @@ function QuestionnaireStep({ formData, setFormData }) {
                   </h3>
                   <div className="features-grid-3col" style={{ padding: '0 2rem' }}>
                     {category.features.map(feature => {
-                      const isSelected = (formData.selectedFeatures || []).includes(feature.featureID);
+                      const isSelected = selectedFeatureIds.has(feature.featureID);
                       return (
                         <div key={feature.featureID} style={{ display: 'flex' }}>
                           <div
@@ -3189,8 +3178,18 @@ function QuestionnaireStep({ formData, setFormData }) {
           <div style={{ marginTop: '2rem', padding: '1rem 1.25rem', background: '#f8f9fa', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.95rem' }}>
               <i className="fas fa-check-circle" style={{ color: 'var(--primary)' }}></i>
-              <span><strong>{(formData.selectedFeatures || []).length}</strong> features selected</span>
+              <span><strong>{selectedFeatureIds.size}</strong> features selected</span>
             </div>
+            {currentUser?.vendorProfileId && (
+              <button
+                onClick={handleSaveFeatures}
+                disabled={saving}
+                className="btn btn-primary"
+                style={{ padding: '0.5rem 1.5rem', fontSize: '0.9rem' }}
+              >
+                {saving ? 'Saving...' : 'Save Features'}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -3198,58 +3197,173 @@ function QuestionnaireStep({ formData, setFormData }) {
   );
 }
 
-// Gallery Step - Full Implementation
-function GalleryStep({ formData, setFormData }) {
+// Gallery Step - Full Implementation (uses dedicated API like dashboard)
+function GalleryStep({ formData, setFormData, currentUser }) {
+  const [loading, setLoading] = useState(true);
+  const [photos, setPhotos] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [urlInput, setUrlInput] = useState('');
+
+  // Load existing photos
+  useEffect(() => {
+    if (currentUser?.vendorProfileId) {
+      loadPhotos();
+    } else {
+      setLoading(false);
+    }
+  }, [currentUser?.vendorProfileId]);
+
+  const loadPhotos = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const images = Array.isArray(data) ? data : [];
+        setPhotos(images.map(img => ({
+          id: img.id || img.ImageID,
+          url: img.url || img.ImageURL,
+          caption: img.caption || img.Caption,
+          isPrimary: img.isPrimary || img.IsPrimary
+        })));
+        // Also update formData
+        setFormData(prev => ({
+          ...prev,
+          photoURLs: images.map(img => img.url || img.ImageURL)
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading photos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    try {
-      setUploading(true);
-      
-      // For now, we'll just store the file names/URLs in formData
-      // In production, you'd upload to a server or cloud storage
+    if (!currentUser?.vendorProfileId) {
+      // If no vendorProfileId, just store locally
       const fileURLs = files.map(file => URL.createObjectURL(file));
-      
       setFormData(prev => ({
         ...prev,
         photoURLs: [...(prev.photoURLs || []), ...fileURLs]
       }));
-      
-      showBanner('Photos added successfully!', 'success');
+      showBanner('Photos added! They will be saved when you complete your profile.', 'success');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formDataUpload = new FormData();
+      files.forEach(file => formDataUpload.append('images', file));
+
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formDataUpload
+      });
+
+      if (response.ok) {
+        showBanner('Photos uploaded successfully!', 'success');
+        loadPhotos();
+      } else {
+        throw new Error('Upload failed');
+      }
     } catch (error) {
       console.error('Error uploading:', error);
-      showBanner('Failed to add photos', 'error');
+      showBanner('Failed to upload photos', 'error');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleAddPhotoByUrl = () => {
+  const handleAddPhotoByUrl = async () => {
     if (!urlInput.trim()) {
       showBanner('Please enter a valid URL', 'error');
       return;
     }
 
-    setFormData(prev => ({
-      ...prev,
-      photoURLs: [...(prev.photoURLs || []), urlInput.trim()]
-    }));
-    
-    setUrlInput('');
-    showBanner('Photo added successfully!', 'success');
+    if (!currentUser?.vendorProfileId) {
+      // If no vendorProfileId, just store locally
+      setFormData(prev => ({
+        ...prev,
+        photoURLs: [...(prev.photoURLs || []), urlInput.trim()]
+      }));
+      setUrlInput('');
+      showBanner('Photo added! It will be saved when you complete your profile.', 'success');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images/url`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ url: urlInput.trim() })
+      });
+
+      if (response.ok) {
+        showBanner('Photo added successfully!', 'success');
+        setUrlInput('');
+        loadPhotos();
+      } else {
+        throw new Error('Failed to add photo');
+      }
+    } catch (error) {
+      console.error('Error adding photo:', error);
+      // Fallback to local storage
+      setFormData(prev => ({
+        ...prev,
+        photoURLs: [...(prev.photoURLs || []), urlInput.trim()]
+      }));
+      setUrlInput('');
+      showBanner('Photo added locally. It will be saved when you complete your profile.', 'success');
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const handleDeletePhoto = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      photoURLs: prev.photoURLs.filter((_, i) => i !== index)
-    }));
-    showBanner('Photo removed', 'success');
+  const handleDeletePhoto = async (photoId, index) => {
+    if (!currentUser?.vendorProfileId || !photoId) {
+      // Local delete
+      setFormData(prev => ({
+        ...prev,
+        photoURLs: prev.photoURLs.filter((_, i) => i !== index)
+      }));
+      showBanner('Photo removed', 'success');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/images/${photoId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (response.ok) {
+        showBanner('Photo deleted successfully!', 'success');
+        loadPhotos();
+      } else {
+        throw new Error('Delete failed');
+      }
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      showBanner('Failed to delete photo', 'error');
+    }
   };
+
+  // Use photos from API if available, otherwise use formData
+  const displayPhotos = photos.length > 0 ? photos : (formData.photoURLs || []).map((url, i) => ({ id: null, url, index: i }));
 
   return (
     <div className="gallery-step">
@@ -3264,61 +3378,94 @@ function GalleryStep({ formData, setFormData }) {
           </p>
         </div>
 
+        {!currentUser?.vendorProfileId && (
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#e0f2fe', borderRadius: '8px', border: '1px solid #7dd3fc' }}>
+            <p style={{ margin: 0, color: '#0369a1', fontSize: '0.9rem' }}>
+              <i className="fas fa-info-circle" style={{ marginRight: '0.5rem' }}></i>
+              Photos added here will be saved when you complete your profile setup.
+            </p>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+            <div className="spinner"></div>
+          </div>
+        )}
+
         {/* Photo Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-          {(formData.photoURLs || []).length === 0 ? (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', background: '#f9fafb', borderRadius: '12px', border: '2px dashed #e5e7eb' }}>
-              <i className="fas fa-images" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>
-              <p style={{ color: 'var(--text-light)', margin: 0 }}>No photos added yet</p>
-            </div>
-          ) : (
-            (formData.photoURLs || []).map((url, index) => (
-              <div
-                key={index}
-                style={{
-                  position: 'relative',
-                  aspectRatio: '1',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  border: '1px solid #e5e7eb',
-                  background: '#f3f4f6'
-                }}
-              >
-                <img
-                  src={url}
-                  alt={`Gallery ${index + 1}`}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af"><i class="fas fa-image" style="font-size:2rem"></i></div>';
-                  }}
-                />
-                <button
-                  onClick={() => handleDeletePhoto(index)}
+        {!loading && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+            {displayPhotos.length === 0 ? (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', background: '#f9fafb', borderRadius: '12px', border: '2px dashed #e5e7eb' }}>
+                <i className="fas fa-images" style={{ fontSize: '3rem', color: 'var(--text-light)', marginBottom: '1rem' }}></i>
+                <p style={{ color: 'var(--text-light)', margin: 0 }}>No photos added yet</p>
+              </div>
+            ) : (
+              displayPhotos.map((photo, index) => (
+                <div
+                  key={photo.id || index}
                   style={{
-                    position: 'absolute',
-                    top: '0.5rem',
-                    right: '0.5rem',
-                    background: 'rgba(239, 68, 68, 0.9)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '0.5rem',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '32px',
-                    height: '32px'
+                    position: 'relative',
+                    aspectRatio: '1',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    border: '1px solid #e5e7eb',
+                    background: '#f3f4f6'
                   }}
                 >
-                  <i className="fas fa-trash"></i>
-                </button>
-              </div>
-            ))
-          )}
-        </div>
+                  <img
+                    src={photo.url}
+                    alt={`Gallery ${index + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af"><i class="fas fa-image" style="font-size:2rem"></i></div>';
+                    }}
+                  />
+                  {photo.isPrimary && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '0.5rem',
+                      left: '0.5rem',
+                      background: 'var(--primary)',
+                      color: 'white',
+                      padding: '0.25rem 0.5rem',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600
+                    }}>
+                      Primary
+                    </div>
+                  )}
+                  <button
+                    onClick={() => handleDeletePhoto(photo.id, index)}
+                    style={{
+                      position: 'absolute',
+                      top: '0.5rem',
+                      right: '0.5rem',
+                      background: 'rgba(239, 68, 68, 0.9)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '0.5rem',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '32px',
+                      height: '32px'
+                    }}
+                  >
+                    <i className="fas fa-trash"></i>
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Upload Controls */}
         <div style={{ display: 'grid', gap: '1.5rem' }}>
@@ -3451,18 +3598,93 @@ function SocialMediaStep({ formData, onInputChange }) {
   );
 }
 
-// Filters Step - Full Implementation
-function FiltersStep({ formData, setFormData, filterOptions }) {
-  const handleToggleFilter = (filterId) => {
-    setFormData(prev => {
-      const currentFilters = prev.selectedFilters || [];
-      const newFilters = currentFilters.includes(filterId)
-        ? currentFilters.filter(f => f !== filterId)
-        : [...currentFilters, filterId];
+// Filters Step - Full Implementation (uses dedicated API like dashboard)
+function FiltersStep({ formData, setFormData, filterOptions, currentUser }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState([]);
+
+  // Load existing filters
+  useEffect(() => {
+    if (currentUser?.vendorProfileId) {
+      loadFilters();
+    } else {
+      setSelectedFilters(formData.selectedFilters || []);
+      setLoading(false);
+    }
+  }, [currentUser?.vendorProfileId]);
+
+  const loadFilters = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/filters`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
       
-      return { ...prev, selectedFilters: newFilters };
+      if (response.ok) {
+        const data = await response.json();
+        const filters = data.filters ? data.filters.split(',').filter(f => f) : [];
+        setSelectedFilters(filters);
+        setFormData(prev => ({ ...prev, selectedFilters: filters }));
+      }
+    } catch (error) {
+      console.error('Error loading filters:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleFilter = (filterId) => {
+    setSelectedFilters(prev => {
+      const newFilters = prev.includes(filterId)
+        ? prev.filter(f => f !== filterId)
+        : [...prev, filterId];
+      
+      // Also update formData
+      setFormData(prevData => ({ ...prevData, selectedFilters: newFilters }));
+      return newFilters;
     });
   };
+
+  const handleSaveFilters = async () => {
+    if (!currentUser?.vendorProfileId) {
+      showBanner('Please complete your basic profile first', 'warning');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/filters`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          filters: selectedFilters.join(',')
+        })
+      });
+
+      if (response.ok) {
+        showBanner('Filters saved successfully!', 'success');
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (error) {
+      console.error('Error saving filters:', error);
+      showBanner('Failed to save filters', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+        <div className="spinner"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="filters-step">
@@ -3479,7 +3701,7 @@ function FiltersStep({ formData, setFormData, filterOptions }) {
 
         <div style={{ display: 'grid', gap: '1rem' }}>
           {filterOptions.map(filter => {
-            const isSelected = (formData.selectedFilters || []).includes(filter.id);
+            const isSelected = selectedFilters.includes(filter.id);
             return (
               <div
                 key={filter.id}
@@ -3530,21 +3752,134 @@ function FiltersStep({ formData, setFormData, filterOptions }) {
           })}
         </div>
 
-        <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.95rem' }}>
-          <i className="fas fa-check-circle" style={{ color: 'var(--primary)' }}></i>
-          <span><strong>{(formData.selectedFilters || []).length}</strong> badges selected</span>
+        <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6b7280', fontSize: '0.95rem' }}>
+            <i className="fas fa-check-circle" style={{ color: 'var(--primary)' }}></i>
+            <span><strong>{selectedFilters.length}</strong> badges selected</span>
+          </div>
+          {currentUser?.vendorProfileId && (
+            <button
+              onClick={handleSaveFilters}
+              disabled={saving}
+              className="btn btn-primary"
+              style={{ padding: '0.5rem 1.5rem', fontSize: '0.9rem' }}
+            >
+              {saving ? 'Saving...' : 'Save Filters'}
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// Stripe Connect Step
-function StripeStep({ formData, setFormData }) {
-  const [stripeConnected, setStripeConnected] = useState(false);
+// Stripe Connect Step (uses same API as dashboard)
+function StripeStep({ formData, setFormData, currentUser }) {
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState({
+    connected: false,
+    accountId: null,
+    detailsSubmitted: false,
+    chargesEnabled: false,
+    payoutsEnabled: false
+  });
 
-  const handleConnectStripe = () => {
-    showBanner('Stripe Connect will be available after profile creation. You can set it up from your dashboard.', 'info');
+  // Check Stripe connection status on mount
+  useEffect(() => {
+    if (currentUser?.vendorProfileId) {
+      loadStripeStatus();
+    } else {
+      setLoading(false);
+    }
+  }, [currentUser?.vendorProfileId]);
+
+  const loadStripeStatus = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/payments/connect/status/${currentUser.vendorProfileId}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Stripe status:', data);
+        setStripeStatus(data);
+        // Update formData so step completion can check it
+        if (data.connected) {
+          setFormData(prev => ({ ...prev, stripeConnected: true }));
+        }
+      }
+    } catch (error) {
+      console.error('Error checking Stripe status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConnectStripe = async () => {
+    if (!currentUser?.vendorProfileId) {
+      showBanner('Please complete your profile first before connecting Stripe.', 'info');
+      return;
+    }
+
+    setConnecting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/payments/connect/onboard/${currentUser.vendorProfileId}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Stripe onboard response:', data);
+        // Check for authUrl or url (dashboard uses both)
+        if (data.authUrl || data.url) {
+          window.location.href = data.authUrl || data.url;
+        } else {
+          showBanner('Stripe Connect is not configured yet. Please contact support.', 'warning');
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Stripe onboard error:', errorData);
+        showBanner(errorData.message || 'Failed to initiate Stripe connection', 'error');
+      }
+    } catch (error) {
+      console.error('Error connecting Stripe:', error);
+      showBanner('Failed to connect to Stripe. Please try again.', 'error');
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const handleManageStripe = async () => {
+    try {
+      showBanner('Opening Stripe dashboard...', 'info');
+      const response = await fetch(`${API_BASE_URL}/payments/connect/dashboard/${currentUser.vendorProfileId}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        const url = data.dashboardUrl || data.url || data.link;
+        if (url) {
+          window.open(url, '_blank');
+        } else {
+          showBanner('Could not get Stripe dashboard URL. Please try again.', 'error');
+        }
+      } else {
+        // For Standard accounts, redirect to Stripe login
+        if (data.error && data.error.includes('Express Dashboard')) {
+          window.open('https://dashboard.stripe.com/login', '_blank');
+          showBanner('Redirecting to Stripe Dashboard login...', 'info');
+        } else {
+          showBanner('Failed to open Stripe dashboard. Please try again.', 'error');
+        }
+      }
+    } catch (error) {
+      console.error('Error opening Stripe dashboard:', error);
+      showBanner('Failed to open Stripe dashboard', 'error');
+    }
   };
 
   return (
@@ -3560,64 +3895,145 @@ function StripeStep({ formData, setFormData }) {
           </p>
         </div>
 
-        <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', padding: '3rem', textAlign: 'center' }}>
-          <div style={{
-            width: '96px',
-            height: '96px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #635bff 0%, #5469d4 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.5rem'
-          }}>
-            <i className="fab fa-stripe" style={{ color: 'white', fontSize: '3rem' }}></i>
+        {/* Loading State */}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+            <div className="spinner"></div>
           </div>
-          
-          <h4 style={{ margin: '0 0 0.75rem', fontSize: '1.5rem', fontWeight: 600, color: '#111827' }}>
-            Stripe Connect
-          </h4>
-          <p style={{ margin: '0 0 2rem', color: '#6b7280', fontSize: '1rem', lineHeight: 1.6, maxWidth: '500px', marginLeft: 'auto', marginRight: 'auto' }}>
-            Accept payments securely through Stripe. Connect your account to receive payments from clients directly through the platform. Stripe handles all payment processing, security, and compliance.
-          </p>
-          
-          <button
-            onClick={handleConnectStripe}
-            className="btn btn-primary"
-            style={{ 
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '0.75rem',
-              padding: '1rem 2rem',
-              fontSize: '1.05rem',
-              background: 'linear-gradient(135deg, #635bff 0%, #5469d4 100%)',
-              border: 'none'
-            }}
-          >
-            <i className="fab fa-stripe" style={{ fontSize: '1.5rem' }}></i>
-            {stripeConnected ? 'Manage Stripe Account' : 'Connect Stripe Account'}
-          </button>
-          
-          {stripeConnected && (
-            <div style={{ marginTop: '2rem', padding: '1rem 1.5rem', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}>
-              <i className="fas fa-check-circle" style={{ color: '#16a34a', fontSize: '1.25rem' }}></i>
-              <span style={{ color: '#15803d', fontSize: '1rem', fontWeight: 500 }}>Stripe account connected successfully!</span>
-            </div>
-          )}
+        )}
 
-          <div style={{ marginTop: '3rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', textAlign: 'left' }}>
-            <h5 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
-              Why connect Stripe?
-            </h5>
-            <ul style={{ margin: 0, paddingLeft: '1.5rem', color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.8 }}>
-              <li>Accept credit cards, debit cards, and digital wallets</li>
-              <li>Secure payment processing with industry-leading security</li>
-              <li>Automatic payouts to your bank account</li>
-              <li>Built-in fraud protection and dispute management</li>
-              <li>Detailed transaction reporting and analytics</li>
-            </ul>
+        {/* Main Content */}
+        {!loading && (
+          <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', padding: '2rem' }}>
+            {/* Connection Status */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+                Connection Status
+              </label>
+              <div style={{ 
+                padding: '0.875rem 1rem', 
+                background: '#f9fafb', 
+                borderRadius: '8px', 
+                border: '1px solid #e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem'
+              }}>
+                <i className={`fas ${stripeStatus.connected ? 'fa-check-circle' : 'fa-times-circle'}`} 
+                   style={{ color: stripeStatus.connected ? '#16a34a' : '#6b7280' }}></i>
+                <span style={{ fontWeight: 500 }}>
+                  {!currentUser?.vendorProfileId 
+                    ? 'Complete profile first'
+                    : !stripeStatus.connected 
+                      ? 'Not connected' 
+                      : stripeStatus.detailsSubmitted 
+                        ? 'Connected and active' 
+                        : 'Connected - setup incomplete'}
+                </span>
+              </div>
+              <p style={{ color: '#6b7280', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                {!currentUser?.vendorProfileId 
+                  ? 'You need to complete your basic profile before connecting Stripe.'
+                  : !stripeStatus.connected 
+                    ? 'Connect your Stripe account to accept credit cards, debit cards, and other payment methods.'
+                    : stripeStatus.detailsSubmitted
+                      ? 'Your account is ready to receive payments.'
+                      : 'Complete your Stripe setup to start accepting payments.'}
+              </p>
+            </div>
+
+            {/* Connect/Manage Button */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <button
+                onClick={stripeStatus.connected ? handleManageStripe : handleConnectStripe}
+                disabled={connecting || !currentUser?.vendorProfileId}
+                className="btn btn-primary"
+                style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '0.75rem',
+                  padding: '0.875rem 1.5rem',
+                  fontSize: '1rem',
+                  background: stripeStatus.connected ? 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)' : 'linear-gradient(135deg, #635bff 0%, #5469d4 100%)',
+                  border: 'none',
+                  opacity: (connecting || !currentUser?.vendorProfileId) ? 0.7 : 1
+                }}
+              >
+                {connecting ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <i className={stripeStatus.connected ? "fas fa-external-link-alt" : "fab fa-stripe"} style={{ fontSize: '1.1rem' }}></i>
+                    {stripeStatus.connected 
+                      ? (stripeStatus.detailsSubmitted ? 'Manage Stripe Account' : 'Complete Stripe Setup')
+                      : 'Connect Stripe Account'}
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Account Details - Only show when connected */}
+            {stripeStatus.connected && (
+              <>
+                <hr style={{ border: 'none', borderTop: '1px solid #e5e7eb', margin: '2rem 0' }} />
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                      Account ID
+                    </label>
+                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                      {stripeStatus.accountId || 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                      Details Submitted
+                    </label>
+                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '0.9rem' }}>
+                      {stripeStatus.detailsSubmitted ? '✓ Yes' : '✗ No'}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                      Charges Enabled
+                    </label>
+                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '0.9rem' }}>
+                      {stripeStatus.chargesEnabled ? '✓ Yes' : '✗ No'}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem', color: '#374151' }}>
+                      Payouts Enabled
+                    </label>
+                    <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: '0.9rem' }}>
+                      {stripeStatus.payoutsEnabled ? '✓ Yes' : '✗ No'}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Why Connect Stripe - Only show when not connected */}
+            {!stripeStatus.connected && (
+              <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px' }}>
+                <h5 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+                  Why connect Stripe?
+                </h5>
+                <ul style={{ margin: 0, paddingLeft: '1.5rem', color: '#6b7280', fontSize: '0.95rem', lineHeight: 1.8 }}>
+                  <li>Accept credit cards, debit cards, and digital wallets</li>
+                  <li>Secure payment processing with industry-leading security</li>
+                  <li>Automatic payouts to your bank account</li>
+                  <li>Built-in fraud protection and dispute management</li>
+                  <li>Detailed transaction reporting and analytics</li>
+                </ul>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
         <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#fef3c7', borderRadius: '12px', border: '2px solid #fbbf24' }}>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -3632,42 +4048,141 @@ function StripeStep({ formData, setFormData }) {
   );
 }
 
-// Google Reviews Step
-function GoogleReviewsStep({ formData, setFormData }) {
-  const [googlePlaceId, setGooglePlaceId] = useState(formData.googlePlaceId || '');
+// Google Reviews Step (uses dedicated API like dashboard)
+function GoogleReviewsStep({ formData, setFormData, currentUser }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [googlePlaceId, setGooglePlaceId] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
 
-  const handleVerifyGooglePlace = async () => {
-    if (!googlePlaceId.trim()) {
-      showBanner('Please enter a Google Place ID', 'error');
+  // Load existing Google Reviews settings
+  useEffect(() => {
+    if (currentUser?.vendorProfileId) {
+      loadGoogleReviewsSettings();
+    } else {
+      setLoading(false);
+    }
+  }, [currentUser?.vendorProfileId]);
+
+  const loadGoogleReviewsSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/google-reviews-settings`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const placeId = data.GooglePlaceId || '';
+        setGooglePlaceId(placeId);
+        setFormData(prev => ({ ...prev, googlePlaceId: placeId }));
+        
+        // If Place ID exists, verify it to show preview
+        if (placeId) {
+          verifyPlaceId(placeId, false);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading Google Reviews settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyPlaceId = async (placeId, showMessage = true) => {
+    if (!placeId || placeId.trim() === '') {
+      setVerificationStatus(null);
+      setPreviewData(null);
       return;
     }
 
-    setVerifying(true);
-    setVerificationStatus(null);
-
     try {
-      const response = await fetch(`${API_BASE_URL}/vendors/google-reviews/${googlePlaceId}`, {
+      setVerifying(true);
+      const response = await fetch(`${API_BASE_URL}/vendors/google-reviews/${placeId}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
 
       if (response.ok) {
+        const data = await response.json();
         setVerificationStatus('success');
-        setFormData(prev => ({ ...prev, googlePlaceId }));
-        showBanner('✓ Valid Google Place ID! Your reviews will be displayed on your profile.', 'success');
+        setPreviewData(data.data || data);
+        setFormData(prev => ({ ...prev, googlePlaceId: placeId }));
+        
+        if (showMessage) {
+          showBanner('✓ Valid Google Place ID! Preview loaded.', 'success');
+        }
       } else {
         setVerificationStatus('error');
-        showBanner('Invalid Google Place ID. Please check and try again.', 'error');
+        setPreviewData(null);
+        
+        if (showMessage) {
+          showBanner('Invalid Google Place ID. Please check and try again.', 'error');
+        }
       }
     } catch (error) {
       console.error('Error verifying Place ID:', error);
       setVerificationStatus('error');
-      showBanner('Failed to verify Place ID. Please try again.', 'error');
+      setPreviewData(null);
+      
+      if (showMessage) {
+        showBanner('Failed to verify Place ID. Please try again.', 'error');
+      }
     } finally {
       setVerifying(false);
     }
   };
+
+  const handleVerifyGooglePlace = () => {
+    verifyPlaceId(googlePlaceId, true);
+  };
+
+  const handleSaveGoogleReviews = async () => {
+    if (!currentUser?.vendorProfileId) {
+      showBanner('Please complete your basic profile first', 'warning');
+      return;
+    }
+
+    if (googlePlaceId && verificationStatus !== 'success') {
+      showBanner('Please verify your Google Place ID before saving.', 'warning');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/google-reviews-settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          GooglePlaceId: googlePlaceId,
+          GoogleBusinessUrl: ''
+        })
+      });
+
+      if (response.ok) {
+        showBanner('Google Reviews settings saved successfully!', 'success');
+      } else {
+        throw new Error('Failed to save');
+      }
+    } catch (error) {
+      console.error('Error saving Google Reviews:', error);
+      showBanner('Failed to save changes', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh' }}>
+        <div className="spinner"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="google-reviews-step">
@@ -3768,6 +4283,50 @@ function GoogleReviewsStep({ formData, setFormData }) {
                 <span style={{ color: '#991b1b', fontSize: '1rem', fontWeight: 500 }}>Invalid Place ID. Please check and try again.</span>
               </div>
             )}
+
+            {/* Preview Section */}
+            {previewData && verificationStatus === 'success' && (
+              <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                  <img 
+                    src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" 
+                    alt="Google" 
+                    style={{ width: '32px', height: '32px' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#111827', fontSize: '0.95rem' }}>Google Reviews Preview</div>
+                    <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>Verified business reviews</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111827', lineHeight: 1 }}>
+                    {(previewData.rating || 0).toFixed(1)}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '1rem', color: '#fbbc04', marginBottom: '0.125rem' }}>
+                      {'★'.repeat(Math.round(previewData.rating || 0))}{'☆'.repeat(5 - Math.round(previewData.rating || 0))}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                      Based on {(previewData.user_ratings_total || 0).toLocaleString()} reviews
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Save Button */}
+            {currentUser?.vendorProfileId && (
+              <div style={{ marginTop: '1.5rem' }}>
+                <button
+                  onClick={handleSaveGoogleReviews}
+                  disabled={saving || (googlePlaceId && verificationStatus !== 'success')}
+                  className="btn btn-primary"
+                  style={{ padding: '0.75rem 2rem' }}
+                >
+                  {saving ? 'Saving...' : 'Save Google Reviews Settings'}
+                </button>
+              </div>
+            )}
           </div>
 
           <div style={{ marginTop: '3rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px' }}>
@@ -3797,31 +4356,134 @@ function GoogleReviewsStep({ formData, setFormData }) {
   );
 }
 
-// Policies Step - Full Implementation
-function PoliciesStep({ formData, onInputChange, setFormData }) {
+// Policies Step - Full Implementation (uses dedicated API like dashboard)
+function PoliciesStep({ formData, onInputChange, setFormData, currentUser }) {
+  const [loading, setLoading] = useState(true);
+  const [faqs, setFaqs] = useState([]);
   const [newFaq, setNewFaq] = useState({ question: '', answer: '' });
+  const [savingFaq, setSavingFaq] = useState(false);
 
-  const handleAddFaq = () => {
+  // Load existing FAQs
+  useEffect(() => {
+    if (currentUser?.vendorProfileId) {
+      loadFAQs();
+    } else {
+      setLoading(false);
+    }
+  }, [currentUser?.vendorProfileId]);
+
+  const loadFAQs = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/faqs`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const faqsArray = Array.isArray(data) ? data : (data.faqs || []);
+        setFaqs(faqsArray.map(faq => ({
+          id: faq.id || faq.FAQID,
+          question: faq.question || faq.Question,
+          answer: faq.answer || faq.Answer
+        })));
+        // Also update formData
+        setFormData(prev => ({
+          ...prev,
+          faqs: faqsArray.map(faq => ({
+            id: faq.id || faq.FAQID,
+            question: faq.question || faq.Question,
+            answer: faq.answer || faq.Answer
+          }))
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading FAQs:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddFaq = async () => {
     if (!newFaq.question.trim() || !newFaq.answer.trim()) {
       showBanner('Please fill in both question and answer', 'error');
       return;
     }
 
-    setFormData(prev => ({
-      ...prev,
-      faqs: [...(prev.faqs || []), { ...newFaq, id: Date.now() }]
-    }));
+    if (!currentUser?.vendorProfileId) {
+      // Store locally if no vendorProfileId
+      const newFaqWithId = { ...newFaq, id: Date.now() };
+      setFaqs(prev => [...prev, newFaqWithId]);
+      setFormData(prev => ({
+        ...prev,
+        faqs: [...(prev.faqs || []), newFaqWithId]
+      }));
+      setNewFaq({ question: '', answer: '' });
+      showBanner('FAQ added! It will be saved when you complete your profile.', 'success');
+      return;
+    }
 
-    setNewFaq({ question: '', answer: '' });
-    showBanner('FAQ added successfully!', 'success');
+    setSavingFaq(true);
+    try {
+      // Get existing FAQs and add new one
+      const updatedFaqs = [...faqs, { question: newFaq.question, answer: newFaq.answer }];
+      
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/faqs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ faqs: updatedFaqs })
+      });
+
+      if (response.ok) {
+        showBanner('FAQ added successfully!', 'success');
+        setNewFaq({ question: '', answer: '' });
+        loadFAQs();
+      } else {
+        throw new Error('Failed to add FAQ');
+      }
+    } catch (error) {
+      console.error('Error adding FAQ:', error);
+      showBanner('Failed to add FAQ', 'error');
+    } finally {
+      setSavingFaq(false);
+    }
   };
 
-  const handleDeleteFaq = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      faqs: prev.faqs.filter((_, i) => i !== index)
-    }));
+  const handleDeleteFaq = async (faqId, index) => {
+    if (!currentUser?.vendorProfileId || !faqId) {
+      // Local delete
+      setFaqs(prev => prev.filter((_, i) => i !== index));
+      setFormData(prev => ({
+        ...prev,
+        faqs: prev.faqs.filter((_, i) => i !== index)
+      }));
+      showBanner('FAQ removed', 'success');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/faqs/${faqId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (response.ok) {
+        showBanner('FAQ deleted successfully!', 'success');
+        loadFAQs();
+      } else {
+        throw new Error('Delete failed');
+      }
+    } catch (error) {
+      console.error('Error deleting FAQ:', error);
+      showBanner('Failed to delete FAQ', 'error');
+    }
   };
+
+  // Use faqs from API if available, otherwise use formData
+  const displayFaqs = faqs.length > 0 ? faqs : (formData.faqs || []);
 
   return (
     <div className="policies-step">
@@ -3919,10 +4581,17 @@ function PoliciesStep({ formData, onInputChange, setFormData }) {
               Frequently Asked Questions
             </h4>
 
+            {/* Loading State */}
+            {loading && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+                <div className="spinner"></div>
+              </div>
+            )}
+
             {/* Existing FAQs */}
-            {(formData.faqs || []).length > 0 && (
+            {!loading && displayFaqs.length > 0 && (
               <div style={{ marginBottom: '1.5rem', display: 'grid', gap: '1rem' }}>
-                {formData.faqs.map((faq, index) => (
+                {displayFaqs.map((faq, index) => (
                   <div key={faq.id || index} style={{ padding: '1rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
@@ -3944,7 +4613,7 @@ function PoliciesStep({ formData, onInputChange, setFormData }) {
                         <strong style={{ fontSize: '0.95rem' }}>{faq.question}</strong>
                       </div>
                       <button
-                        onClick={() => handleDeleteFaq(index)}
+                        onClick={() => handleDeleteFaq(faq.id, index)}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -4007,10 +4676,15 @@ function PoliciesStep({ formData, onInputChange, setFormData }) {
               </div>
               <button
                 onClick={handleAddFaq}
+                disabled={savingFaq || !newFaq.question.trim() || !newFaq.answer.trim()}
                 className="btn btn-outline"
                 style={{ justifySelf: 'start' }}
               >
-                <i className="fas fa-plus"></i> Add FAQ
+                {savingFaq ? (
+                  <><i className="fas fa-spinner fa-spin"></i> Adding...</>
+                ) : (
+                  <><i className="fas fa-plus"></i> Add FAQ</>
+                )}
               </button>
             </div>
           </div>

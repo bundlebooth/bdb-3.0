@@ -1,135 +1,184 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 
-function SetupIncompleteBanner({ onContinueSetup }) {
+/**
+ * SetupIncompleteBanner - Shared banner component for vendor setup status
+ * 
+ * This component fetches vendor profile data and uses the EXACT same step definitions
+ * and isStepCompleted logic as BecomeVendorPage to ensure both banners are in sync.
+ * 
+ * Props:
+ * - steps: Array of step objects from BecomeVendorPage (optional - for inline mode)
+ * - isStepCompleted: Function to check if a step is completed (optional - for inline mode)
+ * - onStepClick: Callback when a step pill is clicked (optional - for inline mode)
+ * - hideButtons: Boolean to hide Complete Profile/Dismiss buttons (optional)
+ * - maxWidth: Custom max width for the banner (optional)
+ */
+function SetupIncompleteBanner({ 
+  steps: externalSteps, 
+  isStepCompleted: externalIsStepCompleted, 
+  onStepClick,
+  hideButtons = false,
+  maxWidth
+}) {
   const { currentUser } = useAuth();
-  const navigate = useNavigate();
-  const [setupStatus, setSetupStatus] = useState(null);
+  const [vendorData, setVendorData] = useState(null);
   const [dismissed, setDismissed] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Determine if we're in "inline mode" (used within BecomeVendorPage with steps prop)
+  const isInlineMode = externalSteps && externalIsStepCompleted;
+
+  // EXACT same step definitions as BecomeVendorPage (excluding account and review)
+  const steps = [
+    { id: 'categories', title: 'What services do you offer?' },
+    { id: 'business-details', title: 'Tell us about your business' },
+    { id: 'contact', title: 'How can clients reach you?' },
+    { id: 'location', title: 'Where are you located?' },
+    { id: 'services', title: 'What services do you provide?' },
+    { id: 'business-hours', title: 'When are you available?' },
+    { id: 'questionnaire', title: 'Tell guests what your place has to offer' },
+    { id: 'gallery', title: 'Add photos to showcase your work' },
+    { id: 'social-media', title: 'Connect your social profiles' },
+    { id: 'filters', title: 'Enable special badges for your profile' },
+    { id: 'stripe', title: 'Connect Stripe for Payments' },
+    { id: 'google-reviews', title: 'Connect Google Reviews' },
+    { id: 'policies', title: 'FAQ Section' }
+  ];
 
   useEffect(() => {
-    if (!currentUser?.id) {
-      console.log('No user ID, hiding banner');
+    // Skip API fetch if in inline mode
+    if (isInlineMode) {
+      setLoading(false);
       return;
     }
+
+    if (!currentUser?.id) {
+      console.log('[SetupBanner] No currentUser.id, not showing banner');
+      setLoading(false);
+      return;
+    }
+
+    console.log('[SetupBanner] Checking for vendor:', currentUser);
     
     // Check if banner was dismissed
     const dismissKey = `vv_hideSetupReminderUntilComplete_${currentUser.id}`;
     if (localStorage.getItem(dismissKey)) {
-      console.log('Banner was dismissed, hiding');
+      console.log('[SetupBanner] Banner was dismissed');
       setDismissed(true);
+      setLoading(false);
       return;
     }
 
-    console.log('Checking vendor status and setup for user:', currentUser.id);
-    checkVendorStatusAndLoadSetup();
-  }, [currentUser]);
+    fetchVendorData();
+  }, [currentUser, isInlineMode]);
 
-  // EXACT match to original (line 1316-1380)
-  const checkVendorStatusAndLoadSetup = async () => {
+  // Fetch vendor profile data - SAME endpoint as BecomeVendorPage fetchExistingVendorData
+  const fetchVendorData = async () => {
     try {
-      // Step 1: Verify vendor status (line 1317-1330)
-      console.log('Step 1: Checking vendor status...');
-      const statusRes = await fetch(`${API_BASE_URL}/vendors/status?userId=${currentUser.id}`, {
+      // Check if user is a vendor first
+      if (!currentUser.isVendor || !currentUser.vendorProfileId) {
+        console.log('[SetupBanner] User is not a vendor or no vendorProfileId:', {
+          isVendor: currentUser.isVendor,
+          vendorProfileId: currentUser.vendorProfileId
+        });
+        setLoading(false);
+        return;
+      }
+
+      console.log('[SetupBanner] Fetching vendor profile for userId:', currentUser.id);
+
+      // Fetch vendor profile using SAME endpoint as BecomeVendorPage
+      const response = await fetch(`${API_BASE_URL}/vendors/profile?userId=${currentUser.id}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      
-      if (!statusRes.ok) {
-        console.log('Vendor status check failed, hiding banner');
+
+      if (!response.ok) {
+        console.log('[SetupBanner] Profile fetch failed:', response.status);
+        setLoading(false);
         return;
       }
+
+      const result = await response.json();
+      console.log('[SetupBanner] Profile result:', result);
       
-      const status = await statusRes.json();
-      console.log('Vendor status:', status);
-      
-      if (!status.isVendor) {
-        console.log('User is not a vendor, hiding banner');
-        return;
-      }
-      
-      // Step 2: Get detailed setup status (line 1333-1380)
-      console.log('Step 2: Loading setup status...');
-      const setupRes = await fetch(`${API_BASE_URL}/vendor/${currentUser.id}/setup-status`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
-      if (!setupRes.ok) {
-        console.log('Setup status check failed, hiding banner');
-        return;
-      }
-      
-      const setup = await setupRes.json();
-      console.log('Setup status data:', setup);
-      
-      const allComplete = setup.allRequiredComplete ?? setup?.setupStatus?.allRequiredComplete;
-      
-      if (allComplete) {
-        console.log('Setup is complete, hiding banner');
-        // Clear dismiss flag (line 1374-1377)
+      if (result.success && result.data) {
+        // Also fetch vendor features (categoryAnswers) for questionnaire step
+        let categoryAnswers = [];
         try {
-          localStorage.removeItem(`vv_hideSetupReminderUntilComplete_${currentUser.id}`);
-        } catch (_) {}
-        return;
+          const featuresRes = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (featuresRes.ok) {
+            const featuresData = await featuresRes.json();
+            categoryAnswers = featuresData.features || featuresData.data || [];
+          }
+        } catch (e) {
+          console.log('[SetupBanner] Could not fetch vendor features:', e);
+        }
+
+        console.log('[SetupBanner] Setting vendor data with', Object.keys(result.data).length, 'keys');
+        setVendorData({
+          ...result.data,
+          categoryAnswers
+        });
+      } else {
+        console.log('[SetupBanner] No data in result');
       }
-      
-      // Filter incomplete steps (line 1344-1348)
-      const rawIncompleteSteps = setup.incompleteSteps ?? setup?.setupStatus?.incompleteSteps ?? [];
-      const incompleteSteps = rawIncompleteSteps.filter(s => {
-        const key = s?.key || s;
-        return key !== 'verification' && key !== 'policies';
-      });
-      
-      // Get completed steps (line 1362-1365)
-      const stepsObj = setup.steps ?? setup?.setupStatus?.steps ?? {};
-      const requiredKeys = ['basics','location','additionalDetails','social','servicesPackages','faq','gallery','availability','stripe'];
-      const completedStepKeys = requiredKeys.filter(k => stepsObj[k]);
-      
-      const completedSteps = completedStepKeys.map(k => ({ key: k, label: getLabelForKey(k) }));
-      const incompleteWithLabels = incompleteSteps.map(s => ({ 
-        key: s?.key || s, 
-        label: getLabelForKey(s?.key || s) 
-      }));
-      
-      setSetupStatus({
-        isComplete: false,
-        incompleteSteps: incompleteWithLabels,
-        completedSteps: completedSteps,
-        totalSteps: requiredKeys.length
-      });
-      
+      setLoading(false);
     } catch (error) {
-      console.error('Failed to check vendor status:', error);
+      console.error('[SetupBanner] Failed to fetch vendor data:', error);
+      setLoading(false);
     }
   };
-  
-  // Short, clean labels for the banner (matching the screenshot style)
-  const getLabelForKey = (key) => {
-    const labelMap = {
-      // Backend keys mapped to short banner labels
-      basics: 'Business Basics',
-      location: 'Location Information',
-      additionalDetails: 'Additional Details',
-      social: 'Social Media',
-      servicesPackages: 'Services & Packages',
-      faq: 'FAQ Section',
-      gallery: 'Gallery & Media',
-      availability: 'Availability & Scheduling',
-      stripe: 'Stripe Payouts',
-      // BecomeVendorPage step IDs mapped to short banner labels
-      categories: 'Service Categories',
-      'business-details': 'Business Basics',
-      contact: 'Contact Information',
-      services: 'Services & Packages',
-      'business-hours': 'Availability & Scheduling',
-      questionnaire: 'Additional Details',
-      'social-media': 'Social Media',
-      filters: 'Special Badges',
-      policies: 'FAQ Section',
-      'google-reviews': 'Google Reviews'
-    };
-    return labelMap[key] || key;
+
+  // EXACT same isStepCompleted logic as BecomeVendorPage
+  const isStepCompleted = (stepId) => {
+    if (!vendorData) return false;
+
+    const profile = vendorData.profile || vendorData;
+    const categories = vendorData.categories || [];
+    const services = vendorData.services || [];
+    const businessHours = vendorData.businessHours || [];
+    const images = vendorData.images || [];
+    const socialMedia = vendorData.socialMedia || [];
+    const faqs = vendorData.faqs || [];
+    const categoryAnswers = vendorData.categoryAnswers || [];
+    const serviceAreas = vendorData.serviceAreas || [];
+
+    switch (stepId) {
+      case 'categories':
+        return categories.length > 0;
+      case 'business-details':
+        return !!(profile.BusinessName && (profile.DisplayName || profile.BusinessName));
+      case 'contact':
+        return !!profile.BusinessPhone;
+      case 'location':
+        return !!((profile.City || profile.Address) && serviceAreas.length > 0);
+      case 'services':
+        return services.length > 0;
+      case 'business-hours':
+        return businessHours.some(h => h.IsAvailable);
+      case 'questionnaire':
+        return categoryAnswers.length > 0;
+      case 'gallery':
+        return images.length > 0;
+      case 'social-media':
+        return socialMedia.length > 0;
+      case 'filters':
+        return !!(profile.IsPremium || profile.IsEcoFriendly || profile.IsAwardWinning || 
+                  profile.IsLastMinute || profile.IsCertified || profile.IsInsured);
+      case 'stripe':
+        return !!(profile.StripeAccountID);
+      case 'google-reviews':
+        return !!(profile.GooglePlaceID);
+      case 'policies':
+        // Match BecomeVendorPage: cancellationPolicy || depositPercentage || paymentTerms
+        return !!(profile.CancellationPolicy || profile.DepositPercentage || profile.PaymentTerms || faqs.length > 0);
+      default:
+        return false;
+    }
   };
 
   const handleDismiss = () => {
@@ -139,73 +188,54 @@ function SetupIncompleteBanner({ onContinueSetup }) {
   };
 
   const handleContinue = () => {
-    // Open BecomeVendorPage in a new tab
     window.open('/become-a-vendor', '_blank');
   };
 
   const handleSectionClick = (stepKey) => {
-    // Map backend step keys to BecomeVendorPage step IDs
-    // BecomeVendorPage steps: account, categories, business-details, contact, location, 
-    // services, business-hours, questionnaire, gallery, social-media, filters, stripe, google-reviews, policies, review
-    const stepMapping = {
-      'basics': 'business-details',
-      'location': 'location',
-      'additionalDetails': 'questionnaire',
-      'social': 'social-media',
-      'servicesPackages': 'services',
-      'faq': 'policies',
-      'gallery': 'gallery',
-      'availability': 'business-hours',
-      'stripe': 'stripe',
-      // Direct mappings for BecomeVendorPage step IDs (in case they're already correct)
-      'categories': 'categories',
-      'business-details': 'business-details',
-      'contact': 'contact',
-      'services': 'services',
-      'business-hours': 'business-hours',
-      'questionnaire': 'questionnaire',
-      'social-media': 'social-media',
-      'filters': 'filters',
-      'policies': 'policies',
-      'google-reviews': 'google-reviews'
-    };
+    window.open(`/become-a-vendor?step=${stepKey}`, '_blank');
+  };
+
+  // Handle step click - use custom handler if provided, otherwise open in new tab
+  const handleStepClick = (stepKey) => {
+    if (onStepClick) {
+      onStepClick(stepKey);
+    } else {
+      handleSectionClick(stepKey);
+    }
+  };
+
+  // Calculate steps based on mode
+  let incompleteSteps = [];
+  let completedSteps = [];
+  let totalSteps = 0;
+
+  if (isInlineMode) {
+    // Inline mode: Use external steps from BecomeVendorPage
+    const filteredSteps = externalSteps.filter(step => step.id !== 'account' && step.id !== 'review');
+    incompleteSteps = filteredSteps
+      .filter(step => !externalIsStepCompleted(step.id))
+      .map(step => ({ key: step.id, label: step.title }));
+    completedSteps = filteredSteps
+      .filter(step => externalIsStepCompleted(step.id))
+      .map(step => ({ key: step.id, label: step.title }));
+    totalSteps = filteredSteps.length;
+
+    if (incompleteSteps.length === 0) return null;
+  } else {
+    // API mode: Use fetched vendor data with same logic as BecomeVendorPage
+    if (loading || !vendorData || dismissed) return null;
     
-    const targetStep = stepMapping[stepKey] || stepKey;
-    console.log('Opening become-a-vendor in new tab with targetStep:', targetStep, 'from stepKey:', stepKey);
-    // Open in new tab with targetStep as URL parameter
-    window.open(`/become-a-vendor?step=${targetStep}`, '_blank');
-  };
+    incompleteSteps = steps
+      .filter(step => !isStepCompleted(step.id))
+      .map(step => ({ key: step.id, label: step.title }));
+    completedSteps = steps
+      .filter(step => isStepCompleted(step.id))
+      .map(step => ({ key: step.id, label: step.title }));
+    totalSteps = steps.length;
 
-  if (!setupStatus || dismissed || setupStatus.isComplete) return null;
-
-  const incompleteSteps = setupStatus.incompleteSteps || [];
-  const completedSteps = setupStatus.completedSteps || [];
-  const totalSteps = setupStatus.totalSteps || 0;
-
-  // Short, clean labels for the banner (same as getLabelForKey)
-  const stepLabels = {
-    // Backend keys mapped to short banner labels
-    basics: 'Business Basics',
-    location: 'Location Information',
-    additionalDetails: 'Additional Details',
-    social: 'Social Media',
-    servicesPackages: 'Services & Packages',
-    faq: 'FAQ Section',
-    gallery: 'Gallery & Media',
-    availability: 'Availability & Scheduling',
-    stripe: 'Stripe Payouts',
-    // BecomeVendorPage step IDs mapped to short banner labels
-    categories: 'Service Categories',
-    'business-details': 'Business Basics',
-    contact: 'Contact Information',
-    services: 'Services & Packages',
-    'business-hours': 'Availability & Scheduling',
-    questionnaire: 'Additional Details',
-    'social-media': 'Social Media',
-    filters: 'Special Badges',
-    policies: 'FAQ Section',
-    'google-reviews': 'Google Reviews'
-  };
+    // If all complete, don't show banner
+    if (incompleteSteps.length === 0) return null;
+  }
 
   return (
     <div style={{
@@ -216,7 +246,8 @@ function SetupIncompleteBanner({ onContinueSetup }) {
       background: '#fffbeb',
       border: '1px solid #fde68a',
       borderRadius: '8px',
-      margin: '1rem 0'
+      margin: '1rem auto',
+      ...(maxWidth && { maxWidth })
     }}>
       <div style={{ fontSize: '20px', lineHeight: 1, color: '#D97706' }}>
         <i className="fas fa-triangle-exclamation"></i>
@@ -229,37 +260,39 @@ function SetupIncompleteBanner({ onContinueSetup }) {
               Your profile will not be visible to clients until all required steps are complete.
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <button 
-              onClick={handleContinue}
-              style={{
-                background: '#5e72e4',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '8px 16px',
-                fontSize: '.9rem',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              Complete Profile
-            </button>
-            <button 
-              onClick={handleDismiss}
-              style={{
-                background: 'transparent',
-                color: '#1f2937',
-                border: 'none',
-                padding: '8px 16px',
-                fontSize: '.9rem',
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}
-            >
-              Dismiss
-            </button>
-          </div>
+          {!hideButtons && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button 
+                onClick={handleContinue}
+                style={{
+                  background: '#5e72e4',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  fontSize: '.9rem',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Complete Profile
+              </button>
+              <button 
+                onClick={handleDismiss}
+                style={{
+                  background: 'transparent',
+                  color: '#1f2937',
+                  border: 'none',
+                  padding: '8px 16px',
+                  fontSize: '.9rem',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
         </div>
         
         {incompleteSteps.length > 0 && (
@@ -284,11 +317,11 @@ function SetupIncompleteBanner({ onContinueSetup }) {
                       whiteSpace: 'nowrap',
                       cursor: 'pointer'
                     }}
-                    onClick={() => handleSectionClick(stepKey)}
-                    title={`Click to complete: ${step.label || stepLabels[stepKey] || stepKey}`}
+                    onClick={() => handleStepClick(stepKey)}
+                    title={`Click to complete: ${step.label || stepKey}`}
                   >
                     <i className="fas fa-circle-xmark"></i>
-                    {step.label || stepLabels[stepKey] || stepKey}
+                    {step.label || stepKey}
                   </span>
                 );
               })}
@@ -324,11 +357,11 @@ function SetupIncompleteBanner({ onContinueSetup }) {
                     whiteSpace: 'nowrap',
                     cursor: 'pointer'
                   }}
-                  onClick={() => handleSectionClick(stepKey)}
-                  title={`Review: ${step.label || stepLabels[stepKey] || stepKey}`}
+                  onClick={() => handleStepClick(stepKey)}
+                  title={`Review: ${step.label || stepKey}`}
                 >
                   <i className="fas fa-circle-check"></i>
-                  {step.label || stepLabels[stepKey] || stepKey}
+                  {step.label || stepKey}
                 </span>
               );
             })}
