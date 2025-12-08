@@ -344,18 +344,40 @@ const BecomeVendorPage = () => {
           const profile = result.data.profile;
           const categories = result.data.categories || [];
           const services = result.data.services || [];
-          const businessHours = result.data.businessHours || [];
           const serviceAreas = result.data.serviceAreas || [];
-          const socialMedia = result.data.socialMedia?.[0] || {};
-          const images = result.data.images || [];
+          
+          // Note: API returns data in wrong fields due to stored procedure order
+          // Detect by checking field names
+          let businessHours = [];
+          let socialMedia = {};
+          let images = result.data.images || [];
+          
+          // Check what's in result.data.socialMedia - might be business hours
+          if (result.data.socialMedia?.length > 0 && result.data.socialMedia[0]?.DayOfWeek !== undefined) {
+            businessHours = result.data.socialMedia;
+          } else if (result.data.socialMedia?.length > 0) {
+            socialMedia = result.data.socialMedia[0] || {};
+          }
+          
+          // Check what's in result.data.businessHours - might be images
+          if (result.data.businessHours?.length > 0 && result.data.businessHours[0]?.ImageURL !== undefined) {
+            if (images.length === 0) {
+              images = result.data.businessHours;
+            }
+          } else if (result.data.businessHours?.length > 0 && result.data.businessHours[0]?.DayOfWeek !== undefined) {
+            businessHours = result.data.businessHours;
+          }
           const selectedFeatures = result.data.selectedFeatures || [];
 
           console.log('📋 Selected features from database:', selectedFeatures);
 
           // Map business hours from database format to form format
+          const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
           const hoursMap = {};
           businessHours.forEach(hour => {
-            const day = hour.DayOfWeek?.toLowerCase();
+            // DayOfWeek is a number 0-6 (Sunday=0, Monday=1, etc.)
+            const dayIndex = typeof hour.DayOfWeek === 'number' ? hour.DayOfWeek : parseInt(hour.DayOfWeek);
+            const day = dayNames[dayIndex];
             if (day) {
               hoursMap[day] = {
                 isAvailable: hour.IsAvailable || false,
@@ -364,6 +386,7 @@ const BecomeVendorPage = () => {
               };
             }
           });
+          console.log('⏰ Business hours mapped:', hoursMap);
 
           // Extract primary and additional categories
           console.log('📂 Categories from database:', categories);
@@ -459,6 +482,36 @@ const BecomeVendorPage = () => {
             // Google Reviews
             googlePlaceId: profile.GooglePlaceId || ''
           };
+
+          // Fetch Stripe status
+          try {
+            const stripeRes = await fetch(`${API_BASE_URL}/payments/connect/status/${currentUser.vendorProfileId}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (stripeRes.ok) {
+              const stripeData = await stripeRes.json();
+              updatedFormData.stripeConnected = stripeData.connected || false;
+              console.log('💳 Stripe connected:', updatedFormData.stripeConnected);
+            }
+          } catch (e) {
+            console.log('Could not fetch Stripe status:', e);
+          }
+
+          // Fetch filters
+          try {
+            const filtersRes = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/filters`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (filtersRes.ok) {
+              const filtersData = await filtersRes.json();
+              if (filtersData.isPremium || filtersData.isFeatured) {
+                updatedFormData.selectedFilters = ['filter-premium'];
+              }
+              console.log('🏷️ Filters loaded:', filtersData);
+            }
+          } catch (e) {
+            console.log('Could not fetch filters:', e);
+          }
 
           console.log('📝 Setting formData with loaded data:', updatedFormData);
           setFormData(updatedFormData);

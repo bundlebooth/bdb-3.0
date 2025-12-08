@@ -104,10 +104,62 @@ function SetupIncompleteBanner({
       console.log('[SetupBanner] Profile result:', result);
       
       if (result.success && result.data) {
-        // Also fetch vendor features (categoryAnswers) for questionnaire step
+        // Use vendorProfileId from API response (more reliable than currentUser)
+        const vendorProfileId = result.vendorProfileId;
+        console.log('[SetupBanner] Using vendorProfileId from API:', vendorProfileId);
+        
+        // Get stripeAccountId and googlePlaceId from root level of response
+        const rootStripeAccountId = result.stripeAccountId;
+        const rootGooglePlaceId = result.googlePlaceId;
+        
+        // Fetch Stripe status using correct vendorProfileId
+        let stripeConnected = false;
+        try {
+          const stripeRes = await fetch(`${API_BASE_URL}/payments/connect/status/${vendorProfileId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (stripeRes.ok) {
+            const stripeData = await stripeRes.json();
+            stripeConnected = stripeData.connected || false;
+            console.log('[SetupBanner] Stripe connected:', stripeConnected);
+          }
+        } catch (e) {
+          console.log('[SetupBanner] Could not fetch Stripe status:', e);
+        }
+
+        // Fetch Google Reviews settings
+        let googlePlaceId = null;
+        try {
+          const googleRes = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/google-reviews-settings`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (googleRes.ok) {
+            const googleData = await googleRes.json();
+            googlePlaceId = googleData.GooglePlaceId || googleData.placeId || googleData.googlePlaceId || null;
+            console.log('[SetupBanner] Google placeId:', googlePlaceId);
+          }
+        } catch (e) {
+          console.log('[SetupBanner] Could not fetch Google Reviews settings:', e);
+        }
+
+        // Fetch Filters
+        let filtersData = {};
+        try {
+          const filtersRes = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/filters`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (filtersRes.ok) {
+            filtersData = await filtersRes.json();
+            console.log('[SetupBanner] Filters:', filtersData);
+          }
+        } catch (e) {
+          console.log('[SetupBanner] Could not fetch filters:', e);
+        }
+
+        // Fetch vendor features (categoryAnswers) for questionnaire step
         let categoryAnswers = [];
         try {
-          const featuresRes = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+          const featuresRes = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
           });
           if (featuresRes.ok) {
@@ -118,60 +170,14 @@ function SetupIncompleteBanner({
           console.log('[SetupBanner] Could not fetch vendor features:', e);
         }
 
-        // Fetch Stripe status
-        let stripeConnected = false;
-        try {
-          const stripeRes = await fetch(`${API_BASE_URL}/payments/connect/status/${currentUser.vendorProfileId}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          if (stripeRes.ok) {
-            const stripeData = await stripeRes.json();
-            stripeConnected = stripeData.connected || false;
-            console.log('[SetupBanner] Stripe status:', stripeData, 'connected:', stripeConnected);
-          }
-        } catch (e) {
-          console.log('[SetupBanner] Could not fetch Stripe status:', e);
-        }
-
-        // Fetch Google Reviews settings
-        let googlePlaceId = null;
-        try {
-          const googleRes = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/google-reviews-settings`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          if (googleRes.ok) {
-            const googleData = await googleRes.json();
-            // API returns GooglePlaceId (capital letters)
-            googlePlaceId = googleData.GooglePlaceId || googleData.placeId || googleData.googlePlaceId || null;
-            console.log('[SetupBanner] Google Reviews data:', googleData, 'placeId:', googlePlaceId);
-          }
-        } catch (e) {
-          console.log('[SetupBanner] Could not fetch Google Reviews settings:', e);
-        }
-
-        // Fetch Filters
-        let filtersData = {};
-        try {
-          const filtersRes = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/filters`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          });
-          if (filtersRes.ok) {
-            filtersData = await filtersRes.json();
-          }
-        } catch (e) {
-          console.log('[SetupBanner] Could not fetch filters:', e);
-        }
-
-        console.log('[SetupBanner] Setting vendor data with', Object.keys(result.data).length, 'keys');
-        console.log('[SetupBanner] Profile StripeAccountID:', result.data.profile?.StripeAccountID);
-        console.log('[SetupBanner] Profile GooglePlaceID:', result.data.profile?.GooglePlaceID);
-        console.log('[SetupBanner] Fetched stripeConnected:', stripeConnected);
-        console.log('[SetupBanner] Fetched googlePlaceId:', googlePlaceId);
+        console.log('[SetupBanner] Final data - stripeConnected:', stripeConnected, 'images:', result.data.images?.length, 'socialMedia:', result.data.socialMedia?.length);
         setVendorData({
           ...result.data,
           categoryAnswers,
           stripeConnected,
           googlePlaceId,
+          rootStripeAccountId,
+          rootGooglePlaceId,
           filtersString: filtersData.filters || '',
           ...filtersData
         });
@@ -192,11 +198,35 @@ function SetupIncompleteBanner({
     const profile = vendorData.profile || vendorData;
     const categories = vendorData.categories || [];
     const services = vendorData.services || [];
-    const businessHours = vendorData.businessHours || [];
-    const images = vendorData.images || [];
-    const socialMedia = vendorData.socialMedia || [];
+    
+    // Note: API returns data in wrong fields due to stored procedure order
+    // socialMedia field actually contains businessHours data (has DayOfWeek, OpenTime)
+    // businessHours field actually contains images data (has ImageID, ImageURL)
+    // Detect by checking field names
+    let businessHours = [];
+    let socialMedia = [];
+    let images = vendorData.images || [];
+    
+    // Check what's in vendorData.socialMedia
+    if (vendorData.socialMedia?.length > 0 && vendorData.socialMedia[0]?.DayOfWeek !== undefined) {
+      // socialMedia field contains business hours
+      businessHours = vendorData.socialMedia;
+    } else {
+      socialMedia = vendorData.socialMedia || [];
+    }
+    
+    // Check what's in vendorData.businessHours
+    if (vendorData.businessHours?.length > 0 && vendorData.businessHours[0]?.ImageURL !== undefined) {
+      // businessHours field contains images - use it if images is empty
+      if (images.length === 0) {
+        images = vendorData.businessHours;
+      }
+    } else if (vendorData.businessHours?.length > 0 && vendorData.businessHours[0]?.DayOfWeek !== undefined) {
+      businessHours = vendorData.businessHours;
+    }
+    
     const faqs = vendorData.faqs || [];
-    const categoryAnswers = vendorData.categoryAnswers || [];
+    const categoryAnswers = vendorData.categoryAnswers || vendorData.selectedFeatures || [];
     const serviceAreas = vendorData.serviceAreas || [];
 
     switch (stepId) {
@@ -211,7 +241,11 @@ function SetupIncompleteBanner({
       case 'services':
         return services.length > 0;
       case 'business-hours':
-        return businessHours.some(h => h.IsAvailable);
+        // Check if any day has IsAvailable = true (handles both array formats)
+        if (Array.isArray(businessHours) && businessHours.length > 0) {
+          return businessHours.some(h => h.IsAvailable || h.isAvailable);
+        }
+        return false;
       case 'questionnaire':
         return categoryAnswers.length > 0;
       case 'gallery':
@@ -224,11 +258,11 @@ function SetupIncompleteBanner({
                   profile.IsLastMinute || profile.IsCertified || profile.IsInsured || 
                   vendorData.isPremium || vendorData.isVerified || vendorData.isTopRated);
       case 'stripe':
-        // Use the fetched stripeConnected status from dedicated endpoint
-        return !!(vendorData.stripeConnected || profile.StripeAccountID);
+        // Check all possible sources for Stripe connection
+        return !!(vendorData.stripeConnected || vendorData.rootStripeAccountId || profile.StripeAccountID);
       case 'google-reviews':
-        // Use the fetched googlePlaceId from dedicated endpoint
-        return !!(vendorData.googlePlaceId || profile.GooglePlaceID);
+        // Check all possible sources for Google Place ID
+        return !!(vendorData.googlePlaceId || vendorData.rootGooglePlaceId || profile.GooglePlaceID);
       case 'policies':
         // Match BecomeVendorPage: cancellationPolicy || depositPercentage || paymentTerms
         return !!(profile.CancellationPolicy || profile.DepositPercentage || profile.PaymentTerms || faqs.length > 0);
