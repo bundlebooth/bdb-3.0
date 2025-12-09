@@ -254,6 +254,12 @@ CREATE TABLE VendorProfiles (
     TotalReviews INT DEFAULT 0,
     AvgRating DECIMAL(3,2) NULL,
     LastReviewDate DATETIME NULL,
+    -- Profile Review Workflow fields
+    ProfileStatus NVARCHAR(50) DEFAULT 'draft', -- draft, pending_review, approved, rejected
+    SubmittedForReviewAt DATETIME NULL,
+    ReviewedAt DATETIME NULL,
+    RejectionReason NVARCHAR(MAX) NULL,
+    AdminNotes NVARCHAR(MAX) NULL,
     CreatedAt DATETIME DEFAULT GETDATE(),
     UpdatedAt DATETIME DEFAULT GETDATE()
 );
@@ -263,6 +269,11 @@ GO
 CREATE INDEX IX_VendorProfiles_GooglePlaceId 
 ON VendorProfiles(GooglePlaceId)
 WHERE GooglePlaceId IS NOT NULL;
+GO
+
+-- Create index for Profile Status (for admin review queries)
+CREATE INDEX IX_VendorProfiles_ProfileStatus 
+ON VendorProfiles(ProfileStatus);
 GO
 
 -- Vendor images table

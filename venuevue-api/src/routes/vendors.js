@@ -6370,4 +6370,192 @@ router.post('/:id/logo', upload.single('logo'), async (req, res) => {
   }
 });
 
+// ============================================
+// VENDOR PROFILE REVIEW WORKFLOW ENDPOINTS
+// ============================================
+
+// Submit vendor profile for admin review
+router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    // Update profile status to pending_review
+    await request.query(`
+      UPDATE VendorProfiles
+      SET ProfileStatus = 'pending_review', 
+          SubmittedForReviewAt = GETDATE(),
+          UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    console.log(`[Vendor Review] Profile ${vendorProfileId} submitted for review`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Profile submitted for review',
+      status: 'pending_review'
+    });
+  } catch (error) {
+    console.error('Error submitting profile for review:', error);
+    res.status(500).json({ success: false, message: 'Failed to submit profile for review', error: error.message });
+  }
+});
+
+// Get all pending vendor profiles for admin review
+router.get('/admin/pending-reviews', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    
+    const result = await request.query(`
+      SELECT 
+        vp.VendorProfileID,
+        vp.BusinessName,
+        vp.DisplayName,
+        vp.BusinessDescription,
+        vp.BusinessPhone,
+        vp.BusinessEmail,
+        vp.Website,
+        vp.City,
+        vp.State,
+        vp.Country,
+        vp.ProfileStatus,
+        vp.SubmittedForReviewAt,
+        vp.CreatedAt,
+        u.Name as OwnerName,
+        u.Email as OwnerEmail,
+        (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorProfileID = vp.VendorProfileID ORDER BY IsPrimary DESC, DisplayOrder ASC) as PrimaryImage,
+        (SELECT STRING_AGG(Category, ', ') FROM VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as Categories
+      FROM VendorProfiles vp
+      LEFT JOIN Users u ON vp.UserID = u.UserID
+      WHERE vp.ProfileStatus = 'pending_review'
+      ORDER BY vp.SubmittedForReviewAt ASC
+    `);
+    
+    res.json({ 
+      success: true, 
+      profiles: result.recordset 
+    });
+  } catch (error) {
+    console.error('Error fetching pending reviews:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch pending reviews', error: error.message });
+  }
+});
+
+// Approve vendor profile (admin only)
+router.post('/admin/:vendorProfileId/approve', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    const { adminNotes } = req.body;
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null);
+    
+    // Update profile status to approved and make it visible
+    await request.query(`
+      UPDATE VendorProfiles
+      SET ProfileStatus = 'approved', 
+          IsVerified = 1,
+          AcceptingBookings = 1,
+          ReviewedAt = GETDATE(),
+          AdminNotes = @AdminNotes,
+          UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    console.log(`[Vendor Review] Profile ${vendorProfileId} APPROVED`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Profile approved and is now live',
+      status: 'approved'
+    });
+  } catch (error) {
+    console.error('Error approving profile:', error);
+    res.status(500).json({ success: false, message: 'Failed to approve profile', error: error.message });
+  }
+});
+
+// Reject vendor profile (admin only)
+router.post('/admin/:vendorProfileId/reject', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    const { rejectionReason, adminNotes } = req.body;
+    
+    if (!rejectionReason) {
+      return res.status(400).json({ success: false, message: 'Rejection reason is required' });
+    }
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('RejectionReason', sql.NVarChar(sql.MAX), rejectionReason);
+    request.input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null);
+    
+    // Update profile status to rejected
+    await request.query(`
+      UPDATE VendorProfiles
+      SET ProfileStatus = 'rejected', 
+          RejectionReason = @RejectionReason,
+          AdminNotes = @AdminNotes,
+          ReviewedAt = GETDATE(),
+          UpdatedAt = GETDATE()
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    console.log(`[Vendor Review] Profile ${vendorProfileId} REJECTED: ${rejectionReason}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Profile rejected',
+      status: 'rejected'
+    });
+  } catch (error) {
+    console.error('Error rejecting profile:', error);
+    res.status(500).json({ success: false, message: 'Failed to reject profile', error: error.message });
+  }
+});
+
+// Get vendor profile status
+router.get('/:vendorProfileId/status', async (req, res) => {
+  try {
+    const { vendorProfileId } = req.params;
+    
+    const pool = await poolPromise;
+    const request = new sql.Request(pool);
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    
+    const result = await request.query(`
+      SELECT 
+        ProfileStatus,
+        SubmittedForReviewAt,
+        ReviewedAt,
+        RejectionReason,
+        AdminNotes,
+        IsVerified,
+        AcceptingBookings
+      FROM VendorProfiles
+      WHERE VendorProfileID = @VendorProfileID
+    `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Vendor profile not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      ...result.recordset[0]
+    });
+  } catch (error) {
+    console.error('Error fetching profile status:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch profile status', error: error.message });
+  }
+});
+
 module.exports = router;

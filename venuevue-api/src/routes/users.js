@@ -155,6 +155,7 @@ router.post('/login', async (req, res) => {
         u.Email, 
         u.PasswordHash, 
         u.IsVendor,
+        u.IsAdmin,
         u.IsActive,
         v.VendorProfileID
       FROM Users u
@@ -213,7 +214,7 @@ router.post('/login', async (req, res) => {
       return res.json({ success: true, twoFactorRequired: true, tempToken, message: 'Verification code sent' });
     }
     const token = jwt.sign(
-      { id: user.UserID, email: user.Email, isVendor: user.IsVendor },
+      { id: user.UserID, email: user.Email, isVendor: user.IsVendor, isAdmin: user.IsAdmin },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
@@ -223,6 +224,7 @@ router.post('/login', async (req, res) => {
       name: user.Name,
       email: user.Email,
       isVendor: user.IsVendor,
+      isAdmin: user.IsAdmin,
       vendorProfileId: user.VendorProfileID || null,
       token
     });
@@ -287,7 +289,7 @@ router.post('/login/verify-2fa', async (req, res) => {
     const ures = await pool.request()
       .input('UserID', sql.Int, decoded.id)
       .query(`
-        SELECT u.UserID, u.Name, u.Email, u.IsVendor, v.VendorProfileID
+        SELECT u.UserID, u.Name, u.Email, u.IsVendor, u.IsAdmin, v.VendorProfileID
         FROM Users u
         LEFT JOIN VendorProfiles v ON u.UserID = v.UserID
         WHERE u.UserID = @UserID
@@ -297,11 +299,11 @@ router.post('/login/verify-2fa', async (req, res) => {
     }
     const u = ures.recordset[0];
     const token = jwt.sign(
-      { id: u.UserID, email: u.Email, isVendor: u.IsVendor },
+      { id: u.UserID, email: u.Email, isVendor: u.IsVendor, isAdmin: u.IsAdmin },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
-    res.json({ success: true, userId: u.UserID, name: u.Name, email: u.Email, isVendor: u.IsVendor, vendorProfileId: u.VendorProfileID || null, token });
+    res.json({ success: true, userId: u.UserID, name: u.Name, email: u.Email, isVendor: u.IsVendor, isAdmin: u.IsAdmin, vendorProfileId: u.VendorProfileID || null, token });
   } catch (err) {
     console.error('Verify 2FA error:', err);
     res.status(500).json({ success: false, message: 'Verification failed', error: err.message });
@@ -373,7 +375,7 @@ router.post('/social-login', async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { id: user.UserID, email: user.Email, isVendor: user.IsVendor },
+      { id: user.UserID, email: user.Email, isVendor: user.IsVendor, isAdmin: user.IsAdmin || false },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
@@ -384,6 +386,7 @@ router.post('/social-login', async (req, res) => {
       name: user.Name,
       email: user.Email,
       isVendor: user.IsVendor,
+      isAdmin: user.IsAdmin || false,
       isNewUser: user.IsNewUser || false,  // Return whether this is a new user
       vendorProfileId: user.VendorProfileID || null,
       token

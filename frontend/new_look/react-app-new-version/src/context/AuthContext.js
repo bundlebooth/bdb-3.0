@@ -72,6 +72,7 @@ export function AuthProvider({ children }) {
             email: data.email,
             userType: data.isVendor ? 'vendor' : 'client',
             isVendor: data.isVendor || false,
+            isAdmin: data.isAdmin || false,
             vendorProfileId: data.vendorProfileId
           };
           setCurrentUser(userData);
@@ -92,7 +93,8 @@ export function AuthProvider({ children }) {
     const userData = {
       ...user,
       userId: user.id,
-      isVendor: user.isVendor || false
+      isVendor: user.isVendor || false,
+      isAdmin: user.isAdmin || false
     };
     setCurrentUser(userData);
     window.currentUser = userData;
@@ -173,6 +175,7 @@ export function AuthProvider({ children }) {
         email: data.email,
         userType: data.isVendor ? 'vendor' : 'client',
         isVendor: data.isVendor || false,
+        isAdmin: data.isAdmin || false,
         vendorProfileId: data.vendorProfileId || null
       };
       

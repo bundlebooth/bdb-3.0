@@ -129,6 +129,7 @@ function ProfileModal({ isOpen, onClose }) {
         email: data.email,
         userType: data.isVendor ? 'vendor' : 'client',
         isVendor: data.isVendor || false,
+        isAdmin: data.isAdmin || false,
         vendorProfileId: data.vendorProfileId || null
       };
 
@@ -260,6 +261,7 @@ function ProfileModal({ isOpen, onClose }) {
         email: data.email,
         userType: data.isVendor ? 'vendor' : 'client',
         isVendor: data.isVendor || false,
+        isAdmin: data.isAdmin || false,
         vendorProfileId: data.vendorProfileId || null
       };
       
@@ -327,6 +329,7 @@ function ProfileModal({ isOpen, onClose }) {
         email: data.email,
         userType: data.isVendor ? 'vendor' : 'client',
         isVendor: data.isVendor || false,
+        isAdmin: data.isAdmin || false,
         vendorProfileId: data.vendorProfileId || null
       };
       
@@ -391,6 +394,7 @@ function ProfileModal({ isOpen, onClose }) {
         email: data.email,
         userType: data.isVendor ? 'vendor' : 'client',
         isVendor: data.isVendor || false,
+        isAdmin: data.isAdmin || false,
         vendorProfileId: data.vendorProfileId || null
       };
       

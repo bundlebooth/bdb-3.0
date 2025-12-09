@@ -166,6 +166,7 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
       // Stored procedure doesn't exist, try direct query
       console.log('[vendor-features] sp_GetVendorSelectedFeatures not found, trying direct query');
       try {
+        // First try with JOINs for full feature details
         result = await pool.request()
           .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
           .query(`
@@ -181,22 +182,34 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
               c.CategoryName,
               c.CategoryKey,
               c.CategoryIcon,
-              vsf.CreatedAt AS SelectedAt
+              COALESCE(vsf.CreatedAt, vsf.SelectedAt, GETDATE()) AS SelectedAt
             FROM VendorSelectedFeatures vsf
-            JOIN VendorFeatures f ON vsf.FeatureID = f.FeatureID
-            JOIN VendorFeatureCategories c ON f.CategoryID = c.CategoryID
+            LEFT JOIN VendorFeatures f ON vsf.FeatureID = f.FeatureID
+            LEFT JOIN VendorFeatureCategories c ON f.CategoryID = c.CategoryID
             WHERE vsf.VendorProfileID = @VendorProfileID
-              AND f.IsActive = 1
-            ORDER BY c.DisplayOrder, f.DisplayOrder
+              AND (f.IsActive = 1 OR f.IsActive IS NULL)
+            ORDER BY COALESCE(c.DisplayOrder, 999), COALESCE(f.DisplayOrder, 999)
           `);
+        console.log('[vendor-features] Query returned', result.recordset?.length || 0, 'features');
       } catch (tableError) {
-        // Tables don't exist, return empty
-        console.log('[vendor-features] VendorSelectedFeatures table not found, returning empty');
-        return res.json({
-          success: true,
-          selectedFeatures: [],
-          groupedByCategory: []
-        });
+        // Tables don't exist or query failed, try simpler query
+        console.log('[vendor-features] Complex query failed, trying simple query:', tableError.message);
+        try {
+          result = await pool.request()
+            .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+            .query(`
+              SELECT FeatureID FROM VendorSelectedFeatures 
+              WHERE VendorProfileID = @VendorProfileID
+            `);
+          console.log('[vendor-features] Simple query returned', result.recordset?.length || 0, 'features');
+        } catch (simpleError) {
+          console.log('[vendor-features] VendorSelectedFeatures table not found, returning empty');
+          return res.json({
+            success: true,
+            selectedFeatures: [],
+            groupedByCategory: []
+          });
+        }
       }
     }
     
@@ -288,29 +301,53 @@ router.post('/vendor/:vendorProfileId', async (req, res) => {
       // Stored procedure doesn't exist, try direct SQL
       console.log('[vendor-features] sp_SaveVendorFeatureSelections not found, trying direct SQL');
       try {
-        // Delete existing selections
-        await pool.request()
-          .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-          .query('DELETE FROM VendorSelectedFeatures WHERE VendorProfileID = @VendorProfileID');
-        
-        // Insert new selections if any
+        // Only delete and re-insert if there are features to save
+        // This prevents accidental data loss when an empty array is passed
         if (featureIds.length > 0) {
+          // Delete existing selections first
+          await pool.request()
+            .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+            .query('DELETE FROM VendorSelectedFeatures WHERE VendorProfileID = @VendorProfileID');
+          console.log('[vendor-features] Deleted existing selections for vendorProfileId:', vendorProfileId);
+          
+          // Insert new selections
+          console.log('[vendor-features] Inserting', featureIds.length, 'features:', featureIds);
           for (const featureId of featureIds) {
-            await pool.request()
-              .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-              .input('FeatureID', sql.Int, parseInt(featureId))
-              .query('INSERT INTO VendorSelectedFeatures (VendorProfileID, FeatureID) VALUES (@VendorProfileID, @FeatureID)');
+            try {
+              // Try with SelectedAt column first (matches onboarding endpoint)
+              await pool.request()
+                .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+                .input('FeatureID', sql.Int, parseInt(featureId))
+                .query('INSERT INTO VendorSelectedFeatures (VendorProfileID, FeatureID, SelectedAt) VALUES (@VendorProfileID, @FeatureID, GETDATE())');
+            } catch (insertError) {
+              // Try with CreatedAt column
+              try {
+                await pool.request()
+                  .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+                  .input('FeatureID', sql.Int, parseInt(featureId))
+                  .query('INSERT INTO VendorSelectedFeatures (VendorProfileID, FeatureID, CreatedAt) VALUES (@VendorProfileID, @FeatureID, GETDATE())');
+              } catch (insertError2) {
+                // Try without timestamp column
+                await pool.request()
+                  .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
+                  .input('FeatureID', sql.Int, parseInt(featureId))
+                  .query('INSERT INTO VendorSelectedFeatures (VendorProfileID, FeatureID) VALUES (@VendorProfileID, @FeatureID)');
+              }
+            }
           }
+          console.log('[vendor-features] Successfully inserted', featureIds.length, 'features');
+        } else {
+          console.log('[vendor-features] No features to save, preserving existing selections');
         }
         
         res.json({
           success: true,
-          message: 'Feature selections saved successfully',
+          message: featureIds.length > 0 ? 'Feature selections saved successfully' : 'No changes made (empty feature list)',
           selectionCount: featureIds.length
         });
       } catch (tableError) {
         // Tables don't exist
-        console.log('[vendor-features] VendorSelectedFeatures table not found:', tableError.message);
+        console.log('[vendor-features] VendorSelectedFeatures table error:', tableError.message);
         res.status(500).json({
           success: false,
           message: 'Feature tables not set up in database. Please run the database migration scripts.',

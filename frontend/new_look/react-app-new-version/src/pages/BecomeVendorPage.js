@@ -41,6 +41,7 @@ const BecomeVendorPage = () => {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [featuresLoadedFromDB, setFeaturesLoadedFromDB] = useState(false); // Track if features were loaded from database
   const [initialDataLoaded, setInitialDataLoaded] = useState(false); // Prevent re-fetching after save
+  const [profileStatus, setProfileStatus] = useState('draft'); // 'draft', 'pending_review', 'approved', 'rejected'
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -351,6 +352,12 @@ const BecomeVendorPage = () => {
 
           // Pre-populate form with existing data
           const profile = result.data.profile;
+          
+          // Load profile status for review workflow
+          if (profile.ProfileStatus) {
+            setProfileStatus(profile.ProfileStatus);
+            console.log('📋 Profile status loaded:', profile.ProfileStatus);
+          }
           const categories = result.data.categories || [];
           const services = result.data.services || [];
           const serviceAreas = result.data.serviceAreas || [];
@@ -1131,6 +1138,50 @@ const BecomeVendorPage = () => {
     }
   };
 
+  // Handle Go Live - Submit profile for admin review
+  const handleGoLive = async () => {
+    try {
+      setLoading(true);
+
+      if (!currentUser || !currentUser.vendorProfileId) {
+        showBanner('Please complete your profile first', 'error');
+        return;
+      }
+
+      // First save the current profile data
+      await handleSaveProgress();
+
+      // Then submit for review
+      const response = await fetch(`${API_BASE_URL}/vendors/${currentUser.vendorProfileId}/submit-for-review`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to submit profile for review');
+      }
+
+      const result = await response.json();
+      setProfileStatus('pending_review');
+      
+      showBanner('Your profile has been submitted for review! Our team will review it shortly.', 'success');
+      
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error submitting for review:', error);
+      showBanner(error.message || 'Failed to submit profile for review', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const CurrentStepComponent = steps[currentStep].component;
   const progress = ((currentStep + 1) / steps.length) * 100;
 
@@ -1249,10 +1300,7 @@ const BecomeVendorPage = () => {
                 {loading ? (
                   <span className="spinner-small"></span>
                 ) : (
-                  <>
-                    <i className="fas fa-save"></i>
-                    Save
-                  </>
+                  'Save'
                 )}
               </button>
             )}
@@ -1269,13 +1317,14 @@ const BecomeVendorPage = () => {
             
             <button
               className="btn-next"
-              onClick={currentStep === steps.length - 1 ? handleSubmit : handleNext}
+              onClick={currentStep === steps.length - 1 ? handleGoLive : handleNext}
               disabled={loading || (currentStep === 0 && !currentUser)}
+              style={currentStep === steps.length - 1 ? { background: '#10b981' } : {}}
             >
               {loading ? (
                 <span className="spinner-small"></span>
               ) : currentStep === steps.length - 1 ? (
-                isExistingVendor ? 'Save Changes' : 'Complete Setup'
+                'Go Live'
               ) : (
                 'Next'
               )}
@@ -1321,6 +1370,7 @@ function AccountStep({ currentUser, setFormData, formData, onAccountCreated, isE
               }}
               hideButtons={true}
               maxWidth="900px"
+              showAllSteps={true}
             />
           )}
 

@@ -17,19 +17,24 @@ import { API_BASE_URL } from '../config';
  * - onStepClick: Callback when a step pill is clicked (optional - for inline mode)
  * - hideButtons: Boolean to hide Complete Profile/Dismiss buttons (optional)
  * - maxWidth: Custom max width for the banner (optional)
+ * - showAllSteps: Boolean to always show the banner with all steps even if all complete (optional)
+ * - profileStatus: String for profile review status ('draft', 'pending_review', 'approved', 'rejected') (optional)
  */
 function SetupIncompleteBanner({ 
   steps: externalSteps, 
   isStepCompleted: externalIsStepCompleted, 
   onStepClick,
   hideButtons = false,
-  maxWidth
+  maxWidth,
+  showAllSteps = false,
+  profileStatus = 'draft'
 }) {
   const { currentUser } = useAuth();
   // formData structure MUST match BecomeVendorPage.js exactly
   const [formData, setFormData] = useState(null);
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fetchedProfileStatus, setFetchedProfileStatus] = useState('draft');
   const fetchStartedRef = useRef(false);
 
   // Determine if we're in "inline mode" (used within BecomeVendorPage with steps prop)
@@ -129,6 +134,12 @@ function SetupIncompleteBanner({
       const images = data.images || [];
       const selectedFeatures = data.selectedFeatures || [];
       const faqs = data.faqs || [];
+      
+      // Load profile status for review workflow
+      if (profile.ProfileStatus) {
+        setFetchedProfileStatus(profile.ProfileStatus);
+        console.log('[SetupBanner] Profile status loaded:', profile.ProfileStatus);
+      }
 
       // Map business hours from database format to form format (same as BecomeVendorPage lines 366-379)
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -405,7 +416,8 @@ function SetupIncompleteBanner({
       .map(step => ({ key: step.id, label: step.title }));
     totalSteps = filteredSteps.length;
 
-    if (incompleteSteps.length === 0) return null;
+    // If showAllSteps is true, show even when all complete; otherwise hide when all complete
+    if (incompleteSteps.length === 0 && !showAllSteps) return null;
   } else {
     // API mode: Use fetched formData with same logic as BecomeVendorPage
     console.log('[SetupBanner] Render check - loading:', loading, 'formData:', !!formData, 'dismissed:', dismissed);
@@ -430,8 +442,82 @@ function SetupIncompleteBanner({
       .map(step => ({ key: step.id, label: step.title }));
     totalSteps = steps.length;
 
-    // If all complete, don't show banner
-    if (incompleteSteps.length === 0) return null;
+    // If showAllSteps is true, show even when all complete; otherwise hide when all complete
+    if (incompleteSteps.length === 0 && !showAllSteps) return null;
+  }
+
+  // Determine banner style based on completion status and profile status
+  const isAllComplete = incompleteSteps.length === 0;
+  
+  // Use fetched profile status in API mode, or prop in inline mode
+  const currentProfileStatus = isInlineMode ? profileStatus : fetchedProfileStatus;
+  
+  // Determine banner styles based on profile status
+  let bannerStyles;
+  let bannerTitle;
+  let bannerMessage;
+  let bannerIcon;
+  
+  if (currentProfileStatus === 'pending_review') {
+    // Profile submitted for review - show blue/info style
+    bannerStyles = {
+      background: '#eff6ff',
+      border: '1px solid #93c5fd',
+      iconColor: '#3b82f6',
+      titleColor: '#1e40af',
+      textColor: '#1e40af'
+    };
+    bannerTitle = 'Pending Review';
+    bannerMessage = 'Your profile has been submitted for review. Our team will review it shortly and notify you once approved.';
+    bannerIcon = 'fa-clock';
+  } else if (currentProfileStatus === 'approved') {
+    // Profile approved - show green success style
+    bannerStyles = {
+      background: '#f0fdf4',
+      border: '1px solid #86efac',
+      iconColor: '#16a34a',
+      titleColor: '#166534',
+      textColor: '#166534'
+    };
+    bannerTitle = 'Profile Live';
+    bannerMessage = 'Your profile is live and visible to clients. You can continue to update your information anytime.';
+    bannerIcon = 'fa-circle-check';
+  } else if (currentProfileStatus === 'rejected') {
+    // Profile rejected - show red warning style
+    bannerStyles = {
+      background: '#fef2f2',
+      border: '1px solid #fca5a5',
+      iconColor: '#ef4444',
+      titleColor: '#991b1b',
+      textColor: '#991b1b'
+    };
+    bannerTitle = 'Review Required';
+    bannerMessage = 'Your profile was not approved. Please review the feedback and make the necessary changes before resubmitting.';
+    bannerIcon = 'fa-exclamation-circle';
+  } else if (isAllComplete) {
+    // All steps complete but not yet submitted
+    bannerStyles = {
+      background: '#f0fdf4',
+      border: '1px solid #86efac',
+      iconColor: '#16a34a',
+      titleColor: '#166534',
+      textColor: '#166534'
+    };
+    bannerTitle = 'Profile Complete';
+    bannerMessage = 'All sections are complete. Go to the Review step and click "Go Live" to submit your profile for approval!';
+    bannerIcon = 'fa-circle-check';
+  } else {
+    // Steps incomplete
+    bannerStyles = {
+      background: '#fffbeb',
+      border: '1px solid #fde68a',
+      iconColor: '#D97706',
+      titleColor: '#92400e',
+      textColor: '#92400e'
+    };
+    bannerTitle = 'Setup Incomplete';
+    bannerMessage = 'Your profile will not be visible to clients until all required steps are complete.';
+    bannerIcon = 'fa-triangle-exclamation';
   }
 
   return (
@@ -440,24 +526,24 @@ function SetupIncompleteBanner({
       gap: '12px',
       alignItems: 'flex-start',
       padding: '16px',
-      background: '#fffbeb',
-      border: '1px solid #fde68a',
+      background: bannerStyles.background,
+      border: bannerStyles.border,
       borderRadius: '8px',
       margin: '1rem auto',
       ...(maxWidth && { maxWidth })
     }}>
-      <div style={{ fontSize: '20px', lineHeight: 1, color: '#D97706' }}>
-        <i className="fas fa-triangle-exclamation"></i>
+      <div style={{ fontSize: '20px', lineHeight: 1, color: bannerStyles.iconColor }}>
+        <i className={`fas ${bannerIcon}`}></i>
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '8px' }}>
           <div>
-            <div style={{ fontWeight: 700, color: '#92400e', marginBottom: '4px' }}>Setup Incomplete</div>
-            <div style={{ fontSize: '.9rem', color: '#92400e' }}>
-              Your profile will not be visible to clients until all required steps are complete.
+            <div style={{ fontWeight: 700, color: bannerStyles.titleColor, marginBottom: '4px' }}>{bannerTitle}</div>
+            <div style={{ fontSize: '.9rem', color: bannerStyles.textColor }}>
+              {bannerMessage}
             </div>
           </div>
-          {!hideButtons && (
+          {!hideButtons && !isAllComplete && (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button 
                 onClick={handleContinue}
