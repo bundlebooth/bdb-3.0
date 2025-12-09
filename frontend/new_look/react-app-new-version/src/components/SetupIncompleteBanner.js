@@ -290,6 +290,21 @@ function SetupIncompleteBanner({
         console.log('[SetupBanner] Could not fetch social media:', e);
       }
 
+      // STEP 5: Fetch selected features from dedicated endpoint (more reliable than profile API)
+      try {
+        const featuresRes = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (featuresRes.ok) {
+          const featuresData = await featuresRes.json();
+          const featureIds = featuresData.selectedFeatures?.map(f => f.FeatureID) || [];
+          updatedFormData.selectedFeatures = featureIds;
+          console.log('[SetupBanner] Selected features loaded:', featureIds.length, 'features');
+        }
+      } catch (e) {
+        console.log('[SetupBanner] Could not fetch selected features:', e);
+      }
+
       console.log('[SetupBanner] Final formData:', updatedFormData);
       setFormData(updatedFormData);
       setLoading(false);

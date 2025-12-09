@@ -39,6 +39,8 @@ const BecomeVendorPage = () => {
   const [existingVendorData, setExistingVendorData] = useState(null);
   const [isExistingVendor, setIsExistingVendor] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
+  const [featuresLoadedFromDB, setFeaturesLoadedFromDB] = useState(false); // Track if features were loaded from database
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false); // Prevent re-fetching after save
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -313,9 +315,16 @@ const BecomeVendorPage = () => {
       console.log('currentUser:', currentUser);
       console.log('currentUser.isVendor:', currentUser?.isVendor);
       console.log('currentUser.vendorProfileId:', currentUser?.vendorProfileId);
+      console.log('initialDataLoaded:', initialDataLoaded);
       
       if (!currentUser || !currentUser.isVendor || !currentUser.vendorProfileId) {
         console.log('❌ Not loading vendor data - conditions not met');
+        return;
+      }
+      
+      // Skip re-fetching if we've already loaded data (prevents reset after save)
+      if (initialDataLoaded) {
+        console.log('⏭️ Skipping re-fetch - data already loaded');
         return;
       }
 
@@ -532,8 +541,32 @@ const BecomeVendorPage = () => {
             console.log('Could not fetch social media:', e);
           }
 
+          // Fetch selected features from dedicated endpoint (more reliable than profile API)
+          try {
+            console.log('🔍 Fetching features from dedicated endpoint for vendorProfileId:', currentUser.vendorProfileId);
+            const featuresRes = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            console.log('🔍 Features endpoint response status:', featuresRes.status);
+            if (featuresRes.ok) {
+              const featuresData = await featuresRes.json();
+              console.log('🔍 Features endpoint raw response:', featuresData);
+              const featureIds = featuresData.selectedFeatures?.map(f => f.FeatureID) || [];
+              updatedFormData.selectedFeatures = featureIds;
+              setFeaturesLoadedFromDB(true); // Mark that we've loaded features from DB
+              console.log('✨ Selected features loaded from dedicated endpoint:', featureIds.length, 'features', featureIds);
+            } else {
+              console.log('❌ Features endpoint returned non-OK status:', featuresRes.status);
+              setFeaturesLoadedFromDB(true); // Still mark as loaded even if empty
+            }
+          } catch (e) {
+            console.log('❌ Could not fetch selected features:', e);
+            setFeaturesLoadedFromDB(true); // Still mark as loaded even on error
+          }
+
           console.log('📝 Setting formData with loaded data:', updatedFormData);
           setFormData(updatedFormData);
+          setInitialDataLoaded(true); // Mark that initial data has been loaded
 
           showBanner('Your existing profile data has been loaded', 'success');
         }
@@ -546,7 +579,7 @@ const BecomeVendorPage = () => {
     };
 
     fetchExistingVendorData();
-  }, [currentUser]);
+  }, [currentUser, initialDataLoaded]);
 
   // Handle navigation from SetupIncompleteBanner with targetStep (via URL param or state)
   useEffect(() => {
@@ -797,6 +830,9 @@ const BecomeVendorPage = () => {
       case 'business-hours':
         return Object.values(formData.businessHours).some(h => h.isAvailable);
       case 'questionnaire':
+        // If features haven't been loaded from DB yet, don't show as incomplete
+        // This prevents the step from showing as incomplete during initial load
+        if (!featuresLoadedFromDB && isExistingVendor) return true;
         return formData.selectedFeatures.length > 0;
       case 'gallery':
         return formData.photoURLs.length > 0;
@@ -904,6 +940,33 @@ const BecomeVendorPage = () => {
         return;
       }
 
+      console.log('[handleSubmit] Starting submit...');
+      console.log('[handleSubmit] formData.selectedFeatures:', formData.selectedFeatures);
+      console.log('[handleSubmit] featuresLoadedFromDB:', featuresLoadedFromDB);
+
+      // If features haven't been loaded yet and user is an existing vendor, fetch them now
+      let currentFeatures = formData.selectedFeatures || [];
+      if (currentUser.vendorProfileId && (!featuresLoadedFromDB || currentFeatures.length === 0)) {
+        console.log('[handleSubmit] Features not loaded, fetching from API...');
+        try {
+          const featuresRes = await fetch(`${API_BASE_URL}/vendor-features/vendor/${currentUser.vendorProfileId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (featuresRes.ok) {
+            const featuresData = await featuresRes.json();
+            const featureIds = featuresData.selectedFeatures?.map(f => f.FeatureID) || [];
+            if (featureIds.length > 0) {
+              currentFeatures = featureIds;
+              // Update formData with the fetched features
+              setFormData(prev => ({ ...prev, selectedFeatures: featureIds }));
+              console.log('[handleSubmit] Loaded features from API:', featureIds.length, 'features');
+            }
+          }
+        } catch (e) {
+          console.log('[handleSubmit] Could not fetch features:', e);
+        }
+      }
+
       const allCategories = [formData.primaryCategory, ...formData.additionalCategories].filter(Boolean);
 
       // Format service areas properly - backend expects city, state, country properties
@@ -973,6 +1036,9 @@ const BecomeVendorPage = () => {
         googlePlaceId: formData.googlePlaceId
       };
 
+      // Use currentFeatures which may have been fetched from API if not already loaded
+      vendorData.selectedFeatures = currentFeatures;
+
       // Always use POST - the backend handles both create and update
       const endpoint = `${API_BASE_URL}/vendors/onboarding`;
       
@@ -993,12 +1059,58 @@ const BecomeVendorPage = () => {
       }
 
       const result = await response.json();
+      const vendorProfileId = result.vendorProfileId || currentUser.vendorProfileId;
       
       setCurrentUser(prev => ({
         ...prev,
         isVendor: true,
-        vendorProfileId: result.vendorProfileId || currentUser.vendorProfileId
+        vendorProfileId: vendorProfileId
       }));
+
+      // Save features to dedicated endpoint to ensure they're properly saved
+      // This is important because the onboarding endpoint may not save features correctly
+      if (vendorProfileId && currentFeatures && currentFeatures.length > 0) {
+        console.log('[handleSubmit] Saving features to dedicated endpoint:', currentFeatures);
+        try {
+          const featuresResponse = await fetch(`${API_BASE_URL}/vendor-features/vendor/${vendorProfileId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ featureIds: currentFeatures })
+          });
+          if (featuresResponse.ok) {
+            console.log('[handleSubmit] Features saved successfully');
+          } else {
+            console.error('[handleSubmit] Failed to save features:', await featuresResponse.text());
+          }
+        } catch (featuresError) {
+          console.error('[handleSubmit] Error saving features:', featuresError);
+        }
+      }
+
+      // Save filters to dedicated endpoint if any are selected
+      if (vendorProfileId && formData.selectedFilters && formData.selectedFilters.length > 0) {
+        console.log('[handleSubmit] Saving filters to dedicated endpoint:', formData.selectedFilters);
+        try {
+          const filtersResponse = await fetch(`${API_BASE_URL}/vendors/${vendorProfileId}/filters`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ filters: formData.selectedFilters.join(',') })
+          });
+          if (filtersResponse.ok) {
+            console.log('[handleSubmit] Filters saved successfully');
+          } else {
+            console.error('[handleSubmit] Failed to save filters:', await filtersResponse.text());
+          }
+        } catch (filtersError) {
+          console.error('[handleSubmit] Error saving filters:', filtersError);
+        }
+      }
 
       showBanner(
         isExistingVendor 
@@ -1108,6 +1220,7 @@ const BecomeVendorPage = () => {
                 steps={steps}
                 isStepCompleted={isStepCompleted}
                 setCurrentStep={setCurrentStep}
+                setFeaturesLoadedFromDB={setFeaturesLoadedFromDB}
               />
             </div>
           </div>
@@ -3055,7 +3168,7 @@ function BusinessHoursStep({ formData, setFormData }) {
 }
 
 // Questionnaire Step - Full Implementation (uses dedicated API like dashboard)
-function QuestionnaireStep({ formData, setFormData, currentUser }) {
+function QuestionnaireStep({ formData, setFormData, currentUser, setFeaturesLoadedFromDB }) {
   const [categories, setCategories] = useState([]);
   const [selectedFeatureIds, setSelectedFeatureIds] = useState(new Set(formData.selectedFeatures || []));
   const [loading, setLoading] = useState(true);
@@ -3104,11 +3217,18 @@ function QuestionnaireStep({ formData, setFormData, currentUser }) {
           setSelectedFeatureIds(selectedIds);
           // Also update formData
           setFormData(prev => ({ ...prev, selectedFeatures: Array.from(selectedIds) }));
+          // Mark that features have been loaded from DB
+          if (setFeaturesLoadedFromDB) setFeaturesLoadedFromDB(true);
           console.log('[BecomeVendor Questionnaire] Loaded selected features:', selectedIds.size);
+        } else {
+          // Still mark as loaded even if response not OK
+          if (setFeaturesLoadedFromDB) setFeaturesLoadedFromDB(true);
         }
       }
     } catch (error) {
       console.error('[BecomeVendor Questionnaire] Error loading:', error);
+      // Still mark as loaded even on error
+      if (setFeaturesLoadedFromDB) setFeaturesLoadedFromDB(true);
     } finally {
       setLoading(false);
     }
