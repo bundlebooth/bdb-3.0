@@ -132,17 +132,28 @@ router.get('/conversation/:id', async (req, res) => {
 router.get('/conversations/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log('📨 Loading conversations for user:', userId);
 
     const pool = await poolPromise;
+    
+    // First, check if this user is a vendor
+    const vendorCheck = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query(`SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID`);
+    
+    const userVendorProfileId = vendorCheck.recordset[0]?.VendorProfileID || null;
+    console.log('📨 User vendor profile ID:', userVendorProfileId);
+    
     const result = await pool.request()
       .input('UserID', sql.Int, userId)
+      .input('UserVendorProfileID', sql.Int, userVendorProfileId)
       .query(`
         SELECT 
           c.ConversationID,
           c.CreatedAt,
           CASE 
-            WHEN c.UserID = @UserID THEN u.Name 
-            ELSE v.BusinessName 
+            WHEN c.UserID = @UserID THEN v.BusinessName 
+            ELSE u.Name 
           END AS OtherPartyName,
           CASE 
             WHEN c.UserID = @UserID THEN 'vendor'
@@ -154,7 +165,7 @@ router.get('/conversations/user/:userId', async (req, res) => {
           END AS OtherPartyAvatar,
           m.Content AS LastMessageContent,
           m.CreatedAt AS LastMessageCreatedAt,
-          COUNT(CASE WHEN m2.IsRead = 0 AND m2.SenderID != @UserID THEN 1 END) AS UnreadCount
+          (SELECT COUNT(*) FROM Messages WHERE ConversationID = c.ConversationID AND IsRead = 0 AND SenderID != @UserID) AS UnreadCount
         FROM Conversations c
         LEFT JOIN Users u ON c.UserID = u.UserID
         LEFT JOIN VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
@@ -165,11 +176,12 @@ router.get('/conversations/user/:userId', async (req, res) => {
             WHERE ConversationID = c.ConversationID 
             ORDER BY CreatedAt DESC
           )
-        LEFT JOIN Messages m2 ON c.ConversationID = m2.ConversationID
-        WHERE c.UserID = @UserID OR v.UserID = @UserID
+        WHERE c.UserID = @UserID OR (v.UserID = @UserID AND @UserVendorProfileID IS NOT NULL)
         GROUP BY c.ConversationID, c.CreatedAt, u.Name, v.BusinessName, c.UserID, m.Content, m.CreatedAt, v.LogoURL, u.ProfilePictureURL
-        ORDER BY m.CreatedAt DESC
+        ORDER BY COALESCE(m.CreatedAt, c.CreatedAt) DESC
       `);
+    
+    console.log('📨 Found conversations:', result.recordset.length);
 
     // Format conversations to match frontend expected format
     const formattedConversations = result.recordset.map(conv => ({

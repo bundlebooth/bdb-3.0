@@ -117,6 +117,9 @@ router.get('/vendor-approvals', async (req, res) => {
         vp.PostalCode,
         vp.Country,
         vp.ProfileStatus,
+        ISNULL(vp.IsVisible, 0) as IsVisible,
+        vp.IsVerified,
+        vp.AcceptingBookings,
         vp.CreatedAt,
         vp.UpdatedAt,
         vp.AdminNotes,
@@ -181,16 +184,18 @@ router.get('/vendor-approvals/:id', async (req, res) => {
     const profile = profileRecordset[0];
     console.log('Profile found:', profile.BusinessName, 'StripeAccountId:', profile.StripeAccountId);
     
-    // Get owner info
+    // Get owner info and visibility status
     const ownerResult = await pool.request()
       .input('id', sql.Int, id)
       .query(`
-        SELECT u.Name as OwnerName, u.Email as OwnerEmail, u.Phone as OwnerPhone, u.CreatedAt as UserCreatedAt
+        SELECT u.Name as OwnerName, u.Email as OwnerEmail, u.Phone as OwnerPhone, u.CreatedAt as UserCreatedAt,
+               ISNULL(vp.IsVisible, 0) as IsVisible, vp.ProfileStatus, vp.AcceptingBookings, vp.IsVerified
         FROM VendorProfiles vp
         LEFT JOIN Users u ON vp.UserID = u.UserID
         WHERE vp.VendorProfileID = @id
       `);
     const ownerInfo = ownerResult.recordset[0] || {};
+    console.log('Visibility status:', ownerInfo.IsVisible, 'ProfileStatus:', ownerInfo.ProfileStatus);
     
     // Get service areas
     let serviceAreas = [];
@@ -359,6 +364,8 @@ router.get('/vendors', async (req, res) => {
       else if (status === 'approved') whereClause += ` AND vp.ProfileStatus = 'approved'`;
       else if (status === 'rejected') whereClause += ` AND vp.ProfileStatus = 'rejected'`;
       else if (status === 'suspended') whereClause += ` AND vp.AcceptingBookings = 0`;
+      else if (status === 'visible') whereClause += ` AND ISNULL(vp.IsVisible, 0) = 1`;
+      else if (status === 'hidden') whereClause += ` AND ISNULL(vp.IsVisible, 0) = 0`;
       else whereClause += ` AND vp.ProfileStatus = @status`;
     }
     if (search) {
@@ -387,7 +394,8 @@ router.get('/vendors', async (req, res) => {
           ELSE vp.ProfileStatus
         END as ProfileStatus,
         vp.AcceptingBookings as IsActive,
-        vp.IsVerified as IsVisible,
+        ISNULL(vp.IsVisible, 0) as IsVisible,
+        vp.IsVerified,
         vp.CreatedAt,
         u.Email as OwnerEmail,
         u.Name as OwnerName,
@@ -426,6 +434,7 @@ router.get('/vendors', async (req, res) => {
 });
 
 // POST /admin/vendors/:id/approve - Approve vendor
+// Sets IsVisible = 1 to make vendor appear on main grid
 router.post('/vendors/:id/approve', async (req, res) => {
   try {
     const { id } = req.params;
@@ -440,13 +449,14 @@ router.post('/vendors/:id/approve', async (req, res) => {
         SET ProfileStatus = 'approved', 
             AcceptingBookings = 1, 
             IsVerified = 1,
+            IsVisible = 1,
             AdminNotes = @adminNotes,
             ReviewedAt = GETDATE(),
             UpdatedAt = GETDATE()
         WHERE VendorProfileID = @id
       `);
     
-    res.json({ success: true, message: 'Vendor approved' });
+    res.json({ success: true, message: 'Vendor approved and now visible on the platform' });
   } catch (error) {
     console.error('Error approving vendor:', error);
     res.status(500).json({ error: 'Failed to approve vendor' });
@@ -454,6 +464,7 @@ router.post('/vendors/:id/approve', async (req, res) => {
 });
 
 // POST /admin/vendors/:id/reject - Reject vendor
+// Sets IsVisible = 0 to hide vendor from main grid
 router.post('/vendors/:id/reject', async (req, res) => {
   try {
     const { id } = req.params;
@@ -467,6 +478,7 @@ router.post('/vendors/:id/reject', async (req, res) => {
       .query(`
         UPDATE VendorProfiles 
         SET ProfileStatus = 'rejected', 
+            IsVisible = 0,
             RejectionReason = @reason,
             AdminNotes = @adminNotes,
             ReviewedAt = GETDATE(),
@@ -474,7 +486,7 @@ router.post('/vendors/:id/reject', async (req, res) => {
         WHERE VendorProfileID = @id
       `);
     
-    res.json({ success: true, message: 'Vendor rejected' });
+    res.json({ success: true, message: 'Vendor rejected and hidden from platform' });
   } catch (error) {
     console.error('Error rejecting vendor:', error);
     res.status(500).json({ error: 'Failed to reject vendor' });
@@ -482,6 +494,7 @@ router.post('/vendors/:id/reject', async (req, res) => {
 });
 
 // POST /admin/vendors/:id/suspend - Suspend vendor
+// Sets IsVisible = 0 to hide vendor from main grid
 router.post('/vendors/:id/suspend', async (req, res) => {
   try {
     const { id } = req.params;
@@ -495,12 +508,13 @@ router.post('/vendors/:id/suspend', async (req, res) => {
         UPDATE VendorProfiles 
         SET AcceptingBookings = 0, 
             IsVerified = 0,
+            IsVisible = 0,
             AdminNotes = @reason,
             UpdatedAt = GETDATE()
         WHERE VendorProfileID = @id
       `);
     
-    res.json({ success: true, message: 'Vendor suspended' });
+    res.json({ success: true, message: 'Vendor suspended and hidden from platform' });
   } catch (error) {
     console.error('Error suspending vendor:', error);
     res.status(500).json({ error: 'Failed to suspend vendor' });
@@ -508,24 +522,69 @@ router.post('/vendors/:id/suspend', async (req, res) => {
 });
 
 // POST /admin/vendors/:id/toggle-visibility - Toggle vendor visibility
+// Toggles IsVisible between 0 and 1
 router.post('/vendors/:id/toggle-visibility', async (req, res) => {
   try {
     const { id } = req.params;
     const pool = await getPool();
     
+    // First get current visibility
+    const current = await pool.request()
+      .input('id', sql.Int, id)
+      .query('SELECT IsVisible FROM VendorProfiles WHERE VendorProfileID = @id');
+    
+    const currentVisibility = current.recordset[0]?.IsVisible || 0;
+    const newVisibility = currentVisibility === 1 ? 0 : 1;
+    
     await pool.request()
       .input('id', sql.Int, id)
+      .input('newVisibility', sql.Bit, newVisibility)
       .query(`
         UPDATE VendorProfiles 
-        SET AcceptingBookings = CASE WHEN AcceptingBookings = 1 THEN 0 ELSE 1 END,
+        SET IsVisible = @newVisibility,
             UpdatedAt = GETDATE()
         WHERE VendorProfileID = @id
       `);
     
-    res.json({ success: true, message: 'Visibility toggled' });
+    res.json({ 
+      success: true, 
+      message: newVisibility === 1 ? 'Vendor is now visible on the platform' : 'Vendor is now hidden from the platform',
+      isVisible: newVisibility === 1
+    });
   } catch (error) {
     console.error('Error toggling visibility:', error);
     res.status(500).json({ error: 'Failed to toggle visibility' });
+  }
+});
+
+// POST /admin/vendors/:id/visibility - Set vendor visibility explicitly
+// Sets IsVisible to 0 or 1 based on request body
+router.post('/vendors/:id/visibility', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { visible } = req.body;
+    const pool = await getPool();
+    
+    const isVisible = visible ? 1 : 0;
+    
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('visible', sql.Bit, isVisible)
+      .query(`
+        UPDATE VendorProfiles 
+        SET IsVisible = @visible,
+            UpdatedAt = GETDATE()
+        WHERE VendorProfileID = @id
+      `);
+    
+    res.json({ 
+      success: true, 
+      message: visible ? 'Vendor is now visible on the platform' : 'Vendor is now hidden from the platform',
+      isVisible: isVisible === 1
+    });
+  } catch (error) {
+    console.error('Error setting visibility:', error);
+    res.status(500).json({ error: 'Failed to set visibility' });
   }
 });
 

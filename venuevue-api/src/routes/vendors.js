@@ -450,7 +450,9 @@ router.get('/', async (req, res) => {
       eventDate, // Date for availability checking (YYYY-MM-DD)
       dayOfWeek, // Day of week (e.g., 'Monday', 'Tuesday')
       startTime, // Start time (HH:MM format)
-      endTime // End time (HH:MM format)
+      endTime, // End time (HH:MM format)
+      // Discovery sections - when true, returns categorized sections from same query
+      includeDiscoverySections
     } = req.query;
 
     const pool = await poolPromise;
@@ -672,7 +674,10 @@ router.get('/', async (req, res) => {
       country: vendor.Country || '',
       postalCode: vendor.PostalCode || '',
       latitude: vendor.Latitude || null,
-      longitude: vendor.Longitude || null
+      longitude: vendor.Longitude || null,
+      // For discovery sections
+      createdAt: vendor.CreatedAt || null,
+      avgResponseMinutes: vendor.AvgResponseMinutes || null
     }));
 
     // City filtering is now handled by the stored procedure
@@ -697,6 +702,126 @@ router.get('/', async (req, res) => {
       formattedVendors = enhancedVendors;
     }
 
+    // Build discovery sections from the same query results if requested
+    let discoverySections = null;
+    if (includeDiscoverySections === 'true' && formattedVendors.length > 0) {
+      discoverySections = [];
+      
+      // Trending/Popular - sorted by booking count
+      const trendingVendors = [...formattedVendors]
+        .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
+        .slice(0, 8);
+      if (trendingVendors.length > 0) {
+        discoverySections.push({
+          id: 'trending',
+          title: 'Trending Vendors',
+          description: 'Popular vendors getting lots of attention',
+          vendors: trendingVendors
+        });
+      }
+      
+      // Top Rated - sorted by rating (min 4.0)
+      const topRatedVendors = [...formattedVendors]
+        .filter(v => v.averageRating >= 4.0)
+        .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
+        .slice(0, 8);
+      if (topRatedVendors.length > 0) {
+        discoverySections.push({
+          id: 'top-rated',
+          title: 'Top Rated Vendors',
+          description: 'Highest rated by customers',
+          vendors: topRatedVendors
+        });
+      }
+      
+      // Premium Vendors
+      const premiumVendors = formattedVendors
+        .filter(v => v.isPremium)
+        .slice(0, 8);
+      if (premiumVendors.length > 0) {
+        discoverySections.push({
+          id: 'premium',
+          title: 'Premium Vendors',
+          description: 'Top-tier verified vendors',
+          vendors: premiumVendors
+        });
+      }
+      
+      // Budget-Friendly - sorted by price low
+      const budgetVendors = [...formattedVendors]
+        .filter(v => v.startingPrice != null)
+        .sort((a, b) => (a.startingPrice || 0) - (b.startingPrice || 0))
+        .slice(0, 8);
+      if (budgetVendors.length > 0) {
+        discoverySections.push({
+          id: 'budget-friendly',
+          title: 'Budget-Friendly Options',
+          description: 'Great value for your money',
+          vendors: budgetVendors
+        });
+      }
+      
+      // Nearby - if location provided, sorted by distance
+      if (latitude && longitude) {
+        const nearbyVendors = [...formattedVendors]
+          .filter(v => v.distanceMiles != null)
+          .sort((a, b) => (a.distanceMiles || 999) - (b.distanceMiles || 999))
+          .slice(0, 8);
+        if (nearbyVendors.length > 0) {
+          discoverySections.push({
+            id: 'nearby',
+            title: 'Vendors Near You',
+            description: 'Closest to your location',
+            vendors: nearbyVendors
+          });
+        }
+      }
+      
+      // Most Reviewed - sorted by review count
+      const mostReviewedVendors = [...formattedVendors]
+        .filter(v => v.totalReviews > 0)
+        .sort((a, b) => (b.totalReviews || 0) - (a.totalReviews || 0))
+        .slice(0, 8);
+      if (mostReviewedVendors.length > 0) {
+        discoverySections.push({
+          id: 'most-reviewed',
+          title: 'Most Reviewed',
+          description: 'Vendors with the most customer feedback',
+          vendors: mostReviewedVendors
+        });
+      }
+      
+      // Recently Added - vendors created in the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const recentlyAddedVendors = [...formattedVendors]
+        .filter(v => v.createdAt && new Date(v.createdAt) >= thirtyDaysAgo)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, 8);
+      if (recentlyAddedVendors.length > 0) {
+        discoverySections.push({
+          id: 'recently-added',
+          title: 'New Vendors',
+          description: 'Recently joined our platform',
+          vendors: recentlyAddedVendors
+        });
+      }
+      
+      // Responsive Vendors - fastest average response time (under 60 minutes)
+      const responsiveVendors = [...formattedVendors]
+        .filter(v => v.avgResponseMinutes != null && v.avgResponseMinutes > 0 && v.avgResponseMinutes <= 60)
+        .sort((a, b) => (a.avgResponseMinutes || 999) - (b.avgResponseMinutes || 999))
+        .slice(0, 8);
+      if (responsiveVendors.length > 0) {
+        discoverySections.push({
+          id: 'responsive',
+          title: 'Quick Responders',
+          description: 'Vendors who reply fast',
+          vendors: responsiveVendors
+        });
+      }
+    }
+
     res.json({
       success: true,
       vendors: formattedVendors,
@@ -704,7 +829,9 @@ router.get('/', async (req, res) => {
       pageNumber: parseInt(pageNumber) || 1,
       pageSize: parseInt(pageSize) || 10,
       hasImages: includeImages !== 'false',
-      cityFilter: city || null
+      cityFilter: city || null,
+      // Discovery sections - only included when requested
+      ...(discoverySections && { discoverySections, totalSections: discoverySections.length })
     });
 
   } catch (err) {
