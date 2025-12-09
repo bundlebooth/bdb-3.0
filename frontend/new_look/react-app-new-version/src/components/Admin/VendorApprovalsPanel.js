@@ -6,14 +6,56 @@ const VendorApprovalsPanel = () => {
   const [pendingProfiles, setPendingProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProfile, setSelectedProfile] = useState(null);
+  const [fullProfileData, setFullProfileData] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [filter, setFilter] = useState('pending'); // pending, approved, rejected, all
+  const [activeTab, setActiveTab] = useState('overview'); // overview, services, gallery, hours, features
 
   useEffect(() => {
     fetchProfiles();
   }, [filter]);
+
+  // Fetch full profile details when a profile is selected
+  useEffect(() => {
+    if (selectedProfile) {
+      fetchFullProfileDetails(selectedProfile.VendorProfileID);
+    } else {
+      setFullProfileData(null);
+      setActiveTab('overview');
+    }
+  }, [selectedProfile]);
+
+  const fetchFullProfileDetails = async (vendorProfileId) => {
+    try {
+      setLoadingDetails(true);
+      const response = await fetch(`${API_BASE_URL}/admin/vendor-approvals/${vendorProfileId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Full profile data received:', data.profile);
+        console.log('Images:', data.profile?.Images?.length, 'Services:', data.profile?.Services?.length);
+        console.log('Categories:', data.profile?.Categories);
+        console.log('BusinessHours:', data.profile?.BusinessHours?.length);
+        console.log('StripeAccountId:', data.profile?.StripeAccountId);
+        setFullProfileData(data.profile);
+      } else {
+        console.error('Failed to load vendor details, status:', response.status);
+        showBanner('Failed to load vendor details', 'error');
+      }
+    } catch (error) {
+      console.error('Error fetching vendor details:', error);
+      showBanner('Failed to load vendor details', 'error');
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
 
   const fetchProfiles = async () => {
     try {
@@ -132,6 +174,26 @@ const VendorApprovalsPanel = () => {
     );
   };
 
+  const formatDayOfWeek = (day) => {
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return days[day] || day;
+  };
+
+  const formatTime = (time) => {
+    if (!time) return 'N/A';
+    try {
+      const [hours, minutes] = time.split(':');
+      const h = parseInt(hours);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const hour12 = h % 12 || 12;
+      return `${hour12}:${minutes} ${ampm}`;
+    } catch {
+      return time;
+    }
+  };
+
+  const data = fullProfileData || selectedProfile;
+
   return (
     <div className="admin-panel vendor-approvals-panel">
       {/* Toolbar */}
@@ -248,116 +310,513 @@ const VendorApprovalsPanel = () => {
       {/* Review Modal */}
       {selectedProfile && (
         <div className="modal-overlay" onClick={() => setSelectedProfile(null)}>
-          <div className="modal-content review-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content review-modal large-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Review Vendor Application</h2>
+              <div className="modal-header-content">
+                <h2>Review Vendor Application</h2>
+                <div className="vendor-quick-info">
+                  <span className="vendor-name">{selectedProfile.BusinessName}</span>
+                  {getStatusBadge(selectedProfile.ProfileStatus)}
+                </div>
+              </div>
               <button className="close-btn" onClick={() => setSelectedProfile(null)}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
 
+            {/* Tab Navigation */}
+            <div className="modal-tabs">
+              {[
+                { id: 'overview', label: 'Overview', icon: 'fa-info-circle' },
+                { id: 'services', label: 'Services', icon: 'fa-concierge-bell' },
+                { id: 'gallery', label: 'Gallery', icon: 'fa-images' },
+                { id: 'hours', label: 'Hours & Availability', icon: 'fa-clock' },
+                { id: 'features', label: 'Features & Areas', icon: 'fa-list-check' },
+                { id: 'action', label: 'Review Action', icon: 'fa-gavel' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  className={`modal-tab ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <i className={`fas ${tab.icon}`}></i>
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+
             <div className="modal-body">
-              {/* Vendor Info Section */}
-              <div className="review-section">
-                <h3><i className="fas fa-store"></i> Business Information</h3>
-                <div className="info-grid">
-                  <div className="info-item">
-                    <label>Business Name</label>
-                    <p>{selectedProfile.BusinessName}</p>
-                  </div>
-                  <div className="info-item">
-                    <label>Display Name</label>
-                    <p>{selectedProfile.DisplayName || selectedProfile.BusinessName}</p>
-                  </div>
-                  <div className="info-item">
-                    <label>Category</label>
-                    <p>{selectedProfile.Categories || selectedProfile.Category || 'Not specified'}</p>
-                  </div>
-                  <div className="info-item">
-                    <label>Location</label>
-                    <p>{selectedProfile.StreetAddress && `${selectedProfile.StreetAddress}, `}{selectedProfile.City}{selectedProfile.State ? `, ${selectedProfile.State}` : ''} {selectedProfile.PostalCode}</p>
-                  </div>
+              {loadingDetails ? (
+                <div className="loading-state">
+                  <div className="spinner"></div>
+                  <p>Loading vendor details...</p>
                 </div>
-              </div>
-
-              {/* Owner Info Section */}
-              <div className="review-section">
-                <h3><i className="fas fa-user"></i> Owner Information</h3>
-                <div className="info-grid">
-                  <div className="info-item">
-                    <label>Owner Name</label>
-                    <p>{selectedProfile.OwnerName || selectedProfile.Name}</p>
-                  </div>
-                  <div className="info-item">
-                    <label>Email</label>
-                    <p>{selectedProfile.OwnerEmail || selectedProfile.Email}</p>
-                  </div>
-                  <div className="info-item">
-                    <label>Phone</label>
-                    <p>{selectedProfile.BusinessPhone || 'Not provided'}</p>
-                  </div>
-                  <div className="info-item">
-                    <label>Submitted</label>
-                    <p>{formatDate(selectedProfile.CreatedAt)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Description Section */}
-              <div className="review-section">
-                <h3><i className="fas fa-align-left"></i> Business Description</h3>
-                <div className="description-box">
-                  <p>{selectedProfile.BusinessDescription || 'No description provided'}</p>
-                </div>
-              </div>
-
-              {/* Images Section */}
-              {selectedProfile.PrimaryImage && (
-                <div className="review-section">
-                  <h3><i className="fas fa-images"></i> Business Photos</h3>
-                  <div className="images-preview">
-                    <img src={selectedProfile.PrimaryImage} alt="Primary" className="primary-image" />
-                  </div>
-                </div>
-              )}
-
-              {/* Services Section */}
-              {selectedProfile.Services && selectedProfile.Services.length > 0 && (
-                <div className="review-section">
-                  <h3><i className="fas fa-concierge-bell"></i> Services Offered</h3>
-                  <div className="services-list">
-                    {selectedProfile.Services.map((service, idx) => (
-                      <div key={idx} className="service-item">
-                        <span className="service-name">{service.ServiceName}</span>
-                        <span className="service-price">${service.Price}</span>
+              ) : (
+                <>
+                  {/* Overview Tab */}
+                  {activeTab === 'overview' && (
+                    <div className="tab-content">
+                      {/* Business Info */}
+                      <div className="review-section">
+                        <h3><i className="fas fa-store"></i> Business Information</h3>
+                        <div className="info-grid">
+                          <div className="info-item">
+                            <label>Business Name</label>
+                            <p>{data?.BusinessName}</p>
+                          </div>
+                          <div className="info-item">
+                            <label>Display Name</label>
+                            <p>{data?.DisplayName || data?.BusinessName}</p>
+                          </div>
+                          <div className="info-item">
+                            <label>Categories</label>
+                            <p>{Array.isArray(data?.Categories) ? data.Categories.join(', ') : (data?.Categories || 'Not specified')}</p>
+                          </div>
+                          <div className="info-item">
+                            <label>Business Email</label>
+                            <p>{data?.BusinessEmail || 'Not provided'}</p>
+                          </div>
+                          <div className="info-item">
+                            <label>Business Phone</label>
+                            <p>{data?.BusinessPhone || 'Not provided'}</p>
+                          </div>
+                          <div className="info-item">
+                            <label>Website</label>
+                            <p>{data?.Website ? <a href={data.Website} target="_blank" rel="noopener noreferrer">{data.Website}</a> : 'Not provided'}</p>
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-              {/* Admin Notes Section */}
-              <div className="review-section">
-                <h3><i className="fas fa-sticky-note"></i> Admin Notes (Optional)</h3>
-                <textarea
-                  value={adminNotes}
-                  onChange={(e) => setAdminNotes(e.target.value)}
-                  placeholder="Add any internal notes about this vendor..."
-                  rows={3}
-                />
-              </div>
+                      {/* Location */}
+                      <div className="review-section">
+                        <h3><i className="fas fa-map-marker-alt"></i> Location</h3>
+                        <div className="info-grid">
+                          <div className="info-item full-width">
+                            <label>Full Address</label>
+                            <p>
+                              {data?.StreetAddress && `${data.StreetAddress}, `}
+                              {data?.City}{data?.State ? `, ${data.State}` : ''} {data?.PostalCode}
+                              {data?.Country && `, ${data.Country}`}
+                            </p>
+                          </div>
+                          {data?.Latitude && data?.Longitude && (
+                            <div className="info-item">
+                              <label>Coordinates</label>
+                              <p>{data.Latitude}, {data.Longitude}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-              {/* Rejection Reason Section */}
-              {selectedProfile.ProfileStatus === 'pending_review' && (
-                <div className="review-section rejection-section">
-                  <h3><i className="fas fa-exclamation-triangle"></i> Rejection Reason (Required for rejection)</h3>
-                  <textarea
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="If rejecting, explain why so the vendor can address the issues..."
-                    rows={3}
-                  />
-                </div>
+                      {/* Owner Info */}
+                      <div className="review-section">
+                        <h3><i className="fas fa-user"></i> Owner Information</h3>
+                        <div className="info-grid">
+                          <div className="info-item">
+                            <label>Owner Name</label>
+                            <p>{data?.OwnerName}</p>
+                          </div>
+                          <div className="info-item">
+                            <label>Owner Email</label>
+                            <p>{data?.OwnerEmail}</p>
+                          </div>
+                          <div className="info-item">
+                            <label>Owner Phone</label>
+                            <p>{data?.OwnerPhone || 'Not provided'}</p>
+                          </div>
+                          <div className="info-item">
+                            <label>Account Created</label>
+                            <p>{formatDate(data?.UserCreatedAt)}</p>
+                          </div>
+                          <div className="info-item">
+                            <label>Profile Submitted</label>
+                            <p>{formatDate(data?.CreatedAt)}</p>
+                          </div>
+                          <div className="info-item">
+                            <label>Last Updated</label>
+                            <p>{formatDate(data?.UpdatedAt)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div className="review-section">
+                        <h3><i className="fas fa-align-left"></i> Business Description</h3>
+                        <div className="description-box">
+                          <p>{data?.BusinessDescription || 'No description provided'}</p>
+                        </div>
+                      </div>
+
+                      {/* Social Links */}
+                      {data?.SocialLinks && data.SocialLinks.length > 0 && (
+                        <div className="review-section">
+                          <h3><i className="fas fa-share-alt"></i> Social Links</h3>
+                          <div className="social-links-list">
+                            {data.SocialLinks.map((link, idx) => (
+                              <a key={idx} href={link.URL} target="_blank" rel="noopener noreferrer" className="social-link">
+                                <i className={`fab fa-${link.Platform?.toLowerCase() || 'link'}`}></i>
+                                {link.Platform}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Google Reviews Settings */}
+                      {data?.GooglePlaceId && (
+                        <div className="review-section">
+                          <h3><i className="fab fa-google"></i> Google Reviews Integration</h3>
+                          <div className="info-grid">
+                            <div className="info-item">
+                              <label>Google Place ID</label>
+                              <p>{data.GooglePlaceId}</p>
+                            </div>
+                            <div className="info-item">
+                              <label>Show Google Reviews</label>
+                              <p>{data.ShowGoogleReviews ? 'Yes' : 'No'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stripe Status */}
+                      <div className="review-section">
+                        <h3><i className="fas fa-credit-card"></i> Payment Setup</h3>
+                        <div className="info-grid">
+                          <div className="info-item">
+                            <label>Stripe Connected</label>
+                            <p className={data?.StripeStatus?.connected || data?.StripeAccountId ? 'text-success' : 'text-warning'}>
+                              {data?.StripeStatus?.connected || data?.StripeAccountId ? (
+                                <><i className="fas fa-check-circle"></i> Connected</>
+                              ) : (
+                                <><i className="fas fa-exclamation-circle"></i> Not Connected</>
+                              )}
+                            </p>
+                          </div>
+                          {(data?.StripeStatus?.accountId || data?.StripeAccountId) && (
+                            <div className="info-item">
+                              <label>Stripe Account ID</label>
+                              <p>{data?.StripeStatus?.accountId || data?.StripeAccountId}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Services Tab */}
+                  {activeTab === 'services' && (
+                    <div className="tab-content">
+                      <div className="review-section">
+                        <h3><i className="fas fa-concierge-bell"></i> Services Offered ({data?.Services?.length || 0})</h3>
+                        {data?.Services && data.Services.length > 0 ? (
+                          <div className="services-table">
+                            <table>
+                              <thead>
+                                <tr>
+                                  <th>Service Name</th>
+                                  <th>Category</th>
+                                  <th>Price</th>
+                                  <th>Duration</th>
+                                  <th>Max Attendees</th>
+                                  <th>Description</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {data.Services.map((service, idx) => (
+                                  <tr key={idx}>
+                                    <td><strong>{service.ServiceName}</strong></td>
+                                    <td>{service.CategoryName || '-'}</td>
+                                    <td className="price">${service.Price || 0}</td>
+                                    <td>{service.DurationMinutes ? `${service.DurationMinutes} min` : '-'}</td>
+                                    <td>{service.MaxAttendees || '-'}</td>
+                                    <td className="description">{service.ServiceDescription || '-'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="empty-section">
+                            <i className="fas fa-inbox"></i>
+                            <p>No services have been added yet</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* FAQs */}
+                      {data?.FAQs && data.FAQs.length > 0 && (
+                        <div className="review-section">
+                          <h3><i className="fas fa-question-circle"></i> FAQs ({data.FAQs.length})</h3>
+                          <div className="faqs-list">
+                            {data.FAQs.map((faq, idx) => (
+                              <div key={idx} className="faq-item">
+                                <div className="faq-question"><strong>Q:</strong> {faq.Question}</div>
+                                <div className="faq-answer"><strong>A:</strong> {faq.Answer}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Gallery Tab */}
+                  {activeTab === 'gallery' && (
+                    <div className="tab-content">
+                      <div className="review-section">
+                        <h3><i className="fas fa-images"></i> Business Photos ({data?.Images?.length || 0})</h3>
+                        {data?.Images && data.Images.length > 0 ? (
+                          <div className="gallery-grid">
+                            {data.Images.map((image, idx) => (
+                              <div key={idx} className={`gallery-item ${image.IsPrimary ? 'primary' : ''}`}>
+                                <img src={image.ImageURL} alt={image.Caption || `Photo ${idx + 1}`} />
+                                {image.IsPrimary && <span className="primary-badge">Primary</span>}
+                                {image.Caption && <p className="image-caption">{image.Caption}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="empty-section">
+                            <i className="fas fa-image"></i>
+                            <p>No photos have been uploaded yet</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Hours & Availability Tab */}
+                  {activeTab === 'hours' && (
+                    <div className="tab-content">
+                      <div className="review-section">
+                        <h3><i className="fas fa-clock"></i> Business Hours</h3>
+                        {data?.BusinessHours?.[0]?.Timezone && (
+                          <p className="timezone-info">
+                            <i className="fas fa-globe"></i> Timezone: <strong>{data.BusinessHours[0].Timezone}</strong>
+                          </p>
+                        )}
+                        {data?.BusinessHours && data.BusinessHours.length > 0 ? (
+                          <div className="hours-list">
+                            {data.BusinessHours.map((hour, idx) => (
+                              <div key={idx} className={`hour-row ${hour.IsAvailable === false || hour.IsClosed ? 'closed' : ''}`}>
+                                <span className="day">{formatDayOfWeek(hour.DayOfWeek)}</span>
+                                <span className="time">
+                                  {hour.IsAvailable === false || hour.IsClosed 
+                                    ? 'Closed' 
+                                    : `${formatTime(hour.OpenTime)} - ${formatTime(hour.CloseTime)}`
+                                  }
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="empty-section">
+                            <i className="fas fa-calendar-times"></i>
+                            <p>No business hours have been set</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Availability Exceptions */}
+                      {data?.AvailabilityExceptions && data.AvailabilityExceptions.length > 0 && (
+                        <div className="review-section">
+                          <h3><i className="fas fa-calendar-alt"></i> Availability Exceptions</h3>
+                          <div className="exceptions-list">
+                            {data.AvailabilityExceptions.map((exc, idx) => (
+                              <div key={idx} className="exception-item">
+                                <span className="date">{formatDate(exc.ExceptionDate)}</span>
+                                <span className={`type ${exc.IsAvailable ? 'available' : 'unavailable'}`}>
+                                  {exc.IsAvailable ? 'Available' : 'Unavailable'}
+                                </span>
+                                {exc.Reason && <span className="reason">{exc.Reason}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Features & Areas Tab */}
+                  {activeTab === 'features' && (
+                    <div className="tab-content">
+                      {/* Questionnaire Answers */}
+                      <div className="review-section">
+                        <h3><i className="fas fa-clipboard-list"></i> Questionnaire Answers ({data?.CategoryAnswers?.length || 0})</h3>
+                        {data?.CategoryAnswers && data.CategoryAnswers.length > 0 ? (
+                          <div className="questionnaire-list">
+                            {data.CategoryAnswers.map((qa, idx) => (
+                              <div key={idx} className="questionnaire-item">
+                                <div className="question">
+                                  <i className="fas fa-question-circle"></i>
+                                  {qa.QuestionText}
+                                </div>
+                                <div className="answer">
+                                  <i className="fas fa-reply"></i>
+                                  {qa.Answer || 'No answer provided'}
+                                </div>
+                                {qa.Category && <span className="qa-category">{qa.Category}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="empty-section">
+                            <i className="fas fa-clipboard"></i>
+                            <p>No questionnaire answers have been submitted</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Features/Amenities */}
+                      <div className="review-section">
+                        <h3><i className="fas fa-list-check"></i> Features & Amenities ({data?.Features?.length || 0})</h3>
+                        {data?.Features && data.Features.length > 0 ? (
+                          <div className="features-grid">
+                            {data.Features.map((feature, idx) => (
+                              <div key={idx} className="feature-tag">
+                                <i className={feature.FeatureIcon || feature.CategoryIcon || 'fas fa-check'}></i>
+                                {feature.FeatureName || feature.FeatureKey}
+                                {feature.CategoryName && <span className="feature-category">({feature.CategoryName})</span>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="empty-section">
+                            <i className="fas fa-list"></i>
+                            <p>No features have been selected</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Service Areas with Map */}
+                      <div className="review-section">
+                        <h3><i className="fas fa-map"></i> Service Areas ({data?.ServiceAreas?.length || 0})</h3>
+                        {data?.ServiceAreas && data.ServiceAreas.length > 0 ? (
+                          <>
+                            {/* Google Map */}
+                            <div className="service-areas-map">
+                              <iframe
+                                title="Service Areas Map"
+                                width="100%"
+                                height="300"
+                                style={{ border: 0, borderRadius: '8px' }}
+                                loading="lazy"
+                                src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo&q=${encodeURIComponent(
+                                  data.ServiceAreas.map(a => `${a.CityName || a.City}, ${a.StateProvince || a.State || ''}`).join('|')
+                                )}&zoom=8`}
+                              />
+                            </div>
+                            {/* Areas List */}
+                            <div className="areas-list" style={{ marginTop: '1rem' }}>
+                              {data.ServiceAreas.map((area, idx) => (
+                                <span key={idx} className="area-tag">
+                                  <i className="fas fa-map-marker-alt"></i>
+                                  {area.CityName || area.City}{area.StateProvince || area.State ? `, ${area.StateProvince || area.State}` : ''}
+                                  {area.ServiceRadius ? ` (${area.ServiceRadius}km radius)` : ''}
+                                </span>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="empty-section">
+                            <i className="fas fa-map-marked-alt"></i>
+                            <p>No service areas have been defined</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Tab */}
+                  {activeTab === 'action' && (
+                    <div className="tab-content">
+                      {/* Summary Stats */}
+                      <div className="review-section">
+                        <h3><i className="fas fa-chart-bar"></i> Profile Completeness</h3>
+                        <div className="completeness-grid">
+                          <div className={`completeness-item ${data?.BusinessDescription ? 'complete' : 'incomplete'}`}>
+                            <i className={`fas ${data?.BusinessDescription ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                            <span>Description</span>
+                          </div>
+                          <div className={`completeness-item ${data?.Images?.length > 0 ? 'complete' : 'incomplete'}`}>
+                            <i className={`fas ${data?.Images?.length > 0 ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                            <span>Photos ({data?.Images?.length || 0})</span>
+                          </div>
+                          <div className={`completeness-item ${data?.Services?.length > 0 ? 'complete' : 'incomplete'}`}>
+                            <i className={`fas ${data?.Services?.length > 0 ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                            <span>Services ({data?.Services?.length || 0})</span>
+                          </div>
+                          <div className={`completeness-item ${data?.BusinessHours?.length > 0 ? 'complete' : 'incomplete'}`}>
+                            <i className={`fas ${data?.BusinessHours?.length > 0 ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                            <span>Business Hours</span>
+                          </div>
+                          <div className={`completeness-item ${data?.StripeStatus?.connected || data?.StripeAccountId ? 'complete' : 'incomplete'}`}>
+                            <i className={`fas ${data?.StripeStatus?.connected || data?.StripeAccountId ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                            <span>Stripe Connected</span>
+                          </div>
+                          <div className={`completeness-item ${Array.isArray(data?.Categories) && data.Categories.length > 0 ? 'complete' : 'incomplete'}`}>
+                            <i className={`fas ${Array.isArray(data?.Categories) && data.Categories.length > 0 ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                            <span>Categories</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Admin Notes */}
+                      <div className="review-section">
+                        <h3><i className="fas fa-sticky-note"></i> Admin Notes (Optional)</h3>
+                        <textarea
+                          value={adminNotes}
+                          onChange={(e) => setAdminNotes(e.target.value)}
+                          placeholder="Add any internal notes about this vendor..."
+                          rows={3}
+                        />
+                      </div>
+
+                      {/* Rejection Reason */}
+                      {selectedProfile.ProfileStatus === 'pending_review' && (
+                        <div className="review-section rejection-section">
+                          <h3><i className="fas fa-exclamation-triangle"></i> Rejection Reason (Required for rejection)</h3>
+                          <textarea
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            placeholder="If rejecting, explain why so the vendor can address the issues..."
+                            rows={3}
+                          />
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="action-buttons-section">
+                        {selectedProfile.ProfileStatus === 'pending_review' ? (
+                          <>
+                            <button 
+                              className="btn-danger btn-large"
+                              onClick={() => handleReject(selectedProfile.VendorProfileID)}
+                              disabled={actionLoading}
+                            >
+                              {actionLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-times"></i>}
+                              Reject Application
+                            </button>
+                            <button 
+                              className="btn-success btn-large"
+                              onClick={() => handleApprove(selectedProfile.VendorProfileID)}
+                              disabled={actionLoading}
+                            >
+                              {actionLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check"></i>}
+                              Approve Vendor
+                            </button>
+                          </>
+                        ) : (
+                          <div className="already-reviewed">
+                            <i className={`fas ${selectedProfile.ProfileStatus === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
+                            <p>This vendor has already been {selectedProfile.ProfileStatus === 'approved' ? 'approved' : 'rejected'}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -366,28 +825,8 @@ const VendorApprovalsPanel = () => {
                 className="btn-secondary" 
                 onClick={() => setSelectedProfile(null)}
               >
-                Cancel
+                Close
               </button>
-              {selectedProfile.ProfileStatus === 'pending_review' && (
-                <>
-                  <button 
-                    className="btn-danger"
-                    onClick={() => handleReject(selectedProfile.VendorProfileID)}
-                    disabled={actionLoading}
-                  >
-                    {actionLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-times"></i>}
-                    Reject
-                  </button>
-                  <button 
-                    className="btn-success"
-                    onClick={() => handleApprove(selectedProfile.VendorProfileID)}
-                    disabled={actionLoading}
-                  >
-                    {actionLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check"></i>}
-                    Approve Vendor
-                  </button>
-                </>
-              )}
             </div>
           </div>
         </div>

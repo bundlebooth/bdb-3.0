@@ -142,63 +142,205 @@ router.get('/vendor-approvals', async (req, res) => {
 });
 
 // GET /admin/vendor-approvals/:id - Get full vendor details for review
+// Uses the same sp_GetVendorDetails stored procedure as the vendor profile page
 router.get('/vendor-approvals/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const pool = await getPool();
     
-    // Get vendor profile
-    const profileResult = await pool.request()
+    console.log('Fetching vendor details for ID:', id);
+    
+    // Use the same stored procedure as the vendor profile page
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('UserID', sql.Int, null);
+    
+    const result = await request.execute('sp_GetVendorDetails');
+    
+    if (result.recordsets.length === 0 || result.recordsets[0].length === 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+    
+    // Capture the recordsets - same structure as vendors.js
+    const [
+      profileRecordset, 
+      categoriesRecordset, 
+      servicesRecordset,
+      portfolioRecordset, 
+      reviewsRecordset, 
+      faqsRecordset,
+      teamRecordset,
+      socialMediaRecordset,
+      businessHoursRecordset,
+      imagesRecordset,
+      categoryAnswersRecordset,
+      isFavoriteRecordset,
+      availableSlotsRecordset
+    ] = result.recordsets;
+    
+    const profile = profileRecordset[0];
+    console.log('Profile found:', profile.BusinessName, 'StripeAccountId:', profile.StripeAccountId);
+    
+    // Get owner info
+    const ownerResult = await pool.request()
       .input('id', sql.Int, id)
       .query(`
-        SELECT 
-          vp.*,
-          u.Name as OwnerName,
-          u.Email as OwnerEmail,
-          u.Phone as OwnerPhone
+        SELECT u.Name as OwnerName, u.Email as OwnerEmail, u.Phone as OwnerPhone, u.CreatedAt as UserCreatedAt
         FROM VendorProfiles vp
         LEFT JOIN Users u ON vp.UserID = u.UserID
         WHERE vp.VendorProfileID = @id
       `);
+    const ownerInfo = ownerResult.recordset[0] || {};
     
-    if (profileResult.recordset.length === 0) {
-      return res.status(404).json({ error: 'Vendor not found' });
+    // Get service areas
+    let serviceAreas = [];
+    try {
+      const serviceAreasResult = await pool.request()
+        .input('VendorProfileID', sql.Int, id)
+        .query(`
+          SELECT 
+            VendorServiceAreaID,
+            GooglePlaceID,
+            CityName,
+            [State/Province] AS StateProvince,
+            Country,
+            Latitude,
+            Longitude,
+            ServiceRadius,
+            FormattedAddress,
+            PlaceType,
+            PostalCode,
+            TravelCost,
+            MinimumBookingAmount,
+            IsActive
+          FROM VendorServiceAreas 
+          WHERE VendorProfileID = @VendorProfileID
+          ORDER BY CityName
+        `);
+      serviceAreas = serviceAreasResult.recordset || [];
+    } catch (e) {
+      console.warn('Service areas query failed:', e.message);
     }
     
-    const profile = profileResult.recordset[0];
+    // Get vendor features - use same query as vendorFeatures.js
+    let features = [];
+    try {
+      const featuresResult = await pool.request()
+        .input('VendorProfileID', sql.Int, id)
+        .query(`
+          SELECT 
+            vsf.VendorFeatureSelectionID,
+            vsf.VendorProfileID,
+            vsf.FeatureID,
+            f.FeatureName,
+            f.FeatureKey,
+            f.FeatureDescription,
+            f.FeatureIcon,
+            c.CategoryID,
+            c.CategoryName,
+            c.CategoryKey,
+            c.CategoryIcon
+          FROM VendorSelectedFeatures vsf
+          LEFT JOIN VendorFeatures f ON vsf.FeatureID = f.FeatureID
+          LEFT JOIN VendorFeatureCategories c ON f.CategoryID = c.CategoryID
+          WHERE vsf.VendorProfileID = @VendorProfileID
+            AND (f.IsActive = 1 OR f.IsActive IS NULL)
+          ORDER BY COALESCE(c.DisplayOrder, 999), COALESCE(f.DisplayOrder, 999)
+        `);
+      features = featuresResult.recordset || [];
+      console.log('Features found:', features.length);
+    } catch (e) {
+      console.warn('Features query failed:', e.message);
+    }
     
-    // Get images
-    const imagesResult = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`SELECT * FROM VendorImages WHERE VendorProfileID = @id ORDER BY IsPrimary DESC, DisplayOrder`);
+    // Format time values - SQL Server returns TIME as Date objects
+    const formatTime = (timeValue) => {
+      if (!timeValue) return null;
+      if (typeof timeValue === 'string') return timeValue;
+      if (timeValue instanceof Date) {
+        return timeValue.toTimeString().split(' ')[0];
+      }
+      return timeValue;
+    };
     
-    // Get services
-    const servicesResult = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`SELECT * FROM VendorServices WHERE VendorProfileID = @id`);
+    const businessHours = (businessHoursRecordset || []).map(bh => ({
+      ...bh,
+      OpenTime: formatTime(bh.OpenTime),
+      CloseTime: formatTime(bh.CloseTime)
+    }));
     
-    // Get categories
-    const categoriesResult = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`SELECT Category FROM VendorCategories WHERE VendorProfileID = @id`);
+    console.log('Data summary - Images:', imagesRecordset?.length, 'Services:', servicesRecordset?.length, 
+                'Categories:', categoriesRecordset?.length, 'Hours:', businessHours.length);
     
-    // Get business hours
-    const hoursResult = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`SELECT * FROM VendorBusinessHours WHERE VendorProfileID = @id ORDER BY DayOfWeek`);
+    // Check Stripe connection status using the same logic as payments.js
+    let stripeStatus = { connected: false };
+    try {
+      // Get the StripeAccountId from VendorProfiles table
+      const stripeResult = await pool.request()
+        .input('VendorProfileID', sql.Int, id)
+        .query(`SELECT StripeAccountId FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
+      
+      const stripeAccountId = stripeResult.recordset[0]?.StripeAccountId;
+      if (stripeAccountId) {
+        stripeStatus = {
+          connected: true,
+          accountId: stripeAccountId
+        };
+        console.log('Stripe connected:', stripeAccountId);
+      } else {
+        console.log('No Stripe account found for vendor');
+      }
+    } catch (e) {
+      console.warn('Error checking Stripe status:', e.message);
+    }
     
-    res.json({
+    // Get questionnaire answers (category answers)
+    let categoryAnswers = categoryAnswersRecordset || [];
+    // If the stored procedure didn't return full question text, fetch it separately
+    if (categoryAnswers.length === 0 || !categoryAnswers[0]?.QuestionText) {
+      try {
+        const answersResult = await pool.request()
+          .input('VendorProfileID', sql.Int, id)
+          .query(`
+            SELECT ca.AnswerID, ca.QuestionID, cq.QuestionText, cq.Category, ca.Answer
+            FROM VendorCategoryAnswers ca
+            JOIN CategoryQuestions cq ON ca.QuestionID = cq.QuestionID
+            WHERE ca.VendorProfileID = @VendorProfileID
+            ORDER BY ca.AnswerID
+          `);
+        categoryAnswers = answersResult.recordset || [];
+        console.log('Category answers found:', categoryAnswers.length);
+      } catch (e) {
+        console.warn('Category answers query failed:', e.message);
+      }
+    }
+    
+    // Build response matching the vendor profile structure
+    const responseData = {
       profile: {
         ...profile,
-        Images: imagesResult.recordset,
-        Services: servicesResult.recordset,
-        Categories: categoriesResult.recordset.map(c => c.Category),
-        BusinessHours: hoursResult.recordset
+        ...ownerInfo,
+        Images: imagesRecordset || [],
+        Services: servicesRecordset || [],
+        Categories: (categoriesRecordset || []).map(c => c.Category || c.CategoryName),
+        BusinessHours: businessHours,
+        ServiceAreas: serviceAreas,
+        Features: features,
+        SocialLinks: socialMediaRecordset || [],
+        FAQs: faqsRecordset || [],
+        Portfolio: portfolioRecordset || [],
+        Team: teamRecordset || [],
+        Reviews: reviewsRecordset || [],
+        AvailableSlots: availableSlotsRecordset || [],
+        StripeStatus: stripeStatus,
+        CategoryAnswers: categoryAnswers
       }
-    });
+    };
+    
+    res.json(responseData);
   } catch (error) {
     console.error('Error fetching vendor details:', error);
-    res.status(500).json({ error: 'Failed to fetch vendor details' });
+    res.status(500).json({ error: 'Failed to fetch vendor details', details: error.message });
   }
 });
 
