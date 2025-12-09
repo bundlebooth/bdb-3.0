@@ -1,0 +1,574 @@
+import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../config';
+import { showBanner } from '../../utils/helpers';
+
+const SupportToolsPanel = () => {
+  const [activeTab, setActiveTab] = useState('impersonate'); // impersonate, tickets, notes
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [tickets, setTickets] = useState([]);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'tickets') {
+      fetchTickets();
+    }
+  }, [activeTab]);
+
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) return;
+
+    try {
+      setSearching(true);
+      const response = await fetch(`${API_BASE_URL}/admin/support/search?q=${encodeURIComponent(searchTerm)}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSearchResults(data.results || []);
+      } else {
+        // Mock results
+        setSearchResults([
+          { type: 'user', id: 1, name: 'John Doe', email: 'john@example.com', accountType: 'Client' },
+          { type: 'vendor', id: 2, name: 'Elite Catering', email: 'info@elitecatering.com', accountType: 'Vendor' },
+          { type: 'user', id: 3, name: 'Jane Smith', email: 'jane@example.com', accountType: 'Client' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error searching:', error);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleImpersonate = async (userId, userType) => {
+    if (!window.confirm(`Are you sure you want to impersonate this ${userType}? This action will be logged.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/support/impersonate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ userId, userType })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Store admin token for later restoration
+        localStorage.setItem('adminToken', localStorage.getItem('token'));
+        localStorage.setItem('token', data.impersonationToken);
+        showBanner(`Now viewing as ${userType}. Click "Exit Impersonation" to return.`, 'info');
+        // Redirect to appropriate page
+        window.location.href = userType === 'vendor' ? '/become-a-vendor' : '/';
+      }
+    } catch (error) {
+      showBanner('Failed to impersonate user', 'error');
+    }
+  };
+
+  const fetchTickets = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/admin/support/tickets`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTickets(data.tickets || []);
+      } else {
+        // Mock tickets
+        setTickets([
+          { id: 1, subject: 'Payment not received', user: 'vendor@example.com', status: 'open', priority: 'high', createdAt: new Date().toISOString() },
+          { id: 2, subject: 'Cannot update profile', user: 'user@example.com', status: 'in_progress', priority: 'medium', createdAt: new Date(Date.now() - 86400000).toISOString() },
+          { id: 3, subject: 'Booking cancellation issue', user: 'client@example.com', status: 'open', priority: 'low', createdAt: new Date(Date.now() - 172800000).toISOString() }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const statusMap = {
+      'open': { class: 'badge-warning', label: 'Open' },
+      'in_progress': { class: 'badge-info', label: 'In Progress' },
+      'resolved': { class: 'badge-success', label: 'Resolved' },
+      'closed': { class: 'badge-secondary', label: 'Closed' }
+    };
+    const config = statusMap[status] || { class: 'badge-secondary', label: status };
+    return <span className={`status-badge ${config.class}`}>{config.label}</span>;
+  };
+
+  const getPriorityBadge = (priority) => {
+    const priorityMap = {
+      'high': { class: 'priority-high', label: 'High' },
+      'medium': { class: 'priority-medium', label: 'Medium' },
+      'low': { class: 'priority-low', label: 'Low' }
+    };
+    const config = priorityMap[priority] || { class: '', label: priority };
+    return <span className={`priority-badge ${config.class}`}>{config.label}</span>;
+  };
+
+  return (
+    <div className="admin-panel support-tools">
+      {/* Tabs */}
+      <div className="panel-tabs">
+        <button
+          className={`tab ${activeTab === 'impersonate' ? 'active' : ''}`}
+          onClick={() => setActiveTab('impersonate')}
+        >
+          <i className="fas fa-user-secret"></i> Impersonate User
+        </button>
+        <button
+          className={`tab ${activeTab === 'tickets' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tickets')}
+        >
+          <i className="fas fa-ticket-alt"></i> Support Tickets
+        </button>
+        <button
+          className={`tab ${activeTab === 'notes' ? 'active' : ''}`}
+          onClick={() => setActiveTab('notes')}
+        >
+          <i className="fas fa-sticky-note"></i> Internal Notes
+        </button>
+      </div>
+
+      {/* Impersonate Tab */}
+      {activeTab === 'impersonate' && (
+        <div className="impersonate-section">
+          <div className="section-card">
+            <h3><i className="fas fa-user-secret"></i> Impersonate User or Vendor</h3>
+            <p className="section-description">
+              View the platform as a specific user or vendor to troubleshoot issues. All impersonation actions are logged.
+            </p>
+
+            <div className="warning-box">
+              <i className="fas fa-exclamation-triangle"></i>
+              <div>
+                <strong>Important:</strong> Impersonation allows you to see exactly what the user sees. 
+                Do not make changes to their account unless necessary. All actions are logged for security.
+              </div>
+            </div>
+
+            <div className="search-section">
+              <div className="search-box large">
+                <i className="fas fa-search"></i>
+                <input
+                  type="text"
+                  placeholder="Search by email, name, or user ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                />
+                <button className="btn-primary" onClick={handleSearch} disabled={searching}>
+                  {searching ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+            </div>
+
+            {searchResults.length > 0 && (
+              <div className="search-results">
+                <h4>Search Results</h4>
+                <div className="results-list">
+                  {searchResults.map(result => (
+                    <div key={`${result.type}-${result.id}`} className="result-item">
+                      <div className="result-avatar">
+                        <i className={`fas fa-${result.type === 'vendor' ? 'store' : 'user'}`}></i>
+                      </div>
+                      <div className="result-info">
+                        <strong>{result.name}</strong>
+                        <span>{result.email}</span>
+                        <span className={`account-type ${result.accountType.toLowerCase()}`}>
+                          {result.accountType}
+                        </span>
+                      </div>
+                      <button
+                        className="btn-primary"
+                        onClick={() => handleImpersonate(result.id, result.type)}
+                      >
+                        <i className="fas fa-sign-in-alt"></i> Impersonate
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tickets Tab */}
+      {activeTab === 'tickets' && (
+        <div className="tickets-section">
+          <div className="panel-toolbar">
+            <div className="toolbar-left">
+              <div className="filter-tabs">
+                <button className="filter-tab active">All</button>
+                <button className="filter-tab">Open</button>
+                <button className="filter-tab">In Progress</button>
+                <button className="filter-tab">Resolved</button>
+              </div>
+            </div>
+            <div className="toolbar-right">
+              <button className="btn-primary" onClick={() => setSelectedTicket({ isNew: true })}>
+                <i className="fas fa-plus"></i> Create Ticket
+              </button>
+            </div>
+          </div>
+
+          <div className="tickets-container">
+            {loading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading tickets...</p>
+              </div>
+            ) : tickets.length === 0 ? (
+              <div className="empty-state">
+                <i className="fas fa-ticket-alt"></i>
+                <h3>No Support Tickets</h3>
+                <p>There are no support tickets at this time</p>
+              </div>
+            ) : (
+              <div className="tickets-list">
+                {tickets.map(ticket => (
+                  <div key={ticket.id} className="ticket-item" onClick={() => setSelectedTicket(ticket)}>
+                    <div className="ticket-priority">
+                      {getPriorityBadge(ticket.priority)}
+                    </div>
+                    <div className="ticket-info">
+                      <h4>{ticket.subject}</h4>
+                      <div className="ticket-meta">
+                        <span><i className="fas fa-user"></i> {ticket.user}</span>
+                        <span><i className="fas fa-clock"></i> {new Date(ticket.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="ticket-status">
+                      {getStatusBadge(ticket.status)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Notes Tab */}
+      {activeTab === 'notes' && (
+        <InternalNotesSection />
+      )}
+
+      {/* Ticket Modal */}
+      {selectedTicket && (
+        <TicketModal
+          ticket={selectedTicket}
+          onClose={() => setSelectedTicket(null)}
+          onSave={() => { fetchTickets(); setSelectedTicket(null); }}
+        />
+      )}
+    </div>
+  );
+};
+
+// Internal Notes Section
+const InternalNotesSection = () => {
+  const [notes, setNotes] = useState([]);
+  const [newNote, setNewNote] = useState({ title: '', content: '', relatedTo: '' });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNotes();
+  }, []);
+
+  const fetchNotes = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/support/notes`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setNotes(data.notes || []);
+      } else {
+        // Mock notes
+        setNotes([
+          { id: 1, title: 'Vendor onboarding issue', content: 'User reported issues with Stripe connection. Need to follow up.', relatedTo: 'vendor@example.com', createdAt: new Date().toISOString(), author: 'Admin' },
+          { id: 2, title: 'Payment dispute resolution', content: 'Refund issued for booking #1234. Client satisfied with resolution.', relatedTo: 'Booking #1234', createdAt: new Date(Date.now() - 86400000).toISOString(), author: 'Admin' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching notes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.title.trim() || !newNote.content.trim()) {
+      showBanner('Please fill in all fields', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/support/notes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(newNote)
+      });
+
+      if (response.ok) {
+        showBanner('Note added', 'success');
+        setNewNote({ title: '', content: '', relatedTo: '' });
+        fetchNotes();
+      }
+    } catch (error) {
+      showBanner('Failed to add note', 'error');
+    }
+  };
+
+  return (
+    <div className="notes-section">
+      <div className="section-card">
+        <h3><i className="fas fa-plus"></i> Add Internal Note</h3>
+        <div className="form-group">
+          <label>Title</label>
+          <input
+            type="text"
+            value={newNote.title}
+            onChange={e => setNewNote({ ...newNote, title: e.target.value })}
+            placeholder="Note title..."
+          />
+        </div>
+        <div className="form-group">
+          <label>Related To (User/Vendor/Booking)</label>
+          <input
+            type="text"
+            value={newNote.relatedTo}
+            onChange={e => setNewNote({ ...newNote, relatedTo: e.target.value })}
+            placeholder="e.g., user@example.com or Booking #1234"
+          />
+        </div>
+        <div className="form-group">
+          <label>Content</label>
+          <textarea
+            value={newNote.content}
+            onChange={e => setNewNote({ ...newNote, content: e.target.value })}
+            placeholder="Note content..."
+            rows={4}
+          />
+        </div>
+        <button className="btn-primary" onClick={handleAddNote}>
+          <i className="fas fa-save"></i> Save Note
+        </button>
+      </div>
+
+      <div className="section-card">
+        <h3><i className="fas fa-sticky-note"></i> Recent Notes</h3>
+        {loading ? (
+          <div className="loading-state small">
+            <div className="spinner"></div>
+          </div>
+        ) : notes.length === 0 ? (
+          <p className="no-data">No internal notes yet</p>
+        ) : (
+          <div className="notes-list">
+            {notes.map(note => (
+              <div key={note.id} className="note-item">
+                <div className="note-header">
+                  <h4>{note.title}</h4>
+                  <span className="note-date">{new Date(note.createdAt).toLocaleDateString()}</span>
+                </div>
+                {note.relatedTo && (
+                  <div className="note-related">
+                    <i className="fas fa-link"></i> {note.relatedTo}
+                  </div>
+                )}
+                <p className="note-content">{note.content}</p>
+                <div className="note-footer">
+                  <span className="note-author">By {note.author}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Ticket Modal
+const TicketModal = ({ ticket, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    subject: ticket?.subject || '',
+    user: ticket?.user || '',
+    priority: ticket?.priority || 'medium',
+    status: ticket?.status || 'open',
+    description: ticket?.description || '',
+    response: ''
+  });
+  const [attachments, setAttachments] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const url = ticket?.isNew
+        ? `${API_BASE_URL}/admin/support/tickets`
+        : `${API_BASE_URL}/admin/support/tickets/${ticket.id}`;
+
+      const response = await fetch(url, {
+        method: ticket?.isNew ? 'POST' : 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        showBanner(`Ticket ${ticket?.isNew ? 'created' : 'updated'}`, 'success');
+        onSave();
+      }
+    } catch (error) {
+      showBanner('Failed to save ticket', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const files = Array.from(e.target.files);
+    setAttachments([...attachments, ...files]);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content large" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{ticket?.isNew ? 'Create Support Ticket' : `Ticket #${ticket.id}`}</h2>
+          <button className="modal-close" onClick={onClose}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="modal-body">
+          <div className="form-row">
+            <div className="form-group">
+              <label>Subject</label>
+              <input
+                type="text"
+                value={formData.subject}
+                onChange={e => setFormData({ ...formData, subject: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label>User Email</label>
+              <input
+                type="text"
+                value={formData.user}
+                onChange={e => setFormData({ ...formData, user: e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Priority</label>
+              <select
+                value={formData.priority}
+                onChange={e => setFormData({ ...formData, priority: e.target.value })}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Status</label>
+              <select
+                value={formData.status}
+                onChange={e => setFormData({ ...formData, status: e.target.value })}
+              >
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Description</label>
+            <textarea
+              value={formData.description}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              rows={4}
+            />
+          </div>
+          {!ticket?.isNew && (
+            <div className="form-group">
+              <label>Response</label>
+              <textarea
+                value={formData.response}
+                onChange={e => setFormData({ ...formData, response: e.target.value })}
+                placeholder="Add a response to this ticket..."
+                rows={4}
+              />
+            </div>
+          )}
+          <div className="form-group">
+            <label>Attachments</label>
+            <div className="file-upload">
+              <input
+                type="file"
+                multiple
+                onChange={handleFileUpload}
+                id="ticket-attachments"
+              />
+              <label htmlFor="ticket-attachments" className="file-upload-label">
+                <i className="fas fa-paperclip"></i> Add Files
+              </label>
+            </div>
+            {attachments.length > 0 && (
+              <div className="attachments-list">
+                {attachments.map((file, index) => (
+                  <div key={index} className="attachment-item">
+                    <i className="fas fa-file"></i>
+                    <span>{file.name}</span>
+                    <button onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}>
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : (ticket?.isNew ? 'Create Ticket' : 'Update Ticket')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SupportToolsPanel;

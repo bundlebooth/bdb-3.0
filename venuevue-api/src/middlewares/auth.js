@@ -37,4 +37,15 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticate };
+// Alias for authenticate (used by some routes)
+const authenticateToken = authenticate;
+
+// Middleware to require admin privileges
+const requireAdmin = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  next();
+};
+
+module.exports = { authenticate, authenticateToken, requireAdmin };
