@@ -5,6 +5,8 @@ import VendorProfilePage from './pages/VendorProfilePage';
 import BookingPage from './pages/BookingPage';
 import BecomeVendorPage from './pages/BecomeVendorPage';
 import AdminDashboard from './pages/AdminDashboard';
+import InvoicePage from './pages/InvoicePage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import { AuthProvider } from './context/AuthContext';
 import './styles/MapControls.css';
 
@@ -46,6 +48,9 @@ function App() {
           <Route path="/booking/:vendorSlug" element={<BookingPage />} />
           <Route path="/become-a-vendor" element={<BecomeVendorPage />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/invoice/:invoiceId" element={<InvoicePage />} />
+          <Route path="/invoice/booking/:bookingId" element={<InvoicePage />} />
+          <Route path="/payment-success" element={<PaymentSuccessPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

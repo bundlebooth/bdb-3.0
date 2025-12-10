@@ -10604,8 +10604,377 @@ BEGIN
 END;
 GO
 
+-- =============================================
+-- ADD STRIPE SESSION ID TO BOOKINGS TABLE
+-- =============================================
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Bookings') AND name = 'StripeSessionID')
+BEGIN
+    ALTER TABLE Bookings ADD StripeSessionID NVARCHAR(255) NULL;
+    PRINT 'Added StripeSessionID column to Bookings';
+END
+GO
+
+-- =============================================
+-- SEED DEFAULT COMMISSION SETTINGS
+-- =============================================
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'CommissionSettings')
+BEGIN
+    -- Platform Fee Percent
+    IF NOT EXISTS (SELECT * FROM CommissionSettings WHERE SettingKey = 'platform_fee_percent')
+    BEGIN
+        INSERT INTO CommissionSettings (SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive)
+        VALUES ('platform_fee_percent', '5', 'Platform commission percentage charged on each booking', 'percentage', 0, 50, 1);
+        PRINT 'Added platform_fee_percent setting';
+    END
+
+    -- Stripe Fee Percent
+    IF NOT EXISTS (SELECT * FROM CommissionSettings WHERE SettingKey = 'stripe_fee_percent')
+    BEGIN
+        INSERT INTO CommissionSettings (SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive)
+        VALUES ('stripe_fee_percent', '2.9', 'Stripe processing fee percentage', 'percentage', 0, 10, 1);
+        PRINT 'Added stripe_fee_percent setting';
+    END
+
+    -- Stripe Fixed Fee
+    IF NOT EXISTS (SELECT * FROM CommissionSettings WHERE SettingKey = 'stripe_fee_fixed')
+    BEGIN
+        INSERT INTO CommissionSettings (SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive)
+        VALUES ('stripe_fee_fixed', '0.30', 'Stripe fixed fee per transaction (CAD)', 'currency', 0, 5, 1);
+        PRINT 'Added stripe_fee_fixed setting';
+    END
+
+    -- Tax Percent (HST)
+    IF NOT EXISTS (SELECT * FROM CommissionSettings WHERE SettingKey = 'tax_percent')
+    BEGIN
+        INSERT INTO CommissionSettings (SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive)
+        VALUES ('tax_percent', '13', 'HST tax percentage (Ontario)', 'percentage', 0, 20, 1);
+        PRINT 'Added tax_percent setting';
+    END
+
+    -- Platform Commission Rate (legacy support)
+    IF NOT EXISTS (SELECT * FROM CommissionSettings WHERE SettingKey = 'platform_commission_rate')
+    BEGIN
+        INSERT INTO CommissionSettings (SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive)
+        VALUES ('platform_commission_rate', '15', 'Platform commission rate taken from vendor payout', 'percentage', 0, 50, 1);
+        PRINT 'Added platform_commission_rate setting';
+    END
+
+    -- Renter Processing Fee Rate
+    IF NOT EXISTS (SELECT * FROM CommissionSettings WHERE SettingKey = 'renter_processing_fee_rate')
+    BEGIN
+        INSERT INTO CommissionSettings (SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive)
+        VALUES ('renter_processing_fee_rate', '5', 'Processing fee percentage charged to renters', 'percentage', 0, 20, 1);
+        PRINT 'Added renter_processing_fee_rate setting';
+    END
+END
+GO
+
+-- =============================================
+-- CREATE SUPPORT TICKET WITH ATTACHMENTS PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_CreateSupportTicket
+    @UserID INT = NULL,
+    @UserEmail NVARCHAR(255) = NULL,
+    @UserName NVARCHAR(100) = NULL,
+    @Subject NVARCHAR(255),
+    @Description NVARCHAR(MAX),
+    @Category NVARCHAR(50) = 'general',
+    @Priority NVARCHAR(20) = 'medium',
+    @Source NVARCHAR(50) = 'widget',
+    @ConversationID INT = NULL,
+    @Attachments NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @TicketNumber NVARCHAR(20) = 'TKT-' + FORMAT(GETUTCDATE(), 'yyyyMMdd') + '-' + RIGHT('0000' + CAST((SELECT ISNULL(MAX(TicketID), 0) + 1 FROM SupportTickets) AS NVARCHAR), 4);
+    
+    INSERT INTO SupportTickets (TicketNumber, UserID, UserEmail, UserName, Subject, Description, Category, Priority, Source, ConversationID, Attachments)
+    VALUES (@TicketNumber, @UserID, @UserEmail, @UserName, @Subject, @Description, @Category, @Priority, @Source, @ConversationID, @Attachments);
+    
+    DECLARE @NewTicketID INT = SCOPE_IDENTITY();
+    
+    -- If a conversation ID was provided, link it
+    IF @ConversationID IS NOT NULL AND EXISTS (SELECT * FROM sys.tables WHERE name = 'SupportConversations')
+    BEGIN
+        INSERT INTO SupportConversations (TicketID, ConversationID)
+        VALUES (@NewTicketID, @ConversationID);
+    END
+    
+    SELECT @NewTicketID AS TicketID, @TicketNumber AS TicketNumber;
+END;
+GO
+
+-- =============================================
+-- GET COMMISSION SETTINGS PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_GetCommissionSettings
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive
+    FROM CommissionSettings
+    WHERE IsActive = 1
+    ORDER BY SettingKey;
+END;
+GO
+
+-- =============================================
+-- UPDATE COMMISSION SETTING PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_UpdateCommissionSetting
+    @SettingKey NVARCHAR(100),
+    @SettingValue NVARCHAR(255),
+    @Description NVARCHAR(500) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE CommissionSettings
+    SET SettingValue = @SettingValue,
+        Description = ISNULL(@Description, Description),
+        UpdatedAt = GETUTCDATE()
+    WHERE SettingKey = @SettingKey;
+    
+    SELECT @@ROWCOUNT AS RowsAffected;
+END;
+GO
+
+-- =============================================
+-- RECORD PAYMENT TRANSACTION PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_RecordPaymentTransaction
+    @BookingID INT,
+    @UserID INT = NULL,
+    @VendorProfileID INT = NULL,
+    @Amount DECIMAL(10,2),
+    @Currency NVARCHAR(3) = 'CAD',
+    @StripeChargeID NVARCHAR(100) = NULL,
+    @StripePaymentIntentID NVARCHAR(100) = NULL,
+    @Description NVARCHAR(255) = 'Payment',
+    @FeeAmount DECIMAL(10,2) = NULL,
+    @Status NVARCHAR(20) = 'succeeded'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Check for duplicate transaction
+    IF @StripeChargeID IS NOT NULL AND EXISTS (
+        SELECT 1 FROM Transactions WHERE StripeChargeID = @StripeChargeID
+    )
+    BEGIN
+        SELECT TransactionID FROM Transactions WHERE StripeChargeID = @StripeChargeID;
+        RETURN;
+    END
+    
+    DECLARE @NetAmount DECIMAL(10,2) = @Amount - ISNULL(@FeeAmount, 0);
+    
+    INSERT INTO Transactions (
+        UserID, VendorProfileID, BookingID, Amount, FeeAmount, NetAmount,
+        Currency, Description, StripeChargeID, Status, CreatedAt
+    )
+    OUTPUT INSERTED.TransactionID
+    VALUES (
+        @UserID, @VendorProfileID, @BookingID, @Amount, @FeeAmount, @NetAmount,
+        @Currency, @Description, @StripeChargeID, @Status, GETDATE()
+    );
+END;
+GO
+
+-- =============================================
+-- MARK BOOKING AS PAID PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_MarkBookingAsPaid
+    @BookingID INT,
+    @StripePaymentIntentID NVARCHAR(100) = NULL,
+    @StripeSessionID NVARCHAR(255) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    UPDATE Bookings
+    SET Status = 'confirmed',
+        FullAmountPaid = 1,
+        StripePaymentIntentID = ISNULL(@StripePaymentIntentID, StripePaymentIntentID),
+        StripeSessionID = ISNULL(@StripeSessionID, StripeSessionID),
+        UpdatedAt = GETDATE()
+    WHERE BookingID = @BookingID;
+    
+    -- Also update any related booking request
+    UPDATE br
+    SET br.Status = 'confirmed',
+        br.ConfirmedAt = GETDATE(),
+        br.PaymentIntentID = ISNULL(@StripePaymentIntentID, br.PaymentIntentID)
+    FROM BookingRequests br
+    INNER JOIN Bookings b ON br.UserID = b.UserID AND br.VendorProfileID = b.VendorProfileID
+    WHERE b.BookingID = @BookingID
+      AND br.RequestID = (
+          SELECT TOP 1 RequestID FROM BookingRequests
+          WHERE UserID = b.UserID AND VendorProfileID = b.VendorProfileID
+          ORDER BY CreatedAt DESC
+      );
+    
+    SELECT @@ROWCOUNT AS RowsAffected;
+END;
+GO
+
+-- =============================================
+-- GET INVOICE BY BOOKING PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_GetInvoiceByBooking
+    @BookingID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        i.*,
+        b.EventDate, b.EndDate, b.EventName, b.EventType, b.EventLocation, b.TimeZone,
+        u.Name AS ClientName, u.Email AS ClientEmail,
+        vp.BusinessName AS VendorName
+    FROM Invoices i
+    INNER JOIN Bookings b ON i.BookingID = b.BookingID
+    LEFT JOIN Users u ON b.UserID = u.UserID
+    LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    WHERE i.BookingID = @BookingID
+    ORDER BY i.IssueDate DESC;
+END;
+GO
+
+-- =============================================
+-- GET USER INVOICES PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_GetUserInvoices
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        i.InvoiceID, i.BookingID, i.InvoiceNumber, i.IssueDate, i.DueDate,
+        i.Status, i.Subtotal, i.PlatformFee, i.StripeFee, i.TaxAmount, i.TotalAmount,
+        i.PaymentStatus, i.PaidAt,
+        b.EventDate, b.EventName, b.EventType, b.EventLocation,
+        vp.BusinessName AS VendorName,
+        (SELECT STRING_AGG(s.Name, ', ') FROM BookingServices bs 
+         JOIN Services s ON bs.ServiceID = s.ServiceID 
+         WHERE bs.BookingID = b.BookingID) AS ServicesSummary
+    FROM Invoices i
+    INNER JOIN Bookings b ON i.BookingID = b.BookingID
+    LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    WHERE i.UserID = @UserID
+    ORDER BY i.IssueDate DESC;
+END;
+GO
+
+-- =============================================
+-- CALCULATE PAYMENT BREAKDOWN PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_CalculatePaymentBreakdown
+    @BookingAmount DECIMAL(10,2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DECLARE @PlatformFeePercent DECIMAL(5,2) = 5;
+    DECLARE @StripeFeePercent DECIMAL(5,2) = 2.9;
+    DECLARE @StripeFeeFixed DECIMAL(5,2) = 0.30;
+    DECLARE @TaxPercent DECIMAL(5,2) = 13;
+    DECLARE @RenterFeePercent DECIMAL(5,2) = 5;
+    
+    -- Get settings from database
+    SELECT @PlatformFeePercent = CAST(SettingValue AS DECIMAL(5,2))
+    FROM CommissionSettings WHERE SettingKey = 'platform_fee_percent' AND IsActive = 1;
+    
+    SELECT @StripeFeePercent = CAST(SettingValue AS DECIMAL(5,2))
+    FROM CommissionSettings WHERE SettingKey = 'stripe_fee_percent' AND IsActive = 1;
+    
+    SELECT @StripeFeeFixed = CAST(SettingValue AS DECIMAL(5,2))
+    FROM CommissionSettings WHERE SettingKey = 'stripe_fee_fixed' AND IsActive = 1;
+    
+    SELECT @TaxPercent = CAST(SettingValue AS DECIMAL(5,2))
+    FROM CommissionSettings WHERE SettingKey = 'tax_percent' AND IsActive = 1;
+    
+    SELECT @RenterFeePercent = CAST(SettingValue AS DECIMAL(5,2))
+    FROM CommissionSettings WHERE SettingKey = 'renter_processing_fee_rate' AND IsActive = 1;
+    
+    -- Calculate breakdown
+    DECLARE @PlatformFee DECIMAL(10,2) = ROUND(@BookingAmount * @PlatformFeePercent / 100, 2);
+    DECLARE @RenterProcessingFee DECIMAL(10,2) = ROUND(@BookingAmount * @RenterFeePercent / 100, 2);
+    DECLARE @Subtotal DECIMAL(10,2) = @BookingAmount + @PlatformFee;
+    DECLARE @TaxAmount DECIMAL(10,2) = ROUND(@Subtotal * @TaxPercent / 100, 2);
+    DECLARE @TotalBeforeStripe DECIMAL(10,2) = @Subtotal + @TaxAmount + @RenterProcessingFee;
+    DECLARE @StripeFee DECIMAL(10,2) = ROUND(@TotalBeforeStripe * @StripeFeePercent / 100 + @StripeFeeFixed, 2);
+    DECLARE @TotalAmount DECIMAL(10,2) = @TotalBeforeStripe + @StripeFee;
+    DECLARE @VendorPayout DECIMAL(10,2) = @BookingAmount;
+    DECLARE @PlatformRevenue DECIMAL(10,2) = @PlatformFee + @RenterProcessingFee;
+    
+    SELECT 
+        @BookingAmount AS BookingAmount,
+        @PlatformFee AS PlatformFee,
+        @PlatformFeePercent AS PlatformFeePercent,
+        @RenterProcessingFee AS RenterProcessingFee,
+        @RenterFeePercent AS RenterFeePercent,
+        @TaxAmount AS TaxAmount,
+        @TaxPercent AS TaxPercent,
+        @StripeFee AS StripeFee,
+        @StripeFeePercent AS StripeFeePercent,
+        @StripeFeeFixed AS StripeFeeFixed,
+        @TotalAmount AS TotalCustomerPays,
+        @VendorPayout AS VendorPayout,
+        @PlatformRevenue AS PlatformRevenue;
+END;
+GO
+
+-- =============================================
+-- ADD SUPPORT TICKET MESSAGE PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_AddSupportTicketMessage
+    @TicketID INT,
+    @SenderID INT = NULL,
+    @SenderType NVARCHAR(20),
+    @Message NVARCHAR(MAX),
+    @Attachments NVARCHAR(MAX) = NULL,
+    @IsInternal BIT = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    INSERT INTO SupportTicketMessages (TicketID, SenderID, SenderType, Message, Attachments, IsInternal, CreatedAt)
+    VALUES (@TicketID, @SenderID, @SenderType, @Message, @Attachments, @IsInternal, GETUTCDATE());
+    
+    -- Update ticket's UpdatedAt
+    UPDATE SupportTickets
+    SET UpdatedAt = GETUTCDATE()
+    WHERE TicketID = @TicketID;
+    
+    SELECT SCOPE_IDENTITY() AS MessageID;
+END;
+GO
+
+-- =============================================
+-- UPDATE SUPPORT TICKET STATUS PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_UpdateSupportTicketStatus
+    @TicketID INT,
+    @Status NVARCHAR(20),
+    @AssignedTo INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    UPDATE SupportTickets
+    SET Status = @Status,
+        AssignedTo = ISNULL(@AssignedTo, AssignedTo),
+        UpdatedAt = GETUTCDATE(),
+        ResolvedAt = CASE WHEN @Status = 'resolved' THEN GETUTCDATE() ELSE ResolvedAt END,
+        ClosedAt = CASE WHEN @Status = 'closed' THEN GETUTCDATE() ELSE ClosedAt END
+    WHERE TicketID = @TicketID;
+    
+    SELECT @@ROWCOUNT AS RowsAffected;
+END;
+GO
+
 PRINT '============================================='
-PRINT '✅ ALL TABLES COMPLETE'
+PRINT '✅ ALL TABLES AND DATA COMPLETE'
 PRINT '============================================='
 PRINT 'Tables Added:'
 PRINT '  - SecurityLogs (login/activity tracking)'
@@ -10618,8 +10987,33 @@ PRINT '  - FAQs (help center FAQs)'
 PRINT '  - CommissionSettings (platform fees)'
 PRINT '  - PaymentTransactions (payment tracking)'
 PRINT ''
+PRINT 'Bookings Enhancements:'
+PRINT '  - StripeSessionID column for checkout tracking'
+PRINT ''
 PRINT 'Invoice Enhancements:'
 PRINT '  - ServiceSubtotal, RenterProcessingFee, PlatformCommission'
 PRINT '  - VendorPayout, PaymentStatus, PaidAt, StripeSessionId'
+PRINT ''
+PRINT 'Commission Settings Seeded:'
+PRINT '  - platform_fee_percent (5%%)'
+PRINT '  - stripe_fee_percent (2.9%%)'
+PRINT '  - stripe_fee_fixed ($0.30)'
+PRINT '  - tax_percent (13%% HST)'
+PRINT '  - platform_commission_rate (15%%)'
+PRINT '  - renter_processing_fee_rate (5%%)'
+PRINT ''
+PRINT 'Stored Procedures Added:'
+PRINT '  - sp_GetUserTickets'
+PRINT '  - sp_UpdateInvoiceAfterPayment'
+PRINT '  - sp_CreateSupportTicket'
+PRINT '  - sp_GetCommissionSettings'
+PRINT '  - sp_UpdateCommissionSetting'
+PRINT '  - sp_RecordPaymentTransaction'
+PRINT '  - sp_MarkBookingAsPaid'
+PRINT '  - sp_GetInvoiceByBooking'
+PRINT '  - sp_GetUserInvoices'
+PRINT '  - sp_CalculatePaymentBreakdown'
+PRINT '  - sp_AddSupportTicketMessage'
+PRINT '  - sp_UpdateSupportTicketStatus'
 PRINT '============================================='
 GO
