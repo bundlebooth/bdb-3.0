@@ -92,7 +92,7 @@ const VendorApprovalsPanel = () => {
   const handleApprove = async (vendorProfileId) => {
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendors/admin/${vendorProfileId}/approve`, {
+      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorProfileId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ const VendorApprovalsPanel = () => {
       });
 
       if (response.ok) {
-        showBanner('Vendor approved successfully! They are now live.', 'success');
+        showBanner('Vendor approved and now visible on the platform!', 'success');
         setSelectedProfile(null);
         setAdminNotes('');
         fetchProfiles();
@@ -124,17 +124,17 @@ const VendorApprovalsPanel = () => {
 
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendors/admin/${vendorProfileId}/reject`, {
+      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorProfileId}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ rejectionReason, adminNotes })
+        body: JSON.stringify({ reason: rejectionReason, adminNotes })
       });
 
       if (response.ok) {
-        showBanner('Vendor rejected. They will be notified.', 'success');
+        showBanner('Vendor rejected and hidden from platform.', 'success');
         setSelectedProfile(null);
         setRejectionReason('');
         setAdminNotes('');
@@ -144,6 +144,63 @@ const VendorApprovalsPanel = () => {
       }
     } catch (error) {
       showBanner('Failed to reject vendor', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleToggleVisibility = async (vendorProfileId, currentVisibility) => {
+    try {
+      setActionLoading(true);
+      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorProfileId}/visibility`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ visible: !currentVisibility })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        showBanner(data.message, 'success');
+        fetchProfiles();
+        // Refresh full profile data if modal is open
+        if (selectedProfile?.VendorProfileID === vendorProfileId) {
+          fetchFullProfileDetails(vendorProfileId);
+        }
+      } else {
+        throw new Error('Failed to toggle visibility');
+      }
+    } catch (error) {
+      showBanner('Failed to toggle visibility', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSuspend = async (vendorProfileId) => {
+    try {
+      setActionLoading(true);
+      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorProfileId}/suspend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ reason: adminNotes || 'Suspended by admin' })
+      });
+
+      if (response.ok) {
+        showBanner('Vendor suspended and hidden from platform.', 'success');
+        setSelectedProfile(null);
+        setAdminNotes('');
+        fetchProfiles();
+      } else {
+        throw new Error('Failed to suspend');
+      }
+    } catch (error) {
+      showBanner('Failed to suspend vendor', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -163,13 +220,32 @@ const VendorApprovalsPanel = () => {
   const getStatusBadge = (status) => {
     const statusMap = {
       'pending_review': { class: 'badge-warning', label: 'Pending Review', icon: 'fa-clock' },
+      'Pending': { class: 'badge-warning', label: 'Pending Review', icon: 'fa-clock' },
       'approved': { class: 'badge-success', label: 'Approved', icon: 'fa-check-circle' },
-      'rejected': { class: 'badge-danger', label: 'Rejected', icon: 'fa-times-circle' }
+      'Approved': { class: 'badge-success', label: 'Approved', icon: 'fa-check-circle' },
+      'rejected': { class: 'badge-danger', label: 'Rejected', icon: 'fa-times-circle' },
+      'Rejected': { class: 'badge-danger', label: 'Rejected', icon: 'fa-times-circle' },
+      'Suspended': { class: 'badge-danger', label: 'Suspended', icon: 'fa-ban' }
     };
     const config = statusMap[status] || { class: 'badge-secondary', label: status, icon: 'fa-question' };
     return (
       <span className={`status-badge ${config.class}`}>
         <i className={`fas ${config.icon}`}></i> {config.label}
+      </span>
+    );
+  };
+
+  const getVisibilityBadge = (isVisible) => {
+    if (isVisible) {
+      return (
+        <span className="status-badge badge-success" style={{ marginLeft: '0.5rem' }}>
+          <i className="fas fa-eye"></i> Visible
+        </span>
+      );
+    }
+    return (
+      <span className="status-badge badge-secondary" style={{ marginLeft: '0.5rem' }}>
+        <i className="fas fa-eye-slash"></i> Hidden
       </span>
     );
   };
@@ -261,7 +337,10 @@ const VendorApprovalsPanel = () => {
                       <i className="fas fa-envelope"></i> {profile.OwnerEmail || profile.Email}
                     </p>
                   </div>
-                  {getStatusBadge(profile.ProfileStatus)}
+                  <div className="profile-badges">
+                    {getStatusBadge(profile.ProfileStatus)}
+                    {getVisibilityBadge(profile.IsVisible)}
+                  </div>
                 </div>
 
                 <div className="profile-details">
@@ -291,16 +370,26 @@ const VendorApprovalsPanel = () => {
                   </div>
                 )}
 
-                {profile.ProfileStatus === 'pending_review' && (
-                  <div className="profile-actions">
+                <div className="profile-actions">
+                  {(profile.ProfileStatus === 'pending_review' || profile.ProfileStatus === 'Pending') && (
                     <button 
                       className="btn-approve"
                       onClick={(e) => { e.stopPropagation(); setSelectedProfile(profile); }}
                     >
                       <i className="fas fa-check"></i> Review & Approve
                     </button>
-                  </div>
-                )}
+                  )}
+                  {(profile.ProfileStatus === 'approved' || profile.ProfileStatus === 'Approved') && (
+                    <button 
+                      className={profile.IsVisible ? 'btn-secondary' : 'btn-success'}
+                      onClick={(e) => { e.stopPropagation(); handleToggleVisibility(profile.VendorProfileID, profile.IsVisible); }}
+                      disabled={actionLoading}
+                    >
+                      <i className={`fas ${profile.IsVisible ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      {profile.IsVisible ? ' Hide' : ' Show'}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -317,6 +406,7 @@ const VendorApprovalsPanel = () => {
                 <div className="vendor-quick-info">
                   <span className="vendor-name">{selectedProfile.BusinessName}</span>
                   {getStatusBadge(selectedProfile.ProfileStatus)}
+                  {getVisibilityBadge(fullProfileData?.IsVisible ?? selectedProfile.IsVisible)}
                 </div>
               </div>
               <button className="close-btn" onClick={() => setSelectedProfile(null)}>
@@ -774,7 +864,7 @@ const VendorApprovalsPanel = () => {
                       </div>
 
                       {/* Rejection Reason */}
-                      {selectedProfile.ProfileStatus === 'pending_review' && (
+                      {(selectedProfile.ProfileStatus === 'pending_review' || selectedProfile.ProfileStatus === 'Pending') && (
                         <div className="review-section rejection-section">
                           <h3><i className="fas fa-exclamation-triangle"></i> Rejection Reason (Required for rejection)</h3>
                           <textarea
@@ -788,7 +878,7 @@ const VendorApprovalsPanel = () => {
 
                       {/* Action Buttons */}
                       <div className="action-buttons-section">
-                        {selectedProfile.ProfileStatus === 'pending_review' ? (
+                        {(selectedProfile.ProfileStatus === 'pending_review' || selectedProfile.ProfileStatus === 'Pending') ? (
                           <>
                             <button 
                               className="btn-danger btn-large"
@@ -804,13 +894,47 @@ const VendorApprovalsPanel = () => {
                               disabled={actionLoading}
                             >
                               {actionLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check"></i>}
-                              Approve Vendor
+                              Approve & Make Visible
                             </button>
                           </>
+                        ) : (selectedProfile.ProfileStatus === 'approved' || selectedProfile.ProfileStatus === 'Approved') ? (
+                          <div className="approved-actions">
+                            <div className="visibility-control">
+                              <h4><i className="fas fa-eye"></i> Visibility Control</h4>
+                              <p>Control whether this vendor appears on the main page.</p>
+                              <div className="visibility-buttons">
+                                <button 
+                                  className={(fullProfileData?.IsVisible ?? selectedProfile.IsVisible) ? 'btn-warning btn-large' : 'btn-success btn-large'}
+                                  onClick={() => handleToggleVisibility(selectedProfile.VendorProfileID, fullProfileData?.IsVisible ?? selectedProfile.IsVisible)}
+                                  disabled={actionLoading}
+                                >
+                                  {actionLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className={`fas ${(fullProfileData?.IsVisible ?? selectedProfile.IsVisible) ? 'fa-eye-slash' : 'fa-eye'}`}></i>}
+                                  {(fullProfileData?.IsVisible ?? selectedProfile.IsVisible) ? ' Hide from Platform' : ' Show on Platform'}
+                                </button>
+                                <button 
+                                  className="btn-danger btn-large"
+                                  onClick={() => handleSuspend(selectedProfile.VendorProfileID)}
+                                  disabled={actionLoading}
+                                >
+                                  {actionLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-ban"></i>}
+                                  Suspend Vendor
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         ) : (
                           <div className="already-reviewed">
-                            <i className={`fas ${selectedProfile.ProfileStatus === 'approved' ? 'fa-check-circle' : 'fa-times-circle'}`}></i>
-                            <p>This vendor has already been {selectedProfile.ProfileStatus === 'approved' ? 'approved' : 'rejected'}</p>
+                            <i className="fas fa-times-circle"></i>
+                            <p>This vendor has been {selectedProfile.ProfileStatus === 'Rejected' || selectedProfile.ProfileStatus === 'rejected' ? 'rejected' : 'suspended'}</p>
+                            <button 
+                              className="btn-success btn-large"
+                              onClick={() => handleApprove(selectedProfile.VendorProfileID)}
+                              disabled={actionLoading}
+                              style={{ marginTop: '1rem' }}
+                            >
+                              {actionLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check"></i>}
+                              Re-approve & Make Visible
+                            </button>
                           </div>
                         )}
                       </div>

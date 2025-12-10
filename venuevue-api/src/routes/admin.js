@@ -776,77 +776,80 @@ router.get('/users/:id/activity', async (req, res) => {
 
 // ==================== BOOKING MANAGEMENT ====================
 
-// GET /admin/bookings - Get all bookings with filters
+// GET /admin/bookings - Get ALL bookings for ALL users and vendors
+// Uses vw_UserBookings view (same as sp_GetUserBookingsAll used by dashboard)
 router.get('/bookings', async (req, res) => {
   try {
     const { status, startDate, endDate, search, page = 1, limit = 20 } = req.query;
     const pool = await getPool();
     const offset = (page - 1) * limit;
     
-    let whereClause = '1=1';
+    // Build WHERE clause dynamically
+    let whereConditions = ['1=1'];
+    
     if (status && status !== 'all') {
-      // Handle case-insensitive status matching
-      const statusMap = {
-        'pending': 'Pending',
-        'confirmed': 'Confirmed',
-        'completed': 'Completed',
-        'cancelled': 'Cancelled',
-        'disputed': 'Disputed'
-      };
-      const dbStatus = statusMap[status.toLowerCase()] || status;
-      whereClause += ` AND b.Status = '${dbStatus}'`;
+      // Capitalize first letter to match database status values
+      const statusValue = status.charAt(0).toUpperCase() + status.slice(1);
+      whereConditions.push(`Status = '${statusValue}'`);
     }
     if (startDate) {
-      whereClause += ` AND b.EventDate >= @startDate`;
+      whereConditions.push(`EventDate >= '${startDate}'`);
     }
     if (endDate) {
-      whereClause += ` AND b.EventDate <= @endDate`;
+      whereConditions.push(`EventDate <= '${endDate}'`);
     }
     if (search) {
-      whereClause += ` AND (CAST(b.BookingID as NVARCHAR) LIKE @search OR vp.BusinessName LIKE @search OR u.Name LIKE @search)`;
+      whereConditions.push(`(CAST(BookingID as NVARCHAR) LIKE '%${search}%' OR VendorName LIKE '%${search}%')`);
     }
     
+    const whereClause = whereConditions.join(' AND ');
+    
+    // Use the vw_UserBookings view - same as dashboard uses via sp_GetUserBookingsAll
+    // But without the UserID filter to get ALL bookings
     const result = await pool.request()
-      .input('startDate', sql.Date, startDate || null)
-      .input('endDate', sql.Date, endDate || null)
-      .input('search', sql.NVarChar, `%${search || ''}%`)
       .input('offset', sql.Int, offset)
       .input('limit', sql.Int, parseInt(limit))
       .query(`
         SELECT 
-          b.BookingID,
-          b.EventDate as BookingDate,
-          b.StartTime,
-          b.EndTime,
-          b.Status,
-          b.TotalAmount,
-          b.CreatedAt,
-          u.Name as ClientName,
-          u.Email as ClientEmail,
-          vp.BusinessName as VendorName,
-          vp.VendorProfileID,
-          vu.Email as VendorEmail,
-          b.ServiceName
-        FROM Bookings b
-        LEFT JOIN Users u ON b.UserID = u.UserID
-        LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-        LEFT JOIN Users vu ON vp.UserID = vu.UserID
+          BookingID,
+          UserID,
+          VendorProfileID,
+          VendorName,
+          ServiceID,
+          ServiceName,
+          ServiceCategory,
+          EventDate,
+          EndDate,
+          Status,
+          TotalAmount,
+          DepositAmount,
+          DepositPaid,
+          FullAmountPaid,
+          AttendeeCount,
+          SpecialRequests,
+          EventLocation,
+          EventName,
+          EventType,
+          TimeZone,
+          CreatedAt,
+          UpdatedAt,
+          ServiceImage,
+          ConversationID,
+          UnreadMessages
+        FROM vw_UserBookings
         WHERE ${whereClause}
-        ORDER BY b.CreatedAt DESC
+        ORDER BY EventDate DESC
         OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
       `);
     
     const countResult = await pool.request()
-      .input('status', sql.NVarChar, status)
-      .input('startDate', sql.Date, startDate || null)
-      .input('endDate', sql.Date, endDate || null)
-      .input('search', sql.NVarChar, `%${search || ''}%`)
       .query(`
         SELECT COUNT(*) as total
-        FROM Bookings b
-        LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+        FROM vw_UserBookings
         WHERE ${whereClause}
       `);
+    
+    console.log(`Admin: Fetched ${result.recordset.length} bookings out of ${countResult.recordset[0].total} total from vw_UserBookings`);
     
     res.json({
       bookings: result.recordset,
@@ -855,7 +858,7 @@ router.get('/bookings', async (req, res) => {
       limit: parseInt(limit)
     });
   } catch (error) {
-    console.error('Error fetching bookings:', error);
+    console.error('Error fetching admin bookings:', error);
     res.status(500).json({ error: 'Failed to fetch bookings', details: error.message });
   }
 });
@@ -1058,6 +1061,29 @@ router.post('/reviews/:id/unflag', async (req, res) => {
   } catch (error) {
     console.error('Error unflagging review:', error);
     res.status(500).json({ error: 'Failed to unflag review' });
+  }
+});
+
+// POST /admin/reviews/:id/note - Add admin note to review
+router.post('/reviews/:id/note', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { note } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('note', sql.NVarChar, note)
+      .query(`
+        UPDATE Reviews 
+        SET AdminNotes = @note
+        WHERE ReviewID = @id
+      `);
+    
+    res.json({ success: true, message: 'Note saved' });
+  } catch (error) {
+    console.error('Error saving note:', error);
+    res.status(500).json({ error: 'Failed to save note' });
   }
 });
 
@@ -1467,6 +1493,170 @@ router.get('/security/logs', async (req, res) => {
   }
 });
 
+// ==================== CHAT OVERSIGHT ====================
+
+// GET /admin/chats - Get ALL conversations for ALL users and vendors
+router.get('/chats', async (req, res) => {
+  try {
+    const { filter = 'all', page = 1, limit = 20, search = '' } = req.query;
+    const pool = await getPool();
+    const offset = (page - 1) * limit;
+    
+    // Get ALL conversations from Conversations table joined with Messages
+    const result = await pool.request()
+      .input('search', sql.NVarChar, `%${search}%`)
+      .input('offset', sql.Int, offset)
+      .input('limit', sql.Int, parseInt(limit))
+      .query(`
+        SELECT 
+          c.ConversationID,
+          c.UserID,
+          c.VendorProfileID,
+          c.CreatedAt,
+          u.UserID as ClientID,
+          ISNULL(u.Name, 'Unknown Client') as ClientName,
+          ISNULL(u.Email, 'No Email') as ClientEmail,
+          vp.VendorProfileID,
+          ISNULL(vp.BusinessName, 'Unknown Vendor') as VendorName,
+          ISNULL(vu.Email, 'No Email') as VendorEmail,
+          ISNULL(vu.Name, 'Unknown Owner') as VendorOwnerName,
+          ISNULL((SELECT TOP 1 Content FROM Messages WHERE ConversationID = c.ConversationID ORDER BY CreatedAt DESC), 'No messages') as LastMessage,
+          (SELECT TOP 1 CreatedAt FROM Messages WHERE ConversationID = c.ConversationID ORDER BY CreatedAt DESC) as LastMessageAt,
+          ISNULL((SELECT COUNT(*) FROM Messages WHERE ConversationID = c.ConversationID), 0) as MessageCount,
+          ISNULL((SELECT COUNT(*) FROM Messages WHERE ConversationID = c.ConversationID AND IsRead = 0), 0) as UnreadCount,
+          0 as IsFlagged
+        FROM Conversations c
+        LEFT JOIN Users u ON c.UserID = u.UserID
+        LEFT JOIN VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID
+        LEFT JOIN Users vu ON vp.UserID = vu.UserID
+        WHERE (u.Name LIKE @search OR vp.BusinessName LIKE @search OR u.Email LIKE @search OR @search = '%%')
+        ORDER BY ISNULL((SELECT TOP 1 CreatedAt FROM Messages WHERE ConversationID = c.ConversationID ORDER BY CreatedAt DESC), c.CreatedAt) DESC
+        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      `);
+    
+    const countResult = await pool.request().query(`
+      SELECT COUNT(*) as total FROM Conversations
+    `);
+    
+    console.log(`Admin: Fetched ${result.recordset.length} conversations out of ${countResult.recordset[0].total} total`);
+    
+    res.json({
+      conversations: result.recordset,
+      total: countResult.recordset[0].total,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+  } catch (error) {
+    console.error('Error fetching admin conversations:', error);
+    res.status(500).json({ error: 'Failed to fetch conversations', details: error.message });
+  }
+});
+
+// GET /admin/chats/:id/messages - Get messages for a conversation
+router.get('/chats/:id/messages', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('conversationId', sql.Int, id)
+      .query(`
+        SELECT 
+          m.MessageID,
+          m.ConversationID,
+          m.SenderID,
+          m.Content,
+          m.CreatedAt,
+          m.IsRead,
+          u.Name as SenderName,
+          CASE WHEN u.IsVendor = 1 THEN 'vendor' ELSE 'client' END as SenderType,
+          0 as IsFlagged,
+          0 as IsSystem,
+          0 as IsAdminNote
+        FROM Messages m
+        LEFT JOIN Users u ON m.SenderID = u.UserID
+        WHERE m.ConversationID = @conversationId
+        ORDER BY m.CreatedAt ASC
+      `);
+    
+    res.json({ messages: result.recordset });
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
+  }
+});
+
+// POST /admin/chats/:id/system-message - Send system message
+router.post('/chats/:id/system-message', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+    const pool = await getPool();
+    
+    // Insert system message (use admin user ID or 0 for system)
+    await pool.request()
+      .input('conversationId', sql.Int, id)
+      .input('message', sql.NVarChar, message)
+      .query(`
+        INSERT INTO Messages (ConversationID, SenderID, Content, SentAt, IsRead)
+        VALUES (@conversationId, 0, '[SYSTEM] ' + @message, GETDATE(), 0)
+      `);
+    
+    res.json({ success: true, message: 'System message sent' });
+  } catch (error) {
+    console.error('Error sending system message:', error);
+    res.status(500).json({ error: 'Failed to send system message' });
+  }
+});
+
+// POST /admin/chats/:id/notes - Add admin note to conversation
+router.post('/chats/:id/notes', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { note } = req.body;
+    const pool = await getPool();
+    
+    // Insert admin note
+    await pool.request()
+      .input('conversationId', sql.Int, id)
+      .input('note', sql.NVarChar, note)
+      .query(`
+        INSERT INTO Messages (ConversationID, SenderID, Content, SentAt, IsRead)
+        VALUES (@conversationId, 0, '[ADMIN NOTE] ' + @note, GETDATE(), 1)
+      `);
+    
+    res.json({ success: true, message: 'Note added' });
+  } catch (error) {
+    console.error('Error adding note:', error);
+    res.status(500).json({ error: 'Failed to add note' });
+  }
+});
+
+// POST /admin/chats/messages/:id/flag - Flag a message
+router.post('/chats/messages/:id/flag', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+    // For now, just return success - can add IsFlagged column to Messages table later
+    res.json({ success: true, message: 'Message flagged' });
+  } catch (error) {
+    console.error('Error flagging message:', error);
+    res.status(500).json({ error: 'Failed to flag message' });
+  }
+});
+
+// POST /admin/chats/:id/flag - Flag a conversation
+router.post('/chats/:id/flag', async (req, res) => {
+  try {
+    const { id } = req.params;
+    // For now, just return success - can add IsFlagged tracking later
+    res.json({ success: true, message: 'Conversation flagged' });
+  } catch (error) {
+    console.error('Error flagging conversation:', error);
+    res.status(500).json({ error: 'Failed to flag conversation' });
+  }
+});
+
 // ==================== SUPPORT TOOLS ====================
 
 // GET /admin/support/search - Search users/vendors
@@ -1514,11 +1704,242 @@ router.get('/content/:type', async (req, res) => {
 // GET /admin/notifications/templates - Get notification templates
 router.get('/notifications/templates', async (req, res) => {
   try {
-    // Return default templates
-    res.json({ templates: [] });
+    // Return default email templates with sample content
+    const templates = [
+      {
+        id: 1,
+        name: 'Booking Confirmation',
+        category: 'booking',
+        type: 'email',
+        subject: 'Your booking is confirmed!',
+        body: `
+          <h2>Booking Confirmed!</h2>
+          <p>Hi {{user_name}},</p>
+          <p>Your booking with {{vendor_name}} has been confirmed for {{booking_date}} at {{booking_time}}.</p>
+          <p><strong>Total Amount:</strong> ${{amount}}</p>
+          <p>Thank you for using PlanHive!</p>
+        `
+      },
+      {
+        id: 2,
+        name: 'Booking Reminder',
+        category: 'booking',
+        type: 'email',
+        subject: 'Reminder: Your booking is tomorrow',
+        body: `
+          <h2>Booking Reminder</h2>
+          <p>Hi {{user_name}},</p>
+          <p>This is a reminder that your booking with {{vendor_name}} is scheduled for tomorrow at {{booking_time}}.</p>
+          <p>We hope you have a great experience!</p>
+        `
+      },
+      {
+        id: 3,
+        name: 'Booking Cancelled',
+        category: 'booking',
+        type: 'email',
+        subject: 'Your booking has been cancelled',
+        body: `
+          <h2>Booking Cancelled</h2>
+          <p>Hi {{user_name}},</p>
+          <p>Your booking with {{vendor_name}} for {{booking_date}} has been cancelled.</p>
+          <p>If you have any questions, please contact us.</p>
+        `
+      },
+      {
+        id: 4,
+        name: 'Payment Received',
+        category: 'payment',
+        type: 'email',
+        subject: 'Payment received - Thank you!',
+        body: `
+          <h2>Payment Received</h2>
+          <p>Hi {{user_name}},</p>
+          <p>We have received your payment of ${{amount}} for booking #{{booking_id}}.</p>
+          <p>Thank you for your business!</p>
+        `
+      },
+      {
+        id: 5,
+        name: 'Payment Failed',
+        category: 'payment',
+        type: 'email',
+        subject: 'Payment failed - Action required',
+        body: `
+          <h2>Payment Failed</h2>
+          <p>Hi {{user_name}},</p>
+          <p>Unfortunately, your payment of ${{amount}} could not be processed.</p>
+          <p>Please update your payment method to complete your booking.</p>
+        `
+      },
+      {
+        id: 6,
+        name: 'Vendor Approved',
+        category: 'vendor',
+        type: 'email',
+        subject: 'Congratulations! Your profile is approved',
+        body: `
+          <h2>Profile Approved!</h2>
+          <p>Hi {{vendor_name}},</p>
+          <p>Congratulations! Your vendor profile has been approved and is now live on PlanHive.</p>
+          <p>You can start receiving bookings right away!</p>
+        `
+      },
+      {
+        id: 7,
+        name: 'Vendor Rejected',
+        category: 'vendor',
+        type: 'email',
+        subject: 'Profile review update',
+        body: `
+          <h2>Profile Review Update</h2>
+          <p>Hi {{vendor_name}},</p>
+          <p>Thank you for your interest in PlanHive. Unfortunately, we are unable to approve your profile at this time.</p>
+          <p>Please contact us if you have any questions.</p>
+        `
+      },
+      {
+        id: 8,
+        name: 'Welcome Email',
+        category: 'user',
+        type: 'email',
+        subject: 'Welcome to PlanHive!',
+        body: `
+          <h2>Welcome to PlanHive!</h2>
+          <p>Hi {{user_name}},</p>
+          <p>Thank you for joining PlanHive. We're excited to help you plan your perfect event!</p>
+          <p>Start browsing vendors and book your first service today.</p>
+        `
+      },
+      {
+        id: 9,
+        name: 'Password Reset',
+        category: 'user',
+        type: 'email',
+        subject: 'Reset your password',
+        body: `
+          <h2>Password Reset Request</h2>
+          <p>Hi {{user_name}},</p>
+          <p>We received a request to reset your password. Click the link below to create a new password:</p>
+          <p><a href="{{reset_link}}">Reset Password</a></p>
+          <p>If you didn't request this, please ignore this email.</p>
+        `
+      },
+      {
+        id: 10,
+        name: 'Review Request',
+        category: 'review',
+        type: 'email',
+        subject: 'How was your experience?',
+        body: `
+          <h2>Share Your Experience</h2>
+          <p>Hi {{user_name}},</p>
+          <p>We hope you had a great experience with {{vendor_name}}!</p>
+          <p>Would you mind taking a moment to leave a review?</p>
+          <p><a href="{{review_link}}">Leave a Review</a></p>
+        `
+      }
+    ];
+    
+    res.json({ templates });
   } catch (error) {
     console.error('Error fetching templates:', error);
     res.status(500).json({ error: 'Failed to fetch templates' });
+  }
+});
+
+// PUT /admin/notifications/templates/:id - Update template
+router.put('/notifications/templates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, subject, body } = req.body;
+    // In a real implementation, save to database
+    res.json({ success: true, message: 'Template updated' });
+  } catch (error) {
+    console.error('Error updating template:', error);
+    res.status(500).json({ error: 'Failed to update template' });
+  }
+});
+
+// POST /admin/notifications/send - Send notification
+router.post('/notifications/send', async (req, res) => {
+  try {
+    const { type, recipientType, subject, message } = req.body;
+    const pool = await getPool();
+    
+    // Get recipients based on type
+    let recipients = [];
+    if (recipientType === 'all') {
+      const result = await pool.request().query(`SELECT Email FROM Users WHERE IsActive = 1`);
+      recipients = result.recordset.map(r => r.Email);
+    } else if (recipientType === 'vendors') {
+      const result = await pool.request().query(`
+        SELECT u.Email FROM Users u 
+        WHERE u.IsVendor = 1 AND u.IsActive = 1
+      `);
+      recipients = result.recordset.map(r => r.Email);
+    } else if (recipientType === 'clients') {
+      const result = await pool.request().query(`
+        SELECT u.Email FROM Users u 
+        WHERE u.IsVendor = 0 AND u.IsActive = 1
+      `);
+      recipients = result.recordset.map(r => r.Email);
+    }
+    
+    // Log notification (in real implementation, send actual emails)
+    console.log(`Sending ${type} notification to ${recipients.length} recipients`);
+    console.log(`Subject: ${subject}`);
+    console.log(`Message: ${message}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Notification queued for ${recipients.length} recipients`,
+      recipientCount: recipients.length
+    });
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    res.status(500).json({ error: 'Failed to send notification' });
+  }
+});
+
+// POST /admin/notifications/preview - Preview notification
+router.post('/notifications/preview', async (req, res) => {
+  try {
+    const { subject, body, variables } = req.body;
+    
+    // Replace variables in template
+    let previewBody = body;
+    if (variables) {
+      Object.keys(variables).forEach(key => {
+        const regex = new RegExp(`{{${key}}}`, 'g');
+        previewBody = previewBody.replace(regex, variables[key]);
+      });
+    }
+    
+    res.json({
+      subject,
+      body: previewBody,
+      preview: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+            h2 { color: #007bff; }
+            a { color: #007bff; text-decoration: none; }
+          </style>
+        </head>
+        <body>
+          ${previewBody}
+          <hr style="margin-top: 30px; border: none; border-top: 1px solid #ddd;">
+          <p style="color: #666; font-size: 12px;">This is a preview of the email that will be sent.</p>
+        </body>
+        </html>
+      `
+    });
+  } catch (error) {
+    console.error('Error generating preview:', error);
+    res.status(500).json({ error: 'Failed to generate preview' });
   }
 });
 
@@ -1543,6 +1964,411 @@ router.put('/settings', async (req, res) => {
   } catch (error) {
     console.error('Error saving settings:', error);
     res.status(500).json({ error: 'Failed to save settings' });
+  }
+});
+
+// POST /admin/settings/maintenance - Toggle maintenance mode
+router.post('/settings/maintenance', async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    // In production, this would update a settings table or environment variable
+    console.log(`Maintenance mode ${enabled ? 'enabled' : 'disabled'}`);
+    res.json({ success: true, message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'}` });
+  } catch (error) {
+    console.error('Error toggling maintenance mode:', error);
+    res.status(500).json({ error: 'Failed to toggle maintenance mode' });
+  }
+});
+
+// ==================== BOOKING REFUNDS & DISPUTES ====================
+
+// POST /admin/bookings/:id/refund - Process refund for a booking
+router.post('/bookings/:id/refund', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, reason } = req.body;
+    const pool = await getPool();
+    
+    // Get booking details
+    const bookingResult = await pool.request()
+      .input('id', sql.Int, id)
+      .query(`SELECT * FROM Bookings WHERE BookingID = @id`);
+    
+    if (bookingResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    const booking = bookingResult.recordset[0];
+    
+    // Update booking status and record refund
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('refundAmount', sql.Decimal(10,2), amount)
+      .input('reason', sql.NVarChar, reason)
+      .query(`
+        UPDATE Bookings 
+        SET Status = 'Refunded',
+            RefundAmount = @refundAmount,
+            RefundReason = @reason,
+            RefundedAt = GETDATE(),
+            UpdatedAt = GETDATE()
+        WHERE BookingID = @id
+      `);
+    
+    // Log the refund action
+    console.log(`Refund processed: Booking #${id}, Amount: $${amount}, Reason: ${reason}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Refund of $${amount} processed for booking #${id}`,
+      refundAmount: amount
+    });
+  } catch (error) {
+    console.error('Error processing refund:', error);
+    res.status(500).json({ error: 'Failed to process refund', details: error.message });
+  }
+});
+
+// POST /admin/bookings/:id/resolve-dispute - Resolve a booking dispute
+router.post('/bookings/:id/resolve-dispute', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { resolution, action } = req.body;
+    const pool = await getPool();
+    
+    let newStatus = 'Completed';
+    let refundAmount = 0;
+    
+    // Get booking details
+    const bookingResult = await pool.request()
+      .input('id', sql.Int, id)
+      .query(`SELECT * FROM Bookings WHERE BookingID = @id`);
+    
+    if (bookingResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    
+    const booking = bookingResult.recordset[0];
+    
+    // Determine action based on resolution type
+    switch (action) {
+      case 'refund_client':
+        newStatus = 'Refunded';
+        refundAmount = booking.TotalAmount;
+        break;
+      case 'partial_refund':
+        newStatus = 'Partially Refunded';
+        refundAmount = booking.TotalAmount * 0.5; // 50% refund
+        break;
+      case 'favor_vendor':
+        newStatus = 'Completed';
+        break;
+      case 'split':
+        newStatus = 'Partially Refunded';
+        refundAmount = booking.TotalAmount * 0.5;
+        break;
+      default:
+        newStatus = 'Completed';
+    }
+    
+    // Update booking
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('status', sql.NVarChar, newStatus)
+      .input('refundAmount', sql.Decimal(10,2), refundAmount)
+      .input('resolution', sql.NVarChar, resolution)
+      .query(`
+        UPDATE Bookings 
+        SET Status = @status,
+            RefundAmount = @refundAmount,
+            DisputeResolution = @resolution,
+            DisputeResolvedAt = GETDATE(),
+            UpdatedAt = GETDATE()
+        WHERE BookingID = @id
+      `);
+    
+    res.json({ 
+      success: true, 
+      message: 'Dispute resolved successfully',
+      newStatus,
+      refundAmount
+    });
+  } catch (error) {
+    console.error('Error resolving dispute:', error);
+    res.status(500).json({ error: 'Failed to resolve dispute', details: error.message });
+  }
+});
+
+// GET /admin/bookings/export - Export bookings to CSV
+router.get('/bookings/export', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const pool = await getPool();
+    
+    let whereClause = '1=1';
+    if (status && status !== 'all') {
+      whereClause = `b.Status = '${status}'`;
+    }
+    
+    const result = await pool.request().query(`
+      SELECT 
+        b.BookingID,
+        u.Name as ClientName,
+        u.Email as ClientEmail,
+        vp.BusinessName as VendorName,
+        b.EventDate,
+        b.StartTime,
+        b.EndTime,
+        b.TotalAmount,
+        b.DepositAmount,
+        b.Status,
+        b.CreatedAt
+      FROM Bookings b
+      LEFT JOIN Users u ON b.UserID = u.UserID
+      LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+      WHERE ${whereClause}
+      ORDER BY b.CreatedAt DESC
+    `);
+    
+    // Convert to CSV
+    const bookings = result.recordset;
+    if (bookings.length === 0) {
+      return res.status(404).json({ error: 'No bookings to export' });
+    }
+    
+    const headers = Object.keys(bookings[0]).join(',');
+    const rows = bookings.map(b => Object.values(b).map(v => `"${v || ''}"`).join(','));
+    const csv = [headers, ...rows].join('\n');
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=bookings-${status || 'all'}-${new Date().toISOString().split('T')[0]}.csv`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Error exporting bookings:', error);
+    res.status(500).json({ error: 'Failed to export bookings', details: error.message });
+  }
+});
+
+// ==================== CATEGORY SERVICES ====================
+
+// POST /admin/categories/:id/visibility - Toggle category visibility
+router.post('/categories/:id/visibility', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { visible } = req.body;
+    // Since categories are stored in VendorCategories, we'll just return success
+    // In a full implementation, you'd have a Categories table with IsVisible column
+    res.json({ success: true, message: `Category visibility updated to ${visible}` });
+  } catch (error) {
+    console.error('Error updating category visibility:', error);
+    res.status(500).json({ error: 'Failed to update visibility' });
+  }
+});
+
+// GET /admin/categories/:id/services - Get service templates for a category
+router.get('/categories/:id/services', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    // Get services associated with this category
+    const result = await pool.request()
+      .input('categoryId', sql.Int, id)
+      .query(`
+        SELECT DISTINCT
+          vs.ServiceID,
+          vs.ServiceName,
+          vs.ServiceDescription as Description,
+          vs.Price as DefaultPrice,
+          vs.DurationMinutes,
+          vc.Category as CategoryName
+        FROM VendorServices vs
+        JOIN VendorCategories vc ON vs.VendorProfileID = vc.VendorProfileID
+        WHERE vc.Category = (
+          SELECT TOP 1 Category FROM VendorCategories 
+          WHERE VendorProfileID = @categoryId OR Category LIKE '%' + CAST(@categoryId as NVARCHAR) + '%'
+        )
+        ORDER BY vs.ServiceName
+      `);
+    
+    res.json({ services: result.recordset });
+  } catch (error) {
+    console.error('Error fetching category services:', error);
+    res.status(500).json({ error: 'Failed to fetch services', details: error.message });
+  }
+});
+
+// POST /admin/categories/:id/services - Add service template to category
+router.post('/categories/:id/services', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, defaultPrice } = req.body;
+    
+    // In a full implementation, you'd have a ServiceTemplates table
+    // For now, we'll just return success
+    res.json({ 
+      success: true, 
+      message: 'Service template added',
+      service: { name, description, defaultPrice }
+    });
+  } catch (error) {
+    console.error('Error adding service template:', error);
+    res.status(500).json({ error: 'Failed to add service template' });
+  }
+});
+
+// DELETE /admin/services/:id - Delete a service template
+router.delete('/services/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('id', sql.Int, id)
+      .query(`DELETE FROM VendorServices WHERE ServiceID = @id`);
+    
+    res.json({ success: true, message: 'Service deleted' });
+  } catch (error) {
+    console.error('Error deleting service:', error);
+    res.status(500).json({ error: 'Failed to delete service' });
+  }
+});
+
+// ==================== PAYMENT OPERATIONS ====================
+
+// POST /admin/payments/manual-payout - Process manual payout to vendor
+router.post('/payments/manual-payout', async (req, res) => {
+  try {
+    const { vendorId, amount } = req.body;
+    const pool = await getPool();
+    
+    // Get vendor details
+    const vendorResult = await pool.request()
+      .input('vendorId', sql.Int, vendorId)
+      .query(`
+        SELECT vp.BusinessName, vp.StripeAccountId, u.Email
+        FROM VendorProfiles vp
+        LEFT JOIN Users u ON vp.UserID = u.UserID
+        WHERE vp.VendorProfileID = @vendorId
+      `);
+    
+    if (vendorResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+    
+    const vendor = vendorResult.recordset[0];
+    
+    // Log the payout (in production, this would integrate with Stripe)
+    console.log(`Manual payout initiated: Vendor ${vendor.BusinessName}, Amount: $${amount}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Payout of $${amount} initiated for ${vendor.BusinessName}`,
+      vendorName: vendor.BusinessName,
+      amount
+    });
+  } catch (error) {
+    console.error('Error processing manual payout:', error);
+    res.status(500).json({ error: 'Failed to process payout', details: error.message });
+  }
+});
+
+// POST /admin/payments/refund - Process refund for a transaction
+router.post('/payments/refund', async (req, res) => {
+  try {
+    const { transactionId, amount, reason } = req.body;
+    const pool = await getPool();
+    
+    // Get booking/transaction details
+    const bookingResult = await pool.request()
+      .input('id', sql.Int, transactionId)
+      .query(`SELECT * FROM Bookings WHERE BookingID = @id`);
+    
+    if (bookingResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+    
+    // Update booking with refund info
+    await pool.request()
+      .input('id', sql.Int, transactionId)
+      .input('refundAmount', sql.Decimal(10,2), amount)
+      .input('reason', sql.NVarChar, reason)
+      .query(`
+        UPDATE Bookings 
+        SET Status = 'Refunded',
+            RefundAmount = @refundAmount,
+            RefundReason = @reason,
+            RefundedAt = GETDATE(),
+            UpdatedAt = GETDATE()
+        WHERE BookingID = @id
+      `);
+    
+    res.json({ 
+      success: true, 
+      message: `Refund of $${amount} processed`,
+      refundAmount: amount
+    });
+  } catch (error) {
+    console.error('Error processing refund:', error);
+    res.status(500).json({ error: 'Failed to process refund', details: error.message });
+  }
+});
+
+// ==================== ANALYTICS EXTENDED ====================
+
+// GET /admin/analytics/revenue - Get revenue analytics
+router.get('/analytics/revenue', async (req, res) => {
+  try {
+    const { range = '30d' } = req.query;
+    const pool = await getPool();
+    
+    let dateFilter;
+    switch (range) {
+      case '7d': dateFilter = 'DATEADD(day, -7, GETDATE())'; break;
+      case '90d': dateFilter = 'DATEADD(day, -90, GETDATE())'; break;
+      case '1y': dateFilter = 'DATEADD(year, -1, GETDATE())'; break;
+      default: dateFilter = 'DATEADD(day, -30, GETDATE())';
+    }
+    
+    // Daily revenue for the period
+    const dailyRevenue = await pool.request().query(`
+      SELECT 
+        CAST(CreatedAt as DATE) as date,
+        COUNT(*) as bookings,
+        ISNULL(SUM(TotalAmount), 0) as revenue,
+        ISNULL(SUM(TotalAmount * 0.1), 0) as platformFees
+      FROM Bookings
+      WHERE CreatedAt >= ${dateFilter}
+      GROUP BY CAST(CreatedAt as DATE)
+      ORDER BY date
+    `);
+    
+    res.json({ dailyRevenue: dailyRevenue.recordset });
+  } catch (error) {
+    console.error('Error fetching revenue analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics', details: error.message });
+  }
+});
+
+// GET /admin/analytics/users - Get user analytics
+router.get('/analytics/users', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const result = await pool.request().query(`
+      SELECT
+        (SELECT COUNT(*) FROM Users) as totalUsers,
+        (SELECT COUNT(*) FROM Users WHERE IsVendor = 1) as totalVendors,
+        (SELECT COUNT(*) FROM Users WHERE IsVendor = 0) as totalClients,
+        (SELECT COUNT(*) FROM Users WHERE CreatedAt >= DATEADD(day, -7, GETDATE())) as newUsersThisWeek,
+        (SELECT COUNT(*) FROM Users WHERE CreatedAt >= DATEADD(day, -30, GETDATE())) as newUsersThisMonth,
+        (SELECT COUNT(*) FROM Users WHERE LastLogin >= DATEADD(day, -7, GETDATE())) as activeUsersThisWeek
+    `);
+    
+    res.json(result.recordset[0]);
+  } catch (error) {
+    console.error('Error fetching user analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics', details: error.message });
   }
 });
 

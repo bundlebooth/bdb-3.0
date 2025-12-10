@@ -12,6 +12,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
     state: '',
     postalCode: '',
     country: '',
+    latitude: null,
+    longitude: null,
     serviceAreas: []
   });
   
@@ -28,6 +30,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
       state: '',
       postalCode: '',
       country: '',
+      latitude: null,
+      longitude: null,
       serviceAreas: []
     });
     setServiceAreaInput('');
@@ -103,13 +107,21 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           postalCode: pick('postal_code')
         });
         
+        const loc = place.geometry?.location;
+        const latitude = loc ? (typeof loc.lat === 'function' ? loc.lat() : loc.lat) : null;
+        const longitude = loc ? (typeof loc.lng === 'function' ? loc.lng() : loc.lng) : null;
+        
+        console.log('📍 Address coordinates:', { latitude, longitude });
+        
         setFormData(prev => ({
           ...prev,
           address: fullAddress || '',
           city: pick('locality') || pick('sublocality') || pick('postal_town') || pick('administrative_area_level_3') || '',
           state: pick('administrative_area_level_1') || '',
           country: pick('country') || 'Canada',
-          postalCode: pick('postal_code') || ''
+          postalCode: pick('postal_code') || '',
+          latitude,
+          longitude
         }));
 
         console.log('✅ Address fields updated!');
@@ -271,6 +283,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
         state: formData.state.trim(),
         country: formData.country.trim(),
         postalCode: formData.postalCode.trim(),
+        latitude: formData.latitude,
+        longitude: formData.longitude,
         serviceAreas: formData.serviceAreas
       };
       
@@ -341,9 +355,6 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   placeholder="Start typing your address..."
                 />
-                <small style={{ color: 'var(--text-light)', fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
-                  🔥 Google Maps will auto-complete your address
-                </small>
               </div>
             </div>
             <div className="form-col">

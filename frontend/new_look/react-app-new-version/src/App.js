@@ -4,7 +4,6 @@ import IndexPage from './pages/IndexPage';
 import VendorProfilePage from './pages/VendorProfilePage';
 import BookingPage from './pages/BookingPage';
 import BecomeVendorPage from './pages/BecomeVendorPage';
-import AdminReviewPage from './pages/AdminReviewPage';
 import AdminDashboard from './pages/AdminDashboard';
 import { AuthProvider } from './context/AuthContext';
 import './styles/MapControls.css';
@@ -46,7 +45,6 @@ function App() {
           <Route path="/vendor/:vendorSlug" element={<VendorProfilePage />} />
           <Route path="/booking/:vendorSlug" element={<BookingPage />} />
           <Route path="/become-a-vendor" element={<BecomeVendorPage />} />
-          <Route path="/admin/reviews" element={<AdminReviewPage />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

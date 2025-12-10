@@ -5,7 +5,7 @@ import { showBanner } from '../../utils/helpers';
 const VendorManagementPanel = () => {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all'); // all, pending, approved, rejected, suspended
+  const [filter, setFilter] = useState('all'); // all, pending, approved, rejected, suspended, visible, hidden
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [modalType, setModalType] = useState(null); // 'view', 'edit', 'reject', 'analytics'
@@ -44,7 +44,7 @@ const VendorManagementPanel = () => {
   const handleApprove = async (vendorId) => {
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendors/admin/${vendorId}/approve`, {
+      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -53,7 +53,7 @@ const VendorManagementPanel = () => {
       });
 
       if (response.ok) {
-        showBanner('Vendor approved successfully', 'success');
+        showBanner('Vendor approved and now visible on platform!', 'success');
         fetchVendors();
         setSelectedVendor(null);
         setModalType(null);
@@ -68,17 +68,17 @@ const VendorManagementPanel = () => {
   const handleReject = async (vendorId, reason) => {
     try {
       setActionLoading(true);
-      const response = await fetch(`${API_BASE_URL}/vendors/admin/${vendorId}/reject`, {
+      const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ rejectionReason: reason })
+        body: JSON.stringify({ reason: reason })
       });
 
       if (response.ok) {
-        showBanner('Vendor rejected', 'success');
+        showBanner('Vendor rejected and hidden from platform', 'success');
         fetchVendors();
         setSelectedVendor(null);
         setModalType(null);
@@ -91,19 +91,21 @@ const VendorManagementPanel = () => {
   };
 
   const handleSuspend = async (vendorId) => {
-    if (!window.confirm('Are you sure you want to suspend this vendor?')) return;
+    if (!window.confirm('Are you sure you want to suspend this vendor? They will be hidden from the platform.')) return;
     
     try {
       setActionLoading(true);
       const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/suspend`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        },
+        body: JSON.stringify({ reason: 'Suspended by admin' })
       });
 
       if (response.ok) {
-        showBanner('Vendor suspended', 'success');
+        showBanner('Vendor suspended and hidden from platform', 'success');
         fetchVendors();
       }
     } catch (error) {
@@ -115,6 +117,7 @@ const VendorManagementPanel = () => {
 
   const handleToggleVisibility = async (vendorId, currentVisibility) => {
     try {
+      setActionLoading(true);
       const response = await fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/visibility`, {
         method: 'POST',
         headers: {
@@ -125,11 +128,14 @@ const VendorManagementPanel = () => {
       });
 
       if (response.ok) {
-        showBanner(`Vendor ${currentVisibility ? 'hidden' : 'visible'}`, 'success');
+        const data = await response.json();
+        showBanner(data.message || `Vendor ${currentVisibility ? 'hidden from' : 'now visible on'} platform`, 'success');
         fetchVendors();
       }
     } catch (error) {
       showBanner('Failed to update visibility', 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -184,6 +190,19 @@ const VendorManagementPanel = () => {
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
             ))}
+            <span className="filter-divider">|</span>
+            <button
+              className={`filter-tab ${filter === 'visible' ? 'active' : ''}`}
+              onClick={() => setFilter('visible')}
+            >
+              <i className="fas fa-eye"></i> Visible
+            </button>
+            <button
+              className={`filter-tab ${filter === 'hidden' ? 'active' : ''}`}
+              onClick={() => setFilter('hidden')}
+            >
+              <i className="fas fa-eye-slash"></i> Hidden
+            </button>
           </div>
         </div>
         <div className="toolbar-right">
@@ -258,12 +277,17 @@ const VendorManagementPanel = () => {
                   <td>{vendor.City}, {vendor.State}</td>
                   <td>{getStatusBadge(vendor.ProfileStatus || 'Pending')}</td>
                   <td>
-                    <button
-                      className={`visibility-toggle ${vendor.IsVisible ? 'visible' : 'hidden'}`}
-                      onClick={() => handleToggleVisibility(vendor.VendorProfileID, vendor.IsVisible)}
-                    >
-                      <i className={`fas fa-eye${vendor.IsVisible ? '' : '-slash'}`}></i>
-                    </button>
+                    <div className="visibility-cell">
+                      <button
+                        className={`visibility-toggle ${vendor.IsVisible ? 'visible' : 'hidden'}`}
+                        onClick={() => handleToggleVisibility(vendor.VendorProfileID, vendor.IsVisible)}
+                        disabled={actionLoading}
+                        title={vendor.IsVisible ? 'Click to hide from platform' : 'Click to show on platform'}
+                      >
+                        <i className={`fas fa-eye${vendor.IsVisible ? '' : '-slash'}`}></i>
+                        <span>{vendor.IsVisible ? 'Visible' : 'Hidden'}</span>
+                      </button>
+                    </div>
                   </td>
                   <td>
                     <div className="rating-cell">

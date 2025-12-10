@@ -98,76 +98,13 @@ function IndexPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Discovery sections are now loaded from the same /vendors endpoint
+  // No separate API call needed - they come from the unified query
   const loadDiscoverySections = useCallback(async (overrideFilters = null) => {
-    try {
-      setLoadingDiscovery(true);
-      
-      // Use override filters if provided, otherwise use state filters
-      const activeFilters = overrideFilters || filters;
-      
-      const params = new URLSearchParams();
-      params.set('limit', '8');
-      params.set('_t', Date.now()); // Cache buster
-      
-      // Add category filter so trending vendors adjust based on selected category
-      console.log('📋 Current category for discovery sections:', currentCategory);
-      if (currentCategory && currentCategory !== 'all') {
-        console.log('✅ Adding category to API params:', currentCategory);
-        params.set('category', currentCategory);
-      } else {
-        console.log('⚠️ No category filter applied (showing all)');
-      }
-      
-      if (activeFilters.location) {
-        params.set('city', activeFilters.location);
-      }
-      
-      // Add availability filters if present
-      if (activeFilters.eventDate) {
-        params.set('eventDate', activeFilters.eventDate);
-      }
-      if (activeFilters.dayOfWeek) {
-        params.set('dayOfWeek', activeFilters.dayOfWeek);
-      }
-      if (activeFilters.startTime) {
-        params.set('startTime', activeFilters.startTime);
-      }
-      if (activeFilters.endTime) {
-        params.set('endTime', activeFilters.endTime);
-      }
-      
-      if (userLocation?.lat && userLocation?.lng) {
-        params.set('latitude', userLocation.lat);
-        params.set('longitude', userLocation.lng);
-      }
-      
-      // Add userId for personalized recommendations
-      if (currentUser?.userId) {
-        params.set('userId', currentUser.userId);
-      }
-      
-      const url = `${API_BASE_URL}/vendor-discovery/sections?${params.toString()}`;
-      console.log('🔍 Fetching discovery sections from:', url);
-      
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Failed to fetch discovery sections');
-      }
-      
-      const data = await response.json();
-      console.log('📦 Discovery sections loaded:', data);
-      
-      if (data.success && data.sections) {
-        setDiscoverySections(data.sections);
-      }
-    } catch (error) {
-      console.error('❌ Error loading discovery sections:', error);
-      // Don't show error banner - discovery sections are optional
-    } finally {
-      setLoadingDiscovery(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, userLocation, currentUser, currentCategory]);
+    // This function is now a no-op - discovery sections are loaded with vendors
+    // Keeping for backwards compatibility with any code that calls it directly
+    console.log('📋 loadDiscoverySections called - sections now loaded with main vendors query');
+  }, []);
 
   // EXACT match to original applyClientSideFilters (line 26091-26120)
   const applyClientSideFiltersInternal = useCallback((vendorsToFilter) => {
@@ -261,6 +198,10 @@ function IndexPage() {
         if (filters.tags.includes('local')) qp.set('isLocal', 'true');
         if (filters.tags.includes('mobile')) qp.set('isMobile', 'true');
         
+        // Include discovery sections for category searches too
+        qp.set('includeDiscoverySections', 'true');
+        qp.set('pageSize', '50'); // Get more vendors for discovery sections
+        
         url = `${API_BASE_URL}/vendors/search-by-categories?${qp.toString()}`;
       } else {
         // Use regular /vendors endpoint
@@ -297,6 +238,10 @@ function IndexPage() {
         if (filters.tags.includes('insured')) qp.set('isInsured', 'true');
         if (filters.tags.includes('local')) qp.set('isLocal', 'true');
         if (filters.tags.includes('mobile')) qp.set('isMobile', 'true');
+        
+        // Include discovery sections in the same query (unified endpoint)
+        qp.set('includeDiscoverySections', 'true');
+        qp.set('pageSize', '50'); // Get more vendors for discovery sections
         
         url = `${API_BASE_URL}/vendors?${qp.toString()}`;
       }
@@ -342,6 +287,13 @@ function IndexPage() {
         console.log('📦 Response has regular format');
         newVendors = data.vendors || [];
         totalCount = data.totalCount || newVendors.length;
+        
+        // Handle discovery sections from unified endpoint
+        if (data.discoverySections && Array.isArray(data.discoverySections)) {
+          console.log('📦 Discovery sections loaded from unified endpoint:', data.discoverySections.length);
+          setDiscoverySections(data.discoverySections);
+          setLoadingDiscovery(false);
+        }
       }
       console.log('✅ Vendors loaded:', newVendors.length, 'Total count:', totalCount);
       if (newVendors.length > 0) {

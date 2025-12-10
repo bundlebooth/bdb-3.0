@@ -8,6 +8,7 @@ const NotificationsPanel = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [modalType, setModalType] = useState(null);
+  const [previewHtml, setPreviewHtml] = useState(null);
 
   useEffect(() => {
     if (activeTab === 'templates') {
@@ -84,6 +85,14 @@ const NotificationsPanel = () => {
           template={selectedTemplate}
           onClose={() => { setSelectedTemplate(null); setModalType(null); }}
           onSave={() => { fetchTemplates(); setSelectedTemplate(null); setModalType(null); }}
+          onPreview={(html) => setPreviewHtml(html)}
+        />
+      )}
+
+      {previewHtml && (
+        <EmailPreviewModal
+          html={previewHtml}
+          onClose={() => setPreviewHtml(null)}
         />
       )}
     </div>
@@ -402,7 +411,7 @@ const AutomationSection = () => {
 };
 
 // Template Modal
-const TemplateModal = ({ template, onClose, onSave }) => {
+const TemplateModal = ({ template, onClose, onSave, onPreview }) => {
   const [formData, setFormData] = useState({
     name: template?.name || '',
     subject: template?.subject || '',
@@ -431,6 +440,40 @@ const TemplateModal = ({ template, onClose, onSave }) => {
       showBanner('Failed to update template', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePreview = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/notifications/preview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          subject: formData.subject,
+          body: formData.body,
+          variables: {
+            user_name: 'John Doe',
+            vendor_name: 'Elite Catering Co.',
+            booking_date: 'December 15, 2024',
+            booking_time: '2:00 PM',
+            amount: '500.00',
+            booking_id: '12345',
+            service_name: 'Wedding Catering',
+            reset_link: 'https://planhive.com/reset-password',
+            review_link: 'https://planhive.com/leave-review'
+          }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        onPreview(data.preview);
+      }
+    } catch (error) {
+      showBanner('Failed to generate preview', 'error');
     }
   };
 
@@ -483,9 +526,49 @@ const TemplateModal = ({ template, onClose, onSave }) => {
         </div>
         <div className="modal-footer">
           <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-secondary" onClick={handlePreview}>
+            <i className="fas fa-eye"></i> Preview Email
+          </button>
           <button className="btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save Template'}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Email Preview Modal
+const EmailPreviewModal = ({ html, onClose }) => {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content large" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2><i className="fas fa-envelope"></i> Email Preview</h2>
+          <button className="modal-close" onClick={onClose}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+        <div className="modal-body">
+          <div className="email-preview-container" style={{
+            border: '1px solid #ddd',
+            borderRadius: '8px',
+            padding: '20px',
+            background: '#fff',
+            maxHeight: '600px',
+            overflow: 'auto'
+          }}>
+            <div dangerouslySetInnerHTML={{ __html: html }} />
+          </div>
+          <div style={{ marginTop: '15px', padding: '10px', background: '#f8f9fa', borderRadius: '4px' }}>
+            <p style={{ margin: 0, fontSize: '14px', color: '#666' }}>
+              <i className="fas fa-info-circle"></i> This is a preview with sample data. 
+              Actual emails will use real user and booking information.
+            </p>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn-primary" onClick={onClose}>Close Preview</button>
         </div>
       </div>
     </div>
