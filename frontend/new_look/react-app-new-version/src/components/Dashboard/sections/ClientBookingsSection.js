@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useBanner } from '../../../context/BannerContext';
 import { API_BASE_URL } from '../../../config';
 
 function ClientBookingsSection() {
   const { currentUser } = useAuth();
+  const { showBanner } = useBanner();
   const [activeTab, setActiveTab] = useState('all');
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedDetails, setExpandedDetails] = useState({});
+  const [paymentLoading, setPaymentLoading] = useState(null);
 
   const loadBookings = useCallback(async () => {
     if (!currentUser?.id) return;
@@ -58,6 +61,70 @@ function ClientBookingsSection() {
       ...prev,
       [bookingId]: !prev[bookingId]
     }));
+  };
+
+  // Handle Pay Now - Create Stripe Checkout Session
+  const handlePayNow = async (booking) => {
+    try {
+      setPaymentLoading(booking.BookingID);
+      
+      const response = await fetch(`${API_BASE_URL}/payments/checkout-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          bookingId: booking.BookingID,
+          amount: booking.TotalAmount,
+          currency: 'cad',
+          description: `Payment for ${booking.ServiceName || 'Booking'} with ${booking.VendorName || 'Vendor'}`,
+          successUrl: `${window.location.origin}/payment-success?booking_id=${booking.BookingID}`,
+          cancelUrl: `${window.location.origin}/dashboard?section=bookings&payment=cancelled`
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to create checkout session');
+      }
+
+      if (data.success && data.sessionUrl) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.sessionUrl;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      showBanner(error.message || 'Failed to initiate payment. Please try again.', 'error');
+    } finally {
+      setPaymentLoading(null);
+    }
+  };
+
+  // Handle View Invoice
+  const handleViewInvoice = async (booking) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/invoices/booking/${booking.BookingID}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.invoice?.InvoiceID) {
+          window.open(`/invoice/${data.invoice.InvoiceID}`, '_blank');
+        } else {
+          showBanner('Invoice not available yet', 'info');
+        }
+      } else {
+        showBanner('Could not load invoice', 'error');
+      }
+    } catch (error) {
+      console.error('Invoice error:', error);
+      showBanner('Failed to load invoice', 'error');
+    }
   };
 
   const renderBookingItem = (booking) => {
@@ -146,8 +213,17 @@ function ClientBookingsSection() {
           </button>
           <div className="actions-row" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {(s === 'confirmed' || s === 'accepted' || s === 'approved') && !isPaid && (
-              <button className="btn-pay-now" style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}>
-                {isDepositOnly ? 'Pay Balance' : 'Pay Now'}
+              <button 
+                className="btn-pay-now" 
+                style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
+                onClick={() => handlePayNow(booking)}
+                disabled={paymentLoading === booking.BookingID}
+              >
+                {paymentLoading === booking.BookingID ? (
+                  <><i className="fas fa-spinner fa-spin" style={{ marginRight: '6px' }}></i>Processing...</>
+                ) : (
+                  isDepositOnly ? 'Pay Balance' : 'Pay Now'
+                )}
               </button>
             )}
             {(s === 'confirmed' || s === 'accepted' || s === 'approved' || isPaid) && (
@@ -157,7 +233,11 @@ function ClientBookingsSection() {
                     Chat
                   </button>
                 )}
-                <button className="btn btn-outline" style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px' }}
+                  onClick={() => handleViewInvoice(booking)}
+                >
                   Invoice
                 </button>
               </>

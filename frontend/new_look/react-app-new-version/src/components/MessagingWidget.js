@@ -15,9 +15,11 @@ function MessagingWidget() {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showTicketForm, setShowTicketForm] = useState(false);
-  const [ticketForm, setTicketForm] = useState({ subject: '', description: '', category: 'general', priority: 'medium' });
+  const [ticketForm, setTicketForm] = useState({ subject: '', description: '', category: 'general', priority: 'medium', attachments: [] });
   const [ticketSubmitting, setTicketSubmitting] = useState(false);
   const [ticketSuccess, setTicketSuccess] = useState(null);
+  const [userTickets, setUserTickets] = useState([]);
+  const fileInputRef = useRef(null);
   const [faqs, setFaqs] = useState([]);
   const [expandedFaq, setExpandedFaq] = useState(null);
   const messagesEndRef = useRef(null);
@@ -419,11 +421,10 @@ function MessagingWidget() {
                 </p>
               </div>
 
-              {/* Ask a Question Card */}
+              {/* Connect with Support Team */}
               <div style={{ padding: '0 20px 16px' }}>
                 <div style={{
-                  background: 'white',
-                  border: '1px solid #e0e0e0',
+                  background: '#5e72e4',
                   borderRadius: '12px',
                   padding: '16px',
                   cursor: 'pointer',
@@ -431,89 +432,105 @@ function MessagingWidget() {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   transition: 'all 0.2s',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                  boxShadow: '0 2px 8px rgba(94, 114, 228, 0.3)'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(94, 114, 228, 0.4)';
                   e.currentTarget.style.transform = 'translateY(-2px)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(94, 114, 228, 0.3)';
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
-                onClick={() => switchMainView('messages')}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '4px', color: '#222' }}>
-                      Ask a question
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#717171' }}>
-                      AI Agent and team can help
+                onClick={() => { switchMainView('help'); setShowTicketForm(true); }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                      <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '15px', color: 'white' }}>
+                        Connect with Support Team
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)' }}>
+                        Get help from our team
+                      </div>
                     </div>
                   </div>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M9 18L15 12L9 6" stroke="#222" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M9 18L15 12L9 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
               </div>
 
-              {/* Search for Help */}
+              {/* View My Tickets */}
               <div style={{ padding: '0 20px 16px' }}>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    placeholder="Search for help"
-                    style={{
-                      width: '100%',
-                      padding: '12px 40px 12px 16px',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      transition: 'border 0.2s'
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = '#5e72e4'}
-                    onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-                  />
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    pointerEvents: 'none'
-                  }}>
-                    <circle cx="11" cy="11" r="8" stroke="#10b981" strokeWidth="2"/>
-                    <path d="M21 21L16.65 16.65" stroke="#10b981" strokeWidth="2" strokeLinecap="round"/>
+                <div style={{
+                  background: 'white',
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '12px',
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#f9f9f9';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'white';
+                }}
+                onClick={() => switchMainView('messages')}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round"/>
+                      <rect x="9" y="3" width="6" height="4" rx="1" stroke="#5e72e4" strokeWidth="2"/>
+                      <path d="M9 12H15" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M9 16H13" stroke="#5e72e4" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    <span style={{ fontWeight: 500, fontSize: '14px', color: '#222' }}>View My Messages</span>
+                  </div>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 18L15 12L9 6" stroke="#717171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
               </div>
 
-              {/* Help Articles */}
+              {/* FAQ Section */}
               <div style={{ padding: '0 20px 80px' }}>
-                {[
-                  'What is the cancellation and refund policy for renters and hosts?',
-                  'Vendor Location Agreement',
-                  'A Host\'s Guide to PlanHive',
-                  'How do I cancel a booking?'
-                ].map((article, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      padding: '16px 0',
-                      borderBottom: '1px solid #f0f0f0',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <div style={{ fontSize: '14px', color: '#222' }}>{article}</div>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                      <path d="M9 18L15 12L9 6" stroke="#717171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#222' }}>Frequently Asked Questions</h4>
+                {faqs.length > 0 ? faqs.map((faq) => (
+                  <div key={faq.FAQID} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                    <div 
+                      onClick={() => setExpandedFaq(expandedFaq === faq.FAQID ? null : faq.FAQID)}
+                      style={{
+                        padding: '14px 0',
+                        fontSize: '14px',
+                        color: '#222',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <span>{faq.Question}</span>
+                      <svg 
+                        width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        style={{ transform: expandedFaq === faq.FAQID ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s', flexShrink: 0 }}
+                      >
+                        <path d="M6 9L12 15L18 9" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </div>
+                    {expandedFaq === faq.FAQID && (
+                      <div style={{ padding: '0 0 14px 0', fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
+                        {faq.Answer}
+                      </div>
+                    )}
                   </div>
-                ))}
+                )) : (
+                  <p style={{ color: '#999', fontSize: '13px' }}>Loading FAQs...</p>
+                )}
               </div>
             </div>
           )}
@@ -951,6 +968,83 @@ function MessagingWidget() {
                             resize: 'vertical'
                           }}
                         />
+                      </div>
+
+                      {/* Attachments */}
+                      <div>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
+                          Attachments (optional)
+                        </label>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          multiple
+                          accept="image/*,.pdf,.txt,.log"
+                          style={{ display: 'none' }}
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            setTicketForm({ ...ticketForm, attachments: [...ticketForm.attachments, ...files] });
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '2px dashed #e0e0e0',
+                            borderRadius: '8px',
+                            background: '#f9f9f9',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            color: '#666',
+                            fontSize: '14px'
+                          }}
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M21.44 11.05L12.25 20.24C11.1242 21.3658 9.59718 21.9983 8.005 21.9983C6.41282 21.9983 4.88584 21.3658 3.76 20.24C2.63416 19.1142 2.00166 17.5872 2.00166 15.995C2.00166 14.4028 2.63416 12.8758 3.76 11.75L12.33 3.18C13.0806 2.42975 14.0991 2.00129 15.1608 2.00129C16.2226 2.00129 17.241 2.42975 17.9917 3.18C18.7419 3.93063 19.1704 4.94905 19.1704 6.01083C19.1704 7.07261 18.7419 8.09103 17.9917 8.84167L9.41 17.42C9.03472 17.7953 8.52551 18.0048 7.995 18.0048C7.46449 18.0048 6.95528 17.7953 6.58 17.42C6.20472 17.0447 5.99529 16.5355 5.99529 16.005C5.99529 15.4745 6.20472 14.9653 6.58 14.59L15.07 6.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                          Add Screenshots or Files
+                        </button>
+                        {ticketForm.attachments.length > 0 && (
+                          <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {ticketForm.attachments.map((file, idx) => (
+                              <div key={idx} style={{ 
+                                display: 'flex', alignItems: 'center', gap: '6px', 
+                                background: '#e7f1ff', padding: '4px 10px', borderRadius: '6px', fontSize: '12px' 
+                              }}>
+                                <span>{file.name}</span>
+                                <button 
+                                  onClick={() => setTicketForm({ 
+                                    ...ticketForm, 
+                                    attachments: ticketForm.attachments.filter((_, i) => i !== idx) 
+                                  })}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f5365c', padding: '2px' }}
+                                >×</button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Helpful Tips */}
+                      <div style={{ 
+                        background: '#fff8e6', 
+                        border: '1px solid #ffeeba', 
+                        borderRadius: '8px', 
+                        padding: '12px', 
+                        fontSize: '13px',
+                        color: '#856404'
+                      }}>
+                        <strong style={{ display: 'block', marginBottom: '6px' }}>💡 Tips for faster resolution:</strong>
+                        <ul style={{ margin: 0, paddingLeft: '18px', lineHeight: '1.6' }}>
+                          <li>Include a screenshot of the issue</li>
+                          <li>If you see an error, copy it from the browser console (F12 → Console tab)</li>
+                          <li>Mention the page/feature where the issue occurred</li>
+                        </ul>
                       </div>
                       
                       <button

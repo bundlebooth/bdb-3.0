@@ -1051,7 +1051,8 @@ router.post('/checkout-session', async (req, res) => {
     res.json({
       success: true,
       sessionId: session.id,
-      url: session.url
+      url: session.url,
+      sessionUrl: session.url  // Alias for frontend compatibility
     });
 
   } catch (error) {

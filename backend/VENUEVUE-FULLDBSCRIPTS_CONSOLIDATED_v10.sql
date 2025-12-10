@@ -10021,6 +10021,7 @@ BEGIN
         AssignedTo INT NULL FOREIGN KEY REFERENCES Users(UserID),
         Source NVARCHAR(50) DEFAULT 'chat',
         ConversationID INT NULL,
+        Attachments NVARCHAR(MAX) NULL,
         CreatedAt DATETIME2 DEFAULT GETUTCDATE(),
         UpdatedAt DATETIME2 DEFAULT GETUTCDATE(),
         ResolvedAt DATETIME2 NULL,
@@ -10030,6 +10031,15 @@ BEGIN
     CREATE INDEX IX_SupportTickets_Status ON SupportTickets(Status);
     CREATE INDEX IX_SupportTickets_UserID ON SupportTickets(UserID);
     PRINT 'Created SupportTickets table';
+END
+GO
+
+-- Add Attachments column if table exists but column doesn't
+IF EXISTS (SELECT * FROM sys.tables WHERE name = 'SupportTickets') 
+   AND NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('SupportTickets') AND name = 'Attachments')
+BEGIN
+    ALTER TABLE SupportTickets ADD Attachments NVARCHAR(MAX) NULL;
+    PRINT 'Added Attachments column to SupportTickets';
 END
 GO
 
@@ -10458,6 +10468,142 @@ BEGIN
 END
 GO
 
+-- =============================================
+-- SUPPORT CONVERSATIONS LINKING TABLE
+-- =============================================
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SupportConversations')
+BEGIN
+    CREATE TABLE SupportConversations (
+        SupportConversationID INT IDENTITY(1,1) PRIMARY KEY,
+        TicketID INT NOT NULL,
+        ConversationID INT NOT NULL,
+        CreatedAt DATETIME2 DEFAULT GETUTCDATE(),
+        FOREIGN KEY (TicketID) REFERENCES SupportTickets(TicketID),
+        FOREIGN KEY (ConversationID) REFERENCES Conversations(ConversationID)
+    );
+    CREATE INDEX IX_SupportConversations_TicketID ON SupportConversations(TicketID);
+    CREATE INDEX IX_SupportConversations_ConversationID ON SupportConversations(ConversationID);
+    PRINT 'Created SupportConversations table';
+END
+GO
+
+-- =============================================
+-- INVOICE PAYMENT BREAKDOWN COLUMNS
+-- =============================================
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Invoices') AND name = 'ServiceSubtotal')
+BEGIN
+    ALTER TABLE Invoices ADD ServiceSubtotal DECIMAL(10,2) NULL;
+    PRINT 'Added ServiceSubtotal column to Invoices';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Invoices') AND name = 'RenterProcessingFee')
+BEGIN
+    ALTER TABLE Invoices ADD RenterProcessingFee DECIMAL(10,2) NULL;
+    PRINT 'Added RenterProcessingFee column to Invoices';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Invoices') AND name = 'PlatformCommission')
+BEGIN
+    ALTER TABLE Invoices ADD PlatformCommission DECIMAL(10,2) NULL;
+    PRINT 'Added PlatformCommission column to Invoices';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Invoices') AND name = 'VendorPayout')
+BEGIN
+    ALTER TABLE Invoices ADD VendorPayout DECIMAL(10,2) NULL;
+    PRINT 'Added VendorPayout column to Invoices';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Invoices') AND name = 'PaymentStatus')
+BEGIN
+    ALTER TABLE Invoices ADD PaymentStatus NVARCHAR(50) DEFAULT 'pending';
+    PRINT 'Added PaymentStatus column to Invoices';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Invoices') AND name = 'PaidAt')
+BEGIN
+    ALTER TABLE Invoices ADD PaidAt DATETIME2 NULL;
+    PRINT 'Added PaidAt column to Invoices';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Invoices') AND name = 'StripeSessionId')
+BEGIN
+    ALTER TABLE Invoices ADD StripeSessionId NVARCHAR(255) NULL;
+    PRINT 'Added StripeSessionId column to Invoices';
+END
+GO
+
+-- =============================================
+-- GET USER TICKETS PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_GetUserTickets
+    @UserID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        t.TicketID,
+        t.TicketNumber,
+        t.Subject,
+        t.Description,
+        t.Category,
+        t.Priority,
+        t.Status,
+        t.Attachments,
+        t.CreatedAt,
+        t.UpdatedAt,
+        t.ResolvedAt,
+        (SELECT COUNT(*) FROM SupportTicketMessages WHERE TicketID = t.TicketID) AS MessageCount
+    FROM SupportTickets t
+    WHERE t.UserID = @UserID
+    ORDER BY t.CreatedAt DESC;
+END;
+GO
+
+-- =============================================
+-- UPDATE INVOICE AFTER PAYMENT PROCEDURE
+-- =============================================
+CREATE OR ALTER PROCEDURE sp_UpdateInvoiceAfterPayment
+    @BookingID INT,
+    @StripeSessionId NVARCHAR(255) = NULL,
+    @ServiceSubtotal DECIMAL(10,2) = NULL,
+    @RenterProcessingFee DECIMAL(10,2) = NULL,
+    @PlatformCommission DECIMAL(10,2) = NULL,
+    @VendorPayout DECIMAL(10,2) = NULL,
+    @TotalAmount DECIMAL(10,2) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    UPDATE Invoices
+    SET PaymentStatus = 'paid',
+        PaidAt = GETUTCDATE(),
+        StripeSessionId = ISNULL(@StripeSessionId, StripeSessionId),
+        ServiceSubtotal = ISNULL(@ServiceSubtotal, ServiceSubtotal),
+        RenterProcessingFee = ISNULL(@RenterProcessingFee, RenterProcessingFee),
+        PlatformCommission = ISNULL(@PlatformCommission, PlatformCommission),
+        VendorPayout = ISNULL(@VendorPayout, VendorPayout),
+        TotalAmount = ISNULL(@TotalAmount, TotalAmount),
+        UpdatedAt = GETUTCDATE()
+    WHERE BookingID = @BookingID;
+    
+    -- Also update booking status
+    UPDATE Bookings
+    SET FullAmountPaid = 1,
+        Status = 'paid',
+        UpdatedAt = GETDATE()
+    WHERE BookingID = @BookingID;
+    
+    SELECT InvoiceID FROM Invoices WHERE BookingID = @BookingID;
+END;
+GO
+
 PRINT '============================================='
 PRINT '✅ ALL TABLES COMPLETE'
 PRINT '============================================='
@@ -10465,10 +10611,15 @@ PRINT 'Tables Added:'
 PRINT '  - SecurityLogs (login/activity tracking)'
 PRINT '  - ContentBanners (homepage banners)'
 PRINT '  - Announcements (news/what''s new)'
-PRINT '  - SupportTickets (support ticket system)'
+PRINT '  - SupportTickets (with attachments)'
 PRINT '  - SupportTicketMessages (ticket conversations)'
+PRINT '  - SupportConversations (links tickets to messaging)'
 PRINT '  - FAQs (help center FAQs)'
 PRINT '  - CommissionSettings (platform fees)'
 PRINT '  - PaymentTransactions (payment tracking)'
+PRINT ''
+PRINT 'Invoice Enhancements:'
+PRINT '  - ServiceSubtotal, RenterProcessingFee, PlatformCommission'
+PRINT '  - VendorPayout, PaymentStatus, PaidAt, StripeSessionId'
 PRINT '============================================='
 GO
