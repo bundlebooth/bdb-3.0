@@ -3180,6 +3180,40 @@ router.post('/commission-settings', async (req, res) => {
   }
 });
 
+// PUT /admin/commission-settings - Update all commission settings at once
+router.put('/commission-settings', async (req, res) => {
+  try {
+    const { platformFeePercent, stripeFeePercent, stripeFeeFixed, taxPercent, currency } = req.body;
+    const pool = await getPool();
+    
+    // Update each setting
+    const updates = [
+      { key: 'platform_fee_percent', value: platformFeePercent },
+      { key: 'stripe_fee_percent', value: stripeFeePercent },
+      { key: 'stripe_fee_fixed', value: stripeFeeFixed },
+      { key: 'tax_percent', value: taxPercent }
+    ];
+    
+    for (const update of updates) {
+      if (update.value !== undefined) {
+        await pool.request()
+          .input('key', sql.NVarChar, update.key)
+          .input('value', sql.NVarChar, String(update.value))
+          .query(`
+            UPDATE CommissionSettings 
+            SET SettingValue = @value, UpdatedAt = GETUTCDATE()
+            WHERE SettingKey = @key
+          `);
+      }
+    }
+    
+    res.json({ success: true, message: 'Commission settings updated' });
+  } catch (error) {
+    console.error('Error updating commission settings:', error);
+    res.status(500).json({ error: 'Failed to update commission settings' });
+  }
+});
+
 // GET /admin/payment-calculator - Calculate payment breakdown
 router.get('/payment-calculator', async (req, res) => {
   try {

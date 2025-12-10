@@ -345,13 +345,52 @@ function VendorProfilePage() {
     navigate(bookingUrl);
   };
 
-  const handleMessageVendor = () => {
+  const handleMessageVendor = async () => {
     if (!currentUser) {
       showBanner('Please log in to message vendors', 'info');
       navigate('/');
       return;
     }
-    console.log('Message vendor:', vendorId);
+    
+    try {
+      // Create or get existing conversation with this vendor
+      const response = await fetch(`${API_BASE_URL}/messages/conversations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          vendorProfileId: vendorId,
+          subject: `Inquiry about ${profile?.BusinessName || 'your services'}`
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Dispatch custom event to open messaging widget with this conversation
+        window.dispatchEvent(new CustomEvent('openMessagingWidget', { 
+          detail: { 
+            conversationId: data.conversationId,
+            vendorName: profile?.BusinessName,
+            vendorProfileId: vendorId
+          } 
+        }));
+        showBanner('Opening conversation...', 'success');
+      } else {
+        // Fallback: just open the messaging widget
+        window.dispatchEvent(new CustomEvent('openMessagingWidget', { 
+          detail: { vendorProfileId: vendorId, vendorName: profile?.BusinessName } 
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to start conversation:', error);
+      // Fallback: just open the messaging widget
+      window.dispatchEvent(new CustomEvent('openMessagingWidget', { 
+        detail: { vendorProfileId: vendorId, vendorName: profile?.BusinessName } 
+      }));
+    }
   };
 
   // Render social media icons

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
 
 function VendorInvoicesSection() {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState([]);
@@ -10,6 +12,26 @@ function VendorInvoicesSection() {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
+
+  // Handle view invoice - navigate to invoice page
+  const handleViewInvoice = (invoice) => {
+    const bookingId = invoice.BookingID || invoice.bookingId;
+    if (bookingId) {
+      navigate(`/invoice/booking/${bookingId}`);
+    } else if (invoice.InvoiceID) {
+      navigate(`/invoice/${invoice.InvoiceID}`);
+    }
+  };
+
+  // Handle download invoice - open print dialog
+  const handleDownloadInvoice = (invoice) => {
+    const bookingId = invoice.BookingID || invoice.bookingId;
+    if (bookingId) {
+      window.open(`/invoice/booking/${bookingId}?print=1`, '_blank');
+    } else if (invoice.InvoiceID) {
+      window.open(`/invoice/${invoice.InvoiceID}?print=1`, '_blank');
+    }
+  };
 
   useEffect(() => {
     getVendorProfileId();
@@ -253,11 +275,7 @@ function VendorInvoicesSection() {
                               className="btn btn-icon" 
                               title="View invoice" 
                               aria-label="View invoice" 
-                              onClick={() => {
-                                // Open invoice view modal or navigate to invoice page
-                                console.log('View invoice:', b.InvoiceID || b.InvoiceNumber);
-                                alert(`Viewing invoice: ${b.InvoiceNumber || b.InvoiceID}`);
-                              }}
+                              onClick={() => handleViewInvoice(b)}
                               style={{ 
                                 margin: 0, 
                                 padding: '6px', 
@@ -276,11 +294,7 @@ function VendorInvoicesSection() {
                               className="btn btn-icon" 
                               title="Download PDF" 
                               aria-label="Download PDF" 
-                              onClick={() => {
-                                // Download invoice as PDF
-                                console.log('Download invoice:', b.InvoiceID || b.InvoiceNumber);
-                                alert(`Downloading invoice: ${b.InvoiceNumber || b.InvoiceID}`);
-                              }}
+                              onClick={() => handleDownloadInvoice(b)}
                               style={{ 
                                 margin: 0, 
                                 padding: '6px', 

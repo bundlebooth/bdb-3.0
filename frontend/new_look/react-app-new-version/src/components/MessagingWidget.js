@@ -7,7 +7,9 @@ function MessagingWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [mainView, setMainView] = useState('home'); // 'home', 'messages', 'help'
   const [view, setView] = useState('conversations'); // 'conversations' or 'chat'
+  const [messageRole, setMessageRole] = useState('client'); // 'client' or 'vendor'
   const [conversations, setConversations] = useState([]);
+  const [allConversations, setAllConversations] = useState({ client: [], vendor: [] });
   const [currentConversation, setCurrentConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
@@ -22,6 +24,8 @@ function MessagingWidget() {
   const fileInputRef = useRef(null);
   const [faqs, setFaqs] = useState([]);
   const [expandedFaq, setExpandedFaq] = useState(null);
+  const [selectedFaq, setSelectedFaq] = useState(null); // For full FAQ detail view
+  const [faqFeedbackSubmitted, setFaqFeedbackSubmitted] = useState({});
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
 
@@ -57,17 +61,28 @@ function MessagingWidget() {
       
       if (response.ok) {
         const data = await response.json();
-        const conversations = data.conversations || [];
-        setConversations(conversations);
+        const allConvs = data.conversations || [];
         
-        // Calculate unread count
-        const unread = conversations.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
+        // Split conversations by role
+        // Client conversations: where user is the client (initiated the conversation)
+        // Vendor conversations: where user is the vendor (receiving inquiries)
+        const clientConvs = allConvs.filter(c => c.OtherPartyType === 'vendor' || c.isClientRole);
+        const vendorConvs = allConvs.filter(c => c.OtherPartyType === 'user' || c.isVendorRole);
+        
+        setAllConversations({ client: clientConvs, vendor: vendorConvs });
+        
+        // Set current view's conversations based on role
+        const currentConvs = messageRole === 'vendor' ? vendorConvs : clientConvs;
+        setConversations(currentConvs);
+        
+        // Calculate total unread count
+        const unread = allConvs.reduce((sum, conv) => sum + (conv.unreadCount || 0), 0);
         setUnreadCount(unread);
       }
     } catch (error) {
       console.error('Failed to load conversations:', error);
     }
-  }, [currentUser]);
+  }, [currentUser, messageRole]);
 
   // Load messages for a conversation
   const loadMessages = useCallback(async (conversationId) => {
@@ -157,6 +172,81 @@ function MessagingWidget() {
     }
   }, [loadConversations]);
 
+  // Start or open support conversation
+  const openSupportChat = useCallback(async () => {
+    if (!currentUser?.id) return;
+    
+    try {
+      // Check if there's an existing support conversation
+      const existingSupport = conversations.find(conv => 
+        conv.ConversationType === 'support' || 
+        conv.OtherPartyName?.toLowerCase().includes('support')
+      );
+      
+      if (existingSupport) {
+        // Open existing support conversation
+        setMainView('messages');
+        openConversation(existingSupport);
+        return;
+      }
+      
+      // Create new support conversation
+      const response = await fetch(`${API_BASE_URL}/messages/conversations/support`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          subject: 'Support Request'
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Reload conversations and open the new one
+        await loadConversations();
+        setMainView('messages');
+        if (data.conversationId) {
+          openConversation({ id: data.conversationId, OtherPartyName: 'Support Team' });
+        } else {
+          setView('conversations');
+        }
+      } else {
+        // Fallback: just switch to messages view
+        setMainView('messages');
+        setView('conversations');
+      }
+    } catch (error) {
+      console.error('Failed to start support chat:', error);
+      // Fallback: just switch to messages view
+      setMainView('messages');
+      setView('conversations');
+    }
+  }, [currentUser, conversations, loadConversations, openConversation]);
+
+  // Submit FAQ feedback
+  const submitFaqFeedback = useCallback(async (faqId, rating) => {
+    try {
+      await fetch(`${API_BASE_URL}/public/faqs/${faqId}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          userId: currentUser?.id,
+          rating: rating, // 'helpful', 'neutral', 'not_helpful'
+          faqId: faqId
+        })
+      });
+      setFaqFeedbackSubmitted(prev => ({ ...prev, [faqId]: rating }));
+    } catch (error) {
+      console.error('Failed to submit FAQ feedback:', error);
+    }
+  }, [currentUser]);
+
   // Filter conversations by search
   const filteredConversations = conversations.filter(conv => {
     if (!searchQuery) return true;
@@ -199,6 +289,45 @@ function MessagingWidget() {
       return () => clearInterval(interval);
     }
   }, [currentUser, isOpen, loadConversations]);
+
+  // Update displayed conversations when role changes
+  useEffect(() => {
+    const currentConvs = messageRole === 'vendor' ? allConversations.vendor : allConversations.client;
+    setConversations(currentConvs);
+  }, [messageRole, allConversations]);
+
+  // Listen for openMessagingWidget events from other components
+  useEffect(() => {
+    const handleOpenWidget = async (event) => {
+      const { conversationId, vendorProfileId, vendorName } = event.detail || {};
+      
+      // Open the widget
+      setIsOpen(true);
+      setMainView('messages');
+      
+      // If we have a conversationId, open that conversation
+      if (conversationId) {
+        await loadConversations();
+        const conv = conversations.find(c => c.id === conversationId || c.ConversationID === conversationId);
+        if (conv) {
+          openConversation(conv);
+        } else {
+          // Try to open by ID directly
+          openConversation({ id: conversationId, OtherPartyName: vendorName || 'Vendor' });
+        }
+      } else if (vendorProfileId) {
+        // Load conversations and find one with this vendor
+        await loadConversations();
+        const existingConv = conversations.find(c => c.VendorProfileID === vendorProfileId);
+        if (existingConv) {
+          openConversation(existingConv);
+        }
+      }
+    };
+    
+    window.addEventListener('openMessagingWidget', handleOpenWidget);
+    return () => window.removeEventListener('openMessagingWidget', handleOpenWidget);
+  }, [conversations, loadConversations, openConversation]);
 
   // Handle Enter key to send message
   const handleKeyPress = (e) => {
@@ -442,7 +571,7 @@ function MessagingWidget() {
                   e.currentTarget.style.boxShadow = '0 2px 8px rgba(94, 114, 228, 0.3)';
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
-                onClick={() => { switchMainView('help'); setShowTicketForm(true); }}>
+                onClick={() => openSupportChat()}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                       <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -538,6 +667,74 @@ function MessagingWidget() {
           {/* Messages View */}
           {mainView === 'messages' && view === 'conversations' && (
             <div className="widget-view">
+              {/* Role Tabs - Only show if user is a vendor */}
+              {currentUser?.isVendor && (
+                <div style={{ 
+                  display: 'flex', 
+                  borderBottom: '1px solid #e0e0e0',
+                  padding: '0 16px',
+                  background: '#fafafa'
+                }}>
+                  <button
+                    onClick={() => setMessageRole('client')}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: messageRole === 'client' ? 600 : 400,
+                      color: messageRole === 'client' ? '#5e72e4' : '#666',
+                      borderBottom: messageRole === 'client' ? '2px solid #5e72e4' : '2px solid transparent',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    As Client
+                    {allConversations.client.length > 0 && (
+                      <span style={{ 
+                        marginLeft: '6px', 
+                        background: messageRole === 'client' ? '#5e72e4' : '#e0e0e0',
+                        color: messageRole === 'client' ? 'white' : '#666',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        fontSize: '11px'
+                      }}>
+                        {allConversations.client.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setMessageRole('vendor')}
+                    style={{
+                      flex: 1,
+                      padding: '12px 16px',
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: messageRole === 'vendor' ? 600 : 400,
+                      color: messageRole === 'vendor' ? '#5e72e4' : '#666',
+                      borderBottom: messageRole === 'vendor' ? '2px solid #5e72e4' : '2px solid transparent',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    As Vendor
+                    {allConversations.vendor.length > 0 && (
+                      <span style={{ 
+                        marginLeft: '6px', 
+                        background: messageRole === 'vendor' ? '#5e72e4' : '#e0e0e0',
+                        color: messageRole === 'vendor' ? 'white' : '#666',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        fontSize: '11px'
+                      }}>
+                        {allConversations.vendor.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
               <div className="conversations-header">
                 <input
                   type="text"
@@ -799,7 +996,130 @@ function MessagingWidget() {
           {/* Help View */}
           {mainView === 'help' && (
             <div style={{ flex: 1, overflow: 'auto', background: 'white', padding: '20px' }}>
-              {!showTicketForm ? (
+              {/* FAQ Detail View */}
+              {selectedFaq ? (
+                <div>
+                  {/* Back button */}
+                  <button 
+                    onClick={() => setSelectedFaq(null)}
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      cursor: 'pointer', 
+                      padding: '8px 0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      color: '#666',
+                      marginBottom: '16px'
+                    }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M19 12H5M12 19L5 12L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <span style={{ fontSize: '14px' }}>Back</span>
+                  </button>
+                  
+                  {/* FAQ Title */}
+                  <h2 style={{ 
+                    fontSize: '20px', 
+                    fontWeight: 600, 
+                    color: '#222', 
+                    marginBottom: '16px',
+                    lineHeight: '1.4'
+                  }}>
+                    {selectedFaq.Question}
+                  </h2>
+                  
+                  {/* Author/Updated info */}
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    marginBottom: '20px',
+                    color: '#666',
+                    fontSize: '13px'
+                  }}>
+                    <span>Updated {selectedFaq.UpdatedAt ? new Date(selectedFaq.UpdatedAt).toLocaleDateString() : 'recently'}</span>
+                  </div>
+                  
+                  {/* FAQ Answer */}
+                  <div style={{ 
+                    fontSize: '15px', 
+                    lineHeight: '1.7', 
+                    color: '#333',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {selectedFaq.Answer}
+                  </div>
+                  
+                  {/* Feedback Section */}
+                  <div style={{ 
+                    marginTop: '32px', 
+                    paddingTop: '24px', 
+                    borderTop: '1px solid #e0e0e0',
+                    textAlign: 'center'
+                  }}>
+                    <p style={{ fontSize: '14px', color: '#666', marginBottom: '16px' }}>
+                      Did this answer your question?
+                    </p>
+                    {faqFeedbackSubmitted[selectedFaq.FAQID] ? (
+                      <p style={{ color: '#28a745', fontSize: '14px' }}>Thank you for your feedback!</p>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+                        <button 
+                          onClick={() => submitFaqFeedback(selectedFaq.FAQID, 'not_helpful')}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            cursor: 'pointer',
+                            fontSize: '28px',
+                            padding: '8px',
+                            transition: 'transform 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                          title="Not helpful"
+                        >
+                          😞
+                        </button>
+                        <button 
+                          onClick={() => submitFaqFeedback(selectedFaq.FAQID, 'neutral')}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            cursor: 'pointer',
+                            fontSize: '28px',
+                            padding: '8px',
+                            transition: 'transform 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                          title="Somewhat helpful"
+                        >
+                          😐
+                        </button>
+                        <button 
+                          onClick={() => submitFaqFeedback(selectedFaq.FAQID, 'helpful')}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            cursor: 'pointer',
+                            fontSize: '28px',
+                            padding: '8px',
+                            transition: 'transform 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                          title="Very helpful"
+                        >
+                          🙂
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : !showTicketForm ? (
                 <>
                   <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600 }}>Help Center</h3>
                   <p style={{ color: '#717171', fontSize: '14px', lineHeight: '1.5', marginBottom: '16px' }}>
@@ -808,7 +1128,7 @@ function MessagingWidget() {
                   
                   {/* Connect with Support Team Button */}
                   <div 
-                    onClick={() => setShowTicketForm(true)}
+                    onClick={() => openSupportChat()}
                     style={{
                       background: '#5e72e4',
                       color: 'white',
@@ -837,32 +1157,24 @@ function MessagingWidget() {
                   <div>
                     <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#222' }}>Frequently Asked Questions</h4>
                     {faqs.length > 0 ? faqs.map((faq) => (
-                      <div key={faq.FAQID} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                        <div 
-                          onClick={() => setExpandedFaq(expandedFaq === faq.FAQID ? null : faq.FAQID)}
-                          style={{
-                            padding: '12px 0',
-                            fontSize: '14px',
-                            color: '#222',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <span>{faq.Question}</span>
-                          <svg 
-                            width="16" height="16" viewBox="0 0 24 24" fill="none"
-                            style={{ transform: expandedFaq === faq.FAQID ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}
-                          >
-                            <path d="M6 9L12 15L18 9" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        </div>
-                        {expandedFaq === faq.FAQID && (
-                          <div style={{ padding: '0 0 12px 0', fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
-                            {faq.Answer}
-                          </div>
-                        )}
+                      <div 
+                        key={faq.FAQID} 
+                        onClick={() => setSelectedFaq(faq)}
+                        style={{ 
+                          borderBottom: '1px solid #f0f0f0',
+                          padding: '12px 0',
+                          fontSize: '14px',
+                          color: '#222',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <span>{faq.Question}</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                          <path d="M9 18L15 12L9 6" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
                       </div>
                     )) : (
                       <p style={{ color: '#999', fontSize: '13px' }}>Loading FAQs...</p>

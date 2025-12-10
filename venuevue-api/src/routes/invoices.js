@@ -9,6 +9,40 @@ function toCurrency(n) {
 }
 function nowIso() { return new Date().toISOString(); }
 
+// Get commission settings from database (same as payments.js)
+async function getCommissionSettings() {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      SELECT SettingKey, SettingValue 
+      FROM CommissionSettings 
+      WHERE IsActive = 1
+    `);
+    
+    const settings = {};
+    result.recordset.forEach(row => {
+      settings[row.SettingKey] = parseFloat(row.SettingValue) || 0;
+    });
+    
+    return {
+      platformFeePercent: settings['platform_fee_percent'] ?? parseFloat(process.env.PLATFORM_FEE_PERCENT || '5'),
+      stripeFeePercent: settings['stripe_fee_percent'] ?? parseFloat(process.env.STRIPE_FEE_PERCENT || '2.9'),
+      stripeFeeFixed: settings['stripe_fee_fixed'] ?? parseFloat(process.env.STRIPE_FEE_FIXED || '0.30'),
+      taxPercent: settings['tax_percent'] ?? parseFloat(process.env.TAX_PERCENT || '13'),
+      currency: (process.env.STRIPE_CURRENCY || 'cad').toLowerCase()
+    };
+  } catch (error) {
+    console.warn('Could not fetch commission settings from DB, using env defaults:', error.message);
+    return {
+      platformFeePercent: parseFloat(process.env.PLATFORM_FEE_PERCENT || '5'),
+      stripeFeePercent: parseFloat(process.env.STRIPE_FEE_PERCENT || '2.9'),
+      stripeFeeFixed: parseFloat(process.env.STRIPE_FEE_FIXED || '0.30'),
+      taxPercent: parseFloat(process.env.TAX_PERCENT || '13'),
+      currency: (process.env.STRIPE_CURRENCY || 'cad').toLowerCase()
+    };
+  }
+}
+
 async function loadBookingSnapshot(pool, bookingId) {
   const request = pool.request();
   request.input('BookingID', sql.Int, bookingId);
@@ -105,15 +139,20 @@ async function loadBookingSnapshot(pool, bookingId) {
   return { booking, services, expenses, transactions };
 }
 
-function estimateStripeFee(totalAmount) {
-  const pct = parseFloat(process.env.STRIPE_FEE_PERCENT || '2.9') / 100;
-  const fixed = parseFloat(process.env.STRIPE_FEE_FIXED || '0.30');
+function estimateStripeFee(totalAmount, settings = null) {
+  const pct = (settings?.stripeFeePercent ?? parseFloat(process.env.STRIPE_FEE_PERCENT || '2.9')) / 100;
+  const fixed = settings?.stripeFeeFixed ?? parseFloat(process.env.STRIPE_FEE_FIXED || '0.30');
   return toCurrency((Number(totalAmount || 0) * pct) + fixed);
 }
 
-function estimatePlatformFee(totalAmount) {
-  const pct = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
+function estimatePlatformFee(totalAmount, settings = null) {
+  const pct = (settings?.platformFeePercent ?? parseFloat(process.env.PLATFORM_FEE_PERCENT || '5')) / 100;
   return toCurrency(Number(totalAmount || 0) * pct);
+}
+
+function estimateTax(subtotalPlusPlatformFee, settings = null) {
+  const pct = (settings?.taxPercent ?? parseFloat(process.env.TAX_PERCENT || '13')) / 100;
+  return toCurrency(Number(subtotalPlusPlatformFee || 0) * pct);
 }
 
 async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
@@ -124,26 +163,30 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
     const r = new sql.Request(tx);
     r.input('BookingID', sql.Int, bookingId);
 
+    // Get commission settings from database (same source as checkout session)
+    const commissionSettings = await getCommissionSettings();
+
     // Check if invoice exists
     const existing = await r.query(`SELECT TOP 1 InvoiceID FROM Invoices WHERE BookingID = @BookingID`);
     let invoiceId = existing.recordset[0]?.InvoiceID || null;
 
     // Build snapshot
     const snap = await loadBookingSnapshot(pool, bookingId);
-    const totalAmount = toCurrency(snap.booking.TotalAmount || 0);
+    const bookingBaseAmount = toCurrency(snap.booking.TotalAmount || 0);
     const servicesSubtotal = toCurrency((snap.services || []).reduce((sum, s) => sum + (Number(s.PriceAtBooking || 0) * (s.Quantity || 1)), 0));
     const expensesTotal = toCurrency((snap.expenses || []).reduce((sum, e) => sum + Number(e.Amount || 0), 0));
-    const subtotal = toCurrency(servicesSubtotal + expensesTotal);
+    // Use services subtotal if available, otherwise fall back to booking total
+    const subtotal = servicesSubtotal > 0 ? toCurrency(servicesSubtotal + expensesTotal) : bookingBaseAmount;
 
-    // Fees
-    // For client-facing consistency, always estimate processing fee from subtotal (pre-payment)
-    // rather than using recorded Stripe fees (which are assessed on the charged amount).
-    const stripeFee = estimateStripeFee(subtotal);
-    const platformFee = estimatePlatformFee(totalAmount || subtotal);
-    const taxPercent = parseFloat(process.env.TAX_PERCENT || '0') / 100;
-    const taxAmount = toCurrency((subtotal + platformFee) * taxPercent);
+    // Fees - MUST match checkout session calculation exactly
+    // Platform fee is calculated on subtotal
+    const platformFee = toCurrency(subtotal * (commissionSettings.platformFeePercent / 100));
+    // Tax is calculated on (subtotal + platform fee)
+    const taxAmount = toCurrency((subtotal + platformFee) * (commissionSettings.taxPercent / 100));
+    // Processing fee is calculated on subtotal
+    const stripeFee = toCurrency((subtotal * (commissionSettings.stripeFeePercent / 100)) + commissionSettings.stripeFeeFixed);
 
-    // Include fees in client grand total
+    // Include fees in client grand total - MUST match checkout session
     const totalDue = toCurrency(subtotal + platformFee + taxAmount + stripeFee);
 
     // Determine invoice status based on booking flag or payments >= grand total
@@ -160,7 +203,7 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
       r.input('IssueDate', sql.DateTime, issueDate);
       r.input('DueDate', sql.DateTime, issueDate); // same day unless later extended
       r.input('Status', sql.NVarChar(20), invStatus);
-      r.input('Currency', sql.NVarChar(3), 'USD');
+      r.input('Currency', sql.NVarChar(3), commissionSettings.currency.toUpperCase() || 'CAD');
       r.input('Subtotal', sql.Decimal(10,2), subtotal);
       r.input('VendorExpensesTotal', sql.Decimal(10,2), expensesTotal);
       r.input('PlatformFee', sql.Decimal(10,2), platformFee);
@@ -640,6 +683,27 @@ router.get('/:invoiceId', async (req, res) => {
   } catch (err) {
     console.error('Get invoice error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch invoice', error: err.message });
+  }
+});
+
+// Admin endpoint to force regenerate invoice (no access control - for debugging)
+router.post('/admin/regenerate/:bookingId', async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const pool = await poolPromise;
+    
+    console.log(`[Admin] Force regenerating invoice for booking ${bookingId}`);
+    const result = await upsertInvoiceForBooking(pool, parseInt(bookingId, 10), { forceRegenerate: true });
+    const invoice = await getInvoiceByBooking(pool, parseInt(bookingId, 10), true);
+    
+    res.json({ 
+      success: true, 
+      message: 'Invoice regenerated successfully',
+      invoice 
+    });
+  } catch (err) {
+    console.error('Admin regenerate invoice error:', err);
+    res.status(500).json({ success: false, message: 'Failed to regenerate invoice', error: err.message });
   }
 });
 

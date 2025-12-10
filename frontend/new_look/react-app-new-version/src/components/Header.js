@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import DashboardModal from './DashboardModal';
@@ -12,7 +12,11 @@ import './EnhancedSearchBar.css';
 
 const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick, onChatClick, onNotificationsClick }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
+  
+  // Only show incomplete profile banner on main page
+  const isMainPage = location.pathname === '/' || location.pathname === '';
   const [searchQuery, setSearchQuery] = useState('');
   const [favoritesBadge, setFavoritesBadge] = useState(0);
   const [messagesBadge, setMessagesBadge] = useState(0);
@@ -219,7 +223,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             Become A Vendor
           </button>
         )}
-        {currentUser?.isVendor && profileIncomplete && (
+        {currentUser?.isVendor && profileIncomplete && isMainPage && (
           <button 
             className="complete-profile-btn"
             onClick={() => {

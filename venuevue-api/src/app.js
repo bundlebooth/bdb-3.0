@@ -238,6 +238,46 @@ app.get('/api/public/faqs', async (req, res) => {
   }
 });
 
+// Submit FAQ feedback
+app.post('/api/public/faqs/:id/feedback', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, rating } = req.body;
+    
+    const pool = await poolPromise;
+    
+    // Check if FAQFeedback table exists, create if not
+    const tableCheck = await pool.request().query(`
+      IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'FAQFeedback')
+      BEGIN
+        CREATE TABLE FAQFeedback (
+          FeedbackID INT IDENTITY(1,1) PRIMARY KEY,
+          FAQID INT NOT NULL,
+          UserID INT NULL,
+          Rating NVARCHAR(20) NOT NULL,
+          CreatedAt DATETIME DEFAULT GETDATE()
+        )
+      END
+    `);
+    
+    // Insert feedback
+    const request = pool.request();
+    request.input('FAQID', sql.Int, parseInt(id));
+    request.input('UserID', sql.Int, userId || null);
+    request.input('Rating', sql.NVarChar(20), rating);
+    
+    await request.query(`
+      INSERT INTO FAQFeedback (FAQID, UserID, Rating, CreatedAt)
+      VALUES (@FAQID, @UserID, @Rating, GETDATE())
+    `);
+    
+    res.json({ success: true, message: 'Feedback submitted' });
+  } catch (error) {
+    console.error('Error submitting FAQ feedback:', error);
+    res.status(500).json({ error: 'Failed to submit feedback' });
+  }
+});
+
 // ==================== PUBLIC COMMISSION INFO (No Auth Required) ====================
 app.get('/api/public/commission-info', async (req, res) => {
   try {

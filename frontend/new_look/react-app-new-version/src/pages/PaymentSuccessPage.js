@@ -17,16 +17,40 @@ function PaymentSuccessPage() {
 
   useEffect(() => {
     const verifyPayment = async () => {
-      if (!sessionId) {
+      // Check if session_id is the placeholder (page accessed directly, not via Stripe)
+      const isPlaceholder = !sessionId || sessionId === '{CHECKOUT_SESSION_ID}' || sessionId.includes('CHECKOUT_SESSION_ID');
+      
+      if (isPlaceholder) {
+        // If we have a booking_id, try to fetch booking status directly using the payments endpoint (no access control)
+        if (bookingId) {
+          try {
+            const statusResp = await fetch(`${API_BASE_URL}/payments/booking/${bookingId}/status`, {
+              headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (statusResp.ok) {
+              const statusData = await statusResp.json();
+              
+              // Check if booking is already paid
+              if (statusData.isPaid || statusData.status === 'confirmed' || statusData.status === 'paid') {
+                setBookingDetails(statusData.booking);
+                setStatus('success');
+                return;
+              }
+            }
+          } catch (e) {
+            console.warn('Could not fetch booking status:', e);
+          }
+        }
+        
         setStatus('error');
-        setError('No payment session found. Please check your booking status in the dashboard.');
+        setError('This page must be accessed after completing payment through Stripe. Please check your booking status in the dashboard.');
         return;
       }
 
       try {
         // Verify the session with the backend
         const response = await fetch(
-          `${API_BASE_URL}/payments/verify-session?session_id=${sessionId}${bookingId ? `&booking_id=${bookingId}` : ''}`,
+          `${API_BASE_URL}/payments/verify-session?session_id=${encodeURIComponent(sessionId)}${bookingId ? `&booking_id=${bookingId}` : ''}`,
           {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
           }
@@ -37,20 +61,9 @@ function PaymentSuccessPage() {
         if (data.success) {
           setStatus('success');
           
-          // Fetch booking details
-          if (data.bookingId || bookingId) {
-            const bid = data.bookingId || bookingId;
-            try {
-              const bookingResp = await fetch(`${API_BASE_URL}/bookings/${bid}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-              });
-              if (bookingResp.ok) {
-                const bookingData = await bookingResp.json();
-                setBookingDetails(bookingData.booking || bookingData);
-              }
-            } catch (e) {
-              console.warn('Could not fetch booking details:', e);
-            }
+          // Use booking details from verify-session response
+          if (data.booking) {
+            setBookingDetails(data.booking);
           }
         } else {
           setStatus('error');
@@ -64,7 +77,7 @@ function PaymentSuccessPage() {
     };
 
     verifyPayment();
-  }, [sessionId, bookingId]);
+  }, [sessionId, bookingId, currentUser]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-CA', {

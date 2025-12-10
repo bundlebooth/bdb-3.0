@@ -3,14 +3,75 @@ import { API_BASE_URL } from '../../config';
 import { showBanner } from '../../utils/helpers';
 
 const PlatformSettingsPanel = () => {
-  const [activeTab, setActiveTab] = useState('general'); // general, appearance, api, restrictions
+  const [activeTab, setActiveTab] = useState('general'); // general, appearance, api, restrictions, fees
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [commissionSettings, setCommissionSettings] = useState({
+    platformFeePercent: 5,
+    stripeFeePercent: 2.9,
+    stripeFeeFixed: 0.30,
+    taxPercent: 13,
+    currency: 'CAD'
+  });
+  const [savingCommission, setSavingCommission] = useState(false);
 
   useEffect(() => {
     fetchSettings();
+    fetchCommissionSettings();
   }, []);
+
+  const fetchCommissionSettings = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/commission-settings`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.settings && Array.isArray(data.settings)) {
+          // Parse settings from array format to object
+          const settingsObj = {};
+          data.settings.forEach(s => {
+            settingsObj[s.SettingKey] = parseFloat(s.SettingValue) || 0;
+          });
+          setCommissionSettings({
+            platformFeePercent: settingsObj['platform_fee_percent'] ?? 5,
+            stripeFeePercent: settingsObj['stripe_fee_percent'] ?? 2.9,
+            stripeFeeFixed: settingsObj['stripe_fee_fixed'] ?? 0.30,
+            taxPercent: settingsObj['tax_percent'] ?? 13,
+            currency: 'CAD'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching commission settings:', error);
+    }
+  };
+
+  const saveCommissionSettings = async () => {
+    try {
+      setSavingCommission(true);
+      const response = await fetch(`${API_BASE_URL}/admin/commission-settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(commissionSettings)
+      });
+      if (response.ok) {
+        showBanner('Commission settings saved successfully', 'success');
+      } else {
+        showBanner('Failed to save commission settings', 'error');
+      }
+    } catch (error) {
+      showBanner('Failed to save commission settings', 'error');
+    } finally {
+      setSavingCommission(false);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -140,7 +201,140 @@ const PlatformSettingsPanel = () => {
         >
           <i className="fas fa-map-marker-alt"></i> Restrictions
         </button>
+        <button
+          className={`tab ${activeTab === 'fees' ? 'active' : ''}`}
+          onClick={() => setActiveTab('fees')}
+        >
+          <i className="fas fa-percentage"></i> Fees & Commission
+        </button>
       </div>
+
+      {/* Fees & Commission Settings */}
+      {activeTab === 'fees' && (
+        <div className="settings-section">
+          <div className="section-card">
+            <h3><i className="fas fa-dollar-sign"></i> Platform Fees & Commission</h3>
+            <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>
+              Configure the fees charged to customers on each booking. These fees are added to the service price at checkout.
+            </p>
+            
+            <div className="form-row">
+              <div className="form-group">
+                <label>Platform Service Fee (%)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="50"
+                  value={commissionSettings.platformFeePercent}
+                  onChange={e => setCommissionSettings({ ...commissionSettings, platformFeePercent: parseFloat(e.target.value) || 0 })}
+                />
+                <small style={{ color: '#888' }}>Fee charged to customers for using the platform</small>
+              </div>
+              <div className="form-group">
+                <label>Tax Rate (HST/GST %)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="30"
+                  value={commissionSettings.taxPercent}
+                  onChange={e => setCommissionSettings({ ...commissionSettings, taxPercent: parseFloat(e.target.value) || 0 })}
+                />
+                <small style={{ color: '#888' }}>Tax applied to subtotal + platform fee</small>
+              </div>
+            </div>
+            
+            <div className="form-row">
+              <div className="form-group">
+                <label>Payment Processing Fee (%)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  value={commissionSettings.stripeFeePercent}
+                  onChange={e => setCommissionSettings({ ...commissionSettings, stripeFeePercent: parseFloat(e.target.value) || 0 })}
+                />
+                <small style={{ color: '#888' }}>Stripe processing fee percentage</small>
+              </div>
+              <div className="form-group">
+                <label>Payment Processing Fixed Fee ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="5"
+                  value={commissionSettings.stripeFeeFixed}
+                  onChange={e => setCommissionSettings({ ...commissionSettings, stripeFeeFixed: parseFloat(e.target.value) || 0 })}
+                />
+                <small style={{ color: '#888' }}>Fixed fee per transaction (e.g., $0.30)</small>
+              </div>
+            </div>
+            
+            <div className="form-group">
+              <label>Currency</label>
+              <select
+                value={commissionSettings.currency}
+                onChange={e => setCommissionSettings({ ...commissionSettings, currency: e.target.value })}
+              >
+                <option value="CAD">CAD - Canadian Dollar</option>
+                <option value="USD">USD - US Dollar</option>
+              </select>
+            </div>
+            
+            {/* Fee Preview */}
+            <div style={{ 
+              background: '#f8f9fa', 
+              padding: '16px', 
+              borderRadius: '8px', 
+              marginTop: '20px',
+              border: '1px solid #e9ecef'
+            }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>
+                <i className="fas fa-calculator"></i> Fee Preview (for $100 service)
+              </h4>
+              <div style={{ display: 'grid', gap: '8px', fontSize: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Service Price:</span>
+                  <span>$100.00</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Platform Fee ({commissionSettings.platformFeePercent}%):</span>
+                  <span>${(100 * commissionSettings.platformFeePercent / 100).toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Tax ({commissionSettings.taxPercent}%):</span>
+                  <span>${((100 + 100 * commissionSettings.platformFeePercent / 100) * commissionSettings.taxPercent / 100).toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Processing Fee ({commissionSettings.stripeFeePercent}% + ${commissionSettings.stripeFeeFixed}):</span>
+                  <span>${(100 * commissionSettings.stripeFeePercent / 100 + commissionSettings.stripeFeeFixed).toFixed(2)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, borderTop: '1px solid #dee2e6', paddingTop: '8px', marginTop: '4px' }}>
+                  <span>Total Customer Pays:</span>
+                  <span>${(
+                    100 + 
+                    100 * commissionSettings.platformFeePercent / 100 + 
+                    (100 + 100 * commissionSettings.platformFeePercent / 100) * commissionSettings.taxPercent / 100 +
+                    100 * commissionSettings.stripeFeePercent / 100 + commissionSettings.stripeFeeFixed
+                  ).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ marginTop: '20px' }}>
+              <button 
+                className="btn-primary" 
+                onClick={saveCommissionSettings}
+                disabled={savingCommission}
+              >
+                {savingCommission ? 'Saving...' : 'Save Fee Settings'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* General Settings */}
       {activeTab === 'general' && (

@@ -150,7 +150,9 @@ router.get('/conversations/user/:userId', async (req, res) => {
       .query(`
         SELECT 
           c.ConversationID,
+          c.VendorProfileID,
           c.CreatedAt,
+          c.UserID AS ConversationUserID,
           CASE 
             WHEN c.UserID = @UserID THEN v.BusinessName 
             ELSE u.Name 
@@ -161,8 +163,16 @@ router.get('/conversations/user/:userId', async (req, res) => {
           END AS OtherPartyType,
           CASE 
             WHEN c.UserID = @UserID THEN v.LogoURL
-            ELSE u.ProfilePictureURL
+            ELSE u.ProfileImageURL
           END AS OtherPartyAvatar,
+          CASE 
+            WHEN c.UserID = @UserID THEN 1
+            ELSE 0
+          END AS IsClientRole,
+          CASE 
+            WHEN v.UserID = @UserID THEN 1
+            ELSE 0
+          END AS IsVendorRole,
           m.Content AS LastMessageContent,
           m.CreatedAt AS LastMessageCreatedAt,
           (SELECT COUNT(*) FROM Messages WHERE ConversationID = c.ConversationID AND IsRead = 0 AND SenderID != @UserID) AS UnreadCount
@@ -177,7 +187,7 @@ router.get('/conversations/user/:userId', async (req, res) => {
             ORDER BY CreatedAt DESC
           )
         WHERE c.UserID = @UserID OR (v.UserID = @UserID AND @UserVendorProfileID IS NOT NULL)
-        GROUP BY c.ConversationID, c.CreatedAt, u.Name, v.BusinessName, c.UserID, m.Content, m.CreatedAt, v.LogoURL, u.ProfilePictureURL
+        GROUP BY c.ConversationID, c.VendorProfileID, c.CreatedAt, c.UserID, u.Name, v.BusinessName, m.Content, m.CreatedAt, v.LogoURL, u.ProfileImageURL, v.UserID
         ORDER BY COALESCE(m.CreatedAt, c.CreatedAt) DESC
       `);
     
@@ -186,9 +196,13 @@ router.get('/conversations/user/:userId', async (req, res) => {
     // Format conversations to match frontend expected format
     const formattedConversations = result.recordset.map(conv => ({
       id: conv.ConversationID,
+      VendorProfileID: conv.VendorProfileID,
       createdAt: conv.CreatedAt,
       OtherPartyName: conv.OtherPartyName,
+      OtherPartyType: conv.OtherPartyType,
       OtherPartyAvatar: conv.OtherPartyAvatar,
+      isClientRole: conv.IsClientRole === 1,
+      isVendorRole: conv.IsVendorRole === 1,
       lastMessageContent: conv.LastMessageContent || '',
       lastMessageCreatedAt: conv.LastMessageCreatedAt || conv.CreatedAt,
       unreadCount: conv.UnreadCount || 0
@@ -429,6 +443,143 @@ router.get('/unread-count/:userId', async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Failed to fetch unread count',
+      error: err.message 
+    });
+  }
+});
+
+// Create or get conversation with vendor
+router.post('/conversations', async (req, res) => {
+  try {
+    const { userId, vendorProfileId, subject } = req.body;
+    
+    if (!userId || !vendorProfileId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'User ID and Vendor Profile ID are required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Check if conversation already exists
+    const existingResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .query(`
+        SELECT TOP 1 ConversationID 
+        FROM Conversations 
+        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
+        ORDER BY CreatedAt DESC
+      `);
+    
+    if (existingResult.recordset.length > 0) {
+      return res.json({
+        success: true,
+        conversationId: existingResult.recordset[0].ConversationID,
+        isExisting: true
+      });
+    }
+    
+    // Create new conversation
+    const createResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('VendorProfileID', sql.Int, vendorProfileId)
+      .input('Subject', sql.NVarChar(255), subject || 'New Inquiry')
+      .query(`
+        INSERT INTO Conversations (UserID, VendorProfileID, Subject, CreatedAt, UpdatedAt)
+        OUTPUT INSERTED.ConversationID
+        VALUES (@UserID, @VendorProfileID, @Subject, GETDATE(), GETDATE())
+      `);
+    
+    const conversationId = createResult.recordset[0]?.ConversationID;
+
+    res.json({
+      success: true,
+      conversationId: conversationId,
+      isExisting: false
+    });
+
+  } catch (err) {
+    console.error('Create conversation error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to create conversation',
+      error: err.message 
+    });
+  }
+});
+
+// Create or get support conversation
+router.post('/conversations/support', async (req, res) => {
+  try {
+    const { userId, subject } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'User ID is required' 
+      });
+    }
+
+    const pool = await poolPromise;
+    
+    // Check if user already has a support conversation
+    const existingResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .query(`
+        SELECT TOP 1 ConversationID 
+        FROM Conversations 
+        WHERE UserID = @UserID AND ConversationType = 'support'
+        ORDER BY CreatedAt DESC
+      `);
+    
+    if (existingResult.recordset.length > 0) {
+      return res.json({
+        success: true,
+        conversationId: existingResult.recordset[0].ConversationID,
+        isExisting: true
+      });
+    }
+    
+    // Create new support conversation
+    // Use a system/admin vendor profile for support (VendorProfileID = 1 or create one)
+    const createResult = await pool.request()
+      .input('UserID', sql.Int, userId)
+      .input('VendorProfileID', sql.Int, 1) // System support vendor
+      .input('Subject', sql.NVarChar(255), subject || 'Support Request')
+      .input('ConversationType', sql.NVarChar(50), 'support')
+      .query(`
+        INSERT INTO Conversations (UserID, VendorProfileID, Subject, ConversationType, CreatedAt, UpdatedAt)
+        OUTPUT INSERTED.ConversationID
+        VALUES (@UserID, @VendorProfileID, @Subject, @ConversationType, GETDATE(), GETDATE())
+      `);
+    
+    const conversationId = createResult.recordset[0]?.ConversationID;
+    
+    // Add initial welcome message from support
+    if (conversationId) {
+      await pool.request()
+        .input('ConversationID', sql.Int, conversationId)
+        .input('SenderID', sql.Int, 1) // System user
+        .input('Content', sql.NVarChar(sql.MAX), 'Hello! Welcome to VenueVue Support. How can we help you today?')
+        .query(`
+          INSERT INTO Messages (ConversationID, SenderID, Content, IsRead, CreatedAt)
+          VALUES (@ConversationID, @SenderID, @Content, 0, GETDATE())
+        `);
+    }
+
+    res.json({
+      success: true,
+      conversationId: conversationId,
+      isExisting: false
+    });
+
+  } catch (err) {
+    console.error('Create support conversation error:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to create support conversation',
       error: err.message 
     });
   }

@@ -14,6 +14,49 @@ function isStripeConfigured() {
          !process.env.STRIPE_PUBLISHABLE_KEY.includes('placeholder');
 }
 
+// Fetch commission settings from database (with env fallbacks)
+async function getCommissionSettings() {
+  const defaults = {
+    platformFeePercent: parseFloat(process.env.PLATFORM_FEE_PERCENT || '5'),
+    stripeFeePercent: parseFloat(process.env.STRIPE_FEE_PERCENT || '2.9'),
+    stripeFeeFixed: parseFloat(process.env.STRIPE_FEE_FIXED || '0.30'),
+    taxPercent: parseFloat(process.env.TAX_PERCENT || '13'), // HST 13%
+    currency: (process.env.STRIPE_CURRENCY || 'cad').toLowerCase()
+  };
+
+  try {
+    const pool = await poolPromise;
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'CommissionSettings'
+    `);
+    
+    if (tableCheck.recordset[0].cnt === 0) {
+      return defaults;
+    }
+
+    const result = await pool.request().query(`
+      SELECT SettingKey, SettingValue FROM CommissionSettings WHERE IsActive = 1
+    `);
+
+    const settings = { ...defaults };
+    result.recordset.forEach(row => {
+      const key = row.SettingKey?.toLowerCase();
+      const val = parseFloat(row.SettingValue);
+      if (!isNaN(val)) {
+        if (key === 'platform_fee_percent' || key === 'platformfeepercent') settings.platformFeePercent = val;
+        if (key === 'stripe_fee_percent' || key === 'stripefeepercent') settings.stripeFeePercent = val;
+        if (key === 'stripe_fee_fixed' || key === 'stripefeefixed') settings.stripeFeeFixed = val;
+        if (key === 'tax_percent' || key === 'taxpercent' || key === 'hst_percent') settings.taxPercent = val;
+      }
+    });
+
+    return settings;
+  } catch (err) {
+    console.warn('[getCommissionSettings] Error fetching from DB, using defaults:', err?.message);
+    return defaults;
+  }
+}
+
 // ===== STRIPE CONNECT ONBOARDING =====
 
 // 1. INITIATE STRIPE CONNECT (for vendor onboarding)
@@ -299,11 +342,15 @@ function resolveToHttpUrl(inputUrl, fallbackPathOrUrl, req) {
   return fallbackAbs;
 }
 
-function ensureSessionIdParam(urlStr) {
+function ensureSessionIdParam(urlStr, bookingId = null) {
   try {
     const u = new URL(urlStr);
     if (!u.searchParams.has('session_id')) {
       u.searchParams.set('session_id', '{CHECKOUT_SESSION_ID}');
+    }
+    // Also add booking_id as fallback for older sessions
+    if (bookingId && !u.searchParams.has('booking_id')) {
+      u.searchParams.set('booking_id', String(bookingId));
     }
     return u.toString();
   } catch (e) {
@@ -921,7 +968,7 @@ async function getVendorProfileIdFromBooking(bookingId) {
   }
 }
 
-// 7. CREATE CHECKOUT SESSION (Alternative hosted checkout)
+// 7. CREATE CHECKOUT SESSION (Enhanced with detailed line items and metadata)
 router.post('/checkout-session', async (req, res) => {
   try {
     const { 
@@ -940,119 +987,230 @@ router.post('/checkout-session', async (req, res) => {
       });
     }
 
+    const pool = await poolPromise;
+
     // Server-side safety: prevent creating a Checkout Session for an already-paid booking
-    try {
-      const pool = await poolPromise;
-      const check = await pool.request()
-        .input('BookingID', sql.Int, bookingId)
-        .query('SELECT FullAmountPaid FROM Bookings WHERE BookingID = @BookingID');
-      if (check.recordset.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'Booking not found'
-        });
-      }
-      const paidFlag = check.recordset[0].FullAmountPaid;
-      const alreadyPaid = paidFlag === true || paidFlag === 1;
-      if (alreadyPaid) {
-        return res.status(409).json({
-          success: false,
-          message: 'This booking is already paid.'
-        });
-      }
-    } catch (dbErr) {
-      console.warn('[CheckoutSession] Could not verify booking paid status:', dbErr?.message);
-    }
-
-    // Get vendor profile ID from the booking record
-    const vendorProfileId = await getVendorProfileIdFromBooking(bookingId);
+    const bookingCheck = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .query(`
+        SELECT b.BookingID, b.FullAmountPaid, b.TotalAmount, b.EventDate, b.EventName, b.EventType, b.EventLocation,
+               b.UserID, b.VendorProfileID, b.ServiceID,
+               u.Name AS ClientName, u.Email AS ClientEmail, u.Phone AS ClientPhone,
+               vp.BusinessName AS VendorName, vp.StripeAccountID
+        FROM Bookings b
+        LEFT JOIN Users u ON b.UserID = u.UserID
+        LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+        WHERE b.BookingID = @BookingID
+      `);
     
-    if (!vendorProfileId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Booking not found or invalid'
-      });
+    if (bookingCheck.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
     }
 
-    const vendorStripeAccountId = await getVendorStripeAccountId(vendorProfileId);
+    const booking = bookingCheck.recordset[0];
+    const alreadyPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
+    if (alreadyPaid) {
+      return res.status(409).json({ success: false, message: 'This booking is already paid.' });
+    }
+
+    const vendorProfileId = booking.VendorProfileID;
+    const vendorStripeAccountId = booking.StripeAccountID;
 
     if (!vendorStripeAccountId) {
       return res.status(400).json({
         success: false,
-        message: 'Vendor is not connected to Stripe'
+        message: 'Vendor is not connected to Stripe. Please contact the vendor.'
       });
     }
 
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5') / 100;
-    const invTotals3 = await getInvoiceTotalsCents(bookingId);
-    const totalAmountCents = invTotals3.totalAmountCents;
-    if (!totalAmountCents || totalAmountCents < 50) {
-      return res.status(400).json({ success: false, message: 'Unable to compute invoice total for checkout session' });
+    // Get commission settings from database
+    const commissionSettings = await getCommissionSettings();
+    
+    // Get booking services for detailed line items
+    const servicesResult = await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .query(`
+        SELECT bs.BookingServiceID, bs.Quantity, bs.PriceAtBooking,
+               s.Name AS ServiceName, s.Description AS ServiceDescription
+        FROM BookingServices bs
+        LEFT JOIN Services s ON bs.ServiceID = s.ServiceID
+        WHERE bs.BookingID = @BookingID
+      `);
+    
+    let services = servicesResult.recordset || [];
+    
+    // Fallback if no services found
+    if (services.length === 0 && booking.TotalAmount > 0) {
+      let serviceName = 'Service';
+      if (booking.ServiceID) {
+        const svcRes = await pool.request()
+          .input('ServiceID', sql.Int, booking.ServiceID)
+          .query('SELECT Name FROM Services WHERE ServiceID = @ServiceID');
+        serviceName = svcRes.recordset[0]?.Name || 'Service';
+      }
+      services = [{
+        ServiceName: serviceName,
+        Quantity: 1,
+        PriceAtBooking: booking.TotalAmount
+      }];
     }
-    const platformFee = (invTotals3.platformFeeCents != null) ? invTotals3.platformFeeCents : Math.round(totalAmountCents * platformFeePercent);
-    const taxPercentRaw3 = parseFloat(process.env.TAX_PERCENT || '0');
+
+    // Calculate totals
+    const servicesSubtotal = services.reduce((sum, s) => sum + (Number(s.PriceAtBooking || 0) * (s.Quantity || 1)), 0);
+    const platformFeeAmount = Math.round(servicesSubtotal * (commissionSettings.platformFeePercent / 100) * 100) / 100;
+    const taxAmount = Math.round((servicesSubtotal + platformFeeAmount) * (commissionSettings.taxPercent / 100) * 100) / 100;
+    const processingFee = Math.round((servicesSubtotal * (commissionSettings.stripeFeePercent / 100) + commissionSettings.stripeFeeFixed) * 100) / 100;
+    const totalAmount = Math.round((servicesSubtotal + platformFeeAmount + taxAmount + processingFee) * 100) / 100;
+
+    // Build line items for Stripe Checkout
+    const lineItems = [];
+
+    // Add each service as a line item
+    services.forEach(service => {
+      lineItems.push({
+        price_data: {
+          currency: commissionSettings.currency,
+          product_data: {
+            name: service.ServiceName || 'Service',
+            description: service.ServiceDescription || undefined
+          },
+          unit_amount: Math.round(Number(service.PriceAtBooking || 0) * 100)
+        },
+        quantity: service.Quantity || 1
+      });
+    });
+
+    // Add platform fee as a line item (visible to customer)
+    if (platformFeeAmount > 0) {
+      lineItems.push({
+        price_data: {
+          currency: commissionSettings.currency,
+          product_data: {
+            name: 'Platform Service Fee',
+            description: `${commissionSettings.platformFeePercent}% platform fee`
+          },
+          unit_amount: Math.round(platformFeeAmount * 100)
+        },
+        quantity: 1
+      });
+    }
+
+    // Add tax as a line item
+    if (taxAmount > 0) {
+      lineItems.push({
+        price_data: {
+          currency: commissionSettings.currency,
+          product_data: {
+            name: `Tax (HST ${commissionSettings.taxPercent}%)`,
+            description: 'Harmonized Sales Tax'
+          },
+          unit_amount: Math.round(taxAmount * 100)
+        },
+        quantity: 1
+      });
+    }
+
+    // Add processing fee as a line item (visible to customer)
+    if (processingFee > 0) {
+      lineItems.push({
+        price_data: {
+          currency: commissionSettings.currency,
+          product_data: {
+            name: 'Payment Processing Fee',
+            description: `${commissionSettings.stripeFeePercent}% + $${commissionSettings.stripeFeeFixed.toFixed(2)}`
+          },
+          unit_amount: Math.round(processingFee * 100)
+        },
+        quantity: 1
+      });
+    }
+
+    // Calculate application fee (platform keeps this)
+    const applicationFeeCents = Math.round(platformFeeAmount * 100);
+    const totalAmountCents = lineItems.reduce((sum, item) => sum + (item.price_data.unit_amount * item.quantity), 0);
 
     // Resolve and sanitize redirect URLs
-    let successRedirect = resolveToHttpUrl(successUrl, '/booking-success', req);
-    successRedirect = ensureSessionIdParam(successRedirect);
-    let cancelRedirect = resolveToHttpUrl(cancelUrl, '/booking-cancelled', req);
+    let successRedirect = resolveToHttpUrl(successUrl, '/payment-success', req);
+    successRedirect = ensureSessionIdParam(successRedirect, bookingId);
+    let cancelRedirect = resolveToHttpUrl(cancelUrl, '/dashboard?section=bookings&payment=cancelled', req);
 
-    // Debug logging (safe: no card details)
-    const baseUrl = getRequestBaseUrl(req);
+    // Build comprehensive metadata
+    const metadata = {
+      booking_id: String(bookingId),
+      vendor_profile_id: String(vendorProfileId),
+      client_name: booking.ClientName || '',
+      client_email: booking.ClientEmail || '',
+      client_phone: booking.ClientPhone || '',
+      vendor_name: booking.VendorName || '',
+      event_date: booking.EventDate ? new Date(booking.EventDate).toISOString() : '',
+      event_name: booking.EventName || '',
+      event_type: booking.EventType || '',
+      event_location: booking.EventLocation || '',
+      services_subtotal_cents: String(Math.round(servicesSubtotal * 100)),
+      platform_fee_cents: String(applicationFeeCents),
+      tax_cents: String(Math.round(taxAmount * 100)),
+      processing_fee_cents: String(Math.round(processingFee * 100)),
+      total_cents: String(totalAmountCents),
+      platform_fee_percent: String(commissionSettings.platformFeePercent),
+      tax_percent: String(commissionSettings.taxPercent),
+      stripe_fee_percent: String(commissionSettings.stripeFeePercent)
+    };
+
+    // Debug logging
     console.log('[CheckoutSession] Creating with', {
       bookingId,
       vendorProfileId,
       vendorStripeAccountId,
-      amount,
-      amountCents: Math.round(amount * 100),
-      currency,
-      platformFee,
-      baseUrl,
-      successRedirect,
-      cancelRedirect
+      servicesSubtotal,
+      platformFeeAmount,
+      taxAmount,
+      processingFee,
+      totalAmountCents,
+      applicationFeeCents,
+      lineItemsCount: lineItems.length
     });
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: [{
-        price_data: {
-          currency: currency,
-          product_data: {
-            name: description || `Booking Payment #${bookingId}`,
-          },
-          unit_amount: totalAmountCents,
-        },
-        quantity: 1,
-      }],
+      line_items: lineItems,
       mode: 'payment',
       success_url: successRedirect,
       cancel_url: cancelRedirect,
+      customer_email: booking.ClientEmail || undefined,
+      metadata: metadata,
       payment_intent_data: {
-        application_fee_amount: platformFee,
+        application_fee_amount: applicationFeeCents,
         transfer_data: {
-          destination: vendorStripeAccountId,
+          destination: vendorStripeAccountId
         },
-        metadata: {
-          booking_id: bookingId,
-          vendor_profile_id: vendorProfileId,
-          invoice_id: invTotals3.invoiceId || '',
-          subtotal_cents: String(invTotals3.subtotalCents || 0),
-          platform_fee_cents: String(platformFee),
-          tax_cents: String(invTotals3.taxCents || 0),
-          total_cents: String(totalAmountCents),
-          tax_percent: String(Number.isFinite(taxPercentRaw3) ? taxPercentRaw3 : 0)
-        }
+        metadata: metadata
       }
     });
 
-    // Debug logging (result)
+    // Store session ID in booking for tracking
+    await pool.request()
+      .input('BookingID', sql.Int, bookingId)
+      .input('StripeSessionID', sql.NVarChar(255), session.id)
+      .query(`
+        UPDATE Bookings 
+        SET StripeSessionID = @StripeSessionID, UpdatedAt = GETDATE()
+        WHERE BookingID = @BookingID
+      `);
+
     console.log('[CheckoutSession] Created', { sessionId: session.id, url: session.url });
 
     res.json({
       success: true,
       sessionId: session.id,
       url: session.url,
-      sessionUrl: session.url  // Alias for frontend compatibility
+      sessionUrl: session.url,
+      breakdown: {
+        servicesSubtotal,
+        platformFee: platformFeeAmount,
+        tax: taxAmount,
+        processingFee,
+        total: totalAmountCents / 100
+      }
     });
 
   } catch (error) {
@@ -1195,13 +1353,28 @@ router.get('/verify-session', async (req, res) => {
       }
     } catch (txErr) { console.warn('[VerifySession] recordTransaction error', txErr?.message); }
 
-    // Also update related booking request if exists (most recent for this user/vendor)
-    const bookingInfo = await pool.request()
+    // Fetch booking details to return in response
+    const bookingDetailsResult = await pool.request()
       .input('BookingID', sql.Int, bookingId)
-      .query('SELECT UserID, VendorProfileID FROM Bookings WHERE BookingID = @BookingID');
-    if (bookingInfo.recordset.length > 0) {
-      const userId = bookingInfo.recordset[0].UserID;
-      const vendorProfileId = bookingInfo.recordset[0].VendorProfileID;
+      .query(`
+        SELECT 
+          b.BookingID, b.UserID, b.VendorProfileID, b.EventDate, b.EndDate,
+          b.EventName, b.EventType, b.EventLocation, b.Status, b.TotalAmount,
+          b.FullAmountPaid, b.AttendeeCount, b.SpecialRequests, b.CreatedAt,
+          u.Name AS ClientName, u.Email AS ClientEmail,
+          vp.BusinessName AS VendorName
+        FROM Bookings b
+        LEFT JOIN Users u ON b.UserID = u.UserID
+        LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+        WHERE b.BookingID = @BookingID
+      `);
+    
+    const bookingDetails = bookingDetailsResult.recordset[0] || null;
+
+    // Also update related booking request if exists (most recent for this user/vendor)
+    if (bookingDetails) {
+      const userId = bookingDetails.UserID;
+      const vendorProfileId = bookingDetails.VendorProfileID;
       await pool.request()
         .input('UserID', sql.Int, userId)
         .input('VendorProfileID', sql.Int, vendorProfileId)
@@ -1217,7 +1390,7 @@ router.get('/verify-session', async (req, res) => {
         `);
     }
 
-    res.json({ success: true, bookingId, paymentIntentId });
+    res.json({ success: true, bookingId, paymentIntentId, booking: bookingDetails });
   } catch (error) {
     console.error('Verify session error:', error);
     res.status(500).json({ success: false, message: 'Failed to verify session', error: error.message });
@@ -1596,7 +1769,7 @@ const webhook = async (req, res) => {
   }
 };
 
-// 10. CHECK BOOKING PAYMENT STATUS
+// 10. CHECK BOOKING PAYMENT STATUS (no access control - for payment success page)
 router.get('/booking/:bookingId/status', async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -1607,15 +1780,24 @@ router.get('/booking/:bookingId/status', async (req, res) => {
     
     const result = await request.query(`
       SELECT 
-        BookingID,
-        Status,
-        FullAmountPaid,
-        DepositPaid,
-        StripePaymentIntentID,
-        TotalAmount,
-        UpdatedAt
-      FROM Bookings 
-      WHERE BookingID = @BookingID
+        b.BookingID,
+        b.Status,
+        b.FullAmountPaid,
+        b.DepositPaid,
+        b.StripePaymentIntentID,
+        b.TotalAmount,
+        b.EventDate,
+        b.EventName,
+        b.EventType,
+        b.EventLocation,
+        b.UpdatedAt,
+        u.Name AS ClientName,
+        u.Email AS ClientEmail,
+        vp.BusinessName AS VendorName
+      FROM Bookings b
+      LEFT JOIN Users u ON b.UserID = u.UserID
+      LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+      WHERE b.BookingID = @BookingID
     `);
     
     if (result.recordset.length === 0) {
@@ -1629,6 +1811,31 @@ router.get('/booking/:bookingId/status', async (req, res) => {
     const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
     const isDepositPaid = booking.DepositPaid === true || booking.DepositPaid === 1;
     
+    // Get invoice total (which includes all fees) if available
+    let invoiceTotal = null;
+    try {
+      const invResult = await request.query(`
+        SELECT TOP 1 TotalAmount FROM Invoices WHERE BookingID = @BookingID ORDER BY IssueDate DESC
+      `);
+      if (invResult.recordset.length > 0) {
+        invoiceTotal = invResult.recordset[0].TotalAmount;
+      }
+    } catch (e) {
+      console.warn('Could not fetch invoice total:', e.message);
+    }
+    
+    // Use invoice total if available, otherwise calculate from commission settings
+    let displayTotal = invoiceTotal || booking.TotalAmount;
+    if (!invoiceTotal && booking.TotalAmount) {
+      // Calculate total with fees using commission settings
+      const settings = await getCommissionSettings();
+      const subtotal = Number(booking.TotalAmount);
+      const platformFee = Math.round(subtotal * (settings.platformFeePercent / 100) * 100) / 100;
+      const taxAmount = Math.round((subtotal + platformFee) * (settings.taxPercent / 100) * 100) / 100;
+      const processingFee = Math.round((subtotal * (settings.stripeFeePercent / 100) + settings.stripeFeeFixed) * 100) / 100;
+      displayTotal = Math.round((subtotal + platformFee + taxAmount + processingFee) * 100) / 100;
+    }
+    
     res.json({
       success: true,
       bookingId: booking.BookingID,
@@ -1636,8 +1843,23 @@ router.get('/booking/:bookingId/status', async (req, res) => {
       isPaid: isPaid,
       isDepositPaid: isDepositPaid,
       paymentIntentId: booking.StripePaymentIntentID,
-      totalAmount: booking.TotalAmount,
-      lastUpdated: booking.UpdatedAt
+      totalAmount: displayTotal,
+      baseAmount: booking.TotalAmount,
+      lastUpdated: booking.UpdatedAt,
+      booking: {
+        BookingID: booking.BookingID,
+        Status: booking.Status,
+        FullAmountPaid: isPaid,
+        TotalAmount: displayTotal,
+        BaseAmount: booking.TotalAmount,
+        EventDate: booking.EventDate,
+        EventName: booking.EventName,
+        EventType: booking.EventType,
+        EventLocation: booking.EventLocation,
+        VendorName: booking.VendorName,
+        ClientName: booking.ClientName,
+        ClientEmail: booking.ClientEmail
+      }
     });
     
   } catch (error) {
@@ -1656,32 +1878,25 @@ router.get('/redirect-complete', (req, res) => {
   res.set('Content-Type', 'text/html').send(html);
 });
 
-// 0a. PUBLIC CONFIG: expose Stripe publishable key for frontend
-router.get('/config', (req, res) => {
+// 0a. PUBLIC CONFIG: expose Stripe publishable key and commission settings for frontend
+router.get('/config', async (req, res) => {
   try {
     const key = process.env.STRIPE_PUBLISHABLE_KEY || '';
     const valid = !!key && !key.includes('placeholder');
 
-    // Read directly from environment variables - NO FALLBACK DEFAULTS
-    const platformFeePercent = parseFloat(process.env.PLATFORM_FEE_PERCENT);
-    const stripeProcFeePercent = parseFloat(process.env.STRIPE_PROC_FEE_PERCENT || process.env.STRIPE_FEE_PERCENT);
-    const stripeProcFeeFixed = parseFloat(process.env.STRIPE_PROC_FEE_FIXED || process.env.STRIPE_FEE_FIXED);
-    const taxPercent = parseFloat(process.env.TAX_PERCENT);
-    const currency = (process.env.STRIPE_CURRENCY || 'cad').toLowerCase();
+    // Fetch settings from database (with env fallbacks)
+    const settings = await getCommissionSettings();
 
-    console.log('📊 Config endpoint called - Environment variables:');
-    console.log('   PLATFORM_FEE_PERCENT:', process.env.PLATFORM_FEE_PERCENT, '→', platformFeePercent);
-    console.log('   STRIPE_PROC_FEE_PERCENT:', process.env.STRIPE_PROC_FEE_PERCENT, '→', stripeProcFeePercent);
-    console.log('   STRIPE_PROC_FEE_FIXED:', process.env.STRIPE_PROC_FEE_FIXED, '→', stripeProcFeeFixed);
+    console.log('📊 Config endpoint called - Commission settings:', settings);
 
     res.json({
       success: true,
       publishableKey: valid ? key : null,
-      platformFeePercent,
-      stripeProcFeePercent,
-      stripeProcFeeFixed,
-      taxPercent,
-      currency
+      platformFeePercent: settings.platformFeePercent,
+      stripeProcFeePercent: settings.stripeFeePercent,
+      stripeProcFeeFixed: settings.stripeFeeFixed,
+      taxPercent: settings.taxPercent,
+      currency: settings.currency
     });
   } catch (e) {
     console.error('❌ Config endpoint error:', e);
