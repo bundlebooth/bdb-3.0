@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { useBanner } from '../../../context/BannerContext';
+import { showBanner } from '../../../utils/banners';
 import { API_BASE_URL } from '../../../config';
 
 function ClientBookingsSection() {
   const { currentUser } = useAuth();
-  const { showBanner } = useBanner();
   const [activeTab, setActiveTab] = useState('all');
   const [allBookings, setAllBookings] = useState([]);
   const [loading, setLoading] = useState(true);
