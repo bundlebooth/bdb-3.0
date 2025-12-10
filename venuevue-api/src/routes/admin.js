@@ -1416,15 +1416,69 @@ router.get('/payments/payouts', async (req, res) => {
 
 // ==================== SECURITY LOGS ====================
 
-// GET /admin/security/logs - Get security logs (using user login data)
+// GET /admin/security/logs - Get security logs from SecurityLogs table
 router.get('/security/logs', async (req, res) => {
   try {
-    const { type = 'login', page = 1, limit = 50 } = req.query;
+    const { type = 'login', status, search, page = 1, limit = 50 } = req.query;
     const pool = await getPool();
     const offset = (page - 1) * limit;
     
-    if (type === 'login') {
-      // Get recent login activity from Users table
+    // Check if SecurityLogs table exists
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'SecurityLogs'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      // Use SecurityLogs table
+      let whereConditions = ['1=1'];
+      
+      if (type === 'login') {
+        whereConditions.push("Action IN ('Login', 'Logout', 'LoginFailed')");
+      } else if (type === 'admin') {
+        whereConditions.push("Action LIKE 'Admin%'");
+      } else if (type === 'flagged') {
+        whereConditions.push("ActionStatus = 'Failed'");
+      }
+      
+      if (status === 'success') whereConditions.push("ActionStatus = 'Success'");
+      if (status === 'failed') whereConditions.push("ActionStatus = 'Failed'");
+      if (search) whereConditions.push(`(Email LIKE '%${search}%' OR Details LIKE '%${search}%')`);
+      
+      const whereClause = whereConditions.join(' AND ');
+      
+      const result = await pool.request()
+        .input('offset', sql.Int, offset)
+        .input('limit', sql.Int, parseInt(limit))
+        .query(`
+          SELECT 
+            LogID as id,
+            UserID,
+            Email as user,
+            Action as action,
+            ActionStatus as status,
+            IPAddress as ip,
+            Location as location,
+            Device as device,
+            Details as details,
+            CreatedAt as timestamp
+          FROM SecurityLogs
+          WHERE ${whereClause}
+          ORDER BY CreatedAt DESC
+          OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+        `);
+      
+      const countResult = await pool.request().query(`
+        SELECT COUNT(*) as total FROM SecurityLogs WHERE ${whereClause}
+      `);
+      
+      res.json({ 
+        logs: result.recordset, 
+        total: countResult.recordset[0].total,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      });
+    } else {
+      // Fallback to Users table LastLogin data
       const result = await pool.request()
         .input('offset', sql.Int, offset)
         .input('limit', sql.Int, parseInt(limit))
@@ -1433,9 +1487,11 @@ router.get('/security/logs', async (req, res) => {
             u.UserID as id,
             u.Email as user,
             'Login Success' as action,
-            '0.0.0.0' as ip,
-            'Unknown' as location,
+            'Success' as status,
+            NULL as ip,
+            NULL as location,
             'Web Browser' as device,
+            NULL as details,
             u.LastLogin as timestamp
           FROM Users u
           WHERE u.LastLogin IS NOT NULL
@@ -1444,52 +1500,38 @@ router.get('/security/logs', async (req, res) => {
         `);
       
       res.json({ logs: result.recordset, total: result.recordset.length });
-    } else if (type === 'admin') {
-      // Get admin users and their recent activity
-      const result = await pool.request()
-        .input('offset', sql.Int, offset)
-        .input('limit', sql.Int, parseInt(limit))
-        .query(`
-          SELECT 
-            u.UserID as id,
-            u.Email as admin,
-            'Admin Login' as action,
-            'System' as target,
-            'Admin accessed dashboard' as details,
-            u.LastLogin as timestamp
-          FROM Users u
-          WHERE u.IsAdmin = 1 AND u.LastLogin IS NOT NULL
-          ORDER BY u.LastLogin DESC
-          OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-        `);
-      
-      res.json({ logs: result.recordset, total: result.recordset.length });
-    } else if (type === 'flagged') {
-      // Get flagged reviews
-      const result = await pool.request()
-        .input('offset', sql.Int, offset)
-        .input('limit', sql.Int, parseInt(limit))
-        .query(`
-          SELECT 
-            r.ReviewID as id,
-            'Review' as type,
-            'Review #' + CAST(r.ReviewID as NVARCHAR) as item,
-            'Flagged for review' as reason,
-            'medium' as severity,
-            r.CreatedAt as timestamp
-          FROM Reviews r
-          WHERE r.IsFlagged = 1
-          ORDER BY r.CreatedAt DESC
-          OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-        `);
-      
-      res.json({ logs: result.recordset, total: result.recordset.length });
-    } else {
-      res.json({ logs: [], total: 0 });
     }
   } catch (error) {
     console.error('Error fetching security logs:', error);
     res.status(500).json({ error: 'Failed to fetch security logs', details: error.message });
+  }
+});
+
+// POST /admin/security/log - Log a security event
+router.post('/security/log', async (req, res) => {
+  try {
+    const { userId, email, action, status = 'Success', ipAddress, userAgent, location, device, details } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('userId', sql.Int, userId)
+      .input('email', sql.NVarChar, email)
+      .input('action', sql.NVarChar, action)
+      .input('status', sql.NVarChar, status)
+      .input('ipAddress', sql.NVarChar, ipAddress)
+      .input('userAgent', sql.NVarChar, userAgent)
+      .input('location', sql.NVarChar, location)
+      .input('device', sql.NVarChar, device)
+      .input('details', sql.NVarChar, details)
+      .query(`
+        INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Location, Device, Details)
+        VALUES (@userId, @email, @action, @status, @ipAddress, @userAgent, @location, @device, @details)
+      `);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error logging security event:', error);
+    res.status(500).json({ error: 'Failed to log security event' });
   }
 });
 
@@ -1686,12 +1728,475 @@ router.get('/support/search', async (req, res) => {
   }
 });
 
+// GET /admin/support/tickets - Get support tickets
+router.get('/support/tickets', async (req, res) => {
+  try {
+    const { status, priority, category, search, page = 1, limit = 20 } = req.query;
+    const pool = await getPool();
+    const offset = (page - 1) * limit;
+    
+    // Check if SupportTickets table exists
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'SupportTickets'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      let whereConditions = ['1=1'];
+      if (status) whereConditions.push(`t.Status = '${status}'`);
+      if (priority) whereConditions.push(`t.Priority = '${priority}'`);
+      if (category) whereConditions.push(`t.Category = '${category}'`);
+      if (search) whereConditions.push(`(t.Subject LIKE '%${search}%' OR t.UserEmail LIKE '%${search}%' OR t.TicketNumber LIKE '%${search}%')`);
+      
+      const whereClause = whereConditions.join(' AND ');
+      
+      const result = await pool.request()
+        .input('offset', sql.Int, offset)
+        .input('limit', sql.Int, parseInt(limit))
+        .query(`
+          SELECT 
+            t.TicketID as id,
+            t.TicketNumber as ticketNumber,
+            t.UserID as userId,
+            t.UserEmail as userEmail,
+            t.UserName as userName,
+            t.Subject as subject,
+            t.Description as description,
+            t.Category as category,
+            t.Priority as priority,
+            t.Status as status,
+            t.AssignedTo as assignedTo,
+            a.Name as assignedToName,
+            t.Source as source,
+            t.ConversationID as conversationId,
+            t.CreatedAt as createdAt,
+            t.UpdatedAt as updatedAt,
+            t.ResolvedAt as resolvedAt,
+            (SELECT COUNT(*) FROM SupportTicketMessages WHERE TicketID = t.TicketID) as messageCount
+          FROM SupportTickets t
+          LEFT JOIN Users a ON t.AssignedTo = a.UserID
+          WHERE ${whereClause}
+          ORDER BY 
+            CASE t.Priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END,
+            t.CreatedAt DESC
+          OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+        `);
+      
+      const countResult = await pool.request().query(`
+        SELECT COUNT(*) as total FROM SupportTickets t WHERE ${whereClause}
+      `);
+      
+      res.json({ 
+        tickets: result.recordset, 
+        total: countResult.recordset[0].total,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      });
+    } else {
+      res.json({ tickets: [], total: 0 });
+    }
+  } catch (error) {
+    console.error('Error fetching tickets:', error);
+    res.status(500).json({ error: 'Failed to fetch tickets' });
+  }
+});
+
+// POST /admin/support/tickets - Create support ticket
+router.post('/support/tickets', async (req, res) => {
+  try {
+    const { userId, userEmail, userName, subject, description, category, priority, source, conversationId } = req.body;
+    const pool = await getPool();
+    
+    // Generate ticket number
+    const ticketNumber = 'TKT-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+    
+    const result = await pool.request()
+      .input('ticketNumber', sql.NVarChar, ticketNumber)
+      .input('userId', sql.Int, userId)
+      .input('userEmail', sql.NVarChar, userEmail)
+      .input('userName', sql.NVarChar, userName)
+      .input('subject', sql.NVarChar, subject)
+      .input('description', sql.NVarChar, description)
+      .input('category', sql.NVarChar, category || 'general')
+      .input('priority', sql.NVarChar, priority || 'medium')
+      .input('source', sql.NVarChar, source || 'chat')
+      .input('conversationId', sql.Int, conversationId)
+      .query(`
+        INSERT INTO SupportTickets (TicketNumber, UserID, UserEmail, UserName, Subject, Description, Category, Priority, Source, ConversationID)
+        OUTPUT INSERTED.TicketID, INSERTED.TicketNumber
+        VALUES (@ticketNumber, @userId, @userEmail, @userName, @subject, @description, @category, @priority, @source, @conversationId)
+      `);
+    
+    res.json({ success: true, ticketId: result.recordset[0].TicketID, ticketNumber: result.recordset[0].TicketNumber });
+  } catch (error) {
+    console.error('Error creating ticket:', error);
+    res.status(500).json({ error: 'Failed to create ticket' });
+  }
+});
+
+// PUT /admin/support/tickets/:id - Update support ticket
+router.put('/support/tickets/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, priority, assignedTo, category } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('status', sql.NVarChar, status)
+      .input('priority', sql.NVarChar, priority)
+      .input('assignedTo', sql.Int, assignedTo)
+      .input('category', sql.NVarChar, category)
+      .query(`
+        UPDATE SupportTickets SET
+          Status = ISNULL(@status, Status),
+          Priority = ISNULL(@priority, Priority),
+          AssignedTo = ISNULL(@assignedTo, AssignedTo),
+          Category = ISNULL(@category, Category),
+          UpdatedAt = GETUTCDATE(),
+          ResolvedAt = CASE WHEN @status = 'resolved' THEN GETUTCDATE() ELSE ResolvedAt END,
+          ClosedAt = CASE WHEN @status = 'closed' THEN GETUTCDATE() ELSE ClosedAt END
+        WHERE TicketID = @id
+      `);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating ticket:', error);
+    res.status(500).json({ error: 'Failed to update ticket' });
+  }
+});
+
+// GET /admin/support/tickets/:id/messages - Get ticket messages
+router.get('/support/tickets/:id/messages', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('id', sql.Int, id)
+      .query(`
+        SELECT 
+          m.MessageID as id,
+          m.TicketID as ticketId,
+          m.SenderID as senderId,
+          u.Name as senderName,
+          m.SenderType as senderType,
+          m.Message as message,
+          m.Attachments as attachments,
+          m.IsInternal as isInternal,
+          m.CreatedAt as createdAt
+        FROM SupportTicketMessages m
+        LEFT JOIN Users u ON m.SenderID = u.UserID
+        WHERE m.TicketID = @id
+        ORDER BY m.CreatedAt ASC
+      `);
+    
+    res.json({ messages: result.recordset });
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// POST /admin/support/tickets/:id/messages - Add message to ticket
+router.post('/support/tickets/:id/messages', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { senderId, senderType, message, attachments, isInternal } = req.body;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('ticketId', sql.Int, id)
+      .input('senderId', sql.Int, senderId)
+      .input('senderType', sql.NVarChar, senderType || 'admin')
+      .input('message', sql.NVarChar, message)
+      .input('attachments', sql.NVarChar, attachments ? JSON.stringify(attachments) : null)
+      .input('isInternal', sql.Bit, isInternal || false)
+      .query(`
+        INSERT INTO SupportTicketMessages (TicketID, SenderID, SenderType, Message, Attachments, IsInternal)
+        OUTPUT INSERTED.MessageID
+        VALUES (@ticketId, @senderId, @senderType, @message, @attachments, @isInternal);
+        
+        UPDATE SupportTickets SET UpdatedAt = GETUTCDATE() WHERE TicketID = @ticketId;
+      `);
+    
+    res.json({ success: true, messageId: result.recordset[0].MessageID });
+  } catch (error) {
+    console.error('Error adding message:', error);
+    res.status(500).json({ error: 'Failed to add message' });
+  }
+});
+
 // ==================== CONTENT MANAGEMENT ====================
 
-// GET /admin/content/:type - Get content items
+// GET /admin/content/banners - Get homepage banners
+router.get('/content/banners', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    // Check if ContentBanners table exists
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'ContentBanners'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const result = await pool.request().query(`
+        SELECT * FROM ContentBanners ORDER BY DisplayOrder, CreatedAt DESC
+      `);
+      res.json({ items: result.recordset });
+    } else {
+      res.json({ items: [] });
+    }
+  } catch (error) {
+    console.error('Error fetching banners:', error);
+    res.status(500).json({ error: 'Failed to fetch banners' });
+  }
+});
+
+// POST /admin/content/banners - Create/update banner
+router.post('/content/banners', async (req, res) => {
+  try {
+    const { id, title, subtitle, imageUrl, linkUrl, linkText, backgroundColor, textColor, position, displayOrder, startDate, endDate, isActive } = req.body;
+    const pool = await getPool();
+    
+    if (id) {
+      // Update existing
+      await pool.request()
+        .input('id', sql.Int, id)
+        .input('title', sql.NVarChar, title)
+        .input('subtitle', sql.NVarChar, subtitle)
+        .input('imageUrl', sql.NVarChar, imageUrl)
+        .input('linkUrl', sql.NVarChar, linkUrl)
+        .input('linkText', sql.NVarChar, linkText)
+        .input('backgroundColor', sql.NVarChar, backgroundColor)
+        .input('textColor', sql.NVarChar, textColor)
+        .input('position', sql.NVarChar, position || 'hero')
+        .input('displayOrder', sql.Int, displayOrder || 0)
+        .input('startDate', sql.DateTime2, startDate || null)
+        .input('endDate', sql.DateTime2, endDate || null)
+        .input('isActive', sql.Bit, isActive !== false)
+        .query(`
+          UPDATE ContentBanners SET
+            Title = @title, Subtitle = @subtitle, ImageURL = @imageUrl,
+            LinkURL = @linkUrl, LinkText = @linkText, BackgroundColor = @backgroundColor,
+            TextColor = @textColor, Position = @position, DisplayOrder = @displayOrder,
+            StartDate = @startDate, EndDate = @endDate, IsActive = @isActive, UpdatedAt = GETUTCDATE()
+          WHERE BannerID = @id
+        `);
+      res.json({ success: true, id });
+    } else {
+      // Create new
+      const result = await pool.request()
+        .input('title', sql.NVarChar, title)
+        .input('subtitle', sql.NVarChar, subtitle)
+        .input('imageUrl', sql.NVarChar, imageUrl)
+        .input('linkUrl', sql.NVarChar, linkUrl)
+        .input('linkText', sql.NVarChar, linkText)
+        .input('backgroundColor', sql.NVarChar, backgroundColor)
+        .input('textColor', sql.NVarChar, textColor)
+        .input('position', sql.NVarChar, position || 'hero')
+        .input('displayOrder', sql.Int, displayOrder || 0)
+        .input('startDate', sql.DateTime2, startDate || null)
+        .input('endDate', sql.DateTime2, endDate || null)
+        .input('isActive', sql.Bit, isActive !== false)
+        .query(`
+          INSERT INTO ContentBanners (Title, Subtitle, ImageURL, LinkURL, LinkText, BackgroundColor, TextColor, Position, DisplayOrder, StartDate, EndDate, IsActive)
+          OUTPUT INSERTED.BannerID
+          VALUES (@title, @subtitle, @imageUrl, @linkUrl, @linkText, @backgroundColor, @textColor, @position, @displayOrder, @startDate, @endDate, @isActive)
+        `);
+      res.json({ success: true, id: result.recordset[0].BannerID });
+    }
+  } catch (error) {
+    console.error('Error saving banner:', error);
+    res.status(500).json({ error: 'Failed to save banner' });
+  }
+});
+
+// DELETE /admin/content/banners/:id - Delete banner
+router.delete('/content/banners/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    await pool.request().input('id', sql.Int, id).query('DELETE FROM ContentBanners WHERE BannerID = @id');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting banner:', error);
+    res.status(500).json({ error: 'Failed to delete banner' });
+  }
+});
+
+// GET /admin/content/announcements - Get announcements
+router.get('/content/announcements', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'Announcements'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const result = await pool.request().query(`
+        SELECT * FROM Announcements ORDER BY DisplayOrder, CreatedAt DESC
+      `);
+      res.json({ items: result.recordset });
+    } else {
+      res.json({ items: [] });
+    }
+  } catch (error) {
+    console.error('Error fetching announcements:', error);
+    res.status(500).json({ error: 'Failed to fetch announcements' });
+  }
+});
+
+// POST /admin/content/announcements - Create/update announcement
+router.post('/content/announcements', async (req, res) => {
+  try {
+    const { id, title, content, type, icon, linkUrl, linkText, displayType, targetAudience, startDate, endDate, isActive, isDismissible, displayOrder } = req.body;
+    const pool = await getPool();
+    
+    if (id) {
+      await pool.request()
+        .input('id', sql.Int, id)
+        .input('title', sql.NVarChar, title)
+        .input('content', sql.NVarChar, content)
+        .input('type', sql.NVarChar, type || 'info')
+        .input('icon', sql.NVarChar, icon)
+        .input('linkUrl', sql.NVarChar, linkUrl)
+        .input('linkText', sql.NVarChar, linkText)
+        .input('displayType', sql.NVarChar, displayType || 'banner')
+        .input('targetAudience', sql.NVarChar, targetAudience || 'all')
+        .input('startDate', sql.DateTime2, startDate || null)
+        .input('endDate', sql.DateTime2, endDate || null)
+        .input('isActive', sql.Bit, isActive !== false)
+        .input('isDismissible', sql.Bit, isDismissible !== false)
+        .input('displayOrder', sql.Int, displayOrder || 0)
+        .query(`
+          UPDATE Announcements SET
+            Title = @title, Content = @content, Type = @type, Icon = @icon,
+            LinkURL = @linkUrl, LinkText = @linkText, DisplayType = @displayType,
+            TargetAudience = @targetAudience, StartDate = @startDate, EndDate = @endDate,
+            IsActive = @isActive, IsDismissible = @isDismissible, DisplayOrder = @displayOrder, UpdatedAt = GETUTCDATE()
+          WHERE AnnouncementID = @id
+        `);
+      res.json({ success: true, id });
+    } else {
+      const result = await pool.request()
+        .input('title', sql.NVarChar, title)
+        .input('content', sql.NVarChar, content)
+        .input('type', sql.NVarChar, type || 'info')
+        .input('icon', sql.NVarChar, icon)
+        .input('linkUrl', sql.NVarChar, linkUrl)
+        .input('linkText', sql.NVarChar, linkText)
+        .input('displayType', sql.NVarChar, displayType || 'banner')
+        .input('targetAudience', sql.NVarChar, targetAudience || 'all')
+        .input('startDate', sql.DateTime2, startDate || null)
+        .input('endDate', sql.DateTime2, endDate || null)
+        .input('isActive', sql.Bit, isActive !== false)
+        .input('isDismissible', sql.Bit, isDismissible !== false)
+        .input('displayOrder', sql.Int, displayOrder || 0)
+        .query(`
+          INSERT INTO Announcements (Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, TargetAudience, StartDate, EndDate, IsActive, IsDismissible, DisplayOrder)
+          OUTPUT INSERTED.AnnouncementID
+          VALUES (@title, @content, @type, @icon, @linkUrl, @linkText, @displayType, @targetAudience, @startDate, @endDate, @isActive, @isDismissible, @displayOrder)
+        `);
+      res.json({ success: true, id: result.recordset[0].AnnouncementID });
+    }
+  } catch (error) {
+    console.error('Error saving announcement:', error);
+    res.status(500).json({ error: 'Failed to save announcement' });
+  }
+});
+
+// DELETE /admin/content/announcements/:id - Delete announcement
+router.delete('/content/announcements/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    await pool.request().input('id', sql.Int, id).query('DELETE FROM Announcements WHERE AnnouncementID = @id');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting announcement:', error);
+    res.status(500).json({ error: 'Failed to delete announcement' });
+  }
+});
+
+// GET /admin/content/faqs - Get platform FAQs
+router.get('/content/faqs', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'PlatformFAQs'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const result = await pool.request().query(`
+        SELECT * FROM PlatformFAQs ORDER BY DisplayOrder, CreatedAt DESC
+      `);
+      res.json({ items: result.recordset });
+    } else {
+      res.json({ items: [] });
+    }
+  } catch (error) {
+    console.error('Error fetching FAQs:', error);
+    res.status(500).json({ error: 'Failed to fetch FAQs' });
+  }
+});
+
+// POST /admin/content/faqs - Create/update FAQ
+router.post('/content/faqs', async (req, res) => {
+  try {
+    const { id, question, answer, category, displayOrder, isActive } = req.body;
+    const pool = await getPool();
+    
+    if (id) {
+      await pool.request()
+        .input('id', sql.Int, id)
+        .input('question', sql.NVarChar, question)
+        .input('answer', sql.NVarChar, answer)
+        .input('category', sql.NVarChar, category || 'general')
+        .input('displayOrder', sql.Int, displayOrder || 0)
+        .input('isActive', sql.Bit, isActive !== false)
+        .query(`
+          UPDATE PlatformFAQs SET Question = @question, Answer = @answer, Category = @category, DisplayOrder = @displayOrder, IsActive = @isActive, UpdatedAt = GETUTCDATE()
+          WHERE FAQID = @id
+        `);
+      res.json({ success: true, id });
+    } else {
+      const result = await pool.request()
+        .input('question', sql.NVarChar, question)
+        .input('answer', sql.NVarChar, answer)
+        .input('category', sql.NVarChar, category || 'general')
+        .input('displayOrder', sql.Int, displayOrder || 0)
+        .input('isActive', sql.Bit, isActive !== false)
+        .query(`
+          INSERT INTO PlatformFAQs (Question, Answer, Category, DisplayOrder, IsActive)
+          OUTPUT INSERTED.FAQID
+          VALUES (@question, @answer, @category, @displayOrder, @isActive)
+        `);
+      res.json({ success: true, id: result.recordset[0].FAQID });
+    }
+  } catch (error) {
+    console.error('Error saving FAQ:', error);
+    res.status(500).json({ error: 'Failed to save FAQ' });
+  }
+});
+
+// DELETE /admin/content/faqs/:id - Delete FAQ
+router.delete('/content/faqs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    await pool.request().input('id', sql.Int, id).query('DELETE FROM PlatformFAQs WHERE FAQID = @id');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting FAQ:', error);
+    res.status(500).json({ error: 'Failed to delete FAQ' });
+  }
+});
+
+// GET /admin/content/:type - Generic fallback for other content types
 router.get('/content/:type', async (req, res) => {
   try {
-    // Return empty for now - can be expanded with actual CMS tables
     res.json({ items: [] });
   } catch (error) {
     console.error('Error fetching content:', error);
@@ -1699,152 +2204,184 @@ router.get('/content/:type', async (req, res) => {
   }
 });
 
-// ==================== NOTIFICATIONS ====================
+// ==================== NOTIFICATIONS / EMAIL TEMPLATES ====================
 
-// GET /admin/notifications/templates - Get notification templates
+// GET /admin/notifications/templates - Get email templates from database
 router.get('/notifications/templates', async (req, res) => {
   try {
-    // Return default email templates with sample content
-    const templates = [
-      {
-        id: 1,
-        name: 'Booking Confirmation',
-        category: 'booking',
-        type: 'email',
-        subject: 'Your booking is confirmed!',
-        body: `
-          <h2>Booking Confirmed!</h2>
-          <p>Hi {{user_name}},</p>
-          <p>Your booking with {{vendor_name}} has been confirmed for {{booking_date}} at {{booking_time}}.</p>
-          <p><strong>Total Amount:</strong> ${{amount}}</p>
-          <p>Thank you for using PlanHive!</p>
-        `
-      },
-      {
-        id: 2,
-        name: 'Booking Reminder',
-        category: 'booking',
-        type: 'email',
-        subject: 'Reminder: Your booking is tomorrow',
-        body: `
-          <h2>Booking Reminder</h2>
-          <p>Hi {{user_name}},</p>
-          <p>This is a reminder that your booking with {{vendor_name}} is scheduled for tomorrow at {{booking_time}}.</p>
-          <p>We hope you have a great experience!</p>
-        `
-      },
-      {
-        id: 3,
-        name: 'Booking Cancelled',
-        category: 'booking',
-        type: 'email',
-        subject: 'Your booking has been cancelled',
-        body: `
-          <h2>Booking Cancelled</h2>
-          <p>Hi {{user_name}},</p>
-          <p>Your booking with {{vendor_name}} for {{booking_date}} has been cancelled.</p>
-          <p>If you have any questions, please contact us.</p>
-        `
-      },
-      {
-        id: 4,
-        name: 'Payment Received',
-        category: 'payment',
-        type: 'email',
-        subject: 'Payment received - Thank you!',
-        body: `
-          <h2>Payment Received</h2>
-          <p>Hi {{user_name}},</p>
-          <p>We have received your payment of ${{amount}} for booking #{{booking_id}}.</p>
-          <p>Thank you for your business!</p>
-        `
-      },
-      {
-        id: 5,
-        name: 'Payment Failed',
-        category: 'payment',
-        type: 'email',
-        subject: 'Payment failed - Action required',
-        body: `
-          <h2>Payment Failed</h2>
-          <p>Hi {{user_name}},</p>
-          <p>Unfortunately, your payment of ${{amount}} could not be processed.</p>
-          <p>Please update your payment method to complete your booking.</p>
-        `
-      },
-      {
-        id: 6,
-        name: 'Vendor Approved',
-        category: 'vendor',
-        type: 'email',
-        subject: 'Congratulations! Your profile is approved',
-        body: `
-          <h2>Profile Approved!</h2>
-          <p>Hi {{vendor_name}},</p>
-          <p>Congratulations! Your vendor profile has been approved and is now live on PlanHive.</p>
-          <p>You can start receiving bookings right away!</p>
-        `
-      },
-      {
-        id: 7,
-        name: 'Vendor Rejected',
-        category: 'vendor',
-        type: 'email',
-        subject: 'Profile review update',
-        body: `
-          <h2>Profile Review Update</h2>
-          <p>Hi {{vendor_name}},</p>
-          <p>Thank you for your interest in PlanHive. Unfortunately, we are unable to approve your profile at this time.</p>
-          <p>Please contact us if you have any questions.</p>
-        `
-      },
-      {
-        id: 8,
-        name: 'Welcome Email',
-        category: 'user',
-        type: 'email',
-        subject: 'Welcome to PlanHive!',
-        body: `
-          <h2>Welcome to PlanHive!</h2>
-          <p>Hi {{user_name}},</p>
-          <p>Thank you for joining PlanHive. We're excited to help you plan your perfect event!</p>
-          <p>Start browsing vendors and book your first service today.</p>
-        `
-      },
-      {
-        id: 9,
-        name: 'Password Reset',
-        category: 'user',
-        type: 'email',
-        subject: 'Reset your password',
-        body: `
-          <h2>Password Reset Request</h2>
-          <p>Hi {{user_name}},</p>
-          <p>We received a request to reset your password. Click the link below to create a new password:</p>
-          <p><a href="{{reset_link}}">Reset Password</a></p>
-          <p>If you didn't request this, please ignore this email.</p>
-        `
-      },
-      {
-        id: 10,
-        name: 'Review Request',
-        category: 'review',
-        type: 'email',
-        subject: 'How was your experience?',
-        body: `
-          <h2>Share Your Experience</h2>
-          <p>Hi {{user_name}},</p>
-          <p>We hope you had a great experience with {{vendor_name}}!</p>
-          <p>Would you mind taking a moment to leave a review?</p>
-          <p><a href="{{review_link}}">Leave a Review</a></p>
-        `
-      }
-    ];
+    const pool = await getPool();
     
-    res.json({ templates });
+    // Use the existing EmailTemplates table with EmailTemplateComponents
+    const result = await pool.request().query(`
+      SELECT 
+        t.TemplateID as id,
+        t.TemplateName as name,
+        t.TemplateKey as templateKey,
+        t.Category as category,
+        t.Subject as subject,
+        t.AvailableVariables as variables,
+        t.IsActive as isActive,
+        t.CreatedAt,
+        t.UpdatedAt,
+        'email' as type,
+        COALESCE(h.HtmlContent, '') + COALESCE(b.HtmlContent, '') + COALESCE(f.HtmlContent, '') as body,
+        h.HtmlContent as headerHtml,
+        b.HtmlContent as bodyHtml,
+        f.HtmlContent as footerHtml
+      FROM EmailTemplates t
+      LEFT JOIN EmailTemplateComponents h ON t.HeaderComponentID = h.ComponentID
+      LEFT JOIN EmailTemplateComponents b ON t.BodyComponentID = b.ComponentID
+      LEFT JOIN EmailTemplateComponents f ON t.FooterComponentID = f.ComponentID
+      ORDER BY t.Category, t.TemplateName
+    `);
+    
+    res.json({ templates: result.recordset });
   } catch (error) {
     console.error('Error fetching templates:', error);
-    res.status(500).json({ error: 'Failed to fetch templates' });
+    res.status(500).json({ error: 'Failed to fetch templates', details: error.message });
+  }
+});
+
+// GET /admin/notifications/template/:id - Get single template with full HTML preview
+router.get('/notifications/template/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('id', sql.Int, id)
+      .query(`
+        SELECT 
+          t.TemplateID as id,
+          t.TemplateName as name,
+          t.TemplateKey as templateKey,
+          t.Category as category,
+          t.Subject as subject,
+          t.AvailableVariables as variables,
+          t.IsActive as isActive,
+          h.HtmlContent as headerHtml,
+          b.HtmlContent as bodyHtml,
+          f.HtmlContent as footerHtml,
+          h.ComponentID as headerComponentId,
+          b.ComponentID as bodyComponentId,
+          f.ComponentID as footerComponentId
+        FROM EmailTemplates t
+        LEFT JOIN EmailTemplateComponents h ON t.HeaderComponentID = h.ComponentID
+        LEFT JOIN EmailTemplateComponents b ON t.BodyComponentID = b.ComponentID
+        LEFT JOIN EmailTemplateComponents f ON t.FooterComponentID = f.ComponentID
+        WHERE t.TemplateID = @id
+      `);
+    
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    
+    const template = result.recordset[0];
+    // Combine for full preview
+    template.fullHtml = (template.headerHtml || '') + (template.bodyHtml || '') + (template.footerHtml || '');
+    
+    res.json({ template });
+  } catch (error) {
+    console.error('Error fetching template:', error);
+    res.status(500).json({ error: 'Failed to fetch template' });
+  }
+});
+
+// PUT /admin/notifications/template/:id - Update template body component
+router.put('/notifications/template/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subject, bodyHtml, isActive } = req.body;
+    const pool = await getPool();
+    
+    // Get the body component ID
+    const templateResult = await pool.request()
+      .input('id', sql.Int, id)
+      .query('SELECT BodyComponentID FROM EmailTemplates WHERE TemplateID = @id');
+    
+    if (templateResult.recordset.length === 0) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    
+    const bodyComponentId = templateResult.recordset[0].BodyComponentID;
+    
+    // Update the template subject and active status
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('subject', sql.NVarChar, subject)
+      .input('isActive', sql.Bit, isActive !== false)
+      .query(`
+        UPDATE EmailTemplates 
+        SET Subject = @subject, IsActive = @isActive, UpdatedAt = GETUTCDATE()
+        WHERE TemplateID = @id
+      `);
+    
+    // Update the body component HTML if provided
+    if (bodyHtml && bodyComponentId) {
+      await pool.request()
+        .input('componentId', sql.Int, bodyComponentId)
+        .input('htmlContent', sql.NVarChar, bodyHtml)
+        .query(`
+          UPDATE EmailTemplateComponents 
+          SET HtmlContent = @htmlContent, UpdatedAt = GETUTCDATE()
+          WHERE ComponentID = @componentId
+        `);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating template:', error);
+    res.status(500).json({ error: 'Failed to update template' });
+  }
+});
+
+// GET /admin/notifications/logs - Get email send logs
+router.get('/notifications/logs', async (req, res) => {
+  try {
+    const { page = 1, limit = 50, templateKey, status } = req.query;
+    const pool = await getPool();
+    const offset = (page - 1) * limit;
+    
+    let whereConditions = ['1=1'];
+    if (templateKey) whereConditions.push(`TemplateKey = '${templateKey}'`);
+    if (status) whereConditions.push(`Status = '${status}'`);
+    
+    const whereClause = whereConditions.join(' AND ');
+    
+    const result = await pool.request()
+      .input('offset', sql.Int, offset)
+      .input('limit', sql.Int, parseInt(limit))
+      .query(`
+        SELECT 
+          EmailLogID as id,
+          TemplateKey as templateKey,
+          RecipientEmail as recipientEmail,
+          RecipientName as recipientName,
+          Subject as subject,
+          Status as status,
+          ErrorMessage as errorMessage,
+          SentAt as sentAt,
+          UserID as userId,
+          BookingID as bookingId
+        FROM EmailLogs
+        WHERE ${whereClause}
+        ORDER BY SentAt DESC
+        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+      `);
+    
+    const countResult = await pool.request().query(`
+      SELECT COUNT(*) as total FROM EmailLogs WHERE ${whereClause}
+    `);
+    
+    res.json({ 
+      logs: result.recordset, 
+      total: countResult.recordset[0].total,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+  } catch (error) {
+    console.error('Error fetching email logs:', error);
+    res.status(500).json({ error: 'Failed to fetch email logs' });
   }
 });
 
@@ -2369,6 +2906,93 @@ router.get('/analytics/users', async (req, res) => {
   } catch (error) {
     console.error('Error fetching user analytics:', error);
     res.status(500).json({ error: 'Failed to fetch analytics', details: error.message });
+  }
+});
+
+// ==================== PUBLIC CONTENT ENDPOINTS (No Auth) ====================
+// These endpoints are used by the homepage to display banners and announcements
+
+// GET /admin/public/banners - Get active banners for homepage
+router.get('/public/banners', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'ContentBanners'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const result = await pool.request().query(`
+        SELECT BannerID, Title, Subtitle, ImageURL, LinkURL, LinkText, BackgroundColor, TextColor, Position
+        FROM ContentBanners
+        WHERE IsActive = 1 
+          AND (StartDate IS NULL OR StartDate <= GETUTCDATE()) 
+          AND (EndDate IS NULL OR EndDate >= GETUTCDATE())
+        ORDER BY DisplayOrder, CreatedAt DESC
+      `);
+      res.json({ banners: result.recordset });
+    } else {
+      res.json({ banners: [] });
+    }
+  } catch (error) {
+    console.error('Error fetching public banners:', error);
+    res.status(500).json({ error: 'Failed to fetch banners' });
+  }
+});
+
+// GET /admin/public/announcements - Get active announcements for homepage
+router.get('/public/announcements', async (req, res) => {
+  try {
+    const { audience = 'all' } = req.query;
+    const pool = await getPool();
+    
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'Announcements'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const result = await pool.request()
+        .input('audience', sql.NVarChar, audience)
+        .query(`
+          SELECT AnnouncementID, Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, IsDismissible
+          FROM Announcements
+          WHERE IsActive = 1 
+            AND (StartDate IS NULL OR StartDate <= GETUTCDATE()) 
+            AND (EndDate IS NULL OR EndDate >= GETUTCDATE())
+            AND (TargetAudience = 'all' OR TargetAudience = @audience)
+          ORDER BY DisplayOrder, CreatedAt DESC
+        `);
+      
+      // Update view count
+      if (result.recordset.length > 0) {
+        const ids = result.recordset.map(a => a.AnnouncementID).join(',');
+        await pool.request().query(`UPDATE Announcements SET ViewCount = ViewCount + 1 WHERE AnnouncementID IN (${ids})`);
+      }
+      
+      res.json({ announcements: result.recordset });
+    } else {
+      res.json({ announcements: [] });
+    }
+  } catch (error) {
+    console.error('Error fetching public announcements:', error);
+    res.status(500).json({ error: 'Failed to fetch announcements' });
+  }
+});
+
+// POST /admin/public/announcements/:id/dismiss - Dismiss an announcement
+router.post('/public/announcements/:id/dismiss', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('id', sql.Int, id)
+      .query('UPDATE Announcements SET DismissCount = DismissCount + 1 WHERE AnnouncementID = @id');
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error dismissing announcement:', error);
+    res.status(500).json({ error: 'Failed to dismiss announcement' });
   }
 });
 

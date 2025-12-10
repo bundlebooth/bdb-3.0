@@ -9894,3 +9894,459 @@ PRINT 'Use /api/vendors?includeDiscoverySections=true to get grid + sections.'
 PRINT 'All queries filter by IsVisible = 1 for admin visibility control.'
 PRINT '============================================='
 GO
+
+-- =====================================================
+-- ADMIN PANEL TABLES (Dec 10, 2025)
+-- Security Logs, Content Management, Support Tickets
+-- =====================================================
+
+PRINT '============================================='
+PRINT 'ADMIN PANEL TABLES - Dec 10, 2025'
+PRINT '============================================='
+GO
+
+-- Add admin columns to Reviews table
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Reviews') AND name = 'IsFlagged')
+BEGIN
+    ALTER TABLE Reviews ADD IsFlagged BIT DEFAULT 0;
+    PRINT 'Added IsFlagged column to Reviews';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Reviews') AND name = 'FlagReason')
+BEGIN
+    ALTER TABLE Reviews ADD FlagReason NVARCHAR(255) NULL;
+    PRINT 'Added FlagReason column to Reviews';
+END
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Reviews') AND name = 'AdminNotes')
+BEGIN
+    ALTER TABLE Reviews ADD AdminNotes NVARCHAR(MAX) NULL;
+    PRINT 'Added AdminNotes column to Reviews';
+END
+GO
+
+-- Security Logs Table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SecurityLogs')
+BEGIN
+    CREATE TABLE SecurityLogs (
+        LogID INT PRIMARY KEY IDENTITY(1,1),
+        UserID INT NULL FOREIGN KEY REFERENCES Users(UserID),
+        Email NVARCHAR(255) NULL,
+        Action NVARCHAR(50) NOT NULL,
+        ActionStatus NVARCHAR(20) NOT NULL DEFAULT 'Success',
+        IPAddress NVARCHAR(50) NULL,
+        UserAgent NVARCHAR(500) NULL,
+        Location NVARCHAR(100) NULL,
+        Device NVARCHAR(100) NULL,
+        Details NVARCHAR(MAX) NULL,
+        CreatedAt DATETIME2 DEFAULT GETUTCDATE()
+    );
+    
+    CREATE INDEX IX_SecurityLogs_UserID ON SecurityLogs(UserID);
+    CREATE INDEX IX_SecurityLogs_Action ON SecurityLogs(Action);
+    CREATE INDEX IX_SecurityLogs_CreatedAt ON SecurityLogs(CreatedAt DESC);
+    PRINT 'Created SecurityLogs table';
+END
+GO
+
+-- Content Banners Table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'ContentBanners')
+BEGIN
+    CREATE TABLE ContentBanners (
+        BannerID INT PRIMARY KEY IDENTITY(1,1),
+        Title NVARCHAR(200) NOT NULL,
+        Subtitle NVARCHAR(500) NULL,
+        ImageURL NVARCHAR(500) NULL,
+        LinkURL NVARCHAR(500) NULL,
+        LinkText NVARCHAR(100) NULL,
+        BackgroundColor NVARCHAR(20) NULL,
+        TextColor NVARCHAR(20) NULL,
+        Position NVARCHAR(50) DEFAULT 'hero',
+        DisplayOrder INT DEFAULT 0,
+        StartDate DATETIME2 NULL,
+        EndDate DATETIME2 NULL,
+        IsActive BIT DEFAULT 1,
+        CreatedAt DATETIME2 DEFAULT GETUTCDATE(),
+        UpdatedAt DATETIME2 DEFAULT GETUTCDATE(),
+        CreatedBy INT NULL FOREIGN KEY REFERENCES Users(UserID)
+    );
+    PRINT 'Created ContentBanners table';
+END
+GO
+
+-- Announcements Table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Announcements')
+BEGIN
+    CREATE TABLE Announcements (
+        AnnouncementID INT PRIMARY KEY IDENTITY(1,1),
+        Title NVARCHAR(200) NOT NULL,
+        Content NVARCHAR(MAX) NOT NULL,
+        Type NVARCHAR(50) DEFAULT 'info',
+        Icon NVARCHAR(50) NULL,
+        LinkURL NVARCHAR(500) NULL,
+        LinkText NVARCHAR(100) NULL,
+        DisplayType NVARCHAR(50) DEFAULT 'banner',
+        TargetAudience NVARCHAR(50) DEFAULT 'all',
+        StartDate DATETIME2 NULL,
+        EndDate DATETIME2 NULL,
+        IsActive BIT DEFAULT 1,
+        IsDismissible BIT DEFAULT 1,
+        DisplayOrder INT DEFAULT 0,
+        ViewCount INT DEFAULT 0,
+        DismissCount INT DEFAULT 0,
+        CreatedAt DATETIME2 DEFAULT GETUTCDATE(),
+        UpdatedAt DATETIME2 DEFAULT GETUTCDATE(),
+        CreatedBy INT NULL FOREIGN KEY REFERENCES Users(UserID)
+    );
+    PRINT 'Created Announcements table';
+END
+GO
+
+-- Support Tickets Table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SupportTickets')
+BEGIN
+    CREATE TABLE SupportTickets (
+        TicketID INT PRIMARY KEY IDENTITY(1,1),
+        TicketNumber NVARCHAR(20) NOT NULL UNIQUE,
+        UserID INT NULL FOREIGN KEY REFERENCES Users(UserID),
+        UserEmail NVARCHAR(255) NULL,
+        UserName NVARCHAR(100) NULL,
+        Subject NVARCHAR(255) NOT NULL,
+        Description NVARCHAR(MAX) NOT NULL,
+        Category NVARCHAR(50) DEFAULT 'general',
+        Priority NVARCHAR(20) DEFAULT 'medium',
+        Status NVARCHAR(20) DEFAULT 'open',
+        AssignedTo INT NULL FOREIGN KEY REFERENCES Users(UserID),
+        Source NVARCHAR(50) DEFAULT 'chat',
+        ConversationID INT NULL,
+        CreatedAt DATETIME2 DEFAULT GETUTCDATE(),
+        UpdatedAt DATETIME2 DEFAULT GETUTCDATE(),
+        ResolvedAt DATETIME2 NULL,
+        ClosedAt DATETIME2 NULL
+    );
+    
+    CREATE INDEX IX_SupportTickets_Status ON SupportTickets(Status);
+    CREATE INDEX IX_SupportTickets_UserID ON SupportTickets(UserID);
+    PRINT 'Created SupportTickets table';
+END
+GO
+
+-- Support Ticket Messages Table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SupportTicketMessages')
+BEGIN
+    CREATE TABLE SupportTicketMessages (
+        MessageID INT PRIMARY KEY IDENTITY(1,1),
+        TicketID INT NOT NULL FOREIGN KEY REFERENCES SupportTickets(TicketID),
+        SenderID INT NULL FOREIGN KEY REFERENCES Users(UserID),
+        SenderType NVARCHAR(20) NOT NULL,
+        Message NVARCHAR(MAX) NOT NULL,
+        Attachments NVARCHAR(MAX) NULL,
+        IsInternal BIT DEFAULT 0,
+        CreatedAt DATETIME2 DEFAULT GETUTCDATE()
+    );
+    
+    CREATE INDEX IX_SupportTicketMessages_TicketID ON SupportTicketMessages(TicketID);
+    PRINT 'Created SupportTicketMessages table';
+END
+GO
+
+-- Platform FAQs Table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'PlatformFAQs')
+BEGIN
+    CREATE TABLE PlatformFAQs (
+        FAQID INT PRIMARY KEY IDENTITY(1,1),
+        Question NVARCHAR(500) NOT NULL,
+        Answer NVARCHAR(MAX) NOT NULL,
+        Category NVARCHAR(50) DEFAULT 'general',
+        DisplayOrder INT DEFAULT 0,
+        IsActive BIT DEFAULT 1,
+        ViewCount INT DEFAULT 0,
+        HelpfulCount INT DEFAULT 0,
+        NotHelpfulCount INT DEFAULT 0,
+        CreatedAt DATETIME2 DEFAULT GETUTCDATE(),
+        UpdatedAt DATETIME2 DEFAULT GETUTCDATE()
+    );
+    PRINT 'Created PlatformFAQs table';
+END
+GO
+
+-- Log Security Event Procedure
+CREATE OR ALTER PROCEDURE sp_LogSecurityEvent
+    @UserID INT = NULL,
+    @Email NVARCHAR(255) = NULL,
+    @Action NVARCHAR(50),
+    @ActionStatus NVARCHAR(20) = 'Success',
+    @IPAddress NVARCHAR(50) = NULL,
+    @UserAgent NVARCHAR(500) = NULL,
+    @Location NVARCHAR(100) = NULL,
+    @Device NVARCHAR(100) = NULL,
+    @Details NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Location, Device, Details)
+    VALUES (@UserID, @Email, @Action, @ActionStatus, @IPAddress, @UserAgent, @Location, @Device, @Details);
+    SELECT SCOPE_IDENTITY() AS LogID;
+END;
+GO
+
+-- Get Security Logs Procedure
+CREATE OR ALTER PROCEDURE sp_GetSecurityLogs
+    @LogType NVARCHAR(50) = 'all',
+    @Status NVARCHAR(20) = NULL,
+    @Search NVARCHAR(100) = NULL,
+    @Page INT = 1,
+    @Limit INT = 50
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Offset INT = (@Page - 1) * @Limit;
+    
+    SELECT LogID, UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Location, Device, Details, CreatedAt
+    FROM SecurityLogs
+    WHERE (@LogType = 'all' OR 
+           (@LogType = 'login' AND Action IN ('Login', 'Logout', 'LoginFailed')) OR
+           (@LogType = 'admin' AND Action LIKE 'Admin%') OR
+           (@LogType = 'flagged' AND ActionStatus = 'Failed'))
+        AND (@Status IS NULL OR ActionStatus = @Status)
+        AND (@Search IS NULL OR Email LIKE '%' + @Search + '%' OR Details LIKE '%' + @Search + '%')
+    ORDER BY CreatedAt DESC
+    OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;
+    
+    SELECT COUNT(*) AS Total FROM SecurityLogs
+    WHERE (@LogType = 'all' OR 
+           (@LogType = 'login' AND Action IN ('Login', 'Logout', 'LoginFailed')) OR
+           (@LogType = 'admin' AND Action LIKE 'Admin%') OR
+           (@LogType = 'flagged' AND ActionStatus = 'Failed'))
+        AND (@Status IS NULL OR ActionStatus = @Status)
+        AND (@Search IS NULL OR Email LIKE '%' + @Search + '%' OR Details LIKE '%' + @Search + '%');
+END;
+GO
+
+-- Get Content Banners Procedure
+CREATE OR ALTER PROCEDURE sp_GetContentBanners
+    @ActiveOnly BIT = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT BannerID, Title, Subtitle, ImageURL, LinkURL, LinkText, BackgroundColor, TextColor, Position, DisplayOrder, StartDate, EndDate, IsActive, CreatedAt
+    FROM ContentBanners
+    WHERE @ActiveOnly = 0 OR (IsActive = 1 AND (StartDate IS NULL OR StartDate <= GETUTCDATE()) AND (EndDate IS NULL OR EndDate >= GETUTCDATE()))
+    ORDER BY DisplayOrder, CreatedAt DESC;
+END;
+GO
+
+-- Get Announcements Procedure
+CREATE OR ALTER PROCEDURE sp_GetAnnouncements
+    @ActiveOnly BIT = 0,
+    @TargetAudience NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT AnnouncementID, Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, TargetAudience, StartDate, EndDate, IsActive, IsDismissible, DisplayOrder, ViewCount, DismissCount, CreatedAt
+    FROM Announcements
+    WHERE (@ActiveOnly = 0 OR (IsActive = 1 AND (StartDate IS NULL OR StartDate <= GETUTCDATE()) AND (EndDate IS NULL OR EndDate >= GETUTCDATE())))
+        AND (@TargetAudience IS NULL OR TargetAudience = 'all' OR TargetAudience = @TargetAudience)
+    ORDER BY DisplayOrder, CreatedAt DESC;
+END;
+GO
+
+-- Get Support Tickets Procedure
+CREATE OR ALTER PROCEDURE sp_GetSupportTickets
+    @Status NVARCHAR(20) = NULL,
+    @Priority NVARCHAR(20) = NULL,
+    @Category NVARCHAR(50) = NULL,
+    @Search NVARCHAR(100) = NULL,
+    @Page INT = 1,
+    @Limit INT = 20
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Offset INT = (@Page - 1) * @Limit;
+    
+    SELECT t.TicketID, t.TicketNumber, t.UserID, t.UserEmail, t.UserName, t.Subject, t.Description, t.Category, t.Priority, t.Status,
+           t.AssignedTo, a.Name AS AssignedToName, t.Source, t.ConversationID, t.CreatedAt, t.UpdatedAt, t.ResolvedAt, t.ClosedAt,
+           (SELECT COUNT(*) FROM SupportTicketMessages WHERE TicketID = t.TicketID) AS MessageCount
+    FROM SupportTickets t
+    LEFT JOIN Users a ON t.AssignedTo = a.UserID
+    WHERE (@Status IS NULL OR t.Status = @Status)
+        AND (@Priority IS NULL OR t.Priority = @Priority)
+        AND (@Category IS NULL OR t.Category = @Category)
+        AND (@Search IS NULL OR t.Subject LIKE '%' + @Search + '%' OR t.UserEmail LIKE '%' + @Search + '%' OR t.TicketNumber LIKE '%' + @Search + '%')
+    ORDER BY CASE t.Priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END, t.CreatedAt DESC
+    OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;
+    
+    SELECT COUNT(*) AS Total FROM SupportTickets t
+    WHERE (@Status IS NULL OR t.Status = @Status) AND (@Priority IS NULL OR t.Priority = @Priority)
+        AND (@Category IS NULL OR t.Category = @Category)
+        AND (@Search IS NULL OR t.Subject LIKE '%' + @Search + '%' OR t.UserEmail LIKE '%' + @Search + '%' OR t.TicketNumber LIKE '%' + @Search + '%');
+END;
+GO
+
+-- Create Support Ticket Procedure
+CREATE OR ALTER PROCEDURE sp_CreateSupportTicket
+    @UserID INT = NULL,
+    @UserEmail NVARCHAR(255) = NULL,
+    @UserName NVARCHAR(100) = NULL,
+    @Subject NVARCHAR(255),
+    @Description NVARCHAR(MAX),
+    @Category NVARCHAR(50) = 'general',
+    @Priority NVARCHAR(20) = 'medium',
+    @Source NVARCHAR(50) = 'chat',
+    @ConversationID INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @TicketNumber NVARCHAR(20) = 'TKT-' + FORMAT(GETUTCDATE(), 'yyyyMMdd') + '-' + RIGHT('0000' + CAST((SELECT ISNULL(MAX(TicketID), 0) + 1 FROM SupportTickets) AS NVARCHAR), 4);
+    INSERT INTO SupportTickets (TicketNumber, UserID, UserEmail, UserName, Subject, Description, Category, Priority, Source, ConversationID)
+    VALUES (@TicketNumber, @UserID, @UserEmail, @UserName, @Subject, @Description, @Category, @Priority, @Source, @ConversationID);
+    SELECT SCOPE_IDENTITY() AS TicketID, @TicketNumber AS TicketNumber;
+END;
+GO
+
+-- Update Support Ticket Procedure
+CREATE OR ALTER PROCEDURE sp_UpdateSupportTicket
+    @TicketID INT,
+    @Status NVARCHAR(20) = NULL,
+    @Priority NVARCHAR(20) = NULL,
+    @AssignedTo INT = NULL,
+    @Category NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE SupportTickets
+    SET Status = ISNULL(@Status, Status),
+        Priority = ISNULL(@Priority, Priority),
+        AssignedTo = ISNULL(@AssignedTo, AssignedTo),
+        Category = ISNULL(@Category, Category),
+        UpdatedAt = GETUTCDATE(),
+        ResolvedAt = CASE WHEN @Status = 'resolved' THEN GETUTCDATE() ELSE ResolvedAt END,
+        ClosedAt = CASE WHEN @Status = 'closed' THEN GETUTCDATE() ELSE ClosedAt END
+    WHERE TicketID = @TicketID;
+    SELECT TicketID FROM SupportTickets WHERE TicketID = @TicketID;
+END;
+GO
+
+-- Add Ticket Message Procedure
+CREATE OR ALTER PROCEDURE sp_AddTicketMessage
+    @TicketID INT,
+    @SenderID INT = NULL,
+    @SenderType NVARCHAR(20),
+    @Message NVARCHAR(MAX),
+    @Attachments NVARCHAR(MAX) = NULL,
+    @IsInternal BIT = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO SupportTicketMessages (TicketID, SenderID, SenderType, Message, Attachments, IsInternal)
+    VALUES (@TicketID, @SenderID, @SenderType, @Message, @Attachments, @IsInternal);
+    UPDATE SupportTickets SET UpdatedAt = GETUTCDATE() WHERE TicketID = @TicketID;
+    SELECT SCOPE_IDENTITY() AS MessageID;
+END;
+GO
+
+-- Get Ticket Messages Procedure
+CREATE OR ALTER PROCEDURE sp_GetTicketMessages
+    @TicketID INT,
+    @IncludeInternal BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT m.MessageID, m.TicketID, m.SenderID, u.Name AS SenderName, m.SenderType, m.Message, m.Attachments, m.IsInternal, m.CreatedAt
+    FROM SupportTicketMessages m
+    LEFT JOIN Users u ON m.SenderID = u.UserID
+    WHERE m.TicketID = @TicketID AND (@IncludeInternal = 1 OR m.IsInternal = 0)
+    ORDER BY m.CreatedAt ASC;
+END;
+GO
+
+-- Upsert Content Banner Procedure
+CREATE OR ALTER PROCEDURE sp_UpsertContentBanner
+    @BannerID INT = NULL,
+    @Title NVARCHAR(200),
+    @Subtitle NVARCHAR(500) = NULL,
+    @ImageURL NVARCHAR(500) = NULL,
+    @LinkURL NVARCHAR(500) = NULL,
+    @LinkText NVARCHAR(100) = NULL,
+    @BackgroundColor NVARCHAR(20) = NULL,
+    @TextColor NVARCHAR(20) = NULL,
+    @Position NVARCHAR(50) = 'hero',
+    @DisplayOrder INT = 0,
+    @StartDate DATETIME2 = NULL,
+    @EndDate DATETIME2 = NULL,
+    @IsActive BIT = 1,
+    @UserID INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF @BannerID IS NULL
+    BEGIN
+        INSERT INTO ContentBanners (Title, Subtitle, ImageURL, LinkURL, LinkText, BackgroundColor, TextColor, Position, DisplayOrder, StartDate, EndDate, IsActive, CreatedBy)
+        VALUES (@Title, @Subtitle, @ImageURL, @LinkURL, @LinkText, @BackgroundColor, @TextColor, @Position, @DisplayOrder, @StartDate, @EndDate, @IsActive, @UserID);
+        SELECT SCOPE_IDENTITY() AS BannerID;
+    END
+    ELSE
+    BEGIN
+        UPDATE ContentBanners SET Title = @Title, Subtitle = @Subtitle, ImageURL = @ImageURL, LinkURL = @LinkURL, LinkText = @LinkText,
+            BackgroundColor = @BackgroundColor, TextColor = @TextColor, Position = @Position, DisplayOrder = @DisplayOrder,
+            StartDate = @StartDate, EndDate = @EndDate, IsActive = @IsActive, UpdatedAt = GETUTCDATE()
+        WHERE BannerID = @BannerID;
+        SELECT @BannerID AS BannerID;
+    END
+END;
+GO
+
+-- Upsert Announcement Procedure
+CREATE OR ALTER PROCEDURE sp_UpsertAnnouncement
+    @AnnouncementID INT = NULL,
+    @Title NVARCHAR(200),
+    @Content NVARCHAR(MAX),
+    @Type NVARCHAR(50) = 'info',
+    @Icon NVARCHAR(50) = NULL,
+    @LinkURL NVARCHAR(500) = NULL,
+    @LinkText NVARCHAR(100) = NULL,
+    @DisplayType NVARCHAR(50) = 'banner',
+    @TargetAudience NVARCHAR(50) = 'all',
+    @StartDate DATETIME2 = NULL,
+    @EndDate DATETIME2 = NULL,
+    @IsActive BIT = 1,
+    @IsDismissible BIT = 1,
+    @DisplayOrder INT = 0,
+    @UserID INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF @AnnouncementID IS NULL
+    BEGIN
+        INSERT INTO Announcements (Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, TargetAudience, StartDate, EndDate, IsActive, IsDismissible, DisplayOrder, CreatedBy)
+        VALUES (@Title, @Content, @Type, @Icon, @LinkURL, @LinkText, @DisplayType, @TargetAudience, @StartDate, @EndDate, @IsActive, @IsDismissible, @DisplayOrder, @UserID);
+        SELECT SCOPE_IDENTITY() AS AnnouncementID;
+    END
+    ELSE
+    BEGIN
+        UPDATE Announcements SET Title = @Title, Content = @Content, Type = @Type, Icon = @Icon, LinkURL = @LinkURL, LinkText = @LinkText,
+            DisplayType = @DisplayType, TargetAudience = @TargetAudience, StartDate = @StartDate, EndDate = @EndDate,
+            IsActive = @IsActive, IsDismissible = @IsDismissible, DisplayOrder = @DisplayOrder, UpdatedAt = GETUTCDATE()
+        WHERE AnnouncementID = @AnnouncementID;
+        SELECT @AnnouncementID AS AnnouncementID;
+    END
+END;
+GO
+
+PRINT '============================================='
+PRINT '✅ ADMIN PANEL TABLES COMPLETE'
+PRINT '============================================='
+PRINT 'New Tables Added:'
+PRINT '  - SecurityLogs (login/activity tracking)'
+PRINT '  - ContentBanners (homepage banners)'
+PRINT '  - Announcements (news/what''s new)'
+PRINT '  - SupportTickets (support ticket system)'
+PRINT '  - SupportTicketMessages (ticket conversations)'
+PRINT '  - PlatformFAQs (platform-wide FAQs)'
+PRINT ''
+PRINT 'Reviews Table Enhanced:'
+PRINT '  - IsFlagged, FlagReason, AdminNotes columns'
+PRINT '============================================='
+GO
