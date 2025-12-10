@@ -4,6 +4,17 @@ const { poolPromise } = require('../config/db');
 const sql = require('mssql');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const invoicesRouter = require('./invoices');
+const { decodeBookingId, decodeVendorId, isPublicId } = require('../utils/hashIds');
+
+// Helper to resolve booking ID (handles both public ID and numeric ID)
+function resolveBookingId(idParam) {
+  if (!idParam) return null;
+  if (isPublicId(idParam)) {
+    return decodeBookingId(idParam);
+  }
+  const parsed = parseInt(idParam, 10);
+  return isNaN(parsed) ? null : parsed;
+}
 
 // Create a new booking
 router.post('/', async (req, res) => {
@@ -53,13 +64,14 @@ router.post('/', async (req, res) => {
 // Get booking details
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
+    const bookingId = resolveBookingId(req.params.id);
+    if (!bookingId) return res.status(400).json({ message: 'Invalid booking ID' });
     const { userId } = req.query;
 
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
-    request.input('BookingID', sql.Int, id);
+    request.input('BookingID', sql.Int, bookingId);
     request.input('UserID', sql.Int, userId || null);
 
     const result = await request.execute('sp_GetBookingDetails');
@@ -89,13 +101,14 @@ router.get('/:id', async (req, res) => {
 // Confirm booking payment
 router.post('/:id/payment', async (req, res) => {
   try {
-    const { id } = req.params;
+    const bookingId = resolveBookingId(req.params.id);
+    if (!bookingId) return res.status(400).json({ message: 'Invalid booking ID' });
     const { paymentIntentId, amount, chargeId } = req.body;
 
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
-    request.input('BookingID', sql.Int, id);
+    request.input('BookingID', sql.Int, bookingId);
     request.input('PaymentIntentID', sql.NVarChar(100), paymentIntentId);
     request.input('Amount', sql.Decimal(10, 2), amount);
     request.input('ChargeID', sql.NVarChar(100), chargeId);

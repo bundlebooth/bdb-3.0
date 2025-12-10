@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { buildInvoiceUrl } from '../utils/urlHelpers';
 import './PaymentSuccessPage.css';
 
 function PaymentSuccessPage() {
@@ -188,9 +189,9 @@ function PaymentSuccessPage() {
           <Link to="/dashboard?section=bookings" className="btn-primary">
             View My Bookings
           </Link>
-          {(bookingDetails?.BookingID || bookingId) && (
+          {(bookingDetails?.BookingID || bookingDetails?.bookingPublicId || bookingId) && (
             <Link 
-              to={`/invoice/booking/${bookingDetails?.BookingID || bookingId}`} 
+              to={buildInvoiceUrl(bookingDetails?.BookingID || bookingId, true)} 
               className="btn-secondary"
             >
               View Invoice

@@ -10,7 +10,9 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const sql = require('mssql');
 const { poolPromise } = require('./config/db');
-const { upload } = require('./middlewares/uploadMiddleware'); 
+const { upload } = require('./middlewares/uploadMiddleware');
+const { responseTransformer } = require('./middlewares/responseTransformer');
+const { resolvePublicIds } = require('./middlewares/publicIdMiddleware'); 
 
 const app = express();
 const server = http.createServer(app);
@@ -33,6 +35,10 @@ app.post('/api/payments/webhook', expressRaw({ type: 'application/json' }), paym
 // Regular body parsers
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Public ID middleware - resolves public IDs in requests and transforms responses
+app.use(resolvePublicIds);
+app.use(responseTransformer());
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

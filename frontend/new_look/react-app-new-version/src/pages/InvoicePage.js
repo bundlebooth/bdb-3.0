@@ -2,15 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
+import { decodeInvoiceId, decodeBookingId, isPublicId } from '../utils/hashIds';
 import './InvoicePage.css';
 
 function InvoicePage() {
-  const { invoiceId, bookingId } = useParams();
+  const { invoiceId: rawInvoiceId, bookingId: rawBookingId } = useParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Decode public IDs to internal IDs for API calls
+  // The backend middleware will also handle this, but we decode here for consistency
+  const invoiceId = rawInvoiceId;
+  const bookingId = rawBookingId;
 
   useEffect(() => {
     const fetchInvoice = async () => {
@@ -24,6 +30,7 @@ function InvoicePage() {
         setLoading(true);
         let url;
         
+        // Use the raw public IDs in the URL - backend will decode them
         if (invoiceId) {
           url = `${API_BASE_URL}/invoices/${invoiceId}?userId=${currentUser.id}`;
         } else if (bookingId) {

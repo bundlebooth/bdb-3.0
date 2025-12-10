@@ -6,6 +6,17 @@ const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
 const axios = require('axios');
+const { decodeVendorId, decodeServiceId, decodeImageId, isPublicId } = require('../utils/hashIds');
+
+// Helper to resolve vendor ID (handles both public ID and numeric ID)
+function resolveVendorIdParam(idParam) {
+  if (!idParam) return null;
+  if (isPublicId(idParam)) {
+    return decodeVendorId(idParam);
+  }
+  const parsed = parseInt(idParam, 10);
+  return isNaN(parsed) ? null : parsed;
+}
 
 // Helper function to convert time string to 24-hour format for database comparison
 function convertTo24Hour(timeString) {

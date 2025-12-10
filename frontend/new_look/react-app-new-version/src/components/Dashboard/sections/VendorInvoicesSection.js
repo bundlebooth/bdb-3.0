@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { API_BASE_URL } from '../../../config';
+import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 
 function VendorInvoicesSection() {
   const navigate = useNavigate();
@@ -13,23 +14,27 @@ function VendorInvoicesSection() {
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState('desc');
 
-  // Handle view invoice - navigate to invoice page
+  // Handle view invoice - navigate to invoice page using public IDs
   const handleViewInvoice = (invoice) => {
     const bookingId = invoice.BookingID || invoice.bookingId;
+    const invoiceId = invoice.InvoiceID;
+    
     if (bookingId) {
-      navigate(`/invoice/booking/${bookingId}`);
-    } else if (invoice.InvoiceID) {
-      navigate(`/invoice/${invoice.InvoiceID}`);
+      navigate(buildInvoiceUrl(bookingId, true));
+    } else if (invoiceId) {
+      navigate(buildInvoiceUrl(invoiceId, false));
     }
   };
 
   // Handle download invoice - open print dialog
   const handleDownloadInvoice = (invoice) => {
     const bookingId = invoice.BookingID || invoice.bookingId;
+    const invoiceId = invoice.InvoiceID;
+    
     if (bookingId) {
-      window.open(`/invoice/booking/${bookingId}?print=1`, '_blank');
-    } else if (invoice.InvoiceID) {
-      window.open(`/invoice/${invoice.InvoiceID}?print=1`, '_blank');
+      window.open(`${buildInvoiceUrl(bookingId, true)}?print=1`, '_blank');
+    } else if (invoiceId) {
+      window.open(`${buildInvoiceUrl(invoiceId, false)}?print=1`, '_blank');
     }
   };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { showBanner } from '../../../utils/banners';
 import { API_BASE_URL } from '../../../config';
+import { buildInvoiceUrl } from '../../../utils/urlHelpers';
 
 function ClientBookingsSection() {
   const { currentUser } = useAuth();
@@ -103,17 +104,20 @@ function ClientBookingsSection() {
     }
   };
 
-  // Handle View Invoice
+  // Handle View Invoice - uses public IDs
   const handleViewInvoice = async (booking) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/invoices/booking/${booking.BookingID}`, {
+      // Use public ID from booking if available, otherwise use internal ID
+      const bookingId = booking.bookingPublicId || booking.BookingID;
+      const response = await fetch(`${API_BASE_URL}/invoices/booking/${bookingId}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (response.ok) {
         const data = await response.json();
         if (data.invoice?.InvoiceID) {
-          window.open(`/invoice/${data.invoice.InvoiceID}`, '_blank');
+          // Use buildInvoiceUrl to generate public ID URL
+          window.open(buildInvoiceUrl(data.invoice.InvoiceID, false), '_blank');
         } else {
           showBanner('Invoice not available yet', 'info');
         }

@@ -2,12 +2,42 @@ const express = require('express');
 const router = express.Router();
 const { poolPromise } = require('../config/db');
 const sql = require('mssql');
+const { decodeBookingId, decodeInvoiceId, isPublicId } = require('../utils/hashIds');
 
 // Helpers
 function toCurrency(n) {
   try { return Math.round(Number(n || 0) * 100) / 100; } catch { return 0; }
 }
 function nowIso() { return new Date().toISOString(); }
+
+// Helper to resolve booking ID (handles both public ID and numeric ID)
+function resolveBookingId(idParam) {
+  if (!idParam) return null;
+  console.log(`[resolveBookingId] Input: "${idParam}", isPublicId: ${isPublicId(idParam)}`);
+  
+  // If it's a public ID, decode it
+  if (isPublicId(idParam)) {
+    const decoded = decodeBookingId(idParam);
+    console.log(`[resolveBookingId] Decoded public ID "${idParam}" to: ${decoded}`);
+    return decoded;
+  }
+  // Otherwise, parse as numeric
+  const parsed = parseInt(idParam, 10);
+  console.log(`[resolveBookingId] Parsed numeric ID: ${parsed}`);
+  return isNaN(parsed) ? null : parsed;
+}
+
+// Helper to resolve invoice ID (handles both public ID and numeric ID)
+function resolveInvoiceId(idParam) {
+  if (!idParam) return null;
+  // If it's a public ID, decode it
+  if (isPublicId(idParam)) {
+    return decodeInvoiceId(idParam);
+  }
+  // Otherwise, parse as numeric
+  const parsed = parseInt(idParam, 10);
+  return isNaN(parsed) ? null : parsed;
+}
 
 // Get commission settings from database (same as payments.js)
 async function getCommissionSettings() {
@@ -329,12 +359,13 @@ async function upsertInvoiceForBooking(pool, bookingId, opts = {}) {
 // Generate or regenerate invoice for a booking (idempotent upsert)
 router.post('/booking/:bookingId/generate', async (req, res) => {
   try {
-    const { bookingId } = req.params;
+    const bookingId = resolveBookingId(req.params.bookingId);
+    if (!bookingId) return res.status(400).json({ success: false, message: 'Invalid booking ID' });
     const requesterUserId = parseInt(req.query.userId || req.body?.userId || 0, 10);
     if (!requesterUserId) return res.status(400).json({ success: false, message: 'userId is required' });
     const pool = await poolPromise;
     // Access control: only client or vendor user can generate
-    const br = await pool.request().input('BookingID', sql.Int, parseInt(bookingId, 10)).query(`
+    const br = await pool.request().input('BookingID', sql.Int, bookingId).query(`
       SELECT b.UserID AS ClientUserID, vp.UserID AS VendorUserID
       FROM Bookings b
       JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
@@ -345,8 +376,8 @@ router.post('/booking/:bookingId/generate', async (req, res) => {
     if (requesterUserId !== row.ClientUserID && requesterUserId !== row.VendorUserID) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
-    const result = await upsertInvoiceForBooking(pool, parseInt(bookingId, 10), { forceRegenerate: true });
-    const inv = await getInvoiceByBooking(pool, parseInt(bookingId, 10));
+    const result = await upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true });
+    const inv = await getInvoiceByBooking(pool, bookingId);
     res.json({ success: true, invoice: inv, meta: result });
   } catch (err) {
     console.error('Generate invoice error:', err);
@@ -423,12 +454,13 @@ async function getInvoiceByBooking(pool, bookingId, autoGenerateIfMissing = true
 // Get invoice by booking (auto-generate if missing)
 router.get('/booking/:bookingId', async (req, res) => {
   try {
-    const { bookingId } = req.params;
+    const bookingId = resolveBookingId(req.params.bookingId);
+    if (!bookingId) return res.status(400).json({ success: false, message: 'Invalid booking ID' });
     const requesterUserId = parseInt(req.query.userId || 0, 10);
     if (!requesterUserId) return res.status(400).json({ success: false, message: 'userId is required' });
     const pool = await poolPromise;
     // Access control: only client or vendor user can view
-    const br = await pool.request().input('BookingID', sql.Int, parseInt(bookingId, 10)).query(`
+    const br = await pool.request().input('BookingID', sql.Int, bookingId).query(`
       SELECT b.UserID AS ClientUserID, vp.UserID AS VendorUserID
       FROM Bookings b
       JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
@@ -442,10 +474,10 @@ router.get('/booking/:bookingId', async (req, res) => {
     // Optional auto-regenerate: explicit or legacy cleanup
     const regen = String(req.query.regenerate || '0') === '1';
     if (regen) {
-      await upsertInvoiceForBooking(pool, parseInt(bookingId, 10), { forceRegenerate: true });
+      await upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true });
     } else {
       // If existing invoice uses old policy or has fee_* items, regenerate once
-      const chk = await pool.request().input('BookingID', sql.Int, parseInt(bookingId, 10)).query(`
+      const chk = await pool.request().input('BookingID', sql.Int, bookingId).query(`
         SELECT TOP 1 InvoiceID, FeesIncludedInTotal FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC
       `);
       if (chk.recordset.length) {
@@ -460,13 +492,13 @@ router.get('/booking/:bookingId', async (req, res) => {
           } catch (_) { /* ignore */ }
         }
         if (needsRegen) {
-          await upsertInvoiceForBooking(pool, parseInt(bookingId, 10), { forceRegenerate: true });
+          await upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true });
         }
       } else {
-        await upsertInvoiceForBooking(pool, parseInt(bookingId, 10), { forceRegenerate: true });
+        await upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true });
       }
     }
-    const invoice = await getInvoiceByBooking(pool, parseInt(bookingId, 10), true);
+    const invoice = await getInvoiceByBooking(pool, bookingId, true);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
     res.json({ success: true, invoice });
   } catch (err) {
@@ -675,9 +707,10 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
 // Get invoice by ID
 router.get('/:invoiceId', async (req, res) => {
   try {
-    const { invoiceId } = req.params;
+    const invoiceId = resolveInvoiceId(req.params.invoiceId);
+    if (!invoiceId) return res.status(400).json({ success: false, message: 'Invalid invoice ID' });
     const pool = await poolPromise;
-    const invoice = await getInvoiceCore(pool, parseInt(invoiceId, 10));
+    const invoice = await getInvoiceCore(pool, invoiceId);
     if (!invoice) return res.status(404).json({ success: false, message: 'Invoice not found' });
     res.json({ success: true, invoice });
   } catch (err) {
@@ -689,12 +722,13 @@ router.get('/:invoiceId', async (req, res) => {
 // Admin endpoint to force regenerate invoice (no access control - for debugging)
 router.post('/admin/regenerate/:bookingId', async (req, res) => {
   try {
-    const { bookingId } = req.params;
+    const bookingId = resolveBookingId(req.params.bookingId);
+    if (!bookingId) return res.status(400).json({ success: false, message: 'Invalid booking ID' });
     const pool = await poolPromise;
     
     console.log(`[Admin] Force regenerating invoice for booking ${bookingId}`);
-    const result = await upsertInvoiceForBooking(pool, parseInt(bookingId, 10), { forceRegenerate: true });
-    const invoice = await getInvoiceByBooking(pool, parseInt(bookingId, 10), true);
+    const result = await upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true });
+    const invoice = await getInvoiceByBooking(pool, bookingId, true);
     
     res.json({ 
       success: true, 
