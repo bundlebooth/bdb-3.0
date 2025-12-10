@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../config';
 import DashboardModal from './DashboardModal';
 import NotificationDropdown from './NotificationDropdown';
 import EnhancedSearchBar from './EnhancedSearchBar';
+import WhatsNewSidebar from './WhatsNewSidebar';
 import { getUnreadNotificationCount, updatePageTitle } from '../utils/notifications';
 import { buildBecomeVendorUrl } from '../utils/urlHelpers';
 import './EnhancedSearchBar.css';
@@ -20,6 +21,8 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [profileIncomplete, setProfileIncomplete] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const [announcementCount, setAnnouncementCount] = useState(0);
   const notificationBtnRef = useRef(null);
 
   // Clear any dashboard hash on mount to prevent auto-opening
@@ -125,6 +128,28 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
     return () => clearInterval(interval);
   }, [currentUser]);
 
+  // Load announcement count
+  useEffect(() => {
+    const loadAnnouncementCount = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/public/announcements/all`);
+        if (response.ok) {
+          const data = await response.json();
+          const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');
+          const activeCount = (data.announcements || []).filter(a => !dismissed.includes(a.AnnouncementID)).length;
+          setAnnouncementCount(activeCount);
+        }
+      } catch (error) {
+        console.error('Failed to load announcement count:', error);
+      }
+    };
+
+    loadAnnouncementCount();
+    // Refresh every 5 minutes
+    const interval = setInterval(loadAnnouncementCount, 300000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleSearch = () => {
     if (onSearch) {
       onSearch(searchQuery);
@@ -155,6 +180,7 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
   };
 
   return (
+    <>
     <header className={`header ${isScrolled ? 'header-scrolled' : ''}`}>
       <div className="logo" style={{ cursor: 'pointer' }} onClick={() => window.location.href = '/'}>
         <img src="/planhive_logo.svg" alt="PlanHive" style={{ height: '50px', width: 'auto' }} />
@@ -261,26 +287,28 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
             Admin Dashboard
           </button>
         )}
-        <div className="nav-icon" id="wishlist-btn" onClick={onWishlistClick}>
-          <i className="fas fa-heart"></i>
-          <span
-            className="badge"
-            id="favorites-badge"
-            style={{ display: favoritesBadge > 0 ? 'grid' : 'none' }}
-          >
-            {favoritesBadge}
-          </span>
+        {/* What's New Button */}
+        <div 
+          className="nav-icon" 
+          id="whats-new-btn" 
+          onClick={() => {
+            console.log('📢 What\'s New button clicked, opening sidebar');
+            setWhatsNewOpen(true);
+          }}
+          title="What's New"
+          style={{ position: 'relative', cursor: 'pointer' }}
+        >
+          <i className="fas fa-bullhorn"></i>
+          {announcementCount > 0 && (
+            <span
+              className="badge"
+              style={{ display: 'grid' }}
+            >
+              {announcementCount > 9 ? '9+' : announcementCount}
+            </span>
+          )}
         </div>
-        <div className="nav-icon" id="chat-btn" title="Chat" onClick={onChatClick}>
-          <i className="fas fa-comments"></i>
-          <span
-            className="badge"
-            id="messages-badge"
-            style={{ display: messagesBadge > 0 ? 'grid' : 'none' }}
-          >
-            {messagesBadge}
-          </span>
-        </div>
+        {/* Heart and Chat icons removed as per user request */}
         <div 
           ref={notificationBtnRef}
           className="nav-icon" 
@@ -330,6 +358,13 @@ const Header = memo(function Header({ onSearch, onProfileClick, onWishlistClick,
         anchorEl={notificationBtnRef.current}
       />
     </header>
+    
+    {/* What's New Sidebar - Rendered outside header for proper z-index */}
+    <WhatsNewSidebar 
+      isOpen={whatsNewOpen} 
+      onClose={() => setWhatsNewOpen(false)} 
+    />
+    </>
   );
 });
 

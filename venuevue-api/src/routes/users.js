@@ -98,6 +98,22 @@ router.post('/register', async (req, res) => {
     const result = await request.execute('sp_RegisterUser');
     const userId = result.recordset[0].UserID;
 
+    // Log account creation
+    try {
+      await pool.request()
+        .input('userId', sql.Int, userId)
+        .input('email', sql.NVarChar, email.toLowerCase().trim())
+        .input('action', sql.NVarChar, 'AccountCreated')
+        .input('status', sql.NVarChar, 'Success')
+        .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
+        .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
+        .input('details', sql.NVarChar, isVendorFlag ? 'Vendor account created' : 'Client account created')
+        .query(`
+          INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Details)
+          VALUES (@userId, @email, @action, @status, @ipAddress, @userAgent, @details)
+        `);
+    } catch (logErr) { console.error('Failed to log security event:', logErr.message); }
+
     // Generate JWT token
     const token = jwt.sign(
       { id: userId, email, isVendor: isVendorFlag },
@@ -183,6 +199,22 @@ router.post('/login', async (req, res) => {
     // Verify password
     const isMatch = await bcrypt.compare(password, user.PasswordHash);
     if (!isMatch) {
+      // Log failed login attempt
+      try {
+        await pool.request()
+          .input('userId', sql.Int, user.UserID)
+          .input('email', sql.NVarChar, email)
+          .input('action', sql.NVarChar, 'LoginFailed')
+          .input('status', sql.NVarChar, 'Failed')
+          .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
+          .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
+          .input('details', sql.NVarChar, 'Invalid password')
+          .query(`
+            INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Details)
+            VALUES (@userId, @email, @action, @status, @ipAddress, @userAgent, @details)
+          `);
+      } catch (logErr) { console.error('Failed to log security event:', logErr.message); }
+      
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials'
@@ -218,6 +250,29 @@ router.post('/login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
+    // Log successful login
+    try {
+      await pool.request()
+        .input('userId', sql.Int, user.UserID)
+        .input('email', sql.NVarChar, user.Email)
+        .input('action', sql.NVarChar, 'Login')
+        .input('status', sql.NVarChar, 'Success')
+        .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
+        .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
+        .input('details', sql.NVarChar, user.IsAdmin ? 'Admin login' : (user.IsVendor ? 'Vendor login' : 'Client login'))
+        .query(`
+          INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Details)
+          VALUES (@userId, @email, @action, @status, @ipAddress, @userAgent, @details)
+        `);
+    } catch (logErr) { console.error('Failed to log security event:', logErr.message); }
+    
+    // Update LastLogin
+    try {
+      await pool.request()
+        .input('userId', sql.Int, user.UserID)
+        .query('UPDATE Users SET LastLogin = GETUTCDATE() WHERE UserID = @userId');
+    } catch (updateErr) { console.error('Failed to update LastLogin:', updateErr.message); }
+    
     res.json({
       success: true,
       userId: user.UserID,

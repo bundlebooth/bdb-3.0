@@ -14,8 +14,30 @@ function MessagingWidget() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [ticketForm, setTicketForm] = useState({ subject: '', description: '', category: 'general', priority: 'medium' });
+  const [ticketSubmitting, setTicketSubmitting] = useState(false);
+  const [ticketSuccess, setTicketSuccess] = useState(null);
+  const [faqs, setFaqs] = useState([]);
+  const [expandedFaq, setExpandedFaq] = useState(null);
   const messagesEndRef = useRef(null);
   const pollingIntervalRef = useRef(null);
+
+  // Load FAQs from API
+  useEffect(() => {
+    const loadFaqs = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/public/faqs`);
+        if (response.ok) {
+          const data = await response.json();
+          setFaqs(data.faqs || []);
+        }
+      } catch (error) {
+        console.error('Failed to load FAQs:', error);
+      }
+    };
+    loadFaqs();
+  }, []);
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -181,6 +203,52 @@ function MessagingWidget() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  // Submit support ticket
+  const submitSupportTicket = async () => {
+    if (!ticketForm.subject.trim() || !ticketForm.description.trim()) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    setTicketSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/support/tickets`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          userEmail: currentUser.email,
+          userName: currentUser.name,
+          subject: ticketForm.subject,
+          description: ticketForm.description,
+          category: ticketForm.category,
+          priority: ticketForm.priority,
+          source: 'chat'
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTicketSuccess(data.ticketNumber);
+        setTicketForm({ subject: '', description: '', category: 'general', priority: 'medium' });
+        setTimeout(() => {
+          setShowTicketForm(false);
+          setTicketSuccess(null);
+        }, 3000);
+      } else {
+        alert('Failed to submit ticket. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to submit ticket:', error);
+      alert('Failed to submit ticket. Please try again.');
+    } finally {
+      setTicketSubmitting(false);
     }
   };
 
@@ -714,10 +782,198 @@ function MessagingWidget() {
           {/* Help View */}
           {mainView === 'help' && (
             <div style={{ flex: 1, overflow: 'auto', background: 'white', padding: '20px' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 600 }}>Help Center</h3>
-              <p style={{ color: '#717171', fontSize: '14px', lineHeight: '1.6' }}>
-                Browse our help articles or contact support for assistance.
-              </p>
+              {!showTicketForm ? (
+                <>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: 600 }}>Help Center</h3>
+                  <p style={{ color: '#717171', fontSize: '14px', lineHeight: '1.5', marginBottom: '16px' }}>
+                    Browse our help articles or contact support for assistance.
+                  </p>
+                  
+                  {/* Connect with Support Team Button */}
+                  <div 
+                    onClick={() => setShowTicketForm(true)}
+                    style={{
+                      background: '#5e72e4',
+                      color: 'white',
+                      padding: '14px 16px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      marginBottom: '20px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#4c60d3'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#5e72e4'}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '14px' }}>Connect with Support Team</div>
+                      <div style={{ fontSize: '12px', opacity: 0.9 }}>Get help from our team</div>
+                    </div>
+                  </div>
+                  
+                  {/* FAQ Section */}
+                  <div>
+                    <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: '#222' }}>Frequently Asked Questions</h4>
+                    {faqs.length > 0 ? faqs.map((faq) => (
+                      <div key={faq.FAQID} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                        <div 
+                          onClick={() => setExpandedFaq(expandedFaq === faq.FAQID ? null : faq.FAQID)}
+                          style={{
+                            padding: '12px 0',
+                            fontSize: '14px',
+                            color: '#222',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <span>{faq.Question}</span>
+                          <svg 
+                            width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            style={{ transform: expandedFaq === faq.FAQID ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}
+                          >
+                            <path d="M6 9L12 15L18 9" stroke="#666" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                        {expandedFaq === faq.FAQID && (
+                          <div style={{ padding: '0 0 12px 0', fontSize: '13px', color: '#666', lineHeight: '1.5' }}>
+                            {faq.Answer}
+                          </div>
+                        )}
+                      </div>
+                    )) : (
+                      <p style={{ color: '#999', fontSize: '13px' }}>Loading FAQs...</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Ticket Form */}
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+                    <button 
+                      onClick={() => { setShowTicketForm(false); setTicketSuccess(null); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', marginRight: '8px' }}
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M19 12H5M12 19L5 12L12 5" stroke="#222" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Create Support Ticket</h3>
+                  </div>
+                  
+                  {ticketSuccess ? (
+                    <div style={{
+                      background: '#d4edda',
+                      border: '1px solid #c3e6cb',
+                      borderRadius: '8px',
+                      padding: '20px',
+                      textAlign: 'center'
+                    }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style={{ margin: '0 auto 12px' }}>
+                        <circle cx="12" cy="12" r="10" stroke="#28a745" strokeWidth="2"/>
+                        <path d="M9 12L11 14L15 10" stroke="#28a745" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      <h4 style={{ margin: '0 0 8px 0', color: '#155724' }}>Ticket Submitted!</h4>
+                      <p style={{ margin: 0, color: '#155724', fontSize: '14px' }}>
+                        Your ticket number is: <strong>{ticketSuccess}</strong>
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
+                          Subject *
+                        </label>
+                        <input
+                          type="text"
+                          value={ticketForm.subject}
+                          onChange={(e) => setTicketForm({ ...ticketForm, subject: e.target.value })}
+                          placeholder="Brief description of your issue"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
+                          Category
+                        </label>
+                        <select
+                          value={ticketForm.category}
+                          onChange={(e) => setTicketForm({ ...ticketForm, category: e.target.value })}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            outline: 'none',
+                            background: 'white'
+                          }}
+                        >
+                          <option value="general">General Inquiry</option>
+                          <option value="booking">Booking Issue</option>
+                          <option value="payment">Payment Problem</option>
+                          <option value="vendor">Vendor Related</option>
+                          <option value="technical">Technical Issue</option>
+                          <option value="account">Account Help</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '6px', color: '#222' }}>
+                          Description *
+                        </label>
+                        <textarea
+                          value={ticketForm.description}
+                          onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
+                          placeholder="Please describe your issue in detail..."
+                          rows={4}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            outline: 'none',
+                            resize: 'vertical'
+                          }}
+                        />
+                      </div>
+                      
+                      <button
+                        onClick={submitSupportTicket}
+                        disabled={ticketSubmitting}
+                        style={{
+                          background: ticketSubmitting ? '#ccc' : '#5e72e4',
+                          color: 'white',
+                          border: 'none',
+                          padding: '14px',
+                          borderRadius: '8px',
+                          fontSize: '15px',
+                          fontWeight: 600,
+                          cursor: ticketSubmitting ? 'not-allowed' : 'pointer',
+                          transition: 'background 0.2s'
+                        }}
+                      >
+                        {ticketSubmitting ? 'Submitting...' : 'Submit Ticket'}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 

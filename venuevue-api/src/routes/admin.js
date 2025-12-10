@@ -2050,23 +2050,32 @@ router.get('/content/announcements', async (req, res) => {
 // POST /admin/content/announcements - Create/update announcement
 router.post('/content/announcements', async (req, res) => {
   try {
-    const { id, title, content, type, icon, linkUrl, linkText, displayType, targetAudience, startDate, endDate, isActive, isDismissible, displayOrder } = req.body;
+    // Accept both 'content' and 'Message' field names for compatibility
+    const { id, title, content, Message, type, Type, icon, linkUrl, linkText, displayType, targetAudience, startDate, StartDate, endDate, EndDate, isActive, IsActive, isDismissible, displayOrder, Title } = req.body;
     const pool = await getPool();
+    
+    // Normalize field names (frontend may send different cases)
+    const announcementTitle = title || Title;
+    const announcementContent = content || Message;
+    const announcementType = type || Type || 'info';
+    const announcementStartDate = startDate || StartDate;
+    const announcementEndDate = endDate || EndDate;
+    const announcementIsActive = isActive !== undefined ? isActive : (IsActive !== undefined ? IsActive : true);
     
     if (id) {
       await pool.request()
         .input('id', sql.Int, id)
-        .input('title', sql.NVarChar, title)
-        .input('content', sql.NVarChar, content)
-        .input('type', sql.NVarChar, type || 'info')
+        .input('title', sql.NVarChar, announcementTitle)
+        .input('content', sql.NVarChar, announcementContent)
+        .input('type', sql.NVarChar, announcementType)
         .input('icon', sql.NVarChar, icon)
         .input('linkUrl', sql.NVarChar, linkUrl)
         .input('linkText', sql.NVarChar, linkText)
         .input('displayType', sql.NVarChar, displayType || 'banner')
         .input('targetAudience', sql.NVarChar, targetAudience || 'all')
-        .input('startDate', sql.DateTime2, startDate || null)
-        .input('endDate', sql.DateTime2, endDate || null)
-        .input('isActive', sql.Bit, isActive !== false)
+        .input('startDate', sql.DateTime2, announcementStartDate || null)
+        .input('endDate', sql.DateTime2, announcementEndDate || null)
+        .input('isActive', sql.Bit, announcementIsActive)
         .input('isDismissible', sql.Bit, isDismissible !== false)
         .input('displayOrder', sql.Int, displayOrder || 0)
         .query(`
@@ -2080,17 +2089,17 @@ router.post('/content/announcements', async (req, res) => {
       res.json({ success: true, id });
     } else {
       const result = await pool.request()
-        .input('title', sql.NVarChar, title)
-        .input('content', sql.NVarChar, content)
-        .input('type', sql.NVarChar, type || 'info')
+        .input('title', sql.NVarChar, announcementTitle)
+        .input('content', sql.NVarChar, announcementContent)
+        .input('type', sql.NVarChar, announcementType)
         .input('icon', sql.NVarChar, icon)
         .input('linkUrl', sql.NVarChar, linkUrl)
         .input('linkText', sql.NVarChar, linkText)
         .input('displayType', sql.NVarChar, displayType || 'banner')
         .input('targetAudience', sql.NVarChar, targetAudience || 'all')
-        .input('startDate', sql.DateTime2, startDate || null)
-        .input('endDate', sql.DateTime2, endDate || null)
-        .input('isActive', sql.Bit, isActive !== false)
+        .input('startDate', sql.DateTime2, announcementStartDate || null)
+        .input('endDate', sql.DateTime2, announcementEndDate || null)
+        .input('isActive', sql.Bit, announcementIsActive)
         .input('isDismissible', sql.Bit, isDismissible !== false)
         .input('displayOrder', sql.Int, displayOrder || 0)
         .query(`
@@ -2993,6 +3002,239 @@ router.post('/public/announcements/:id/dismiss', async (req, res) => {
   } catch (error) {
     console.error('Error dismissing announcement:', error);
     res.status(500).json({ error: 'Failed to dismiss announcement' });
+  }
+});
+
+// ==================== FAQ MANAGEMENT ====================
+
+// GET /admin/faqs - Get all FAQs
+router.get('/faqs', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'FAQs'
+    `);
+    
+    if (tableCheck.recordset[0].cnt === 0) {
+      return res.json({ faqs: [] });
+    }
+    
+    const result = await pool.request().query(`
+      SELECT FAQID, Question, Answer, Category, DisplayOrder, IsActive, CreatedAt, UpdatedAt
+      FROM FAQs
+      ORDER BY DisplayOrder, CreatedAt
+    `);
+    
+    res.json({ faqs: result.recordset });
+  } catch (error) {
+    console.error('Error fetching FAQs:', error);
+    res.status(500).json({ error: 'Failed to fetch FAQs' });
+  }
+});
+
+// POST /admin/faqs - Create new FAQ
+router.post('/faqs', async (req, res) => {
+  try {
+    const { question, answer, category, displayOrder } = req.body;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('question', sql.NVarChar, question)
+      .input('answer', sql.NVarChar, answer)
+      .input('category', sql.NVarChar, category || 'General')
+      .input('displayOrder', sql.Int, displayOrder || 0)
+      .query(`
+        INSERT INTO FAQs (Question, Answer, Category, DisplayOrder, IsActive)
+        OUTPUT INSERTED.*
+        VALUES (@question, @answer, @category, @displayOrder, 1)
+      `);
+    
+    res.json({ success: true, faq: result.recordset[0] });
+  } catch (error) {
+    console.error('Error creating FAQ:', error);
+    res.status(500).json({ error: 'Failed to create FAQ' });
+  }
+});
+
+// PUT /admin/faqs/:id - Update FAQ
+router.put('/faqs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { question, answer, category, displayOrder, isActive } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('question', sql.NVarChar, question)
+      .input('answer', sql.NVarChar, answer)
+      .input('category', sql.NVarChar, category)
+      .input('displayOrder', sql.Int, displayOrder)
+      .input('isActive', sql.Bit, isActive)
+      .query(`
+        UPDATE FAQs 
+        SET Question = @question, Answer = @answer, Category = @category, 
+            DisplayOrder = @displayOrder, IsActive = @isActive, UpdatedAt = GETUTCDATE()
+        WHERE FAQID = @id
+      `);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating FAQ:', error);
+    res.status(500).json({ error: 'Failed to update FAQ' });
+  }
+});
+
+// DELETE /admin/faqs/:id - Delete FAQ
+router.delete('/faqs/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('id', sql.Int, id)
+      .query('DELETE FROM FAQs WHERE FAQID = @id');
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting FAQ:', error);
+    res.status(500).json({ error: 'Failed to delete FAQ' });
+  }
+});
+
+// ==================== COMMISSION SETTINGS ====================
+
+// GET /admin/commission-settings - Get all commission settings
+router.get('/commission-settings', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'CommissionSettings'
+    `);
+    
+    if (tableCheck.recordset[0].cnt === 0) {
+      return res.json({ settings: [] });
+    }
+    
+    const result = await pool.request().query(`
+      SELECT SettingID, SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive, CreatedAt, UpdatedAt
+      FROM CommissionSettings
+      ORDER BY SettingKey
+    `);
+    
+    res.json({ settings: result.recordset });
+  } catch (error) {
+    console.error('Error fetching commission settings:', error);
+    res.status(500).json({ error: 'Failed to fetch commission settings' });
+  }
+});
+
+// PUT /admin/commission-settings/:key - Update commission setting
+router.put('/commission-settings/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { value, description } = req.body;
+    const pool = await getPool();
+    
+    await pool.request()
+      .input('key', sql.NVarChar, key)
+      .input('value', sql.NVarChar, value)
+      .input('description', sql.NVarChar, description)
+      .query(`
+        UPDATE CommissionSettings 
+        SET SettingValue = @value, Description = ISNULL(@description, Description), UpdatedAt = GETUTCDATE()
+        WHERE SettingKey = @key
+      `);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error updating commission setting:', error);
+    res.status(500).json({ error: 'Failed to update commission setting' });
+  }
+});
+
+// POST /admin/commission-settings - Create new commission setting
+router.post('/commission-settings', async (req, res) => {
+  try {
+    const { settingKey, settingValue, description, settingType, minValue, maxValue } = req.body;
+    const pool = await getPool();
+    
+    const result = await pool.request()
+      .input('settingKey', sql.NVarChar, settingKey)
+      .input('settingValue', sql.NVarChar, settingValue)
+      .input('description', sql.NVarChar, description)
+      .input('settingType', sql.NVarChar, settingType || 'percentage')
+      .input('minValue', sql.Decimal(10, 2), minValue)
+      .input('maxValue', sql.Decimal(10, 2), maxValue)
+      .query(`
+        INSERT INTO CommissionSettings (SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive)
+        OUTPUT INSERTED.*
+        VALUES (@settingKey, @settingValue, @description, @settingType, @minValue, @maxValue, 1)
+      `);
+    
+    res.json({ success: true, setting: result.recordset[0] });
+  } catch (error) {
+    console.error('Error creating commission setting:', error);
+    res.status(500).json({ error: 'Failed to create commission setting' });
+  }
+});
+
+// GET /admin/payment-calculator - Calculate payment breakdown
+router.get('/payment-calculator', async (req, res) => {
+  try {
+    const { amount } = req.query;
+    const bookingAmount = parseFloat(amount) || 100;
+    const pool = await getPool();
+    
+    // Get commission settings
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'CommissionSettings'
+    `);
+    
+    let platformCommission = 15;
+    let renterFee = 5;
+    let stripeFeeRate = 2.9;
+    let stripeFixedFee = 0.30;
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const settings = await pool.request().query(`
+        SELECT SettingKey, SettingValue FROM CommissionSettings WHERE IsActive = 1
+      `);
+      
+      settings.recordset.forEach(s => {
+        if (s.SettingKey === 'platform_commission_rate') platformCommission = parseFloat(s.SettingValue);
+        if (s.SettingKey === 'renter_processing_fee_rate') renterFee = parseFloat(s.SettingValue);
+        if (s.SettingKey === 'stripe_application_fee_rate') stripeFeeRate = parseFloat(s.SettingValue);
+        if (s.SettingKey === 'stripe_fixed_fee') stripeFixedFee = parseFloat(s.SettingValue);
+      });
+    }
+    
+    // Calculate breakdown
+    const renterProcessingFee = (bookingAmount * renterFee) / 100;
+    const totalCustomerPays = bookingAmount + renterProcessingFee;
+    const platformFee = (bookingAmount * platformCommission) / 100;
+    const stripeFee = (totalCustomerPays * stripeFeeRate) / 100 + stripeFixedFee;
+    const vendorPayout = bookingAmount - platformFee;
+    const platformRevenue = platformFee + renterProcessingFee - stripeFee;
+    
+    res.json({
+      success: true,
+      breakdown: {
+        bookingAmount: bookingAmount.toFixed(2),
+        renterProcessingFee: renterProcessingFee.toFixed(2),
+        totalCustomerPays: totalCustomerPays.toFixed(2),
+        platformCommission: platformFee.toFixed(2),
+        platformCommissionRate: platformCommission,
+        stripeFee: stripeFee.toFixed(2),
+        vendorPayout: vendorPayout.toFixed(2),
+        platformRevenue: platformRevenue.toFixed(2),
+        renterFeeRate: renterFee
+      }
+    });
+  } catch (error) {
+    console.error('Error calculating payment:', error);
+    res.status(500).json({ error: 'Failed to calculate payment' });
   }
 });
 

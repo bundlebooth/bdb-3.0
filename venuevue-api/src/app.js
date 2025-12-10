@@ -89,6 +89,203 @@ app.use('/api/analytics', analyticsRouter);
 app.use('/api/vendor-discovery', vendorDiscoveryRouter);
 app.use('/api/admin', adminRouter);
 
+// ==================== PUBLIC ANNOUNCEMENTS (No Auth Required) ====================
+// Get active announcements for homepage
+app.get('/api/public/announcements', async (req, res) => {
+  try {
+    const { audience = 'all' } = req.query;
+    const pool = await poolPromise;
+    
+    // Check if Announcements table exists
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'Announcements'
+    `);
+    
+    console.log('📢 Fetching public announcements, table exists:', tableCheck.recordset[0].cnt > 0);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      // First get all active announcements for debugging
+      const allActive = await pool.request().query(`
+        SELECT AnnouncementID, Title, StartDate, EndDate, IsActive FROM Announcements WHERE IsActive = 1
+      `);
+      console.log('📢 All active announcements:', allActive.recordset);
+      
+      const result = await pool.request()
+        .input('audience', sql.NVarChar, audience)
+        .query(`
+          SELECT AnnouncementID, Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, IsDismissible, CreatedAt
+          FROM Announcements
+          WHERE IsActive = 1 
+            AND (StartDate IS NULL OR CAST(StartDate AS DATE) <= CAST(GETDATE() AS DATE)) 
+            AND (EndDate IS NULL OR CAST(EndDate AS DATE) >= CAST(GETDATE() AS DATE))
+            AND (TargetAudience = 'all' OR TargetAudience = @audience)
+          ORDER BY DisplayOrder, CreatedAt DESC
+        `);
+      
+      console.log('📢 Filtered announcements returned:', result.recordset.length);
+      res.json({ announcements: result.recordset });
+    } else {
+      console.log('📢 Announcements table does not exist');
+      res.json({ announcements: [] });
+    }
+  } catch (error) {
+    console.error('Error fetching public announcements:', error);
+    res.status(500).json({ error: 'Failed to fetch announcements' });
+  }
+});
+
+// Get ALL announcements for What's New sidebar (including future ones)
+app.get('/api/public/announcements/all', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'Announcements'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const result = await pool.request().query(`
+        SELECT AnnouncementID, Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, IsDismissible, StartDate, EndDate, CreatedAt
+        FROM Announcements
+        WHERE IsActive = 1 
+          AND (EndDate IS NULL OR CAST(EndDate AS DATE) >= CAST(GETDATE() AS DATE))
+        ORDER BY DisplayOrder, CreatedAt DESC
+      `);
+      res.json({ announcements: result.recordset });
+    } else {
+      res.json({ announcements: [] });
+    }
+  } catch (error) {
+    console.error('Error fetching all announcements:', error);
+    res.status(500).json({ error: 'Failed to fetch announcements' });
+  }
+});
+
+// Get active banners for homepage
+app.get('/api/public/banners', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'ContentBanners'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const result = await pool.request().query(`
+        SELECT BannerID, Title, Subtitle, ImageURL, LinkURL, LinkText, BackgroundColor, TextColor, Position
+        FROM ContentBanners
+        WHERE IsActive = 1 
+          AND (StartDate IS NULL OR StartDate <= GETUTCDATE()) 
+          AND (EndDate IS NULL OR EndDate >= GETUTCDATE())
+        ORDER BY DisplayOrder, CreatedAt DESC
+      `);
+      res.json({ banners: result.recordset });
+    } else {
+      res.json({ banners: [] });
+    }
+  } catch (error) {
+    console.error('Error fetching public banners:', error);
+    res.status(500).json({ error: 'Failed to fetch banners' });
+  }
+});
+
+// Dismiss announcement (public)
+app.post('/api/public/announcements/:id/dismiss', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const pool = await poolPromise;
+    
+    await pool.request()
+      .input('id', sql.Int, id)
+      .query('UPDATE Announcements SET DismissCount = DismissCount + 1 WHERE AnnouncementID = @id');
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error dismissing announcement:', error);
+    res.status(500).json({ error: 'Failed to dismiss announcement' });
+  }
+});
+
+// ==================== PUBLIC FAQs (No Auth Required) ====================
+app.get('/api/public/faqs', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'FAQs'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const result = await pool.request().query(`
+        SELECT FAQID, Question, Answer, Category
+        FROM FAQs
+        WHERE IsActive = 1
+        ORDER BY DisplayOrder, CreatedAt
+      `);
+      res.json({ faqs: result.recordset });
+    } else {
+      // Return default FAQs if table doesn't exist
+      res.json({ faqs: [
+        { FAQID: 1, Question: 'How do I book a vendor?', Answer: 'Browse vendors, select one, choose your date and complete the booking.', Category: 'Booking' },
+        { FAQID: 2, Question: 'What is the cancellation policy?', Answer: 'Policies vary by vendor. Check the vendor profile for details.', Category: 'Booking' },
+        { FAQID: 3, Question: 'How do payments work?', Answer: 'Payments are processed securely through Stripe.', Category: 'Payments' },
+        { FAQID: 4, Question: 'How do I become a vendor?', Answer: 'Click Become a Vendor and complete the registration process.', Category: 'Vendors' }
+      ]});
+    }
+  } catch (error) {
+    console.error('Error fetching FAQs:', error);
+    res.status(500).json({ error: 'Failed to fetch FAQs' });
+  }
+});
+
+// ==================== PUBLIC COMMISSION INFO (No Auth Required) ====================
+app.get('/api/public/commission-info', async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'CommissionSettings'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const result = await pool.request().query(`
+        SELECT SettingKey, SettingValue, Description
+        FROM CommissionSettings
+        WHERE IsActive = 1
+      `);
+      
+      const settings = {};
+      result.recordset.forEach(row => {
+        settings[row.SettingKey] = {
+          value: row.SettingValue,
+          description: row.Description
+        };
+      });
+      
+      res.json({ 
+        success: true,
+        commissionInfo: {
+          platformCommission: settings.platform_commission_rate?.value || '15',
+          renterProcessingFee: settings.renter_processing_fee_rate?.value || '5',
+          description: 'PlanHive takes a commission from the host\'s total payout. We also collect a processing fee from the renter to cover payment processing, platform development, customer support, and fraud prevention.'
+        }
+      });
+    } else {
+      res.json({ 
+        success: true,
+        commissionInfo: {
+          platformCommission: '15',
+          renterProcessingFee: '5',
+          description: 'PlanHive takes a 15% commission from the host\'s total payout. We also collect a 5% processing fee from the renter.'
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching commission info:', error);
+    res.status(500).json({ error: 'Failed to fetch commission info' });
+  }
+});
+
 // Fixed route to handle fetching vendor conversations with consistent data format
 app.get('/api/messages/conversations/vendor/:vendorId', async (req, res) => {
     try {

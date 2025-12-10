@@ -13,6 +13,7 @@ import ProfileModal from '../components/ProfileModal';
 import DashboardModal from '../components/DashboardModal';
 import SetupIncompleteBanner from '../components/SetupIncompleteBanner';
 import MessagingWidget from '../components/MessagingWidget';
+import AnnouncementDisplay from '../components/AnnouncementDisplay';
 import Footer from '../components/Footer';
 import { showBanner } from '../utils/helpers';
 
@@ -734,6 +735,9 @@ function IndexPage() {
 
   return (
     <div>
+      {/* Announcement Banners, Popups, and Toasts */}
+      <AnnouncementDisplay />
+      
       <Header 
         onSearch={handleEnhancedSearch} 
         onProfileClick={() => {
