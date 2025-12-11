@@ -1069,216 +1069,189 @@ function VendorProfilePage() {
     );
   };
 
-  // Render recommendations section as horizontal carousel
+  // Render recommendations section as full-width carousel with arrows
   const renderRecommendations = () => {
     const currentRecs = recommendations[activeRecommendationTab] || [];
-    const itemWidth = 320; // Width for each card
-    const gap = 24; // 1.5rem = 24px
-    const containerPadding = 160; // Padding for navigation buttons
-    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1400;
-    const availableWidth = viewportWidth - containerPadding;
-    const totalContentWidth = currentRecs.length * (itemWidth + gap) - gap; // Remove last gap
-    const maxScroll = Math.max(0, totalContentWidth - availableWidth);
+    const itemWidth = 220;
+    const gap = 16;
+    const scrollAmount = (itemWidth + gap) * 3; // Scroll 3 cards at a time
 
     const handleTabChange = (tab) => {
       setActiveRecommendationTab(tab);
-      setCarouselIndex(0); // Reset scroll when changing tabs
+      setCarouselIndex(0);
     };
 
     const scrollLeft = () => {
-      setCarouselIndex(prev => Math.max(prev - (itemWidth + gap), 0));
+      setCarouselIndex(prev => Math.max(prev - scrollAmount, 0));
     };
 
     const scrollRight = () => {
-      setCarouselIndex(prev => Math.min(prev + (itemWidth + gap), maxScroll));
+      const maxScroll = Math.max(0, currentRecs.length * (itemWidth + gap) - (typeof window !== 'undefined' ? window.innerWidth - 160 : 1000));
+      setCarouselIndex(prev => Math.min(prev + scrollAmount, maxScroll));
     };
+
+    const canScrollLeft = carouselIndex > 0;
+    const canScrollRight = currentRecs.length > 4;
 
     return (
       <div style={{ 
         padding: '3rem 0 2rem 0', 
         marginTop: '2rem',
-        position: 'relative'
+        width: '100vw',
+        marginLeft: 'calc(-50vw + 50%)',
+        background: '#fafafa'
       }}>
         <div style={{ 
-          maxWidth: '1280px', 
-          margin: '0 auto', 
-          padding: '0 2rem' 
+          maxWidth: '100%', 
+          padding: '0 4rem',
+          position: 'relative'
         }}>
-          {/* Title - Airbnb style: smaller, left-aligned */}
-          <h2 style={{ 
-            fontSize: '1.375rem', 
-            fontWeight: '600', 
-            color: '#222222',
-            marginBottom: '1.5rem',
-            textAlign: 'left'
-          }}>
-            {activeRecommendationTab === 'similar' && 'Similar vendors'}
-            {activeRecommendationTab === 'nearby' && 'Nearby vendors'}
-            {activeRecommendationTab === 'popular' && 'Popular vendors'}
-          </h2>
-          
-          {/* Tab buttons - simplified, left-aligned */}
+          {/* Header with title and navigation arrows */}
           <div style={{ 
             display: 'flex', 
-            gap: '0.75rem',
-            marginBottom: '1.5rem',
-            flexWrap: 'wrap'
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '1.5rem'
           }}>
-            <button 
-              onClick={() => handleTabChange('similar')}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '20px',
-                border: '1px solid #dddddd',
-                backgroundColor: activeRecommendationTab === 'similar' ? '#222222' : '#ffffff',
-                color: activeRecommendationTab === 'similar' ? '#ffffff' : '#222222',
-                fontWeight: '500',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Similar
-            </button>
-            <button 
-              onClick={() => handleTabChange('nearby')}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '20px',
-                border: '1px solid #dddddd',
-                backgroundColor: activeRecommendationTab === 'nearby' ? '#222222' : '#ffffff',
-                color: activeRecommendationTab === 'nearby' ? '#ffffff' : '#222222',
-                fontWeight: '500',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Nearby
-            </button>
-            <button 
-              onClick={() => handleTabChange('popular')}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '20px',
-                border: '1px solid #dddddd',
-                backgroundColor: activeRecommendationTab === 'popular' ? '#222222' : '#ffffff',
-                color: activeRecommendationTab === 'popular' ? '#ffffff' : '#222222',
-                fontWeight: '500',
-                fontSize: '0.875rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Popular
-            </button>
+            <div>
+              <h2 style={{ 
+                fontSize: '1.375rem', 
+                fontWeight: '600', 
+                color: '#222222',
+                marginBottom: '0.75rem'
+              }}>
+                {activeRecommendationTab === 'similar' && 'Similar vendors'}
+                {activeRecommendationTab === 'nearby' && 'Nearby vendors'}
+                {activeRecommendationTab === 'popular' && 'Popular vendors'}
+              </h2>
+              
+              {/* Tab buttons */}
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  onClick={() => handleTabChange('similar')}
+                  style={{
+                    padding: '0.375rem 0.75rem',
+                    borderRadius: '16px',
+                    border: '1px solid #dddddd',
+                    backgroundColor: activeRecommendationTab === 'similar' ? '#222222' : '#ffffff',
+                    color: activeRecommendationTab === 'similar' ? '#ffffff' : '#222222',
+                    fontWeight: '500',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Similar
+                </button>
+                <button 
+                  onClick={() => handleTabChange('nearby')}
+                  style={{
+                    padding: '0.375rem 0.75rem',
+                    borderRadius: '16px',
+                    border: '1px solid #dddddd',
+                    backgroundColor: activeRecommendationTab === 'nearby' ? '#222222' : '#ffffff',
+                    color: activeRecommendationTab === 'nearby' ? '#ffffff' : '#222222',
+                    fontWeight: '500',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Nearby
+                </button>
+                <button 
+                  onClick={() => handleTabChange('popular')}
+                  style={{
+                    padding: '0.375rem 0.75rem',
+                    borderRadius: '16px',
+                    border: '1px solid #dddddd',
+                    backgroundColor: activeRecommendationTab === 'popular' ? '#222222' : '#ffffff',
+                    color: activeRecommendationTab === 'popular' ? '#ffffff' : '#222222',
+                    fontWeight: '500',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Popular
+                </button>
+              </div>
+            </div>
+            
+            {/* Navigation arrows at top right */}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                onClick={scrollLeft}
+                disabled={!canScrollLeft}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  border: '1px solid #222',
+                  backgroundColor: '#fff',
+                  cursor: canScrollLeft ? 'pointer' : 'not-allowed',
+                  opacity: canScrollLeft ? 1 : 0.3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <i className="fas fa-chevron-left" style={{ fontSize: '12px' }}></i>
+              </button>
+              <button
+                onClick={scrollRight}
+                disabled={!canScrollRight}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  border: '1px solid #222',
+                  backgroundColor: '#fff',
+                  cursor: canScrollRight ? 'pointer' : 'not-allowed',
+                  opacity: canScrollRight ? 1 : 0.3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <i className="fas fa-chevron-right" style={{ fontSize: '12px' }}></i>
+              </button>
+            </div>
           </div>
           
-          {/* Horizontal Carousel */}
-          <div style={{ position: 'relative' }}>
-            {/* Navigation Buttons - Airbnb style */}
-            {currentRecs.length > 3 && (
-              <>
-                <button
-                  onClick={scrollLeft}
-                  disabled={carouselIndex === 0}
-                  style={{
-                    position: 'absolute',
-                    left: '-20px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    zIndex: 10,
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    border: '1px solid rgba(0, 0, 0, 0.08)',
-                    backgroundColor: '#ffffff',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
-                    cursor: carouselIndex === 0 ? 'not-allowed' : 'pointer',
-                    opacity: carouselIndex === 0 ? 0.3 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <i className="fas fa-chevron-left" style={{ color: '#222222', fontSize: '12px' }}></i>
-                </button>
-                
-                <button
-                  onClick={scrollRight}
-                  disabled={carouselIndex >= maxScroll}
-                  style={{
-                    position: 'absolute',
-                    right: '-20px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    zIndex: 10,
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    border: '1px solid rgba(0, 0, 0, 0.08)',
-                    backgroundColor: '#ffffff',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
-                    cursor: carouselIndex >= maxScroll ? 'not-allowed' : 'pointer',
-                    opacity: carouselIndex >= maxScroll ? 0.3 : 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <i className="fas fa-chevron-right" style={{ color: '#222222', fontSize: '12px' }}></i>
-                </button>
-              </>
-            )}
-            
-            {/* Carousel Container */}
-            <div style={{ 
-              overflow: 'hidden'
+          {/* Horizontal Carousel - Single Row */}
+          <div style={{ overflow: 'hidden' }}>
+            <div style={{
+              display: 'flex',
+              transform: `translateX(-${carouselIndex}px)`,
+              transition: 'transform 0.3s ease-in-out',
+              gap: `${gap}px`
             }}>
-              <div style={{
-                display: 'flex',
-                transform: `translateX(-${carouselIndex}px)`,
-                transition: 'transform 0.3s ease-in-out',
-                gap: `${gap}px`,
-                width: 'fit-content'
-              }}>
-                {currentRecs.length > 0 ? (
-                  currentRecs.map((venue, index) => (
-                    <div
-                      key={venue.VendorProfileID || venue.id || index}
-                      style={{
-                        flex: `0 0 ${itemWidth}px`,
-                        width: `${itemWidth}px`,
-                        minWidth: `${itemWidth}px`
-                      }}
-                    >
-                      <VendorCard
-                        vendor={venue}
-                        isFavorite={favorites.some(fav => fav.vendorProfileId === (venue.VendorProfileID || venue.id))}
-                        onToggleFavorite={(vendorId) => handleRecommendationFavorite(vendorId)}
-                        onView={(vendorId) => navigate(`/vendor/${vendorId}`)}
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <div style={{
-                    width: '100%',
-                    textAlign: 'center',
-                    padding: '3rem',
-                    color: '#6b7280',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <i className="fas fa-search" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
-                    <div style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>Loading recommendations...</div>
-                    <div style={{ fontSize: '0.9rem' }}>We're finding similar vendors for you</div>
+              {currentRecs.length > 0 ? (
+                currentRecs.map((venue, index) => (
+                  <div
+                    key={venue.VendorProfileID || venue.id || index}
+                    style={{
+                      flex: `0 0 ${itemWidth}px`,
+                      width: `${itemWidth}px`
+                    }}
+                  >
+                    <VendorCard
+                      vendor={venue}
+                      isFavorite={favorites.some(fav => fav.vendorProfileId === (venue.VendorProfileID || venue.id))}
+                      onToggleFavorite={(vendorId) => handleRecommendationFavorite(vendorId)}
+                      onView={(vendorId) => navigate(`/vendor/${vendorId}`)}
+                    />
                   </div>
-                )}
-              </div>
+                ))
+              ) : (
+                <div style={{
+                  width: '100%',
+                  textAlign: 'center',
+                  padding: '3rem',
+                  color: '#6b7280'
+                }}>
+                  <i className="fas fa-search" style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}></i>
+                  <div>Loading recommendations...</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1802,8 +1775,10 @@ function VendorProfilePage() {
         </button>
       </div>
       
-      {/* Footer - No spacing */}
-      <Footer />
+      {/* Footer - Full Width */}
+      <div style={{ width: '100vw', marginLeft: 'calc(-50vw + 50%)' }}>
+        <Footer />
+      </div>
       <MessagingWidget />
     </div>
     </div>

@@ -11,6 +11,8 @@ const VendorManagementPanel = () => {
   const [modalType, setModalType] = useState(null); // 'view', 'edit', 'reject', 'analytics'
   const [actionLoading, setActionLoading] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [selectedVendors, setSelectedVendors] = useState(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   useEffect(() => {
     fetchVendors();
@@ -139,6 +141,114 @@ const VendorManagementPanel = () => {
     }
   };
 
+  // Bulk action handlers
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedVendors(new Set(vendors.map(v => v.VendorProfileID)));
+    } else {
+      setSelectedVendors(new Set());
+    }
+  };
+
+  const handleSelectVendor = (vendorId) => {
+    const newSelected = new Set(selectedVendors);
+    if (newSelected.has(vendorId)) {
+      newSelected.delete(vendorId);
+    } else {
+      newSelected.add(vendorId);
+    }
+    setSelectedVendors(newSelected);
+  };
+
+  const handleBulkMakeVisible = async () => {
+    if (selectedVendors.size === 0) {
+      showBanner('Please select vendors first', 'error');
+      return;
+    }
+    if (!window.confirm(`Make ${selectedVendors.size} vendor(s) visible on the platform?`)) return;
+    
+    try {
+      setBulkActionLoading(true);
+      const promises = Array.from(selectedVendors).map(vendorId =>
+        fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/visibility`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ visible: true })
+        })
+      );
+      await Promise.all(promises);
+      showBanner(`${selectedVendors.size} vendor(s) are now visible`, 'success');
+      setSelectedVendors(new Set());
+      fetchVendors();
+    } catch (error) {
+      showBanner('Failed to update visibility', 'error');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkMakeHidden = async () => {
+    if (selectedVendors.size === 0) {
+      showBanner('Please select vendors first', 'error');
+      return;
+    }
+    if (!window.confirm(`Hide ${selectedVendors.size} vendor(s) from the platform?`)) return;
+    
+    try {
+      setBulkActionLoading(true);
+      const promises = Array.from(selectedVendors).map(vendorId =>
+        fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/visibility`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ visible: false })
+        })
+      );
+      await Promise.all(promises);
+      showBanner(`${selectedVendors.size} vendor(s) are now hidden`, 'success');
+      setSelectedVendors(new Set());
+      fetchVendors();
+    } catch (error) {
+      showBanner('Failed to update visibility', 'error');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedVendors.size === 0) {
+      showBanner('Please select vendors first', 'error');
+      return;
+    }
+    if (!window.confirm(`Approve ${selectedVendors.size} vendor(s)?`)) return;
+    
+    try {
+      setBulkActionLoading(true);
+      const promises = Array.from(selectedVendors).map(vendorId =>
+        fetch(`${API_BASE_URL}/admin/vendors/${vendorId}/approve`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+      );
+      await Promise.all(promises);
+      showBanner(`${selectedVendors.size} vendor(s) approved and visible`, 'success');
+      setSelectedVendors(new Set());
+      fetchVendors();
+    } catch (error) {
+      showBanner('Failed to approve vendors', 'error');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   const handleResetPassword = async (vendorId, email) => {
     if (!window.confirm(`Send password reset email to ${email}?`)) return;
     
@@ -206,6 +316,38 @@ const VendorManagementPanel = () => {
           </div>
         </div>
         <div className="toolbar-right">
+          {/* Bulk Actions */}
+          {selectedVendors.size > 0 && (
+            <div className="bulk-actions" style={{ display: 'flex', gap: '0.5rem', marginRight: '1rem' }}>
+              <span style={{ alignSelf: 'center', fontSize: '0.875rem', color: '#6b7280' }}>
+                {selectedVendors.size} selected
+              </span>
+              <button 
+                className="btn-success" 
+                onClick={handleBulkMakeVisible}
+                disabled={bulkActionLoading}
+                title="Make selected vendors visible"
+              >
+                <i className="fas fa-eye"></i> Make Visible
+              </button>
+              <button 
+                className="btn-warning" 
+                onClick={handleBulkMakeHidden}
+                disabled={bulkActionLoading}
+                title="Hide selected vendors"
+              >
+                <i className="fas fa-eye-slash"></i> Hide
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={handleBulkApprove}
+                disabled={bulkActionLoading}
+                title="Approve selected vendors"
+              >
+                <i className="fas fa-check"></i> Approve All
+              </button>
+            </div>
+          )}
           <div className="search-box">
             <i className="fas fa-search"></i>
             <input
@@ -239,6 +381,13 @@ const VendorManagementPanel = () => {
           <table className="data-table">
             <thead>
               <tr>
+                <th style={{ width: '40px' }}>
+                  <input 
+                    type="checkbox" 
+                    onChange={handleSelectAll}
+                    checked={selectedVendors.size === vendors.length && vendors.length > 0}
+                  />
+                </th>
                 <th>Vendor</th>
                 <th>Owner</th>
                 <th>Category</th>
@@ -252,6 +401,13 @@ const VendorManagementPanel = () => {
             <tbody>
               {vendors.map(vendor => (
                 <tr key={vendor.VendorProfileID}>
+                  <td>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedVendors.has(vendor.VendorProfileID)}
+                      onChange={() => handleSelectVendor(vendor.VendorProfileID)}
+                    />
+                  </td>
                   <td>
                     <div className="vendor-cell">
                       {vendor.PrimaryImage ? (

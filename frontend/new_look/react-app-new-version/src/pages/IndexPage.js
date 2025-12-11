@@ -51,7 +51,7 @@ function IndexPage() {
   const isLoadingRef = useRef(false); // Prevent concurrent API calls
   
   const vendorsPerPage = 12;
-  const serverPageSize = 20;
+  const serverPageSize = 200;
 
   const [filters, setFilters] = useState({
     location: '',
@@ -252,7 +252,7 @@ function IndexPage() {
         
         // Include discovery sections for category searches too
         qp.set('includeDiscoverySections', 'true');
-        qp.set('pageSize', '50'); // Get more vendors for discovery sections
+        qp.set('pageSize', '200'); // Get more vendors for discovery sections
         
         url = `${API_BASE_URL}/vendors/search-by-categories?${qp.toString()}`;
       } else {
@@ -293,7 +293,7 @@ function IndexPage() {
         
         // Include discovery sections in the same query (unified endpoint)
         qp.set('includeDiscoverySections', 'true');
-        qp.set('pageSize', '50'); // Get more vendors for discovery sections
+        qp.set('pageSize', '200'); // Get more vendors for discovery sections
         
         url = `${API_BASE_URL}/vendors?${qp.toString()}`;
       }

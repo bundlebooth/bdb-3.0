@@ -153,22 +153,37 @@ function VendorSection({
         </div>
       
         <div className="vendor-section-scroll-container" ref={scrollContainerRef}>
-          <div className="vendor-grid" id="vendor-grid">
-            {vendors.slice(0, 8).map((vendor) => {
+          <div 
+            className="vendor-section-carousel"
+            style={{
+              display: 'flex',
+              gap: '16px',
+              transform: `translateX(-${currentIndex * 236}px)`,
+              transition: 'transform 0.3s ease-in-out'
+            }}
+          >
+            {vendors.map((vendor) => {
               const vendorId = vendor.vendorProfileId || vendor.VendorProfileID || vendor.id;
               return (
-                <VendorCard
+                <div 
                   key={vendorId}
-                  vendor={vendor}
-                  isFavorite={favorites.includes(vendorId)}
-                  onToggleFavorite={onToggleFavorite}
-                  onView={onViewVendor}
-                  onHighlight={onHighlightVendor}
-                  showViewCount={showViewCount}
-                  showResponseTime={showResponseTime}
-                  showAnalyticsBadge={showAnalyticsBadge}
-                  analyticsBadgeType={analyticsBadgeType}
-                />
+                  style={{
+                    flex: '0 0 220px',
+                    width: '220px'
+                  }}
+                >
+                  <VendorCard
+                    vendor={vendor}
+                    isFavorite={favorites.includes(vendorId)}
+                    onToggleFavorite={onToggleFavorite}
+                    onView={onViewVendor}
+                    onHighlight={onHighlightVendor}
+                    showViewCount={showViewCount}
+                    showResponseTime={showResponseTime}
+                    showAnalyticsBadge={showAnalyticsBadge}
+                    analyticsBadgeType={analyticsBadgeType}
+                  />
+                </div>
               );
             })}
           </div>

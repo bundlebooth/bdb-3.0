@@ -10,6 +10,8 @@ const UserManagementPanel = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [modalType, setModalType] = useState(null); // 'view', 'edit', 'activity'
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0 });
+  const [selectedUsers, setSelectedUsers] = useState(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -117,6 +119,81 @@ const UserManagementPanel = () => {
     );
   };
 
+  // Bulk action handlers
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedUsers(new Set(users.map(u => u.UserID)));
+    } else {
+      setSelectedUsers(new Set());
+    }
+  };
+
+  const handleSelectUser = (userId) => {
+    const newSelected = new Set(selectedUsers);
+    if (newSelected.has(userId)) {
+      newSelected.delete(userId);
+    } else {
+      newSelected.add(userId);
+    }
+    setSelectedUsers(newSelected);
+  };
+
+  const handleBulkActivate = async () => {
+    if (selectedUsers.size === 0) {
+      showBanner('Please select users first', 'error');
+      return;
+    }
+    if (!window.confirm(`Activate ${selectedUsers.size} user(s)?`)) return;
+    
+    try {
+      setBulkActionLoading(true);
+      const promises = Array.from(selectedUsers).map(userId =>
+        fetch(`${API_BASE_URL}/admin/users/${userId}/activate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+      );
+      await Promise.all(promises);
+      showBanner(`${selectedUsers.size} user(s) activated`, 'success');
+      setSelectedUsers(new Set());
+      fetchUsers();
+    } catch (error) {
+      showBanner('Failed to activate users', 'error');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedUsers.size === 0) {
+      showBanner('Please select users first', 'error');
+      return;
+    }
+    if (!window.confirm(`Deactivate ${selectedUsers.size} user(s)?`)) return;
+    
+    try {
+      setBulkActionLoading(true);
+      const promises = Array.from(selectedUsers).map(userId =>
+        fetch(`${API_BASE_URL}/admin/users/${userId}/deactivate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+      );
+      await Promise.all(promises);
+      showBanner(`${selectedUsers.size} user(s) deactivated`, 'success');
+      setSelectedUsers(new Set());
+      fetchUsers();
+    } catch (error) {
+      showBanner('Failed to deactivate users', 'error');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   return (
     <div className="admin-panel user-management">
       {/* Toolbar */}
@@ -135,6 +212,30 @@ const UserManagementPanel = () => {
           </div>
         </div>
         <div className="toolbar-right">
+          {/* Bulk Actions */}
+          {selectedUsers.size > 0 && (
+            <div className="bulk-actions" style={{ display: 'flex', gap: '0.5rem', marginRight: '1rem' }}>
+              <span style={{ alignSelf: 'center', fontSize: '0.875rem', color: '#6b7280' }}>
+                {selectedUsers.size} selected
+              </span>
+              <button 
+                className="btn-success" 
+                onClick={handleBulkActivate}
+                disabled={bulkActionLoading}
+                title="Activate selected users"
+              >
+                <i className="fas fa-user-check"></i> Activate
+              </button>
+              <button 
+                className="btn-danger" 
+                onClick={handleBulkDeactivate}
+                disabled={bulkActionLoading}
+                title="Deactivate selected users"
+              >
+                <i className="fas fa-user-slash"></i> Deactivate
+              </button>
+            </div>
+          )}
           <div className="search-box">
             <i className="fas fa-search"></i>
             <input
@@ -168,6 +269,13 @@ const UserManagementPanel = () => {
           <table className="data-table">
             <thead>
               <tr>
+                <th style={{ width: '40px' }}>
+                  <input 
+                    type="checkbox" 
+                    onChange={handleSelectAll}
+                    checked={selectedUsers.size === users.length && users.length > 0}
+                  />
+                </th>
                 <th>User</th>
                 <th>Email</th>
                 <th>Account Type</th>
@@ -180,6 +288,13 @@ const UserManagementPanel = () => {
             <tbody>
               {users.map(user => (
                 <tr key={user.UserID}>
+                  <td>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedUsers.has(user.UserID)}
+                      onChange={() => handleSelectUser(user.UserID)}
+                    />
+                  </td>
                   <td>
                     <div className="user-cell">
                       <div className="user-avatar">

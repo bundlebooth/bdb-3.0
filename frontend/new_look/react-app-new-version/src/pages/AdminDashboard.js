@@ -224,9 +224,9 @@ const AdminDashboard = () => {
             <button className="topbar-btn" title="Refresh">
               <i className="fas fa-sync-alt"></i>
             </button>
-            <button className="topbar-btn" title="Notifications">
+            <button className="topbar-btn" title="Notifications" onClick={() => handleSectionChange('notifications')}>
               <i className="fas fa-bell"></i>
-              <span className="notification-badge">3</span>
+              {stats.pendingVendors > 0 && <span className="notification-badge">{stats.pendingVendors}</span>}
             </button>
             <button className="topbar-btn" title="Help">
               <i className="fas fa-question-circle"></i>
