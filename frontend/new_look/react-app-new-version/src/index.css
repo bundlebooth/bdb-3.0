@@ -566,34 +566,102 @@ body {
 
 /* Removed legacy List/Map toggle and legacy map UI styles (replaced by new FA segmented toggle and #map-view) */
 
+/* Vendor Section Header */
+.vendor-section {
+    margin-bottom: 2rem;
+}
+
+.vendor-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 0;
+}
+
+.vendor-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.vendor-section-title h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.vendor-section-title .section-icon {
+    font-size: 1rem;
+}
+
+.vendor-section-title .section-description {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-left: 0.5rem;
+}
+
+.vendor-section-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.vendor-section-actions .show-all-link {
+    font-size: 0.9rem;
+    color: #1a1a1a;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.vendor-section-actions .show-all-link:hover {
+    color: var(--primary);
+}
+
+.vendor-section-nav {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.vendor-section-nav button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #e5e7eb;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    transition: all 0.2s;
+}
+
+.vendor-section-nav button:hover {
+    border-color: #1a1a1a;
+    color: #1a1a1a;
+}
+
+.vendor-section-nav button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Fixed-width vendor grid - cards don't resize */
 .vendor-grid {
     display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-columns: repeat(auto-fill, 220px) !important;
     gap: 1.25rem 1rem !important;
     padding: 1rem 0 !important;
+    justify-content: start !important;
 }
 
-/* Mobile: 2 columns */
+/* Mobile: smaller fixed cards */
 @media (max-width: 768px) {
     .vendor-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-columns: repeat(auto-fill, 160px) !important;
         gap: 0.75rem !important;
-    }
-}
-
-/* Tablet: 3 columns */
-@media (min-width: 769px) and (max-width: 1200px) {
-    .vendor-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 1rem 0.75rem !important;
-    }
-}
-
-/* Desktop: 5 columns */
-@media (min-width: 1201px) {
-    .vendor-grid {
-        grid-template-columns: repeat(5, 1fr) !important;
-        gap: 1rem 0.75rem !important;
     }
 }
 
@@ -8067,10 +8135,11 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         font-size: 0.85rem;
     }
 
-    /* Vendor grid - 5 columns on desktop */
+    /* Vendor grid - fixed width cards */
     .vendor-grid {
-        grid-template-columns: repeat(5, 1fr) !important;
-        gap: 1rem 0.75rem !important;
+        grid-template-columns: repeat(auto-fill, 220px) !important;
+        gap: 1.25rem 1rem !important;
+        justify-content: start !important;
     }
 
     /* Vendor cards optimized for mobile (planvus style) */
@@ -8572,13 +8641,14 @@ body.map-active .vendor-card-pricing .price { font-size: 0.95rem; }
         color: #222 !important;
     }
     
-    /* Vendor grid - 5 columns on desktop, responsive */
+    /* Vendor grid - fixed width cards */
     .vendor-grid,
     .vendors-grid {
         display: grid !important;
-        grid-template-columns: repeat(5, 1fr) !important;
-        gap: 1rem 0.75rem !important;
+        grid-template-columns: repeat(auto-fill, 220px) !important;
+        gap: 1.25rem 1rem !important;
         padding: 1rem 0 !important;
+        justify-content: start !important;
     }
     
     /* ----------------------------------------

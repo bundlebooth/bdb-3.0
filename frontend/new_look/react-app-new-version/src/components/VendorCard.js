@@ -300,223 +300,138 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
           }}
         />
         
-        {/* Guest Favorite Badge */}
+        {/* Guest Favourite Badge - Frosted glass effect */}
         {isPremium && (
           <div style={{
             position: 'absolute',
             top: '12px',
             left: '12px',
-            background: 'white',
+            background: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
             color: '#222222',
-            padding: '6px 10px',
+            padding: '6px 12px',
             borderRadius: '20px',
             fontSize: '12px',
             fontWeight: 600,
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+            border: '1px solid rgba(255,255,255,0.5)'
           }}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style={{ 
-              display: 'block', 
-              height: '14px', 
-              width: '14px', 
-              fill: '#FF385C'
-            }}>
-              <path d="M8 12.5l-4.5 2.5 1-5L0 6l5-.5L8 1l3 4.5 5 .5-4.5 4 1 5z"/>
-            </svg>
-            Guest favorite
+            Guest favourite
           </div>
         )}
         
-        {/* Heart and Share Icons */}
-        <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
-          <button
-            onClick={handleFavoriteClick}
-            className={isFavorite ? 'active' : ''}
-            style={{
-              background: 'rgba(255,255,255,0.9)',
-              border: 'none',
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.08)'
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ display: 'block', fill: isFavorite ? '#FF385C' : 'rgba(0,0,0,0.5)', height: '16px', width: '16px', stroke: 'currentColor', strokeWidth: 2, overflow: 'visible' }}>
-              <path d="M16 28c7-4.73 14-10 14-17a6.98 6.98 0 0 0-7-7c-1.8 0-3.58.68-4.95 2.05L16 8.1l-2.05-2.05a6.98 6.98 0 0 0-9.9 0A6.98 6.98 0 0 0 2 11c0 7 7 12.27 14 17z"></path>
-            </svg>
-          </button>
-          <button
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'rgba(255,255,255,0.9)',
-              border: 'none',
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.08)'
-            }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ display: 'block', fill: 'none', height: '16px', width: '16px', stroke: 'currentColor', strokeWidth: 2, overflow: 'visible' }}>
-              <g fill="none">
-                <path d="M27 18v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9"></path>
-                <polyline points="16 3 16 17"></polyline>
-                <polyline points="22 10 16 3 10 10"></polyline>
-              </g>
-            </svg>
-          </button>
-        </div>
+        {/* Heart Icon - Top Right */}
+        <button
+          onClick={handleFavoriteClick}
+          className={isFavorite ? 'active' : ''}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 10
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
+            display: 'block', 
+            fill: isFavorite ? '#FF385C' : 'rgba(0,0,0,0.5)', 
+            height: '24px', 
+            width: '24px', 
+            stroke: 'white', 
+            strokeWidth: 2, 
+            overflow: 'visible',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+          }}>
+            <path d="M16 28c7-4.73 14-10 14-17a6.98 6.98 0 0 0-7-7c-1.8 0-3.58.68-4.95 2.05L16 8.1l-2.05-2.05a6.98 6.98 0 0 0-9.9 0A6.98 6.98 0 0 0 2 11c0 7 7 12.27 14 17z"></path>
+          </svg>
+        </button>
       </div>
       
-      {/* Card Content */}
-      <div style={{ padding: '10px 0 4px 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {/* Title - Blue Link Style with Logo */}
+      {/* Card Content - Airbnb Style */}
+      <div style={{ padding: '10px 0 4px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        {/* Line 1: Vendor Name - Black, semibold */}
         <div style={{ 
           fontSize: '15px', 
-          color: '#0066CC', 
-          lineHeight: '20px',
-          fontWeight: 400,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
+          color: '#222222', 
+          lineHeight: '19px',
+          fontWeight: 600,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
         }}>
-          {logoUrl && (
-            <div style={{
-              width: '24px',
-              height: '24px',
-              borderRadius: '50%',
-              overflow: 'hidden',
-              flexShrink: 0,
-              border: '1px solid #E5E7EB',
-              background: '#FFFFFF'
-            }}>
-              <img 
-                src={logoUrl} 
-                alt={`${vendor.BusinessName || vendor.name} logo`}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                }}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
-              />
-            </div>
-          )}
-          <span 
-            className="vendor-card-business-name"
-            style={{ 
-              flex: 1, 
-              overflow: 'hidden', 
-              textOverflow: 'ellipsis', 
-              whiteSpace: 'nowrap',
-              transition: 'text-decoration 0.2s ease'
-            }}
-          >
+          <span className="vendor-card-business-name">
             {vendor.BusinessName || vendor.name}
           </span>
         </div>
         
-        {/* Price, Rating, Response Time - ALL ON ONE LINE */}
+        {/* Line 2: City, Province - Gray, same size as price line */}
         <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '4px', 
-          fontSize: '14px',
-          lineHeight: '18px',
-          flexWrap: 'wrap'
+          fontSize: '13px', 
+          color: '#717171',
+          lineHeight: '17px',
+          fontWeight: 400
         }}>
-          {/* Price */}
-          {hourlyRate > 0 && (
+          {locationText || 'Location not specified'}
+        </div>
+        
+        {/* Line 3: Starting from $X CAD · ★ Rating (count) - Single line */}
+        <div style={{ 
+          fontSize: '13px',
+          lineHeight: '17px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3px',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden'
+        }}>
+          {hourlyRate > 0 ? (
             <>
-              <span style={{ fontWeight: 400, color: '#222222' }}>Starting from </span>
-              <span style={{ fontWeight: 600, color: '#222222' }}>${hourlyRate}</span>
+              <span style={{ fontWeight: 400, color: '#717171' }}>Starting from</span>
+              <span style={{ fontWeight: 600, color: '#222222' }}>${hourlyRate.toLocaleString()} CAD</span>
             </>
+          ) : (
+            <span style={{ fontWeight: 400, color: '#717171' }}>Contact for pricing</span>
           )}
-          
-          {/* Separator */}
-          {hourlyRate > 0 && (
-            <span style={{ color: '#222222', margin: '0 2px' }}>·</span>
-          )}
-          
-          {/* Rating with blue star - Use 5.0 as placeholder */}
-          <span style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+          <span style={{ color: '#717171', margin: '0 2px' }}>·</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ 
-              display: 'block', 
-              height: '12px', 
-              width: '12px', 
-              fill: '#0066CC'
+              display: 'inline-block', 
+              height: '10px', 
+              width: '10px', 
+              fill: '#5e72e4',
+              verticalAlign: 'middle'
             }}>
               <path fillRule="evenodd" d="M15.1 1.58l-4.13 8.88-9.86 1.27a1 1 0 0 0-.54 1.74l7.3 6.57-1.97 9.85a1 1 0 0 0 1.48 1.06l8.62-5 8.63 5a1 1 0 0 0 1.48-1.06l-1.97-9.85 7.3-6.57a1 1 0 0 0-.55-1.73l-9.86-1.28-4.12-8.88a1 1 0 0 0-1.82 0z"></path>
             </svg>
             <span style={{ fontWeight: 400, color: '#222222' }}>
               {rating > 0 ? rating.toFixed(1) : '5.0'}
             </span>
-            <span style={{ color: '#222222' }}>
-              {reviewCount > 0 ? ` (${reviewCount})` : ' (0)'}
+            <span style={{ fontWeight: 400, color: '#717171' }}>
+              ({reviewCount})
             </span>
           </span>
-          
-          {/* Separator */}
-          <span style={{ color: '#222222', margin: '0 2px' }}>·</span>
-          
-          {/* Response Time - Only show if showResponseTime is true AND we have response time data */}
-          {showResponseTime && responseTime && (
-            <span style={{ color: '#0066CC' }}>Responds {responseTime}</span>
-          )}
-          
-          {/* Separator */}
-          {isPremium && (
-            <>
-              <span style={{ color: '#222222', margin: '0 2px' }}>·</span>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style={{ 
-                display: 'block', 
-                height: '14px', 
-                width: '14px', 
-                fill: '#222222'
-              }}>
-                <path d="M8 0a1 1 0 0 1 1 1v6h6a1 1 0 1 1 0 2H9v6a1 1 0 1 1-2 0V9H1a1 1 0 0 1 0-2h6V1a1 1 0 0 1 1-1z"/>
-              </svg>
-            </>
-          )}
         </div>
         
-        {/* Location - Black */}
-        {locationText && (
-          <div style={{ 
-            fontSize: '14px', 
-            color: '#222222',
-            lineHeight: '18px'
-          }}>
-            {locationText}
-          </div>
-        )}
-        
-        {/* Analytics badge for discovery sections - shows section-specific metric */}
+        {/* Line 4: Discovery Analytics Badge - Only in discovery sections */}
         {showAnalyticsBadge && vendor.analyticsBadge && (
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             gap: '4px',
-            fontSize: '12px',
+            fontSize: '13px',
             color: analyticsBadgeType === 'response' ? '#00A699' : 
                    analyticsBadgeType === 'rating' ? '#FFB400' :
                    analyticsBadgeType === 'bookings' ? '#EC4899' :
                    analyticsBadgeType === 'distance' ? '#8B5CF6' :
                    analyticsBadgeType === 'reviews' ? '#5E72E4' : '#FF385C',
-            marginTop: '4px',
+            marginTop: '2px',
             fontWeight: 500
           }}>
             <i className={`fas ${

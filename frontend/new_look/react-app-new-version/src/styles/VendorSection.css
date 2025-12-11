@@ -147,10 +147,11 @@
 
 .vendor-section-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, 220px);
+  gap: 1.25rem 1rem;
   width: 100%;
   padding: 0;
+  justify-content: start;
 }
 
 .vendor-section-card-wrapper {
@@ -158,17 +159,19 @@
   min-width: 0;
 }
 
-/* Desktop: Same grid as main vendor grid */
+/* Desktop: Fixed-width cards */
 @media (min-width: 1201px) {
   .vendor-section-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, 220px);
+    justify-content: start;
   }
 }
 
-/* Tablet: Same grid as main vendor grid */
+/* Tablet: Fixed-width cards */
 @media (min-width: 769px) and (max-width: 1200px) {
   .vendor-section-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, 220px);
+    justify-content: start;
   }
 }
 
@@ -504,8 +507,9 @@
 
 .vendor-section-modal-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, 220px);
+  gap: 1.25rem 1rem;
+  justify-content: start;
 }
 
 /* No animation for vendor cards in modal - immediate display */

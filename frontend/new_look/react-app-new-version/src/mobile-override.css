@@ -163,12 +163,13 @@
         padding: 10px 0 4px 0 !important;
     }
     
-    /* FORCE vendor grid to be clean like desktop */
+    /* FORCE vendor grid to be clean like desktop - fixed width cards */
     .vendor-grid {
         display: grid !important;
-        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-columns: repeat(auto-fill, 160px) !important;
         gap: 0.75rem !important;
         padding: 1rem 0 !important;
+        justify-content: start !important;
     }
     
     .vendor-grid .vendor-card {
