@@ -173,9 +173,8 @@ function IndexPage() {
         }
       }
       
-      // Location filter - only apply text-based filter if we DON'T have user coordinates (line 26098-26107)
-      const hasUserCoords = userLocation?.lat && userLocation?.lng;
-      if (filters.location && !hasUserCoords) {
+      // Location filter - ALWAYS apply city filter when location is set
+      if (filters.location) {
         const location = filters.location.toLowerCase();
         // Check both lowercase and uppercase property names (API returns lowercase, some code uses uppercase)
         const vendorCity = vendor.city || vendor.City || '';
@@ -337,9 +336,21 @@ function IndexPage() {
         }
         
         // Handle discovery sections from category search (filtered by category)
+        // ALSO filter discovery section vendors by city
         if (data.discoverySections && Array.isArray(data.discoverySections)) {
           console.log('📦 Discovery sections loaded from category search:', data.discoverySections.length);
-          setDiscoverySections(data.discoverySections);
+          // Filter each section's vendors by city if location is set
+          const cityFilter = filters.location?.toLowerCase();
+          const filteredSections = data.discoverySections.map(section => ({
+            ...section,
+            vendors: cityFilter 
+              ? section.vendors.filter(v => {
+                  const vendorCity = (v.city || v.City || '').toLowerCase();
+                  return vendorCity.includes(cityFilter);
+                })
+              : section.vendors
+          })).filter(section => section.vendors.length > 0);
+          setDiscoverySections(filteredSections);
           setLoadingDiscovery(false);
         }
       } else {
@@ -349,9 +360,21 @@ function IndexPage() {
         totalCount = data.totalCount || newVendors.length;
         
         // Handle discovery sections from unified endpoint
+        // ALSO filter discovery section vendors by city
         if (data.discoverySections && Array.isArray(data.discoverySections)) {
           console.log('📦 Discovery sections loaded from unified endpoint:', data.discoverySections.length);
-          setDiscoverySections(data.discoverySections);
+          // Filter each section's vendors by city if location is set
+          const cityFilter = filters.location?.toLowerCase();
+          const filteredSections = data.discoverySections.map(section => ({
+            ...section,
+            vendors: cityFilter 
+              ? section.vendors.filter(v => {
+                  const vendorCity = (v.city || v.City || '').toLowerCase();
+                  return vendorCity.includes(cityFilter);
+                })
+              : section.vendors
+          })).filter(section => section.vendors.length > 0);
+          setDiscoverySections(filteredSections);
           setLoadingDiscovery(false);
         }
       }
@@ -978,6 +1001,8 @@ function IndexPage() {
                   onHighlightVendor={handleHighlightVendor}
                   showViewCount={section.showViewCount || false}
                   showResponseTime={section.showResponseTime || false}
+                  showAnalyticsBadge={section.showAnalyticsBadge || false}
+                  analyticsBadgeType={section.analyticsBadgeType || null}
                 />
               ))
             )}

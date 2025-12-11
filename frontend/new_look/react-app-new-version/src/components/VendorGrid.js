@@ -23,10 +23,10 @@ const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, fav
               cursor: 'default'
             }}
           >
-            {/* Large image block - 3:2 aspect ratio to match VendorCard */}
+            {/* Large image block - 1:1 square aspect ratio to match VendorCard */}
             <div style={{ 
               width: '100%', 
-              aspectRatio: '3 / 2',
+              aspectRatio: '1 / 1',
               background: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
               backgroundSize: '200% 100%',
               animation: 'skeleton-shimmer 1.5s infinite',
@@ -126,7 +126,7 @@ const VendorGrid = memo(function VendorGrid({ vendors, loading, loadingMore, fav
           <div style={{ 
             position: 'relative', 
             width: '100%', 
-            aspectRatio: '3 / 2', 
+            aspectRatio: '1 / 1', 
             overflow: 'hidden', 
             borderRadius: '12px',
             background: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',

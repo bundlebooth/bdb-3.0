@@ -10,14 +10,14 @@
 }
 
 .vendor-section {
-  margin-bottom: 1.25rem;
+  margin-bottom: 2rem;
   width: 100%;
-  padding: 1rem 1.25rem;
+  padding: 0;
   position: relative;
-  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
 }
 
 .vendor-section-header {
@@ -146,31 +146,29 @@
 }
 
 .vendor-section-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 1rem;
-  width: fit-content;
+  width: 100%;
   padding: 0;
-  transition: transform 0.3s ease;
 }
 
 .vendor-section-card-wrapper {
-  flex: 0 0 auto;
-  width: 240px; /* Match main grid minmax base */
-  opacity: 1;
-  transform: translateY(0);
+  width: 100%;
+  min-width: 0;
 }
 
-/* Desktop: Match main vendor grid sizing (280px minmax) */
+/* Desktop: Same grid as main vendor grid */
 @media (min-width: 1201px) {
-  .vendor-section-card-wrapper {
-    width: 280px; /* Same as main grid desktop minmax */
+  .vendor-section-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   }
 }
 
-/* Tablet: same as main grid */
+/* Tablet: Same grid as main vendor grid */
 @media (min-width: 769px) and (max-width: 1200px) {
-  .vendor-section-card-wrapper {
-    width: 240px; /* Same as main grid tablet minmax */
+  .vendor-section-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   }
 }
 

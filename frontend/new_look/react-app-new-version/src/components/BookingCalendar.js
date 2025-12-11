@@ -152,6 +152,23 @@ const BookingCalendar = ({
     const parseTime = (timeStr) => {
       if (!timeStr) return null;
       
+      // Ensure timeStr is a string
+      if (typeof timeStr !== 'string') {
+        // If it's a Date object, extract time
+        if (timeStr instanceof Date) {
+          return {
+            hour: timeStr.getHours(),
+            minute: timeStr.getMinutes()
+          };
+        }
+        // If it's an object with hour/minute, return as-is
+        if (typeof timeStr === 'object' && timeStr.hour !== undefined) {
+          return timeStr;
+        }
+        // Try to convert to string
+        timeStr = String(timeStr);
+      }
+      
       // Check if it's an ISO timestamp (contains 'T')
       if (timeStr.includes('T')) {
         const date = new Date(timeStr);

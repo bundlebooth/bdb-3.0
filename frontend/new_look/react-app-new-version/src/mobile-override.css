@@ -132,9 +132,9 @@
         height: 100% !important;
     }
     
-    /* FORCE vendor card hover effect like desktop */
+    /* FORCE vendor card hover effect - no animation */
     .vendor-card:hover {
-        transform: translateY(-6px) scale(1.015) !important;
+        transform: none !important;
         box-shadow: none !important;
     }
     
@@ -166,8 +166,8 @@
     /* FORCE vendor grid to be clean like desktop */
     .vendor-grid {
         display: grid !important;
-        grid-template-columns: 1fr !important;
-        gap: 1rem !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.75rem !important;
         padding: 1rem 0 !important;
     }
     

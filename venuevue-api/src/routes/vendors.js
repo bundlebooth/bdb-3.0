@@ -718,51 +718,74 @@ router.get('/', async (req, res) => {
     if (includeDiscoverySections === 'true' && formattedVendors.length > 0) {
       discoverySections = [];
       
-      // Trending/Popular - sorted by booking count (real data from bookingCount field)
-      // Only show vendors with actual bookings - no fake view counts
+      // Most Booked - sorted by booking count (show all vendors sorted by bookings)
       const trendingVendors = [...formattedVendors]
-        .filter(v => (v.bookingCount || 0) > 0)
         .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
-        .slice(0, 8);
-      if (trendingVendors.length > 0) {
-        discoverySections.push({
-          id: 'trending',
-          title: 'Most Booked',
-          description: 'Vendors with the most bookings',
-          vendors: trendingVendors,
-          showViewCount: false // No fake view counts
-        });
-      }
+        .slice(0, 8)
+        .map(v => ({
+          ...v,
+          analyticsBadge: v.bookingCount > 0 ? `${v.bookingCount} booking${v.bookingCount !== 1 ? 's' : ''} this month` : 'Popular choice'
+        }));
+      // ALWAYS add this section
+      discoverySections.push({
+        id: 'trending',
+        title: 'Most Booked',
+        description: 'Vendors with the most bookings',
+        vendors: trendingVendors,
+        showAnalyticsBadge: true,
+        analyticsBadgeType: 'bookings'
+      });
       
       // Quick Responders - only show if we have REAL response time data from database
       // avgResponseMinutes must come from actual message response time calculations
       const responsiveVendors = [...formattedVendors]
         .filter(v => v.avgResponseMinutes && v.avgResponseMinutes > 0 && v.avgResponseMinutes <= 120)
         .sort((a, b) => (a.avgResponseMinutes || 999) - (b.avgResponseMinutes || 999))
-        .slice(0, 8);
+        .slice(0, 8)
+        .map(v => {
+          const mins = v.avgResponseMinutes;
+          let responseText;
+          if (mins < 60) {
+            responseText = `Responds in ~${mins} min`;
+          } else if (mins < 120) {
+            responseText = `Responds in ~${Math.round(mins / 60)} hr`;
+          } else {
+            responseText = 'Responds within a few hours';
+          }
+          return {
+            ...v,
+            analyticsBadge: responseText
+          };
+        });
       if (responsiveVendors.length > 0) {
         discoverySections.push({
           id: 'responsive',
           title: 'Quick Responders',
           description: 'Vendors who reply fast',
           vendors: responsiveVendors,
-          showResponseTime: true
+          showResponseTime: true,
+          showAnalyticsBadge: true,
+          analyticsBadgeType: 'response'
         });
       }
       
-      // Top Rated - sorted by rating (min 4.0)
+      // Top Rated - sorted by rating (show all vendors sorted by rating)
       const topRatedVendors = [...formattedVendors]
-        .filter(v => v.averageRating >= 4.0)
         .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-        .slice(0, 8);
-      if (topRatedVendors.length > 0) {
-        discoverySections.push({
-          id: 'top-rated',
-          title: 'Top Rated Vendors',
-          description: 'Highest rated by customers',
-          vendors: topRatedVendors
-        });
-      }
+        .slice(0, 8)
+        .map(v => ({
+          ...v,
+          analyticsBadge: `★ ${v.averageRating?.toFixed(1) || '5.0'} rating`
+        }));
+      // ALWAYS add this section
+      discoverySections.push({
+        id: 'top-rated',
+        title: 'Top Rated Vendors',
+        description: 'Highest rated by customers',
+        vendors: topRatedVendors,
+        showAnalyticsBadge: true,
+        analyticsBadgeType: 'rating'
+      });
       
       // Premium Vendors
       const premiumVendors = formattedVendors
@@ -777,49 +800,63 @@ router.get('/', async (req, res) => {
         });
       }
       
-      // Budget-Friendly - sorted by price low
+      // Budget-Friendly - sorted by price low (show all vendors sorted by price)
       const budgetVendors = [...formattedVendors]
-        .filter(v => v.startingPrice != null)
         .sort((a, b) => (a.startingPrice || 0) - (b.startingPrice || 0))
-        .slice(0, 8);
-      if (budgetVendors.length > 0) {
-        discoverySections.push({
-          id: 'budget-friendly',
-          title: 'Budget-Friendly Options',
-          description: 'Great value for your money',
-          vendors: budgetVendors
-        });
-      }
+        .slice(0, 8)
+        .map(v => ({
+          ...v,
+          analyticsBadge: v.startingPrice ? `From $${v.startingPrice}` : 'Great value'
+        }));
+      // ALWAYS add this section
+      discoverySections.push({
+        id: 'budget-friendly',
+        title: 'Budget-Friendly Options',
+        description: 'Great value for your money',
+        vendors: budgetVendors,
+        showAnalyticsBadge: true,
+        analyticsBadgeType: 'budget'
+      });
       
       // Nearby - if location provided, sorted by distance
       if (latitude && longitude) {
         const nearbyVendors = [...formattedVendors]
           .filter(v => v.distanceMiles != null)
           .sort((a, b) => (a.distanceMiles || 999) - (b.distanceMiles || 999))
-          .slice(0, 8);
+          .slice(0, 8)
+          .map(v => ({
+            ...v,
+            analyticsBadge: `${v.distanceMiles?.toFixed(1) || '?'} miles away`
+          }));
         if (nearbyVendors.length > 0) {
           discoverySections.push({
             id: 'nearby',
             title: 'Vendors Near You',
             description: 'Closest to your location',
-            vendors: nearbyVendors
+            vendors: nearbyVendors,
+            showAnalyticsBadge: true,
+            analyticsBadgeType: 'distance'
           });
         }
       }
       
-      // Most Reviewed - sorted by review count
+      // Most Reviewed - sorted by review count (show all vendors sorted by reviews)
       const mostReviewedVendors = [...formattedVendors]
-        .filter(v => v.totalReviews > 0)
         .sort((a, b) => (b.totalReviews || 0) - (a.totalReviews || 0))
-        .slice(0, 8);
-      if (mostReviewedVendors.length > 0) {
-        discoverySections.push({
-          id: 'most-reviewed',
-          title: 'Most Reviewed',
-          description: 'Vendors with the most customer feedback',
-          vendors: mostReviewedVendors
-        });
-      }
+        .slice(0, 8)
+        .map(v => ({
+          ...v,
+          analyticsBadge: v.totalReviews > 0 ? `${v.totalReviews} review${v.totalReviews !== 1 ? 's' : ''}` : 'Be the first to review'
+        }));
+      // ALWAYS add this section
+      discoverySections.push({
+        id: 'most-reviewed',
+        title: 'Most Reviewed',
+        description: 'Vendors with the most customer feedback',
+        vendors: mostReviewedVendors,
+        showAnalyticsBadge: true,
+        analyticsBadgeType: 'reviews'
+      });
       
       // Recently Added - vendors created in the last 30 days
       const thirtyDaysAgo = new Date();
@@ -1318,49 +1355,73 @@ router.get('/search-by-categories', async (req, res) => {
     if (includeDiscoverySections === 'true' && allVendors.length > 0) {
       discoverySections = [];
       
-      // Most Booked - sorted by booking count (real data only)
+      // Most Booked - sorted by booking count (show all vendors sorted by bookings)
       const trendingVendors = [...allVendors]
-        .filter(v => (v.bookingCount || 0) > 0)
         .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
-        .slice(0, 8);
-      if (trendingVendors.length > 0) {
-        discoverySections.push({
-          id: 'trending',
-          title: 'Most Booked',
-          description: 'Vendors with the most bookings',
-          vendors: trendingVendors,
-          showViewCount: false // No fake view counts
-        });
-      }
+        .slice(0, 8)
+        .map(v => ({
+          ...v,
+          analyticsBadge: v.bookingCount > 0 ? `${v.bookingCount} booking${v.bookingCount !== 1 ? 's' : ''} this month` : 'Popular choice'
+        }));
+      // ALWAYS add this section
+      discoverySections.push({
+        id: 'trending',
+        title: 'Most Booked',
+        description: 'Vendors with the most bookings',
+        vendors: trendingVendors,
+        showAnalyticsBadge: true,
+        analyticsBadgeType: 'bookings'
+      });
       
       // Quick Responders - only show with REAL response time data
       const responsiveVendors = [...allVendors]
         .filter(v => v.avgResponseMinutes && v.avgResponseMinutes > 0 && v.avgResponseMinutes <= 120)
         .sort((a, b) => (a.avgResponseMinutes || 999) - (b.avgResponseMinutes || 999))
-        .slice(0, 8);
+        .slice(0, 8)
+        .map(v => {
+          const mins = v.avgResponseMinutes;
+          let responseText;
+          if (mins < 60) {
+            responseText = `Responds in ~${mins} min`;
+          } else if (mins < 120) {
+            responseText = `Responds in ~${Math.round(mins / 60)} hr`;
+          } else {
+            responseText = 'Responds within a few hours';
+          }
+          return {
+            ...v,
+            analyticsBadge: responseText
+          };
+        });
       if (responsiveVendors.length > 0) {
         discoverySections.push({
           id: 'responsive',
           title: 'Quick Responders',
           description: 'Vendors who reply fast',
           vendors: responsiveVendors,
-          showResponseTime: true
+          showResponseTime: true,
+          showAnalyticsBadge: true,
+          analyticsBadgeType: 'response'
         });
       }
       
-      // Top Rated - sorted by rating (min 4.0)
+      // Top Rated - sorted by rating (show all vendors sorted by rating)
       const topRatedVendors = [...allVendors]
-        .filter(v => v.averageRating >= 4.0)
         .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-        .slice(0, 8);
-      if (topRatedVendors.length > 0) {
-        discoverySections.push({
-          id: 'top-rated',
-          title: 'Top Rated Vendors',
-          description: 'Highest rated by customers',
-          vendors: topRatedVendors
-        });
-      }
+        .slice(0, 8)
+        .map(v => ({
+          ...v,
+          analyticsBadge: `★ ${v.averageRating?.toFixed(1) || '5.0'} rating`
+        }));
+      // ALWAYS add this section
+      discoverySections.push({
+        id: 'top-rated',
+        title: 'Top Rated Vendors',
+        description: 'Highest rated by customers',
+        vendors: topRatedVendors,
+        showAnalyticsBadge: true,
+        analyticsBadgeType: 'rating'
+      });
       
       // Premium Vendors
       const premiumVendors = allVendors
@@ -1375,49 +1436,63 @@ router.get('/search-by-categories', async (req, res) => {
         });
       }
       
-      // Budget-Friendly - sorted by price low
+      // Budget-Friendly - sorted by price low (show all vendors sorted by price)
       const budgetVendors = [...allVendors]
-        .filter(v => v.startingPrice != null)
         .sort((a, b) => (a.startingPrice || 0) - (b.startingPrice || 0))
-        .slice(0, 8);
-      if (budgetVendors.length > 0) {
-        discoverySections.push({
-          id: 'budget-friendly',
-          title: 'Budget-Friendly Options',
-          description: 'Great value for your money',
-          vendors: budgetVendors
-        });
-      }
+        .slice(0, 8)
+        .map(v => ({
+          ...v,
+          analyticsBadge: v.startingPrice ? `From $${v.startingPrice}` : 'Great value'
+        }));
+      // ALWAYS add this section
+      discoverySections.push({
+        id: 'budget-friendly',
+        title: 'Budget-Friendly Options',
+        description: 'Great value for your money',
+        vendors: budgetVendors,
+        showAnalyticsBadge: true,
+        analyticsBadgeType: 'budget'
+      });
       
       // Nearby - if location provided, sorted by distance
       if (latitude && longitude) {
         const nearbyVendors = [...allVendors]
           .filter(v => v.distanceMiles != null)
           .sort((a, b) => (a.distanceMiles || 999) - (b.distanceMiles || 999))
-          .slice(0, 8);
+          .slice(0, 8)
+          .map(v => ({
+            ...v,
+            analyticsBadge: `${v.distanceMiles?.toFixed(1) || '?'} miles away`
+          }));
         if (nearbyVendors.length > 0) {
           discoverySections.push({
             id: 'nearby',
             title: 'Vendors Near You',
             description: 'Closest to your location',
-            vendors: nearbyVendors
+            vendors: nearbyVendors,
+            showAnalyticsBadge: true,
+            analyticsBadgeType: 'distance'
           });
         }
       }
       
-      // Most Reviewed - sorted by review count
+      // Most Reviewed - sorted by review count (show all vendors sorted by reviews)
       const mostReviewedVendors = [...allVendors]
-        .filter(v => v.totalReviews > 0)
         .sort((a, b) => (b.totalReviews || 0) - (a.totalReviews || 0))
-        .slice(0, 8);
-      if (mostReviewedVendors.length > 0) {
-        discoverySections.push({
-          id: 'most-reviewed',
-          title: 'Most Reviewed',
-          description: 'Vendors with the most customer feedback',
-          vendors: mostReviewedVendors
-        });
-      }
+        .slice(0, 8)
+        .map(v => ({
+          ...v,
+          analyticsBadge: v.totalReviews > 0 ? `${v.totalReviews} review${v.totalReviews !== 1 ? 's' : ''}` : 'Be the first to review'
+        }));
+      // ALWAYS add this section
+      discoverySections.push({
+        id: 'most-reviewed',
+        title: 'Most Reviewed',
+        description: 'Vendors with the most customer feedback',
+        vendors: mostReviewedVendors,
+        showAnalyticsBadge: true,
+        analyticsBadgeType: 'reviews'
+      });
     }
 
     res.json({

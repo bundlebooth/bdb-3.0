@@ -17,7 +17,9 @@ function VendorSection({
   onHighlightVendor,
   icon = null,
   showViewCount = false,
-  showResponseTime = false
+  showResponseTime = false,
+  showAnalyticsBadge = false,
+  analyticsBadgeType = null
 }) {
   const scrollContainerRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
@@ -151,21 +153,22 @@ function VendorSection({
         </div>
       
         <div className="vendor-section-scroll-container" ref={scrollContainerRef}>
-          <div className="vendor-section-grid">
-            {vendors.slice(currentIndex, currentIndex + visibleCount).map((vendor) => {
+          <div className="vendor-grid" id="vendor-grid">
+            {vendors.slice(0, 8).map((vendor) => {
               const vendorId = vendor.vendorProfileId || vendor.VendorProfileID || vendor.id;
               return (
-                <div key={vendorId} className="vendor-section-card-wrapper">
-                  <VendorCard
-                    vendor={vendor}
-                    isFavorite={favorites.includes(vendorId)}
-                    onToggleFavorite={onToggleFavorite}
-                    onView={onViewVendor}
-                    onHighlight={onHighlightVendor}
-                    showViewCount={showViewCount}
-                    showResponseTime={showResponseTime}
-                  />
-                </div>
+                <VendorCard
+                  key={vendorId}
+                  vendor={vendor}
+                  isFavorite={favorites.includes(vendorId)}
+                  onToggleFavorite={onToggleFavorite}
+                  onView={onViewVendor}
+                  onHighlight={onHighlightVendor}
+                  showViewCount={showViewCount}
+                  showResponseTime={showResponseTime}
+                  showAnalyticsBadge={showAnalyticsBadge}
+                  analyticsBadgeType={analyticsBadgeType}
+                />
               );
             })}
           </div>
@@ -211,6 +214,8 @@ function VendorSection({
                           onViewVendor(id);
                         }}
                         onHighlight={onHighlightVendor}
+                        showAnalyticsBadge={showAnalyticsBadge}
+                        analyticsBadgeType={analyticsBadgeType}
                       />
                     );
                   })

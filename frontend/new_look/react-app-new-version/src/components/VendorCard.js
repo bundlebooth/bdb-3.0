@@ -2,26 +2,52 @@ import React, { memo } from 'react';
 import { getCategoryIconHtml, mapTypeToCategory } from '../utils/helpers';
 import { buildVendorProfileUrl } from '../utils/urlHelpers';
 
-const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime }) {
+const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime, showAnalyticsBadge, analyticsBadgeType }) {
   const [isHovered, setIsHovered] = React.useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = React.useState(0);
   const vendorId = vendor.VendorProfileID || vendor.id;
   
-  // Image URL resolution - prioritize featuredImage from API, then fall back to other fields
-  const imageUrl = vendor.featuredImage?.url ||
-                   vendor.featuredImage?.optimizedUrl ||
-                   vendor.featuredImage?.thumbnailUrl ||
-                   vendor.FeaturedImageURL || 
-                   vendor.featuredImageURL ||
-                   vendor.featuredImageUrl ||
-                   vendor.FeaturedImageUrl ||
-                   (vendor.images && vendor.images.length > 0 ? (vendor.images[0].url || vendor.images[0].optimizedUrl) : null) ||
-                   vendor.image || 
-                   vendor.ImageURL ||
-                   vendor.imageURL ||
-                   vendor.imageUrl ||
-                   vendor.ProfileImageURL ||
-                   vendor.profileImage ||
-                   'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
+  // Build array of all available images for carousel
+  const getAllImages = () => {
+    const images = [];
+    
+    // Add featured image first
+    if (vendor.featuredImage?.url) images.push(vendor.featuredImage.url);
+    else if (vendor.featuredImage?.optimizedUrl) images.push(vendor.featuredImage.optimizedUrl);
+    else if (vendor.FeaturedImageURL) images.push(vendor.FeaturedImageURL);
+    else if (vendor.featuredImageURL) images.push(vendor.featuredImageURL);
+    
+    // Add images from images array
+    if (vendor.images && Array.isArray(vendor.images)) {
+      vendor.images.forEach(img => {
+        const url = img.url || img.optimizedUrl || img.thumbnailUrl || img.ImageURL;
+        if (url && !images.includes(url)) images.push(url);
+      });
+    }
+    
+    // Add other image fields if not already included
+    const otherImages = [
+      vendor.image,
+      vendor.ImageURL,
+      vendor.imageURL,
+      vendor.imageUrl,
+      vendor.ProfileImageURL,
+      vendor.profileImage
+    ].filter(Boolean);
+    
+    otherImages.forEach(url => {
+      if (!images.includes(url)) images.push(url);
+    });
+    
+    // Return at least placeholder if no images
+    return images.length > 0 ? images : ['https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png'];
+  };
+  
+  const allImages = getAllImages();
+  const hasMultipleImages = allImages.length > 1;
+  
+  // Image URL resolution - use current index from carousel
+  const imageUrl = allImages[currentImageIndex] || 'https://res.cloudinary.com/dxgy4apj5/image/upload/v1755105530/image_placeholder.png';
   
   // Logo URL resolution
   const logoUrl = vendor.LogoURL || 
@@ -73,8 +99,8 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
   const locationText = (vendor.location && vendor.location.trim()) || 
                        [locCity, locState].filter(Boolean).join(', ');
   
-  // Response time
-  const responseTime = vendor.ResponseTime || vendor.responseTime || 'within a few hours';
+  // Response time - only show if explicitly passed showResponseTime prop
+  const responseTime = vendor.ResponseTime || vendor.responseTime || null;
   
   // Analytics data for discovery sections
   const viewCount = vendor.viewCount || 0;
@@ -129,15 +155,17 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
       style={{
         background: 'transparent',
         cursor: 'pointer',
-        transition: 'all 0.3s ease',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        width: '100%'
+        width: '100%',
+        border: 'none',
+        outline: 'none',
+        boxShadow: 'none'
       }}
     >
-      {/* Image Container */}
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '3 / 2', overflow: 'hidden', borderRadius: '12px' }}>
+      {/* Image Container - Square aspect ratio like Airbnb */}
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1', overflow: 'hidden', borderRadius: '12px' }}>
         <img
           src={imageUrl}
           alt={vendor.BusinessName || vendor.name}
@@ -148,11 +176,114 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            objectPosition: 'center',
-            transition: 'filter 0.3s ease'
+            objectPosition: 'center'
           }}
           className="vendor-card-image"
         />
+        
+        {/* Image Navigation Arrows - Only show on hover and if multiple images */}
+        {hasMultipleImages && isHovered && (
+          <>
+            {/* Left Arrow */}
+            {currentImageIndex > 0 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex(prev => prev - 1);
+                }}
+                style={{
+                  position: 'absolute',
+                  left: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.95)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 10,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.18)',
+                  transition: 'transform 0.2s, box-shadow 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(-50%)'; }}
+              >
+                <svg viewBox="0 0 16 16" style={{ width: '10px', height: '10px', fill: '#222' }}>
+                  <path d="M10.5 13.5L5 8l5.5-5.5" stroke="#222" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
+            
+            {/* Right Arrow */}
+            {currentImageIndex < allImages.length - 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex(prev => prev + 1);
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.95)',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 10,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.18)',
+                  transition: 'transform 0.2s, box-shadow 0.2s'
+                }}
+                onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)'; }}
+                onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(-50%)'; }}
+              >
+                <svg viewBox="0 0 16 16" style={{ width: '10px', height: '10px', fill: '#222' }}>
+                  <path d="M5.5 2.5L11 8l-5.5 5.5" stroke="#222" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
+          </>
+        )}
+        
+        {/* Image Dots Indicator */}
+        {hasMultipleImages && (
+          <div style={{
+            position: 'absolute',
+            bottom: '8px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            gap: '4px',
+            zIndex: 5
+          }}>
+            {allImages.slice(0, 5).map((_, idx) => (
+              <div
+                key={idx}
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: idx === currentImageIndex ? 'white' : 'rgba(255,255,255,0.5)',
+                  transition: 'background 0.2s',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                }}
+              />
+            ))}
+            {allImages.length > 5 && (
+              <div style={{ color: 'white', fontSize: '8px', marginLeft: '2px', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>+{allImages.length - 5}</div>
+            )}
+          </div>
+        )}
+        
         {/* Hover Darkening Overlay */}
         <div 
           className="vendor-card-overlay"
@@ -162,7 +293,7 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
             left: 0,
             width: '100%',
             height: '100%',
-            backgroundColor: isHovered ? 'rgba(0, 0, 0, 0.25)' : 'rgba(0, 0, 0, 0)',
+            backgroundColor: isHovered ? 'rgba(0, 0, 0, 0.15)' : 'rgba(0, 0, 0, 0)',
             transition: 'background-color 0.3s ease',
             pointerEvents: 'none',
             zIndex: 1
@@ -341,8 +472,8 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
           {/* Separator */}
           <span style={{ color: '#222222', margin: '0 2px' }}>·</span>
           
-          {/* Response Time - Blue */}
-          {responseTime && (
+          {/* Response Time - Only show if showResponseTime is true AND we have response time data */}
+          {showResponseTime && responseTime && (
             <span style={{ color: '#0066CC' }}>Responds {responseTime}</span>
           )}
           
@@ -373,32 +504,29 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
           </div>
         )}
         
-        {/* Analytics badges for discovery sections */}
-        {(showViewCount && viewCount > 0) && (
+        {/* Analytics badge for discovery sections - shows section-specific metric */}
+        {showAnalyticsBadge && vendor.analyticsBadge && (
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             gap: '4px',
             fontSize: '12px',
-            color: '#FF385C',
-            marginTop: '4px'
+            color: analyticsBadgeType === 'response' ? '#00A699' : 
+                   analyticsBadgeType === 'rating' ? '#FFB400' :
+                   analyticsBadgeType === 'bookings' ? '#EC4899' :
+                   analyticsBadgeType === 'distance' ? '#8B5CF6' :
+                   analyticsBadgeType === 'reviews' ? '#5E72E4' : '#FF385C',
+            marginTop: '4px',
+            fontWeight: 500
           }}>
-            <i className="fas fa-eye" style={{ fontSize: '11px' }}></i>
-            <span>{viewCount.toLocaleString()} views this week</span>
-          </div>
-        )}
-        
-        {(showResponseTime && avgResponseMinutes > 0) && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '4px',
-            fontSize: '12px',
-            color: '#00A699',
-            marginTop: '4px'
-          }}>
-            <i className="fas fa-bolt" style={{ fontSize: '11px' }}></i>
-            <span>Responds in ~{avgResponseMinutes < 60 ? `${avgResponseMinutes} min` : `${Math.round(avgResponseMinutes / 60)} hr`}</span>
+            <i className={`fas ${
+              analyticsBadgeType === 'response' ? 'fa-bolt' :
+              analyticsBadgeType === 'rating' ? 'fa-star' :
+              analyticsBadgeType === 'bookings' ? 'fa-calendar-check' :
+              analyticsBadgeType === 'distance' ? 'fa-location-dot' :
+              analyticsBadgeType === 'reviews' ? 'fa-comment-dots' : 'fa-fire'
+            }`} style={{ fontSize: '11px' }}></i>
+            <span>{vendor.analyticsBadge}</span>
           </div>
         )}
       </div>

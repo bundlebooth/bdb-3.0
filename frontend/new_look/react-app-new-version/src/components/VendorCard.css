@@ -1,3 +1,41 @@
+/* Remove all borders and hover effects from vendor cards */
+.vendor-card {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+
+.vendor-card:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.vendor-card:focus,
+.vendor-card:focus-visible,
+.vendor-card:focus-within,
+.vendor-card:active {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove any blue outline/border from all vendor card elements */
+.vendor-card *,
+.vendor-card *:focus,
+.vendor-card *:focus-visible {
+  outline: none !important;
+}
+
+/* Ensure image container has no border */
+.vendor-card > div:first-child {
+  border: none !important;
+  outline: none !important;
+}
+
 /* FORCE VendorCard Mobile Fixes - OVERRIDE ALL */
 @media (max-width: 768px) {
   .vendor-card {
