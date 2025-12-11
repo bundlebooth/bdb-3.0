@@ -215,6 +215,8 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
           state: data.state || '',
           postalCode: data.postalCode || '',
           country: data.country || 'Canada',
+          latitude: data.latitude || null,
+          longitude: data.longitude || null,
           serviceAreas: (data.serviceAreas || []).map(a => ({
             placeId: a.placeId || a.GooglePlaceID || null,
             city: a.city || a.CityName || '',

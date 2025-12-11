@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 
-function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, userLocation = null }) {
+function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, userLocation = null, onMapBoundsChange = null, searchOnDrag = false }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -9,8 +9,10 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
   const userLocationMarkerRef = useRef(null); // Track user location marker
   const [mapLoaded, setMapLoaded] = useState(false);
   const [userCity, setUserCity] = useState(''); // Store user's city name
+  const [searchOnDragEnabled, setSearchOnDragEnabled] = useState(searchOnDrag);
   const isInitializingRef = useRef(false); // Prevent duplicate initialization
   const previousVendorsRef = useRef([]); // Track previous vendors to prevent unnecessary updates
+  const dragTimeoutRef = useRef(null); // Debounce drag events
 
   // Helper function to create custom marker icon (grey by default, blue on hover/click)
   const createMarkerIcon = useCallback((color = '#9CA3AF', isHovered = false) => {
@@ -264,8 +266,36 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
       updateVendorsInViewport();
     });
 
+    // Add dragend listener for "search as you drag" functionality
+    map.addListener('dragend', () => {
+      if (searchOnDragEnabled && onMapBoundsChange) {
+        // Debounce the search to avoid too many API calls
+        if (dragTimeoutRef.current) {
+          clearTimeout(dragTimeoutRef.current);
+        }
+        dragTimeoutRef.current = setTimeout(() => {
+          const bounds = map.getBounds();
+          const center = map.getCenter();
+          if (bounds && center) {
+            const ne = bounds.getNorthEast();
+            const sw = bounds.getSouthWest();
+            onMapBoundsChange({
+              center: { lat: center.lat(), lng: center.lng() },
+              bounds: {
+                north: ne.lat(),
+                south: sw.lat(),
+                east: ne.lng(),
+                west: sw.lng()
+              },
+              zoom: map.getZoom()
+            });
+          }
+        }, 300);
+      }
+    });
+
     console.log('✅ Google Maps initialized successfully');
-  }, [updateVendorsInViewport]);
+  }, [updateVendorsInViewport, searchOnDragEnabled, onMapBoundsChange]);
 
   const initializeMap = useCallback(async () => {
     // Prevent duplicate initialization
@@ -646,6 +676,41 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '500px' }}>
+      {/* Search as you drag toggle */}
+      {onMapBoundsChange && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 100,
+          background: 'white',
+          borderRadius: '24px',
+          padding: '8px 16px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '14px',
+          fontWeight: 500
+        }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={searchOnDragEnabled}
+              onChange={(e) => setSearchOnDragEnabled(e.target.checked)}
+              style={{ 
+                width: '18px', 
+                height: '18px', 
+                accentColor: '#5e72e4',
+                cursor: 'pointer'
+              }}
+            />
+            <span style={{ color: '#222' }}>Search as I move the map</span>
+          </label>
+        </div>
+      )}
+      
       {/* Map container - always rendered */}
       <div 
         ref={mapRef} 

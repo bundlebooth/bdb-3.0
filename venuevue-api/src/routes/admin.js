@@ -3272,4 +3272,217 @@ router.get('/payment-calculator', async (req, res) => {
   }
 });
 
+// ==================== 2FA SETTINGS ====================
+
+// GET /admin/security/2fa-settings - Get 2FA settings
+router.get('/security/2fa-settings', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    // Check if SecuritySettings table exists
+    const tableCheck = await pool.request().query(`
+      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'SecuritySettings'
+    `);
+    
+    if (tableCheck.recordset[0].cnt > 0) {
+      const result = await pool.request().query(`
+        SELECT SettingKey, SettingValue FROM SecuritySettings WHERE IsActive = 1
+      `);
+      
+      const settings = {};
+      result.recordset.forEach(s => {
+        settings[s.SettingKey] = s.SettingValue;
+      });
+      
+      res.json({
+        success: true,
+        settings: {
+          require2FAForAdmins: settings.require_2fa_admins === 'true',
+          require2FAForVendors: settings.require_2fa_vendors === 'true',
+          sessionTimeout: parseInt(settings.session_timeout_minutes) || 60,
+          failedLoginLockout: parseInt(settings.failed_login_lockout) || 5
+        }
+      });
+    } else {
+      // Return defaults if table doesn't exist
+      res.json({
+        success: true,
+        settings: {
+          require2FAForAdmins: process.env.ENABLE_2FA === 'true',
+          require2FAForVendors: false,
+          sessionTimeout: 60,
+          failedLoginLockout: 5
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching 2FA settings:', error);
+    res.status(500).json({ error: 'Failed to fetch 2FA settings' });
+  }
+});
+
+// POST /admin/security/2fa-settings - Update 2FA settings
+router.post('/security/2fa-settings', async (req, res) => {
+  try {
+    const { require2FAForAdmins, require2FAForVendors, sessionTimeout, failedLoginLockout } = req.body;
+    const pool = await getPool();
+    
+    // Create SecuritySettings table if it doesn't exist
+    await pool.request().query(`
+      IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SecuritySettings')
+      BEGIN
+        CREATE TABLE SecuritySettings (
+          SettingID INT PRIMARY KEY IDENTITY(1,1),
+          SettingKey NVARCHAR(100) NOT NULL UNIQUE,
+          SettingValue NVARCHAR(500) NOT NULL,
+          Description NVARCHAR(500),
+          IsActive BIT DEFAULT 1,
+          UpdatedAt DATETIME DEFAULT GETUTCDATE(),
+          UpdatedBy INT
+        )
+      END
+    `);
+    
+    // Upsert settings
+    const settings = [
+      { key: 'require_2fa_admins', value: String(require2FAForAdmins) },
+      { key: 'require_2fa_vendors', value: String(require2FAForVendors) },
+      { key: 'session_timeout_minutes', value: String(sessionTimeout) },
+      { key: 'failed_login_lockout', value: String(failedLoginLockout) }
+    ];
+    
+    for (const setting of settings) {
+      await pool.request()
+        .input('key', sql.NVarChar, setting.key)
+        .input('value', sql.NVarChar, setting.value)
+        .query(`
+          IF EXISTS (SELECT 1 FROM SecuritySettings WHERE SettingKey = @key)
+            UPDATE SecuritySettings SET SettingValue = @value, UpdatedAt = GETUTCDATE() WHERE SettingKey = @key
+          ELSE
+            INSERT INTO SecuritySettings (SettingKey, SettingValue) VALUES (@key, @value)
+        `);
+    }
+    
+    // Log admin action
+    try {
+      await pool.request()
+        .input('userId', sql.Int, req.user?.id || null)
+        .input('email', sql.NVarChar, req.user?.email || 'admin')
+        .input('action', sql.NVarChar, 'Admin2FASettingsUpdated')
+        .input('status', sql.NVarChar, 'Success')
+        .input('details', sql.NVarChar, JSON.stringify({ require2FAForAdmins, require2FAForVendors, sessionTimeout, failedLoginLockout }))
+        .query(`
+          INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, Details)
+          VALUES (@userId, @email, @action, @status, @details)
+        `);
+    } catch (logErr) { console.error('Failed to log admin action:', logErr.message); }
+    
+    res.json({ success: true, message: '2FA settings updated successfully' });
+  } catch (error) {
+    console.error('Error updating 2FA settings:', error);
+    res.status(500).json({ error: 'Failed to update 2FA settings' });
+  }
+});
+
+// GET /admin/security/admin-2fa-status - Get 2FA status for all admins
+router.get('/security/admin-2fa-status', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    const result = await pool.request().query(`
+      SELECT 
+        u.UserID,
+        u.Name,
+        u.Email,
+        u.IsAdmin,
+        u.LastLogin,
+        CASE WHEN u.TwoFactorEnabled = 1 THEN 1 ELSE 0 END as TwoFactorEnabled
+      FROM Users u
+      WHERE u.IsAdmin = 1
+      ORDER BY u.Name
+    `);
+    
+    res.json({ success: true, admins: result.recordset });
+  } catch (error) {
+    console.error('Error fetching admin 2FA status:', error);
+    res.status(500).json({ error: 'Failed to fetch admin 2FA status' });
+  }
+});
+
+// POST /admin/security/reset-2fa/:userId - Reset 2FA for a user
+router.post('/security/reset-2fa/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const pool = await getPool();
+    
+    // Reset 2FA for user
+    await pool.request()
+      .input('userId', sql.Int, userId)
+      .query(`
+        UPDATE Users SET TwoFactorEnabled = 0, TwoFactorSecret = NULL WHERE UserID = @userId
+      `);
+    
+    // Delete any pending 2FA codes
+    await pool.request()
+      .input('userId', sql.Int, userId)
+      .query(`
+        DELETE FROM UserTwoFactorCodes WHERE UserID = @userId
+      `);
+    
+    // Log admin action
+    try {
+      await pool.request()
+        .input('adminId', sql.Int, req.user?.id || null)
+        .input('email', sql.NVarChar, req.user?.email || 'admin')
+        .input('action', sql.NVarChar, 'Admin2FAReset')
+        .input('status', sql.NVarChar, 'Success')
+        .input('details', sql.NVarChar, `Reset 2FA for user ID: ${userId}`)
+        .query(`
+          INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, Details)
+          VALUES (@adminId, @email, @action, @status, @details)
+        `);
+    } catch (logErr) { console.error('Failed to log admin action:', logErr.message); }
+    
+    res.json({ success: true, message: '2FA reset successfully' });
+  } catch (error) {
+    console.error('Error resetting 2FA:', error);
+    res.status(500).json({ error: 'Failed to reset 2FA' });
+  }
+});
+
+// GET /admin/security/flagged-items - Get flagged items
+router.get('/security/flagged-items', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    // Get flagged items from various sources
+    const flaggedItems = [];
+    
+    // Get failed login attempts (potential security issues)
+    const failedLogins = await pool.request().query(`
+      SELECT TOP 10
+        'Account' as type,
+        Email as item,
+        'Multiple failed login attempts' as reason,
+        'high' as severity,
+        CreatedAt as timestamp
+      FROM SecurityLogs
+      WHERE Action = 'LoginFailed'
+      GROUP BY Email, CreatedAt
+      HAVING COUNT(*) >= 3
+      ORDER BY CreatedAt DESC
+    `);
+    
+    flaggedItems.push(...failedLogins.recordset.map(item => ({
+      id: Math.random().toString(36).substr(2, 9),
+      ...item
+    })));
+    
+    res.json({ success: true, items: flaggedItems });
+  } catch (error) {
+    console.error('Error fetching flagged items:', error);
+    res.status(500).json({ error: 'Failed to fetch flagged items' });
+  }
+});
+
 module.exports = router;

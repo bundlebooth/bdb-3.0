@@ -9,16 +9,33 @@ const SecurityLogsPanel = () => {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0 });
+  const [twoFASettings, setTwoFASettings] = useState({
+    require2FAForAdmins: true,
+    require2FAForVendors: false,
+    sessionTimeout: 60,
+    failedLoginLockout: 5
+  });
+  const [adminList, setAdminList] = useState([]);
+  const [flaggedItems, setFlaggedItems] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchLogs();
+    if (activeTab === '2fa') {
+      fetch2FASettings();
+      fetchAdminList();
+    } else if (activeTab === 'flagged') {
+      fetchFlaggedItems();
+    } else {
+      fetchLogs();
+    }
   }, [activeTab, filter, pagination.page]);
 
   const fetchLogs = async () => {
     try {
       setLoading(true);
+      const statusFilter = filter === 'success' ? 'success' : filter === 'failed' ? 'failed' : '';
       const response = await fetch(
-        `${API_BASE_URL}/admin/security/logs?type=${activeTab}&filter=${filter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
+        `${API_BASE_URL}/admin/security/logs?type=${activeTab}&status=${statusFilter}&page=${pagination.page}&limit=${pagination.limit}&search=${searchTerm}`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -28,17 +45,131 @@ const SecurityLogsPanel = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setLogs(data.logs || []);
+        // Transform the data to match expected format
+        const transformedLogs = (data.logs || []).map(log => ({
+          id: log.id,
+          user: log.user || log.email,
+          admin: log.user || log.email,
+          action: log.action === 'Login' ? 'Login Success' : 
+                  log.action === 'LoginFailed' ? 'Login Failed' : 
+                  log.action === 'Logout' ? 'Logout' :
+                  log.action,
+          ip: log.ip || 'Unknown',
+          location: log.location || 'Unknown',
+          device: log.device || log.userAgent || 'Unknown',
+          details: log.details,
+          target: log.details,
+          timestamp: log.timestamp
+        }));
+        setLogs(transformedLogs);
         setPagination(prev => ({ ...prev, total: data.total || 0 }));
       } else {
-        // Use mock data
-        setLogs(getMockLogs(activeTab));
+        console.error('Failed to fetch logs, status:', response.status);
+        setLogs([]);
       }
     } catch (error) {
       console.error('Error fetching logs:', error);
-      setLogs(getMockLogs(activeTab));
+      setLogs([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetch2FASettings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/admin/security/2fa-settings`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.settings) {
+          setTwoFASettings(data.settings);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching 2FA settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAdminList = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/security/admin-2fa-status`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAdminList(data.admins || []);
+      }
+    } catch (error) {
+      console.error('Error fetching admin list:', error);
+    }
+  };
+
+  const fetchFlaggedItems = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/admin/security/flagged-items`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setFlaggedItems(data.items || []);
+        setLogs(data.items || []);
+      } else {
+        setFlaggedItems([]);
+        setLogs([]);
+      }
+    } catch (error) {
+      console.error('Error fetching flagged items:', error);
+      setFlaggedItems([]);
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const save2FASettings = async () => {
+    try {
+      setSaving(true);
+      const response = await fetch(`${API_BASE_URL}/admin/security/2fa-settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(twoFASettings)
+      });
+      if (response.ok) {
+        showBanner('Security settings saved successfully', 'success');
+      } else {
+        showBanner('Failed to save settings', 'error');
+      }
+    } catch (error) {
+      console.error('Error saving 2FA settings:', error);
+      showBanner('Failed to save settings', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reset2FA = async (userId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/security/reset-2fa/${userId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (response.ok) {
+        showBanner('2FA reset successfully', 'success');
+        fetchAdminList();
+      } else {
+        showBanner('Failed to reset 2FA', 'error');
+      }
+    } catch (error) {
+      console.error('Error resetting 2FA:', error);
+      showBanner('Failed to reset 2FA', 'error');
     }
   };
 
@@ -295,7 +426,11 @@ const SecurityLogsPanel = () => {
                 <p>All admin accounts must use two-factor authentication</p>
               </div>
               <label className="toggle-switch">
-                <input type="checkbox" defaultChecked />
+                <input 
+                  type="checkbox" 
+                  checked={twoFASettings.require2FAForAdmins}
+                  onChange={(e) => setTwoFASettings(prev => ({ ...prev, require2FAForAdmins: e.target.checked }))}
+                />
                 <span className="toggle-slider"></span>
               </label>
             </div>
@@ -306,7 +441,11 @@ const SecurityLogsPanel = () => {
                 <p>Vendor accounts must use two-factor authentication</p>
               </div>
               <label className="toggle-switch">
-                <input type="checkbox" />
+                <input 
+                  type="checkbox" 
+                  checked={twoFASettings.require2FAForVendors}
+                  onChange={(e) => setTwoFASettings(prev => ({ ...prev, require2FAForVendors: e.target.checked }))}
+                />
                 <span className="toggle-slider"></span>
               </label>
             </div>
@@ -316,7 +455,10 @@ const SecurityLogsPanel = () => {
                 <h4>Session Timeout</h4>
                 <p>Automatically log out inactive users after this period</p>
               </div>
-              <select defaultValue="60">
+              <select 
+                value={twoFASettings.sessionTimeout}
+                onChange={(e) => setTwoFASettings(prev => ({ ...prev, sessionTimeout: parseInt(e.target.value) }))}
+              >
                 <option value="15">15 minutes</option>
                 <option value="30">30 minutes</option>
                 <option value="60">1 hour</option>
@@ -330,7 +472,10 @@ const SecurityLogsPanel = () => {
                 <h4>Failed Login Lockout</h4>
                 <p>Lock account after this many failed attempts</p>
               </div>
-              <select defaultValue="5">
+              <select 
+                value={twoFASettings.failedLoginLockout}
+                onChange={(e) => setTwoFASettings(prev => ({ ...prev, failedLoginLockout: parseInt(e.target.value) }))}
+              >
                 <option value="3">3 attempts</option>
                 <option value="5">5 attempts</option>
                 <option value="10">10 attempts</option>
@@ -351,22 +496,32 @@ const SecurityLogsPanel = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td><strong>Super Admin</strong></td>
-                  <td>admin@planhive.com</td>
-                  <td><span className="status-badge badge-success">Enabled</span></td>
-                  <td>Today, 10:30 AM</td>
-                  <td>
-                    <button className="btn-small secondary">Reset 2FA</button>
-                  </td>
-                </tr>
+                {adminList.length > 0 ? adminList.map(admin => (
+                  <tr key={admin.UserID}>
+                    <td><strong>{admin.Name || 'Admin'}</strong></td>
+                    <td>{admin.Email}</td>
+                    <td>
+                      <span className={`status-badge ${admin.TwoFactorEnabled ? 'badge-success' : 'badge-warning'}`}>
+                        {admin.TwoFactorEnabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </td>
+                    <td>{admin.LastLogin ? new Date(admin.LastLogin).toLocaleString() : 'Never'}</td>
+                    <td>
+                      <button className="btn-small secondary" onClick={() => reset2FA(admin.UserID)}>Reset 2FA</button>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '1rem' }}>No admin users found</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="settings-footer">
-            <button className="btn-primary">
-              <i className="fas fa-save"></i> Save Security Settings
+            <button className="btn-primary" onClick={save2FASettings} disabled={saving}>
+              <i className="fas fa-save"></i> {saving ? 'Saving...' : 'Save Security Settings'}
             </button>
           </div>
         </div>

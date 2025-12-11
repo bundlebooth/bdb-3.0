@@ -159,6 +159,47 @@ function IndexPage() {
     console.log('📋 loadDiscoverySections called - sections now loaded with main vendors query');
   }, []);
 
+  // Handler for map bounds change - search as user drags map
+  const handleMapBoundsChange = useCallback(async (boundsData) => {
+    console.log('🗺️ Map bounds changed:', boundsData);
+    
+    // Use reverse geocoding to get city name from center coordinates
+    if (window.google && window.google.maps) {
+      try {
+        const geocoder = new window.google.maps.Geocoder();
+        const response = await geocoder.geocode({ 
+          location: { lat: boundsData.center.lat, lng: boundsData.center.lng } 
+        });
+        
+        if (response.results && response.results.length > 0) {
+          // Find city from address components
+          for (const result of response.results) {
+            const cityComponent = result.address_components.find(
+              c => c.types.includes('locality') || c.types.includes('administrative_area_level_3')
+            );
+            if (cityComponent) {
+              const newCity = cityComponent.long_name;
+              console.log('🗺️ Detected city from map:', newCity);
+              
+              // Update filters and reload vendors for this city
+              setDetectedCity(newCity);
+              setFilters(prev => ({ ...prev, location: newCity }));
+              setUserLocation(prev => ({
+                ...prev,
+                lat: boundsData.center.lat,
+                lng: boundsData.center.lng,
+                city: newCity
+              }));
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Geocoding error:', error);
+      }
+    }
+  }, []);
+
   // EXACT match to original applyClientSideFilters (line 26091-26120)
   const applyClientSideFiltersInternal = useCallback((vendorsToFilter) => {
     console.log('🔧 Applying client-side filters to', vendorsToFilter.length, 'vendors');
@@ -1011,47 +1052,70 @@ function IndexPage() {
           {/* Main Vendor Grid */}
           <VendorGrid vendors={currentVendors} loading={loading} loadingMore={loadingMore} favorites={favorites} onToggleFavorite={handleToggleFavorite} onViewVendor={handleViewVendor} onHighlightVendor={handleHighlightVendor} />
           {showLoadMore && (
-            <div id="load-more-wrapper" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '3rem 0 2rem 0' }}>
-              <button 
-                className="btn" 
-                id="load-more-btn"
-                onClick={() => loadVendors(true)}
-                disabled={loadingMore}
-                style={{ 
-                  backgroundColor: '#5e72e4', 
-                  color: 'white', 
-                  border: 'none', 
-                  padding: '0.875rem 2.5rem', 
-                  fontSize: '1rem', 
-                  fontWeight: 500, 
-                  borderRadius: '8px', 
-                  cursor: loadingMore ? 'not-allowed' : 'pointer', 
-                  boxShadow: '0 2px 8px rgba(94, 114, 228, 0.2)',
+            <div id="load-more-wrapper" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', margin: '3rem 0 2rem 0', position: 'relative' }}>
+              {/* Loading overlay with spinner */}
+              {loadingMore && (
+                <div style={{
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '0.5rem',
-                  transition: 'all 0.2s ease',
-                  opacity: loadingMore ? 0.6 : 1
-                }}
-                onMouseOver={(e) => {
-                  if (!loadingMore) {
+                  justifyContent: 'center',
+                  padding: '2rem',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    border: '4px solid #e5e7eb',
+                    borderTop: '4px solid #5e72e4',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                  }}></div>
+                  <p style={{ marginTop: '1rem', color: '#6b7280', fontSize: '0.95rem' }}>Loading more vendors...</p>
+                  <style>{`
+                    @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  `}</style>
+                </div>
+              )}
+              {!loadingMore && (
+                <button 
+                  className="btn" 
+                  id="load-more-btn"
+                  onClick={() => loadVendors(true)}
+                  disabled={loadingMore}
+                  style={{ 
+                    backgroundColor: '#5e72e4', 
+                    color: 'white', 
+                    border: 'none', 
+                    padding: '0.875rem 2.5rem', 
+                    fontSize: '1rem', 
+                    fontWeight: 500, 
+                    borderRadius: '8px', 
+                    cursor: 'pointer', 
+                    boxShadow: '0 2px 8px rgba(94, 114, 228, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseOver={(e) => {
                     e.currentTarget.style.backgroundColor = '#4a5acf';
                     e.currentTarget.style.boxShadow = '0 4px 12px rgba(94, 114, 228, 0.3)';
                     e.currentTarget.style.transform = 'translateY(-1px)';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (!loadingMore) {
+                  }}
+                  onMouseOut={(e) => {
                     e.currentTarget.style.backgroundColor = '#5e72e4';
                     e.currentTarget.style.boxShadow = '0 2px 8px rgba(94, 114, 228, 0.2)';
                     e.currentTarget.style.transform = 'translateY(0)';
-                  }
-                }}
-              >
-                <span id="load-more-text">{loadingMore ? 'Loading...' : 'Load More'}</span>
-                {!loadingMore && <i className="fas fa-chevron-down"></i>}
-                {loadingMore && <i className="fas fa-spinner fa-spin"></i>}
-              </button>
+                  }}
+                >
+                  <span id="load-more-text">Load More</span>
+                  <i className="fas fa-chevron-down"></i>
+                </button>
+              )}
             </div>
           )}
         </main>
@@ -1070,6 +1134,7 @@ function IndexPage() {
               selectedVendorId={selectedVendorId}
               loading={loading}
               userLocation={userLocation}
+              onMapBoundsChange={handleMapBoundsChange}
             />
           </div>
         </aside>
@@ -1108,6 +1173,7 @@ function IndexPage() {
             selectedVendorId={selectedVendorId}
             loading={loading}
             userLocation={userLocation}
+            onMapBoundsChange={handleMapBoundsChange}
           />
         </div>
       </div>

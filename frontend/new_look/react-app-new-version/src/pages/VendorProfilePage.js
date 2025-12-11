@@ -1269,70 +1269,102 @@ function VendorProfilePage() {
           onChatClick={() => setProfileModalOpen(true)} 
           onNotificationsClick={() => {}} 
         />
-        <div className="profile-container">
-          {/* Back Button Skeleton */}
-          <div className="skeleton" style={{ width: '150px', height: '40px', borderRadius: '12px', marginBottom: '2rem' }}></div>
+        <div style={{ background: '#ffffff', minHeight: '100vh' }}>
+          <div className="profile-container" style={{ background: '#ffffff' }}>
+            {/* Back Button Skeleton */}
+            <div className="skeleton" style={{ width: '150px', height: '40px', borderRadius: '12px', marginBottom: '2rem', background: '#e5e7eb' }}></div>
 
-          {/* Image Gallery Skeleton */}
-          <div className="image-gallery">
-            <div className="gallery-item large-image">
-              <div className="skeleton" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}></div>
-            </div>
-            <div className="thumbnails-container">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="gallery-item">
-                  <div className="skeleton" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}></div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Header Skeleton */}
-          <div className="vendor-profile-header">
-            <div className="vendor-profile-info" style={{ flex: 1 }}>
-              <div className="skeleton" style={{ width: '60%', height: '36px', marginBottom: '0.75rem' }}></div>
-              <div className="skeleton" style={{ width: '40%', height: '20px', marginBottom: '0.5rem' }}></div>
-            </div>
-            <div className="vendor-profile-actions">
-              <div className="skeleton" style={{ width: '44px', height: '44px', borderRadius: '50%' }}></div>
-              <div className="skeleton" style={{ width: '44px', height: '44px', borderRadius: '50%' }}></div>
-            </div>
-          </div>
-
-          {/* Content Layout Skeleton */}
-          <div className="vendor-content-layout">
-            <div className="vendor-main-content">
-              {/* About Section Skeleton */}
-              <div className="content-section">
-                <div className="skeleton" style={{ width: '200px', height: '28px', marginBottom: '1rem' }}></div>
-                <div className="skeleton" style={{ width: '100%', height: '20px', marginBottom: '0.5rem' }}></div>
-                <div className="skeleton" style={{ width: '90%', height: '20px', marginBottom: '0.5rem' }}></div>
-                <div className="skeleton" style={{ width: '80%', height: '20px' }}></div>
-              </div>
-
-              {/* Services Section Skeleton */}
-              <div className="content-section">
-                <div className="skeleton" style={{ width: '180px', height: '28px', marginBottom: '1rem' }}></div>
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="service-package-card" style={{ marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <div className="skeleton" style={{ width: '80px', height: '80px', borderRadius: '12px' }}></div>
-                      <div style={{ flex: 1 }}>
-                        <div className="skeleton" style={{ width: '60%', height: '20px', marginBottom: '0.5rem' }}></div>
-                        <div className="skeleton" style={{ width: '100%', height: '16px', marginBottom: '0.5rem' }}></div>
-                        <div className="skeleton" style={{ width: '40%', height: '16px' }}></div>
-                      </div>
-                    </div>
-                  </div>
+            {/* Image Gallery Skeleton - White background, no side bars */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: '8px', 
+              borderRadius: '12px', 
+              overflow: 'hidden',
+              marginBottom: '1.5rem',
+              background: '#ffffff'
+            }}>
+              {/* Large image */}
+              <div style={{ 
+                aspectRatio: '4/3', 
+                background: '#e5e7eb',
+                borderRadius: '12px 0 0 12px',
+                animation: 'skeleton-shimmer 1.5s infinite',
+                backgroundImage: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
+                backgroundSize: '200% 100%'
+              }}></div>
+              {/* Thumbnails grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '8px' }}>
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} style={{ 
+                    background: '#e5e7eb',
+                    borderRadius: i === 2 ? '0 12px 0 0' : i === 4 ? '0 0 12px 0' : '0',
+                    animation: 'skeleton-shimmer 1.5s infinite',
+                    backgroundImage: 'linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%)',
+                    backgroundSize: '200% 100%'
+                  }}></div>
                 ))}
               </div>
             </div>
 
-            {/* Sidebar Skeleton */}
-            <div className="vendor-sidebar">
-              <div className="sidebar-card">
-                <div className="skeleton" style={{ width: '100%', height: '48px', borderRadius: '12px', marginBottom: '1rem' }}></div>
-                <div className="skeleton" style={{ width: '100%', height: '48px', borderRadius: '12px' }}></div>
+            {/* Header Skeleton */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+              <div style={{ flex: 1 }}>
+                <div className="skeleton" style={{ width: '60%', height: '36px', marginBottom: '0.75rem', background: '#e5e7eb' }}></div>
+                <div className="skeleton" style={{ width: '40%', height: '20px', marginBottom: '0.5rem', background: '#e5e7eb' }}></div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div className="skeleton" style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#e5e7eb' }}></div>
+                <div className="skeleton" style={{ width: '44px', height: '44px', borderRadius: '50%', background: '#e5e7eb' }}></div>
+              </div>
+            </div>
+
+            {/* Content Layout Skeleton */}
+            <div style={{ display: 'flex', gap: '2rem' }}>
+              <div style={{ flex: 1 }}>
+                {/* About Section Skeleton */}
+                <div style={{ marginBottom: '2rem' }}>
+                  <div className="skeleton" style={{ width: '200px', height: '28px', marginBottom: '1rem', background: '#e5e7eb' }}></div>
+                  <div className="skeleton" style={{ width: '100%', height: '20px', marginBottom: '0.5rem', background: '#e5e7eb' }}></div>
+                  <div className="skeleton" style={{ width: '90%', height: '20px', marginBottom: '0.5rem', background: '#e5e7eb' }}></div>
+                  <div className="skeleton" style={{ width: '80%', height: '20px', background: '#e5e7eb' }}></div>
+                </div>
+
+                {/* Services Section Skeleton */}
+                <div style={{ marginBottom: '2rem' }}>
+                  <div className="skeleton" style={{ width: '180px', height: '28px', marginBottom: '1rem', background: '#e5e7eb' }}></div>
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} style={{ 
+                      padding: '1rem', 
+                      border: '1px solid #e5e7eb', 
+                      borderRadius: '12px', 
+                      marginBottom: '1rem',
+                      background: '#ffffff'
+                    }}>
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div className="skeleton" style={{ width: '80px', height: '80px', borderRadius: '12px', background: '#e5e7eb' }}></div>
+                        <div style={{ flex: 1 }}>
+                          <div className="skeleton" style={{ width: '60%', height: '20px', marginBottom: '0.5rem', background: '#e5e7eb' }}></div>
+                          <div className="skeleton" style={{ width: '100%', height: '16px', marginBottom: '0.5rem', background: '#e5e7eb' }}></div>
+                          <div className="skeleton" style={{ width: '40%', height: '16px', background: '#e5e7eb' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sidebar Skeleton */}
+              <div style={{ width: '350px', flexShrink: 0 }}>
+                <div style={{ 
+                  padding: '1.5rem', 
+                  border: '1px solid #e5e7eb', 
+                  borderRadius: '12px',
+                  background: '#ffffff'
+                }}>
+                  <div className="skeleton" style={{ width: '100%', height: '48px', borderRadius: '12px', marginBottom: '1rem', background: '#e5e7eb' }}></div>
+                  <div className="skeleton" style={{ width: '100%', height: '48px', borderRadius: '12px', background: '#e5e7eb' }}></div>
+                </div>
               </div>
             </div>
           </div>

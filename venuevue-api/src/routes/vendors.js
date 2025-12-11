@@ -591,7 +591,7 @@ router.get('/', async (req, res) => {
           COUNT(*) OVER() AS TotalCount
         FROM VendorProfiles v
         JOIN Users u ON v.UserID = u.UserID
-        WHERE u.IsActive = 1 AND v.IsCompleted = 1
+        WHERE u.IsActive = 1 AND ISNULL(v.IsVisible, 0) = 1
       `;
       
       // Add city filter
@@ -721,7 +721,7 @@ router.get('/', async (req, res) => {
       // Most Booked - sorted by booking count (show all vendors sorted by bookings)
       const trendingVendors = [...formattedVendors]
         .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
-        .slice(0, 8)
+        .slice(0, 20)
         .map(v => ({
           ...v,
           analyticsBadge: v.bookingCount > 0 ? `${v.bookingCount} booking${v.bookingCount !== 1 ? 's' : ''} this month` : 'Popular choice'
@@ -772,7 +772,7 @@ router.get('/', async (req, res) => {
       // Top Rated - sorted by rating (show all vendors sorted by rating)
       const topRatedVendors = [...formattedVendors]
         .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-        .slice(0, 8)
+        .slice(0, 20)
         .map(v => ({
           ...v,
           analyticsBadge: `★ ${v.averageRating?.toFixed(1) || '5.0'} rating`
@@ -790,7 +790,7 @@ router.get('/', async (req, res) => {
       // Premium Vendors
       const premiumVendors = formattedVendors
         .filter(v => v.isPremium)
-        .slice(0, 8);
+        .slice(0, 20);
       if (premiumVendors.length > 0) {
         discoverySections.push({
           id: 'premium',
@@ -803,7 +803,7 @@ router.get('/', async (req, res) => {
       // Budget-Friendly - sorted by price low (show all vendors sorted by price)
       const budgetVendors = [...formattedVendors]
         .sort((a, b) => (a.startingPrice || 0) - (b.startingPrice || 0))
-        .slice(0, 8)
+        .slice(0, 20)
         .map(v => ({
           ...v,
           analyticsBadge: v.startingPrice ? `From $${v.startingPrice}` : 'Great value'
@@ -823,7 +823,7 @@ router.get('/', async (req, res) => {
         const nearbyVendors = [...formattedVendors]
           .filter(v => v.distanceMiles != null)
           .sort((a, b) => (a.distanceMiles || 999) - (b.distanceMiles || 999))
-          .slice(0, 8)
+          .slice(0, 20)
           .map(v => ({
             ...v,
             analyticsBadge: `${v.distanceMiles?.toFixed(1) || '?'} miles away`
@@ -843,7 +843,7 @@ router.get('/', async (req, res) => {
       // Most Reviewed - sorted by review count (show all vendors sorted by reviews)
       const mostReviewedVendors = [...formattedVendors]
         .sort((a, b) => (b.totalReviews || 0) - (a.totalReviews || 0))
-        .slice(0, 8)
+        .slice(0, 20)
         .map(v => ({
           ...v,
           analyticsBadge: v.totalReviews > 0 ? `${v.totalReviews} review${v.totalReviews !== 1 ? 's' : ''}` : 'Be the first to review'
@@ -864,7 +864,7 @@ router.get('/', async (req, res) => {
       const recentlyAddedVendors = [...formattedVendors]
         .filter(v => v.createdAt && new Date(v.createdAt) >= thirtyDaysAgo)
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 8);
+        .slice(0, 20);
       if (recentlyAddedVendors.length > 0) {
         discoverySections.push({
           id: 'recently-added',
@@ -985,7 +985,7 @@ router.get('/map', async (req, res) => {
       FROM VendorProfiles vp
       LEFT JOIN VendorCategories vc ON vp.VendorProfileID = vc.VendorProfileID
       LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = ps.PredefinedServiceID
-      WHERE vp.IsCompleted = 1 
+      WHERE ISNULL(vp.IsVisible, 0) = 1 
         AND vp.Latitude IS NOT NULL 
         AND vp.Longitude IS NOT NULL`;
 
@@ -1358,7 +1358,7 @@ router.get('/search-by-categories', async (req, res) => {
       // Most Booked - sorted by booking count (show all vendors sorted by bookings)
       const trendingVendors = [...allVendors]
         .sort((a, b) => (b.bookingCount || 0) - (a.bookingCount || 0))
-        .slice(0, 8)
+        .slice(0, 20)
         .map(v => ({
           ...v,
           analyticsBadge: v.bookingCount > 0 ? `${v.bookingCount} booking${v.bookingCount !== 1 ? 's' : ''} this month` : 'Popular choice'
@@ -1377,7 +1377,7 @@ router.get('/search-by-categories', async (req, res) => {
       const responsiveVendors = [...allVendors]
         .filter(v => v.avgResponseMinutes && v.avgResponseMinutes > 0 && v.avgResponseMinutes <= 120)
         .sort((a, b) => (a.avgResponseMinutes || 999) - (b.avgResponseMinutes || 999))
-        .slice(0, 8)
+        .slice(0, 20)
         .map(v => {
           const mins = v.avgResponseMinutes;
           let responseText;
@@ -1408,7 +1408,7 @@ router.get('/search-by-categories', async (req, res) => {
       // Top Rated - sorted by rating (show all vendors sorted by rating)
       const topRatedVendors = [...allVendors]
         .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
-        .slice(0, 8)
+        .slice(0, 20)
         .map(v => ({
           ...v,
           analyticsBadge: `★ ${v.averageRating?.toFixed(1) || '5.0'} rating`
@@ -1426,7 +1426,7 @@ router.get('/search-by-categories', async (req, res) => {
       // Premium Vendors
       const premiumVendors = allVendors
         .filter(v => v.isPremium)
-        .slice(0, 8);
+        .slice(0, 20);
       if (premiumVendors.length > 0) {
         discoverySections.push({
           id: 'premium',
@@ -1439,7 +1439,7 @@ router.get('/search-by-categories', async (req, res) => {
       // Budget-Friendly - sorted by price low (show all vendors sorted by price)
       const budgetVendors = [...allVendors]
         .sort((a, b) => (a.startingPrice || 0) - (b.startingPrice || 0))
-        .slice(0, 8)
+        .slice(0, 20)
         .map(v => ({
           ...v,
           analyticsBadge: v.startingPrice ? `From $${v.startingPrice}` : 'Great value'
@@ -1459,7 +1459,7 @@ router.get('/search-by-categories', async (req, res) => {
         const nearbyVendors = [...allVendors]
           .filter(v => v.distanceMiles != null)
           .sort((a, b) => (a.distanceMiles || 999) - (b.distanceMiles || 999))
-          .slice(0, 8)
+          .slice(0, 20)
           .map(v => ({
             ...v,
             analyticsBadge: `${v.distanceMiles?.toFixed(1) || '?'} miles away`
@@ -1479,7 +1479,7 @@ router.get('/search-by-categories', async (req, res) => {
       // Most Reviewed - sorted by review count (show all vendors sorted by reviews)
       const mostReviewedVendors = [...allVendors]
         .sort((a, b) => (b.totalReviews || 0) - (a.totalReviews || 0))
-        .slice(0, 8)
+        .slice(0, 20)
         .map(v => ({
           ...v,
           analyticsBadge: v.totalReviews > 0 ? `${v.totalReviews} review${v.totalReviews !== 1 ? 's' : ''}` : 'Be the first to review'
