@@ -84,20 +84,72 @@ function IndexPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
 
+  // State for detected city name from IP geolocation
+  const [detectedCity, setDetectedCity] = useState('');
+  
+  // Auto-detect user's city using IP geolocation (no permission required)
+  // Using ip-api.com - free and reliable service
+  const detectCityFromIP = useCallback(async () => {
+    try {
+      console.log('🌍 Detecting city from IP using ip-api.com...');
+      // ip-api.com is free for non-commercial use, no API key needed
+      const response = await fetch('http://ip-api.com/json/?fields=status,city,regionName,country,lat,lon');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🌍 IP geolocation data:', data);
+        if (data.status === 'success' && data.city) {
+          const cityString = `${data.city}, ${data.regionName}`;
+          setDetectedCity(data.city);
+          setUserLocation({
+            lat: data.lat,
+            lng: data.lon,
+            city: cityString
+          });
+          // Also set the location filter to auto-filter vendors by city
+          setFilters(prev => ({ ...prev, location: data.city }));
+          console.log('🌍 City detected:', cityString, 'Lat:', data.lat, 'Lng:', data.lon);
+        }
+      }
+    } catch (error) {
+      console.log('🌍 IP geolocation failed, trying fallback...', error);
+      // Fallback to ipinfo.io
+      try {
+        const fallbackResponse = await fetch('https://ipinfo.io/json?token=demo');
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          if (fallbackData.city) {
+            const [lat, lng] = (fallbackData.loc || '0,0').split(',').map(Number);
+            setDetectedCity(fallbackData.city);
+            setUserLocation({ lat, lng, city: `${fallbackData.city}, ${fallbackData.region}` });
+            setFilters(prev => ({ ...prev, location: fallbackData.city }));
+            console.log('🌍 Fallback city detected:', fallbackData.city);
+          }
+        }
+      } catch (fallbackError) {
+        console.log('🌍 All IP geolocation attempts failed:', fallbackError);
+      }
+    }
+  }, []);
+
   const tryGetUserLocation = useCallback(() => {
+    // First try IP-based geolocation (no permission needed)
+    detectCityFromIP();
+    
+    // Then try browser geolocation for more accuracy (requires permission)
     if (navigator.geolocation && !userLocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
+          setUserLocation(prev => ({
+            ...prev,
             lat: position.coords.latitude,
             lng: position.coords.longitude
-          });
+          }));
         },
         (error) => console.log('Geolocation error:', error)
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [detectCityFromIP]);
 
   // Discovery sections are now loaded from the same /vendors endpoint
   // No separate API call needed - they come from the unified query
@@ -283,6 +335,13 @@ function IndexPage() {
         } catch { 
           totalCount = newVendors.length; 
         }
+        
+        // Handle discovery sections from category search (filtered by category)
+        if (data.discoverySections && Array.isArray(data.discoverySections)) {
+          console.log('📦 Discovery sections loaded from category search:', data.discoverySections.length);
+          setDiscoverySections(data.discoverySections);
+          setLoadingDiscovery(false);
+        }
       } else {
         // Regular /vendors response (line 26256-26258)
         console.log('📦 Response has regular format');
@@ -403,6 +462,7 @@ function IndexPage() {
     
     if (currentCategory) {
       setLoading(true); // Show loading state when category changes
+      setLoadingDiscovery(true); // Also show loading for discovery sections
       setServerPageNumber(1);
       loadVendors();
     }
@@ -445,18 +505,12 @@ function IndexPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vendors, filters, userLocation]);
 
-  // Reload discovery sections when location or category changes
+  // Discovery sections are now loaded with vendors - this useEffect is kept for logging only
   useEffect(() => {
-    console.log('🔄 Discovery sections useEffect triggered:', {
-      isInitialMount: isInitialMount.current,
+    console.log('🔄 Category/location changed - discovery sections will update with vendors:', {
       currentCategory,
-      userLocation,
       location: filters.location
     });
-    
-    // ALWAYS reload discovery sections when category changes (removed isInitialMount check)
-    console.log('🔄 Reloading discovery sections due to category/location change');
-    loadDiscoverySections();
   }, [currentCategory, filters.location]);
 
   const handleCategoryChange = useCallback((category) => {
@@ -796,7 +850,38 @@ function IndexPage() {
           )}
           <div className="content-header">
             <div>
-              <h1 className="results-title">{loading ? <div className="skeleton" style={{ height: '32px', width: '280px', borderRadius: '8px' }}></div> : `Vendors ${filters.location || userLocation ? 'in ' + (filters.location || 'your area') : 'Near you'}`}</h1>
+              <h1 className="results-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {loading ? (
+                  <div className="skeleton" style={{ height: '32px', width: '280px', borderRadius: '8px' }}></div>
+                ) : (
+                  <>
+                    <span>Vendors {detectedCity || filters.location ? 'Near ' + (detectedCity || filters.location) : 'Near You'}</span>
+                    <button
+                      onClick={() => {
+                        // Scroll to top and dispatch event to expand search bar
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        setTimeout(() => {
+                          // Dispatch custom event to expand search bar and focus location
+                          window.dispatchEvent(new CustomEvent('expandSearchBar', { detail: { field: 'location' } }));
+                        }, 300);
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        color: '#222222',
+                        fontSize: '16px'
+                      }}
+                      title="Change location"
+                    >
+                      <i className="fas fa-edit"></i>
+                    </button>
+                  </>
+                )}
+              </h1>
               <p className="results-count">{loading ? <span className="skeleton" style={{ display: 'inline-block', height: '16px', width: '150px', borderRadius: '6px', marginTop: '8px' }}></span> : `${serverTotalCount} vendors available`}</p>
             </div>
             <div className="view-controls">
@@ -891,6 +976,8 @@ function IndexPage() {
                   onToggleFavorite={handleToggleFavorite}
                   onViewVendor={handleViewVendor}
                   onHighlightVendor={handleHighlightVendor}
+                  showViewCount={section.showViewCount || false}
+                  showResponseTime={section.showResponseTime || false}
                 />
               ))
             )}

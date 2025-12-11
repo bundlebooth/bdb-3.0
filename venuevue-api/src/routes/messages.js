@@ -194,19 +194,22 @@ router.get('/conversations/user/:userId', async (req, res) => {
     console.log('📨 Found conversations:', result.recordset.length);
 
     // Format conversations to match frontend expected format
-    const formattedConversations = result.recordset.map(conv => ({
-      id: conv.ConversationID,
-      VendorProfileID: conv.VendorProfileID,
-      createdAt: conv.CreatedAt,
-      OtherPartyName: conv.OtherPartyName,
-      OtherPartyType: conv.OtherPartyType,
-      OtherPartyAvatar: conv.OtherPartyAvatar,
-      isClientRole: conv.IsClientRole === 1,
-      isVendorRole: conv.IsVendorRole === 1,
-      lastMessageContent: conv.LastMessageContent || '',
-      lastMessageCreatedAt: conv.LastMessageCreatedAt || conv.CreatedAt,
-      unreadCount: conv.UnreadCount || 0
-    }));
+    // Filter out conversations with no messages (LastMessageContent is null/empty)
+    const formattedConversations = result.recordset
+      .filter(conv => conv.LastMessageContent && conv.LastMessageContent.trim() !== '') // Only show conversations with actual messages
+      .map(conv => ({
+        id: conv.ConversationID,
+        VendorProfileID: conv.VendorProfileID,
+        createdAt: conv.CreatedAt,
+        OtherPartyName: conv.OtherPartyName,
+        OtherPartyType: conv.OtherPartyType,
+        OtherPartyAvatar: conv.OtherPartyAvatar,
+        isClientRole: conv.IsClientRole === 1,
+        isVendorRole: conv.IsVendorRole === 1,
+        lastMessageContent: conv.LastMessageContent || '',
+        lastMessageCreatedAt: conv.LastMessageCreatedAt || conv.CreatedAt,
+        unreadCount: conv.UnreadCount || 0
+      }));
 
     res.json({
       success: true,

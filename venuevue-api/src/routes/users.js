@@ -602,10 +602,19 @@ router.get('/:id/dashboard', async (req, res) => {
       });
     }
 
+    // Fix date serialization for upcomingBookings
+    const upcomingBookings = (result.recordsets[1] || []).map(booking => ({
+      ...booking,
+      EventDate: booking.EventDate instanceof Date ? booking.EventDate.toISOString() : booking.EventDate,
+      EndDate: booking.EndDate instanceof Date ? booking.EndDate.toISOString() : booking.EndDate,
+      CreatedAt: booking.CreatedAt instanceof Date ? booking.CreatedAt.toISOString() : booking.CreatedAt,
+      UpdatedAt: booking.UpdatedAt instanceof Date ? booking.UpdatedAt.toISOString() : booking.UpdatedAt
+    }));
+
     const dashboard = {
       success: true,
       user: result.recordsets[0][0],
-      upcomingBookings: result.recordsets[1] || [],
+      upcomingBookings: upcomingBookings,
       recentFavorites: result.recordsets[2] || [],
       unreadMessages: result.recordsets[3]?.[0]?.UnreadMessages || 0,
       unreadNotifications: result.recordsets[4]?.[0]?.UnreadNotifications || 0
@@ -631,7 +640,17 @@ router.get('/:id/bookings/all', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
     const result = await request.execute('sp_GetUserBookingsAll');
-    res.json(result.recordset);
+    
+    // Fix date serialization - convert Date objects to ISO strings
+    const bookings = result.recordset.map(booking => ({
+      ...booking,
+      EventDate: booking.EventDate instanceof Date ? booking.EventDate.toISOString() : booking.EventDate,
+      EndDate: booking.EndDate instanceof Date ? booking.EndDate.toISOString() : booking.EndDate,
+      CreatedAt: booking.CreatedAt instanceof Date ? booking.CreatedAt.toISOString() : booking.CreatedAt,
+      UpdatedAt: booking.UpdatedAt instanceof Date ? booking.UpdatedAt.toISOString() : booking.UpdatedAt
+    }));
+    
+    res.json(bookings);
   } catch (err) {
     console.error('Get all user bookings error:', err);
     res.status(500).json({ message: 'Failed to get user bookings', error: err.message });

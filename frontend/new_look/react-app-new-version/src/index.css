@@ -95,6 +95,12 @@ html {
     z-index: 100;
 }
 
+/* Header when scrolled - keep everything fixed, no shrink */
+.header.header-scrolled {
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
 .logo {
     font-size: 1.5rem;
     font-weight: 700;
@@ -102,12 +108,23 @@ html {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+/* Logo stays fixed size */
+.header .logo img {
+    height: 50px !important;
+}
+
+.header.header-scrolled .logo img {
+    height: 50px !important;
 }
 
 .search-container {
     flex: 1;
     max-width: 600px;
     margin: 0 2rem;
+    flex-shrink: 0;
 }
 
 .search-bar {

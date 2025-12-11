@@ -133,10 +133,14 @@ function ClientBookingsSection() {
   const renderBookingItem = (booking) => {
     const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1 || booking._status === 'paid';
     const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
-    const eventDate = booking.EventDate ? new Date(booking.EventDate) : null;
     
-    let month = '', day = '', weekday = '', timeStr = '';
-    if (eventDate) {
+    // Safely parse date - check for valid date
+    const rawDate = booking.EventDate || booking.eventDate;
+    const eventDate = rawDate ? new Date(rawDate) : null;
+    const isValidDate = eventDate && !isNaN(eventDate.getTime());
+    
+    let month = 'TBD', day = '--', weekday = '', timeStr = 'Time TBD';
+    if (isValidDate) {
       month = eventDate.toLocaleDateString('en-US', { month: 'short' });
       day = eventDate.getDate();
       weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });

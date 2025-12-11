@@ -9,16 +9,15 @@ import ClientDashboardSection from './sections/ClientDashboardSection';
 import ClientBookingsSection from './sections/ClientBookingsSection';
 import ClientInvoicesSection from './sections/ClientInvoicesSection';
 import ClientFavoritesSection from './sections/ClientFavoritesSection';
-import ClientMessagesSection from './sections/ClientMessagesSection';
 import ClientReviewsSection from './sections/ClientReviewsSection';
 import ClientSettingsSection from './sections/ClientSettingsSection';
+import UnifiedMessagesSection from './sections/UnifiedMessagesSection';
 
 // Import all vendor sections
 import VendorDashboardSection from './sections/VendorDashboardSection';
 import VendorRequestsSection from './sections/VendorRequestsSection';
 import VendorInvoicesSection from './sections/VendorInvoicesSection';
 import VendorBusinessProfileSection from './sections/VendorBusinessProfileSection';
-import VendorMessagesSection from './sections/VendorMessagesSection';
 import VendorReviewsSection from './sections/VendorReviewsSection';
 import VendorAnalyticsSection from './sections/VendorAnalyticsSection';
 import VendorSettingsSection from './sections/VendorSettingsSection';
@@ -131,13 +130,16 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
   }, [loadClientData, loadVendorData, currentUser]);
 
   // Combined menu items with CLIENT and VENDOR sections
+  // Messages is now unified at the top level
   const menuItems = [
+    { section: 'GENERAL', items: [
+      { id: 'messages', icon: 'fa-comments', label: 'Messages' }
+    ]},
     { section: 'CLIENT', items: [
       { id: 'dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard' },
       { id: 'bookings', icon: 'fa-calendar-check', label: 'Bookings' },
       { id: 'invoices', icon: 'fa-file-invoice', label: 'Invoices' },
       { id: 'favorites', icon: 'fa-heart', label: 'Favorites' },
-      { id: 'messages', icon: 'fa-comments', label: 'Messages' },
       { id: 'reviews', icon: 'fa-star', label: 'My Reviews' },
       { id: 'settings', icon: 'fa-cog', label: 'Settings' }
     ]},
@@ -146,7 +148,6 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
       { id: 'vendor-requests', icon: 'fa-calendar-check', label: 'Bookings' },
       { id: 'vendor-invoices', icon: 'fa-file-invoice', label: 'Invoices' },
       { id: 'vendor-business-profile', icon: 'fa-building', label: 'Business Profile' },
-      { id: 'vendor-messages', icon: 'fa-comments', label: 'Messages' },
       { id: 'vendor-reviews', icon: 'fa-star', label: 'Reviews' },
       { id: 'vendor-analytics', icon: 'fa-chart-line', label: 'Analytics' },
       { id: 'vendor-settings', icon: 'fa-cog', label: 'Settings' }
@@ -155,6 +156,10 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
 
   const renderSection = () => {
     switch (activeSection) {
+      // Unified Messages section (combines client and vendor messages)
+      case 'messages':
+        return <UnifiedMessagesSection onSectionChange={onSectionChange} />;
+      
       // Client sections
       case 'dashboard':
         return <ClientDashboardSection data={clientData} loading={loading && !clientData} onSectionChange={onSectionChange} />;
@@ -164,8 +169,6 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
         return <ClientInvoicesSection />;
       case 'favorites':
         return <ClientFavoritesSection />;
-      case 'messages':
-        return <ClientMessagesSection onSectionChange={onSectionChange} />;
       case 'reviews':
         return <ClientReviewsSection />;
       case 'settings':
@@ -180,8 +183,6 @@ function UnifiedDashboard({ activeSection, onSectionChange, onLogout, mobileMenu
         return <VendorInvoicesSection />;
       case 'vendor-business-profile':
         return <VendorBusinessProfileSection />;
-      case 'vendor-messages':
-        return <VendorMessagesSection onSectionChange={onSectionChange} />;
       case 'vendor-reviews':
         return <VendorReviewsSection />;
       case 'vendor-analytics':

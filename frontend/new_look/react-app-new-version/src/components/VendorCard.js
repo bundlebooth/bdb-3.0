@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { getCategoryIconHtml, mapTypeToCategory } from '../utils/helpers';
 import { buildVendorProfileUrl } from '../utils/urlHelpers';
 
-const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight }) {
+const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavorite, onView, onHighlight, showViewCount, showResponseTime }) {
   const [isHovered, setIsHovered] = React.useState(false);
   const vendorId = vendor.VendorProfileID || vendor.id;
   
@@ -75,6 +75,10 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
   
   // Response time
   const responseTime = vendor.ResponseTime || vendor.responseTime || 'within a few hours';
+  
+  // Analytics data for discovery sections
+  const viewCount = vendor.viewCount || 0;
+  const avgResponseMinutes = vendor.avgResponseMinutes || 0;
   
   // Category
   const primaryCategory = vendor.PrimaryCategory || vendor.primaryCategory || 
@@ -366,6 +370,35 @@ const VendorCard = memo(function VendorCard({ vendor, isFavorite, onToggleFavori
             lineHeight: '18px'
           }}>
             {locationText}
+          </div>
+        )}
+        
+        {/* Analytics badges for discovery sections */}
+        {(showViewCount && viewCount > 0) && (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '4px',
+            fontSize: '12px',
+            color: '#FF385C',
+            marginTop: '4px'
+          }}>
+            <i className="fas fa-eye" style={{ fontSize: '11px' }}></i>
+            <span>{viewCount.toLocaleString()} views this week</span>
+          </div>
+        )}
+        
+        {(showResponseTime && avgResponseMinutes > 0) && (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '4px',
+            fontSize: '12px',
+            color: '#00A699',
+            marginTop: '4px'
+          }}>
+            <i className="fas fa-bolt" style={{ fontSize: '11px' }}></i>
+            <span>Responds in ~{avgResponseMinutes < 60 ? `${avgResponseMinutes} min` : `${Math.round(avgResponseMinutes / 60)} hr`}</span>
           </div>
         )}
       </div>

@@ -155,15 +155,22 @@
 
 .vendor-section-card-wrapper {
   flex: 0 0 auto;
-  width: 240px;
+  width: 240px; /* Match main grid minmax base */
   opacity: 1;
   transform: translateY(0);
 }
 
-/* Responsive adjustments */
-@media (max-width: 1200px) {
+/* Desktop: Match main vendor grid sizing (280px minmax) */
+@media (min-width: 1201px) {
   .vendor-section-card-wrapper {
-    width: 240px;
+    width: 280px; /* Same as main grid desktop minmax */
+  }
+}
+
+/* Tablet: same as main grid */
+@media (min-width: 769px) and (max-width: 1200px) {
+  .vendor-section-card-wrapper {
+    width: 240px; /* Same as main grid tablet minmax */
   }
 }
 

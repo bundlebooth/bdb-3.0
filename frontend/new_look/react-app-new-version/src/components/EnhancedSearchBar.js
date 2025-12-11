@@ -23,6 +23,28 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
   const searchBarRef = useRef(null);
   const autocompleteRef = useRef(null);
 
+  // Auto-detect user's city using IP geolocation (no permission required)
+  const detectCityFromIP = async () => {
+    try {
+      // Use ipapi.co for free IP-based geolocation
+      const response = await fetch('https://ipapi.co/json/');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.city && data.region && data.country_code === 'CA') {
+          const cityString = `${data.city}, ${data.region}`;
+          setLocation(cityString);
+          setUserLocation({
+            latitude: data.latitude,
+            longitude: data.longitude,
+            city: cityString
+          });
+        }
+      }
+    } catch (error) {
+      console.log('IP geolocation not available:', error);
+    }
+  };
+
   useEffect(() => {
     if (window.google && window.google.maps && window.google.maps.places) {
       initializeGooglePlaces();
@@ -30,6 +52,30 @@ const EnhancedSearchBar = ({ onSearch, isScrolled }) => {
       // Load Google Maps API if not already loaded
       loadGoogleMapsAPI();
     }
+    
+    // Auto-detect city from IP on mount (only if no location already set)
+    if (!location) {
+      detectCityFromIP();
+    }
+    
+    // Listen for expandSearchBar event from edit icon click
+    const handleExpandSearchBar = (event) => {
+      setIsExpanded(true);
+      if (event.detail?.field === 'location') {
+        setActiveField('location');
+        setShowLocationDropdown(true);
+        // Focus the location input after a short delay
+        setTimeout(() => {
+          if (locationRef.current) {
+            locationRef.current.focus();
+            locationRef.current.select();
+          }
+        }, 100);
+      }
+    };
+    
+    window.addEventListener('expandSearchBar', handleExpandSearchBar);
+    return () => window.removeEventListener('expandSearchBar', handleExpandSearchBar);
   }, []);
 
   // Reinitialize Google Places when expanded, hide when collapsed

@@ -34,12 +34,17 @@ function ClientDashboardSection({ data, loading, onSectionChange }) {
         });
         if (resp.ok) {
           const msgData = await resp.json();
-          const conversations = (msgData.conversations || []).map(conv => ({
-            id: conv.id || conv.ConversationID,
-            name: conv.OtherPartyName || conv.userName || 'Unknown',
-            last: conv.lastMessageContent || conv.LastMessageContent || '',
-            ts: new Date(conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt || Date.now())
-          })).sort((a,b) => b.ts - a.ts);
+          const conversations = (msgData.conversations || []).map(conv => {
+            const rawTs = conv.lastMessageCreatedAt || conv.LastMessageCreatedAt || conv.createdAt || conv.CreatedAt;
+            const parsedTs = rawTs ? new Date(rawTs) : null;
+            const isValidTs = parsedTs && !isNaN(parsedTs.getTime());
+            return {
+              id: conv.id || conv.ConversationID,
+              name: conv.OtherPartyName || conv.userName || 'Unknown',
+              last: conv.lastMessageContent || conv.LastMessageContent || '',
+              ts: isValidTs ? parsedTs : null
+            };
+          }).sort((a,b) => (b.ts || new Date(0)) - (a.ts || new Date(0)));
           setMessages(conversations.slice(0, 5));
         }
       } catch (e) {
@@ -54,13 +59,18 @@ function ClientDashboardSection({ data, loading, onSectionChange }) {
   const renderBookingItem = (booking) => {
     const isPaid = booking.FullAmountPaid === true || booking.FullAmountPaid === 1;
     const isDepositOnly = !isPaid && (booking.DepositPaid === true || booking.DepositPaid === 1);
-    const eventDate = new Date(booking.EventDate);
-    const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
-    const day = eventDate.getDate();
-    const weekday = eventDate.toLocaleDateString('en-US', { weekday: 'short' });
-    const startTime = eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    const endTime = new Date(eventDate.getTime() + 90 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-    const timeStr = `${startTime} - ${endTime}`;
+    
+    // Safely parse date - handle invalid dates
+    const rawDate = booking.EventDate || booking.eventDate || booking.CreatedAt || booking.createdAt;
+    const eventDate = rawDate ? new Date(rawDate) : null;
+    const isValidDate = eventDate && !isNaN(eventDate.getTime());
+    
+    const month = isValidDate ? eventDate.toLocaleDateString('en-US', { month: 'short' }) : 'TBD';
+    const day = isValidDate ? eventDate.getDate() : '--';
+    const weekday = isValidDate ? eventDate.toLocaleDateString('en-US', { weekday: 'short' }) : '';
+    const startTime = isValidDate ? eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : 'TBD';
+    const endTime = isValidDate ? new Date(eventDate.getTime() + 90 * 60000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+    const timeStr = isValidDate ? `${startTime} - ${endTime}` : 'Time TBD';
 
     let actionButtons = '';
     if (booking.Status === 'confirmed') {
@@ -117,7 +127,8 @@ function ClientDashboardSection({ data, loading, onSectionChange }) {
 
   const renderMessageItem = (message) => {
     const initials = (message.name || 'U').trim().charAt(0).toUpperCase();
-    const timeStr = message.ts ? message.ts.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+    const isValidTs = message.ts && !isNaN(message.ts.getTime());
+    const timeStr = isValidTs ? message.ts.toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
     
     return (
       <div 

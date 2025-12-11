@@ -15,7 +15,9 @@ function VendorSection({
   onToggleFavorite, 
   onViewVendor, 
   onHighlightVendor,
-  icon = null 
+  icon = null,
+  showViewCount = false,
+  showResponseTime = false
 }) {
   const scrollContainerRef = useRef(null);
   const [showModal, setShowModal] = useState(false);
@@ -160,6 +162,8 @@ function VendorSection({
                     onToggleFavorite={onToggleFavorite}
                     onView={onViewVendor}
                     onHighlight={onHighlightVendor}
+                    showViewCount={showViewCount}
+                    showResponseTime={showResponseTime}
                   />
                 </div>
               );

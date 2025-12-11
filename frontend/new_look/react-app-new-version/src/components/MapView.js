@@ -475,96 +475,41 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     console.log('📍 Total markers added:', markersRef.current.length);
     console.log('📍 Marker vendor IDs:', markersRef.current.map(m => m.vendorId));
 
-    // Fit map to markers
+    // Show city-level view instead of zooming to individual vendors
+    // This keeps the map at a city overview level
     if (hasValidMarkers) {
-      mapInstanceRef.current.fitBounds(bounds);
-      
-      // Prevent too much zoom
-      const listener = window.google.maps.event.addListener(mapInstanceRef.current, 'idle', () => {
-        if (mapInstanceRef.current.getZoom() > 15) {
-          mapInstanceRef.current.setZoom(15);
-        }
-        window.google.maps.event.removeListener(listener);
-      });
+      // If we have user location, center on that city
+      if (userLocation && userLocation.lat && userLocation.lng) {
+        mapInstanceRef.current.setCenter({ lat: userLocation.lat, lng: userLocation.lng });
+        mapInstanceRef.current.setZoom(11); // City-level zoom
+        console.log('📍 Map centered on user city location');
+      } else {
+        // Otherwise center on vendors but keep city-level zoom
+        const center = bounds.getCenter();
+        mapInstanceRef.current.setCenter(center);
+        mapInstanceRef.current.setZoom(11); // City-level zoom, don't zoom in on vendors
+        console.log('📍 Map centered on vendor area at city level');
+      }
     } else {
       console.log('⚠️ No valid markers to display');
     }
 
     // No clustering - show all individual pins like Google Maps default
     // Clustering disabled to match the desired pin style
-  }, [vendors, onVendorSelect, createMiniVendorCardHTML, createMarkerIcon]);
+  }, [vendors, onVendorSelect, createMiniVendorCardHTML, createMarkerIcon, userLocation]);
 
-  // Update user location marker
+  // Update user location marker - DISABLED per user request
+  // User does not want the blue marker showing their current position
   const updateUserLocationMarker = useCallback(async () => {
-    if (!mapInstanceRef.current || !userLocation || !window.google) return;
-
-    // Remove existing user location marker
+    // Remove existing user location marker if any
     if (userLocationMarkerRef.current) {
       userLocationMarkerRef.current.setMap(null);
+      userLocationMarkerRef.current = null;
     }
-
-    const position = { lat: userLocation.lat, lng: userLocation.lng };
-
-    // Create a custom blue circle marker for user location
-    const userIcon = {
-      path: window.google.maps.SymbolPath.CIRCLE,
-      scale: 10,
-      fillColor: '#4285F4',
-      fillOpacity: 1,
-      strokeColor: '#ffffff',
-      strokeWeight: 3
-    };
-
-    const marker = new window.google.maps.Marker({
-      position,
-      map: mapInstanceRef.current,
-      icon: userIcon,
-      title: 'Your Location',
-      zIndex: 1000 // Ensure it's on top
-    });
-
-    userLocationMarkerRef.current = marker;
-
-    // Reverse geocode to get city name
-    const geocoder = new window.google.maps.Geocoder();
-    try {
-      const response = await geocoder.geocode({ location: position });
-      if (response.results && response.results.length > 0) {
-        // Extract city name from address components
-        for (const result of response.results) {
-          for (const component of result.address_components) {
-            if (component.types.includes('locality')) {
-              setUserCity(component.long_name);
-              
-              // Create info window for user location
-              const infoWindow = new window.google.maps.InfoWindow({
-                content: `
-                  <div style="padding: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                    <div style="font-weight: 600; font-size: 14px; color: #222; margin-bottom: 4px;">
-                      📍 Your Location
-                    </div>
-                    <div style="font-size: 13px; color: #666;">
-                      ${component.long_name}
-                    </div>
-                  </div>
-                `
-              });
-              
-              // Show info window on marker click
-              marker.addListener('click', () => {
-                infoWindow.open(mapInstanceRef.current, marker);
-              });
-              
-              break;
-            }
-          }
-          if (userCity) break;
-        }
-      }
-    } catch (error) {
-      console.error('Error reverse geocoding user location:', error);
-    }
-  }, [userLocation, userCity]);
+    
+    // Do NOT create a marker - user requested no blue location marker
+    // Just return without doing anything
+  }, []);
 
   const highlightMarker = useCallback((vendorId, shouldAnimate = false) => {
     const greyIcon = createMarkerIcon('#9CA3AF', false);

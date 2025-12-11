@@ -17,7 +17,7 @@ export function useNotifications() {
     if (!currentUser?.id) return;
 
     try {
-      const response = await fetch(`${API_BASE_URL}/notifications/unread-count/${currentUser.id}`, {
+      const response = await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}/unread-count`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -48,7 +48,7 @@ export function useNotifications() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/notifications/${currentUser.id}`, {
+      const response = await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -90,7 +90,7 @@ export function useNotifications() {
     if (!currentUser?.id) return;
 
     try {
-      await fetch(`${API_BASE_URL}/notifications/${currentUser.id}/read-all`, {
+      await fetch(`${API_BASE_URL}/notifications/user/${currentUser.id}/read-all`, {
         method: 'PUT',
         headers: { 
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -114,7 +114,7 @@ export function useNotifications() {
     const interval = setInterval(loadNotificationCount, 30000);
     
     return () => clearInterval(interval);
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   return {
     notificationCount,

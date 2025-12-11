@@ -71,19 +71,21 @@ body {
     transition: padding 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Header when scrolled - shrink effect */
+/* Header when scrolled - NO shrink effect, keep everything fixed */
 .header.header-scrolled {
-    padding: 0.5rem 2rem;
-    box-shadow: none;
+    padding: 1rem 2rem; /* Same as non-scrolled */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Logo stays fixed size */
+.header .logo img {
+    height: 50px !important;
+    transition: none;
 }
 
 .header.header-scrolled .logo img {
-    height: 40px !important;
-    transition: height 0.3s ease;
-}
-
-.header .logo img {
-    transition: height 0.3s ease;
+    height: 50px !important; /* Same size when scrolled */
+    transition: none;
 }
 
 .logo {
@@ -93,12 +95,14 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-shrink: 0; /* Prevent logo from shrinking */
 }
 
 .search-container {
     flex: 1;
     max-width: 600px;
     margin: 0 2rem;
+    flex-shrink: 0; /* Prevent search from shrinking */
 }
 
 .search-bar {

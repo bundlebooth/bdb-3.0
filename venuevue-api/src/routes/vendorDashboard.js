@@ -326,7 +326,9 @@ router.get('/:id/bookings/all', async (req, res) => {
         b.UpdatedAt,
         (SELECT TOP 1 c.ConversationID FROM Conversations c WHERE c.UserID = b.UserID AND c.VendorProfileID = b.VendorProfileID) AS ConversationID,
         COALESCE(
-          (SELECT TOP 1 bs.ServiceName FROM BookingServices bs WHERE bs.BookingID = b.BookingID ORDER BY bs.BookingServiceID),
+          (SELECT TOP 1 s.Name FROM BookingServices bs 
+           INNER JOIN Services s ON bs.ServiceID = s.ServiceID 
+           WHERE bs.BookingID = b.BookingID ORDER BY bs.BookingServiceID),
           'Service'
         ) AS ServiceName
       FROM Bookings b
@@ -335,7 +337,16 @@ router.get('/:id/bookings/all', async (req, res) => {
       ORDER BY b.EventDate DESC
     `);
     
-    res.json(result.recordset);
+    // Fix date serialization - convert Date objects to ISO strings
+    const bookings = result.recordset.map(booking => ({
+      ...booking,
+      EventDate: booking.EventDate instanceof Date ? booking.EventDate.toISOString() : booking.EventDate,
+      EndDate: booking.EndDate instanceof Date ? booking.EndDate.toISOString() : booking.EndDate,
+      CreatedAt: booking.CreatedAt instanceof Date ? booking.CreatedAt.toISOString() : booking.CreatedAt,
+      UpdatedAt: booking.UpdatedAt instanceof Date ? booking.UpdatedAt.toISOString() : booking.UpdatedAt
+    }));
+    
+    res.json(bookings);
   } catch (err) {
     console.error('Get all vendor bookings error:', err);
     res.status(500).json({ message: 'Failed to get vendor bookings', error: err.message });
