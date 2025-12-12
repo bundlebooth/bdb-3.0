@@ -13,6 +13,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
   const isInitializingRef = useRef(false); // Prevent duplicate initialization
   const previousVendorsRef = useRef([]); // Track previous vendors to prevent unnecessary updates
   const dragTimeoutRef = useRef(null); // Debounce drag events
+  const searchOnDragEnabledRef = useRef(searchOnDrag); // Ref to track current state for event listeners
+  const onMapBoundsChangeRef = useRef(onMapBoundsChange); // Ref for callback
 
   // Helper function to create custom marker icon (grey by default, blue on hover/click)
   const createMarkerIcon = useCallback((color = '#9CA3AF', isHovered = false) => {
@@ -269,9 +271,10 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
       updateVendorsInViewport();
     });
 
-    // Add dragend listener for "search as you drag" functionality
-    map.addListener('dragend', () => {
-      if (searchOnDragEnabled && onMapBoundsChange) {
+    // Helper function to trigger bounds change callback
+    const triggerBoundsChange = () => {
+      console.log('🗺️ triggerBoundsChange called, searchOnDragEnabled:', searchOnDragEnabledRef.current);
+      if (searchOnDragEnabledRef.current && onMapBoundsChangeRef.current) {
         // Debounce the search to avoid too many API calls
         if (dragTimeoutRef.current) {
           clearTimeout(dragTimeoutRef.current);
@@ -282,7 +285,8 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
           if (bounds && center) {
             const ne = bounds.getNorthEast();
             const sw = bounds.getSouthWest();
-            onMapBoundsChange({
+            console.log('🗺️ Calling onMapBoundsChange with center:', center.lat(), center.lng());
+            onMapBoundsChangeRef.current({
               center: { lat: center.lat(), lng: center.lng() },
               bounds: {
                 north: ne.lat(),
@@ -293,12 +297,24 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
               zoom: map.getZoom()
             });
           }
-        }, 300);
+        }, 2500); // 2500ms debounce - wait for user to stop dragging
       }
+    };
+
+    // Add dragend listener for "search as you drag" functionality
+    map.addListener('dragend', () => {
+      console.log('🗺️ Map dragend event fired');
+      triggerBoundsChange();
+    });
+
+    // Add zoom_changed listener for scroll/zoom events
+    map.addListener('zoom_changed', () => {
+      console.log('🗺️ Map zoom_changed event fired');
+      triggerBoundsChange();
     });
 
     console.log('✅ Google Maps initialized successfully');
-  }, [updateVendorsInViewport, searchOnDragEnabled, onMapBoundsChange]);
+  }, [updateVendorsInViewport]);
 
   const initializeMap = useCallback(async () => {
     // Prevent duplicate initialization
@@ -569,6 +585,16 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
       }
     });
   }, [createMarkerIcon]);
+
+  // Keep refs in sync with state/props for event listeners (fixes closure issue)
+  useEffect(() => {
+    searchOnDragEnabledRef.current = searchOnDragEnabled;
+    console.log('🗺️ searchOnDragEnabled state changed to:', searchOnDragEnabled);
+  }, [searchOnDragEnabled]);
+
+  useEffect(() => {
+    onMapBoundsChangeRef.current = onMapBoundsChange;
+  }, [onMapBoundsChange]);
 
   // Initialize map ONCE on mount
   useEffect(() => {

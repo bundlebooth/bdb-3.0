@@ -163,42 +163,91 @@ function IndexPage() {
   const handleMapBoundsChange = useCallback(async (boundsData) => {
     console.log('🗺️ Map bounds changed:', boundsData);
     
-    // Use reverse geocoding to get city name from center coordinates
-    if (window.google && window.google.maps) {
-      try {
-        const geocoder = new window.google.maps.Geocoder();
-        const response = await geocoder.geocode({ 
-          location: { lat: boundsData.center.lat, lng: boundsData.center.lng } 
+    // Calculate radius based on map bounds (approximate)
+    const latDiff = Math.abs(boundsData.bounds.north - boundsData.bounds.south);
+    const radiusMiles = Math.max(10, Math.min(100, Math.round(latDiff * 69 / 2))); // ~69 miles per degree latitude
+    
+    console.log('🗺️ Triggering vendor search for center:', boundsData.center, 'radius:', radiusMiles, 'miles');
+    
+    // Show loading state while fetching
+    setLoading(true);
+    setLoadingDiscovery(true);
+    
+    // Fetch vendors within the map bounds using coordinates directly
+    try {
+      const qp = new URLSearchParams();
+      qp.set('latitude', String(boundsData.center.lat));
+      qp.set('longitude', String(boundsData.center.lng));
+      qp.set('radiusMiles', String(radiusMiles));
+      qp.set('pageSize', '100');
+      qp.set('includeDiscoverySections', 'true'); // Include discovery sections
+      
+      if (currentCategory && currentCategory !== 'all') {
+        qp.set('category', currentCategory);
+      }
+      
+      const searchUrl = `${API_BASE_URL}/vendors?${qp.toString()}`;
+      console.log('🗺️ Fetching vendors from:', searchUrl);
+      
+      const vendorResponse = await fetch(searchUrl);
+      if (vendorResponse.ok) {
+        const data = await vendorResponse.json();
+        console.log('🗺️ API Response:', data);
+        const newVendors = data.vendors || data.data || data || [];
+        console.log('🗺️ Found', newVendors.length, 'vendors in map area');
+        
+        // Try to get city from first vendor's location
+        let mapCity = 'this area';
+        if (newVendors.length > 0) {
+          const firstVendor = newVendors[0];
+          mapCity = firstVendor.City || firstVendor.city || firstVendor.Location || 'this area';
+        }
+        
+        // Update detected city and user location
+        setDetectedCity(mapCity);
+        setUserLocation({
+          lat: boundsData.center.lat,
+          lng: boundsData.center.lng,
+          city: mapCity
         });
         
-        if (response.results && response.results.length > 0) {
-          // Find city from address components
-          for (const result of response.results) {
-            const cityComponent = result.address_components.find(
-              c => c.types.includes('locality') || c.types.includes('administrative_area_level_3')
-            );
-            if (cityComponent) {
-              const newCity = cityComponent.long_name;
-              console.log('🗺️ Detected city from map:', newCity);
-              
-              // Update filters and reload vendors for this city
-              setDetectedCity(newCity);
-              setFilters(prev => ({ ...prev, location: newCity }));
-              setUserLocation(prev => ({
-                ...prev,
-                lat: boundsData.center.lat,
-                lng: boundsData.center.lng,
-                city: newCity
-              }));
-              break;
+        // Clear the search bar location filter so it doesn't show fixed city
+        setFilters(prev => ({ ...prev, location: '' }));
+        
+        // Always update vendors, even if empty (to show "no vendors" message)
+        setVendors(newVendors);
+        setFilteredVendors(newVendors);
+        
+        // Update the vendor count display
+        setServerTotalCount(data.totalCount || newVendors.length);
+        
+        // Update discovery sections if available in response
+        if (data.discoverySections && Array.isArray(data.discoverySections)) {
+          console.log('🗺️ Updating discovery sections from map search');
+          setDiscoverySections(data.discoverySections);
+        } else if (newVendors.length > 0) {
+          // Create basic discovery sections from the vendors
+          console.log('🗺️ Creating discovery sections from vendors');
+          const sections = [
+            {
+              id: 'nearby',
+              title: `Vendors Near ${mapCity}`,
+              type: 'nearby',
+              vendors: newVendors.slice(0, 8)
             }
-          }
+          ];
+          setDiscoverySections(sections);
         }
-      } catch (error) {
-        console.error('Geocoding error:', error);
+      } else {
+        console.error('🗺️ API error:', vendorResponse.status, vendorResponse.statusText);
       }
+    } catch (fetchError) {
+      console.error('Error fetching vendors for map bounds:', fetchError);
+    } finally {
+      setLoading(false);
+      setLoadingDiscovery(false);
     }
-  }, []);
+  }, [currentCategory]);
 
   // EXACT match to original applyClientSideFilters (line 26091-26120)
   const applyClientSideFiltersInternal = useCallback((vendorsToFilter) => {

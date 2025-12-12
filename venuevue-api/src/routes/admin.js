@@ -1421,7 +1421,9 @@ router.get('/security/logs', async (req, res) => {
   try {
     const { type = 'login', status, search, page = 1, limit = 50 } = req.query;
     const pool = await getPool();
-    const offset = (page - 1) * limit;
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 50;
+    const offset = (pageNum - 1) * limitNum;
     
     // Check if SecurityLogs table exists
     const tableCheck = await pool.request().query(`
@@ -1448,12 +1450,12 @@ router.get('/security/logs', async (req, res) => {
       
       const result = await pool.request()
         .input('offset', sql.Int, offset)
-        .input('limit', sql.Int, parseInt(limit))
+        .input('limit', sql.Int, limitNum)
         .query(`
           SELECT 
             LogID as id,
             UserID,
-            Email as user,
+            Email as [user],
             Action as action,
             ActionStatus as status,
             IPAddress as ip,
@@ -1474,18 +1476,18 @@ router.get('/security/logs', async (req, res) => {
       res.json({ 
         logs: result.recordset, 
         total: countResult.recordset[0].total,
-        page: parseInt(page),
-        limit: parseInt(limit)
+        page: pageNum,
+        limit: limitNum
       });
     } else {
       // Fallback to Users table LastLogin data
       const result = await pool.request()
         .input('offset', sql.Int, offset)
-        .input('limit', sql.Int, parseInt(limit))
+        .input('limit', sql.Int, limitNum)
         .query(`
           SELECT 
             u.UserID as id,
-            u.Email as user,
+            u.Email as [user],
             'Login Success' as action,
             'Success' as status,
             NULL as ip,

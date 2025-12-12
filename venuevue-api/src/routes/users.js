@@ -40,28 +40,35 @@ async function ensureTwoFactorTable(pool) {
 
 // Ensure SecurityLogs table exists
 async function ensureSecurityLogsTable(pool) {
-  await pool.request().query(`
-    IF OBJECT_ID('dbo.SecurityLogs', 'U') IS NULL
-    BEGIN
-      CREATE TABLE dbo.SecurityLogs (
-        LogID INT IDENTITY(1,1) PRIMARY KEY,
-        UserID INT NULL,
-        Email NVARCHAR(255) NULL,
-        Action NVARCHAR(100) NOT NULL,
-        ActionStatus NVARCHAR(50) NOT NULL,
-        IPAddress NVARCHAR(50) NULL,
-        UserAgent NVARCHAR(500) NULL,
-        Location NVARCHAR(255) NULL,
-        Device NVARCHAR(255) NULL,
-        Details NVARCHAR(MAX) NULL,
-        CreatedAt DATETIME NOT NULL DEFAULT GETDATE()
-      );
-      CREATE INDEX IX_SecurityLogs_UserID ON dbo.SecurityLogs(UserID);
-      CREATE INDEX IX_SecurityLogs_Email ON dbo.SecurityLogs(Email);
-      CREATE INDEX IX_SecurityLogs_Action ON dbo.SecurityLogs(Action);
-      CREATE INDEX IX_SecurityLogs_CreatedAt ON dbo.SecurityLogs(CreatedAt DESC);
-    END
-  `);
+  console.log('🔒 Checking/Creating SecurityLogs table...');
+  try {
+    await pool.request().query(`
+      IF OBJECT_ID('dbo.SecurityLogs', 'U') IS NULL
+      BEGIN
+        CREATE TABLE dbo.SecurityLogs (
+          LogID INT IDENTITY(1,1) PRIMARY KEY,
+          UserID INT NULL,
+          Email NVARCHAR(255) NULL,
+          Action NVARCHAR(100) NOT NULL,
+          ActionStatus NVARCHAR(50) NOT NULL,
+          IPAddress NVARCHAR(50) NULL,
+          UserAgent NVARCHAR(500) NULL,
+          Location NVARCHAR(255) NULL,
+          Device NVARCHAR(255) NULL,
+          Details NVARCHAR(MAX) NULL,
+          CreatedAt DATETIME NOT NULL DEFAULT GETDATE()
+        );
+        CREATE INDEX IX_SecurityLogs_UserID ON dbo.SecurityLogs(UserID);
+        CREATE INDEX IX_SecurityLogs_Email ON dbo.SecurityLogs(Email);
+        CREATE INDEX IX_SecurityLogs_Action ON dbo.SecurityLogs(Action);
+        CREATE INDEX IX_SecurityLogs_CreatedAt ON dbo.SecurityLogs(CreatedAt DESC);
+        PRINT 'SecurityLogs table created';
+      END
+    `);
+    console.log('✅ SecurityLogs table ready');
+  } catch (err) {
+    console.error('❌ Error creating SecurityLogs table:', err.message);
+  }
 }
 
 // Ensure SecuritySettings table exists
@@ -277,11 +284,18 @@ router.post('/login', async (req, res) => {
 
     // Check 2FA settings from database (SecuritySettings table - key-value pairs)
     let enable2FA = String(process.env.ENABLE_2FA || 'false').toLowerCase() === 'true';
+    console.log('🔐 ========== 2FA CHECK START ==========');
+    console.log('🔐 Environment ENABLE_2FA:', process.env.ENABLE_2FA);
+    console.log('🔐 Initial enable2FA value:', enable2FA);
+    console.log('👤 User info:', { userId: user.UserID, email: user.Email, isAdmin: user.IsAdmin, isVendor: user.IsVendor });
+    
     try {
       // Check if SecuritySettings table exists and get settings
       const tableCheck = await pool.request().query(`
         SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'SecuritySettings'
       `);
+      
+      console.log('🔐 SecuritySettings table exists:', tableCheck.recordset[0].cnt > 0);
       
       if (tableCheck.recordset[0].cnt > 0) {
         const settingsResult = await pool.request().query(`
@@ -289,26 +303,37 @@ router.post('/login', async (req, res) => {
           WHERE SettingKey IN ('require_2fa_admins', 'require_2fa_vendors')
         `);
         
+        console.log('🔐 Raw settings from DB:', settingsResult.recordset);
+        
         const settings = {};
         settingsResult.recordset.forEach(row => {
           settings[row.SettingKey] = row.SettingValue;
         });
         
-        console.log('🔐 2FA Settings from DB:', settings);
-        console.log('👤 User:', { isAdmin: user.IsAdmin, isVendor: user.IsVendor });
+        console.log('🔐 Parsed 2FA Settings:', settings);
         
         // Enable 2FA if user is admin and admin 2FA is required, or if user is vendor and vendor 2FA is required
         const require2FAForAdmins = settings['require_2fa_admins'] === 'true';
         const require2FAForVendors = settings['require_2fa_vendors'] === 'true';
         
+        console.log('🔐 require2FAForAdmins:', require2FAForAdmins);
+        console.log('🔐 require2FAForVendors:', require2FAForVendors);
+        
         if ((user.IsAdmin && require2FAForAdmins) || (user.IsVendor && require2FAForVendors)) {
-          console.log('✅ 2FA ENABLED for this user');
+          console.log('✅ 2FA WILL BE ENABLED for this user');
           enable2FA = true;
+        } else {
+          console.log('❌ 2FA NOT required for this user (Admin:', user.IsAdmin, 'Vendor:', user.IsVendor, ')');
         }
+      } else {
+        console.log('⚠️ SecuritySettings table does not exist');
       }
     } catch (settingsErr) { 
-      console.log('Could not check 2FA settings from database:', settingsErr.message); 
+      console.log('❌ Could not check 2FA settings from database:', settingsErr.message); 
     }
+    
+    console.log('🔐 Final enable2FA decision:', enable2FA);
+    console.log('🔐 ========== 2FA CHECK END ==========');
     
     if (enable2FA) {
       await ensureTwoFactorTable(pool);
@@ -339,20 +364,35 @@ router.post('/login', async (req, res) => {
       { expiresIn: '30d' }
     );
     // Log successful login
+    console.log('📝 Attempting to log successful login for:', user.Email);
     try {
+      // Ensure table exists first
+      await ensureSecurityLogsTable(pool);
+      
+      const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'Unknown';
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+      const device = userAgent.includes('Mobile') ? 'Mobile' : (userAgent.includes('Chrome') ? 'Chrome' : (userAgent.includes('Firefox') ? 'Firefox' : 'Browser'));
+      
+      console.log('📝 Inserting security log:', { userId: user.UserID, email: user.Email, ip: ipAddress });
+      
       await pool.request()
         .input('userId', sql.Int, user.UserID)
         .input('email', sql.NVarChar, user.Email)
         .input('action', sql.NVarChar, 'Login')
         .input('status', sql.NVarChar, 'Success')
-        .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
-        .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
+        .input('ipAddress', sql.NVarChar, ipAddress)
+        .input('userAgent', sql.NVarChar, userAgent)
+        .input('device', sql.NVarChar, device)
         .input('details', sql.NVarChar, user.IsAdmin ? 'Admin login' : (user.IsVendor ? 'Vendor login' : 'Client login'))
         .query(`
-          INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Details)
-          VALUES (@userId, @email, @action, @status, @ipAddress, @userAgent, @details)
+          INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Device, Details)
+          VALUES (@userId, @email, @action, @status, @ipAddress, @userAgent, @device, @details)
         `);
-    } catch (logErr) { console.error('Failed to log security event:', logErr.message); }
+      console.log('✅ Security log inserted successfully');
+    } catch (logErr) { 
+      console.error('❌ Failed to log security event:', logErr.message); 
+      console.error('Full error:', logErr);
+    }
     
     // Update LastLogin
     try {
