@@ -1,0 +1,41 @@
+CREATE TABLE [dbo].[BookingRequests] (
+    [RequestID]              INT             IDENTITY (1, 1) NOT NULL,
+    [UserID]                 INT             NULL,
+    [VendorProfileID]        INT             NULL,
+    [EventDate]              DATETIME        NOT NULL,
+    [EventTime]              TIME (7)        NOT NULL,
+    [EventLocation]          NVARCHAR (255)  NULL,
+    [AttendeeCount]          INT             NOT NULL,
+    [Budget]                 DECIMAL (10, 2) NULL,
+    [Services]               NVARCHAR (MAX)  NOT NULL,
+    [SpecialRequests]        NVARCHAR (MAX)  NULL,
+    [Status]                 NVARCHAR (20)   DEFAULT ('pending') NULL,
+    [ResponseMessage]        NVARCHAR (MAX)  NULL,
+    [ProposedPrice]          DECIMAL (10, 2) NULL,
+    [ExpiresAt]              DATETIME        NOT NULL,
+    [CreatedAt]              DATETIME        DEFAULT (getdate()) NULL,
+    [UpdatedAt]              DATETIME        DEFAULT (getdate()) NULL,
+    [RespondedAt]            DATETIME        NULL,
+    [ConfirmedAt]            DATETIME        NULL,
+    [PaymentIntentID]        NVARCHAR (100)  NULL,
+    [GroupID]                NVARCHAR (100)  NULL,
+    [ServiceID]              INT             NULL,
+    [AlternativeDate]        DATE            NULL,
+    [AlternativeTime]        TIME (7)        NULL,
+    [CancellationReason]     NVARCHAR (MAX)  NULL,
+    [CancelledAt]            DATETIME        NULL,
+    [CounterOfferAcceptedAt] DATETIME        NULL,
+    [ExpiredAt]              DATETIME        NULL,
+    [EventEndTime]           TIME (7)        NULL,
+    [EventName]              NVARCHAR (255)  NULL,
+    [EventType]              NVARCHAR (100)  NULL,
+    [TimeZone]               NVARCHAR (100)  NULL,
+    PRIMARY KEY CLUSTERED ([RequestID] ASC),
+    FOREIGN KEY ([ServiceID]) REFERENCES [dbo].[Services] ([ServiceID]),
+    FOREIGN KEY ([UserID]) REFERENCES [dbo].[Users] ([UserID]),
+    FOREIGN KEY ([VendorProfileID]) REFERENCES [dbo].[VendorProfiles] ([VendorProfileID])
+);
+
+
+GO
+
