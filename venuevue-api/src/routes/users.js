@@ -38,6 +38,51 @@ async function ensureTwoFactorTable(pool) {
   `);
 }
 
+// Ensure SecurityLogs table exists
+async function ensureSecurityLogsTable(pool) {
+  await pool.request().query(`
+    IF OBJECT_ID('dbo.SecurityLogs', 'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.SecurityLogs (
+        LogID INT IDENTITY(1,1) PRIMARY KEY,
+        UserID INT NULL,
+        Email NVARCHAR(255) NULL,
+        Action NVARCHAR(100) NOT NULL,
+        ActionStatus NVARCHAR(50) NOT NULL,
+        IPAddress NVARCHAR(50) NULL,
+        UserAgent NVARCHAR(500) NULL,
+        Location NVARCHAR(255) NULL,
+        Device NVARCHAR(255) NULL,
+        Details NVARCHAR(MAX) NULL,
+        CreatedAt DATETIME NOT NULL DEFAULT GETDATE()
+      );
+      CREATE INDEX IX_SecurityLogs_UserID ON dbo.SecurityLogs(UserID);
+      CREATE INDEX IX_SecurityLogs_Email ON dbo.SecurityLogs(Email);
+      CREATE INDEX IX_SecurityLogs_Action ON dbo.SecurityLogs(Action);
+      CREATE INDEX IX_SecurityLogs_CreatedAt ON dbo.SecurityLogs(CreatedAt DESC);
+    END
+  `);
+}
+
+// Ensure SecuritySettings table exists
+async function ensureSecuritySettingsTable(pool) {
+  await pool.request().query(`
+    IF OBJECT_ID('dbo.SecuritySettings', 'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.SecuritySettings (
+        SettingID INT IDENTITY(1,1) PRIMARY KEY,
+        Require2FAForAdmins BIT NOT NULL DEFAULT 0,
+        Require2FAForVendors BIT NOT NULL DEFAULT 0,
+        SessionTimeout INT NOT NULL DEFAULT 30,
+        FailedLoginLockout INT NOT NULL DEFAULT 5,
+        UpdatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+        UpdatedBy INT NULL
+      );
+      INSERT INTO dbo.SecuritySettings (Require2FAForAdmins, Require2FAForVendors) VALUES (0, 0);
+    END
+  `);
+}
+
 // User Registration
 router.post('/register', async (req, res) => {
   try {
@@ -161,6 +206,15 @@ router.post('/login', async (req, res) => {
     }
 
     const pool = await poolPromise;
+    
+    // Ensure required tables exist for security logging and 2FA
+    try {
+      await ensureSecurityLogsTable(pool);
+      await ensureSecuritySettingsTable(pool);
+    } catch (tableErr) {
+      console.log('Could not ensure security tables:', tableErr.message);
+    }
+    
     const request = pool.request();
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
 
@@ -221,7 +275,41 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const enable2FA = String(process.env.ENABLE_2FA || 'false').toLowerCase() === 'true';
+    // Check 2FA settings from database (SecuritySettings table - key-value pairs)
+    let enable2FA = String(process.env.ENABLE_2FA || 'false').toLowerCase() === 'true';
+    try {
+      // Check if SecuritySettings table exists and get settings
+      const tableCheck = await pool.request().query(`
+        SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'SecuritySettings'
+      `);
+      
+      if (tableCheck.recordset[0].cnt > 0) {
+        const settingsResult = await pool.request().query(`
+          SELECT SettingKey, SettingValue FROM SecuritySettings 
+          WHERE SettingKey IN ('require_2fa_admins', 'require_2fa_vendors')
+        `);
+        
+        const settings = {};
+        settingsResult.recordset.forEach(row => {
+          settings[row.SettingKey] = row.SettingValue;
+        });
+        
+        console.log('🔐 2FA Settings from DB:', settings);
+        console.log('👤 User:', { isAdmin: user.IsAdmin, isVendor: user.IsVendor });
+        
+        // Enable 2FA if user is admin and admin 2FA is required, or if user is vendor and vendor 2FA is required
+        const require2FAForAdmins = settings['require_2fa_admins'] === 'true';
+        const require2FAForVendors = settings['require_2fa_vendors'] === 'true';
+        
+        if ((user.IsAdmin && require2FAForAdmins) || (user.IsVendor && require2FAForVendors)) {
+          console.log('✅ 2FA ENABLED for this user');
+          enable2FA = true;
+        }
+      }
+    } catch (settingsErr) { 
+      console.log('Could not check 2FA settings from database:', settingsErr.message); 
+    }
+    
     if (enable2FA) {
       await ensureTwoFactorTable(pool);
       const raw = crypto.randomInt(0, 1000000).toString().padStart(6, '0');

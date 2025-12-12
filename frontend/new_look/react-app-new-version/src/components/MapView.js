@@ -245,10 +245,13 @@ function MapView({ vendors, onVendorSelect, selectedVendorId, loading = false, u
     const map = new window.google.maps.Map(mapRef.current, {
       center: mapCenter,
       zoom: mapZoom,
-      mapTypeControl: true,
+      mapTypeControl: false, // Remove Map/Satellite toggle
       streetViewControl: false,
-      fullscreenControl: true,
+      fullscreenControl: false, // Remove fullscreen button
       zoomControl: true,
+      zoomControlOptions: {
+        position: window.google.maps.ControlPosition.RIGHT_CENTER
+      },
       styles: [
         {
           featureType: 'poi',

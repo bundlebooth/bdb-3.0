@@ -38,6 +38,7 @@ router.get('/user/:userId', async (req, res) => {
     request.input('UserID', sql.Int, userId);
 
     // Get favorites with complete vendor data including images
+    // Using only core columns that definitely exist in VendorProfiles table
     const result = await request.query(`
       SELECT 
         f.FavoriteID,
@@ -51,17 +52,9 @@ router.get('/user/:userId', async (req, res) => {
         v.Country,
         v.IsPremium,
         v.IsVerified,
-        v.AvgRating as averageRating,
-        v.TotalReviews as totalReviews,
-        v.GoogleRating,
-        v.GoogleReviewCount,
-        v.ResponseTime,
-        (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS PrimaryCategory,
-        (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID AND vi.IsPrimary = 1) AS FeaturedImageURL,
-        (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID ORDER BY vi.DisplayOrder, vi.CreatedAt) AS ImageURL,
-        (SELECT TOP 1 p.ImageURL FROM VendorPortfolio p WHERE p.VendorProfileID = v.VendorProfileID ORDER BY p.DisplayOrder) AS PortfolioImage,
         v.LogoURL,
-        (SELECT MIN(vs.Price) FROM VendorServices vs WHERE vs.VendorProfileID = v.VendorProfileID AND vs.Price > 0) AS startingPrice,
+        (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS PrimaryCategory,
+        (SELECT TOP 1 vi.ImageURL FROM VendorImages vi WHERE vi.VendorProfileID = v.VendorProfileID ORDER BY CASE WHEN vi.IsPrimary = 1 THEN 0 ELSE 1 END, vi.DisplayOrder) AS FeaturedImageURL,
         f.CreatedAt
       FROM Favorites f
       JOIN VendorProfiles v ON f.VendorProfileID = v.VendorProfileID

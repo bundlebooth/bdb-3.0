@@ -10,7 +10,7 @@ const SecurityLogsPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 50, total: 0 });
   const [twoFASettings, setTwoFASettings] = useState({
-    require2FAForAdmins: true,
+    require2FAForAdmins: false,
     require2FAForVendors: false,
     sessionTimeout: 60,
     failedLoginLockout: 5
@@ -18,6 +18,7 @@ const SecurityLogsPanel = () => {
   const [adminList, setAdminList] = useState([]);
   const [flaggedItems, setFlaggedItems] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: 'timestamp', direction: 'desc' });
 
   useEffect(() => {
     if (activeTab === '2fa') {
@@ -232,6 +233,43 @@ const SecurityLogsPanel = () => {
     return <span className={`status-badge ${config.class}`}>{config.label}</span>;
   };
 
+  // Sorting function
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const sortedLogs = [...logs].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+    const aVal = a[sortConfig.key];
+    const bVal = b[sortConfig.key];
+    if (aVal === bVal) return 0;
+    if (sortConfig.key === 'timestamp') {
+      return sortConfig.direction === 'asc' 
+        ? new Date(aVal) - new Date(bVal) 
+        : new Date(bVal) - new Date(aVal);
+    }
+    const comparison = String(aVal || '').localeCompare(String(bVal || ''));
+    return sortConfig.direction === 'asc' ? comparison : -comparison;
+  });
+
+  const SortableHeader = ({ column, label }) => (
+    <th 
+      onClick={() => handleSort(column)} 
+      style={{ cursor: 'pointer', userSelect: 'none' }}
+    >
+      {label} 
+      {sortConfig.key === column && (
+        <i className={`fas fa-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'}`} style={{ marginLeft: '5px', opacity: 0.7 }}></i>
+      )}
+      {sortConfig.key !== column && (
+        <i className="fas fa-sort" style={{ marginLeft: '5px', opacity: 0.3 }}></i>
+      )}
+    </th>
+  );
+
   return (
     <div className="admin-panel security-logs">
       {/* Tabs */}
@@ -313,23 +351,30 @@ const SecurityLogsPanel = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Timestamp</th>
-                  <th>User</th>
-                  <th>Action</th>
-                  <th>IP Address</th>
-                  <th>Location</th>
-                  <th>Device</th>
+                  <SortableHeader column="timestamp" label="Timestamp" />
+                  <SortableHeader column="user" label="User" />
+                  <SortableHeader column="action" label="Action" />
+                  <SortableHeader column="ip" label="IP Address" />
+                  <SortableHeader column="location" label="Location" />
+                  <SortableHeader column="device" label="Device" />
                 </tr>
               </thead>
               <tbody>
-                {logs.map(log => (
+                {sortedLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: '8px' }}></i>
+                      No login activity recorded yet. Login events will appear here.
+                    </td>
+                  </tr>
+                ) : sortedLogs.map(log => (
                   <tr key={log.id} className={log.action === 'Login Failed' ? 'warning-row' : ''}>
-                    <td>{new Date(log.timestamp).toLocaleString()}</td>
-                    <td><strong>{log.user}</strong></td>
+                    <td>{log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</td>
+                    <td><strong>{log.user || 'Unknown'}</strong></td>
                     <td>{getActionBadge(log.action)}</td>
-                    <td><code>{log.ip}</code></td>
-                    <td>{log.location}</td>
-                    <td><small>{log.device}</small></td>
+                    <td><code>{log.ip || 'Unknown'}</code></td>
+                    <td>{log.location || 'Unknown'}</td>
+                    <td><small>{log.device || 'Unknown'}</small></td>
                   </tr>
                 ))}
               </tbody>
@@ -349,21 +394,28 @@ const SecurityLogsPanel = () => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Timestamp</th>
-                  <th>Admin</th>
-                  <th>Action</th>
-                  <th>Target</th>
-                  <th>Details</th>
+                  <SortableHeader column="timestamp" label="Timestamp" />
+                  <SortableHeader column="admin" label="Admin" />
+                  <SortableHeader column="action" label="Action" />
+                  <SortableHeader column="target" label="Target" />
+                  <SortableHeader column="details" label="Details" />
                 </tr>
               </thead>
               <tbody>
-                {logs.map(log => (
+                {sortedLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: '8px' }}></i>
+                      No admin actions recorded yet.
+                    </td>
+                  </tr>
+                ) : sortedLogs.map(log => (
                   <tr key={log.id}>
-                    <td>{new Date(log.timestamp).toLocaleString()}</td>
-                    <td><strong>{log.admin}</strong></td>
+                    <td>{log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</td>
+                    <td><strong>{log.admin || 'Unknown'}</strong></td>
                     <td>{getActionBadge(log.action)}</td>
-                    <td>{log.target}</td>
-                    <td><small>{log.details}</small></td>
+                    <td>{log.target || 'N/A'}</td>
+                    <td><small>{log.details || 'N/A'}</small></td>
                   </tr>
                 ))}
               </tbody>

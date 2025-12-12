@@ -9171,7 +9171,7 @@ BEGIN
         WHERE ViewedAt >= DATEADD(DAY, -7, GETDATE())
         GROUP BY VendorProfileID
     ) vt ON vp.VendorProfileID = vt.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND (@City IS NULL OR vp.City = @City)
     ORDER BY vt.ViewCount7Days DESC, vp.TotalBookings DESC;
 END
@@ -9203,7 +9203,7 @@ BEGIN
         GROUP BY c.VendorProfileID
         HAVING AVG(DATEDIFF(MINUTE, m_user.CreatedAt, m_vendor.CreatedAt)) <= 120
     ) vrt ON vp.VendorProfileID = vrt.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND (@City IS NULL OR vp.City = @City)
     ORDER BY vrt.AvgResponseMinutes ASC;
 END
@@ -9226,7 +9226,7 @@ BEGIN
             SIN(RADIANS(@Latitude)) * SIN(RADIANS(Latitude))
         )) AS DistanceMiles
     FROM VendorProfiles
-    WHERE IsCompleted = 1
+    WHERE ISNULL(IsVisible, 0) = 1
       AND Latitude IS NOT NULL
       AND Longitude IS NOT NULL
       AND (3959 * ACOS(
@@ -9254,7 +9254,7 @@ BEGIN
         WHERE ViewedAt >= DATEADD(DAY, -7, GETDATE())
         GROUP BY VendorProfileID
     ) vt ON vp.VendorProfileID = vt.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND (@City IS NULL OR vp.City = @City)
       AND vp.IsPremium = 1
     ORDER BY ISNULL(vt.ViewCount7Days, 0) DESC, vp.TotalBookings DESC, vp.AvgRating DESC;
@@ -9271,7 +9271,7 @@ BEGIN
     
     SELECT TOP (@Limit) *
     FROM VendorProfiles
-    WHERE IsCompleted = 1
+    WHERE ISNULL(IsVisible, 0) = 1
       AND (@City IS NULL OR City = @City)
       AND AvgRating >= 4.5
       AND TotalReviews >= 5
@@ -9289,7 +9289,7 @@ BEGIN
     
     SELECT TOP (@Limit) *
     FROM VendorProfiles
-    WHERE IsCompleted = 1
+    WHERE ISNULL(IsVisible, 0) = 1
       AND (@City IS NULL OR City = @City)
       AND CreatedAt >= DATEADD(DAY, -30, GETDATE())
     ORDER BY CreatedAt DESC;
@@ -9306,7 +9306,7 @@ BEGIN
     
     SELECT TOP (@Limit) *
     FROM VendorProfiles
-    WHERE IsCompleted = 1
+    WHERE ISNULL(IsVisible, 0) = 1
       AND (@City IS NULL OR City = @City)
       AND TotalBookings > 0
     ORDER BY TotalBookings DESC;
@@ -9323,7 +9323,7 @@ BEGIN
     
     SELECT TOP (@Limit) *
     FROM VendorProfiles
-    WHERE IsCompleted = 1
+    WHERE ISNULL(IsVisible, 0) = 1
       AND (@City IS NULL OR City = @City)
       AND LastReviewDate IS NOT NULL
       AND LastReviewDate >= DATEADD(DAY, -14, GETDATE())
@@ -9343,7 +9343,7 @@ BEGIN
     -- Get vendors based on user's activity - simplified version
     SELECT TOP (@Limit) vp.*
     FROM VendorProfiles vp
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND (@City IS NULL OR vp.City = @City)
       AND vp.VendorProfileID NOT IN (
           -- Exclude already viewed vendors
@@ -9454,7 +9454,7 @@ BEGIN
         COUNT(DISTINCT r.ReviewID) AS ReviewCount
     FROM VendorProfiles vp
     LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND vp.AcceptingBookings = 1
       AND (@City IS NULL OR vp.City = @City)
     GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline, 
@@ -9489,7 +9489,7 @@ BEGIN
         COUNT(DISTINCT r.ReviewID) AS ReviewCount
     FROM VendorProfiles vp
     LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND vp.AcceptingBookings = 1
       AND vp.AverageResponseTimeMinutes IS NOT NULL
       AND vp.AverageResponseTimeMinutes <= 120
@@ -9527,7 +9527,7 @@ BEGIN
         COUNT(r.ReviewID) AS ReviewCount
     FROM VendorProfiles vp
     INNER JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND vp.AcceptingBookings = 1
       AND (@City IS NULL OR vp.City = @City)
     GROUP BY vp.VendorProfileID, vp.BusinessName, vp.DisplayName, vp.Tagline,
@@ -9564,7 +9564,7 @@ BEGIN
         COUNT(DISTINCT r.ReviewID) AS ReviewCount
     FROM VendorProfiles vp
     LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND vp.AcceptingBookings = 1
       AND vp.BookingCount > 0
       AND (@City IS NULL OR vp.City = @City)
@@ -9601,7 +9601,7 @@ BEGIN
         COUNT(DISTINCT r.ReviewID) AS ReviewCount
     FROM VendorProfiles vp
     LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND vp.AcceptingBookings = 1
       AND vp.CreatedAt >= DATEADD(DAY, -@DaysBack, GETDATE())
       AND (@City IS NULL OR vp.City = @City)
@@ -9637,7 +9637,7 @@ BEGIN
         COUNT(DISTINCT r.ReviewID) AS ReviewCount
     FROM VendorProfiles vp
     LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND vp.AcceptingBookings = 1
       AND (vp.IsPremium = 1 OR vp.IsFeatured = 1)
       AND (@City IS NULL OR vp.City = @City)
@@ -9674,7 +9674,7 @@ BEGIN
         MAX(r.CreatedAt) AS LastReviewDate
     FROM VendorProfiles vp
     INNER JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND vp.AcceptingBookings = 1
       AND r.CreatedAt >= DATEADD(DAY, -@DaysBack, GETDATE())
       AND (@City IS NULL OR vp.City = @City)
@@ -9717,7 +9717,7 @@ BEGIN
         )) AS DistanceMiles
     FROM VendorProfiles vp
     LEFT JOIN Reviews r ON vp.VendorProfileID = r.VendorProfileID
-    WHERE vp.IsCompleted = 1
+    WHERE ISNULL(vp.IsVisible, 0) = 1
       AND vp.AcceptingBookings = 1
       AND vp.Latitude IS NOT NULL
       AND vp.Longitude IS NOT NULL
@@ -9741,8 +9741,8 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_VendorProfiles_TotalBo
 BEGIN
     CREATE INDEX IX_VendorProfiles_TotalBookings 
     ON VendorProfiles(TotalBookings DESC)
-    INCLUDE (City, IsCompleted)
-    WHERE IsCompleted = 1;
+    INCLUDE (City, IsVisible)
+    WHERE IsVisible = 1;
     PRINT '✓ Created index on TotalBookings';
 END
 
@@ -9750,8 +9750,8 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_VendorProfiles_AvgRati
 BEGIN
     CREATE INDEX IX_VendorProfiles_AvgRating 
     ON VendorProfiles(AvgRating DESC, TotalReviews DESC)
-    INCLUDE (City, IsCompleted)
-    WHERE IsCompleted = 1 AND AvgRating >= 4.5;
+    INCLUDE (City, IsVisible)
+    WHERE IsVisible = 1 AND AvgRating >= 4.5;
     PRINT '✓ Created index on AvgRating';
 END
 
@@ -9759,8 +9759,8 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_VendorProfiles_LastRev
 BEGIN
     CREATE INDEX IX_VendorProfiles_LastReviewDate 
     ON VendorProfiles(LastReviewDate DESC)
-    INCLUDE (City, IsCompleted)
-    WHERE IsCompleted = 1 AND LastReviewDate IS NOT NULL;
+    INCLUDE (City, IsVisible)
+    WHERE IsVisible = 1 AND LastReviewDate IS NOT NULL;
     PRINT '✓ Created index on LastReviewDate';
 END
 
@@ -9768,8 +9768,8 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_VendorProfiles_Created
 BEGIN
     CREATE INDEX IX_VendorProfiles_CreatedAt_Discovery 
     ON VendorProfiles(CreatedAt DESC)
-    INCLUDE (City, IsCompleted)
-    WHERE IsCompleted = 1;
+    INCLUDE (City, IsVisible)
+    WHERE IsVisible = 1;
     PRINT '✓ Created index on CreatedAt for discovery';
 END
 
@@ -9777,8 +9777,8 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_VendorProfiles_IsPremi
 BEGIN
     CREATE INDEX IX_VendorProfiles_IsPremium_Discovery 
     ON VendorProfiles(IsPremium)
-    INCLUDE (City, IsCompleted, TotalBookings, AvgRating)
-    WHERE IsCompleted = 1 AND IsPremium = 1;
+    INCLUDE (City, IsVisible, TotalBookings, AvgRating)
+    WHERE IsVisible = 1 AND IsPremium = 1;
     PRINT '✓ Created index on IsPremium for discovery';
 END
 

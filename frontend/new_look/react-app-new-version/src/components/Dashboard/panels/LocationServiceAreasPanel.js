@@ -1,7 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { API_BASE_URL } from '../../../config';
+import { API_BASE_URL, GOOGLE_MAPS_API_KEY } from '../../../config';
 import { showBanner } from '../../../utils/helpers';
+
+// Load Google Maps API dynamically
+const loadGoogleMapsAPI = () => {
+  return new Promise((resolve, reject) => {
+    // Check if already loaded
+    if (window.google?.maps?.places) {
+      console.log('✅ Google Maps API already loaded');
+      resolve();
+      return;
+    }
+    
+    // Check if script is already being loaded
+    const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+    if (existingScript) {
+      console.log('⏳ Google Maps script already loading, waiting...');
+      existingScript.addEventListener('load', () => resolve());
+      existingScript.addEventListener('error', () => reject(new Error('Failed to load Google Maps')));
+      return;
+    }
+    
+    // Load the script
+    const script = document.createElement('script');
+    const apiKey = GOOGLE_MAPS_API_KEY || 'AIzaSyCPhhp2rAt1VTrIzjgagJXZPZ_nc7K_BVo';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      console.log('✅ Google Maps API loaded successfully');
+      resolve();
+    };
+    script.onerror = () => reject(new Error('Failed to load Google Maps'));
+    document.head.appendChild(script);
+  });
+};
 
 function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
   const [loading, setLoading] = useState(true);
@@ -46,20 +80,48 @@ function LocationServiceAreasPanel({ onBack, vendorProfileId }) {
   }, [vendorProfileId]);
   
   useEffect(() => {
-    // Initialize Google Maps autocomplete after component mounts
-    // Add retry mechanism in case Google Maps hasn't loaded yet
-    const tryInitialize = () => {
-      if (window.google?.maps?.places) {
-        console.log('✅ Google Maps ready, initializing autocomplete...');
-        initializeGoogleMaps();
-      } else {
-        console.log('⏳ Google Maps not ready yet, retrying in 200ms...');
-        setTimeout(tryInitialize, 200);
+    // Initialize Google Maps autocomplete after component mounts and loading is complete
+    const initMaps = async () => {
+      try {
+        await loadGoogleMapsAPI();
+        // Wait for DOM elements to be ready - retry multiple times
+        const tryInit = (attempts = 0) => {
+          if (attempts > 20) {
+            console.error('❌ Failed to initialize autocomplete after 20 attempts');
+            return;
+          }
+          if (addressInputRef.current && window.google?.maps?.places) {
+            console.log('✅ Google Maps ready, initializing autocomplete...');
+            initializeGoogleMaps();
+          } else {
+            console.log(`⏳ Waiting for DOM/API (attempt ${attempts + 1})...`);
+            setTimeout(() => tryInit(attempts + 1), 200);
+          }
+        };
+        // Start trying after a short delay to ensure DOM is rendered
+        setTimeout(() => tryInit(0), 300);
+      } catch (error) {
+        console.error('❌ Failed to load Google Maps API:', error);
       }
     };
     
-    tryInitialize();
-  }, []);
+    // Only initialize when not loading (form is rendered)
+    if (!loading) {
+      initMaps();
+    }
+    
+    // Cleanup autocomplete on unmount
+    return () => {
+      if (addressAutocompleteRef.current) {
+        window.google?.maps?.event?.clearInstanceListeners(addressAutocompleteRef.current);
+        addressAutocompleteRef.current = null;
+      }
+      if (serviceAreaAutocompleteRef.current) {
+        window.google?.maps?.event?.clearInstanceListeners(serviceAreaAutocompleteRef.current);
+        serviceAreaAutocompleteRef.current = null;
+      }
+    };
+  }, [loading]);
 
   const initializeGoogleMaps = () => {
     console.log('🔍 LocationServiceAreasPanel: Checking Google Maps...', {

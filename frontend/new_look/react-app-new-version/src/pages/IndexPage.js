@@ -1071,7 +1071,6 @@ function IndexPage() {
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite'
                   }}></div>
-                  <p style={{ marginTop: '1rem', color: '#6b7280', fontSize: '0.95rem' }}>Loading more vendors...</p>
                   <style>{`
                     @keyframes spin {
                       0% { transform: rotate(0deg); }
