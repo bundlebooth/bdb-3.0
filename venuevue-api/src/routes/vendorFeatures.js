@@ -73,14 +73,14 @@ router.get('/all-grouped', async (req, res) => {
           SELECT 
             c.CategoryID,
             c.CategoryName,
-            c.CategoryKey,
+            c.CategoryName AS CategoryKey,
             c.CategoryDescription,
             c.CategoryIcon,
             c.ApplicableVendorCategories,
             c.DisplayOrder AS CategoryOrder,
             f.FeatureID,
             f.FeatureName,
-            f.FeatureKey,
+            f.FeatureName AS FeatureKey,
             f.FeatureDescription,
             f.FeatureIcon,
             f.DisplayOrder AS FeatureOrder
@@ -174,12 +174,12 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
               vsf.VendorProfileID,
               vsf.FeatureID,
               f.FeatureName,
-              f.FeatureKey,
+              f.FeatureName AS FeatureKey,
               f.FeatureDescription,
               f.FeatureIcon,
               c.CategoryID,
               c.CategoryName,
-              c.CategoryKey,
+              c.CategoryName AS CategoryKey,
               c.CategoryIcon,
               COALESCE(vsf.CreatedAt, vsf.SelectedAt, GETDATE()) AS SelectedAt
             FROM VendorSelectedFeatures vsf

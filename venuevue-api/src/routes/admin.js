@@ -351,12 +351,12 @@ router.get('/vendor-approvals/:id', async (req, res) => {
             vsf.VendorProfileID,
             vsf.FeatureID,
             f.FeatureName,
-            f.FeatureKey,
+            f.FeatureName AS FeatureKey,
             f.FeatureDescription,
             f.FeatureIcon,
             c.CategoryID,
             c.CategoryName,
-            c.CategoryKey,
+            c.CategoryName AS CategoryKey,
             c.CategoryIcon
           FROM VendorSelectedFeatures vsf
           LEFT JOIN VendorFeatures f ON vsf.FeatureID = f.FeatureID
