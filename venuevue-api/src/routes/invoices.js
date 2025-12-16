@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { poolPromise } = require('../config/db');
-const sql = require('mssql');
+const { poolPromise, sql } = require('../config/db');
 const { decodeBookingId, decodeInvoiceId, isPublicId } = require('../utils/hashIds');
 
 // Helpers

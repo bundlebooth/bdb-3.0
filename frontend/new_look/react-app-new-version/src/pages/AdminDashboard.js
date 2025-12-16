@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, ENV_CONFIG } from '../config';
 import { showBanner } from '../utils/helpers';
 import './AdminDashboard.css';
 
@@ -246,10 +246,35 @@ const AdminDashboard = () => {
 const OverviewPanel = ({ stats, loading, onNavigate }) => {
   const [recentActivity, setRecentActivity] = React.useState([]);
   const [activityLoading, setActivityLoading] = React.useState(true);
+  const [envInfo, setEnvInfo] = React.useState(null);
+  const [envLoading, setEnvLoading] = React.useState(true);
+  const [healthInfo, setHealthInfo] = React.useState(null);
+  const [healthLoading, setHealthLoading] = React.useState(true);
 
   React.useEffect(() => {
     fetchRecentActivity();
+    fetchEnvironmentInfo();
+    fetchPlatformHealth();
   }, []);
+
+  const fetchEnvironmentInfo = async () => {
+    try {
+      setEnvLoading(true);
+      const response = await fetch(`${API_BASE_URL}/admin/environment-info`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setEnvInfo(data);
+      }
+    } catch (error) {
+      console.error('Error fetching environment info:', error);
+    } finally {
+      setEnvLoading(false);
+    }
+  };
 
   const fetchRecentActivity = async () => {
     try {
@@ -267,6 +292,25 @@ const OverviewPanel = ({ stats, loading, onNavigate }) => {
       console.error('Error fetching recent activity:', error);
     } finally {
       setActivityLoading(false);
+    }
+  };
+
+  const fetchPlatformHealth = async () => {
+    try {
+      setHealthLoading(true);
+      const response = await fetch(`${API_BASE_URL}/admin/platform-health`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setHealthInfo(data);
+      }
+    } catch (error) {
+      console.error('Error fetching platform health:', error);
+    } finally {
+      setHealthLoading(false);
     }
   };
 
@@ -363,43 +407,188 @@ const OverviewPanel = ({ stats, loading, onNavigate }) => {
 
         <div className="section-card">
           <h2><i className="fas fa-chart-pie"></i> Platform Health</h2>
-          <div className="health-metrics">
-            <div className="health-item">
-              <div className="health-label">
-                <span>Server Status</span>
-                <span className="health-status good">Operational</span>
+          {healthLoading ? (
+            <div className="loading-text">Loading health metrics...</div>
+          ) : healthInfo ? (
+            <div className="health-metrics">
+              <div className="health-item">
+                <div className="health-label">
+                  <span>Server Status</span>
+                  <span className={`health-status ${healthInfo.serverStatus === 'operational' ? 'good' : 'warning'}`}>
+                    {healthInfo.serverStatus === 'operational' ? 'Operational' : 'Degraded'}
+                  </span>
+                </div>
+                <div className="health-bar">
+                  <div className="health-fill" style={{ width: healthInfo.serverStatus === 'operational' ? '100%' : '50%', background: healthInfo.serverStatus === 'operational' ? '#2dce89' : '#fb6340' }}></div>
+                </div>
               </div>
-              <div className="health-bar">
-                <div className="health-fill" style={{ width: '100%', background: '#2dce89' }}></div>
+              <div className="health-item">
+                <div className="health-label">
+                  <span>API Response Time</span>
+                  <span className="health-value">{healthInfo.apiResponseTime}ms</span>
+                </div>
+                <div className="health-bar">
+                  <div className="health-fill" style={{ width: `${Math.min((healthInfo.apiResponseTime / 500) * 100, 100)}%`, background: healthInfo.apiResponseTime < 100 ? '#2dce89' : healthInfo.apiResponseTime < 300 ? '#ffc107' : '#fb6340' }}></div>
+                </div>
+              </div>
+              <div className="health-item">
+                <div className="health-label">
+                  <span>Database Load</span>
+                  <span className="health-value">{healthInfo.databaseLoad}%</span>
+                </div>
+                <div className="health-bar">
+                  <div className="health-fill" style={{ width: `${healthInfo.databaseLoad}%`, background: healthInfo.databaseLoad < 50 ? '#2dce89' : healthInfo.databaseLoad < 80 ? '#5e72e4' : '#fb6340' }}></div>
+                </div>
+              </div>
+              <div className="health-item">
+                <div className="health-label">
+                  <span>Memory Used</span>
+                  <span className="health-value">{healthInfo.memoryUsed}%</span>
+                </div>
+                <div className="health-bar">
+                  <div className="health-fill" style={{ width: `${healthInfo.memoryUsed}%`, background: healthInfo.memoryUsed < 50 ? '#2dce89' : healthInfo.memoryUsed < 80 ? '#ffc107' : '#fb6340' }}></div>
+                </div>
+              </div>
+              <div className="health-item">
+                <div className="health-label">
+                  <span>Storage Used</span>
+                  <span className="health-value">{healthInfo.storageUsed}%</span>
+                </div>
+                <div className="health-bar">
+                  <div className="health-fill" style={{ width: `${healthInfo.storageUsed}%`, background: healthInfo.storageUsed < 50 ? '#2dce89' : healthInfo.storageUsed < 80 ? '#ffc107' : '#fb6340' }}></div>
+                </div>
+              </div>
+              <div style={{ fontSize: '11px', color: '#999', marginTop: '8px', textAlign: 'right' }}>
+                Last checked: {new Date(healthInfo.lastChecked).toLocaleTimeString()}
               </div>
             </div>
-            <div className="health-item">
-              <div className="health-label">
-                <span>API Response Time</span>
-                <span className="health-value">45ms</span>
-              </div>
-              <div className="health-bar">
-                <div className="health-fill" style={{ width: '15%', background: '#2dce89' }}></div>
+          ) : (
+            <div className="empty-text">Unable to load health metrics</div>
+          )}
+        </div>
+      </div>
+
+      {/* Environment Info */}
+      <div className="section-card" style={{ marginTop: '20px' }}>
+        <h2><i className="fas fa-server"></i> Environment Info</h2>
+        {envLoading ? (
+          <div className="loading-text">Loading environment info...</div>
+        ) : envInfo ? (
+          <div className="env-info-grid" style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+            gap: '16px',
+            padding: '16px 0'
+          }}>
+            <div className="env-item" style={{ 
+              background: envInfo.environment === 'production' ? '#fff3cd' : '#d4edda',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              borderLeft: `4px solid ${envInfo.environment === 'production' ? '#ffc107' : '#28a745'}`
+            }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Environment</div>
+              <div style={{ fontWeight: '600', fontSize: '16px', textTransform: 'uppercase' }}>
+                {envInfo.environment === 'production' ? '🔴 PRODUCTION' : '🟢 DEVELOPMENT'}
               </div>
             </div>
-            <div className="health-item">
-              <div className="health-label">
-                <span>Database Load</span>
-                <span className="health-value">32%</span>
-              </div>
-              <div className="health-bar">
-                <div className="health-fill" style={{ width: '32%', background: '#5e72e4' }}></div>
-              </div>
+            <div className="env-item" style={{ background: '#f8f9fe', padding: '12px 16px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Database Mode</div>
+              <div style={{ fontWeight: '600' }}>{envInfo.databaseMode}</div>
             </div>
-            <div className="health-item">
-              <div className="health-label">
-                <span>Storage Used</span>
-                <span className="health-value">67%</span>
-              </div>
-              <div className="health-bar">
-                <div className="health-fill" style={{ width: '67%', background: '#fb6340' }}></div>
-              </div>
+            <div className="env-item" style={{ background: '#f8f9fe', padding: '12px 16px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Database Server</div>
+              <div style={{ fontWeight: '600', fontSize: '13px', wordBreak: 'break-all' }}>{envInfo.databaseServer}</div>
             </div>
+            <div className="env-item" style={{ background: '#f8f9fe', padding: '12px 16px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Database Name</div>
+              <div style={{ fontWeight: '600' }}>{envInfo.databaseName}</div>
+            </div>
+            <div className="env-item" style={{ background: '#f8f9fe', padding: '12px 16px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>API URL</div>
+              <div style={{ fontWeight: '600', fontSize: '13px', wordBreak: 'break-all' }}>{envInfo.apiUrl}</div>
+            </div>
+            <div className="env-item" style={{ background: '#f8f9fe', padding: '12px 16px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Node Version</div>
+              <div style={{ fontWeight: '600' }}>{envInfo.nodeVersion}</div>
+            </div>
+            <div className="env-item" style={{ background: '#f8f9fe', padding: '12px 16px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Server Uptime</div>
+              <div style={{ fontWeight: '600' }}>{envInfo.uptime}</div>
+            </div>
+            <div className="env-item" style={{ background: '#f8f9fe', padding: '12px 16px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Memory Usage</div>
+              <div style={{ fontWeight: '600' }}>{envInfo.memoryUsage}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="empty-text">Unable to load environment info</div>
+        )}
+        
+        {/* Environment Switcher */}
+        <div style={{ 
+          marginTop: '20px', 
+          padding: '16px', 
+          background: '#f0f4ff', 
+          borderRadius: '8px',
+          border: '1px solid #d0d7ff'
+        }}>
+          <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>
+            <i className="fas fa-exchange-alt" style={{ marginRight: '8px' }}></i>
+            Quick Environment Switch
+          </div>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ fontSize: '13px', color: '#666' }}>
+              Current: <strong style={{ color: ENV_CONFIG.isProduction ? '#dc3545' : '#28a745' }}>
+                {ENV_CONFIG.isProduction ? '🔴 Production' : '🟢 Localhost'}
+              </strong>
+            </div>
+            <button
+              onClick={() => {
+                if (window.confirm('Switch to LOCALHOST (development) API?')) {
+                  localStorage.setItem('USE_PRODUCTION_API', 'false');
+                  window.location.reload();
+                }
+              }}
+              disabled={!ENV_CONFIG.isProduction}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                background: !ENV_CONFIG.isProduction ? '#e9ecef' : '#28a745',
+                color: !ENV_CONFIG.isProduction ? '#999' : 'white',
+                cursor: !ENV_CONFIG.isProduction ? 'not-allowed' : 'pointer',
+                fontSize: '13px',
+                fontWeight: '500'
+              }}
+            >
+              <i className="fas fa-laptop-code" style={{ marginRight: '6px' }}></i>
+              Switch to Localhost
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm('Switch to PRODUCTION API? Make sure the production server is running.')) {
+                  localStorage.setItem('USE_PRODUCTION_API', 'true');
+                  window.location.reload();
+                }
+              }}
+              disabled={ENV_CONFIG.isProduction}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                background: ENV_CONFIG.isProduction ? '#e9ecef' : '#dc3545',
+                color: ENV_CONFIG.isProduction ? '#999' : 'white',
+                cursor: ENV_CONFIG.isProduction ? 'not-allowed' : 'pointer',
+                fontSize: '13px',
+                fontWeight: '500'
+              }}
+            >
+              <i className="fas fa-cloud" style={{ marginRight: '6px' }}></i>
+              Switch to Production
+            </button>
+          </div>
+          <div style={{ fontSize: '11px', color: '#888', marginTop: '10px' }}>
+            💡 Tip: You can also use browser console commands: <code style={{ background: '#fff', padding: '2px 6px', borderRadius: '3px' }}>switchToLocalhost()</code> or <code style={{ background: '#fff', padding: '2px 6px', borderRadius: '3px' }}>switchToProduction()</code>
           </div>
         </div>
       </div>

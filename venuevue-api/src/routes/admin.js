@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const sql = require('mssql');
-const { poolPromise } = require('../config/db');
+const { poolPromise, sql } = require('../config/db');
 const { authenticateToken, requireAdmin } = require('../middlewares/auth');
 
 // Helper to get pool
@@ -33,6 +32,120 @@ router.get('/dashboard-stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+  }
+});
+
+// GET /admin/environment-info - Get environment and server information
+router.get('/environment-info', async (req, res) => {
+  try {
+    const pool = await getPool();
+    
+    // Get database info
+    const dbInfo = await pool.request().query(`
+      SELECT 
+        @@SERVERNAME as serverName,
+        DB_NAME() as databaseName,
+        @@VERSION as sqlVersion
+    `);
+    
+    const serverInfo = dbInfo.recordset[0];
+    
+    // Calculate uptime
+    const uptimeSeconds = process.uptime();
+    const days = Math.floor(uptimeSeconds / 86400);
+    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+    const uptime = days > 0 ? `${days}d ${hours}h ${minutes}m` : `${hours}h ${minutes}m`;
+    
+    // Get memory usage
+    const memUsage = process.memoryUsage();
+    const memoryMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+    const memoryTotalMB = Math.round(memUsage.heapTotal / 1024 / 1024);
+    
+    // Determine environment
+    const isProduction = process.env.NODE_ENV === 'production';
+    const dbServer = process.env.DB_SERVER || 'localhost';
+    const isLocalDb = dbServer.includes('localhost') || dbServer.includes('Sami-PC') || dbServer.includes('127.0.0.1');
+    
+    res.json({
+      environment: isProduction ? 'production' : 'development',
+      databaseMode: isLocalDb ? 'Local Database' : 'Cloud Database',
+      databaseServer: serverInfo.serverName || dbServer,
+      databaseName: serverInfo.databaseName || process.env.DB_NAME,
+      apiUrl: `${req.protocol}://${req.get('host')}`,
+      nodeVersion: process.version,
+      uptime: uptime,
+      memoryUsage: `${memoryMB}MB / ${memoryTotalMB}MB`,
+      platform: process.platform,
+      sqlVersion: serverInfo.sqlVersion ? serverInfo.sqlVersion.split('\n')[0] : 'Unknown'
+    });
+  } catch (error) {
+    console.error('Error fetching environment info:', error);
+    res.status(500).json({ error: 'Failed to fetch environment info', details: error.message });
+  }
+});
+
+// GET /admin/platform-health - Get real-time platform health metrics
+router.get('/platform-health', async (req, res) => {
+  try {
+    const startTime = Date.now();
+    const pool = await getPool();
+    
+    // Test database response time
+    await pool.request().query('SELECT 1');
+    const dbResponseTime = Date.now() - startTime;
+    
+    // Get database stats
+    const dbStats = await pool.request().query(`
+      SELECT 
+        (SELECT COUNT(*) FROM sys.dm_exec_sessions WHERE is_user_process = 1) as activeConnections,
+        (SELECT cntr_value FROM sys.dm_os_performance_counters WHERE counter_name = 'User Connections') as userConnections
+    `);
+    
+    // Get table sizes for storage estimate
+    const storageStats = await pool.request().query(`
+      SELECT 
+        SUM(reserved_page_count) * 8.0 / 1024 as totalSizeMB
+      FROM sys.dm_db_partition_stats
+    `);
+    
+    // Get record counts for load estimate
+    const loadStats = await pool.request().query(`
+      SELECT
+        (SELECT COUNT(*) FROM VendorProfiles) as vendors,
+        (SELECT COUNT(*) FROM Users) as users,
+        (SELECT COUNT(*) FROM Bookings) as bookings,
+        (SELECT COUNT(*) FROM Reviews) as reviews
+    `);
+    
+    const memUsage = process.memoryUsage();
+    const memoryPercent = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100);
+    
+    // Calculate database load based on active connections (assume max 100 connections)
+    const activeConns = dbStats.recordset[0]?.activeConnections || 1;
+    const dbLoad = Math.min(Math.round((activeConns / 50) * 100), 100);
+    
+    // Calculate storage (estimate based on data size, assume 10GB max)
+    const storageMB = storageStats.recordset[0]?.totalSizeMB || 100;
+    const storagePercent = Math.min(Math.round((storageMB / 10240) * 100), 100);
+    
+    res.json({
+      serverStatus: 'operational',
+      apiResponseTime: dbResponseTime,
+      databaseLoad: dbLoad,
+      storageUsed: storagePercent,
+      memoryUsed: memoryPercent,
+      activeConnections: activeConns,
+      totalRecords: loadStats.recordset[0],
+      lastChecked: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching platform health:', error);
+    res.status(500).json({ 
+      serverStatus: 'degraded',
+      error: 'Failed to fetch platform health',
+      details: error.message 
+    });
   }
 });
 

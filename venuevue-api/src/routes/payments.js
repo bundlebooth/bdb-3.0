@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { poolPromise } = require('../config/db');
-const sql = require('mssql');
+const { poolPromise, sql } = require('../config/db');
 const invoicesRouter = require('./invoices');
 
 // Helper function to check if Stripe is properly configured

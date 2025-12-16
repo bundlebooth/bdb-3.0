@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { poolPromise } = require('../config/db');
-const sql = require('mssql');
+const { poolPromise, sql } = require('../config/db');
 const { upload } = require('../middlewares/uploadMiddleware');
 const cloudinaryService = require('../services/cloudinaryService');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || '');
