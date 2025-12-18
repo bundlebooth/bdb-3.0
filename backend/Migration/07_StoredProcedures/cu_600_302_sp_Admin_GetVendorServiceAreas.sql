@@ -1,0 +1,35 @@
+-- =============================================
+-- Stored Procedure: sp_Admin_GetVendorServiceAreas
+-- Description: Gets vendor service areas
+-- Phase: 600 (Stored Procedures)
+-- =============================================
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetVendorServiceAreas]'))
+    DROP PROCEDURE [dbo].[sp_Admin_GetVendorServiceAreas];
+GO
+
+CREATE PROCEDURE [dbo].[sp_Admin_GetVendorServiceAreas]
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        VendorServiceAreaID,
+        GooglePlaceID,
+        CityName,
+        [State/Province] AS StateProvince,
+        Country,
+        Latitude,
+        Longitude,
+        ServiceRadius,
+        FormattedAddress,
+        PlaceType,
+        PostalCode,
+        TravelCost,
+        MinimumBookingAmount,
+        IsActive
+    FROM VendorServiceAreas 
+    WHERE VendorProfileID = @VendorProfileID
+    ORDER BY CityName;
+END
+GO

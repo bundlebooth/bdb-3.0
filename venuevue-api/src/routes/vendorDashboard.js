@@ -14,7 +14,7 @@ async function getStripeStatus(pool, vendorProfileId) {
   try {
     const r = await new sql.Request(pool)
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query('SELECT StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+      .execute('sp_VendorDashboard_GetStripeAccount');
     const acct = r.recordset[0]?.StripeAccountID || null;
     if (!acct) return { connected: false, chargesEnabled: false, payoutsEnabled: false, accountId: null };
     if (!isStripeConfigured()) return { connected: true, chargesEnabled: false, payoutsEnabled: false, accountId: acct };
@@ -33,27 +33,13 @@ async function computeSetupStatusByUserId(userId) {
   const pool = await poolPromise;
   const req = new sql.Request(pool);
   req.input('UserID', sql.Int, parseInt(userId));
-  const prof = await req.query(`
-    SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, LogoURL,
-           DepositRequirements, PaymentMethods, PaymentTerms, LicenseNumber, InsuranceVerified,
-           IsVerified, IsCompleted, AcceptingBookings, GooglePlaceID,
-           IsPremium, IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured
-    FROM VendorProfiles WHERE UserID = @UserID`);
+  const prof = await req.execute('sp_VendorDashboard_GetProfileByUserId');
   if (!prof.recordset.length) return { exists: false, message: 'Vendor profile not found' };
   const p = prof.recordset[0];
   const vId = p.VendorProfileID;
   const counts = await new sql.Request(pool)
     .input('VendorProfileID', sql.Int, vId)
-    .query(`SELECT
-      (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID=@VendorProfileID) AS CategoriesCount,
-      (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID=@VendorProfileID) AS ImagesCount,
-      (SELECT COUNT(*) FROM Services s JOIN ServiceCategories sc ON s.CategoryID=sc.CategoryID WHERE sc.VendorProfileID=@VendorProfileID AND s.IsActive=1) AS ServicesCount,
-      (SELECT COUNT(*) FROM Packages WHERE VendorProfileID=@VendorProfileID) AS PackageCount,
-      (SELECT COUNT(*) FROM VendorFAQs WHERE VendorProfileID=@VendorProfileID AND (IsActive = 1 OR IsActive IS NULL)) AS FAQCount,
-      (SELECT COUNT(*) FROM VendorCategoryAnswers WHERE VendorProfileID=@VendorProfileID) AS CategoryAnswerCount,
-      (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID=@VendorProfileID) AS SocialCount,
-      (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID=@VendorProfileID AND IsAvailable=1) AS HoursCount,
-      (SELECT COUNT(*) FROM VendorServiceAreas WHERE VendorProfileID=@VendorProfileID AND IsActive=1) AS ServiceAreaCount`);
+    .execute('sp_VendorDashboard_GetSetupCounts');
   const c = counts.recordset[0] || {};
   const stripeStatus = await getStripeStatus(pool, vId);
 
@@ -210,74 +196,17 @@ router.get('/:id/analytics', async (req, res) => {
 
     const pool = await poolPromise;
     
-    // Get booking stats
-    const bookingStatsResult = await pool.request()
-      .input('VendorProfileID', sql.Int, id)
-      .query(`
-        SELECT 
-          COUNT(CASE WHEN Status = 'Completed' THEN 1 END) AS CompletedBookings,
-          COUNT(CASE WHEN Status = 'Confirmed' THEN 1 END) AS ConfirmedBookings,
-          COUNT(CASE WHEN Status = 'Pending' THEN 1 END) AS PendingBookings,
-          COUNT(CASE WHEN Status = 'Cancelled' THEN 1 END) AS CancelledBookings,
-          COUNT(*) AS TotalBookings
-        FROM Bookings
-        WHERE VendorProfileID = @VendorProfileID
-          AND EventDate >= DATEADD(DAY, -${daysBack}, GETUTCDATE())
-      `);
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('DaysBack', sql.Int, parseInt(daysBack));
     
-    // Get revenue by service
-    const revenueByServiceResult = await pool.request()
-      .input('VendorProfileID', sql.Int, id)
-      .query(`
-        SELECT 
-          s.Name AS ServiceName,
-          COUNT(b.BookingID) AS BookingCount,
-          SUM(b.TotalAmount) AS TotalRevenue
-        FROM Services s
-        LEFT JOIN Bookings b ON s.ServiceID = b.ServiceID
-        WHERE s.VendorProfileID = @VendorProfileID
-          AND (b.EventDate >= DATEADD(DAY, -${daysBack}, GETUTCDATE()) OR b.EventDate IS NULL)
-        GROUP BY s.ServiceID, s.Name
-        ORDER BY TotalRevenue DESC
-      `);
-    
-    // Get revenue by month
-    const revenueByMonthResult = await pool.request()
-      .input('VendorProfileID', sql.Int, id)
-      .query(`
-        SELECT 
-          FORMAT(EventDate, 'yyyy-MM') AS Month,
-          COUNT(*) AS BookingCount,
-          SUM(TotalAmount) AS TotalRevenue
-        FROM Bookings
-        WHERE VendorProfileID = @VendorProfileID
-          AND EventDate >= DATEADD(MONTH, -12, GETUTCDATE())
-        GROUP BY FORMAT(EventDate, 'yyyy-MM')
-        ORDER BY Month
-      `);
-    
-    // Get review stats
-    const reviewStatsResult = await pool.request()
-      .input('VendorProfileID', sql.Int, id)
-      .query(`
-        SELECT 
-          COUNT(*) AS TotalReviews,
-          AVG(CAST(Rating AS FLOAT)) AS AverageRating,
-          COUNT(CASE WHEN Rating = 5 THEN 1 END) AS FiveStarCount,
-          COUNT(CASE WHEN Rating = 4 THEN 1 END) AS FourStarCount,
-          COUNT(CASE WHEN Rating = 3 THEN 1 END) AS ThreeStarCount,
-          COUNT(CASE WHEN Rating = 2 THEN 1 END) AS TwoStarCount,
-          COUNT(CASE WHEN Rating = 1 THEN 1 END) AS OneStarCount
-        FROM Reviews
-        WHERE VendorProfileID = @VendorProfileID
-          AND IsApproved = 1
-      `);
+    const result = await request.execute('sp_VendorDashboard_GetAnalytics');
     
     const analytics = {
-      bookingStats: bookingStatsResult.recordset[0],
-      revenueByService: revenueByServiceResult.recordset,
-      revenueByMonth: revenueByMonthResult.recordset,
-      reviewStats: reviewStatsResult.recordset[0]
+      bookingStats: result.recordsets[0]?.[0] || {},
+      revenueByService: result.recordsets[1] || [],
+      revenueByMonth: result.recordsets[2] || [],
+      reviewStats: result.recordsets[3]?.[0] || {}
     };
 
     res.json(analytics);
@@ -299,42 +228,7 @@ router.get('/:id/bookings/all', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     
-    // Use direct query instead of stored procedure to avoid view dependency issues
-    const result = await request.query(`
-      SELECT 
-        b.BookingID,
-        b.VendorProfileID,
-        b.UserID,
-        u.Name AS ClientName,
-        u.Email AS ClientEmail,
-        u.Phone AS ClientPhone,
-        b.EventDate,
-        b.EndDate,
-        b.Status,
-        b.TotalAmount,
-        b.DepositAmount,
-        b.DepositPaid,
-        b.FullAmountPaid,
-        b.AttendeeCount,
-        b.SpecialRequests,
-        b.EventLocation AS Location,
-        b.EventName,
-        b.EventType,
-        b.TimeZone,
-        b.CreatedAt,
-        b.UpdatedAt,
-        (SELECT TOP 1 c.ConversationID FROM Conversations c WHERE c.UserID = b.UserID AND c.VendorProfileID = b.VendorProfileID) AS ConversationID,
-        COALESCE(
-          (SELECT TOP 1 s.Name FROM BookingServices bs 
-           INNER JOIN Services s ON bs.ServiceID = s.ServiceID 
-           WHERE bs.BookingID = b.BookingID ORDER BY bs.BookingServiceID),
-          'Service'
-        ) AS ServiceName
-      FROM Bookings b
-      LEFT JOIN Users u ON b.UserID = u.UserID
-      WHERE b.VendorProfileID = @VendorProfileID
-      ORDER BY b.EventDate DESC
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetAllBookings');
     
     // Fix date serialization - convert Date objects to ISO strings
     const bookings = result.recordset.map(booking => ({
@@ -588,9 +482,7 @@ router.post('/:id/business-hours/upsert', async (req, res) => {
       const existsReq = new sql.Request(pool);
       existsReq.input('VendorProfileID', sql.Int, parseInt(id));
       existsReq.input('DayOfWeek', sql.TinyInt, dayOfWeek);
-      const existsRes = await existsReq.query(`
-        SELECT HoursID FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek
-      `);
+      const existsRes = await existsReq.execute('sp_VendorDashboard_GetExistingHoursId');
       resolvedHoursId = existsRes.recordset[0]?.HoursID || null;
     }
 
@@ -609,20 +501,11 @@ router.post('/:id/business-hours/upsert', async (req, res) => {
     let resultHoursId;
     if (resolvedHoursId) {
       // Update existing
-      await request.query(`
-        UPDATE VendorBusinessHours
-        SET OpenTime = @OpenTime, CloseTime = @CloseTime, IsAvailable = @IsAvailable, 
-            Timezone = @Timezone, UpdatedAt = GETUTCDATE()
-        WHERE HoursID = @HoursID AND VendorProfileID = @VendorProfileID
-      `);
+      await request.execute('sp_VendorDashboard_UpdateBusinessHours');
       resultHoursId = resolvedHoursId;
     } else {
       // Insert new
-      const insertResult = await request.query(`
-        INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone, CreatedAt, UpdatedAt)
-        OUTPUT INSERTED.HoursID
-        VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable, @Timezone, GETUTCDATE(), GETUTCDATE())
-      `);
+      const insertResult = await request.execute('sp_VendorDashboard_InsertBusinessHours');
       resultHoursId = insertResult.recordset[0].HoursID;
     }
 
@@ -727,18 +610,14 @@ router.get('/:id/social', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
 
-    const socialResult = await request.query(`
-      SELECT Platform, URL, DisplayOrder FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
-    `);
-
-    const bookingLinkResult = await request.query(`
-      SELECT BookingLink FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
-    `);
+    const socialResult = await request.execute('sp_VendorDashboard_GetSocialMedia');
+    const bookingLinkResult = { recordset: socialResult.recordsets[1] || [] };
+    const socialRecordset = socialResult.recordsets[0] || [];
 
     res.json({
       success: true,
       bookingLink: bookingLinkResult.recordset[0]?.BookingLink || null,
-      socialMediaProfiles: socialResult.recordset || []
+      socialMediaProfiles: socialRecordset || []
     });
 
   } catch (err) {
@@ -761,14 +640,12 @@ router.post('/:id/social', async (req, res) => {
       const blReq = new sql.Request(pool);
       blReq.input('VendorProfileID', sql.Int, parseInt(id));
       blReq.input('BookingLink', sql.NVarChar, bookingLink || null);
-      await blReq.query(`
-        UPDATE VendorProfiles SET BookingLink = @BookingLink, UpdatedAt = GETDATE() WHERE VendorProfileID = @VendorProfileID
-      `);
+      await blReq.execute('sp_VendorDashboard_UpdateBookingLink');
     }
 
     if (Array.isArray(socialMediaProfiles)) {
       // Clear existing
-      await request.query(`DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID`);
+      await request.execute('sp_VendorDashboard_DeleteSocialMedia');
       // Insert new
       for (let i = 0; i < socialMediaProfiles.length; i++) {
         const profile = socialMediaProfiles[i];
@@ -778,10 +655,7 @@ router.post('/:id/social', async (req, res) => {
         sReq.input('Platform', sql.NVarChar(50), profile.platform);
         sReq.input('URL', sql.NVarChar(500), profile.url);
         sReq.input('DisplayOrder', sql.Int, i);
-        await sReq.query(`
-          INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
-          VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
-        `);
+        await sReq.execute('sp_VendorDashboard_InsertSocialMedia');
       }
     }
 
@@ -799,10 +673,7 @@ router.get('/:id/policies', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.query(`
-      SELECT DepositRequirements, CancellationPolicy, ReschedulingPolicy, PaymentMethods, PaymentTerms
-      FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetPolicies');
     if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
     res.json({ success: true, policies: result.recordset[0] });
   } catch (err) {
@@ -824,16 +695,7 @@ router.post('/:id/policies', async (req, res) => {
     request.input('ReschedulingPolicy', sql.NVarChar, reschedulingPolicy || null);
     request.input('PaymentMethods', sql.NVarChar, paymentMethods ? JSON.stringify(paymentMethods) : null);
     request.input('PaymentTerms', sql.NVarChar, paymentTerms || null);
-    await request.query(`
-      UPDATE VendorProfiles SET 
-        DepositRequirements = @DepositRequirements,
-        CancellationPolicy = @CancellationPolicy,
-        ReschedulingPolicy = @ReschedulingPolicy,
-        PaymentMethods = @PaymentMethods,
-        PaymentTerms = @PaymentTerms,
-        UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await request.execute('sp_VendorDashboard_UpdatePolicies');
     res.json({ success: true, message: 'Policies saved' });
   } catch (err) {
     console.error('Save policies error:', err);
@@ -848,10 +710,7 @@ router.get('/:id/verification', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.query(`
-      SELECT LicenseNumber, InsuranceVerified, Awards, Certifications, IsEcoFriendly, IsPremium, IsAwardWinning, IsLastMinute
-      FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetVerification');
     if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
     res.json({ success: true, verification: result.recordset[0] });
   } catch (err) {
@@ -876,19 +735,7 @@ router.post('/:id/verification', async (req, res) => {
     request.input('IsPremium', sql.Bit, !!isPremium);
     request.input('IsAwardWinning', sql.Bit, !!isAwardWinning);
     request.input('IsLastMinute', sql.Bit, !!isLastMinute);
-    await request.query(`
-      UPDATE VendorProfiles SET 
-        LicenseNumber = @LicenseNumber,
-        InsuranceVerified = @InsuranceVerified,
-        Awards = @Awards,
-        Certifications = @Certifications,
-        IsEcoFriendly = @IsEcoFriendly,
-        IsPremium = @IsPremium,
-        IsAwardWinning = @IsAwardWinning,
-        IsLastMinute = @IsLastMinute,
-        UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await request.execute('sp_VendorDashboard_UpdateVerification');
     res.json({ success: true, message: 'Verification info saved' });
   } catch (err) {
     console.error('Save verification error:', err);
@@ -903,9 +750,7 @@ router.get('/:id/faqs', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.query(`
-      SELECT FAQID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder, IsActive FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetFAQs');
     res.json({ success: true, faqs: result.recordset });
   } catch (err) {
     console.error('Get FAQs error:', err);
@@ -922,7 +767,7 @@ router.post('/:id/faqs/upsert', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
     // Clear existing
-    await request.query(`DELETE FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID`);
+    await request.execute('sp_VendorDashboard_DeleteFAQs');
     // Insert new
     if (Array.isArray(faqs)) {
       for (let i = 0; i < faqs.length; i++) {
@@ -939,10 +784,7 @@ router.post('/:id/faqs/upsert', async (req, res) => {
         fReq.input('AnswerType', sql.NVarChar(50), f.answerType || 'text');
         fReq.input('AnswerOptions', sql.NVarChar(sql.MAX), f.answerOptions ? JSON.stringify(f.answerOptions) : null);
         fReq.input('DisplayOrder', sql.Int, i + 1);
-        await fReq.query(`
-          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
-          VALUES (@VendorProfileID, @Question, @Answer, @AnswerType, @AnswerOptions, @DisplayOrder, 1, GETDATE(), GETDATE())
-        `);
+        await fReq.execute('sp_VendorDashboard_InsertFAQ');
       }
     }
     res.json({ success: true, message: 'FAQs saved' });
@@ -959,12 +801,7 @@ router.get('/:id/category-answers', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.query(`
-      SELECT AnswerID, QuestionID, Answer, CreatedAt, UpdatedAt
-      FROM VendorCategoryAnswers
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY AnswerID
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetCategoryAnswers');
     res.json({ success: true, answers: result.recordset });
   } catch (err) {
     console.error('Get category answers error:', err);
@@ -987,7 +824,7 @@ router.post('/:id/category-answers/upsert', async (req, res) => {
     // Clear existing answers
     const delReq = new sql.Request(pool);
     delReq.input('VendorProfileID', sql.Int, parseInt(id));
-    await delReq.query(`DELETE FROM VendorCategoryAnswers WHERE VendorProfileID = @VendorProfileID`);
+    await delReq.execute('sp_VendorDashboard_DeleteCategoryAnswers');
 
     // Insert new answers
     for (const a of answers) {
@@ -996,10 +833,7 @@ router.post('/:id/category-answers/upsert', async (req, res) => {
       insReq.input('VendorProfileID', sql.Int, parseInt(id));
       insReq.input('QuestionID', sql.Int, parseInt(a.questionId));
       insReq.input('Answer', sql.NVarChar(sql.MAX), a.answer);
-      await insReq.query(`
-        INSERT INTO VendorCategoryAnswers (VendorProfileID, QuestionID, Answer, CreatedAt, UpdatedAt)
-        VALUES (@VendorProfileID, @QuestionID, @Answer, GETDATE(), GETDATE())
-      `);
+      await insReq.execute('sp_VendorDashboard_InsertCategoryAnswer');
     }
 
     res.json({ success: true, message: 'Category answers saved' });
@@ -1016,9 +850,7 @@ router.get('/:id/team', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.query(`
-      SELECT TeamID, Name, Role, Bio, ImageURL, DisplayOrder FROM VendorTeam WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetTeam');
     res.json({ success: true, team: result.recordset });
   } catch (err) {
     console.error('Get team error:', err);
@@ -1034,7 +866,7 @@ router.post('/:id/team/upsert', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    await request.query(`DELETE FROM VendorTeam WHERE VendorProfileID = @VendorProfileID`);
+    await request.execute('sp_VendorDashboard_DeleteTeam');
     if (Array.isArray(teamMembers)) {
       for (let i = 0; i < teamMembers.length; i++) {
         const t = teamMembers[i];
@@ -1046,10 +878,7 @@ router.post('/:id/team/upsert', async (req, res) => {
         tReq.input('Bio', sql.NVarChar, t.bio || null);
         tReq.input('ImageURL', sql.NVarChar, t.imageUrl || null);
         tReq.input('DisplayOrder', sql.Int, i);
-        await tReq.query(`
-          INSERT INTO VendorTeam (VendorProfileID, Name, Role, Bio, ImageURL, DisplayOrder)
-          VALUES (@VendorProfileID, @Name, @Role, @Bio, @ImageURL, @DisplayOrder)
-        `);
+        await tReq.execute('sp_VendorDashboard_InsertTeamMember');
       }
     }
     res.json({ success: true, message: 'Team saved' });
@@ -1066,20 +895,11 @@ router.get('/:id/location', async (req, res) => {
     const pool = await poolPromise;
     const pReq = new sql.Request(pool);
     pReq.input('VendorProfileID', sql.Int, parseInt(id));
-    const profileResult = await pReq.query(`
-      SELECT Address, City, State, Country, PostalCode, Latitude, Longitude
-      FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
-    `);
+    const profileResult = await pReq.execute('sp_VendorDashboard_GetLocation');
     if (profileResult.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
     const aReq = new sql.Request(pool);
     aReq.input('VendorProfileID', sql.Int, parseInt(id));
-    const areas = await aReq.query(`
-      SELECT VendorServiceAreaID, GooglePlaceID, CityName, [State/Province] AS StateProvince, Country,
-             Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, PostalCode,
-             TravelCost, MinimumBookingAmount, BoundsNortheastLat, BoundsNortheastLng,
-             BoundsSouthwestLat, BoundsSouthwestLng, IsActive
-      FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID ORDER BY VendorServiceAreaID
-    `);
+    const areas = { recordset: profileResult.recordsets[1] || [] };
     res.json({ success: true, location: profileResult.recordset[0], serviceAreas: areas.recordset });
   } catch (err) {
     console.error('Get location error:', err);
@@ -1102,17 +922,13 @@ router.post('/:id/location', async (req, res) => {
     uReq.input('PostalCode', sql.NVarChar(20), postalCode || null);
     uReq.input('Latitude', sql.Decimal(10, 8), latitude != null ? Number(latitude) : null);
     uReq.input('Longitude', sql.Decimal(11, 8), longitude != null ? Number(longitude) : null);
-    await uReq.query(`
-      UPDATE VendorProfiles SET Address=@Address, City=@City, State=@State, Country=@Country, PostalCode=@PostalCode,
-        Latitude=@Latitude, Longitude=@Longitude, UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await uReq.execute('sp_VendorDashboard_UpdateLocation');
 
     // Replace service areas if provided
     if (Array.isArray(serviceAreas)) {
       const dReq = new sql.Request(pool);
       dReq.input('VendorProfileID', sql.Int, parseInt(id));
-      await dReq.query(`DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID`);
+      await dReq.execute('sp_VendorDashboard_DeleteServiceAreas');
       for (const area of serviceAreas) {
         const aReq = new sql.Request(pool);
         aReq.input('VendorProfileID', sql.Int, parseInt(id));
@@ -1132,19 +948,7 @@ router.post('/:id/location', async (req, res) => {
         aReq.input('BoundsNortheastLng', sql.Decimal(9, 6), area.bounds?.northeast?.lng != null ? Number(area.bounds.northeast.lng) : null);
         aReq.input('BoundsSouthwestLat', sql.Decimal(9, 6), area.bounds?.southwest?.lat != null ? Number(area.bounds.southwest.lat) : null);
         aReq.input('BoundsSouthwestLng', sql.Decimal(9, 6), area.bounds?.southwest?.lng != null ? Number(area.bounds.southwest.lng) : null);
-        await aReq.query(`
-          INSERT INTO VendorServiceAreas (
-            VendorProfileID, GooglePlaceID, CityName, [State/Province], Country,
-            Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, PostalCode,
-            TravelCost, MinimumBookingAmount, BoundsNortheastLat, BoundsNortheastLng,
-            BoundsSouthwestLat, BoundsSouthwestLng, IsActive, CreatedDate, LastModifiedDate
-          ) VALUES (
-            @VendorProfileID, @GooglePlaceID, @CityName, @StateProvince, @Country,
-            @Latitude, @Longitude, @ServiceRadius, @FormattedAddress, @PlaceType, @PostalCode,
-            @TravelCost, @MinimumBookingAmount, @BoundsNortheastLat, @BoundsNortheastLng,
-            @BoundsSouthwestLat, @BoundsSouthwestLng, 1, GETDATE(), GETDATE()
-          )
-        `);
+        await aReq.execute('sp_VendorDashboard_InsertServiceArea');
       }
     }
 
@@ -1162,10 +966,7 @@ router.get('/:id/packages', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.query(`
-      SELECT PackageID, Name, Description, Price, DurationMinutes, MaxGuests, WhatsIncluded
-      FROM Packages WHERE VendorProfileID = @VendorProfileID ORDER BY PackageID
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetPackages');
     res.json({ success: true, packages: result.recordset });
   } catch (err) {
     console.error('Get packages error:', err);
@@ -1189,11 +990,7 @@ router.post('/:id/packages/upsert', async (req, res) => {
       uReq.input('DurationMinutes', sql.Int, durationMinutes != null ? parseInt(durationMinutes) : null);
       uReq.input('MaxGuests', sql.Int, maxGuests != null ? parseInt(maxGuests) : null);
       uReq.input('WhatsIncluded', sql.NVarChar, whatsIncluded || null);
-      await uReq.query(`
-        UPDATE Packages SET Name=@Name, Description=@Description, Price=@Price, DurationMinutes=@DurationMinutes,
-          MaxGuests=@MaxGuests, WhatsIncluded=@WhatsIncluded
-        WHERE PackageID=@PackageID AND VendorProfileID=@VendorProfileID
-      `);
+      await uReq.execute('sp_VendorDashboard_UpdatePackage');
       res.json({ success: true, packageId: parseInt(packageId), message: 'Package updated' });
     } else {
       const iReq = new sql.Request(pool);
@@ -1204,11 +1001,7 @@ router.post('/:id/packages/upsert', async (req, res) => {
       iReq.input('DurationMinutes', sql.Int, durationMinutes != null ? parseInt(durationMinutes) : null);
       iReq.input('MaxGuests', sql.Int, maxGuests != null ? parseInt(maxGuests) : null);
       iReq.input('WhatsIncluded', sql.NVarChar, whatsIncluded || null);
-      const result = await iReq.query(`
-        INSERT INTO Packages (VendorProfileID, Name, Description, Price, DurationMinutes, MaxGuests, WhatsIncluded)
-        OUTPUT INSERTED.PackageID
-        VALUES (@VendorProfileID, @Name, @Description, @Price, @DurationMinutes, @MaxGuests, @WhatsIncluded)
-      `);
+      const result = await iReq.execute('sp_VendorDashboard_InsertPackage');
       res.json({ success: true, packageId: result.recordset[0].PackageID, message: 'Package created' });
     }
   } catch (err) {
@@ -1225,7 +1018,7 @@ router.delete('/:id/packages/:packageId', async (req, res) => {
     const dReq = new sql.Request(pool);
     dReq.input('VendorProfileID', sql.Int, parseInt(id));
     dReq.input('PackageID', sql.Int, parseInt(packageId));
-    await dReq.query(`DELETE FROM Packages WHERE PackageID = @PackageID AND VendorProfileID = @VendorProfileID`);
+    await dReq.execute('sp_VendorDashboard_DeletePackage');
     res.json({ success: true, message: 'Package deleted' });
   } catch (err) {
     console.error('Delete package error:', err);
@@ -1240,13 +1033,7 @@ router.get('/:id/category-answers', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.query(`
-      SELECT ca.AnswerID, ca.QuestionID, cq.QuestionText, cq.Category, ca.Answer
-      FROM VendorCategoryAnswers ca
-      JOIN CategoryQuestions cq ON ca.QuestionID = cq.QuestionID
-      WHERE ca.VendorProfileID = @VendorProfileID
-      ORDER BY ca.AnswerID
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetCategoryAnswers');
     res.json({ success: true, answers: result.recordset });
   } catch (err) {
     console.error('Get category answers error:', err);
@@ -1262,7 +1049,7 @@ router.post('/:id/category-answers/upsert', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    await request.query(`DELETE FROM VendorCategoryAnswers WHERE VendorProfileID = @VendorProfileID`);
+    await request.execute('sp_VendorDashboard_DeleteCategoryAnswers');
     if (Array.isArray(answers)) {
       for (const a of answers) {
         if (!a?.questionId) continue;
@@ -1270,10 +1057,7 @@ router.post('/:id/category-answers/upsert', async (req, res) => {
         aReq.input('VendorProfileID', sql.Int, parseInt(id));
         aReq.input('QuestionID', sql.Int, parseInt(a.questionId));
         aReq.input('Answer', sql.NVarChar(sql.MAX), a.answer || null);
-        await aReq.query(`
-          INSERT INTO VendorCategoryAnswers (VendorProfileID, QuestionID, Answer, CreatedAt, UpdatedAt)
-          VALUES (@VendorProfileID, @QuestionID, @Answer, GETDATE(), GETDATE())
-        `);
+        await aReq.execute('sp_VendorDashboard_InsertCategoryAnswer');
       }
     }
     res.json({ success: true, message: 'Category answers saved' });
@@ -1290,10 +1074,7 @@ router.get('/:id/popular-filters', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, parseInt(id));
-    const result = await request.query(`
-      SELECT IsPremium, IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured, IsLocal, IsMobile
-      FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetPopularFilters');
     if (result.recordset.length === 0) return res.status(404).json({ success: false, message: 'Vendor not found' });
     res.json({ success: true, filters: result.recordset[0] });
   } catch (err) {
@@ -1318,19 +1099,7 @@ router.post('/:id/popular-filters', async (req, res) => {
     request.input('IsInsured', sql.Bit, !!isInsured);
     request.input('IsLocal', sql.Bit, !!isLocal);
     request.input('IsMobile', sql.Bit, !!isMobile);
-    await request.query(`
-      UPDATE VendorProfiles SET 
-        IsPremium = @IsPremium,
-        IsEcoFriendly = @IsEcoFriendly,
-        IsAwardWinning = @IsAwardWinning,
-        IsLastMinute = @IsLastMinute,
-        IsCertified = @IsCertified,
-        IsInsured = @IsInsured,
-        IsLocal = @IsLocal,
-        IsMobile = @IsMobile,
-        UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await request.execute('sp_VendorDashboard_UpdatePopularFilters');
     res.json({ success: true, message: 'Popular filters saved' });
   } catch (err) {
     console.error('Save popular filters error:', err);
@@ -1484,20 +1253,7 @@ router.get('/:id/portfolio/albums/public', async (req, res) => {
     request.input('VendorProfileID', sql.Int, parseInt(id));
     
     // Get only public albums
-    const result = await request.query(`
-      SELECT 
-        pa.AlbumID,
-        pa.AlbumName,
-        pa.AlbumDescription,
-        pa.CoverImageURL,
-        pa.DisplayOrder,
-        pa.CreatedAt,
-        (SELECT COUNT(*) FROM VendorPortfolioImages WHERE AlbumID = pa.AlbumID) as ImageCount
-      FROM VendorPortfolioAlbums pa
-      WHERE pa.VendorProfileID = @VendorProfileID 
-        AND pa.IsPublic = 1
-      ORDER BY pa.DisplayOrder, pa.CreatedAt DESC
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetPublicAlbums');
     
     res.json({ success: true, albums: result.recordset });
   } catch (err) {
@@ -1516,10 +1272,7 @@ router.get('/:id/portfolio/albums/:albumId/images/public', async (req, res) => {
     request.input('AlbumID', sql.Int, parseInt(albumId));
     
     // Verify album is public and belongs to vendor
-    const albumCheck = await request.query(`
-      SELECT IsPublic FROM VendorPortfolioAlbums 
-      WHERE AlbumID = @AlbumID AND VendorProfileID = @VendorProfileID
-    `);
+    const albumCheck = await request.execute('sp_VendorDashboard_CheckAlbumPublic');
     
     if (albumCheck.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'Album not found' });
@@ -1530,17 +1283,7 @@ router.get('/:id/portfolio/albums/:albumId/images/public', async (req, res) => {
     }
     
     // Get images
-    const result = await request.query(`
-      SELECT 
-        PortfolioImageID,
-        ImageURL,
-        Caption,
-        DisplayOrder,
-        CreatedAt
-      FROM VendorPortfolioImages
-      WHERE AlbumID = @AlbumID
-      ORDER BY DisplayOrder, CreatedAt
-    `);
+    const result = await request.execute('sp_VendorDashboard_GetPublicAlbumImages');
     
     res.json({ success: true, images: result.recordset });
   } catch (err) {

@@ -31,21 +31,24 @@ const handleSocketIO = (io) => {
         const savedMessage = result.recordset[0];
         
         // Get conversation details to find recipient
-        const conversationResult = await pool.request()
-          .input('ConversationID', sql.Int, messageData.conversationId)
-          .query('SELECT UserID, VendorProfileID FROM Conversations WHERE ConversationID = @ConversationID');
+        const conversationRequest = pool.request();
+        conversationRequest.input('ConversationID', sql.Int, messageData.conversationId);
+        const conversationResult = await conversationRequest.execute('sp_Messages_GetConversationDetails');
         
         if (conversationResult.recordset.length === 0) {
           throw new Error('Conversation not found');
         }
         
         const conversation = conversationResult.recordset[0];
-        const recipientId = socket.userId === conversation.UserID 
-          ? (await pool.request()
-              .input('VendorProfileID', sql.Int, conversation.VendorProfileID)
-              .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID'))
-              .recordset[0].UserID
-          : conversation.UserID;
+        let recipientId;
+        if (socket.userId === conversation.UserID) {
+          const vendorRequest = pool.request();
+          vendorRequest.input('VendorProfileID', sql.Int, conversation.VendorProfileID);
+          const vendorResult = await vendorRequest.execute('sp_Messages_GetVendorUserID');
+          recipientId = vendorResult.recordset[0].UserID;
+        } else {
+          recipientId = conversation.UserID;
+        }
         
         // Format message data for frontend
         const messageForFrontend = {
@@ -135,60 +138,11 @@ router.get('/conversations/user/:userId', async (req, res) => {
 
     const pool = await poolPromise;
     
-    // First, check if this user is a vendor
-    const vendorCheck = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .query(`SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID`);
+    // Get user conversations using stored procedure
+    const request = pool.request();
+    request.input('UserID', sql.Int, userId);
     
-    const userVendorProfileId = vendorCheck.recordset[0]?.VendorProfileID || null;
-    console.log('📨 User vendor profile ID:', userVendorProfileId);
-    
-    const result = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .input('UserVendorProfileID', sql.Int, userVendorProfileId)
-      .query(`
-        SELECT 
-          c.ConversationID,
-          c.VendorProfileID,
-          c.CreatedAt,
-          c.UserID AS ConversationUserID,
-          CASE 
-            WHEN c.UserID = @UserID THEN v.BusinessName 
-            ELSE u.Name 
-          END AS OtherPartyName,
-          CASE 
-            WHEN c.UserID = @UserID THEN 'vendor'
-            ELSE 'user'
-          END AS OtherPartyType,
-          CASE 
-            WHEN c.UserID = @UserID THEN v.LogoURL
-            ELSE u.ProfileImageURL
-          END AS OtherPartyAvatar,
-          CASE 
-            WHEN c.UserID = @UserID THEN 1
-            ELSE 0
-          END AS IsClientRole,
-          CASE 
-            WHEN v.UserID = @UserID THEN 1
-            ELSE 0
-          END AS IsVendorRole,
-          m.Content AS LastMessageContent,
-          m.CreatedAt AS LastMessageCreatedAt,
-          (SELECT COUNT(*) FROM Messages WHERE ConversationID = c.ConversationID AND IsRead = 0 AND SenderID != @UserID) AS UnreadCount
-        FROM Conversations c
-        LEFT JOIN Users u ON c.UserID = u.UserID
-        LEFT JOIN VendorProfiles v ON c.VendorProfileID = v.VendorProfileID
-        LEFT JOIN Messages m ON c.ConversationID = m.ConversationID
-          AND m.MessageID = (
-            SELECT TOP 1 MessageID 
-            FROM Messages 
-            WHERE ConversationID = c.ConversationID 
-            ORDER BY CreatedAt DESC
-          )
-        WHERE c.UserID = @UserID OR (v.UserID = @UserID AND @UserVendorProfileID IS NOT NULL)
-        GROUP BY c.ConversationID, c.VendorProfileID, c.CreatedAt, c.UserID, u.Name, v.BusinessName, m.Content, m.CreatedAt, v.LogoURL, u.ProfileImageURL, v.UserID
-        ORDER BY COALESCE(m.CreatedAt, c.CreatedAt) DESC
-      `);
+    const result = await request.execute('sp_Messages_GetUserConversations');
     
     console.log('📨 Found conversations:', result.recordset.length);
 
@@ -231,15 +185,10 @@ router.post('/conversation/check', async (req, res) => {
         const { userId, vendorProfileId } = req.body;
 
         const pool = await poolPromise;
-        const result = await pool.request()
-            .input('UserID', sql.Int, userId)
-            .input('VendorProfileID', sql.Int, vendorProfileId)
-            .query(`
-                SELECT TOP 1 ConversationID 
-                FROM Conversations 
-                WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
-                ORDER BY CreatedAt DESC
-            `);
+        const checkRequest = pool.request();
+        checkRequest.input('UserID', sql.Int, userId);
+        checkRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        const result = await checkRequest.execute('sp_Messages_CheckExistingConversation');
 
         console.log('Conversation check result:', result.recordset); // Debug log
 
@@ -288,15 +237,10 @@ router.post('/conversation', async (req, res) => {
     request.input('Subject', sql.NVarChar(255), requestId ? 'Booking Request Discussion' : 'New Conversation');
     
     // Check if a conversation already exists for this user/vendor pair
-    const existingConv = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query(`
-        SELECT TOP 1 ConversationID 
-        FROM Conversations 
-        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
-        ORDER BY CreatedAt DESC
-      `);
+    const existingRequest = pool.request();
+    existingRequest.input('UserID', sql.Int, userId);
+    existingRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const existingConv = await existingRequest.execute('sp_Messages_CheckExistingConversation');
 
     if (existingConv.recordset.length > 0) {
       return res.json({ 
@@ -319,9 +263,9 @@ router.post('/conversation', async (req, res) => {
       
       if (messageResult.recordset[0]) {
         // Get vendor user ID
-        const vendorUser = await pool.request()
-          .input('VendorProfileID', sql.Int, vendorProfileId)
-          .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+        const vendorUserRequest = pool.request();
+        vendorUserRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        const vendorUser = await vendorUserRequest.execute('sp_Messages_GetVendorUserID');
         
         if (vendorUser.recordset.length > 0) {
           // Emit to vendor
@@ -373,18 +317,21 @@ router.post('/', async (req, res) => {
       const io = req.app.get('io');
       
       // Get conversation details to find recipient
-      const conversationResult = await pool.request()
-        .input('ConversationID', sql.Int, conversationId)
-        .query('SELECT UserID, VendorProfileID FROM Conversations WHERE ConversationID = @ConversationID');
+      const convRequest = pool.request();
+      convRequest.input('ConversationID', sql.Int, conversationId);
+      const conversationResult = await convRequest.execute('sp_Messages_GetConversationDetails');
       
       if (conversationResult.recordset.length > 0) {
         const conversation = conversationResult.recordset[0];
-        const recipientId = senderId === conversation.UserID 
-          ? (await pool.request()
-              .input('VendorProfileID', sql.Int, conversation.VendorProfileID)
-              .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID'))
-              .recordset[0].UserID
-          : conversation.UserID;
+        let recipientId;
+        if (senderId === conversation.UserID) {
+          const vendorReq = pool.request();
+          vendorReq.input('VendorProfileID', sql.Int, conversation.VendorProfileID);
+          const vendorRes = await vendorReq.execute('sp_Messages_GetVendorUserID');
+          recipientId = vendorRes.recordset[0].UserID;
+        } else {
+          recipientId = conversation.UserID;
+        }
         
         // Emit to recipient
         io.to(`user_${recipientId}`).emit('new-message', result.recordset[0]);
@@ -421,17 +368,10 @@ router.get('/unread-count/:userId', async (req, res) => {
     }
 
     const pool = await poolPromise;
-    const result = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .query(`
-        SELECT COUNT(*) AS UnreadCount
-        FROM Messages m
-        JOIN Conversations c ON m.ConversationID = c.ConversationID
-        LEFT JOIN VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID
-        WHERE m.IsRead = 0 
-        AND m.SenderID != @UserID
-        AND (c.UserID = @UserID OR vp.UserID = @UserID)
-      `);
+    const request = pool.request();
+    request.input('UserID', sql.Int, userId);
+    
+    const result = await request.execute('sp_Messages_GetUnreadCount');
 
     const unreadCount = result.recordset[0]?.UnreadCount || 0;
 
@@ -465,15 +405,10 @@ router.post('/conversations', async (req, res) => {
     const pool = await poolPromise;
     
     // Check if conversation already exists
-    const existingResult = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query(`
-        SELECT TOP 1 ConversationID 
-        FROM Conversations 
-        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
-        ORDER BY CreatedAt DESC
-      `);
+    const checkRequest = pool.request();
+    checkRequest.input('UserID', sql.Int, userId);
+    checkRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const existingResult = await checkRequest.execute('sp_Messages_CheckExistingConversation');
     
     if (existingResult.recordset.length > 0) {
       return res.json({
@@ -484,15 +419,11 @@ router.post('/conversations', async (req, res) => {
     }
     
     // Create new conversation
-    const createResult = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .input('Subject', sql.NVarChar(255), subject || 'New Inquiry')
-      .query(`
-        INSERT INTO Conversations (UserID, VendorProfileID, Subject, CreatedAt, UpdatedAt)
-        OUTPUT INSERTED.ConversationID
-        VALUES (@UserID, @VendorProfileID, @Subject, GETDATE(), GETDATE())
-      `);
+    const createRequest = pool.request();
+    createRequest.input('UserID', sql.Int, userId);
+    createRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    createRequest.input('Subject', sql.NVarChar(255), subject || 'New Inquiry');
+    const createResult = await createRequest.execute('sp_Messages_CreateConversationDirect');
     
     const conversationId = createResult.recordset[0]?.ConversationID;
 
@@ -527,14 +458,9 @@ router.post('/conversations/support', async (req, res) => {
     const pool = await poolPromise;
     
     // Check if user already has a support conversation
-    const existingResult = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .query(`
-        SELECT TOP 1 ConversationID 
-        FROM Conversations 
-        WHERE UserID = @UserID AND ConversationType = 'support'
-        ORDER BY CreatedAt DESC
-      `);
+    const checkRequest = pool.request();
+    checkRequest.input('UserID', sql.Int, userId);
+    const existingResult = await checkRequest.execute('sp_Messages_CheckSupportConversation');
     
     if (existingResult.recordset.length > 0) {
       return res.json({
@@ -544,32 +470,13 @@ router.post('/conversations/support', async (req, res) => {
       });
     }
     
-    // Create new support conversation
-    // Use a system/admin vendor profile for support (VendorProfileID = 1 or create one)
-    const createResult = await pool.request()
-      .input('UserID', sql.Int, userId)
-      .input('VendorProfileID', sql.Int, 1) // System support vendor
-      .input('Subject', sql.NVarChar(255), subject || 'Support Request')
-      .input('ConversationType', sql.NVarChar(50), 'support')
-      .query(`
-        INSERT INTO Conversations (UserID, VendorProfileID, Subject, ConversationType, CreatedAt, UpdatedAt)
-        OUTPUT INSERTED.ConversationID
-        VALUES (@UserID, @VendorProfileID, @Subject, @ConversationType, GETDATE(), GETDATE())
-      `);
+    // Create new support conversation with welcome message
+    const createRequest = pool.request();
+    createRequest.input('UserID', sql.Int, userId);
+    createRequest.input('Subject', sql.NVarChar(255), subject || 'Support Request');
+    const createResult = await createRequest.execute('sp_Messages_CreateSupportConversation');
     
     const conversationId = createResult.recordset[0]?.ConversationID;
-    
-    // Add initial welcome message from support
-    if (conversationId) {
-      await pool.request()
-        .input('ConversationID', sql.Int, conversationId)
-        .input('SenderID', sql.Int, 1) // System user
-        .input('Content', sql.NVarChar(sql.MAX), 'Hello! Welcome to VenueVue Support. How can we help you today?')
-        .query(`
-          INSERT INTO Messages (ConversationID, SenderID, Content, IsRead, CreatedAt)
-          VALUES (@ConversationID, @SenderID, @Content, 0, GETDATE())
-        `);
-    }
 
     res.json({
       success: true,

@@ -305,12 +305,7 @@ router.get('/vendor/:vendorId/view-count', async (req, res) => {
         const result = await pool.request()
             .input('VendorProfileID', sql.Int, vendorId)
             .input('DaysBack', sql.Int, parseInt(daysBack))
-            .query(`
-                SELECT COUNT(*) AS ViewCount
-                FROM VendorProfileViews
-                WHERE VendorProfileID = @VendorProfileID
-                  AND ViewedAt >= DATEADD(DAY, -@DaysBack, GETUTCDATE())
-            `);
+            .execute('sp_Analytics_GetVendorViewCount');
 
         res.json({
             success: true,

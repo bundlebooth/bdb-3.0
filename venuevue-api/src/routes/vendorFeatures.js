@@ -66,37 +66,11 @@ router.get('/all-grouped', async (req, res) => {
       result = await pool.request()
         .execute('sp_GetAllVendorFeaturesGrouped');
     } catch (spError) {
-      // Stored procedure doesn't exist, try direct query
-      console.log('[vendor-features] sp_GetAllVendorFeaturesGrouped not found, trying direct query');
-      try {
-        result = await pool.request().query(`
-          SELECT 
-            c.CategoryID,
-            c.CategoryName,
-            c.CategoryName AS CategoryKey,
-            c.CategoryDescription,
-            c.CategoryIcon,
-            c.ApplicableVendorCategories,
-            c.DisplayOrder AS CategoryOrder,
-            f.FeatureID,
-            f.FeatureName,
-            f.FeatureName AS FeatureKey,
-            f.FeatureDescription,
-            f.FeatureIcon,
-            f.DisplayOrder AS FeatureOrder
-          FROM VendorFeatureCategories c
-          LEFT JOIN VendorFeatures f ON c.CategoryID = f.CategoryID AND f.IsActive = 1
-          WHERE c.IsActive = 1
-          ORDER BY c.DisplayOrder, c.CategoryName, f.DisplayOrder, f.FeatureName
-        `);
-      } catch (tableError) {
-        // Tables don't exist, return empty categories
-        console.log('[vendor-features] VendorFeatureCategories table not found, returning empty');
-        return res.json({
-          success: true,
-          categories: []
-        });
-      }
+      console.error('sp_GetAllVendorFeaturesGrouped failed:', spError.message);
+      return res.json({
+        success: true,
+        categories: []
+      });
     }
     
     // Group the results by category
@@ -160,56 +134,14 @@ router.get('/vendor/:vendorProfileId', async (req, res) => {
     try {
       result = await pool.request()
         .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-        .execute('sp_GetVendorSelectedFeatures');
+        .execute('sp_Vendor_GetSelectedFeatures');
     } catch (spError) {
-      // Stored procedure doesn't exist, try direct query
-      console.log('[vendor-features] sp_GetVendorSelectedFeatures not found, trying direct query');
-      try {
-        // First try with JOINs for full feature details
-        result = await pool.request()
-          .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-          .query(`
-            SELECT 
-              vsf.VendorFeatureSelectionID,
-              vsf.VendorProfileID,
-              vsf.FeatureID,
-              f.FeatureName,
-              f.FeatureName AS FeatureKey,
-              f.FeatureDescription,
-              f.FeatureIcon,
-              c.CategoryID,
-              c.CategoryName,
-              c.CategoryName AS CategoryKey,
-              c.CategoryIcon,
-              COALESCE(vsf.CreatedAt, vsf.SelectedAt, GETDATE()) AS SelectedAt
-            FROM VendorSelectedFeatures vsf
-            LEFT JOIN VendorFeatures f ON vsf.FeatureID = f.FeatureID
-            LEFT JOIN VendorFeatureCategories c ON f.CategoryID = c.CategoryID
-            WHERE vsf.VendorProfileID = @VendorProfileID
-              AND (f.IsActive = 1 OR f.IsActive IS NULL)
-            ORDER BY COALESCE(c.DisplayOrder, 999), COALESCE(f.DisplayOrder, 999)
-          `);
-        console.log('[vendor-features] Query returned', result.recordset?.length || 0, 'features');
-      } catch (tableError) {
-        // Tables don't exist or query failed, try simpler query
-        console.log('[vendor-features] Complex query failed, trying simple query:', tableError.message);
-        try {
-          result = await pool.request()
-            .input('VendorProfileID', sql.Int, parseInt(vendorProfileId))
-            .query(`
-              SELECT FeatureID FROM VendorSelectedFeatures 
-              WHERE VendorProfileID = @VendorProfileID
-            `);
-          console.log('[vendor-features] Simple query returned', result.recordset?.length || 0, 'features');
-        } catch (simpleError) {
-          console.log('[vendor-features] VendorSelectedFeatures table not found, returning empty');
-          return res.json({
-            success: true,
-            selectedFeatures: [],
-            groupedByCategory: []
-          });
-        }
-      }
+      console.error('sp_Vendor_GetSelectedFeatures failed:', spError.message);
+      return res.json({
+        success: true,
+        selectedFeatures: [],
+        groupedByCategory: []
+      });
     }
     
     // Group by category

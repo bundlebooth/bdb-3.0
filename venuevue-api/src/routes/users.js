@@ -123,9 +123,7 @@ router.post('/register', async (req, res) => {
     const pool = await poolPromise;
     const checkRequest = pool.request();
     checkRequest.input('Email', sql.NVarChar(100), email);
-    const emailCheck = await checkRequest.query(
-      'SELECT 1 FROM Users WHERE Email = @Email'
-    );
+    const emailCheck = await checkRequest.execute('sp_User_CheckEmailExists');
 
     if (emailCheck.recordset.length > 0) {
       return res.status(409).json({
@@ -159,10 +157,7 @@ router.post('/register', async (req, res) => {
         .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
         .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
         .input('details', sql.NVarChar, isVendorFlag ? 'Vendor account created' : 'Client account created')
-        .query(`
-          INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Details)
-          VALUES (@userId, @email, @action, @status, @ipAddress, @userAgent, @details)
-        `);
+        .execute('sp_User_InsertSecurityLog');
     } catch (logErr) { console.error('Failed to log security event:', logErr.message); }
 
     // Generate JWT token
@@ -224,20 +219,7 @@ router.post('/login', async (req, res) => {
     const request = pool.request();
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
 
-    const result = await request.query(`
-      SELECT 
-        u.UserID, 
-        u.Name, 
-        u.Email, 
-        u.PasswordHash, 
-        u.IsVendor,
-        u.IsAdmin,
-        u.IsActive,
-        v.VendorProfileID
-      FROM Users u
-      LEFT JOIN VendorProfiles v ON u.UserID = v.UserID
-      WHERE u.Email = @Email
-    `);
+    const result = await request.execute('sp_User_GetLoginInfo');
     
     if (result.recordset.length === 0) {
       return res.status(401).json({
@@ -269,10 +251,7 @@ router.post('/login', async (req, res) => {
           .input('ipAddress', sql.NVarChar, req.ip || req.headers['x-forwarded-for'] || 'Unknown')
           .input('userAgent', sql.NVarChar, req.headers['user-agent'] || 'Unknown')
           .input('details', sql.NVarChar, 'Invalid password')
-          .query(`
-            INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Details)
-            VALUES (@userId, @email, @action, @status, @ipAddress, @userAgent, @details)
-          `);
+          .execute('sp_User_InsertSecurityLog');
       } catch (logErr) { console.error('Failed to log security event:', logErr.message); }
       
       return res.status(401).json({
@@ -297,10 +276,7 @@ router.post('/login', async (req, res) => {
       console.log('🔐 SecuritySettings table exists:', tableCheck.recordset[0].cnt > 0);
       
       if (tableCheck.recordset[0].cnt > 0) {
-        const settingsResult = await pool.request().query(`
-          SELECT SettingKey, SettingValue FROM SecuritySettings 
-          WHERE SettingKey IN ('require_2fa_admins', 'require_2fa_vendors')
-        `);
+        const settingsResult = await pool.request().execute('sp_User_GetSecuritySettings');
         
         console.log('🔐 Raw settings from DB:', settingsResult.recordset);
         
@@ -345,10 +321,7 @@ router.post('/login', async (req, res) => {
         .input('CodeHash', sql.NVarChar(255), codeHash)
         .input('Purpose', sql.NVarChar(50), 'login')
         .input('ExpiresAt', sql.DateTime, expiresAt)
-        .query(`
-          INSERT INTO UserTwoFactorCodes (UserID, CodeHash, Purpose, ExpiresAt)
-          VALUES (@UserID, @CodeHash, @Purpose, @ExpiresAt)
-        `);
+        .execute('sp_User_Insert2FACode');
       try { await sendTwoFactorCode(user.Email, raw); } catch (e) { console.error('2FA email error:', e.message); }
       const tempToken = jwt.sign(
         { id: user.UserID, email: user.Email, purpose: 'login_2fa' },
@@ -383,10 +356,7 @@ router.post('/login', async (req, res) => {
         .input('userAgent', sql.NVarChar, userAgent)
         .input('device', sql.NVarChar, device)
         .input('details', sql.NVarChar, user.IsAdmin ? 'Admin login' : (user.IsVendor ? 'Vendor login' : 'Client login'))
-        .query(`
-          INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Device, Details)
-          VALUES (@userId, @email, @action, @status, @ipAddress, @userAgent, @device, @details)
-        `);
+        .execute('sp_User_InsertSecurityLog');
       console.log('✅ Security log inserted successfully');
     } catch (logErr) { 
       console.error('❌ Failed to log security event:', logErr.message); 
@@ -397,7 +367,7 @@ router.post('/login', async (req, res) => {
     try {
       await pool.request()
         .input('userId', sql.Int, user.UserID)
-        .query('UPDATE Users SET LastLogin = GETUTCDATE() WHERE UserID = @userId');
+        .execute('sp_User_UpdateLastLogin');
     } catch (updateErr) { console.error('Failed to update LastLogin:', updateErr.message); }
     
     res.json({
@@ -442,12 +412,7 @@ router.post('/login/verify-2fa', async (req, res) => {
     const rec = await pool.request()
       .input('UserID', sql.Int, decoded.id)
       .input('Purpose', sql.NVarChar(50), 'login')
-      .query(`
-        SELECT TOP 1 CodeID, CodeHash, ExpiresAt, Attempts, IsUsed
-        FROM UserTwoFactorCodes
-        WHERE UserID = @UserID AND Purpose = @Purpose AND IsUsed = 0
-        ORDER BY CreatedAt DESC
-      `);
+      .execute('sp_User_Get2FACode');
     if (rec.recordset.length === 0) {
       return res.status(400).json({ success: false, message: 'No verification code found' });
     }
@@ -462,20 +427,15 @@ router.post('/login/verify-2fa', async (req, res) => {
     if (!ok) {
       await pool.request()
         .input('CodeID', sql.Int, row.CodeID)
-        .query('UPDATE UserTwoFactorCodes SET Attempts = Attempts + 1 WHERE CodeID = @CodeID');
+        .execute('sp_User_Increment2FAAttempts');
       return res.status(400).json({ success: false, message: 'Invalid code' });
     }
     await pool.request()
       .input('CodeID', sql.Int, row.CodeID)
-      .query('UPDATE UserTwoFactorCodes SET IsUsed = 1, Attempts = Attempts + 1 WHERE CodeID = @CodeID');
+      .execute('sp_User_Mark2FAUsed');
     const ures = await pool.request()
       .input('UserID', sql.Int, decoded.id)
-      .query(`
-        SELECT u.UserID, u.Name, u.Email, u.IsVendor, u.IsAdmin, v.VendorProfileID
-        FROM Users u
-        LEFT JOIN VendorProfiles v ON u.UserID = v.UserID
-        WHERE u.UserID = @UserID
-      `);
+      .execute('sp_User_GetById');
     if (ures.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -516,7 +476,7 @@ router.post('/login/resend-2fa', async (req, res) => {
       .input('CodeHash', sql.NVarChar(255), codeHash)
       .input('Purpose', sql.NVarChar(50), 'login')
       .input('ExpiresAt', sql.DateTime, expiresAt)
-      .query(`INSERT INTO UserTwoFactorCodes (UserID, CodeHash, Purpose, ExpiresAt) VALUES (@UserID, @CodeHash, @Purpose, @ExpiresAt)`);
+      .execute('sp_User_Insert2FACode');
     try { await sendTwoFactorCode(decoded.email, raw); } catch (e) { console.error('2FA email error:', e.message); }
     res.json({ success: true, message: 'Verification code resent' });
   } catch (err) {
@@ -600,11 +560,7 @@ router.get('/check-email', async (req, res) => {
     const request = pool.request();
     request.input('Email', sql.NVarChar(100), email.toLowerCase().trim());
 
-    const result = await request.query(`
-      SELECT UserID, IsVendor 
-      FROM Users 
-      WHERE Email = @Email
-    `);
+    const result = await request.execute('sp_User_CheckEmail');
 
     if (result.recordset.length > 0) {
       res.json({
@@ -649,16 +605,7 @@ router.get('/me', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, decoded.id);
 
-    const result = await request.query(`
-      SELECT 
-        UserID as userId,
-        Name as name,
-        Email as email,
-        Avatar as avatar,
-        IsVendor as isVendor
-      FROM Users 
-      WHERE UserID = @UserID
-    `);
+    const result = await request.execute('sp_User_GetMe');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -927,11 +874,7 @@ router.get('/:id/notification-preferences', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
 
-    const result = await request.query(`
-      SELECT NotificationPreferences 
-      FROM Users 
-      WHERE UserID = @UserID
-    `);
+    const result = await request.execute('sp_User_GetNotificationPrefs');
 
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -987,11 +930,7 @@ router.put('/:id/notification-preferences', async (req, res) => {
     request.input('UserID', sql.Int, parseInt(id));
     request.input('Preferences', sql.NVarChar(sql.MAX), JSON.stringify(preferences));
 
-    await request.query(`
-      UPDATE Users 
-      SET NotificationPreferences = @Preferences, UpdatedAt = GETDATE()
-      WHERE UserID = @UserID
-    `);
+    await request.execute('sp_User_UpdateNotificationPrefs');
 
     res.json({
       success: true,
@@ -1044,11 +983,7 @@ router.post('/:id/profile-picture', upload.single('profilePicture'), async (req,
     request.input('UserID', sql.Int, parseInt(id));
     request.input('ProfileImageURL', sql.NVarChar(255), profilePictureUrl);
 
-    await request.query(`
-      UPDATE Users 
-      SET ProfileImageURL = @ProfileImageURL, UpdatedAt = GETDATE()
-      WHERE UserID = @UserID
-    `);
+    await request.execute('sp_User_UpdateProfileImage');
 
     res.json({
       success: true,
@@ -1083,19 +1018,7 @@ router.get('/:id', async (req, res) => {
     const request = pool.request();
     request.input('UserID', sql.Int, parseInt(id));
 
-    const result = await request.query(`
-      SELECT 
-        UserID,
-        Name,
-        Email,
-        Phone,
-        ProfileImageURL,
-        IsVendor,
-        IsActive,
-        CreatedAt
-      FROM Users 
-      WHERE UserID = @UserID
-    `);
+    const result = await request.execute('sp_User_GetProfile');
 
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -1147,9 +1070,7 @@ router.put('/:id', async (req, res) => {
     if (newPassword && currentPassword) {
       const checkRequest = pool.request();
       checkRequest.input('UserID', sql.Int, parseInt(id));
-      const userResult = await checkRequest.query(`
-        SELECT PasswordHash FROM Users WHERE UserID = @UserID
-      `);
+      const userResult = await checkRequest.execute('sp_User_GetPasswordHash');
 
       if (userResult.recordset.length === 0) {
         return res.status(404).json({
@@ -1173,9 +1094,7 @@ router.put('/:id', async (req, res) => {
       const passwordRequest = pool.request();
       passwordRequest.input('UserID', sql.Int, parseInt(id));
       passwordRequest.input('PasswordHash', sql.NVarChar(255), passwordHash);
-      await passwordRequest.query(`
-        UPDATE Users SET PasswordHash = @PasswordHash WHERE UserID = @UserID
-      `);
+      await passwordRequest.execute('sp_User_UpdatePassword');
     }
 
     // Update user profile
@@ -1184,11 +1103,7 @@ router.put('/:id', async (req, res) => {
     request.input('Name', sql.NVarChar(100), `${firstName || ''} ${lastName || ''}`.trim());
     request.input('Phone', sql.NVarChar(20), phone || null);
 
-    await request.query(`
-      UPDATE Users 
-      SET Name = @Name, Phone = @Phone, UpdatedAt = GETDATE()
-      WHERE UserID = @UserID
-    `);
+    await request.execute('sp_User_UpdateProfile');
 
     res.json({
       success: true,

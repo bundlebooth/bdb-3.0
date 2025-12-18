@@ -62,7 +62,7 @@ async function getStripeStatusByVendorProfileId(pool, vendorProfileId) {
   try {
     const req = new sql.Request(pool);
     req.input('VendorProfileID', sql.Int, vendorProfileId);
-    const r = await req.query('SELECT StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+    const r = await req.execute('sp_Vendor_GetStripeAccountId');
     const acct = r.recordset[0]?.StripeAccountID || null;
     if (!acct) return { connected: false, chargesEnabled: false, payoutsEnabled: false, accountId: null };
     if (!isStripeConfigured()) return { connected: true, chargesEnabled: false, payoutsEnabled: false, accountId: acct };
@@ -80,24 +80,12 @@ async function getStripeStatusByVendorProfileId(pool, vendorProfileId) {
 async function computeVendorSetupStatusByVendorProfileId(pool, vendorProfileId) {
   const profReq = new sql.Request(pool);
   profReq.input('VendorProfileID', sql.Int, vendorProfileId);
-  const profRes = await profReq.query(`
-    SELECT VendorProfileID, BusinessName, BusinessEmail, BusinessPhone, Address, LogoURL,
-           PaymentMethods, PaymentTerms, LicenseNumber, InsuranceVerified, IsCompleted, AcceptingBookings
-    FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
+  const profRes = await profReq.execute('sp_Vendor_GetProfileForSetup');
   if (!profRes.recordset.length) return { exists: false, error: 'Vendor profile not found' };
   const p = profRes.recordset[0];
-  const countsRes = await new sql.Request(pool)
-    .input('VendorProfileID', sql.Int, vendorProfileId)
-    .query(`SELECT
-      (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID = @VendorProfileID) AS CategoriesCount,
-      (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = @VendorProfileID) AS ImagesCount,
-      (SELECT COUNT(*) FROM Services s JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID WHERE sc.VendorProfileID=@VendorProfileID AND s.IsActive=1) AS ServicesCount,
-      (SELECT COUNT(*) FROM Packages WHERE VendorProfileID = @VendorProfileID) AS PackageCount,
-      (SELECT COUNT(*) FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID AND (IsActive = 1 OR IsActive IS NULL)) AS FAQCount,
-      (SELECT COUNT(*) FROM VendorCategoryAnswers WHERE VendorProfileID = @VendorProfileID) AS CategoryAnswerCount,
-      (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID) AS SocialCount,
-      (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND IsAvailable = 1) AS HoursCount,
-      (SELECT COUNT(*) FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID AND IsActive = 1) AS ServiceAreaCount`);
+  const countsReq = new sql.Request(pool);
+  countsReq.input('VendorProfileID', sql.Int, vendorProfileId);
+  const countsRes = await countsReq.execute('sp_Vendor_GetSetupCounts');
   const c = countsRes.recordset[0] || {};
   const stripeStatus = await getStripeStatusByVendorProfileId(pool, vendorProfileId);
   const steps = {
@@ -143,45 +131,13 @@ async function markSetupStep(pool, vendorProfileId, stepNumber) {
   }
 }
 
-// Helper function to resolve UserID to VendorProfileID
-async function resolveVendorProfileId(id, pool) {
+// Helper function to parse and validate VendorProfileID
+function parseVendorProfileId(id) {
   const idNum = parseInt(id);
   if (isNaN(idNum) || idNum <= 0) {
-    throw new Error('Invalid ID format. Must be a positive number.');
+    return null;
   }
-
-  // First, try as direct VendorProfileID (prioritize this over UserID lookup)
-  const vendorCheckRequest = new sql.Request(pool);
-  vendorCheckRequest.input('VendorProfileID', sql.Int, idNum);
-  const vendorCheckResult = await vendorCheckRequest.query(`
-    SELECT VendorProfileID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
-  `);
-  
-  if (vendorCheckResult.recordset.length > 0) {
-    return idNum;
-  }
-
-  // If not found as VendorProfileID, try to get VendorProfileID from UserID
-  const userCheckRequest = new sql.Request(pool);
-  userCheckRequest.input('UserID', sql.Int, idNum);
-  const userCheckResult = await userCheckRequest.query(`
-    SELECT 
-      u.UserID,
-      u.IsVendor,
-      vp.VendorProfileID
-    FROM Users u
-    LEFT JOIN VendorProfiles vp ON u.UserID = vp.UserID
-    WHERE u.UserID = @UserID AND u.IsActive = 1
-  `);
-
-  if (userCheckResult.recordset.length > 0) {
-    const user = userCheckResult.recordset[0];
-    if (user.IsVendor && user.VendorProfileID) {
-      return user.VendorProfileID;
-    }
-  }
-
-  return null;
+  return idNum;
 }
 
 // ===== SERVICE IMAGE UPLOAD ROUTES (Must be before parameterized routes) =====
@@ -269,38 +225,24 @@ router.delete('/service-image/:publicId', async (req, res) => {
 router.get('/predefined-services', async (req, res) => {
   try {
     const pool = await poolPromise;
-    // First check if table exists
-    const checkTableRequest = new sql.Request(pool);
-    const tableCheckResult = await checkTableRequest.query(`
-      SELECT COUNT(*) as TableExists 
-      FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_NAME = 'PredefinedServices'
-    `);
     
-    if (tableCheckResult.recordset[0].TableExists === 0) {
+    // Use stored procedure to get predefined services
+    const result = await pool.request().execute('sp_Vendor_GetPredefinedServices');
+    
+    // Check if table exists (first recordset indicates table existence)
+    if (result.recordsets.length > 0 && result.recordsets[0][0]?.TableExists === 0) {
       return res.status(500).json({ 
         success: false, 
         message: 'PredefinedServices table does not exist in database' 
       });
     }
     
-    const request = new sql.Request(pool);
-    
-    const result = await request.query(`
-      SELECT 
-        Category,
-        PredefinedServiceID,
-        ServiceName,
-        ServiceDescription,
-        DefaultDurationMinutes,
-        DisplayOrder
-      FROM PredefinedServices 
-      ORDER BY Category, DisplayOrder, ServiceName
-    `);
+    // Services are in the second recordset
+    const services = result.recordsets.length > 1 ? result.recordsets[1] : result.recordset;
     
     // Group services by category
     const servicesByCategory = {};
-    result.recordset.forEach(service => {
+    services.forEach(service => {
       if (!servicesByCategory[service.Category]) {
         servicesByCategory[service.Category] = [];
       }
@@ -316,7 +258,7 @@ router.get('/predefined-services', async (req, res) => {
     res.json({ 
       success: true, 
       servicesByCategory,
-      totalServices: result.recordset.length
+      totalServices: services.length
     });
   } catch (error) {
     console.error('Error fetching all predefined services:', error);
@@ -336,19 +278,9 @@ router.get('/predefined-services/:category', async (req, res) => {
     const pool = await poolPromise;
     
     const request = new sql.Request(pool);
-    request.input('Category', sql.NVarChar, category);
+    request.input('Category', sql.NVarChar(100), category);
     
-    const result = await request.query(`
-      SELECT 
-        PredefinedServiceID,
-        ServiceName,
-        ServiceDescription,
-        DefaultDurationMinutes,
-        DisplayOrder
-      FROM PredefinedServices 
-      WHERE Category = @Category
-      ORDER BY DisplayOrder, ServiceName
-    `);
+    const result = await request.execute('sp_Vendor_GetPredefinedServicesByCategory');
     
     res.json({ 
       success: true, 
@@ -369,18 +301,7 @@ async function enhanceVendorWithImages(vendor, pool) {
     const imageRequest = new sql.Request(pool);
     imageRequest.input('VendorProfileID', sql.Int, vendor.VendorProfileID || vendor.id);
     
-    const imageResult = await imageRequest.query(`
-      SELECT 
-        ImageID,
-        ImageURL,
-        IsPrimary,
-        DisplayOrder,
-        ImageType,
-        Caption
-      FROM VendorImages 
-      WHERE VendorProfileID = @VendorProfileID 
-      ORDER BY IsPrimary DESC, DisplayOrder ASC
-    `);
+    const imageResult = await imageRequest.execute('sp_Vendor_GetImages');
 
     // Process images with Cloudinary enhancements
     const images = imageResult.recordset.map(img => {
@@ -537,113 +458,8 @@ router.get('/', async (req, res) => {
 
       result = await request.execute('sp_SearchVendors');
     } catch (spError) {
-      console.log('⚠️ Stored procedure failed, using fallback query:', spError.message);
-      
-      // Fallback: Use direct SQL query with correct column names
-      const fallbackRequest = new sql.Request(pool);
-      fallbackRequest.input('City', sql.NVarChar(100), city || null);
-      fallbackRequest.input('Category', sql.NVarChar(50), category || null);
-      fallbackRequest.input('PageNumber', sql.Int, pageNumber ? parseInt(pageNumber) : 1);
-      fallbackRequest.input('PageSize', sql.Int, pageSize ? parseInt(pageSize) : 10);
-      fallbackRequest.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
-      fallbackRequest.input('StartTime', sql.VarChar(8), formattedStartTime);
-      fallbackRequest.input('EndTime', sql.VarChar(8), formattedEndTime);
-      fallbackRequest.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
-      
-      // Convert day name to number for business hours check
-      const dayNumberMap = {
-        'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
-        'Thursday': 4, 'Friday': 5, 'Saturday': 6
-      };
-      const dayNumber = dayOfWeek ? dayNumberMap[dayOfWeek] : null;
-      fallbackRequest.input('DayNumber', sql.TinyInt, dayNumber);
-      
-      let fallbackQuery = `
-        SELECT 
-          v.VendorProfileID AS id,
-          v.VendorProfileID,
-          v.BusinessName AS name,
-          v.DisplayName,
-          (SELECT TOP 1 vc.Category FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS type,
-          CONCAT(v.City, ' ', v.State) AS location,
-          v.BusinessDescription AS description,
-          v.PriceLevel AS priceLevel,
-          (SELECT AVG(CAST(r.Rating AS DECIMAL(3,1))) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS rating,
-          (SELECT COUNT(*) FROM Reviews r WHERE r.VendorProfileID = v.VendorProfileID AND r.IsApproved = 1) AS ReviewCount,
-          (SELECT COUNT(*) FROM Favorites f WHERE f.VendorProfileID = v.VendorProfileID) AS FavoriteCount,
-          (SELECT COUNT(*) FROM Bookings b WHERE b.VendorProfileID = v.VendorProfileID) AS BookingCount,
-          v.LogoURL AS image,
-          v.Capacity,
-          v.Rooms,
-          v.IsPremium,
-          v.IsEcoFriendly,
-          v.IsAwardWinning,
-          v.IsLastMinute,
-          (SELECT STRING_AGG(vc.Category, ', ') FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID) AS Categories,
-          v.Address,
-          v.City,
-          v.State,
-          v.Country,
-          v.PostalCode,
-          v.Latitude,
-          v.Longitude,
-          COUNT(*) OVER() AS TotalCount
-        FROM VendorProfiles v
-        JOIN Users u ON v.UserID = u.UserID
-        WHERE u.IsActive = 1 AND ISNULL(v.IsVisible, 0) = 1
-      `;
-      
-      // Add city filter
-      if (city) {
-        fallbackQuery += ` AND v.City LIKE '%' + @City + '%'`;
-      }
-      
-      // Add category filter
-      if (category) {
-        fallbackQuery += ` AND EXISTS (SELECT 1 FROM VendorCategories vc WHERE vc.VendorProfileID = v.VendorProfileID AND vc.Category = @Category)`;
-      }
-      
-      // Add business hours filter - using correct column names: OpenTime and CloseTime
-      if (dayNumber !== null) {
-        fallbackQuery += `
-          AND EXISTS (
-            SELECT 1 FROM VendorBusinessHours vbh 
-            WHERE vbh.VendorProfileID = v.VendorProfileID 
-            AND vbh.DayOfWeek = @DayNumber 
-            AND vbh.IsAvailable = 1
-        `;
-        
-        // Add time overlap check if times provided
-        if (formattedStartTime && formattedEndTime) {
-          fallbackQuery += `
-            AND vbh.OpenTime < @EndTime 
-            AND vbh.CloseTime > @StartTime
-          `;
-        }
-        
-        fallbackQuery += `)`;
-      }
-      
-      // Add event date filter to exclude vendors with conflicting bookings
-      if (eventDate) {
-        fallbackQuery += `
-          AND NOT EXISTS (
-            SELECT 1 FROM Bookings b 
-            WHERE b.VendorProfileID = v.VendorProfileID 
-            AND CAST(b.EventDate AS DATE) = @EventDate
-            AND b.Status IN ('confirmed', 'pending')
-          )
-        `;
-      }
-      
-      fallbackQuery += `
-        ORDER BY v.IsPremium DESC, rating DESC
-        OFFSET ((@PageNumber - 1) * @PageSize) ROWS
-        FETCH NEXT @PageSize ROWS ONLY
-      `;
-      
-      console.log('📝 Executing fallback query with business hours filter');
-      result = await fallbackRequest.query(fallbackQuery);
+      console.error('sp_SearchVendors failed:', spError.message);
+      throw spError;
     }
     
     let formattedVendors = result.recordset.map(vendor => ({
@@ -941,190 +757,66 @@ router.get('/map', async (req, res) => {
       }
     }
 
-    // Build dynamic query with distance calculation from event location
-    let query = `
-      SELECT DISTINCT
-        vp.VendorProfileID as id,
-        vp.VendorProfileID,
-        vp.BusinessName as name,
-        vp.BusinessDescription as description,
-        vp.Address as address,
-        vp.City as city,
-        vp.State as state,
-        vp.Country as country,
-        vp.PostalCode as postalCode,
-        vp.Latitude as latitude,
-        vp.Longitude as longitude,
-        vp.PriceLevel as priceLevel,
-        vp.IsPremium,
-        vp.IsEcoFriendly,
-        vp.IsAwardWinning,
-        vc.Category as categories,
-        CASE 
-          WHEN vp.PriceLevel = '$' THEN 250
-          WHEN vp.PriceLevel = '$$' THEN 750
-          WHEN vp.PriceLevel = '$$$' THEN 1500
-          WHEN vp.PriceLevel = '$$$$' THEN 3000
-          ELSE 500
-        END as price`;
-
-    // Add distance calculation if event location is provided
-    if (eventLatitude && eventLongitude) {
-      query += `,
-        (6371 * acos(
-          cos(radians(@EventLat)) * cos(radians(vp.Latitude)) * 
-          cos(radians(vp.Longitude) - radians(@EventLng)) + 
-          sin(radians(@EventLat)) * sin(radians(vp.Latitude))
-        )) as distanceFromEvent`;
-    } else {
-      query += `, NULL as distanceFromEvent`;
-    }
-
-    query += `
-      FROM VendorProfiles vp
-      LEFT JOIN VendorCategories vc ON vp.VendorProfileID = vc.VendorProfileID
-      LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = ps.PredefinedServiceID
-      WHERE ISNULL(vp.IsVisible, 0) = 1 
-        AND vp.Latitude IS NOT NULL 
-        AND vp.Longitude IS NOT NULL`;
-
+    // Use sp_SearchVendors stored procedure for map search
     const request = new sql.Request(pool);
-    let paramCount = 0;
+    
+    request.input('SearchTerm', sql.NVarChar(100), null);
+    request.input('Category', sql.NVarChar(50), category || null);
+    request.input('City', sql.NVarChar(100), null);
+    request.input('MinPrice', sql.Decimal(10, 2), minPrice ? parseFloat(minPrice) : null);
+    request.input('MaxPrice', sql.Decimal(10, 2), maxPrice ? parseFloat(maxPrice) : null);
+    request.input('MinRating', sql.Decimal(2, 1), null);
+    request.input('IsPremium', sql.Bit, null);
+    request.input('IsEcoFriendly', sql.Bit, null);
+    request.input('IsAwardWinning', sql.Bit, null);
+    request.input('IsLastMinute', sql.Bit, null);
+    request.input('IsCertified', sql.Bit, null);
+    request.input('IsInsured', sql.Bit, null);
+    request.input('IsLocal', sql.Bit, null);
+    request.input('IsMobile', sql.Bit, null);
+    request.input('Latitude', sql.Decimal(10, 8), eventLatitude);
+    request.input('Longitude', sql.Decimal(11, 8), eventLongitude);
+    request.input('RadiusMiles', sql.Int, 100); // Larger radius for map view
+    request.input('PageNumber', sql.Int, 1);
+    request.input('PageSize', sql.Int, 100); // Get more results for map
+    request.input('SortBy', sql.NVarChar(50), prioritizeEventLocation === 'true' ? 'nearest' : 'recommended');
+    request.input('BudgetType', sql.NVarChar(20), null);
+    request.input('PricingModelFilter', sql.NVarChar(20), null);
+    request.input('FixedPricingTypeFilter', sql.NVarChar(20), null);
+    request.input('Region', sql.NVarChar(50), null);
+    request.input('PriceLevel', sql.NVarChar(10), null);
+    request.input('EventDateRaw', sql.NVarChar(50), eventDate || null);
+    request.input('EventStartRaw', sql.NVarChar(20), eventStartTime || null);
+    request.input('EventEndRaw', sql.NVarChar(20), eventEndTime || null);
+    request.input('EventDate', sql.Date, eventDate ? new Date(eventDate) : null);
+    request.input('DayOfWeek', sql.NVarChar(10), null);
+    request.input('StartTime', sql.VarChar(8), eventStartTime || null);
+    request.input('EndTime', sql.VarChar(8), eventEndTime || null);
 
-    // Add event location parameters
-    if (eventLatitude && eventLongitude) {
-      request.input('EventLat', sql.Decimal(10, 8), eventLatitude);
-      request.input('EventLng', sql.Decimal(11, 8), eventLongitude);
-    }
-
-    // Add event date/time parameters (raw) and business hours filter in SQL
-    if (eventDate && eventStartTime && eventEndTime) {
-      try {
-        request.input('EventDateRaw', sql.NVarChar(50), eventDate);
-        request.input('EventStartRaw', sql.NVarChar(20), eventStartTime);
-        request.input('EventEndRaw', sql.NVarChar(20), eventEndTime);
-        // Filter vendors whose business hours on the event day fully cover the requested time window
-        query += ` AND EXISTS (
-          SELECT 1 FROM VendorBusinessHours vbh
-          WHERE vbh.VendorProfileID = vp.VendorProfileID
-            AND vbh.IsAvailable = 1
-            AND vbh.DayOfWeek = CASE DATENAME(WEEKDAY, TRY_CONVERT(date, @EventDateRaw))
-                                  WHEN 'Sunday' THEN 0
-                                  WHEN 'Monday' THEN 1
-                                  WHEN 'Tuesday' THEN 2
-                                  WHEN 'Wednesday' THEN 3
-                                  WHEN 'Thursday' THEN 4
-                                  WHEN 'Friday' THEN 5
-                                  WHEN 'Saturday' THEN 6
-                                END
-            AND vbh.OpenTime <= TRY_CONVERT(time, @EventStartRaw)
-            AND vbh.CloseTime >= TRY_CONVERT(time, @EventEndRaw)
-        )`;
-        console.log('Applying business hours filter for event date/time (SQL-level parsing)');
-      } catch (e) {
-        console.warn('Failed to apply business hours filter:', e.message);
-      }
-    }
-
-    // Add category filter
-    if (category) {
-      query += ` AND vc.Category LIKE @Category${paramCount}`;
-      request.input(`Category${paramCount}`, sql.NVarChar(50), `%${category}%`);
-      paramCount++;
-    }
-
-    // Add predefined services filter
-    if (predefinedServices) {
-      try {
-        const servicesArray = JSON.parse(predefinedServices);
-        if (servicesArray.length > 0) {
-          const serviceNames = servicesArray.map(s => s.name || s).join("','");
-          query += ` AND ps.ServiceName IN ('${serviceNames}')`;
-        }
-      } catch (e) {
-        console.warn('Invalid predefined services parameter:', predefinedServices);
-      }
-    }
-
-    // Add price range filter
-    if (minPrice) {
-      query += ` AND CASE 
-        WHEN vp.PriceLevel = '$' THEN 250
-        WHEN vp.PriceLevel = '$$' THEN 750
-        WHEN vp.PriceLevel = '$$$' THEN 1500
-        WHEN vp.PriceLevel = '$$$$' THEN 3000
-        ELSE 500
-      END >= @MinPrice${paramCount}`;
-      request.input(`MinPrice${paramCount}`, sql.Decimal(10, 2), parseFloat(minPrice));
-      paramCount++;
-    }
-
-    if (maxPrice) {
-      query += ` AND CASE 
-        WHEN vp.PriceLevel = '$' THEN 250
-        WHEN vp.PriceLevel = '$$' THEN 750
-        WHEN vp.PriceLevel = '$$$' THEN 1500
-        WHEN vp.PriceLevel = '$$$$' THEN 3000
-        ELSE 500
-      END <= @MaxPrice${paramCount}`;
-      request.input(`MaxPrice${paramCount}`, sql.Decimal(10, 2), parseFloat(maxPrice));
-      paramCount++;
-    }
-
-    // Add map bounds filter if provided
-    if (bounds) {
-      try {
-        const boundsObj = JSON.parse(bounds);
-        if (boundsObj.north && boundsObj.south && boundsObj.east && boundsObj.west) {
-          query += ` AND vp.Latitude BETWEEN @SouthBound${paramCount} AND @NorthBound${paramCount}`;
-          query += ` AND vp.Longitude BETWEEN @WestBound${paramCount} AND @EastBound${paramCount}`;
-          
-          request.input(`SouthBound${paramCount}`, sql.Decimal(10, 8), boundsObj.south);
-          request.input(`NorthBound${paramCount}`, sql.Decimal(10, 8), boundsObj.north);
-          request.input(`WestBound${paramCount}`, sql.Decimal(11, 8), boundsObj.west);
-          request.input(`EastBound${paramCount}`, sql.Decimal(11, 8), boundsObj.east);
-          paramCount++;
-        }
-      } catch (e) {
-        console.warn('Invalid bounds parameter:', bounds);
-      }
-    }
-
-    // Order by: prioritize event location proximity if specified, then rating
-    if (eventLatitude && eventLongitude && prioritizeEventLocation === 'true') {
-      query += ` ORDER BY distanceFromEvent ASC, vp.Rating DESC, vp.ReviewCount DESC`;
-    } else {
-      query += ` ORDER BY vp.Rating DESC, vp.ReviewCount DESC`;
-    }
-
-    // Add limit for performance
-    query += ` OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY`;
-
-    console.log('🗺️ Map search query:', query);
-    const result = await request.query(query);
+    const result = await request.execute('sp_SearchVendors');
     
     const vendors = result.recordset.map(vendor => ({
-      id: vendor.id,
+      id: vendor.VendorProfileID,
       vendorProfileId: vendor.VendorProfileID,
-      name: vendor.name || '',
-      description: vendor.description || '',
-      address: vendor.address || '',
-      city: vendor.city || '',
-      state: vendor.state || '',
-      country: vendor.country || '',
-      postalCode: vendor.postalCode || '',
-      latitude: parseFloat(vendor.latitude) || null,
-      longitude: parseFloat(vendor.longitude) || null,
-      price: vendor.price,
-      priceLevel: vendor.priceLevel,
-      rating: vendor.rating || 0,
+      name: vendor.BusinessName || '',
+      description: vendor.BusinessDescription || '',
+      address: vendor.Address || '',
+      city: vendor.City || '',
+      state: vendor.State || '',
+      country: vendor.Country || '',
+      postalCode: vendor.PostalCode || '',
+      latitude: parseFloat(vendor.Latitude) || null,
+      longitude: parseFloat(vendor.Longitude) || null,
+      price: vendor.MinPrice,
+      priceLevel: vendor.PriceLevel,
+      rating: vendor.AverageRating || 0,
       reviewCount: vendor.ReviewCount || 0,
       isPremium: vendor.IsPremium || false,
       isEcoFriendly: vendor.IsEcoFriendly || false,
       isAwardWinning: vendor.IsAwardWinning || false,
-      categories: vendor.categories || '',
-      distanceFromEvent: vendor.distanceFromEvent ? parseFloat(vendor.distanceFromEvent).toFixed(2) : null,
-      fullAddress: `${vendor.address || ''}, ${vendor.city || ''}, ${vendor.state || ''} ${vendor.postalCode || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',')
+      categories: vendor.Categories || '',
+      distanceFromEvent: vendor.DistanceMiles ? parseFloat(vendor.DistanceMiles).toFixed(2) : null,
+      fullAddress: `${vendor.Address || ''}, ${vendor.City || ''}, ${vendor.State || ''} ${vendor.PostalCode || ''}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ',')
     }));
 
     // Enhance with images if needed (limit to first 20 for performance)
@@ -1601,12 +1293,7 @@ router.post('/register', upload.array('images', 5), async (req, res) => {
             serviceRequest.input('VendorDuration', sql.Int, predefinedService.vendorDuration);
             serviceRequest.input('VendorDescription', sql.NVarChar(sql.MAX), predefinedService.vendorDescription || null);
             
-            await serviceRequest.query(`
-              INSERT INTO VendorPredefinedServices 
-              (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDuration, VendorDescription, IsActive, CreatedAt)
-              VALUES 
-              (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDuration, @VendorDescription, 1, GETDATE())
-            `);
+            await serviceRequest.execute('sp_Vendor_InsertPredefinedService');
             
             console.log(`Added predefined service ${predefinedService.id} for vendor ${vendorProfileId}`);
           } catch (serviceError) {
@@ -1686,9 +1373,7 @@ router.post('/profile', async (req, res) => {
     // Check if vendor profile already exists
     const checkRequest = new sql.Request(pool);
     checkRequest.input('UserID', sql.Int, parseInt(userId));
-    const checkResult = await checkRequest.query(`
-      SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID
-    `);
+    const checkResult = await checkRequest.execute('sp_Vendor_CheckProfileExists');
 
     let vendorProfileId;
 
@@ -1710,22 +1395,7 @@ router.post('/profile', async (req, res) => {
       updateRequest.input('Country', sql.NVarChar(50), country || 'Canada');
       updateRequest.input('PostalCode', sql.NVarChar(20), postalCode || null);
 
-      await updateRequest.query(`
-        UPDATE VendorProfiles SET
-          BusinessName = @BusinessName,
-          DisplayName = @DisplayName,
-          BusinessDescription = @BusinessDescription,
-          BusinessPhone = @BusinessPhone,
-          Website = @Website,
-          YearsInBusiness = @YearsInBusiness,
-          Address = @Address,
-          City = @City,
-          State = @State,
-          Country = @Country,
-          PostalCode = @PostalCode,
-          UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+      await updateRequest.execute('sp_Vendor_UpdateProfile');
 
     } else {
       // Create new profile using sp_RegisterVendor
@@ -1759,9 +1429,7 @@ router.post('/profile', async (req, res) => {
       // Delete existing categories
       const deleteCategoriesRequest = new sql.Request(pool);
       deleteCategoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteCategoriesRequest.query(`
-        DELETE FROM VendorCategories WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteCategoriesRequest.execute('sp_Vendor_DeleteCategories');
 
       // Insert new categories
       for (const category of categories) {
@@ -1769,10 +1437,7 @@ router.post('/profile', async (req, res) => {
         categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         categoryRequest.input('CategoryName', sql.NVarChar(50), category);
         
-        await categoryRequest.query(`
-          INSERT INTO VendorCategories (VendorProfileID, CategoryName, CreatedAt)
-          VALUES (@VendorProfileID, @CategoryName, GETDATE())
-        `);
+        await categoryRequest.execute('sp_Vendor_InsertCategory');
       }
     }
 
@@ -1781,9 +1446,7 @@ router.post('/profile', async (req, res) => {
       // Delete existing service areas
       const deleteAreasRequest = new sql.Request(pool);
       deleteAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteAreasRequest.query(`
-        DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteAreasRequest.execute('sp_Vendor_DeleteServiceAreas');
 
       // Insert new service areas
       for (const area of serviceAreas) {
@@ -1791,19 +1454,14 @@ router.post('/profile', async (req, res) => {
         areaRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         areaRequest.input('AreaName', sql.NVarChar(100), area);
         
-        await areaRequest.query(`
-          INSERT INTO VendorServiceAreas (VendorProfileID, AreaName, IsActive, CreatedAt)
-          VALUES (@VendorProfileID, @AreaName, 1, GETDATE())
-        `);
+        await areaRequest.execute('sp_Vendor_InsertServiceArea');
       }
     }
 
     // Update user to be a vendor
     const updateUserRequest = new sql.Request(pool);
     updateUserRequest.input('UserID', sql.Int, parseInt(userId));
-    await updateUserRequest.query(`
-      UPDATE Users SET IsVendor = 1 WHERE UserID = @UserID
-    `);
+    await updateUserRequest.execute('sp_Vendor_SetUserAsVendor');
 
     // Handle services if provided
     if (services && services.length > 0) {
@@ -1840,14 +1498,7 @@ router.post('/profile', async (req, res) => {
             hoursRequest.input('OpenTime', sql.Time, businessHours[day].openTime + ':00');
             hoursRequest.input('CloseTime', sql.Time, businessHours[day].closeTime + ':00');
 
-            await hoursRequest.query(`
-              IF EXISTS (SELECT 1 FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek)
-                UPDATE VendorBusinessHours SET IsAvailable = @IsAvailable, OpenTime = @OpenTime, CloseTime = @CloseTime
-                WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek
-              ELSE
-                INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, IsAvailable, OpenTime, CloseTime)
-                VALUES (@VendorProfileID, @DayOfWeek, @IsAvailable, @OpenTime, @CloseTime)
-            `);
+            await hoursRequest.execute('sp_Vendor_UpsertBusinessHours');
           } catch (hoursError) {
             console.error('Error setting business hours:', hoursError);
           }
@@ -1864,33 +1515,25 @@ router.post('/profile', async (req, res) => {
           faqRequest.input('Question', sql.NVarChar(500), faq.question);
           faqRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
 
-          await faqRequest.query(`
-            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, IsActive, CreatedAt)
-            VALUES (@VendorProfileID, @Question, @Answer, 1, GETDATE())
-          `);
+          await faqRequest.execute('sp_Vendor_InsertFAQ');
         } catch (faqError) {
           console.error('Error adding FAQ:', faqError);
         }
       }
     }
 
-    // Update additional profile fields
-    if (licenseNumber || insuranceVerified || teamSize || languages || certifications) {
+    // Update additional profile fields using stored procedure
+    if (licenseNumber || insuranceVerified !== undefined) {
       const updateDetailsRequest = new sql.Request(pool);
       updateDetailsRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      if (licenseNumber) updateDetailsRequest.input('LicenseNumber', sql.NVarChar(50), licenseNumber);
-      if (insuranceVerified !== undefined) updateDetailsRequest.input('InsuranceVerified', sql.Bit, insuranceVerified);
-      if (teamSize) updateDetailsRequest.input('TeamSize', sql.Int, parseInt(teamSize));
+      updateDetailsRequest.input('LicenseNumber', sql.NVarChar(100), licenseNumber || null);
+      updateDetailsRequest.input('InsuranceVerified', sql.Bit, insuranceVerified || false);
+      updateDetailsRequest.input('Awards', sql.NVarChar(sql.MAX), null);
+      updateDetailsRequest.input('Certifications', sql.NVarChar(sql.MAX), certifications || null);
+      updateDetailsRequest.input('IsEcoFriendly', sql.Bit, false);
+      updateDetailsRequest.input('IsPremium', sql.Bit, false);
 
-      let updateQuery = 'UPDATE VendorProfiles SET ';
-      const updates = [];
-      if (licenseNumber) updates.push('LicenseNumber = @LicenseNumber');
-      if (insuranceVerified !== undefined) updates.push('InsuranceVerified = @InsuranceVerified');
-      if (teamSize) updates.push('TeamSize = @TeamSize');
-      if (updates.length > 0) {
-        updateQuery += updates.join(', ') + ' WHERE VendorProfileID = @VendorProfileID';
-        await updateDetailsRequest.query(updateQuery);
-      }
+      await updateDetailsRequest.execute('sp_Vendor_UpdateVerification');
     }
 
     res.status(200).json({
@@ -1975,9 +1618,7 @@ router.post('/onboarding', async (req, res) => {
     // Check if vendor profile already exists
     const checkRequest = new sql.Request(pool);
     checkRequest.input('UserID', sql.Int, parseInt(userId));
-    const checkResult = await checkRequest.query(`
-      SELECT VendorProfileID FROM VendorProfiles WHERE UserID = @UserID
-    `);
+    const checkResult = await checkRequest.execute('sp_Vendor_CheckProfileExists');
 
     let vendorProfileId;
     // Remove duplicates from categories array
@@ -2007,27 +1648,7 @@ router.post('/onboarding', async (req, res) => {
       updateRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
       updateRequest.input('ProfileLogo', sql.NVarChar(255), profileLogo || null);
 
-      await updateRequest.query(`
-        UPDATE VendorProfiles SET
-          BusinessName = @BusinessName,
-          DisplayName = @DisplayName,
-          BusinessDescription = @BusinessDescription,
-          BusinessPhone = @BusinessPhone,
-          Website = @Website,
-          YearsInBusiness = @YearsInBusiness,
-          Address = @Address,
-          City = @City,
-          State = @State,
-          Country = @Country,
-          PostalCode = @PostalCode,
-          Latitude = @Latitude,
-          Longitude = @Longitude,
-          Tagline = @Tagline,
-          PriceLevel = @PriceLevel,
-          LogoURL = @ProfileLogo,
-          UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+      await updateRequest.execute('sp_Vendor_UpdateProfileExtended');
 
     } else {
       // Create new profile
@@ -2066,34 +1687,21 @@ router.post('/onboarding', async (req, res) => {
       updateExtraRequest.input('PriceLevel', sql.NVarChar(20), priceRange || null);
       updateExtraRequest.input('ProfileLogo', sql.NVarChar(255), profileLogo || null);
 
-      await updateExtraRequest.query(`
-        UPDATE VendorProfiles SET
-          Latitude = @Latitude,
-          Longitude = @Longitude,
-          Tagline = @Tagline,
-          PriceLevel = @PriceLevel,
-          LogoURL = @ProfileLogo
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+      await updateExtraRequest.execute('sp_Vendor_UpdateExtraFields');
     }
 
     // Update categories
     if (allCategories && allCategories.length > 0) {
       const deleteCategoriesRequest = new sql.Request(pool);
       deleteCategoriesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteCategoriesRequest.query(`
-        DELETE FROM VendorCategories WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteCategoriesRequest.execute('sp_Vendor_DeleteCategories');
 
       for (const category of allCategories) {
         const categoryRequest = new sql.Request(pool);
         categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         categoryRequest.input('Category', sql.NVarChar(50), category);
         
-        await categoryRequest.query(`
-          INSERT INTO VendorCategories (VendorProfileID, Category)
-          VALUES (@VendorProfileID, @Category)
-        `);
+        await categoryRequest.execute('sp_Vendor_InsertCategoryByName');
       }
       console.log('✅ Updated categories');
     }
@@ -2102,9 +1710,7 @@ router.post('/onboarding', async (req, res) => {
     if (serviceAreas && serviceAreas.length > 0) {
       const deleteAreasRequest = new sql.Request(pool);
       deleteAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteAreasRequest.query(`
-        DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteAreasRequest.execute('sp_Vendor_DeleteServiceAreas');
 
       for (const area of serviceAreas) {
         const areaRequest = new sql.Request(pool);
@@ -2119,10 +1725,7 @@ router.post('/onboarding', async (req, res) => {
         areaRequest.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || null);
         areaRequest.input('PlaceType', sql.NVarChar(50), area.placeType || null);
         
-        await areaRequest.query(`
-          INSERT INTO VendorServiceAreas (VendorProfileID, GooglePlaceID, CityName, [State/Province], Country, Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, IsActive)
-          VALUES (@VendorProfileID, @GooglePlaceID, @CityName, @StateProvince, @Country, @Latitude, @Longitude, @ServiceRadius, @FormattedAddress, @PlaceType, 1)
-        `);
+        await areaRequest.execute('sp_Vendor_InsertServiceAreaExtended');
       }
       console.log('✅ Updated service areas');
     }
@@ -2171,14 +1774,7 @@ router.post('/onboarding', async (req, res) => {
           hoursRequest.input('CloseTime', sql.VarChar(8), closeTime);
           hoursRequest.input('Timezone', sql.NVarChar(100), timezone || 'America/New_York');
 
-          await hoursRequest.query(`
-            IF EXISTS (SELECT 1 FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek)
-              UPDATE VendorBusinessHours SET IsAvailable = @IsAvailable, OpenTime = @OpenTime, CloseTime = @CloseTime, Timezone = @Timezone
-              WHERE VendorProfileID = @VendorProfileID AND DayOfWeek = @DayOfWeek
-            ELSE
-              INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, IsAvailable, OpenTime, CloseTime, Timezone)
-              VALUES (@VendorProfileID, @DayOfWeek, @IsAvailable, @OpenTime, @CloseTime, @Timezone)
-          `);
+          await hoursRequest.execute('sp_Vendor_UpsertBusinessHoursExtended');
         }
       }
       console.log('✅ Updated business hours with timezone');
@@ -2189,9 +1785,7 @@ router.post('/onboarding', async (req, res) => {
       // Delete existing social media entries
       const deleteSocialRequest = new sql.Request(pool);
       deleteSocialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteSocialRequest.query(`
-        DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteSocialRequest.execute('sp_Vendor_DeleteSocialMedia');
 
       // Insert new social media entries
       const platforms = {
@@ -2212,10 +1806,7 @@ router.post('/onboarding', async (req, res) => {
           socialRequest.input('URL', sql.NVarChar(255), url);
           socialRequest.input('DisplayOrder', sql.Int, displayOrder++);
 
-          await socialRequest.query(`
-            INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
-            VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
-          `);
+          await socialRequest.execute('sp_Vendor_InsertSocialMedia');
         }
       }
       console.log('✅ Updated social media');
@@ -2227,19 +1818,14 @@ router.post('/onboarding', async (req, res) => {
         // Delete existing feature selections
         const deleteFeatureRequest = new sql.Request(pool);
         deleteFeatureRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        await deleteFeatureRequest.query(`
-          DELETE FROM VendorSelectedFeatures WHERE VendorProfileID = @VendorProfileID
-        `);
+        await deleteFeatureRequest.execute('sp_Vendor_DeleteSelectedFeatures');
 
         // Insert new feature selections
         for (const featureId of selectedFeatures) {
           const featureRequest = new sql.Request(pool);
           featureRequest.input('VendorProfileID', sql.Int, vendorProfileId);
           featureRequest.input('FeatureID', sql.Int, parseInt(featureId));
-          await featureRequest.query(`
-            INSERT INTO VendorSelectedFeatures (VendorProfileID, FeatureID, SelectedAt)
-            VALUES (@VendorProfileID, @FeatureID, GETDATE())
-          `);
+          await featureRequest.execute('sp_Vendor_InsertSelectedFeature');
         }
         console.log('✅ Updated selected features (questionnaire):', selectedFeatures.length, 'features');
       } catch (featureError) {
@@ -2254,21 +1840,19 @@ router.post('/onboarding', async (req, res) => {
         // Don't delete existing images, just add new ones that don't exist
         for (const url of photoURLs) {
           if (url && url.trim()) {
-            const imageRequest = new sql.Request(pool);
-            imageRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-            imageRequest.input('ImageURL', sql.NVarChar(500), url.trim());
+            const checkRequest = new sql.Request(pool);
+            checkRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+            checkRequest.input('ImageURL', sql.NVarChar(500), url.trim());
             
             // Check if image already exists
-            const existsResult = await imageRequest.query(`
-              SELECT ImageID FROM VendorImages 
-              WHERE VendorProfileID = @VendorProfileID AND ImageURL = @ImageURL
-            `);
+            const existsResult = await checkRequest.execute('sp_Vendor_CheckImageExists');
             
             if (existsResult.recordset.length === 0) {
-              await imageRequest.query(`
-                INSERT INTO VendorImages (VendorProfileID, ImageURL, IsPrimary, CreatedAt)
-                VALUES (@VendorProfileID, @ImageURL, 0, GETDATE())
-              `);
+              const insertRequest = new sql.Request(pool);
+              insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+              insertRequest.input('ImageURL', sql.NVarChar(500), url.trim());
+              insertRequest.input('IsPrimary', sql.Bit, 0);
+              await insertRequest.execute('sp_Vendor_InsertImage');
             }
           }
         }
@@ -2284,11 +1868,7 @@ router.post('/onboarding', async (req, res) => {
         const googleRequest = new sql.Request(pool);
         googleRequest.input('VendorProfileID', sql.Int, vendorProfileId);
         googleRequest.input('GooglePlaceId', sql.NVarChar(100), googlePlaceId);
-        await googleRequest.query(`
-          UPDATE VendorProfiles 
-          SET GooglePlaceId = @GooglePlaceId
-          WHERE VendorProfileID = @VendorProfileID
-        `);
+        await googleRequest.execute('sp_Vendor_UpdateGooglePlaceId');
         console.log('✅ Updated Google Place ID');
       } catch (googleError) {
         console.warn('⚠️ Could not save Google Place ID:', googleError.message);
@@ -2298,9 +1878,7 @@ router.post('/onboarding', async (req, res) => {
     // Update user to be a vendor
     const updateUserRequest = new sql.Request(pool);
     updateUserRequest.input('UserID', sql.Int, parseInt(userId));
-    await updateUserRequest.query(`
-      UPDATE Users SET IsVendor = 1 WHERE UserID = @UserID
-    `);
+    await updateUserRequest.execute('sp_Vendor_SetUserAsVendor');
 
     console.log('✅ Vendor onboarding completed successfully');
 
@@ -2341,20 +1919,7 @@ router.get('/status', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('UserID', sql.Int, userId);
 
-    const result = await request.query(`
-      SELECT 
-        vp.VendorProfileID,
-        vp.IsVerified,
-        CASE 
-          WHEN vp.BusinessName IS NULL THEN 0
-          WHEN vp.BusinessDescription IS NULL THEN 0
-          WHEN vp.BusinessPhone IS NULL THEN 0
-          WHEN vp.Address IS NULL THEN 0
-          ELSE 1
-        END AS IsProfileComplete
-      FROM VendorProfiles vp
-      WHERE vp.UserID = @UserID
-    `);
+    const result = await request.execute('sp_Vendor_GetStatus');
 
     if (result.recordset.length === 0) {
       return res.json({
@@ -2417,17 +1982,7 @@ router.get('/profile', async (req, res) => {
     const userRequest = new sql.Request(pool);
     userRequest.input('UserID', sql.Int, userIdNum);
 
-    const userResult = await userRequest.query(`
-      SELECT 
-        u.UserID,
-        u.Name,
-        u.Email,
-        u.IsVendor,
-        vp.VendorProfileID
-      FROM Users u
-      LEFT JOIN VendorProfiles vp ON u.UserID = vp.UserID
-      WHERE u.UserID = @UserID AND u.IsActive = 1
-    `);
+    const userResult = await userRequest.execute('sp_Vendor_GetUserWithProfile');
 
     console.log('User query result:', userResult.recordset);
 
@@ -2574,29 +2129,7 @@ router.get('/profile', async (req, res) => {
     try {
       const serviceAreasRequest = new sql.Request(pool);
       serviceAreasRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-      const serviceAreasResult = await serviceAreasRequest.query(`
-        SELECT 
-          VendorServiceAreaID,
-          GooglePlaceID,
-          CityName,
-          [State/Province] as StateProvince,
-          Country,
-          Latitude,
-          Longitude,
-          ServiceRadius,
-          FormattedAddress,
-          PlaceType,
-          PostalCode,
-          TravelCost,
-          MinimumBookingAmount,
-          BoundsNortheastLat,
-          BoundsNortheastLng,
-          BoundsSouthwestLat,
-          BoundsSouthwestLng
-        FROM VendorServiceAreas 
-        WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
-        ORDER BY CityName
-      `);
+      const serviceAreasResult = await serviceAreasRequest.execute('sp_Vendor_GetServiceAreas');
       serviceAreas = serviceAreasResult.recordset || [];
     } catch (serviceAreasError) {
       console.warn('Service areas query failed, using empty array:', serviceAreasError.message);
@@ -2608,10 +2141,7 @@ router.get('/profile', async (req, res) => {
     try {
       const featuresRequest = new sql.Request(pool);
       featuresRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-      const featuresResult = await featuresRequest.query(`
-        SELECT FeatureID FROM VendorSelectedFeatures 
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+      const featuresResult = await featuresRequest.execute('sp_Vendor_GetSelectedFeatures');
       selectedFeatures = featuresResult.recordset.map(f => f.FeatureID);
     } catch (featuresError) {
       console.warn('Selected features query failed, using empty array:', featuresError.message);
@@ -2671,12 +2201,7 @@ router.get('/profile', async (req, res) => {
     try {
       const extraFieldsRequest = new sql.Request(pool);
       extraFieldsRequest.input('VendorProfileID', sql.Int, user.VendorProfileID);
-      const extraFieldsResult = await extraFieldsRequest.query(`
-        SELECT StripeAccountID, GooglePlaceID, IsPremium, IsFeatured, 
-               IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured, Filters
-        FROM VendorProfiles
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+      const extraFieldsResult = await extraFieldsRequest.execute('sp_Vendor_GetExtraFields');
       if (extraFieldsResult.recordset.length > 0) {
         const extraFields = extraFieldsResult.recordset[0];
         stripeAccountId = extraFields.StripeAccountID;
@@ -2744,28 +2269,19 @@ router.get('/profile', async (req, res) => {
 // MUST be before /:id route to avoid being caught by it
 router.get('/:id/availability', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const pool = await poolPromise;
     
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
     // Get business hours
-    const hoursResult = await request.query(`
-      SELECT DayOfWeek, IsAvailable, OpenTime, CloseTime
-      FROM VendorBusinessHours
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DayOfWeek
-    `);
+    const hoursResult = await request.execute('sp_Vendor_GetBusinessHours');
     
     // Get availability exceptions
-    const exceptionsResult = await request.query(`
-      SELECT Date, IsAvailable, Reason
-      FROM VendorAvailabilityExceptions
-      WHERE VendorProfileID = @VendorProfileID
-      AND Date >= CAST(GETDATE() AS DATE)
-      ORDER BY Date
-    `);
+    const exceptionsRequest = new sql.Request(pool);
+    exceptionsRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const exceptionsResult = await exceptionsRequest.execute('sp_Vendor_GetAvailabilityExceptions');
     
     res.json({
       businessHours: hoursResult.recordset,
@@ -2790,8 +2306,8 @@ router.get('/:id', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
-    // Resolve the ID to VendorProfileID
-    const vendorProfileId = await resolveVendorProfileId(id, pool);
+    // Parse the VendorProfileID from URL
+    const vendorProfileId = parseVendorProfileId(id);
     
     if (!vendorProfileId) {
       return res.status(404).json({
@@ -2835,30 +2351,7 @@ router.get('/:id', async (req, res) => {
     try {
       const serviceAreasRequest = new sql.Request(pool);
       serviceAreasRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      const serviceAreasResult = await serviceAreasRequest.query(`
-        SELECT 
-          VendorServiceAreaID,
-          GooglePlaceID,
-          CityName,
-          [State/Province] AS StateProvince,
-          Country,
-          Latitude,
-          Longitude,
-          ServiceRadius,
-          FormattedAddress,
-          PlaceType,
-          PostalCode,
-          TravelCost,
-          MinimumBookingAmount,
-          IsActive,
-          BoundsNortheastLat,
-          BoundsNortheastLng,
-          BoundsSouthwestLat,
-          BoundsSouthwestLng
-        FROM VendorServiceAreas 
-        WHERE VendorProfileID = @VendorProfileID AND IsActive = 1
-        ORDER BY CityName
-      `);
+      const serviceAreasResult = await serviceAreasRequest.execute('sp_Vendor_GetServiceAreasDetailed');
       serviceAreas = serviceAreasResult.recordset || [];
     } catch (serviceAreasError) {
       console.warn('Service areas query failed, using empty array:', serviceAreasError.message);
@@ -2956,25 +2449,7 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
       request.input('IsEcoFriendly', sql.Bit, updateData.isEcoFriendly || 0);
       request.input('IsAwardWinning', sql.Bit, updateData.isAwardWinning || 0);
 
-      await request.query(`
-        UPDATE VendorProfiles 
-        SET 
-          BusinessName = @BusinessName,
-          BusinessDescription = @BusinessDescription,
-          BusinessPhone = @BusinessPhone,
-          Website = @Website,
-          YearsInBusiness = @YearsInBusiness,
-          Address = @Address,
-          City = @City,
-          State = @State,
-          Country = @Country,
-          PostalCode = @PostalCode,
-          IsPremium = @IsPremium,
-          IsEcoFriendly = @IsEcoFriendly,
-          IsAwardWinning = @IsAwardWinning,
-          UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+      await request.execute('sp_Vendor_UpdateProfileFull');
 
       if (files.length > 0) {
         for (const file of files) {
@@ -2983,10 +2458,7 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
           imgRequest.input('ImageURL', sql.NVarChar(255), `/uploads/${file.filename}`);
           imgRequest.input('IsPrimary', sql.Bit, 0);
           
-          await imgRequest.query(`
-            INSERT INTO VendorImages (VendorProfileID, ImageURL, IsPrimary)
-            VALUES (@VendorProfileID, @ImageURL, @IsPrimary)
-          `);
+          await imgRequest.execute('sp_Vendor_InsertImageWithPath');
         }
       }
 
@@ -3052,40 +2524,25 @@ router.post('/setup/step1-business-basics', async (req, res) => {
     updateRequest.input('YearsInBusiness', sql.Int, yearsInBusiness || null);
     updateRequest.input('PriceLevel', sql.NVarChar, priceLevel || '$$');
     
-    await updateRequest.query(`
-      UPDATE VendorProfiles 
-      SET BusinessName = @BusinessName, DisplayName = @DisplayName, 
-          BusinessEmail = @BusinessEmail, BusinessPhone = @BusinessPhone,
-          Website = @Website, BusinessDescription = @BusinessDescription,
-          Tagline = @Tagline, YearsInBusiness = @YearsInBusiness,
-          PriceLevel = @PriceLevel,
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await updateRequest.execute('sp_Vendor_UpdateBusinessBasics');
     
     // Handle categories - replace existing with primary + additional
-    await updateRequest.query(`
-      DELETE FROM VendorCategories WHERE VendorProfileID = @VendorProfileID
-    `);
+    const deleteCatRequest = new sql.Request(pool);
+    deleteCatRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    await deleteCatRequest.execute('sp_Vendor_DeleteCategories');
     
     const primaryCatRequest = new sql.Request(pool);
     primaryCatRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    primaryCatRequest.input('Category', sql.NVarChar, primaryCategory);
-    await primaryCatRequest.query(`
-      INSERT INTO VendorCategories (VendorProfileID, Category)
-      VALUES (@VendorProfileID, @Category)
-    `);
+    primaryCatRequest.input('Category', sql.NVarChar(50), primaryCategory);
+    await primaryCatRequest.execute('sp_Vendor_InsertCategoryByName');
     
     if (Array.isArray(additionalCategories) && additionalCategories.length > 0) {
       for (const category of additionalCategories) {
         if (!category || category === primaryCategory) continue;
         const catRequest = new sql.Request(pool);
         catRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        catRequest.input('Category', sql.NVarChar, category);
-        await catRequest.query(`
-          INSERT INTO VendorCategories (VendorProfileID, Category)
-          VALUES (@VendorProfileID, @Category)
-        `);
+        catRequest.input('Category', sql.NVarChar(50), category);
+        await catRequest.execute('sp_Vendor_InsertCategoryByName');
       }
     }
 
@@ -3135,56 +2592,46 @@ router.post('/setup/step3-gallery', async (req, res) => {
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     updateRequest.input('LogoURL', sql.NVarChar, featuredImage);
     
-    await updateRequest.query(`
-      UPDATE VendorProfiles 
-      SET LogoURL = @LogoURL, UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await updateRequest.execute('sp_Vendor_UpdateLogoURL');
     
     // Handle gallery images
     if (galleryImages && galleryImages.length > 0) {
       // Delete existing images
-      await updateRequest.query(`
-        DELETE FROM VendorImages WHERE VendorProfileID = @VendorProfileID
-      `);
+      const deleteImgRequest = new sql.Request(pool);
+      deleteImgRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteImgRequest.execute('sp_Vendor_DeleteImages');
       
       // Insert new images
       for (let i = 0; i < galleryImages.length; i++) {
         const imageRequest = new sql.Request(pool);
         imageRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        imageRequest.input('ImageURL', sql.NVarChar, galleryImages[i].url);
+        imageRequest.input('ImageURL', sql.NVarChar(500), galleryImages[i].url);
         imageRequest.input('IsPrimary', sql.Bit, i === 0);
         imageRequest.input('DisplayOrder', sql.Int, i);
-        imageRequest.input('Caption', sql.NVarChar, galleryImages[i].caption || null);
+        imageRequest.input('Caption', sql.NVarChar(255), galleryImages[i].caption || null);
         
-        await imageRequest.query(`
-          INSERT INTO VendorImages (VendorProfileID, ImageURL, IsPrimary, DisplayOrder, Caption)
-          VALUES (@VendorProfileID, @ImageURL, @IsPrimary, @DisplayOrder, @Caption)
-        `);
+        await imageRequest.execute('sp_Vendor_InsertGalleryImage');
       }
     }
     
     // Handle portfolio items
     if (portfolioItems && portfolioItems.length > 0) {
       // Delete existing portfolio
-      await updateRequest.query(`
-        DELETE FROM VendorPortfolio WHERE VendorProfileID = @VendorProfileID
-      `);
+      const deletePortRequest = new sql.Request(pool);
+      deletePortRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deletePortRequest.execute('sp_Vendor_DeletePortfolio');
       
       // Insert new portfolio items
       for (let i = 0; i < portfolioItems.length; i++) {
         const portfolioRequest = new sql.Request(pool);
         portfolioRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        portfolioRequest.input('Title', sql.NVarChar, portfolioItems[i].title);
-        portfolioRequest.input('Description', sql.NVarChar, portfolioItems[i].description || null);
-        portfolioRequest.input('ImageURL', sql.NVarChar, portfolioItems[i].imageUrl);
+        portfolioRequest.input('Title', sql.NVarChar(255), portfolioItems[i].title);
+        portfolioRequest.input('Description', sql.NVarChar(sql.MAX), portfolioItems[i].description || null);
+        portfolioRequest.input('ImageURL', sql.NVarChar(500), portfolioItems[i].imageUrl);
         portfolioRequest.input('ProjectDate', sql.Date, portfolioItems[i].projectDate || null);
         portfolioRequest.input('DisplayOrder', sql.Int, i);
         
-        await portfolioRequest.query(`
-          INSERT INTO VendorPortfolio (VendorProfileID, Title, Description, ImageURL, ProjectDate, DisplayOrder)
-          VALUES (@VendorProfileID, @Title, @Description, @ImageURL, @ProjectDate, @DisplayOrder)
-        `);
+        await portfolioRequest.execute('sp_Vendor_InsertPortfolioItem');
       }
     }
     // Mark step 3 completed (gallery)
@@ -3226,13 +2673,9 @@ router.post('/setup/step4-business-hours', async (req, res) => {
       try {
         const timezoneRequest = new sql.Request(pool);
         timezoneRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        timezoneRequest.input('Timezone', sql.NVarChar, timezone);
+        timezoneRequest.input('Timezone', sql.NVarChar(100), timezone);
         
-        await timezoneRequest.query(`
-          UPDATE VendorProfiles 
-          SET Timezone = @Timezone, UpdatedAt = GETDATE()
-          WHERE VendorProfileID = @VendorProfileID
-        `);
+        await timezoneRequest.execute('sp_Vendor_UpdateTimezone');
       } catch (tzErr) {
         console.log('Note: Timezone column may not exist in VendorProfiles:', tzErr.message);
         // Continue even if timezone update fails
@@ -3242,9 +2685,7 @@ router.post('/setup/step4-business-hours', async (req, res) => {
     // Delete existing business hours
     const deleteRequest = new sql.Request(pool);
     deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.query(`
-      DELETE FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID
-    `);
+    await deleteRequest.execute('sp_Vendor_DeleteBusinessHours');
 
     // Insert new business hours with Timezone
     for (const hour of businessHours) {
@@ -3262,12 +2703,9 @@ router.post('/setup/step4-business-hours', async (req, res) => {
         insertRequest.input('OpenTime', sql.VarChar(8), openTime);
         insertRequest.input('CloseTime', sql.VarChar(8), closeTime);
         insertRequest.input('IsAvailable', sql.Bit, hour.isAvailable);
-        insertRequest.input('Timezone', sql.NVarChar, timezone || 'America/Toronto');
+        insertRequest.input('Timezone', sql.NVarChar(100), timezone || 'America/Toronto');
 
-        await insertRequest.query(`
-          INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone)
-          VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable, @Timezone)
-        `);
+        await insertRequest.execute('sp_Vendor_InsertBusinessHour');
       } catch (hourErr) {
         console.error(`Error inserting hour for day ${hour.dayOfWeek}:`, hourErr);
         throw hourErr;
@@ -3295,15 +2733,7 @@ router.get('/debug/service-ids', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
-    const result = await request.query(`
-      SELECT 
-        PredefinedServiceID,
-        ServiceName,
-        Category,
-        ServiceDescription
-      FROM PredefinedServices 
-      ORDER BY Category, DisplayOrder, ServiceName
-    `);
+    const result = await request.execute('sp_Vendor_GetDebugServiceIds');
     
     res.json({
       success: true,
@@ -3327,17 +2757,9 @@ router.get('/service-id-by-name/:serviceName', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
-    request.input('ServiceName', sql.NVarChar, serviceName);
+    request.input('ServiceName', sql.NVarChar(100), serviceName);
     
-    const result = await request.query(`
-      SELECT 
-        PredefinedServiceID,
-        ServiceName,
-        Category,
-        ServiceDescription
-      FROM PredefinedServices 
-      WHERE ServiceName = @ServiceName
-    `);
+    const result = await request.execute('sp_Vendor_GetServiceByName');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -3441,18 +2863,12 @@ router.post('/search-by-services', async (req, res) => {
       });
     }
 
-    // Validate that the service IDs exist in PredefinedServices table
+    // Validate that the service IDs exist in PredefinedServices table using stored procedure
     const serviceValidationRequest = new sql.Request(pool);
-    const serviceIdParams = predefinedServiceIds.map((id, index) => {
-      serviceValidationRequest.input(`ServiceID${index}`, sql.Int, id);
-      return `@ServiceID${index}`;
-    }).join(',');
+    const serviceIdsForValidation = predefinedServiceIds.join(',');
+    serviceValidationRequest.input('ServiceIds', sql.NVarChar(500), serviceIdsForValidation);
 
-    const validationResult = await serviceValidationRequest.query(`
-      SELECT PredefinedServiceID, ServiceName, Category 
-      FROM PredefinedServices 
-      WHERE PredefinedServiceID IN (${serviceIdParams})
-    `);
+    const validationResult = await serviceValidationRequest.execute('sp_Vendor_ValidatePredefinedServiceIds');
 
     const validServiceIds = validationResult.recordset.map(s => s.PredefinedServiceID);
     const invalidServiceIds = predefinedServiceIds.filter(id => !validServiceIds.includes(id));
@@ -3650,7 +3066,7 @@ router.post('/search-by-services', async (req, res) => {
 // Get vendor's selected predefined services
 router.get('/:id/selected-services', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     
     if (!vendorProfileId) {
       return res.status(404).json({ 
@@ -3664,45 +3080,7 @@ router.get('/:id/selected-services', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
     // Query from Services table first (new unified pricing approach)
-    const result = await request.query(`
-      SELECT 
-        s.ServiceID AS VendorSelectedServiceID,
-        s.LinkedPredefinedServiceID AS PredefinedServiceID,
-        ps.ServiceName,
-        ps.ServiceDescription as PredefinedDescription,
-        ps.Category,
-        ps.DefaultDurationMinutes,
-        s.Description AS VendorDescription,
-        -- Derive a single VendorPrice compatible with settings UI
-        CASE 
-          WHEN s.PricingModel = 'time_based' THEN s.BaseRate
-          WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'fixed_price' THEN s.FixedPrice
-          WHEN s.PricingModel = 'fixed_based' AND s.FixedPricingType = 'per_attendee' THEN s.PricePerPerson
-          ELSE s.Price
-        END AS VendorPrice,
-        COALESCE(s.BaseDurationMinutes, s.DurationMinutes, ps.DefaultDurationMinutes) AS VendorDurationMinutes,
-        NULL AS ImageURL, -- Services table doesn't have ImageURL
-        s.CreatedAt,
-        s.UpdatedAt,
-        s.IsActive,
-        -- Include all unified pricing model fields
-        s.PricingModel,
-        s.BaseRate,
-        s.BaseDurationMinutes,
-        s.OvertimeRatePerHour,
-        s.MinimumBookingFee,
-        s.FixedPricingType,
-        s.FixedPrice,
-        s.PricePerPerson,
-        s.MinimumAttendees,
-        s.MaximumAttendees
-      FROM Services s
-      LEFT JOIN PredefinedServices ps ON ps.PredefinedServiceID = s.LinkedPredefinedServiceID
-      WHERE s.VendorProfileID = @VendorProfileID 
-        AND s.LinkedPredefinedServiceID IS NOT NULL 
-        AND s.IsActive = 1
-      ORDER BY ps.Category, ps.ServiceName
-    `);
+    const result = await request.execute('sp_Vendor_GetSelectedServicesWithPricing');
     
     let rows = result.recordset;
 
@@ -3724,7 +3102,7 @@ router.get('/:id/selected-services', async (req, res) => {
 // Save or update vendor's selected services
 router.post('/:id/selected-services', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     
     if (!vendorProfileId) {
       return res.status(404).json({ 
@@ -3747,9 +3125,7 @@ router.post('/:id/selected-services', async (req, res) => {
     // Delete existing selected services
     const deleteRequest = new sql.Request(pool);
     deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.query(`
-      DELETE FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID
-    `);
+    await deleteRequest.execute('sp_Vendor_DeleteSelectedServices');
 
     // Insert new selected services
     for (const service of selectedServices) {
@@ -3757,16 +3133,11 @@ router.post('/:id/selected-services', async (req, res) => {
       insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
       insertRequest.input('PredefinedServiceID', sql.Int, service.predefinedServiceId || service.PredefinedServiceID);
       insertRequest.input('VendorPrice', sql.Decimal(10, 2), service.vendorPrice || service.price || 0);
-      insertRequest.input('VendorDescription', sql.NVarChar, service.vendorDescription || service.description || null);
+      insertRequest.input('VendorDescription', sql.NVarChar(sql.MAX), service.vendorDescription || service.description || null);
       insertRequest.input('VendorDurationMinutes', sql.Int, service.vendorDurationMinutes || service.durationMinutes || null);
-      insertRequest.input('ImageURL', sql.NVarChar, service.imageURL || service.ImageURL || null);
+      insertRequest.input('ImageURL', sql.NVarChar(500), service.imageURL || service.ImageURL || null);
       
-      await insertRequest.query(`
-        INSERT INTO VendorSelectedServices 
-        (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDescription, VendorDurationMinutes, ImageURL, IsActive, CreatedAt, UpdatedAt)
-        VALUES 
-        (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDescription, @VendorDurationMinutes, @ImageURL, 1, GETDATE(), GETDATE())
-      `);
+      await insertRequest.execute('sp_Vendor_InsertSelectedService');
     }
 
     res.json({
@@ -3788,7 +3159,7 @@ router.post('/:id/selected-services', async (req, res) => {
 // Update a single selected service (useful for updating just the image)
 router.put('/:id/selected-services/:serviceId', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     
     if (!vendorProfileId) {
       return res.status(404).json({ 
@@ -3810,17 +3181,7 @@ router.put('/:id/selected-services/:serviceId', async (req, res) => {
     request.input('VendorDurationMinutes', sql.Int, vendorDurationMinutes || null);
     request.input('ImageURL', sql.NVarChar, imageURL || null);
     
-    const result = await request.query(`
-      UPDATE VendorSelectedServices
-      SET 
-        VendorPrice = ISNULL(@VendorPrice, VendorPrice),
-        VendorDescription = @VendorDescription,
-        VendorDurationMinutes = @VendorDurationMinutes,
-        ImageURL = @ImageURL,
-        UpdatedAt = GETDATE()
-      WHERE VendorSelectedServiceID = @VendorSelectedServiceID
-        AND VendorProfileID = @VendorProfileID
-    `);
+    const result = await request.execute('sp_Vendor_UpdateSelectedService');
 
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({
@@ -3869,33 +3230,22 @@ router.post('/setup/step3-services', async (req, res) => {
       // First, detach existing services from categories to avoid FK constraint when deleting categories
       const detachRequest = new sql.Request(pool);
       detachRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await detachRequest.query(`
-        UPDATE Services
-        SET CategoryID = NULL
-        WHERE CategoryID IN (
-          SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID
-        )
-      `);
+      await detachRequest.execute('sp_Vendor_DetachServicesFromCategories');
 
       // Now delete existing categories
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteRequest.execute('sp_Vendor_DeleteServiceCategories');
       
       // Insert new categories
       for (let i = 0; i < serviceCategories.length; i++) {
         const catRequest = new sql.Request(pool);
         catRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        catRequest.input('Name', sql.NVarChar, serviceCategories[i].name);
-        catRequest.input('Description', sql.NVarChar, serviceCategories[i].description || null);
+        catRequest.input('Name', sql.NVarChar(100), serviceCategories[i].name);
+        catRequest.input('Description', sql.NVarChar(sql.MAX), serviceCategories[i].description || null);
         catRequest.input('DisplayOrder', sql.Int, i);
         
-        await catRequest.query(`
-          INSERT INTO ServiceCategories (VendorProfileID, Name, Description, DisplayOrder)
-          VALUES (@VendorProfileID, @Name, @Description, @DisplayOrder)
-        `);
+        await catRequest.execute('sp_Vendor_InsertServiceCategory');
       }
     }
     
@@ -3907,11 +3257,8 @@ router.post('/setup/step3-services', async (req, res) => {
         if (service.categoryName) {
           const catRequest = new sql.Request(pool);
           catRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-          catRequest.input('CategoryName', sql.NVarChar, service.categoryName);
-          const catResult = await catRequest.query(`
-            SELECT CategoryID FROM ServiceCategories 
-            WHERE VendorProfileID = @VendorProfileID AND Name = @CategoryName
-          `);
+          catRequest.input('CategoryName', sql.NVarChar(100), service.categoryName);
+          const catResult = await catRequest.execute('sp_Vendor_GetServiceCategoryId');
           if (catResult.recordset.length > 0) {
             categoryId = catResult.recordset[0].CategoryID;
           }
@@ -3973,10 +3320,7 @@ router.post('/setup/step3-services', async (req, res) => {
         packageRequest.input('MaxGuests', sql.Int, pkg.maxGuests || null);
         packageRequest.input('WhatsIncluded', sql.NVarChar, pkg.whatsIncluded || null);
         
-        await packageRequest.query(`
-          INSERT INTO Packages (VendorProfileID, Name, Description, Price, DurationMinutes, MaxGuests, WhatsIncluded)
-          VALUES (@VendorProfileID, @Name, @Description, @Price, @DurationMinutes, @MaxGuests, @WhatsIncluded)
-        `);
+        await packageRequest.execute('sp_Vendor_InsertPackage');
       }
     }
     
@@ -3985,18 +3329,14 @@ router.post('/setup/step3-services', async (req, res) => {
     console.log(`[BACKEND] Deleting all existing services for vendor ${vendorProfileId}`);
     const deleteServicesRequest = new sql.Request(pool);
     deleteServicesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const deleteResult = await deleteServicesRequest.query(`
-      DELETE FROM Services WHERE VendorProfileID = @VendorProfileID
-    `);
-    console.log(`[BACKEND] Deleted ${deleteResult.rowsAffected[0]} services from Services table`);
+    const deleteResult = await deleteServicesRequest.execute('sp_Vendor_DeleteAllServices');
+    console.log(`[BACKEND] Deleted ${deleteResult.recordset[0]?.RowsDeleted || 0} services from Services table`);
     
     // Also delete from VendorSelectedServices (legacy table, may not be used anymore)
     const deleteSelectedRequest = new sql.Request(pool);
     deleteSelectedRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const deleteSelectedResult = await deleteSelectedRequest.query(`
-      DELETE FROM VendorSelectedServices WHERE VendorProfileID = @VendorProfileID
-    `);
-    console.log(`[BACKEND] Deleted ${deleteSelectedResult.rowsAffected[0]} services from VendorSelectedServices table`);
+    const deleteSelectedResult = await deleteSelectedRequest.execute('sp_Vendor_DeleteSelectedServices');
+    console.log(`[BACKEND] Deleted ${deleteSelectedResult.recordset[0]?.RowsDeleted || 0} services from VendorSelectedServices table`);
 
     if (selectedPredefinedServices && selectedPredefinedServices.length > 0) {
       // Insert new selected predefined services
@@ -4077,13 +3417,7 @@ router.post('/setup/step3-services', async (req, res) => {
           const verifyRequest = new sql.Request(pool);
           verifyRequest.input('VendorProfileID', sql.Int, vendorProfileId);
           verifyRequest.input('LinkedPredefinedServiceID', sql.Int, selectedService.predefinedServiceId);
-          const verifyResult = await verifyRequest.query(`
-            SELECT TOP 1 ServiceID, Name, Price, BaseRate, OvertimeRatePerHour, PricingModel, BaseDurationMinutes
-            FROM Services
-            WHERE VendorProfileID = @VendorProfileID 
-            AND LinkedPredefinedServiceID = @LinkedPredefinedServiceID
-            ORDER BY ServiceID DESC
-          `);
+          const verifyResult = await verifyRequest.execute('sp_Vendor_VerifyInsertedService');
           
           if (verifyResult.recordset.length > 0) {
             const savedService = verifyResult.recordset[0];
@@ -4142,24 +3476,19 @@ router.post('/setup/step5-team', async (req, res) => {
       // Delete existing team members
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM VendorTeam WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteRequest.execute('sp_Vendor_DeleteTeam');
       
       // Insert new team members
       for (let i = 0; i < teamMembers.length; i++) {
         const teamRequest = new sql.Request(pool);
         teamRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        teamRequest.input('Name', sql.NVarChar, teamMembers[i].name);
-        teamRequest.input('Role', sql.NVarChar, teamMembers[i].role || null);
-        teamRequest.input('Bio', sql.NVarChar, teamMembers[i].bio || null);
-        teamRequest.input('ImageURL', sql.NVarChar, teamMembers[i].imageUrl || null);
+        teamRequest.input('Name', sql.NVarChar(100), teamMembers[i].name);
+        teamRequest.input('Role', sql.NVarChar(100), teamMembers[i].role || null);
+        teamRequest.input('Bio', sql.NVarChar(sql.MAX), teamMembers[i].bio || null);
+        teamRequest.input('ImageURL', sql.NVarChar(500), teamMembers[i].imageUrl || null);
         teamRequest.input('DisplayOrder', sql.Int, i);
         
-        await teamRequest.query(`
-          INSERT INTO VendorTeam (VendorProfileID, Name, Role, Bio, ImageURL, DisplayOrder)
-          VALUES (@VendorProfileID, @Name, @Role, @Bio, @ImageURL, @DisplayOrder)
-        `);
+        await teamRequest.execute('sp_Vendor_InsertTeamMember');
       }
     }
     
@@ -4206,13 +3535,9 @@ router.post('/setup/step6-social', async (req, res) => {
     if (bookingLink) {
       const updateRequest = new sql.Request(pool);
       updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      updateRequest.input('BookingLink', sql.NVarChar, bookingLink);
+      updateRequest.input('BookingLink', sql.NVarChar(500), bookingLink);
       
-      await updateRequest.query(`
-        UPDATE VendorProfiles 
-        SET BookingLink = @BookingLink, UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+      await updateRequest.execute('sp_Vendor_UpdateBookingLink');
     }
     
     // Handle social media profiles
@@ -4220,22 +3545,17 @@ router.post('/setup/step6-social', async (req, res) => {
       // Delete existing social media
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteRequest.execute('sp_Vendor_DeleteSocialMedia');
       
       // Insert new social media links
       for (let i = 0; i < socialMediaProfiles.length; i++) {
         const socialRequest = new sql.Request(pool);
         socialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        socialRequest.input('Platform', sql.NVarChar, socialMediaProfiles[i].platform);
-        socialRequest.input('URL', sql.NVarChar, socialMediaProfiles[i].url);
+        socialRequest.input('Platform', sql.NVarChar(50), socialMediaProfiles[i].platform);
+        socialRequest.input('URL', sql.NVarChar(255), socialMediaProfiles[i].url);
         socialRequest.input('DisplayOrder', sql.Int, i);
         
-        await socialRequest.query(`
-          INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
-          VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
-        `);
+        await socialRequest.execute('sp_Vendor_InsertSocialMedia');
       }
     }
     
@@ -4299,20 +3619,14 @@ router.post('/setup/step7-availability', async (req, res) => {
     updateRequest.input('AcceptingBookings', sql.Bit, acceptingBookings || false);
     updateRequest.input('AverageResponseTime', sql.Int, responseTimeExpectation || 24);
     
-    await updateRequest.query(`
-      UPDATE VendorProfiles 
-      SET AcceptingBookings = @AcceptingBookings, 
-          AverageResponseTime = @AverageResponseTime,
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await updateRequest.execute('sp_Vendor_UpdateBookingSettings');
     
     // Handle business hours
     if (businessHours && businessHours.length > 0) {
       // Delete existing business hours
-      await updateRequest.query(`
-        DELETE FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID
-      `);
+      const deleteHoursRequest = new sql.Request(pool);
+      deleteHoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteHoursRequest.execute('sp_Vendor_DeleteBusinessHours');
       
       // Insert new business hours
       for (const hours of businessHours) {
@@ -4323,10 +3637,7 @@ router.post('/setup/step7-availability', async (req, res) => {
         hoursRequest.input('CloseTime', sql.Time, hours.closeTime || null);
         hoursRequest.input('IsAvailable', sql.Bit, hours.isAvailable || false);
         
-        await hoursRequest.query(`
-          INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable)
-          VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, @IsAvailable)
-        `);
+        await hoursRequest.execute('sp_Vendor_InsertBusinessHourSimple');
       }
     }
     
@@ -4339,12 +3650,9 @@ router.post('/setup/step7-availability', async (req, res) => {
         exceptionRequest.input('StartTime', sql.Time, exception.startTime || null);
         exceptionRequest.input('EndTime', sql.Time, exception.endTime || null);
         exceptionRequest.input('IsAvailable', sql.Bit, exception.isAvailable);
-        exceptionRequest.input('Reason', sql.NVarChar, exception.reason || null);
+        exceptionRequest.input('Reason', sql.NVarChar(255), exception.reason || null);
         
-        await exceptionRequest.query(`
-          INSERT INTO VendorAvailabilityExceptions (VendorProfileID, Date, StartTime, EndTime, IsAvailable, Reason)
-          VALUES (@VendorProfileID, @Date, @StartTime, @EndTime, @IsAvailable, @Reason)
-        `);
+        await exceptionRequest.execute('sp_Vendor_InsertAvailabilityException');
       }
     }
     
@@ -4398,16 +3706,7 @@ router.post('/setup/step8-policies', async (req, res) => {
     updateRequest.input('PaymentMethods', sql.NVarChar, JSON.stringify(paymentMethods) || null);
     updateRequest.input('PaymentTerms', sql.NVarChar, paymentTerms || null);
     
-    await updateRequest.query(`
-      UPDATE VendorProfiles 
-      SET DepositRequirements = @DepositRequirements,
-          CancellationPolicy = @CancellationPolicy,
-          ReschedulingPolicy = @ReschedulingPolicy,
-          PaymentMethods = @PaymentMethods,
-          PaymentTerms = @PaymentTerms,
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await updateRequest.execute('sp_Vendor_UpdatePolicies');
     
     // Mark step 8 completed
     await markSetupStep(pool, vendorProfileId, 8);
@@ -4461,17 +3760,7 @@ router.post('/setup/step9-verification', async (req, res) => {
     updateRequest.input('IsEcoFriendly', sql.Bit, isEcoFriendly || false);
     updateRequest.input('IsPremium', sql.Bit, isPremium || false);
     
-    await updateRequest.query(`
-      UPDATE VendorProfiles 
-      SET LicenseNumber = @LicenseNumber,
-          InsuranceVerified = @InsuranceVerified,
-          Awards = @Awards,
-          Certifications = @Certifications,
-          IsEcoFriendly = @IsEcoFriendly,
-          IsPremium = @IsPremium,
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await updateRequest.execute('sp_Vendor_UpdateVerification');
     
     // Mark step 9 completed
     await markSetupStep(pool, vendorProfileId, 9);
@@ -4516,24 +3805,19 @@ router.post('/setup/step10-completion', async (req, res) => {
       // Delete existing FAQs
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteRequest.execute('sp_Vendor_DeleteFAQs');
       
       // Insert new FAQs
       for (let i = 0; i < faqs.length; i++) {
         const faqRequest = new sql.Request(pool);
         faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-        faqRequest.input('Question', sql.NVarChar, faqs[i].question);
-        faqRequest.input('Answer', sql.NVarChar, faqs[i].answer);
+        faqRequest.input('Question', sql.NVarChar(500), faqs[i].question);
+        faqRequest.input('Answer', sql.NVarChar(sql.MAX), faqs[i].answer);
         faqRequest.input('AnswerType', sql.NVarChar(50), faqs[i].answerType || 'text');
         faqRequest.input('AnswerOptions', sql.NVarChar(sql.MAX), faqs[i].answerOptions ? JSON.stringify(faqs[i].answerOptions) : null);
         faqRequest.input('DisplayOrder', sql.Int, i);
         
-        await faqRequest.query(`
-          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder)
-          VALUES (@VendorProfileID, @Question, @Answer, @AnswerType, @AnswerOptions, @DisplayOrder)
-        `);
+        await faqRequest.execute('sp_Vendor_InsertFAQExtended');
       }
     }
     
@@ -4541,11 +3825,7 @@ router.post('/setup/step10-completion', async (req, res) => {
     const updateRequest = new sql.Request(pool);
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    await updateRequest.query(`
-      UPDATE VendorProfiles 
-      SET IsCompleted = 1, UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await updateRequest.execute('sp_Vendor_MarkSetupComplete');
     // Mark step 10 completed
     await markSetupStep(pool, vendorProfileId, 10);
 
@@ -4575,23 +3855,7 @@ router.get('/setup/progress/:vendorProfileId', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.query(`
-      SELECT 
-        v.IsCompleted,
-        v.BusinessName,
-        v.BusinessEmail,
-        v.BusinessPhone,
-        v.Address,
-        v.LogoURL,
-        v.AcceptingBookings,
-        (SELECT COUNT(*) FROM VendorCategories WHERE VendorProfileID = @VendorProfileID) as CategoriesCount,
-        (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = @VendorProfileID) as ImagesCount,
-        (SELECT COUNT(*) FROM Services WHERE CategoryID IN (SELECT CategoryID FROM ServiceCategories WHERE VendorProfileID = @VendorProfileID)) as ServicesCount,
-        (SELECT COUNT(*) FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID) as SocialMediaCount,
-        (SELECT COUNT(*) FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID) as BusinessHoursCount
-      FROM VendorProfiles v
-      WHERE v.VendorProfileID = @VendorProfileID
-    `);
+    const result = await request.execute('sp_Vendor_GetSetupProgressSummary');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -4659,8 +3923,8 @@ router.get('/:id/setup-progress', async (req, res) => {
       throw new Error('Database connection not established');
     }
 
-    // Resolve the ID to VendorProfileID
-    const vendorProfileId = await resolveVendorProfileId(id, pool);
+    // Parse the VendorProfileID from URL
+    const vendorProfileId = parseVendorProfileId(id);
     
     if (!vendorProfileId) {
       return res.status(404).json({
@@ -4742,9 +4006,7 @@ router.post('/setup', async (req, res) => {
     const verifyRequest = new sql.Request(pool);
     verifyRequest.input('VendorProfileID', sql.Int, vendorProfileIdNum);
     
-    const verifyResult = await verifyRequest.query(`
-      SELECT VendorProfileID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
-    `);
+    const verifyResult = await verifyRequest.execute('sp_Vendor_VerifyProfileExists');
     
     if (verifyResult.recordset.length === 0) {
       return res.status(404).json({
@@ -5038,72 +4300,21 @@ router.get('/summary/:id', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, id);
 
-    // Get basic vendor info
-    const vendorResult = await request.query(`
-      SELECT 
-        BusinessName, DisplayName, BusinessEmail, BusinessPhone, Website,
-        YearsInBusiness, BusinessDescription, Tagline, Address, City, State,
-        Country, PostalCode, LogoURL
-      FROM VendorProfiles 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    // Get all summary data using stored procedure
+    const summaryResult = await request.execute('sp_Vendor_GetSummary');
 
-    if (vendorResult.recordset.length === 0) {
+    if (summaryResult.recordsets[0].length === 0) {
       return res.status(404).json({ success: false, message: 'Vendor not found' });
     }
 
-    const basicInfo = vendorResult.recordset[0];
-
-    // Get categories
-    const categoriesResult = await request.query(`
-      SELECT vc.Category 
-      FROM VendorCategories vc
-      WHERE vc.VendorProfileID = @VendorProfileID
-    `);
-
-    // Get service areas
-    const serviceAreasResult = await request.query(`
-      SELECT City, State, Country, RadiusMiles, AdditionalFee
-      FROM VendorServiceAreas 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Get services count
-    const servicesResult = await request.query(`
-      SELECT COUNT(*) as ServiceCount 
-      FROM Services s
-      INNER JOIN ServiceCategories sc ON s.CategoryID = sc.CategoryID
-      WHERE sc.VendorProfileID = @VendorProfileID
-    `);
-
-    // Get packages count
-    const packagesResult = await request.query(`
-      SELECT COUNT(*) as PackageCount 
-      FROM Packages 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Get images count
-    const imagesResult = await request.query(`
-      SELECT COUNT(*) as ImageCount 
-      FROM VendorImages 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Get social media
-    const socialMediaResult = await request.query(`
-      SELECT Platform, URL 
-      FROM VendorSocialMedia 
-      WHERE VendorProfileID = @VendorProfileID
-    `);
-
-    // Get business hours
-    const businessHoursResult = await request.query(`
-      SELECT DayOfWeek, OpenTime, CloseTime, IsAvailable, Timezone
-      FROM VendorBusinessHours 
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DayOfWeek
-    `);
+    const basicInfo = summaryResult.recordsets[0][0];
+    const categoriesResult = { recordset: summaryResult.recordsets[1] };
+    const serviceAreasResult = { recordset: summaryResult.recordsets[2] };
+    const servicesResult = { recordset: summaryResult.recordsets[3] };
+    const packagesResult = { recordset: summaryResult.recordsets[4] };
+    const imagesResult = { recordset: summaryResult.recordsets[5] };
+    const socialMediaResult = { recordset: summaryResult.recordsets[6] };
+    const businessHoursResult = { recordset: summaryResult.recordsets[7] };
     
     // Format time values - SQL Server returns TIME as Date objects
     const formatTime = (timeValue) => {
@@ -5171,27 +4382,14 @@ router.post('/setup/step2-location', async (req, res) => {
     request.input('Latitude', sql.Decimal(10, 8), latitude);
     request.input('Longitude', sql.Decimal(11, 8), longitude);
     
-    await request.query(`
-      UPDATE VendorProfiles 
-      SET Address = @Address,
-          City = @City,
-          State = @State,
-          Country = @Country,
-          PostalCode = @PostalCode,
-          Latitude = @Latitude,
-          Longitude = @Longitude,
-          UpdatedAt = GETUTCDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await request.execute('sp_Vendor_UpdateLocation');
     
     // Handle service areas if provided
     if (serviceAreas && serviceAreas.length > 0) {
       // First, clear existing service areas
       const clearRequest = new sql.Request(pool);
       clearRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await clearRequest.query(`
-        DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID
-      `);
+      await clearRequest.execute('sp_Vendor_DeleteServiceAreas');
       
       // Insert new service areas with Google Maps data
       for (const area of serviceAreas) {
@@ -5217,20 +4415,7 @@ router.post('/setup/step2-location', async (req, res) => {
         areaRequest.input('BoundsSouthwestLat', sql.Decimal(9, 6), bounds?.southwest?.lat || null);
         areaRequest.input('BoundsSouthwestLng', sql.Decimal(9, 6), bounds?.southwest?.lng || null);
         
-        await areaRequest.query(`
-          INSERT INTO VendorServiceAreas (
-            VendorProfileID, GooglePlaceID, CityName, [State/Province], Country, 
-            Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, PostalCode,
-            TravelCost, MinimumBookingAmount, BoundsNortheastLat, BoundsNortheastLng, 
-            BoundsSouthwestLat, BoundsSouthwestLng, IsActive, CreatedDate, LastModifiedDate
-          )
-          VALUES (
-            @VendorProfileID, @GooglePlaceID, @CityName, @StateProvince, @Country,
-            @Latitude, @Longitude, @ServiceRadius, @FormattedAddress, @PlaceType, @PostalCode,
-            @TravelCost, @MinimumBookingAmount, @BoundsNortheastLat, @BoundsNortheastLng,
-            @BoundsSouthwestLat, @BoundsSouthwestLng, 1, GETDATE(), GETDATE()
-          )
-        `);
+        await areaRequest.execute('sp_Vendor_InsertServiceAreaFull');
       }
     }
     
@@ -5260,22 +4445,16 @@ router.post('/setup/step4-additional-details', async (req, res) => {
     if (categoryAnswers && categoryAnswers.length > 0) {
       // First, delete existing answers for this vendor to avoid duplicates
       const deleteRequest = new sql.Request(pool);
-      deleteRequest.input('VendorProfileId', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM VendorCategoryAnswers 
-        WHERE VendorProfileID = @VendorProfileId
-      `);
+      deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+      await deleteRequest.execute('sp_Vendor_DeleteCategoryAnswers');
 
       // Insert new answers
       for (const answer of categoryAnswers) {
         const insertRequest = new sql.Request(pool);
-        insertRequest.input('VendorProfileId', sql.Int, vendorProfileId);
-        insertRequest.input('QuestionId', sql.Int, answer.questionId);
+        insertRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+        insertRequest.input('QuestionID', sql.Int, answer.questionId);
         insertRequest.input('Answer', sql.NVarChar(sql.MAX), answer.answer);
-        await insertRequest.query(`
-          INSERT INTO VendorCategoryAnswers (VendorProfileID, QuestionID, Answer, CreatedAt, UpdatedAt)
-          VALUES (@VendorProfileId, @QuestionId, @Answer, GETDATE(), GETDATE())
-        `);
+        await insertRequest.execute('sp_Vendor_InsertCategoryAnswer');
       }
     }
 
@@ -5337,10 +4516,7 @@ router.post('/setup/step5-availability', async (req, res) => {
           request.input('OpenTime', sql.VarChar(8), openTime);
           request.input('CloseTime', sql.VarChar(8), closeTime);
           
-          await request.query(`
-            INSERT INTO VendorBusinessHours (VendorProfileID, DayOfWeek, OpenTime, CloseTime, IsAvailable, CreatedAt, UpdatedAt)
-            VALUES (@VendorProfileID, @DayOfWeek, @OpenTime, @CloseTime, 1, GETUTCDATE(), GETUTCDATE())
-          `);
+          await request.execute('sp_Vendor_InsertBusinessHourVarChar');
         }
       }
     }
@@ -5370,12 +4546,7 @@ router.post('/setup/step6-gallery', async (req, res) => {
       request.input('VendorProfileID', sql.Int, vendorProfileId);
       request.input('LogoURL', sql.NVarChar(500), logoURL);
       
-      await request.query(`
-        UPDATE VendorProfiles 
-        SET LogoURL = @LogoURL,
-            UpdatedAt = GETUTCDATE()
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+      await request.execute('sp_Vendor_UpdateLogoURL');
     }
     
     // Save gallery images if provided
@@ -5386,10 +4557,7 @@ router.post('/setup/step6-gallery', async (req, res) => {
       // First, delete existing gallery images for this vendor
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM VendorImages 
-        WHERE VendorProfileID = @VendorProfileID AND ImageType = 'Gallery'
-      `);
+      await deleteRequest.execute('sp_Vendor_DeleteGalleryImages');
       console.log('Deleted existing gallery images');
       
       // Insert new gallery images
@@ -5404,10 +4572,7 @@ router.post('/setup/step6-gallery', async (req, res) => {
           insertRequest.input('ImageType', sql.NVarChar(20), 'Gallery');
           insertRequest.input('DisplayOrder', sql.Int, i);
           
-          await insertRequest.query(`
-            INSERT INTO VendorImages (VendorProfileID, ImageURL, Caption, ImageType, DisplayOrder, IsPrimary, CreatedAt)
-            VALUES (@VendorProfileID, @ImageURL, @Caption, @ImageType, @DisplayOrder, 0, GETUTCDATE())
-          `);
+          await insertRequest.execute('sp_Vendor_InsertGalleryImageFull');
           console.log(`Inserted gallery image ${i} successfully`);
         } else {
           console.log(`Skipping image ${i} - no URL`);
@@ -5444,9 +4609,7 @@ router.post('/setup/step7-social', async (req, res) => {
       // First, delete existing social media for this vendor
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteRequest.execute('sp_Vendor_DeleteSocialMedia');
       console.log('Deleted existing social media');
       
       // Handle array format (socialMediaProfiles)
@@ -5461,10 +4624,7 @@ router.post('/setup/step7-social', async (req, res) => {
             request.input('URL', sql.NVarChar(500), profile.url);
             request.input('DisplayOrder', sql.Int, i);
             
-            await request.query(`
-              INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
-              VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
-            `);
+            await request.execute('sp_Vendor_InsertSocialMediaWithOrder');
             console.log(`Inserted social media ${i} successfully`);
           }
         }
@@ -5480,10 +4640,7 @@ router.post('/setup/step7-social', async (req, res) => {
             request.input('URL', sql.NVarChar(500), url);
             request.input('DisplayOrder', sql.Int, displayOrder++);
             
-            await request.query(`
-              INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
-              VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
-            `);
+            await request.execute('sp_Vendor_InsertSocialMediaWithOrder');
             console.log(`Inserted social media ${platform} successfully`);
           }
         }
@@ -5519,10 +4676,7 @@ router.post('/setup/step8-faq', async (req, res) => {
       // First, delete existing FAQs for this vendor to avoid duplicates
       const deleteRequest = new sql.Request(pool);
       deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-      await deleteRequest.query(`
-        DELETE FROM VendorFAQs 
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+      await deleteRequest.execute('sp_Vendor_DeleteFAQs');
 
       // Insert new FAQs
       for (let i = 0; i < faqs.length; i++) {
@@ -5535,10 +4689,7 @@ router.post('/setup/step8-faq', async (req, res) => {
           insertRequest.input('AnswerType', sql.NVarChar(50), faq.answerType || 'text');
           insertRequest.input('AnswerOptions', sql.NVarChar(sql.MAX), faq.answerOptions ? JSON.stringify(faq.answerOptions) : null);
           insertRequest.input('DisplayOrder', sql.Int, i + 1);
-          await insertRequest.query(`
-            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
-            VALUES (@VendorProfileID, @Question, @Answer, @AnswerType, @AnswerOptions, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
-          `);
+          await insertRequest.execute('sp_Vendor_InsertFAQWithActive');
         }
       }
     }
@@ -5590,13 +4741,7 @@ router.post('/setup/step9-completion', async (req, res) => {
     // Mark vendor setup as complete
     const updateRequest = new sql.Request(pool);
     updateRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await updateRequest.query(`
-      UPDATE VendorProfiles 
-      SET IsCompleted = 1,
-          SetupCompletedAt = GETUTCDATE(),
-          UpdatedAt = GETUTCDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await updateRequest.execute('sp_Vendor_MarkSetupCompleteWithTimestamp');
     
     // Handle any final FAQs if provided
     if (faqs && faqs.length > 0) {
@@ -5604,16 +4749,13 @@ router.post('/setup/step9-completion', async (req, res) => {
         const faq = faqs[i];
         if (faq.question && faq.answer) {
           const faqRequest = new sql.Request(pool);
-          faqRequest.input('VendorProfileId', sql.Int, vendorProfileId);
+          faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
           faqRequest.input('Question', sql.NVarChar(500), faq.question);
           faqRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
           faqRequest.input('AnswerType', sql.NVarChar(50), faq.answerType || 'text');
           faqRequest.input('AnswerOptions', sql.NVarChar(sql.MAX), faq.answerOptions ? JSON.stringify(faq.answerOptions) : null);
           faqRequest.input('DisplayOrder', sql.Int, i + 1);
-          await faqRequest.query(`
-            INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, AnswerType, AnswerOptions, DisplayOrder, IsActive, CreatedAt, UpdatedAt)
-            VALUES (@VendorProfileId, @Question, @Answer, @AnswerType, @AnswerOptions, @DisplayOrder, 1, GETUTCDATE(), GETUTCDATE())
-          `);
+          await faqRequest.execute('sp_Vendor_InsertFAQWithActive');
         }
       }
     }
@@ -5629,12 +4771,7 @@ router.post('/setup/step9-completion', async (req, res) => {
           serviceRequest.input('VendorDuration', sql.Int, predefinedService.vendorDuration);
           serviceRequest.input('VendorDescription', sql.NVarChar(sql.MAX), predefinedService.vendorDescription || null);
           
-          await serviceRequest.query(`
-            INSERT INTO VendorPredefinedServices 
-            (VendorProfileID, PredefinedServiceID, VendorPrice, VendorDuration, VendorDescription, IsActive, CreatedAt)
-            VALUES 
-            (@VendorProfileID, @PredefinedServiceID, @VendorPrice, @VendorDuration, @VendorDescription, 1, GETDATE())
-          `);
+          await serviceRequest.execute('sp_Vendor_InsertPredefinedService');
           
           console.log(`Added predefined service ${predefinedService.id} for vendor ${vendorProfileId}`);
         } catch (serviceError) {
@@ -5679,69 +4816,27 @@ router.get('/summary/:vendorProfileId', async (req, res) => {
 
     const pool = await poolPromise;
     
-    // Get vendor profile data
-    const profileRequest = new sql.Request(pool);
-    profileRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const profileResult = await profileRequest.query(`
-      SELECT * FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID
-    `);
+    // Get all summary data using stored procedure
+    const summaryRequest = new sql.Request(pool);
+    summaryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
+    const summaryResult = await summaryRequest.execute('sp_Vendor_GetFullSummary');
     
-    if (!profileResult.recordset || profileResult.recordset.length === 0) {
+    if (!summaryResult.recordsets[0] || summaryResult.recordsets[0].length === 0) {
       return res.status(404).json({ 
         success: false, 
         message: 'Vendor profile not found' 
       });
     }
     
-    const vendorProfile = profileResult.recordset[0];
-    
-    // Get category answers
-    const categoryRequest = new sql.Request(pool);
-    categoryRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const categoryResult = await categoryRequest.query(`
-      SELECT ca.*, cq.QuestionText, cq.Category 
-      FROM VendorCategoryAnswers ca
-      JOIN CategoryQuestions cq ON ca.QuestionID = cq.QuestionID
-      WHERE ca.VendorProfileID = @VendorProfileID
-    `);
-    
-    // Get business hours
-    const hoursRequest = new sql.Request(pool);
-    hoursRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const hoursResult = await hoursRequest.query(`
-      SELECT * FROM VendorBusinessHours WHERE VendorProfileID = @VendorProfileID ORDER BY DayOfWeek
-    `);
-    
-    // Get gallery images
-    const imagesRequest = new sql.Request(pool);
-    imagesRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const imagesResult = await imagesRequest.query(`
-      SELECT * FROM VendorImages WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
-    `);
-    
-    // Get social media
-    const socialRequest = new sql.Request(pool);
-    socialRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const socialResult = await socialRequest.query(`
-      SELECT * FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
-    `);
-    
-    // Get FAQs
-    const faqRequest = new sql.Request(pool);
-    faqRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const faqResult = await faqRequest.query(`
-      SELECT * FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID ORDER BY DisplayOrder
-    `);
-    
     res.json({
       success: true,
       data: {
-        profile: vendorProfile,
-        categoryAnswers: categoryResult.recordset || [],
-        businessHours: hoursResult.recordset || [],
-        galleryImages: imagesResult.recordset || [],
-        socialMedia: socialResult.recordset || [],
-        faqs: faqResult.recordset || []
+        profile: summaryResult.recordsets[0][0],
+        categoryAnswers: summaryResult.recordsets[1] || [],
+        businessHours: summaryResult.recordsets[2] || [],
+        galleryImages: summaryResult.recordsets[3] || [],
+        socialMedia: summaryResult.recordsets[4] || [],
+        faqs: summaryResult.recordsets[5] || []
       }
     });
 
@@ -5830,11 +4925,7 @@ router.post('/:vendorProfileId/logo', upload.single('logo'), async (req, res) =>
     request.input('VendorProfileID', sql.Int, parseInt(vendorProfileId));
     request.input('LogoURL', sql.NVarChar(255), logoUrl);
 
-    await request.query(`
-      UPDATE VendorProfiles 
-      SET LogoURL = @LogoURL, UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await request.execute('sp_Vendor_UpdateLogoSimple');
 
     res.json({
       success: true,
@@ -5923,13 +5014,9 @@ router.get('/:vendorProfileId/google-reviews-settings', async (req, res) => {
     const { vendorProfileId } = req.params;
     const pool = await poolPromise;
 
-    const result = await pool.request()
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query(`
-        SELECT GooglePlaceId, GoogleBusinessUrl
-        FROM VendorProfiles
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    const result = await request.execute('sp_Vendor_GetGoogleReviewsSettings');
 
     if (result.recordset.length === 0) {
       return res.status(404).json({
@@ -5963,16 +5050,11 @@ router.post('/:vendorProfileId/google-reviews-settings', async (req, res) => {
     const pool = await poolPromise;
 
     // Update vendor profile with Google Reviews settings
-    await pool.request()
-      .input('VendorProfileID', sql.Int, vendorProfileId)
-      .input('GooglePlaceId', sql.NVarChar(100), GooglePlaceId || null)
-      .input('GoogleBusinessUrl', sql.NVarChar(500), GoogleBusinessUrl || null)
-      .query(`
-        UPDATE VendorProfiles
-        SET GooglePlaceId = @GooglePlaceId,
-            GoogleBusinessUrl = @GoogleBusinessUrl
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, vendorProfileId);
+    request.input('GooglePlaceId', sql.NVarChar(100), GooglePlaceId || null);
+    request.input('GoogleBusinessUrl', sql.NVarChar(500), GoogleBusinessUrl || null);
+    await request.execute('sp_Vendor_UpdateGoogleReviewsSettings');
 
     res.json({
       success: true,
@@ -6024,75 +5106,41 @@ router.post('/check-availability', async (req, res) => {
     const formattedStartTime = formatTime(startTime);
     const formattedEndTime = formatTime(endTime);
     
-    request.input('EventDate', sql.Date, eventDate);
-    request.input('DayOfWeek', sql.TinyInt, dayNumber);
+    // Use sp_SearchVendors stored procedure for availability check
+    request.input('SearchTerm', sql.NVarChar(100), null);
+    request.input('Category', sql.NVarChar(50), null);
     request.input('City', sql.NVarChar(100), city || null);
+    request.input('MinPrice', sql.Decimal(10, 2), null);
+    request.input('MaxPrice', sql.Decimal(10, 2), null);
+    request.input('MinRating', sql.Decimal(2, 1), null);
+    request.input('IsPremium', sql.Bit, null);
+    request.input('IsEcoFriendly', sql.Bit, null);
+    request.input('IsAwardWinning', sql.Bit, null);
+    request.input('IsLastMinute', sql.Bit, null);
+    request.input('IsCertified', sql.Bit, null);
+    request.input('IsInsured', sql.Bit, null);
+    request.input('IsLocal', sql.Bit, null);
+    request.input('IsMobile', sql.Bit, null);
+    request.input('Latitude', sql.Decimal(10, 8), null);
+    request.input('Longitude', sql.Decimal(11, 8), null);
+    request.input('RadiusMiles', sql.Int, 50);
+    request.input('PageNumber', sql.Int, 1);
+    request.input('PageSize', sql.Int, 100);
+    request.input('SortBy', sql.NVarChar(50), 'recommended');
+    request.input('BudgetType', sql.NVarChar(20), null);
+    request.input('PricingModelFilter', sql.NVarChar(20), null);
+    request.input('FixedPricingTypeFilter', sql.NVarChar(20), null);
+    request.input('Region', sql.NVarChar(50), null);
+    request.input('PriceLevel', sql.NVarChar(10), null);
+    request.input('EventDateRaw', sql.NVarChar(50), null);
+    request.input('EventStartRaw', sql.NVarChar(20), null);
+    request.input('EventEndRaw', sql.NVarChar(20), null);
+    request.input('EventDate', sql.Date, eventDate);
+    request.input('DayOfWeek', sql.NVarChar(10), dayOfWeek || null);
     request.input('StartTime', sql.VarChar(8), formattedStartTime);
     request.input('EndTime', sql.VarChar(8), formattedEndTime);
 
-    // Query to find available vendors
-    const result = await request.query(`
-      SELECT
-        vp.VendorProfileID,
-        vp.BusinessName,
-        vp.DisplayName,
-        vp.City,
-        vp.State,
-        vp.LogoURL,
-        (SELECT AVG(CAST(Rating AS DECIMAL(3,1))) FROM Reviews WHERE VendorProfileID = vp.VendorProfileID AND IsApproved = 1) as AverageRating,
-        (SELECT COUNT(*) FROM Reviews WHERE VendorProfileID = vp.VendorProfileID AND IsApproved = 1) as ReviewCount,
-        vp.IsPremium,
-        (SELECT TOP 1 Category FROM VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as CategoryName,
-        COUNT(*) OVER() as TotalCount
-      FROM VendorProfiles vp
-      LEFT JOIN VendorBusinessHours vbh ON vp.VendorProfileID = vbh.VendorProfileID
-      LEFT JOIN VendorAvailabilityExceptions vae ON vp.VendorProfileID = vae.VendorProfileID 
-        AND vae.Date = @EventDate
-      WHERE (@City IS NULL OR vp.City LIKE '%' + @City + '%')
-        AND (
-          -- Check if vendor has business hours for this day of week
-          @DayOfWeek IS NULL
-          OR EXISTS (
-            SELECT 1 FROM VendorBusinessHours vbh2 
-            WHERE vbh2.VendorProfileID = vp.VendorProfileID 
-            AND vbh2.DayOfWeek = @DayOfWeek 
-            AND vbh2.IsAvailable = 1
-            -- If times are provided, check if business hours overlap with requested time
-            AND (
-              @StartTime IS NULL 
-              OR @EndTime IS NULL
-              OR (
-                -- Business hours overlap if: vendor opens before search ends AND vendor closes after search starts
-                vbh2.OpenTime < @EndTime AND vbh2.CloseTime > @StartTime
-              )
-            )
-          )
-        )
-        AND (
-          -- Check availability exceptions - vendor should be available on this date
-          vae.VendorProfileID IS NULL 
-          OR (
-            vae.IsAvailable = 1
-            -- If times are provided, check exception time ranges
-            AND (
-              @StartTime IS NULL
-              OR vae.StartTime IS NULL
-              OR (vae.StartTime <= @StartTime AND vae.EndTime >= @EndTime)
-            )
-          )
-        )
-        AND NOT EXISTS (
-          -- Exclude if vendor has bookings on the same date
-          SELECT 1 FROM Bookings b 
-          WHERE b.VendorProfileID = vp.VendorProfileID 
-          AND CAST(b.EventDate AS DATE) = @EventDate
-          AND b.Status IN ('confirmed', 'pending')
-        )
-      ORDER BY 
-        IsPremium DESC,
-        AverageRating DESC,
-        ReviewCount DESC
-    `);
+    const result = await request.execute('sp_SearchVendors');
 
     const availableVendors = result.recordset.map(vendor => ({
       vendorProfileId: vendor.VendorProfileID,
@@ -6104,16 +5152,16 @@ router.post('/check-availability', async (req, res) => {
       averageRating: vendor.AverageRating,
       reviewCount: vendor.ReviewCount,
       isPremium: vendor.IsPremium,
-      categoryName: vendor.CategoryName
+      categoryName: vendor.PrimaryCategory || vendor.Categories
     }));
 
     res.json({
       success: true,
       availableVendors: availableVendors,
-      totalCount: availableVendors.length > 0 ? availableVendors[0].TotalCount : 0,
+      totalCount: result.recordset.length,
       searchDate: date,
       searchCity: city,
-      dayOfWeek: dayName
+      dayOfWeek: dayOfWeek
     });
 
   } catch (error) {
@@ -6131,18 +5179,13 @@ router.post('/check-availability', async (req, res) => {
 // Get vendor social media
 router.get('/:id/social', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const pool = await poolPromise;
     
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.query(`
-      SELECT Platform, URL, DisplayOrder
-      FROM VendorSocialMedia
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DisplayOrder
-    `);
+    const result = await request.execute('sp_Vendor_GetSocialMedia');
     
     // Convert to object format expected by frontend
     const socialMedia = {
@@ -6169,14 +5212,14 @@ router.get('/:id/social', async (req, res) => {
 // Save vendor social media
 router.post('/:id/social', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const { facebook, instagram, twitter, linkedin, youtube, tiktok } = req.body;
     const pool = await poolPromise;
     
     // Delete existing entries
     const deleteRequest = new sql.Request(pool);
     deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.query(`DELETE FROM VendorSocialMedia WHERE VendorProfileID = @VendorProfileID`);
+    await deleteRequest.execute('sp_Vendor_DeleteSocialMedia');
     
     // Insert new entries
     const platforms = { Facebook: facebook, Instagram: instagram, Twitter: twitter, LinkedIn: linkedin, YouTube: youtube, TikTok: tiktok };
@@ -6190,10 +5233,7 @@ router.post('/:id/social', async (req, res) => {
         insertRequest.input('URL', sql.NVarChar(255), url);
         insertRequest.input('DisplayOrder', sql.Int, displayOrder++);
         
-        await insertRequest.query(`
-          INSERT INTO VendorSocialMedia (VendorProfileID, Platform, URL, DisplayOrder)
-          VALUES (@VendorProfileID, @Platform, @URL, @DisplayOrder)
-        `);
+        await insertRequest.execute('sp_Vendor_InsertSocialMediaWithOrder');
       }
     }
     
@@ -6207,36 +5247,27 @@ router.post('/:id/social', async (req, res) => {
 // Get vendor location and service areas
 router.get('/:id/location', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const pool = await poolPromise;
     
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    // Get vendor profile location
-    const profileResult = await request.query(`
-      SELECT Address, City, State, Country, PostalCode, Latitude, Longitude
-      FROM VendorProfiles
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    // Get vendor profile location and service areas
+    const locationResult = await request.execute('sp_Vendor_GetLocationAndAreas');
     
-    // Get service areas
-    const areasResult = await request.query(`
-      SELECT GooglePlaceID, CityName, [State/Province] as StateProvince, Country, 
-             Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, IsActive
-      FROM VendorServiceAreas
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    const profileData = locationResult.recordsets[0][0] || {};
+    const areasData = locationResult.recordsets[1] || [];
     
     res.json({
-      address: profileResult.recordset[0]?.Address || '',
-      city: profileResult.recordset[0]?.City || '',
-      state: profileResult.recordset[0]?.State || '',
-      country: profileResult.recordset[0]?.Country || '',
-      postalCode: profileResult.recordset[0]?.PostalCode || '',
-      latitude: profileResult.recordset[0]?.Latitude || null,
-      longitude: profileResult.recordset[0]?.Longitude || null,
-      serviceAreas: areasResult.recordset.map(area => ({
+      address: profileData.Address || '',
+      city: profileData.City || '',
+      state: profileData.State || '',
+      country: profileData.Country || '',
+      postalCode: profileData.PostalCode || '',
+      latitude: profileData.Latitude || null,
+      longitude: profileData.Longitude || null,
+      serviceAreas: areasData.map(area => ({
         placeId: area.GooglePlaceID,
         city: area.CityName,
         province: area.StateProvince,
@@ -6258,7 +5289,7 @@ router.get('/:id/location', async (req, res) => {
 // Save vendor location and service areas
 router.post('/:id/location', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const { address, city, state, country, postalCode, latitude, longitude, serviceAreas } = req.body;
     const pool = await poolPromise;
     
@@ -6273,18 +5304,12 @@ router.post('/:id/location', async (req, res) => {
     updateRequest.input('Latitude', sql.Decimal(10, 8), latitude || null);
     updateRequest.input('Longitude', sql.Decimal(11, 8), longitude || null);
     
-    await updateRequest.query(`
-      UPDATE VendorProfiles
-      SET Address = @Address, City = @City, State = @State, Country = @Country,
-          PostalCode = @PostalCode, Latitude = @Latitude, Longitude = @Longitude,
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await updateRequest.execute('sp_Vendor_UpdateLocationProfile');
     
     // Delete existing service areas
     const deleteRequest = new sql.Request(pool);
     deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.query(`DELETE FROM VendorServiceAreas WHERE VendorProfileID = @VendorProfileID`);
+    await deleteRequest.execute('sp_Vendor_DeleteServiceAreas');
     
     // Insert new service areas
     if (Array.isArray(serviceAreas) && serviceAreas.length > 0) {
@@ -6301,10 +5326,7 @@ router.post('/:id/location', async (req, res) => {
         areaRequest.input('FormattedAddress', sql.NVarChar(255), area.formattedAddress || null);
         areaRequest.input('PlaceType', sql.NVarChar(50), area.placeType || null);
         
-        await areaRequest.query(`
-          INSERT INTO VendorServiceAreas (VendorProfileID, GooglePlaceID, CityName, [State/Province], Country, Latitude, Longitude, ServiceRadius, FormattedAddress, PlaceType, IsActive)
-          VALUES (@VendorProfileID, @GooglePlaceID, @CityName, @StateProvince, @Country, @Latitude, @Longitude, @ServiceRadius, @FormattedAddress, @PlaceType, 1)
-        `);
+        await areaRequest.execute('sp_Vendor_InsertServiceAreaSimple');
       }
     }
     
@@ -6318,7 +5340,7 @@ router.post('/:id/location', async (req, res) => {
 // Get vendor filters/badges
 router.get('/:id/filters', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const pool = await poolPromise;
     
     const request = new sql.Request(pool);
@@ -6327,11 +5349,7 @@ router.get('/:id/filters', async (req, res) => {
     // Query the actual badge columns that exist in the database
     let result;
     try {
-      result = await request.query(`
-        SELECT IsPremium, IsEcoFriendly, IsAwardWinning, IsLastMinute, IsCertified, IsInsured, IsLocal, IsMobile
-        FROM VendorProfiles
-        WHERE VendorProfileID = @VendorProfileID
-      `);
+      result = await request.execute('sp_Vendor_GetFilters');
       const profile = result.recordset[0] || {};
       
       // Reconstruct filters from boolean flags
@@ -6369,7 +5387,7 @@ router.get('/:id/filters', async (req, res) => {
 // Save vendor filters/badges
 router.put('/:id/filters', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const { filters } = req.body;
     const pool = await poolPromise;
     
@@ -6397,19 +5415,7 @@ router.put('/:id/filters', async (req, res) => {
     request.input('IsLocal', sql.Bit, isLocal);
     request.input('IsMobile', sql.Bit, isMobile);
     
-    await request.query(`
-      UPDATE VendorProfiles
-      SET IsPremium = @IsPremium, 
-          IsEcoFriendly = @IsEcoFriendly, 
-          IsAwardWinning = @IsAwardWinning, 
-          IsLastMinute = @IsLastMinute, 
-          IsCertified = @IsCertified, 
-          IsInsured = @IsInsured, 
-          IsLocal = @IsLocal, 
-          IsMobile = @IsMobile,
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await request.execute('sp_Vendor_UpdateFilters');
     
     res.json({ success: true, message: 'Filters saved successfully' });
   } catch (error) {
@@ -6421,18 +5427,13 @@ router.put('/:id/filters', async (req, res) => {
 // Get vendor FAQs
 router.get('/:id/faqs', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const pool = await poolPromise;
     
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.query(`
-      SELECT FAQID, Question, Answer, DisplayOrder
-      FROM VendorFAQs
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DisplayOrder
-    `);
+    const result = await request.execute('sp_Vendor_GetFAQs');
     
     res.json(result.recordset.map(faq => ({
       id: faq.FAQID,
@@ -6449,14 +5450,14 @@ router.get('/:id/faqs', async (req, res) => {
 // Save vendor FAQs
 router.post('/:id/faqs', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const { faqs } = req.body;
     const pool = await poolPromise;
     
     // Delete existing FAQs
     const deleteRequest = new sql.Request(pool);
     deleteRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    await deleteRequest.query(`DELETE FROM VendorFAQs WHERE VendorProfileID = @VendorProfileID`);
+    await deleteRequest.execute('sp_Vendor_DeleteFAQs');
     
     // Insert new FAQs
     if (Array.isArray(faqs) && faqs.length > 0) {
@@ -6468,10 +5469,7 @@ router.post('/:id/faqs', async (req, res) => {
         insertRequest.input('Answer', sql.NVarChar(sql.MAX), faq.answer);
         insertRequest.input('DisplayOrder', sql.Int, i);
         
-        await insertRequest.query(`
-          INSERT INTO VendorFAQs (VendorProfileID, Question, Answer, DisplayOrder)
-          VALUES (@VendorProfileID, @Question, @Answer, @DisplayOrder)
-        `);
+        await insertRequest.execute('sp_Vendor_InsertFAQSimple');
       }
     }
     
@@ -6485,7 +5483,7 @@ router.post('/:id/faqs', async (req, res) => {
 // Delete a specific FAQ
 router.delete('/:id/faqs/:faqId', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const { faqId } = req.params;
     const pool = await poolPromise;
     
@@ -6493,10 +5491,7 @@ router.delete('/:id/faqs/:faqId', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('FAQID', sql.Int, faqId);
     
-    await request.query(`
-      DELETE FROM VendorFAQs 
-      WHERE VendorProfileID = @VendorProfileID AND FAQID = @FAQID
-    `);
+    await request.execute('sp_Vendor_DeleteFAQById');
     
     res.json({ success: true, message: 'FAQ deleted successfully' });
   } catch (error) {
@@ -6508,18 +5503,13 @@ router.delete('/:id/faqs/:faqId', async (req, res) => {
 // Get vendor images
 router.get('/:id/images', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const pool = await poolPromise;
     
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.query(`
-      SELECT ImageID, ImageURL, Caption, IsPrimary, DisplayOrder, AlbumID
-      FROM VendorImages
-      WHERE VendorProfileID = @VendorProfileID
-      ORDER BY DisplayOrder
-    `);
+    const result = await request.execute('sp_Vendor_GetImages');
     
     res.json(result.recordset.map(img => ({
       id: img.ImageID,
@@ -6538,7 +5528,7 @@ router.get('/:id/images', async (req, res) => {
 // Upload vendor images
 router.post('/:id/images', upload.array('images', 10), async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const pool = await poolPromise;
     
     if (!req.files || req.files.length === 0) {
@@ -6550,11 +5540,7 @@ router.post('/:id/images', upload.array('images', 10), async (req, res) => {
     // Get max display order
     const orderRequest = new sql.Request(pool);
     orderRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const orderResult = await orderRequest.query(`
-      SELECT ISNULL(MAX(DisplayOrder), -1) + 1 as NextOrder
-      FROM VendorImages
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    const orderResult = await orderRequest.execute('sp_Vendor_GetNextImageOrder');
     let nextOrder = orderResult.recordset[0].NextOrder;
     
     for (const file of req.files) {
@@ -6571,11 +5557,7 @@ router.post('/:id/images', upload.array('images', 10), async (req, res) => {
         insertRequest.input('ImageURL', sql.NVarChar(500), result.secure_url);
         insertRequest.input('DisplayOrder', sql.Int, nextOrder);
         
-        const insertResult = await insertRequest.query(`
-          INSERT INTO VendorImages (VendorProfileID, ImageURL, DisplayOrder, IsPrimary)
-          OUTPUT INSERTED.ImageID
-          VALUES (@VendorProfileID, @ImageURL, @DisplayOrder, 0)
-        `);
+        const insertResult = await insertRequest.execute('sp_Vendor_InsertImageWithOutput');
         
         uploadedImages.push({
           id: insertResult.recordset[0].ImageID,
@@ -6602,7 +5584,7 @@ router.post('/:id/images', upload.array('images', 10), async (req, res) => {
 // Delete vendor image
 router.delete('/:id/images/:imageId', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const { imageId } = req.params;
     const pool = await poolPromise;
     
@@ -6610,10 +5592,7 @@ router.delete('/:id/images/:imageId', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('ImageID', sql.Int, imageId);
     
-    await request.query(`
-      DELETE FROM VendorImages 
-      WHERE VendorProfileID = @VendorProfileID AND ImageID = @ImageID
-    `);
+    await request.execute('sp_Vendor_DeleteImageById');
     
     res.json({ success: true, message: 'Image deleted successfully' });
   } catch (error) {
@@ -6625,7 +5604,7 @@ router.delete('/:id/images/:imageId', async (req, res) => {
 // Add image by URL
 router.post('/:id/images/url', async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     const { url, caption } = req.body;
     const pool = await poolPromise;
     
@@ -6636,11 +5615,7 @@ router.post('/:id/images/url', async (req, res) => {
     // Get max display order
     const orderRequest = new sql.Request(pool);
     orderRequest.input('VendorProfileID', sql.Int, vendorProfileId);
-    const orderResult = await orderRequest.query(`
-      SELECT ISNULL(MAX(DisplayOrder), -1) + 1 as NextOrder
-      FROM VendorImages
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    const orderResult = await orderRequest.execute('sp_Vendor_GetNextImageOrder');
     const nextOrder = orderResult.recordset[0].NextOrder;
     
     // Insert the image
@@ -6650,11 +5625,7 @@ router.post('/:id/images/url', async (req, res) => {
     insertRequest.input('Caption', sql.NVarChar(255), caption || null);
     insertRequest.input('DisplayOrder', sql.Int, nextOrder);
     
-    const result = await insertRequest.query(`
-      INSERT INTO VendorImages (VendorProfileID, ImageURL, Caption, DisplayOrder, IsPrimary)
-      OUTPUT INSERTED.ImageID
-      VALUES (@VendorProfileID, @ImageURL, @Caption, @DisplayOrder, 0)
-    `);
+    const result = await insertRequest.execute('sp_Vendor_InsertImageWithCaption');
     
     res.json({ 
       success: true, 
@@ -6670,7 +5641,7 @@ router.post('/:id/images/url', async (req, res) => {
 // Upload vendor logo
 router.post('/:id/logo', upload.single('logo'), async (req, res) => {
   try {
-    const vendorProfileId = await resolveVendorProfileId(req.params.id, await poolPromise);
+    const vendorProfileId = parseVendorProfileId(req.params.id);
     
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
@@ -6688,11 +5659,7 @@ router.post('/:id/logo', upload.single('logo'), async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     request.input('LogoURL', sql.NVarChar(255), result.secure_url);
     
-    await request.query(`
-      UPDATE VendorProfiles
-      SET LogoURL = @LogoURL, UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await request.execute('sp_Vendor_UpdateLogo');
     
     res.json({ success: true, logoUrl: result.secure_url });
   } catch (error) {
@@ -6715,13 +5682,7 @@ router.post('/:vendorProfileId/submit-for-review', async (req, res) => {
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
     // Update profile status to pending_review
-    await request.query(`
-      UPDATE VendorProfiles
-      SET ProfileStatus = 'pending_review', 
-          SubmittedForReviewAt = GETDATE(),
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await request.execute('sp_Vendor_SubmitForReview');
     
     console.log(`[Vendor Review] Profile ${vendorProfileId} submitted for review`);
     
@@ -6742,30 +5703,7 @@ router.get('/admin/pending-reviews', async (req, res) => {
     const pool = await poolPromise;
     const request = new sql.Request(pool);
     
-    const result = await request.query(`
-      SELECT 
-        vp.VendorProfileID,
-        vp.BusinessName,
-        vp.DisplayName,
-        vp.BusinessDescription,
-        vp.BusinessPhone,
-        vp.BusinessEmail,
-        vp.Website,
-        vp.City,
-        vp.State,
-        vp.Country,
-        vp.ProfileStatus,
-        vp.SubmittedForReviewAt,
-        vp.CreatedAt,
-        u.Name as OwnerName,
-        u.Email as OwnerEmail,
-        (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorProfileID = vp.VendorProfileID ORDER BY IsPrimary DESC, DisplayOrder ASC) as PrimaryImage,
-        (SELECT STRING_AGG(Category, ', ') FROM VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as Categories
-      FROM VendorProfiles vp
-      LEFT JOIN Users u ON vp.UserID = u.UserID
-      WHERE vp.ProfileStatus = 'pending_review'
-      ORDER BY vp.SubmittedForReviewAt ASC
-    `);
+    const result = await request.execute('sp_Vendor_GetPendingReviews');
     
     res.json({ 
       success: true, 
@@ -6789,16 +5727,7 @@ router.post('/admin/:vendorProfileId/approve', async (req, res) => {
     request.input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null);
     
     // Update profile status to approved and make it visible
-    await request.query(`
-      UPDATE VendorProfiles
-      SET ProfileStatus = 'approved', 
-          IsVerified = 1,
-          AcceptingBookings = 1,
-          ReviewedAt = GETDATE(),
-          AdminNotes = @AdminNotes,
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await request.execute('sp_Vendor_ApproveProfile');
     
     console.log(`[Vendor Review] Profile ${vendorProfileId} APPROVED`);
     
@@ -6830,15 +5759,7 @@ router.post('/admin/:vendorProfileId/reject', async (req, res) => {
     request.input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null);
     
     // Update profile status to rejected
-    await request.query(`
-      UPDATE VendorProfiles
-      SET ProfileStatus = 'rejected', 
-          RejectionReason = @RejectionReason,
-          AdminNotes = @AdminNotes,
-          ReviewedAt = GETDATE(),
-          UpdatedAt = GETDATE()
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    await request.execute('sp_Vendor_RejectProfile');
     
     console.log(`[Vendor Review] Profile ${vendorProfileId} REJECTED: ${rejectionReason}`);
     
@@ -6862,18 +5783,7 @@ router.get('/:vendorProfileId/status', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('VendorProfileID', sql.Int, vendorProfileId);
     
-    const result = await request.query(`
-      SELECT 
-        ProfileStatus,
-        SubmittedForReviewAt,
-        ReviewedAt,
-        RejectionReason,
-        AdminNotes,
-        IsVerified,
-        AcceptingBookings
-      FROM VendorProfiles
-      WHERE VendorProfileID = @VendorProfileID
-    `);
+    const result = await request.execute('sp_Vendor_GetProfileStatus');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'Vendor profile not found' });

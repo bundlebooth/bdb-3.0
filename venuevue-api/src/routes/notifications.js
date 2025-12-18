@@ -22,14 +22,8 @@ router.post('/', async (req, res) => {
     request.input('Title', sql.NVarChar(255), title);
     request.input('Message', sql.NVarChar(sql.MAX), message);
     request.input('RelatedID', sql.Int, relatedId || null);
-    request.input('IsRead', sql.Bit, 0);
-    request.input('CreatedAt', sql.DateTime, new Date());
 
-    const result = await request.query(`
-      INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, IsRead, CreatedAt)
-      OUTPUT INSERTED.*
-      VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @IsRead, @CreatedAt)
-    `);
+    const result = await request.execute('sp_Notification_Create');
     
     res.json({
       success: true,
@@ -56,35 +50,10 @@ router.get('/user/:userId', async (req, res) => {
     const request = new sql.Request(pool);
     
     request.input('UserID', sql.Int, userId);
-    
-    if (limit) {
-      request.input('Limit', sql.Int, parseInt(limit));
-    }
-    
-    let query = `
-      SELECT ${limit ? 'TOP (@Limit)' : ''}
-        NotificationID,
-        UserID,
-        Title,
-        Message,
-        Type,
-        IsRead,
-        ReadAt,
-        RelatedID,
-        RelatedType,
-        ActionURL,
-        CreatedAt
-      FROM Notifications 
-      WHERE UserID = @UserID
-    `;
-    
-    if (unreadOnly === 'true') {
-      query += ' AND IsRead = 0';
-    }
-    
-    query += ' ORDER BY CreatedAt DESC';
+    request.input('UnreadOnly', sql.Bit, unreadOnly === 'true' ? 1 : 0);
+    request.input('Limit', sql.Int, parseInt(limit) || 50);
 
-    const result = await request.query(query);
+    const result = await request.execute('sp_GetUserNotifications');
     
     res.json({
       success: true,
@@ -111,13 +80,8 @@ router.put('/:notificationId/read', async (req, res) => {
     const request = new sql.Request(pool);
     
     request.input('NotificationID', sql.Int, notificationId);
-    request.input('ReadAt', sql.DateTime, new Date());
 
-    const result = await request.query(`
-      UPDATE Notifications 
-      SET IsRead = 1, ReadAt = @ReadAt
-      WHERE NotificationID = @NotificationID
-    `);
+    await request.execute('sp_Notification_MarkRead');
     
     res.json({
       success: true,
@@ -143,11 +107,7 @@ router.put('/user/:userId/read-all', async (req, res) => {
     const request = new sql.Request(pool);
     request.input('UserID', sql.Int, parseInt(userId, 10));
 
-    await request.query(`
-      UPDATE Notifications 
-      SET IsRead = 1, ReadAt = GETDATE()
-      WHERE UserID = @UserID AND IsRead = 0
-    `);
+    await request.execute('sp_Notification_MarkAllRead');
 
     res.json({ success: true, message: 'All notifications marked as read' });
   } catch (error) {
@@ -166,11 +126,7 @@ router.get('/user/:userId/unread-count', async (req, res) => {
     
     request.input('UserID', sql.Int, userId);
 
-    const result = await request.query(`
-      SELECT COUNT(*) as unreadCount
-      FROM Notifications 
-      WHERE UserID = @UserID AND IsRead = 0
-    `);
+    const result = await request.execute('sp_Notification_GetUnreadCount');
     
     res.json({
       success: true,

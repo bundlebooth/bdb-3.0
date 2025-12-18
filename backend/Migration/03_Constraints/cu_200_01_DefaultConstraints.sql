@@ -5,19 +5,25 @@
     Description: Adds all DEFAULT constraints to tables
     
     Execution Order: 1
+    
+    NOTE: This script will show errors for constraints that already exist.
+    These errors can be safely ignored - the script continues execution.
 */
 
 SET NOCOUNT ON;
 GO
 
-PRINT 'Adding DEFAULT constraints...';
+PRINT 'Adding DEFAULT constraints (errors for existing constraints can be ignored)...';
 GO
+
 -- Default constraint 1 for [Users]
-ALTER TABLE [dbo].[Users] ADD  DEFAULT ((0)) FOR [IsVendor]
+IF NOT EXISTS (SELECT 1 FROM sys.default_constraints WHERE parent_object_id = OBJECT_ID('dbo.Users') AND COL_NAME(parent_object_id, parent_column_id) = 'IsVendor')
+    ALTER TABLE [dbo].[Users] ADD DEFAULT ((0)) FOR [IsVendor]
 GO
 
 -- Default constraint 2 for [Users]
-ALTER TABLE [dbo].[Users] ADD  DEFAULT ((0)) FOR [IsAdmin]
+IF NOT EXISTS (SELECT 1 FROM sys.default_constraints WHERE parent_object_id = OBJECT_ID('dbo.Users') AND COL_NAME(parent_object_id, parent_column_id) = 'IsAdmin')
+    ALTER TABLE [dbo].[Users] ADD DEFAULT ((0)) FOR [IsAdmin]
 GO
 
 -- Default constraint 3 for [Users]

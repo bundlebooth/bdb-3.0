@@ -1,0 +1,31 @@
+-- =============================================
+-- Stored Procedure: sp_Admin_GetDisputes
+-- Description: Gets booking disputes with optional status filter
+-- Phase: 600 (Stored Procedures)
+-- =============================================
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Admin_GetDisputes]'))
+    DROP PROCEDURE [dbo].[sp_Admin_GetDisputes];
+GO
+
+CREATE PROCEDURE [dbo].[sp_Admin_GetDisputes]
+    @Status NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        b.BookingID,
+        u.Name as ClientName,
+        u.Email as ClientEmail,
+        vp.BusinessName as VendorName,
+        b.TotalAmount as Amount,
+        b.Status,
+        b.CreatedAt,
+        b.EventDate
+    FROM Bookings b
+    JOIN Users u ON b.UserID = u.UserID
+    JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
+    WHERE (@Status IS NULL OR b.Status = @Status)
+    ORDER BY b.CreatedAt DESC;
+END
+GO

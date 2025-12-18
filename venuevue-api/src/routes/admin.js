@@ -18,15 +18,7 @@ router.get('/dashboard-stats', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().query(`
-      SELECT
-        (SELECT COUNT(*) FROM VendorProfiles) as totalVendors,
-        (SELECT COUNT(*) FROM VendorProfiles WHERE ProfileStatus = 'pending_review') as pendingVendors,
-        (SELECT COUNT(*) FROM Users WHERE IsActive = 1) as totalUsers,
-        (SELECT COUNT(*) FROM Bookings) as totalBookings,
-        (SELECT ISNULL(SUM(TotalAmount), 0) FROM Bookings WHERE CreatedAt >= DATEADD(month, -1, GETDATE())) as monthlyRevenue,
-        (SELECT COUNT(*) FROM VendorProfiles WHERE ProfileStatus = 'approved') as activeListings
-    `);
+    const result = await pool.request().execute('sp_Admin_GetDashboardStats');
     
     res.json(result.recordset[0]);
   } catch (error) {
@@ -40,13 +32,8 @@ router.get('/environment-info', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Get database info
-    const dbInfo = await pool.request().query(`
-      SELECT 
-        @@SERVERNAME as serverName,
-        DB_NAME() as databaseName,
-        @@VERSION as sqlVersion
-    `);
+    // Get database info using stored procedure
+    const dbInfo = await pool.request().execute('sp_Admin_GetEnvironmentInfo');
     
     const serverInfo = dbInfo.recordset[0];
     
@@ -95,38 +82,22 @@ router.get('/platform-health', async (req, res) => {
     await pool.request().query('SELECT 1');
     const dbResponseTime = Date.now() - startTime;
     
-    // Get database stats
-    const dbStats = await pool.request().query(`
-      SELECT 
-        (SELECT COUNT(*) FROM sys.dm_exec_sessions WHERE is_user_process = 1) as activeConnections,
-        (SELECT cntr_value FROM sys.dm_os_performance_counters WHERE counter_name = 'User Connections') as userConnections
-    `);
+    // Get platform health data using stored procedure
+    const result = await pool.request().execute('sp_Admin_GetPlatformHealth');
     
-    // Get table sizes for storage estimate
-    const storageStats = await pool.request().query(`
-      SELECT 
-        SUM(reserved_page_count) * 8.0 / 1024 as totalSizeMB
-      FROM sys.dm_db_partition_stats
-    `);
-    
-    // Get record counts for load estimate
-    const loadStats = await pool.request().query(`
-      SELECT
-        (SELECT COUNT(*) FROM VendorProfiles) as vendors,
-        (SELECT COUNT(*) FROM Users) as users,
-        (SELECT COUNT(*) FROM Bookings) as bookings,
-        (SELECT COUNT(*) FROM Reviews) as reviews
-    `);
+    const dbStats = result.recordsets[0]?.[0] || {};
+    const storageStats = result.recordsets[1]?.[0] || {};
+    const loadStats = result.recordsets[2]?.[0] || {};
     
     const memUsage = process.memoryUsage();
     const memoryPercent = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100);
     
     // Calculate database load based on active connections (assume max 100 connections)
-    const activeConns = dbStats.recordset[0]?.activeConnections || 1;
+    const activeConns = dbStats.activeConnections || 1;
     const dbLoad = Math.min(Math.round((activeConns / 50) * 100), 100);
     
     // Calculate storage (estimate based on data size, assume 10GB max)
-    const storageMB = storageStats.recordset[0]?.totalSizeMB || 100;
+    const storageMB = storageStats.totalSizeMB || 100;
     const storagePercent = Math.min(Math.round((storageMB / 10240) * 100), 100);
     
     res.json({
@@ -136,7 +107,7 @@ router.get('/platform-health', async (req, res) => {
       storageUsed: storagePercent,
       memoryUsed: memoryPercent,
       activeConnections: activeConns,
-      totalRecords: loadStats.recordset[0],
+      totalRecords: loadStats,
       lastChecked: new Date().toISOString()
     });
   } catch (error) {
@@ -154,44 +125,15 @@ router.get('/recent-activity', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Get recent vendor registrations
-    const vendors = await pool.request().query(`
-      SELECT TOP 3
-        'vendor' as type,
-        'New vendor registration: ' + BusinessName as description,
-        CreatedAt as timestamp,
-        'fa-user-plus' as icon,
-        '#2dce89' as color
-      FROM VendorProfiles
-      ORDER BY CreatedAt DESC
-    `);
+    // Get recent activity using stored procedure
+    const result = await pool.request().execute('sp_Admin_GetRecentActivity');
     
-    // Get recent bookings
-    const bookings = await pool.request().query(`
-      SELECT TOP 3
-        'booking' as type,
-        'New booking confirmed: #BK-' + CAST(BookingID as NVARCHAR) as description,
-        CreatedAt as timestamp,
-        'fa-calendar-check' as icon,
-        '#5e72e4' as color
-      FROM Bookings
-      ORDER BY CreatedAt DESC
-    `);
+    // Combine recordsets and sort by timestamp
+    const vendors = result.recordsets[0] || [];
+    const bookings = result.recordsets[1] || [];
+    const reviews = result.recordsets[2] || [];
     
-    // Get recent reviews
-    const reviews = await pool.request().query(`
-      SELECT TOP 3
-        'review' as type,
-        'New review submitted (' + CAST(r.Rating as NVARCHAR) + ' stars)' as description,
-        r.CreatedAt as timestamp,
-        'fa-star' as icon,
-        '#fb6340' as color
-      FROM Reviews r
-      ORDER BY r.CreatedAt DESC
-    `);
-    
-    // Combine and sort by timestamp
-    const activity = [...vendors.recordset, ...bookings.recordset, ...reviews.recordset]
+    const activity = [...vendors, ...bookings, ...reviews]
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       .slice(0, 10);
     
@@ -210,45 +152,10 @@ router.get('/vendor-approvals', async (req, res) => {
     const { status = 'pending' } = req.query;
     const pool = await getPool();
     
-    let whereClause = '1=1';
-    if (status === 'pending') whereClause = `vp.ProfileStatus = 'pending_review'`;
-    else if (status === 'approved') whereClause = `vp.ProfileStatus = 'approved'`;
-    else if (status === 'rejected') whereClause = `vp.ProfileStatus = 'rejected'`;
-    // 'all' shows everything
+    const request = pool.request();
+    request.input('Status', sql.NVarChar(50), status);
     
-    const result = await pool.request().query(`
-      SELECT 
-        vp.VendorProfileID,
-        vp.BusinessName,
-        vp.DisplayName,
-        vp.BusinessDescription,
-        vp.BusinessPhone,
-        vp.BusinessEmail,
-        vp.StreetAddress,
-        vp.City,
-        vp.State,
-        vp.PostalCode,
-        vp.Country,
-        vp.ProfileStatus,
-        ISNULL(vp.IsVisible, 0) as IsVisible,
-        vp.IsVerified,
-        vp.AcceptingBookings,
-        vp.CreatedAt,
-        vp.UpdatedAt,
-        vp.AdminNotes,
-        vp.RejectionReason,
-        u.Name as OwnerName,
-        u.Email as OwnerEmail,
-        u.Phone as OwnerPhone,
-        (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorProfileID = vp.VendorProfileID AND IsPrimary = 1) as PrimaryImage,
-        (SELECT TOP 1 Category FROM VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as Categories,
-        (SELECT COUNT(*) FROM VendorImages WHERE VendorProfileID = vp.VendorProfileID) as ImageCount,
-        (SELECT COUNT(*) FROM VendorServices WHERE VendorProfileID = vp.VendorProfileID) as ServiceCount
-      FROM VendorProfiles vp
-      LEFT JOIN Users u ON vp.UserID = u.UserID
-      WHERE ${whereClause}
-      ORDER BY vp.CreatedAt DESC
-    `);
+    const result = await request.execute('sp_Admin_GetVendorApprovals');
     
     res.json({ profiles: result.recordset });
   } catch (error) {
@@ -297,74 +204,30 @@ router.get('/vendor-approvals/:id', async (req, res) => {
     const profile = profileRecordset[0];
     console.log('Profile found:', profile.BusinessName, 'StripeAccountId:', profile.StripeAccountId);
     
-    // Get owner info and visibility status
-    const ownerResult = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
-        SELECT u.Name as OwnerName, u.Email as OwnerEmail, u.Phone as OwnerPhone, u.CreatedAt as UserCreatedAt,
-               ISNULL(vp.IsVisible, 0) as IsVisible, vp.ProfileStatus, vp.AcceptingBookings, vp.IsVerified
-        FROM VendorProfiles vp
-        LEFT JOIN Users u ON vp.UserID = u.UserID
-        WHERE vp.VendorProfileID = @id
-      `);
+    // Get owner info and visibility status using stored procedure
+    const ownerRequest = pool.request();
+    ownerRequest.input('VendorProfileID', sql.Int, id);
+    const ownerResult = await ownerRequest.execute('sp_Admin_GetVendorOwnerInfo');
     const ownerInfo = ownerResult.recordset[0] || {};
     console.log('Visibility status:', ownerInfo.IsVisible, 'ProfileStatus:', ownerInfo.ProfileStatus);
     
-    // Get service areas
+    // Get service areas using stored procedure
     let serviceAreas = [];
     try {
-      const serviceAreasResult = await pool.request()
-        .input('VendorProfileID', sql.Int, id)
-        .query(`
-          SELECT 
-            VendorServiceAreaID,
-            GooglePlaceID,
-            CityName,
-            [State/Province] AS StateProvince,
-            Country,
-            Latitude,
-            Longitude,
-            ServiceRadius,
-            FormattedAddress,
-            PlaceType,
-            PostalCode,
-            TravelCost,
-            MinimumBookingAmount,
-            IsActive
-          FROM VendorServiceAreas 
-          WHERE VendorProfileID = @VendorProfileID
-          ORDER BY CityName
-        `);
+      const serviceAreasRequest = pool.request();
+      serviceAreasRequest.input('VendorProfileID', sql.Int, id);
+      const serviceAreasResult = await serviceAreasRequest.execute('sp_Admin_GetVendorServiceAreas');
       serviceAreas = serviceAreasResult.recordset || [];
     } catch (e) {
       console.warn('Service areas query failed:', e.message);
     }
     
-    // Get vendor features - use same query as vendorFeatures.js
+    // Get vendor features using stored procedure
     let features = [];
     try {
-      const featuresResult = await pool.request()
-        .input('VendorProfileID', sql.Int, id)
-        .query(`
-          SELECT 
-            vsf.VendorFeatureSelectionID,
-            vsf.VendorProfileID,
-            vsf.FeatureID,
-            f.FeatureName,
-            f.FeatureName AS FeatureKey,
-            f.FeatureDescription,
-            f.FeatureIcon,
-            c.CategoryID,
-            c.CategoryName,
-            c.CategoryName AS CategoryKey,
-            c.CategoryIcon
-          FROM VendorSelectedFeatures vsf
-          LEFT JOIN VendorFeatures f ON vsf.FeatureID = f.FeatureID
-          LEFT JOIN VendorFeatureCategories c ON f.CategoryID = c.CategoryID
-          WHERE vsf.VendorProfileID = @VendorProfileID
-            AND (f.IsActive = 1 OR f.IsActive IS NULL)
-          ORDER BY COALESCE(c.DisplayOrder, 999), COALESCE(f.DisplayOrder, 999)
-        `);
+      const featuresRequest = pool.request();
+      featuresRequest.input('VendorProfileID', sql.Int, id);
+      const featuresResult = await featuresRequest.execute('sp_Admin_GetVendorFeatures');
       features = featuresResult.recordset || [];
       console.log('Features found:', features.length);
     } catch (e) {
@@ -390,13 +253,12 @@ router.get('/vendor-approvals/:id', async (req, res) => {
     console.log('Data summary - Images:', imagesRecordset?.length, 'Services:', servicesRecordset?.length, 
                 'Categories:', categoriesRecordset?.length, 'Hours:', businessHours.length);
     
-    // Check Stripe connection status using the same logic as payments.js
+    // Check Stripe connection status using stored procedure
     let stripeStatus = { connected: false };
     try {
-      // Get the StripeAccountId from VendorProfiles table
-      const stripeResult = await pool.request()
-        .input('VendorProfileID', sql.Int, id)
-        .query(`SELECT StripeAccountId FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
+      const stripeRequest = pool.request();
+      stripeRequest.input('VendorProfileID', sql.Int, id);
+      const stripeResult = await stripeRequest.execute('sp_Admin_GetVendorStripeAccount');
       
       const stripeAccountId = stripeResult.recordset[0]?.StripeAccountId;
       if (stripeAccountId) {
@@ -412,20 +274,14 @@ router.get('/vendor-approvals/:id', async (req, res) => {
       console.warn('Error checking Stripe status:', e.message);
     }
     
-    // Get questionnaire answers (category answers)
+    // Get questionnaire answers (category answers) using stored procedure
     let categoryAnswers = categoryAnswersRecordset || [];
     // If the stored procedure didn't return full question text, fetch it separately
     if (categoryAnswers.length === 0 || !categoryAnswers[0]?.QuestionText) {
       try {
-        const answersResult = await pool.request()
-          .input('VendorProfileID', sql.Int, id)
-          .query(`
-            SELECT ca.AnswerID, ca.QuestionID, cq.QuestionText, cq.Category, ca.Answer
-            FROM VendorCategoryAnswers ca
-            JOIN CategoryQuestions cq ON ca.QuestionID = cq.QuestionID
-            WHERE ca.VendorProfileID = @VendorProfileID
-            ORDER BY ca.AnswerID
-          `);
+        const answersRequest = pool.request();
+        answersRequest.input('VendorProfileID', sql.Int, id);
+        const answersResult = await answersRequest.execute('sp_Admin_GetVendorCategoryAnswers');
         categoryAnswers = answersResult.recordset || [];
         console.log('Category answers found:', categoryAnswers.length);
       } catch (e) {
@@ -471,72 +327,17 @@ router.get('/vendors', async (req, res) => {
     const pool = await getPool();
     const offset = (page - 1) * limit;
     
-    let whereClause = '1=1';
-    if (status && status !== 'all') {
-      if (status === 'pending') whereClause += ` AND vp.ProfileStatus = 'pending_review'`;
-      else if (status === 'approved') whereClause += ` AND vp.ProfileStatus = 'approved'`;
-      else if (status === 'rejected') whereClause += ` AND vp.ProfileStatus = 'rejected'`;
-      else if (status === 'suspended') whereClause += ` AND vp.AcceptingBookings = 0`;
-      else if (status === 'visible') whereClause += ` AND ISNULL(vp.IsVisible, 0) = 1`;
-      else if (status === 'hidden') whereClause += ` AND ISNULL(vp.IsVisible, 0) = 0`;
-      else whereClause += ` AND vp.ProfileStatus = @status`;
-    }
-    if (search) {
-      whereClause += ` AND (vp.BusinessName LIKE @search OR u.Email LIKE @search)`;
-    }
+    const request = pool.request();
+    request.input('Status', sql.NVarChar(50), status || null);
+    request.input('Search', sql.NVarChar(100), search || null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
     
-    const request = pool.request()
-      .input('status', sql.NVarChar, status)
-      .input('search', sql.NVarChar, `%${search || ''}%`)
-      .input('offset', sql.Int, offset)
-      .input('limit', sql.Int, parseInt(limit));
-    
-    const result = await request.query(`
-      SELECT 
-        vp.VendorProfileID,
-        vp.BusinessName,
-        vp.DisplayName,
-        vp.BusinessDescription as Description,
-        vp.City,
-        vp.State,
-        CASE 
-          WHEN vp.ProfileStatus = 'pending_review' THEN 'Pending'
-          WHEN vp.ProfileStatus = 'approved' THEN 'Approved'
-          WHEN vp.ProfileStatus = 'rejected' THEN 'Rejected'
-          WHEN vp.AcceptingBookings = 0 THEN 'Suspended'
-          ELSE vp.ProfileStatus
-        END as ProfileStatus,
-        vp.AcceptingBookings as IsActive,
-        ISNULL(vp.IsVisible, 0) as IsVisible,
-        vp.IsVerified,
-        vp.CreatedAt,
-        u.Email as OwnerEmail,
-        u.Name as OwnerName,
-        (SELECT TOP 1 ImageURL FROM VendorImages WHERE VendorProfileID = vp.VendorProfileID AND IsPrimary = 1) as PrimaryImage,
-        vp.AvgRating as AverageRating,
-        vp.TotalReviews as ReviewCount,
-        vp.TotalBookings as BookingCount,
-        (SELECT TOP 1 Category FROM VendorCategories WHERE VendorProfileID = vp.VendorProfileID) as Categories
-      FROM VendorProfiles vp
-      LEFT JOIN Users u ON vp.UserID = u.UserID
-      WHERE ${whereClause}
-      ORDER BY vp.CreatedAt DESC
-      OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-    `);
-    
-    const countResult = await pool.request()
-      .input('status', sql.NVarChar, status)
-      .input('search', sql.NVarChar, `%${search || ''}%`)
-      .query(`
-        SELECT COUNT(*) as total
-        FROM VendorProfiles vp
-        LEFT JOIN Users u ON vp.UserID = u.UserID
-        WHERE ${whereClause}
-      `);
+    const result = await request.execute('sp_Admin_GetAllVendors');
     
     res.json({
-      vendors: result.recordset,
-      total: countResult.recordset[0].total,
+      vendors: result.recordsets[0] || [],
+      total: result.recordsets[1]?.[0]?.total || 0,
       page: parseInt(page),
       limit: parseInt(limit)
     });
@@ -554,20 +355,11 @@ router.post('/vendors/:id/approve', async (req, res) => {
     const { adminNotes } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('adminNotes', sql.NVarChar, adminNotes)
-      .query(`
-        UPDATE VendorProfiles 
-        SET ProfileStatus = 'approved', 
-            AcceptingBookings = 1, 
-            IsVerified = 1,
-            IsVisible = 1,
-            AdminNotes = @adminNotes,
-            ReviewedAt = GETDATE(),
-            UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @id
-      `);
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null);
+    
+    await request.execute('sp_Admin_ApproveVendor');
     
     res.json({ success: true, message: 'Vendor approved and now visible on the platform' });
   } catch (error) {
@@ -584,20 +376,12 @@ router.post('/vendors/:id/reject', async (req, res) => {
     const { reason, adminNotes } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('reason', sql.NVarChar, reason)
-      .input('adminNotes', sql.NVarChar, adminNotes)
-      .query(`
-        UPDATE VendorProfiles 
-        SET ProfileStatus = 'rejected', 
-            IsVisible = 0,
-            RejectionReason = @reason,
-            AdminNotes = @adminNotes,
-            ReviewedAt = GETDATE(),
-            UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @id
-      `);
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('Reason', sql.NVarChar(sql.MAX), reason || null);
+    request.input('AdminNotes', sql.NVarChar(sql.MAX), adminNotes || null);
+    
+    await request.execute('sp_Admin_RejectVendor');
     
     res.json({ success: true, message: 'Vendor rejected and hidden from platform' });
   } catch (error) {
@@ -614,18 +398,11 @@ router.post('/vendors/:id/suspend', async (req, res) => {
     const { reason } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('reason', sql.NVarChar, reason)
-      .query(`
-        UPDATE VendorProfiles 
-        SET AcceptingBookings = 0, 
-            IsVerified = 0,
-            IsVisible = 0,
-            AdminNotes = @reason,
-            UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @id
-      `);
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('Reason', sql.NVarChar(sql.MAX), reason || null);
+    
+    await request.execute('sp_Admin_SuspendVendor');
     
     res.json({ success: true, message: 'Vendor suspended and hidden from platform' });
   } catch (error) {
@@ -641,23 +418,11 @@ router.post('/vendors/:id/toggle-visibility', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    // First get current visibility
-    const current = await pool.request()
-      .input('id', sql.Int, id)
-      .query('SELECT IsVisible FROM VendorProfiles WHERE VendorProfileID = @id');
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, id);
     
-    const currentVisibility = current.recordset[0]?.IsVisible || 0;
-    const newVisibility = currentVisibility === 1 ? 0 : 1;
-    
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('newVisibility', sql.Bit, newVisibility)
-      .query(`
-        UPDATE VendorProfiles 
-        SET IsVisible = @newVisibility,
-            UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @id
-      `);
+    const result = await request.execute('sp_Admin_ToggleVendorVisibility');
+    const newVisibility = result.recordset[0]?.NewVisibility;
     
     res.json({ 
       success: true, 
@@ -680,15 +445,11 @@ router.post('/vendors/:id/visibility', async (req, res) => {
     
     const isVisible = visible ? 1 : 0;
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('visible', sql.Bit, isVisible)
-      .query(`
-        UPDATE VendorProfiles 
-        SET IsVisible = @visible,
-            UpdatedAt = GETDATE()
-        WHERE VendorProfileID = @id
-      `);
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, id);
+    request.input('Visible', sql.Bit, isVisible);
+    
+    await request.execute('sp_Admin_SetVendorVisibility');
     
     res.json({ 
       success: true, 
@@ -708,45 +469,18 @@ router.get('/users', async (req, res) => {
   try {
     const { status, search, page = 1, limit = 20 } = req.query;
     const pool = await getPool();
-    const offset = (page - 1) * limit;
     
-    let whereClause = '1=1';
-    if (status === 'active') whereClause += ' AND u.IsActive = 1';
-    if (status === 'inactive') whereClause += ' AND u.IsActive = 0';
-    if (status === 'vendors') whereClause += ' AND u.IsVendor = 1';
-    if (status === 'clients') whereClause += ' AND u.IsVendor = 0';
-    if (search) {
-      whereClause += ` AND (u.Email LIKE @search OR u.Name LIKE @search)`;
-    }
+    const request = pool.request();
+    request.input('Status', sql.NVarChar(50), status || null);
+    request.input('Search', sql.NVarChar(100), search || null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await pool.request()
-      .input('search', sql.NVarChar, `%${search || ''}%`)
-      .input('offset', sql.Int, offset)
-      .input('limit', sql.Int, parseInt(limit))
-      .query(`
-        SELECT 
-          u.UserID,
-          u.Email,
-          u.Name,
-          u.IsVendor,
-          u.IsAdmin,
-          u.IsActive,
-          u.CreatedAt,
-          u.LastLogin as LastLoginAt,
-          (SELECT COUNT(*) FROM Bookings WHERE UserID = u.UserID) as BookingCount
-        FROM Users u
-        WHERE ${whereClause}
-        ORDER BY u.CreatedAt DESC
-        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-      `);
-    
-    const countResult = await pool.request()
-      .input('search', sql.NVarChar, `%${search || ''}%`)
-      .query(`SELECT COUNT(*) as total FROM Users u WHERE ${whereClause}`);
+    const result = await request.execute('sp_Admin_GetUsers');
     
     res.json({
-      users: result.recordset,
-      total: countResult.recordset[0].total,
+      users: result.recordsets[0] || [],
+      total: result.recordsets[1]?.[0]?.total || 0,
       page: parseInt(page),
       limit: parseInt(limit)
     });
@@ -762,13 +496,10 @@ router.post('/users/:id/toggle-status', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
-        UPDATE Users 
-        SET IsActive = CASE WHEN IsActive = 1 THEN 0 ELSE 1 END
-        WHERE UserID = @id
-      `);
+    const request = pool.request();
+    request.input('UserID', sql.Int, id);
+    
+    await request.execute('sp_Admin_ToggleUserStatus');
     
     res.json({ success: true, message: 'User status toggled' });
   } catch (error) {
@@ -784,15 +515,12 @@ router.put('/users/:id', async (req, res) => {
     const { name, email } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('name', sql.NVarChar, name)
-      .input('email', sql.NVarChar, email)
-      .query(`
-        UPDATE Users 
-        SET Name = @name, Email = @email, UpdatedAt = GETDATE()
-        WHERE UserID = @id
-      `);
+    const request = pool.request();
+    request.input('UserID', sql.Int, id);
+    request.input('Name', sql.NVarChar(100), name);
+    request.input('Email', sql.NVarChar(100), email);
+    
+    await request.execute('sp_Admin_UpdateUser');
     
     res.json({ success: true, message: 'User updated' });
   } catch (error) {
@@ -807,25 +535,10 @@ router.get('/users/:id', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    const result = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
-        SELECT 
-          u.UserID,
-          u.Email,
-          u.Name,
-          u.Phone,
-          u.IsVendor,
-          u.IsAdmin,
-          u.IsActive,
-          u.CreatedAt,
-          u.LastLogin,
-          u.EmailVerified,
-          (SELECT COUNT(*) FROM Bookings WHERE UserID = u.UserID) as BookingCount,
-          (SELECT COUNT(*) FROM Reviews WHERE UserID = u.UserID) as ReviewCount
-        FROM Users u
-        WHERE u.UserID = @id
-      `);
+    const request = pool.request();
+    request.input('UserID', sql.Int, id);
+    
+    const result = await request.execute('sp_Admin_GetUserDetails');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -844,39 +557,16 @@ router.get('/users/:id/activity', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    // Get bookings
-    const bookings = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
-        SELECT TOP 10
-          'booking' as type,
-          b.BookingID as id,
-          'Booking #' + CAST(b.BookingID as NVARCHAR) + ' - ' + vp.BusinessName as description,
-          b.Status,
-          b.CreatedAt as date
-        FROM Bookings b
-        JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-        WHERE b.UserID = @id
-        ORDER BY b.CreatedAt DESC
-      `);
+    const request = pool.request();
+    request.input('UserID', sql.Int, id);
     
-    // Get reviews
-    const reviews = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
-        SELECT TOP 10
-          'review' as type,
-          r.ReviewID as id,
-          'Review for ' + vp.BusinessName + ' (' + CAST(r.Rating as NVARCHAR) + ' stars)' as description,
-          'completed' as Status,
-          r.CreatedAt as date
-        FROM Reviews r
-        JOIN VendorProfiles vp ON r.VendorProfileID = vp.VendorProfileID
-        WHERE r.UserID = @id
-        ORDER BY r.CreatedAt DESC
-      `);
+    const result = await request.execute('sp_Admin_GetUserActivity');
     
-    const activity = [...bookings.recordset, ...reviews.recordset]
+    // Combine recordsets and sort by date
+    const bookings = result.recordsets[0] || [];
+    const reviews = result.recordsets[1] || [];
+    
+    const activity = [...bookings, ...reviews]
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 20);
     
@@ -897,76 +587,22 @@ router.get('/bookings', async (req, res) => {
     const pool = await getPool();
     const offset = (page - 1) * limit;
     
-    // Build WHERE clause dynamically
-    let whereConditions = ['1=1'];
+    // Use stored procedure for admin bookings
+    const request = pool.request();
+    request.input('Status', sql.NVarChar(50), status && status !== 'all' ? status : null);
+    request.input('StartDate', sql.DateTime, startDate || null);
+    request.input('EndDate', sql.DateTime, endDate || null);
+    request.input('Search', sql.NVarChar(100), search || null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
     
-    if (status && status !== 'all') {
-      // Capitalize first letter to match database status values
-      const statusValue = status.charAt(0).toUpperCase() + status.slice(1);
-      whereConditions.push(`Status = '${statusValue}'`);
-    }
-    if (startDate) {
-      whereConditions.push(`EventDate >= '${startDate}'`);
-    }
-    if (endDate) {
-      whereConditions.push(`EventDate <= '${endDate}'`);
-    }
-    if (search) {
-      whereConditions.push(`(CAST(BookingID as NVARCHAR) LIKE '%${search}%' OR VendorName LIKE '%${search}%')`);
-    }
+    const result = await request.execute('sp_Admin_GetAllBookings');
     
-    const whereClause = whereConditions.join(' AND ');
-    
-    // Use the vw_UserBookings view - same as dashboard uses via sp_GetUserBookingsAll
-    // But without the UserID filter to get ALL bookings
-    const result = await pool.request()
-      .input('offset', sql.Int, offset)
-      .input('limit', sql.Int, parseInt(limit))
-      .query(`
-        SELECT 
-          BookingID,
-          UserID,
-          VendorProfileID,
-          VendorName,
-          ServiceID,
-          ServiceName,
-          ServiceCategory,
-          EventDate,
-          EndDate,
-          Status,
-          TotalAmount,
-          DepositAmount,
-          DepositPaid,
-          FullAmountPaid,
-          AttendeeCount,
-          SpecialRequests,
-          EventLocation,
-          EventName,
-          EventType,
-          TimeZone,
-          CreatedAt,
-          UpdatedAt,
-          ServiceImage,
-          ConversationID,
-          UnreadMessages
-        FROM vw_UserBookings
-        WHERE ${whereClause}
-        ORDER BY EventDate DESC
-        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-      `);
-    
-    const countResult = await pool.request()
-      .query(`
-        SELECT COUNT(*) as total
-        FROM vw_UserBookings
-        WHERE ${whereClause}
-      `);
-    
-    console.log(`Admin: Fetched ${result.recordset.length} bookings out of ${countResult.recordset[0].total} total from vw_UserBookings`);
+    console.log(`Admin: Fetched ${result.recordsets[0]?.length || 0} bookings out of ${result.recordsets[1]?.[0]?.total || 0} total`);
     
     res.json({
-      bookings: result.recordset,
-      total: countResult.recordset[0].total,
+      bookings: result.recordsets[0] || [],
+      total: result.recordsets[1]?.[0]?.total || 0,
       page: parseInt(page),
       limit: parseInt(limit)
     });
@@ -982,22 +618,10 @@ router.get('/bookings/:id', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    const result = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
-        SELECT 
-          b.*,
-          u.Name as ClientName,
-          u.Email as ClientEmail,
-          u.Phone as ClientPhone,
-          vp.BusinessName as VendorName,
-          vp.BusinessEmail as VendorEmail,
-          vp.BusinessPhone as VendorPhone
-        FROM Bookings b
-        LEFT JOIN Users u ON b.UserID = u.UserID
-        LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-        WHERE b.BookingID = @id
-      `);
+    const request = pool.request();
+    request.input('BookingID', sql.Int, id);
+    
+    const result = await request.execute('sp_Admin_GetBookingDetails');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -1014,28 +638,18 @@ router.get('/bookings/:id', async (req, res) => {
 router.put('/bookings/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, eventDate, startTime, endTime, totalAmount, notes } = req.body;
+    const { status, eventDate, endDate, totalAmount, specialRequests } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('status', sql.NVarChar, status)
-      .input('eventDate', sql.Date, eventDate)
-      .input('startTime', sql.NVarChar, startTime)
-      .input('endTime', sql.NVarChar, endTime)
-      .input('totalAmount', sql.Decimal(10,2), totalAmount)
-      .input('notes', sql.NVarChar, notes)
-      .query(`
-        UPDATE Bookings 
-        SET Status = @status,
-            EventDate = @eventDate,
-            StartTime = @startTime,
-            EndTime = @endTime,
-            TotalAmount = @totalAmount,
-            Notes = @notes,
-            UpdatedAt = GETDATE()
-        WHERE BookingID = @id
-      `);
+    const request = pool.request();
+    request.input('BookingID', sql.Int, id);
+    request.input('Status', sql.NVarChar(20), status || null);
+    request.input('EventDate', sql.DateTime, eventDate || null);
+    request.input('EndDate', sql.DateTime, endDate || null);
+    request.input('TotalAmount', sql.Decimal(10,2), totalAmount || null);
+    request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequests || null);
+    
+    await request.execute('sp_Admin_UpdateBooking');
     
     res.json({ success: true, message: 'Booking updated' });
   } catch (error) {
@@ -1051,16 +665,11 @@ router.post('/bookings/:id/cancel', async (req, res) => {
     const { reason } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('reason', sql.NVarChar, reason)
-      .query(`
-        UPDATE Bookings 
-        SET Status = 'Cancelled', 
-            CancellationReason = @reason,
-            CancelledAt = GETDATE()
-        WHERE BookingID = @id
-      `);
+    const request = pool.request();
+    request.input('BookingID', sql.Int, id);
+    request.input('Reason', sql.NVarChar(sql.MAX), reason || null);
+    
+    await request.execute('sp_Admin_CancelBooking');
     
     res.json({ success: true, message: 'Booking cancelled' });
   } catch (error) {
@@ -1078,51 +687,18 @@ router.get('/reviews', async (req, res) => {
     const pool = await getPool();
     const offset = (page - 1) * limit;
     
-    let whereClause = '1=1';
-    if (filter === 'flagged') whereClause += ' AND r.IsFlagged = 1';
-    if (filter === 'recent') whereClause += ' AND r.CreatedAt >= DATEADD(day, -7, GETDATE())';
-    if (search) {
-      whereClause += ` AND (r.Comment LIKE @search OR vp.BusinessName LIKE @search)`;
-    }
+    // Use stored procedure for admin reviews
+    const request = pool.request();
+    request.input('Filter', sql.NVarChar(50), filter || null);
+    request.input('Search', sql.NVarChar(100), search || null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
     
-    const result = await pool.request()
-      .input('search', sql.NVarChar, `%${search || ''}%`)
-      .input('offset', sql.Int, offset)
-      .input('limit', sql.Int, parseInt(limit))
-      .query(`
-        SELECT 
-          r.ReviewID,
-          r.Rating,
-          r.Comment as ReviewText,
-          r.IsFlagged,
-          r.FlagReason,
-          r.AdminNotes,
-          r.CreatedAt,
-          u.Name as ReviewerName,
-          u.Email as ReviewerEmail,
-          vp.BusinessName as VendorName,
-          vp.VendorProfileID,
-          r.BookingID
-        FROM Reviews r
-        JOIN Users u ON r.UserID = u.UserID
-        JOIN VendorProfiles vp ON r.VendorProfileID = vp.VendorProfileID
-        WHERE ${whereClause}
-        ORDER BY r.CreatedAt DESC
-        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-      `);
-    
-    const countResult = await pool.request()
-      .input('search', sql.NVarChar, `%${search || ''}%`)
-      .query(`
-        SELECT COUNT(*) as total
-        FROM Reviews r
-        JOIN VendorProfiles vp ON r.VendorProfileID = vp.VendorProfileID
-        WHERE ${whereClause}
-      `);
+    const result = await request.execute('sp_Admin_GetAllReviews');
     
     res.json({
-      reviews: result.recordset,
-      total: countResult.recordset[0].total,
+      reviews: result.recordsets[0] || [],
+      total: result.recordsets[1]?.[0]?.total || 0,
       page: parseInt(page),
       limit: parseInt(limit)
     });
@@ -1139,15 +715,12 @@ router.post('/reviews/:id/flag', async (req, res) => {
     const { flagged, reason } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('flagged', sql.Bit, flagged)
-      .input('reason', sql.NVarChar, reason)
-      .query(`
-        UPDATE Reviews 
-        SET IsFlagged = @flagged, FlagReason = @reason
-        WHERE ReviewID = @id
-      `);
+    const request = pool.request();
+    request.input('ReviewID', sql.Int, id);
+    request.input('IsFlagged', sql.Bit, flagged);
+    request.input('FlagReason', sql.NVarChar(sql.MAX), reason || null);
+    
+    await request.execute('sp_Admin_FlagReview');
     
     res.json({ success: true, message: flagged ? 'Review flagged' : 'Review unflagged' });
   } catch (error) {
@@ -1162,13 +735,10 @@ router.post('/reviews/:id/unflag', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
-        UPDATE Reviews 
-        SET IsFlagged = 0, FlagReason = NULL
-        WHERE ReviewID = @id
-      `);
+    const request = pool.request();
+    request.input('ReviewID', sql.Int, id);
+    
+    await request.execute('sp_Admin_UnflagReview');
     
     res.json({ success: true, message: 'Review unflagged' });
   } catch (error) {
@@ -1184,14 +754,11 @@ router.post('/reviews/:id/note', async (req, res) => {
     const { note } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('note', sql.NVarChar, note)
-      .query(`
-        UPDATE Reviews 
-        SET AdminNotes = @note
-        WHERE ReviewID = @id
-      `);
+    const request = pool.request();
+    request.input('ReviewID', sql.Int, id);
+    request.input('AdminNotes', sql.NVarChar(sql.MAX), note);
+    
+    await request.execute('sp_Admin_AddReviewNote');
     
     res.json({ success: true, message: 'Note saved' });
   } catch (error) {
@@ -1206,9 +773,10 @@ router.delete('/reviews/:id', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .query(`DELETE FROM Reviews WHERE ReviewID = @id`);
+    const request = pool.request();
+    request.input('ReviewID', sql.Int, id);
+    
+    await request.execute('sp_Admin_DeleteReview');
     
     res.json({ success: true, message: 'Review deleted' });
   } catch (error) {
@@ -1224,15 +792,7 @@ router.get('/categories', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Get unique categories from VendorCategories table
-    const result = await pool.request().query(`
-      SELECT 
-        Category as CategoryName,
-        COUNT(*) as VendorCount
-      FROM VendorCategories
-      GROUP BY Category
-      ORDER BY Category
-    `);
+    const result = await pool.request().execute('sp_Admin_GetCategories');
     
     // Transform to expected format
     const categories = result.recordset.map((cat, index) => ({
@@ -1258,15 +818,12 @@ router.post('/categories', async (req, res) => {
     const { name, description, iconClass } = req.body;
     const pool = await getPool();
     
-    const result = await pool.request()
-      .input('name', sql.NVarChar, name)
-      .input('description', sql.NVarChar, description)
-      .input('iconClass', sql.NVarChar, iconClass)
-      .query(`
-        INSERT INTO Categories (CategoryName, Description, IconClass, IsActive)
-        OUTPUT INSERTED.CategoryID
-        VALUES (@name, @description, @iconClass, 1)
-      `);
+    const request = pool.request();
+    request.input('CategoryName', sql.NVarChar(100), name);
+    request.input('Description', sql.NVarChar(sql.MAX), description || null);
+    request.input('IconClass', sql.NVarChar(100), iconClass || null);
+    
+    const result = await request.execute('sp_Admin_CreateCategory');
     
     res.json({ success: true, categoryId: result.recordset[0].CategoryID });
   } catch (error) {
@@ -1282,17 +839,14 @@ router.put('/categories/:id', async (req, res) => {
     const { name, description, iconClass, isActive } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('name', sql.NVarChar, name)
-      .input('description', sql.NVarChar, description)
-      .input('iconClass', sql.NVarChar, iconClass)
-      .input('isActive', sql.Bit, isActive)
-      .query(`
-        UPDATE Categories 
-        SET CategoryName = @name, Description = @description, IconClass = @iconClass, IsActive = @isActive
-        WHERE CategoryID = @id
-      `);
+    const request = pool.request();
+    request.input('CategoryID', sql.Int, id);
+    request.input('CategoryName', sql.NVarChar(100), name);
+    request.input('Description', sql.NVarChar(sql.MAX), description || null);
+    request.input('IconClass', sql.NVarChar(100), iconClass || null);
+    request.input('IsActive', sql.Bit, isActive !== false);
+    
+    await request.execute('sp_Admin_UpdateCategory');
     
     res.json({ success: true, message: 'Category updated' });
   } catch (error) {
@@ -1307,15 +861,10 @@ router.delete('/categories/:id', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    // First remove vendor associations
-    await pool.request()
-      .input('id', sql.Int, id)
-      .query(`DELETE FROM VendorCategories WHERE CategoryID = @id`);
+    const request = pool.request();
+    request.input('CategoryID', sql.Int, id);
     
-    // Then delete category
-    await pool.request()
-      .input('id', sql.Int, id)
-      .query(`DELETE FROM Categories WHERE CategoryID = @id`);
+    await request.execute('sp_Admin_DeleteCategory');
     
     res.json({ success: true, message: 'Category deleted' });
   } catch (error) {
@@ -1332,68 +881,21 @@ router.get('/analytics', async (req, res) => {
     const { range = '30d' } = req.query;
     const pool = await getPool();
     
-    let dateFilter;
-    switch (range) {
-      case '7d': dateFilter = 'DATEADD(day, -7, GETDATE())'; break;
-      case '90d': dateFilter = 'DATEADD(day, -90, GETDATE())'; break;
-      case '1y': dateFilter = 'DATEADD(year, -1, GETDATE())'; break;
-      default: dateFilter = 'DATEADD(day, -30, GETDATE())';
-    }
+    const request = pool.request();
+    request.input('Range', sql.NVarChar(10), range);
     
-    const result = await pool.request().query(`
-      SELECT
-        (SELECT COUNT(*) FROM VendorProfiles) as totalVendors,
-        (SELECT COUNT(*) FROM VendorProfiles WHERE ProfileStatus = 'approved') as activeListings,
-        (SELECT COUNT(*) FROM Users WHERE IsActive = 1) as totalUsers,
-        (SELECT COUNT(*) FROM Bookings WHERE CreatedAt >= ${dateFilter}) as totalBookings,
-        (SELECT ISNULL(SUM(TotalAmount), 0) FROM Bookings WHERE CreatedAt >= ${dateFilter}) as monthlyRevenue,
-        (SELECT ISNULL(SUM(TotalAmount * 0.1), 0) FROM Bookings WHERE CreatedAt >= ${dateFilter}) as platformFees,
-        (SELECT AVG(CAST(TotalAmount as FLOAT)) FROM Bookings WHERE CreatedAt >= ${dateFilter}) as averageBookingValue
-    `);
+    const result = await request.execute('sp_Admin_GetAnalytics');
     
-    // Get top categories
-    const topCategories = await pool.request().query(`
-      SELECT TOP 5
-        vc.Category as name,
-        COUNT(DISTINCT vc.VendorProfileID) as count,
-        ISNULL(SUM(b.TotalAmount), 0) as revenue
-      FROM VendorCategories vc
-      LEFT JOIN Bookings b ON vc.VendorProfileID = b.VendorProfileID AND b.CreatedAt >= ${dateFilter}
-      GROUP BY vc.Category
-      ORDER BY count DESC
-    `);
-    
-    // Get top vendors
-    const topVendors = await pool.request().query(`
-      SELECT TOP 5
-        vp.BusinessName as name,
-        vp.TotalBookings as bookings,
-        ISNULL(SUM(b.TotalAmount), 0) as revenue,
-        vp.AvgRating as rating
-      FROM VendorProfiles vp
-      LEFT JOIN Bookings b ON vp.VendorProfileID = b.VendorProfileID AND b.CreatedAt >= ${dateFilter}
-      WHERE vp.ProfileStatus = 'approved'
-      GROUP BY vp.VendorProfileID, vp.BusinessName, vp.TotalBookings, vp.AvgRating
-      ORDER BY vp.TotalBookings DESC
-    `);
-    
-    // Get booking trends (last 6 months)
-    const bookingTrends = await pool.request().query(`
-      SELECT 
-        FORMAT(CreatedAt, 'MMM') as month,
-        COUNT(*) as bookings,
-        ISNULL(SUM(TotalAmount), 0) as revenue
-      FROM Bookings
-      WHERE CreatedAt >= DATEADD(month, -6, GETDATE())
-      GROUP BY FORMAT(CreatedAt, 'MMM'), MONTH(CreatedAt)
-      ORDER BY MONTH(CreatedAt)
-    `);
+    const stats = result.recordsets[0]?.[0] || {};
+    const topCategories = result.recordsets[1] || [];
+    const topVendors = result.recordsets[2] || [];
+    const bookingTrends = result.recordsets[3] || [];
     
     res.json({
-      ...result.recordset[0],
-      topCategories: topCategories.recordset,
-      topVendors: topVendors.recordset,
-      bookingTrends: bookingTrends.recordset
+      ...stats,
+      topCategories,
+      topVendors,
+      bookingTrends
     });
   } catch (error) {
     console.error('Error fetching analytics:', error);
@@ -1408,13 +910,7 @@ router.get('/payments/stats', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().query(`
-      SELECT
-        (SELECT ISNULL(SUM(TotalAmount), 0) FROM Bookings WHERE Status IN ('Completed', 'completed')) as totalRevenue,
-        (SELECT ISNULL(SUM(TotalAmount * 0.1), 0) FROM Bookings WHERE Status IN ('Completed', 'completed')) as platformFees,
-        (SELECT ISNULL(SUM(TotalAmount), 0) FROM Bookings WHERE Status IN ('Confirmed', 'confirmed', 'Pending', 'pending')) as pendingPayouts,
-        (SELECT ISNULL(SUM(TotalAmount * 0.9), 0) FROM Bookings WHERE Status IN ('Completed', 'completed')) as completedPayouts
-    `);
+    const result = await pool.request().execute('sp_Admin_GetPaymentStats');
     
     res.json(result.recordset[0]);
   } catch (error) {
@@ -1428,22 +924,7 @@ router.get('/payments/vendor-balances', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().query(`
-      SELECT 
-        vp.VendorProfileID as VendorID,
-        vp.BusinessName as VendorName,
-        u.Email as VendorEmail,
-        ISNULL(SUM(CASE WHEN b.Status IN ('Completed', 'completed') THEN b.TotalAmount * 0.9 ELSE 0 END), 0) as AvailableBalance,
-        ISNULL(SUM(CASE WHEN b.Status IN ('Confirmed', 'confirmed') THEN b.TotalAmount * 0.9 ELSE 0 END), 0) as PendingBalance,
-        ISNULL(SUM(b.TotalAmount * 0.9), 0) as TotalEarned,
-        MAX(b.CreatedAt) as LastPayoutDate
-      FROM VendorProfiles vp
-      LEFT JOIN Users u ON vp.UserID = u.UserID
-      LEFT JOIN Bookings b ON vp.VendorProfileID = b.VendorProfileID
-      WHERE vp.ProfileStatus = 'approved'
-      GROUP BY vp.VendorProfileID, vp.BusinessName, u.Email
-      ORDER BY TotalEarned DESC
-    `);
+    const result = await pool.request().execute('sp_Admin_GetVendorBalances');
     
     res.json({ balances: result.recordset });
   } catch (error) {
@@ -1457,31 +938,18 @@ router.get('/payments/transactions', async (req, res) => {
   try {
     const { filter, page = 1, limit = 20 } = req.query;
     const pool = await getPool();
-    const offset = (page - 1) * limit;
     
-    const result = await pool.request()
-      .input('offset', sql.Int, offset)
-      .input('limit', sql.Int, parseInt(limit))
-      .query(`
-        SELECT 
-          b.BookingID as TransactionID,
-          b.CreatedAt,
-          u.Name as ClientName,
-          vp.BusinessName as VendorName,
-          b.BookingID,
-          b.TotalAmount as Amount,
-          b.TotalAmount * 0.1 as PlatformFee,
-          b.Status
-        FROM Bookings b
-        JOIN Users u ON b.UserID = u.UserID
-        JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-        ORDER BY b.CreatedAt DESC
-        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-      `);
+    const request = pool.request();
+    request.input('Filter', sql.NVarChar(50), filter || null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
     
-    const countResult = await pool.request().query(`SELECT COUNT(*) as total FROM Bookings`);
+    const result = await request.execute('sp_Admin_GetTransactions');
     
-    res.json({ transactions: result.recordset, total: countResult.recordset[0].total });
+    res.json({ 
+      transactions: result.recordsets[0] || [], 
+      total: result.recordsets[1]?.[0]?.total || 0 
+    });
   } catch (error) {
     console.error('Error fetching transactions:', error);
     res.status(500).json({ error: 'Failed to fetch transactions' });
@@ -1493,34 +961,18 @@ router.get('/payments/payouts', async (req, res) => {
   try {
     const { filter, page = 1, limit = 20 } = req.query;
     const pool = await getPool();
-    const offset = (page - 1) * limit;
     
-    const result = await pool.request()
-      .input('offset', sql.Int, offset)
-      .input('limit', sql.Int, parseInt(limit))
-      .query(`
-        SELECT 
-          vp.VendorProfileID as PayoutID,
-          vp.BusinessName as VendorName,
-          u.Email as VendorEmail,
-          ISNULL(SUM(b.TotalAmount * 0.9), 0) as Amount,
-          'completed' as Status,
-          MAX(b.CreatedAt) as ProcessedAt
-        FROM VendorProfiles vp
-        LEFT JOIN Users u ON vp.UserID = u.UserID
-        LEFT JOIN Bookings b ON vp.VendorProfileID = b.VendorProfileID AND b.Status IN ('Completed', 'completed')
-        WHERE vp.ProfileStatus = 'approved'
-        GROUP BY vp.VendorProfileID, vp.BusinessName, u.Email
-        HAVING SUM(b.TotalAmount) > 0
-        ORDER BY MAX(b.CreatedAt) DESC
-        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-      `);
+    const request = pool.request();
+    request.input('Filter', sql.NVarChar(50), filter || null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
     
-    const countResult = await pool.request().query(`
-      SELECT COUNT(*) as total FROM VendorProfiles WHERE ProfileStatus = 'approved'
-    `);
+    const result = await request.execute('sp_Admin_GetPayouts');
     
-    res.json({ payouts: result.recordset, total: countResult.recordset[0].total });
+    res.json({ 
+      payouts: result.recordsets[0] || [], 
+      total: result.recordsets[1]?.[0]?.total || 0 
+    });
   } catch (error) {
     console.error('Error fetching payouts:', error);
     res.status(500).json({ error: 'Failed to fetch payouts' });
@@ -1536,86 +988,22 @@ router.get('/security/logs', async (req, res) => {
     const pool = await getPool();
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 50;
-    const offset = (pageNum - 1) * limitNum;
     
-    // Check if SecurityLogs table exists
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'SecurityLogs'
-    `);
+    const request = pool.request();
+    request.input('Type', sql.NVarChar(50), type);
+    request.input('Status', sql.NVarChar(50), status || null);
+    request.input('Search', sql.NVarChar(100), search || null);
+    request.input('PageNumber', sql.Int, pageNum);
+    request.input('PageSize', sql.Int, limitNum);
     
-    if (tableCheck.recordset[0].cnt > 0) {
-      // Use SecurityLogs table
-      let whereConditions = ['1=1'];
-      
-      if (type === 'login') {
-        whereConditions.push("Action IN ('Login', 'Logout', 'LoginFailed')");
-      } else if (type === 'admin') {
-        whereConditions.push("Action LIKE 'Admin%'");
-      } else if (type === 'flagged') {
-        whereConditions.push("ActionStatus = 'Failed'");
-      }
-      
-      if (status === 'success') whereConditions.push("ActionStatus = 'Success'");
-      if (status === 'failed') whereConditions.push("ActionStatus = 'Failed'");
-      if (search) whereConditions.push(`(Email LIKE '%${search}%' OR Details LIKE '%${search}%')`);
-      
-      const whereClause = whereConditions.join(' AND ');
-      
-      const result = await pool.request()
-        .input('offset', sql.Int, offset)
-        .input('limit', sql.Int, limitNum)
-        .query(`
-          SELECT 
-            LogID as id,
-            UserID,
-            Email as [user],
-            Action as action,
-            ActionStatus as status,
-            IPAddress as ip,
-            Location as location,
-            Device as device,
-            Details as details,
-            CreatedAt as timestamp
-          FROM SecurityLogs
-          WHERE ${whereClause}
-          ORDER BY CreatedAt DESC
-          OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-        `);
-      
-      const countResult = await pool.request().query(`
-        SELECT COUNT(*) as total FROM SecurityLogs WHERE ${whereClause}
-      `);
-      
-      res.json({ 
-        logs: result.recordset, 
-        total: countResult.recordset[0].total,
-        page: pageNum,
-        limit: limitNum
-      });
-    } else {
-      // Fallback to Users table LastLogin data
-      const result = await pool.request()
-        .input('offset', sql.Int, offset)
-        .input('limit', sql.Int, limitNum)
-        .query(`
-          SELECT 
-            u.UserID as id,
-            u.Email as [user],
-            'Login Success' as action,
-            'Success' as status,
-            NULL as ip,
-            NULL as location,
-            'Web Browser' as device,
-            NULL as details,
-            u.LastLogin as timestamp
-          FROM Users u
-          WHERE u.LastLogin IS NOT NULL
-          ORDER BY u.LastLogin DESC
-          OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-        `);
-      
-      res.json({ logs: result.recordset, total: result.recordset.length });
-    }
+    const result = await request.execute('sp_Admin_GetSecurityLogs');
+    
+    res.json({ 
+      logs: result.recordsets[0] || [], 
+      total: result.recordsets[1]?.[0]?.total || 0,
+      page: pageNum,
+      limit: limitNum
+    });
   } catch (error) {
     console.error('Error fetching security logs:', error);
     res.status(500).json({ error: 'Failed to fetch security logs', details: error.message });
@@ -1628,20 +1016,18 @@ router.post('/security/log', async (req, res) => {
     const { userId, email, action, status = 'Success', ipAddress, userAgent, location, device, details } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('userId', sql.Int, userId)
-      .input('email', sql.NVarChar, email)
-      .input('action', sql.NVarChar, action)
-      .input('status', sql.NVarChar, status)
-      .input('ipAddress', sql.NVarChar, ipAddress)
-      .input('userAgent', sql.NVarChar, userAgent)
-      .input('location', sql.NVarChar, location)
-      .input('device', sql.NVarChar, device)
-      .input('details', sql.NVarChar, details)
-      .query(`
-        INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, IPAddress, UserAgent, Location, Device, Details)
-        VALUES (@userId, @email, @action, @status, @ipAddress, @userAgent, @location, @device, @details)
-      `);
+    const request = pool.request();
+    request.input('UserID', sql.Int, userId || null);
+    request.input('Email', sql.NVarChar(255), email);
+    request.input('Action', sql.NVarChar(100), action);
+    request.input('ActionStatus', sql.NVarChar(50), status);
+    request.input('IPAddress', sql.NVarChar(50), ipAddress || null);
+    request.input('UserAgent', sql.NVarChar(500), userAgent || null);
+    request.input('Location', sql.NVarChar(255), location || null);
+    request.input('Device', sql.NVarChar(100), device || null);
+    request.input('Details', sql.NVarChar(sql.MAX), details || null);
+    
+    await request.execute('sp_Admin_LogSecurityEvent');
     
     res.json({ success: true });
   } catch (error) {
@@ -1657,49 +1043,20 @@ router.get('/chats', async (req, res) => {
   try {
     const { filter = 'all', page = 1, limit = 20, search = '' } = req.query;
     const pool = await getPool();
-    const offset = (page - 1) * limit;
     
-    // Get ALL conversations from Conversations table joined with Messages
-    const result = await pool.request()
-      .input('search', sql.NVarChar, `%${search}%`)
-      .input('offset', sql.Int, offset)
-      .input('limit', sql.Int, parseInt(limit))
-      .query(`
-        SELECT 
-          c.ConversationID,
-          c.UserID,
-          c.VendorProfileID,
-          c.CreatedAt,
-          u.UserID as ClientID,
-          ISNULL(u.Name, 'Unknown Client') as ClientName,
-          ISNULL(u.Email, 'No Email') as ClientEmail,
-          vp.VendorProfileID,
-          ISNULL(vp.BusinessName, 'Unknown Vendor') as VendorName,
-          ISNULL(vu.Email, 'No Email') as VendorEmail,
-          ISNULL(vu.Name, 'Unknown Owner') as VendorOwnerName,
-          ISNULL((SELECT TOP 1 Content FROM Messages WHERE ConversationID = c.ConversationID ORDER BY CreatedAt DESC), 'No messages') as LastMessage,
-          (SELECT TOP 1 CreatedAt FROM Messages WHERE ConversationID = c.ConversationID ORDER BY CreatedAt DESC) as LastMessageAt,
-          ISNULL((SELECT COUNT(*) FROM Messages WHERE ConversationID = c.ConversationID), 0) as MessageCount,
-          ISNULL((SELECT COUNT(*) FROM Messages WHERE ConversationID = c.ConversationID AND IsRead = 0), 0) as UnreadCount,
-          0 as IsFlagged
-        FROM Conversations c
-        LEFT JOIN Users u ON c.UserID = u.UserID
-        LEFT JOIN VendorProfiles vp ON c.VendorProfileID = vp.VendorProfileID
-        LEFT JOIN Users vu ON vp.UserID = vu.UserID
-        WHERE (u.Name LIKE @search OR vp.BusinessName LIKE @search OR u.Email LIKE @search OR @search = '%%')
-        ORDER BY ISNULL((SELECT TOP 1 CreatedAt FROM Messages WHERE ConversationID = c.ConversationID ORDER BY CreatedAt DESC), c.CreatedAt) DESC
-        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-      `);
+    const request = pool.request();
+    request.input('Filter', sql.NVarChar(50), filter);
+    request.input('Search', sql.NVarChar(100), search || null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
     
-    const countResult = await pool.request().query(`
-      SELECT COUNT(*) as total FROM Conversations
-    `);
+    const result = await request.execute('sp_Admin_GetAllChats');
     
-    console.log(`Admin: Fetched ${result.recordset.length} conversations out of ${countResult.recordset[0].total} total`);
+    console.log(`Admin: Fetched ${result.recordsets[0]?.length || 0} conversations out of ${result.recordsets[1]?.[0]?.total || 0} total`);
     
     res.json({
-      conversations: result.recordset,
-      total: countResult.recordset[0].total,
+      conversations: result.recordsets[0] || [],
+      total: result.recordsets[1]?.[0]?.total || 0,
       page: parseInt(page),
       limit: parseInt(limit)
     });
@@ -1715,28 +1072,12 @@ router.get('/chats/:id/messages', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    const result = await pool.request()
-      .input('conversationId', sql.Int, id)
-      .query(`
-        SELECT 
-          m.MessageID,
-          m.ConversationID,
-          m.SenderID,
-          m.Content,
-          m.CreatedAt,
-          m.IsRead,
-          u.Name as SenderName,
-          CASE WHEN u.IsVendor = 1 THEN 'vendor' ELSE 'client' END as SenderType,
-          0 as IsFlagged,
-          0 as IsSystem,
-          0 as IsAdminNote
-        FROM Messages m
-        LEFT JOIN Users u ON m.SenderID = u.UserID
-        WHERE m.ConversationID = @conversationId
-        ORDER BY m.CreatedAt ASC
-      `);
+    const request = pool.request();
+    request.input('ConversationID', sql.Int, id);
     
-    res.json({ messages: result.recordset });
+    const result = await request.execute('sp_Admin_GetChatMessages');
+    
+    res.json({ messages: result.recordsets[1] || [] });
   } catch (error) {
     console.error('Error fetching messages:', error);
     res.status(500).json({ error: 'Failed to fetch messages', details: error.message });
@@ -1750,14 +1091,11 @@ router.post('/chats/:id/system-message', async (req, res) => {
     const { message } = req.body;
     const pool = await getPool();
     
-    // Insert system message (use admin user ID or 0 for system)
-    await pool.request()
-      .input('conversationId', sql.Int, id)
-      .input('message', sql.NVarChar, message)
-      .query(`
-        INSERT INTO Messages (ConversationID, SenderID, Content, SentAt, IsRead)
-        VALUES (@conversationId, 0, '[SYSTEM] ' + @message, GETDATE(), 0)
-      `);
+    const request = pool.request();
+    request.input('ConversationID', sql.Int, id);
+    request.input('Message', sql.NVarChar(sql.MAX), message);
+    
+    await request.execute('sp_Admin_SendSystemMessage');
     
     res.json({ success: true, message: 'System message sent' });
   } catch (error) {
@@ -1773,14 +1111,11 @@ router.post('/chats/:id/notes', async (req, res) => {
     const { note } = req.body;
     const pool = await getPool();
     
-    // Insert admin note
-    await pool.request()
-      .input('conversationId', sql.Int, id)
-      .input('note', sql.NVarChar, note)
-      .query(`
-        INSERT INTO Messages (ConversationID, SenderID, Content, SentAt, IsRead)
-        VALUES (@conversationId, 0, '[ADMIN NOTE] ' + @note, GETDATE(), 1)
-      `);
+    const request = pool.request();
+    request.input('ConversationID', sql.Int, id);
+    request.input('Note', sql.NVarChar(sql.MAX), note);
+    
+    await request.execute('sp_Admin_AddChatNote');
     
     res.json({ success: true, message: 'Note added' });
   } catch (error) {
@@ -1822,19 +1157,10 @@ router.get('/support/search', async (req, res) => {
     const { q } = req.query;
     const pool = await getPool();
     
-    const result = await pool.request()
-      .input('search', sql.NVarChar, `%${q}%`)
-      .query(`
-        SELECT TOP 10
-          'user' as type,
-          u.UserID as id,
-          u.Name as name,
-          u.Email as email,
-          CASE WHEN u.IsVendor = 1 THEN 'Vendor' ELSE 'Client' END as accountType
-        FROM Users u
-        WHERE u.Email LIKE @search OR u.Name LIKE @search
-        ORDER BY u.CreatedAt DESC
-      `);
+    const request = pool.request();
+    request.input('Search', sql.NVarChar(100), q || '');
+    
+    const result = await request.execute('sp_Admin_SearchUsers');
     
     res.json({ results: result.recordset });
   } catch (error) {
@@ -1848,67 +1174,23 @@ router.get('/support/tickets', async (req, res) => {
   try {
     const { status, priority, category, search, page = 1, limit = 20 } = req.query;
     const pool = await getPool();
-    const offset = (page - 1) * limit;
     
-    // Check if SupportTickets table exists
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'SupportTickets'
-    `);
+    const request = pool.request();
+    request.input('Status', sql.NVarChar(50), status || null);
+    request.input('Priority', sql.NVarChar(50), priority || null);
+    request.input('Category', sql.NVarChar(50), category || null);
+    request.input('Search', sql.NVarChar(100), search || null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
     
-    if (tableCheck.recordset[0].cnt > 0) {
-      let whereConditions = ['1=1'];
-      if (status) whereConditions.push(`t.Status = '${status}'`);
-      if (priority) whereConditions.push(`t.Priority = '${priority}'`);
-      if (category) whereConditions.push(`t.Category = '${category}'`);
-      if (search) whereConditions.push(`(t.Subject LIKE '%${search}%' OR t.UserEmail LIKE '%${search}%' OR t.TicketNumber LIKE '%${search}%')`);
-      
-      const whereClause = whereConditions.join(' AND ');
-      
-      const result = await pool.request()
-        .input('offset', sql.Int, offset)
-        .input('limit', sql.Int, parseInt(limit))
-        .query(`
-          SELECT 
-            t.TicketID as id,
-            t.TicketNumber as ticketNumber,
-            t.UserID as userId,
-            t.UserEmail as userEmail,
-            t.UserName as userName,
-            t.Subject as subject,
-            t.Description as description,
-            t.Category as category,
-            t.Priority as priority,
-            t.Status as status,
-            t.AssignedTo as assignedTo,
-            a.Name as assignedToName,
-            t.Source as source,
-            t.ConversationID as conversationId,
-            t.CreatedAt as createdAt,
-            t.UpdatedAt as updatedAt,
-            t.ResolvedAt as resolvedAt,
-            (SELECT COUNT(*) FROM SupportTicketMessages WHERE TicketID = t.TicketID) as messageCount
-          FROM SupportTickets t
-          LEFT JOIN Users a ON t.AssignedTo = a.UserID
-          WHERE ${whereClause}
-          ORDER BY 
-            CASE t.Priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END,
-            t.CreatedAt DESC
-          OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-        `);
-      
-      const countResult = await pool.request().query(`
-        SELECT COUNT(*) as total FROM SupportTickets t WHERE ${whereClause}
-      `);
-      
-      res.json({ 
-        tickets: result.recordset, 
-        total: countResult.recordset[0].total,
-        page: parseInt(page),
-        limit: parseInt(limit)
-      });
-    } else {
-      res.json({ tickets: [], total: 0 });
-    }
+    const result = await request.execute('sp_Admin_GetSupportTickets');
+    
+    res.json({ 
+      tickets: result.recordsets[0] || [], 
+      total: result.recordsets[1]?.[0]?.total || 0,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
   } catch (error) {
     console.error('Error fetching tickets:', error);
     res.status(500).json({ error: 'Failed to fetch tickets' });
@@ -1924,22 +1206,19 @@ router.post('/support/tickets', async (req, res) => {
     // Generate ticket number
     const ticketNumber = 'TKT-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
     
-    const result = await pool.request()
-      .input('ticketNumber', sql.NVarChar, ticketNumber)
-      .input('userId', sql.Int, userId)
-      .input('userEmail', sql.NVarChar, userEmail)
-      .input('userName', sql.NVarChar, userName)
-      .input('subject', sql.NVarChar, subject)
-      .input('description', sql.NVarChar, description)
-      .input('category', sql.NVarChar, category || 'general')
-      .input('priority', sql.NVarChar, priority || 'medium')
-      .input('source', sql.NVarChar, source || 'chat')
-      .input('conversationId', sql.Int, conversationId)
-      .query(`
-        INSERT INTO SupportTickets (TicketNumber, UserID, UserEmail, UserName, Subject, Description, Category, Priority, Source, ConversationID)
-        OUTPUT INSERTED.TicketID, INSERTED.TicketNumber
-        VALUES (@ticketNumber, @userId, @userEmail, @userName, @subject, @description, @category, @priority, @source, @conversationId)
-      `);
+    const request = pool.request();
+    request.input('TicketNumber', sql.NVarChar(50), ticketNumber);
+    request.input('UserID', sql.Int, userId || null);
+    request.input('UserEmail', sql.NVarChar(255), userEmail);
+    request.input('UserName', sql.NVarChar(255), userName);
+    request.input('Subject', sql.NVarChar(255), subject);
+    request.input('Description', sql.NVarChar(sql.MAX), description);
+    request.input('Category', sql.NVarChar(50), category || 'general');
+    request.input('Priority', sql.NVarChar(50), priority || 'medium');
+    request.input('Source', sql.NVarChar(50), source || 'chat');
+    request.input('ConversationID', sql.Int, conversationId || null);
+    
+    const result = await request.execute('sp_Admin_CreateSupportTicket');
     
     res.json({ success: true, ticketId: result.recordset[0].TicketID, ticketNumber: result.recordset[0].TicketNumber });
   } catch (error) {
@@ -1955,23 +1234,14 @@ router.put('/support/tickets/:id', async (req, res) => {
     const { status, priority, assignedTo, category } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('status', sql.NVarChar, status)
-      .input('priority', sql.NVarChar, priority)
-      .input('assignedTo', sql.Int, assignedTo)
-      .input('category', sql.NVarChar, category)
-      .query(`
-        UPDATE SupportTickets SET
-          Status = ISNULL(@status, Status),
-          Priority = ISNULL(@priority, Priority),
-          AssignedTo = ISNULL(@assignedTo, AssignedTo),
-          Category = ISNULL(@category, Category),
-          UpdatedAt = GETUTCDATE(),
-          ResolvedAt = CASE WHEN @status = 'resolved' THEN GETUTCDATE() ELSE ResolvedAt END,
-          ClosedAt = CASE WHEN @status = 'closed' THEN GETUTCDATE() ELSE ClosedAt END
-        WHERE TicketID = @id
-      `);
+    const request = pool.request();
+    request.input('TicketID', sql.Int, id);
+    request.input('Status', sql.NVarChar(50), status || null);
+    request.input('Priority', sql.NVarChar(50), priority || null);
+    request.input('AssignedTo', sql.Int, assignedTo || null);
+    request.input('Category', sql.NVarChar(50), category || null);
+    
+    await request.execute('sp_Admin_UpdateSupportTicket');
     
     res.json({ success: true });
   } catch (error) {
@@ -1986,24 +1256,10 @@ router.get('/support/tickets/:id/messages', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    const result = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
-        SELECT 
-          m.MessageID as id,
-          m.TicketID as ticketId,
-          m.SenderID as senderId,
-          u.Name as senderName,
-          m.SenderType as senderType,
-          m.Message as message,
-          m.Attachments as attachments,
-          m.IsInternal as isInternal,
-          m.CreatedAt as createdAt
-        FROM SupportTicketMessages m
-        LEFT JOIN Users u ON m.SenderID = u.UserID
-        WHERE m.TicketID = @id
-        ORDER BY m.CreatedAt ASC
-      `);
+    const request = pool.request();
+    request.input('TicketID', sql.Int, id);
+    
+    const result = await request.execute('sp_Admin_GetTicketMessages');
     
     res.json({ messages: result.recordset });
   } catch (error) {
@@ -2019,20 +1275,15 @@ router.post('/support/tickets/:id/messages', async (req, res) => {
     const { senderId, senderType, message, attachments, isInternal } = req.body;
     const pool = await getPool();
     
-    const result = await pool.request()
-      .input('ticketId', sql.Int, id)
-      .input('senderId', sql.Int, senderId)
-      .input('senderType', sql.NVarChar, senderType || 'admin')
-      .input('message', sql.NVarChar, message)
-      .input('attachments', sql.NVarChar, attachments ? JSON.stringify(attachments) : null)
-      .input('isInternal', sql.Bit, isInternal || false)
-      .query(`
-        INSERT INTO SupportTicketMessages (TicketID, SenderID, SenderType, Message, Attachments, IsInternal)
-        OUTPUT INSERTED.MessageID
-        VALUES (@ticketId, @senderId, @senderType, @message, @attachments, @isInternal);
-        
-        UPDATE SupportTickets SET UpdatedAt = GETUTCDATE() WHERE TicketID = @ticketId;
-      `);
+    const request = pool.request();
+    request.input('TicketID', sql.Int, id);
+    request.input('SenderID', sql.Int, senderId);
+    request.input('SenderType', sql.NVarChar(50), senderType || 'admin');
+    request.input('Message', sql.NVarChar(sql.MAX), message);
+    request.input('Attachments', sql.NVarChar(sql.MAX), attachments ? JSON.stringify(attachments) : null);
+    request.input('IsInternal', sql.Bit, isInternal || false);
+    
+    const result = await request.execute('sp_Admin_AddTicketMessage');
     
     res.json({ success: true, messageId: result.recordset[0].MessageID });
   } catch (error) {
@@ -2048,19 +1299,9 @@ router.get('/content/banners', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Check if ContentBanners table exists
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'ContentBanners'
-    `);
+    const result = await pool.request().execute('sp_Admin_GetBanners');
     
-    if (tableCheck.recordset[0].cnt > 0) {
-      const result = await pool.request().query(`
-        SELECT * FROM ContentBanners ORDER BY DisplayOrder, CreatedAt DESC
-      `);
-      res.json({ items: result.recordset });
-    } else {
-      res.json({ items: [] });
-    }
+    res.json({ items: result.recordset || [] });
   } catch (error) {
     console.error('Error fetching banners:', error);
     res.status(500).json({ error: 'Failed to fetch banners' });
@@ -2073,53 +1314,24 @@ router.post('/content/banners', async (req, res) => {
     const { id, title, subtitle, imageUrl, linkUrl, linkText, backgroundColor, textColor, position, displayOrder, startDate, endDate, isActive } = req.body;
     const pool = await getPool();
     
-    if (id) {
-      // Update existing
-      await pool.request()
-        .input('id', sql.Int, id)
-        .input('title', sql.NVarChar, title)
-        .input('subtitle', sql.NVarChar, subtitle)
-        .input('imageUrl', sql.NVarChar, imageUrl)
-        .input('linkUrl', sql.NVarChar, linkUrl)
-        .input('linkText', sql.NVarChar, linkText)
-        .input('backgroundColor', sql.NVarChar, backgroundColor)
-        .input('textColor', sql.NVarChar, textColor)
-        .input('position', sql.NVarChar, position || 'hero')
-        .input('displayOrder', sql.Int, displayOrder || 0)
-        .input('startDate', sql.DateTime2, startDate || null)
-        .input('endDate', sql.DateTime2, endDate || null)
-        .input('isActive', sql.Bit, isActive !== false)
-        .query(`
-          UPDATE ContentBanners SET
-            Title = @title, Subtitle = @subtitle, ImageURL = @imageUrl,
-            LinkURL = @linkUrl, LinkText = @linkText, BackgroundColor = @backgroundColor,
-            TextColor = @textColor, Position = @position, DisplayOrder = @displayOrder,
-            StartDate = @startDate, EndDate = @endDate, IsActive = @isActive, UpdatedAt = GETUTCDATE()
-          WHERE BannerID = @id
-        `);
-      res.json({ success: true, id });
-    } else {
-      // Create new
-      const result = await pool.request()
-        .input('title', sql.NVarChar, title)
-        .input('subtitle', sql.NVarChar, subtitle)
-        .input('imageUrl', sql.NVarChar, imageUrl)
-        .input('linkUrl', sql.NVarChar, linkUrl)
-        .input('linkText', sql.NVarChar, linkText)
-        .input('backgroundColor', sql.NVarChar, backgroundColor)
-        .input('textColor', sql.NVarChar, textColor)
-        .input('position', sql.NVarChar, position || 'hero')
-        .input('displayOrder', sql.Int, displayOrder || 0)
-        .input('startDate', sql.DateTime2, startDate || null)
-        .input('endDate', sql.DateTime2, endDate || null)
-        .input('isActive', sql.Bit, isActive !== false)
-        .query(`
-          INSERT INTO ContentBanners (Title, Subtitle, ImageURL, LinkURL, LinkText, BackgroundColor, TextColor, Position, DisplayOrder, StartDate, EndDate, IsActive)
-          OUTPUT INSERTED.BannerID
-          VALUES (@title, @subtitle, @imageUrl, @linkUrl, @linkText, @backgroundColor, @textColor, @position, @displayOrder, @startDate, @endDate, @isActive)
-        `);
-      res.json({ success: true, id: result.recordset[0].BannerID });
-    }
+    const request = pool.request();
+    request.input('BannerID', sql.Int, id || null);
+    request.input('Title', sql.NVarChar(255), title);
+    request.input('Subtitle', sql.NVarChar(500), subtitle || null);
+    request.input('ImageURL', sql.NVarChar(500), imageUrl || null);
+    request.input('LinkURL', sql.NVarChar(500), linkUrl || null);
+    request.input('LinkText', sql.NVarChar(100), linkText || null);
+    request.input('BackgroundColor', sql.NVarChar(50), backgroundColor || null);
+    request.input('TextColor', sql.NVarChar(50), textColor || null);
+    request.input('Position', sql.NVarChar(50), position || 'hero');
+    request.input('DisplayOrder', sql.Int, displayOrder || 0);
+    request.input('StartDate', sql.DateTime2, startDate || null);
+    request.input('EndDate', sql.DateTime2, endDate || null);
+    request.input('IsActive', sql.Bit, isActive !== false);
+    
+    const result = await request.execute('sp_Admin_UpsertBanner');
+    
+    res.json({ success: true, id: id || result.recordset[0]?.BannerID });
   } catch (error) {
     console.error('Error saving banner:', error);
     res.status(500).json({ error: 'Failed to save banner' });
@@ -2131,7 +1343,12 @@ router.delete('/content/banners/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const pool = await getPool();
-    await pool.request().input('id', sql.Int, id).query('DELETE FROM ContentBanners WHERE BannerID = @id');
+    
+    const request = pool.request();
+    request.input('BannerID', sql.Int, id);
+    
+    await request.execute('sp_Admin_DeleteBanner');
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting banner:', error);
@@ -2144,18 +1361,9 @@ router.get('/content/announcements', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'Announcements'
-    `);
+    const result = await pool.request().execute('sp_Admin_GetAnnouncements');
     
-    if (tableCheck.recordset[0].cnt > 0) {
-      const result = await pool.request().query(`
-        SELECT * FROM Announcements ORDER BY DisplayOrder, CreatedAt DESC
-      `);
-      res.json({ items: result.recordset });
-    } else {
-      res.json({ items: [] });
-    }
+    res.json({ items: result.recordset || [] });
   } catch (error) {
     console.error('Error fetching announcements:', error);
     res.status(500).json({ error: 'Failed to fetch announcements' });
@@ -2177,53 +1385,25 @@ router.post('/content/announcements', async (req, res) => {
     const announcementEndDate = endDate || EndDate;
     const announcementIsActive = isActive !== undefined ? isActive : (IsActive !== undefined ? IsActive : true);
     
-    if (id) {
-      await pool.request()
-        .input('id', sql.Int, id)
-        .input('title', sql.NVarChar, announcementTitle)
-        .input('content', sql.NVarChar, announcementContent)
-        .input('type', sql.NVarChar, announcementType)
-        .input('icon', sql.NVarChar, icon)
-        .input('linkUrl', sql.NVarChar, linkUrl)
-        .input('linkText', sql.NVarChar, linkText)
-        .input('displayType', sql.NVarChar, displayType || 'banner')
-        .input('targetAudience', sql.NVarChar, targetAudience || 'all')
-        .input('startDate', sql.DateTime2, announcementStartDate || null)
-        .input('endDate', sql.DateTime2, announcementEndDate || null)
-        .input('isActive', sql.Bit, announcementIsActive)
-        .input('isDismissible', sql.Bit, isDismissible !== false)
-        .input('displayOrder', sql.Int, displayOrder || 0)
-        .query(`
-          UPDATE Announcements SET
-            Title = @title, Content = @content, Type = @type, Icon = @icon,
-            LinkURL = @linkUrl, LinkText = @linkText, DisplayType = @displayType,
-            TargetAudience = @targetAudience, StartDate = @startDate, EndDate = @endDate,
-            IsActive = @isActive, IsDismissible = @isDismissible, DisplayOrder = @displayOrder, UpdatedAt = GETUTCDATE()
-          WHERE AnnouncementID = @id
-        `);
-      res.json({ success: true, id });
-    } else {
-      const result = await pool.request()
-        .input('title', sql.NVarChar, announcementTitle)
-        .input('content', sql.NVarChar, announcementContent)
-        .input('type', sql.NVarChar, announcementType)
-        .input('icon', sql.NVarChar, icon)
-        .input('linkUrl', sql.NVarChar, linkUrl)
-        .input('linkText', sql.NVarChar, linkText)
-        .input('displayType', sql.NVarChar, displayType || 'banner')
-        .input('targetAudience', sql.NVarChar, targetAudience || 'all')
-        .input('startDate', sql.DateTime2, announcementStartDate || null)
-        .input('endDate', sql.DateTime2, announcementEndDate || null)
-        .input('isActive', sql.Bit, announcementIsActive)
-        .input('isDismissible', sql.Bit, isDismissible !== false)
-        .input('displayOrder', sql.Int, displayOrder || 0)
-        .query(`
-          INSERT INTO Announcements (Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, TargetAudience, StartDate, EndDate, IsActive, IsDismissible, DisplayOrder)
-          OUTPUT INSERTED.AnnouncementID
-          VALUES (@title, @content, @type, @icon, @linkUrl, @linkText, @displayType, @targetAudience, @startDate, @endDate, @isActive, @isDismissible, @displayOrder)
-        `);
-      res.json({ success: true, id: result.recordset[0].AnnouncementID });
-    }
+    const request = pool.request();
+    request.input('AnnouncementID', sql.Int, id || null);
+    request.input('Title', sql.NVarChar(255), announcementTitle);
+    request.input('Content', sql.NVarChar(sql.MAX), announcementContent);
+    request.input('Type', sql.NVarChar(50), announcementType);
+    request.input('Icon', sql.NVarChar(100), icon || null);
+    request.input('LinkURL', sql.NVarChar(500), linkUrl || null);
+    request.input('LinkText', sql.NVarChar(100), linkText || null);
+    request.input('DisplayType', sql.NVarChar(50), displayType || 'banner');
+    request.input('TargetAudience', sql.NVarChar(50), targetAudience || 'all');
+    request.input('StartDate', sql.DateTime2, announcementStartDate || null);
+    request.input('EndDate', sql.DateTime2, announcementEndDate || null);
+    request.input('IsActive', sql.Bit, announcementIsActive);
+    request.input('IsDismissible', sql.Bit, isDismissible !== false);
+    request.input('DisplayOrder', sql.Int, displayOrder || 0);
+    
+    const result = await request.execute('sp_Admin_UpsertAnnouncement');
+    
+    res.json({ success: true, id: id || result.recordset[0]?.AnnouncementID });
   } catch (error) {
     console.error('Error saving announcement:', error);
     res.status(500).json({ error: 'Failed to save announcement' });
@@ -2235,7 +1415,12 @@ router.delete('/content/announcements/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const pool = await getPool();
-    await pool.request().input('id', sql.Int, id).query('DELETE FROM Announcements WHERE AnnouncementID = @id');
+    
+    const request = pool.request();
+    request.input('AnnouncementID', sql.Int, id);
+    
+    await request.execute('sp_Admin_DeleteAnnouncement');
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting announcement:', error);
@@ -2248,18 +1433,9 @@ router.get('/content/faqs', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'PlatformFAQs'
-    `);
+    const result = await pool.request().execute('sp_Admin_GetFAQs');
     
-    if (tableCheck.recordset[0].cnt > 0) {
-      const result = await pool.request().query(`
-        SELECT * FROM PlatformFAQs ORDER BY DisplayOrder, CreatedAt DESC
-      `);
-      res.json({ items: result.recordset });
-    } else {
-      res.json({ items: [] });
-    }
+    res.json({ items: result.recordset || [] });
   } catch (error) {
     console.error('Error fetching FAQs:', error);
     res.status(500).json({ error: 'Failed to fetch FAQs' });
@@ -2272,33 +1448,17 @@ router.post('/content/faqs', async (req, res) => {
     const { id, question, answer, category, displayOrder, isActive } = req.body;
     const pool = await getPool();
     
-    if (id) {
-      await pool.request()
-        .input('id', sql.Int, id)
-        .input('question', sql.NVarChar, question)
-        .input('answer', sql.NVarChar, answer)
-        .input('category', sql.NVarChar, category || 'general')
-        .input('displayOrder', sql.Int, displayOrder || 0)
-        .input('isActive', sql.Bit, isActive !== false)
-        .query(`
-          UPDATE PlatformFAQs SET Question = @question, Answer = @answer, Category = @category, DisplayOrder = @displayOrder, IsActive = @isActive, UpdatedAt = GETUTCDATE()
-          WHERE FAQID = @id
-        `);
-      res.json({ success: true, id });
-    } else {
-      const result = await pool.request()
-        .input('question', sql.NVarChar, question)
-        .input('answer', sql.NVarChar, answer)
-        .input('category', sql.NVarChar, category || 'general')
-        .input('displayOrder', sql.Int, displayOrder || 0)
-        .input('isActive', sql.Bit, isActive !== false)
-        .query(`
-          INSERT INTO PlatformFAQs (Question, Answer, Category, DisplayOrder, IsActive)
-          OUTPUT INSERTED.FAQID
-          VALUES (@question, @answer, @category, @displayOrder, @isActive)
-        `);
-      res.json({ success: true, id: result.recordset[0].FAQID });
-    }
+    const request = pool.request();
+    request.input('FAQID', sql.Int, id || null);
+    request.input('Question', sql.NVarChar(500), question);
+    request.input('Answer', sql.NVarChar(sql.MAX), answer);
+    request.input('Category', sql.NVarChar(100), category || 'general');
+    request.input('DisplayOrder', sql.Int, displayOrder || 0);
+    request.input('IsActive', sql.Bit, isActive !== false);
+    
+    const result = await request.execute('sp_Admin_UpsertFAQ');
+    
+    res.json({ success: true, id: id || result.recordset[0]?.FAQID });
   } catch (error) {
     console.error('Error saving FAQ:', error);
     res.status(500).json({ error: 'Failed to save FAQ' });
@@ -2310,7 +1470,12 @@ router.delete('/content/faqs/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const pool = await getPool();
-    await pool.request().input('id', sql.Int, id).query('DELETE FROM PlatformFAQs WHERE FAQID = @id');
+    
+    const request = pool.request();
+    request.input('FAQID', sql.Int, id);
+    
+    await request.execute('sp_Admin_DeleteFAQ');
+    
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting FAQ:', error);
@@ -2335,29 +1500,7 @@ router.get('/notifications/templates', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Use the existing EmailTemplates table with EmailTemplateComponents
-    const result = await pool.request().query(`
-      SELECT 
-        t.TemplateID as id,
-        t.TemplateName as name,
-        t.TemplateKey as templateKey,
-        t.Category as category,
-        t.Subject as subject,
-        t.AvailableVariables as variables,
-        t.IsActive as isActive,
-        t.CreatedAt,
-        t.UpdatedAt,
-        'email' as type,
-        COALESCE(h.HtmlContent, '') + COALESCE(b.HtmlContent, '') + COALESCE(f.HtmlContent, '') as body,
-        h.HtmlContent as headerHtml,
-        b.HtmlContent as bodyHtml,
-        f.HtmlContent as footerHtml
-      FROM EmailTemplates t
-      LEFT JOIN EmailTemplateComponents h ON t.HeaderComponentID = h.ComponentID
-      LEFT JOIN EmailTemplateComponents b ON t.BodyComponentID = b.ComponentID
-      LEFT JOIN EmailTemplateComponents f ON t.FooterComponentID = f.ComponentID
-      ORDER BY t.Category, t.TemplateName
-    `);
+    const result = await pool.request().execute('sp_Admin_GetEmailTemplates');
     
     res.json({ templates: result.recordset });
   } catch (error) {
@@ -2372,29 +1515,10 @@ router.get('/notifications/template/:id', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    const result = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
-        SELECT 
-          t.TemplateID as id,
-          t.TemplateName as name,
-          t.TemplateKey as templateKey,
-          t.Category as category,
-          t.Subject as subject,
-          t.AvailableVariables as variables,
-          t.IsActive as isActive,
-          h.HtmlContent as headerHtml,
-          b.HtmlContent as bodyHtml,
-          f.HtmlContent as footerHtml,
-          h.ComponentID as headerComponentId,
-          b.ComponentID as bodyComponentId,
-          f.ComponentID as footerComponentId
-        FROM EmailTemplates t
-        LEFT JOIN EmailTemplateComponents h ON t.HeaderComponentID = h.ComponentID
-        LEFT JOIN EmailTemplateComponents b ON t.BodyComponentID = b.ComponentID
-        LEFT JOIN EmailTemplateComponents f ON t.FooterComponentID = f.ComponentID
-        WHERE t.TemplateID = @id
-      `);
+    const request = pool.request();
+    request.input('TemplateID', sql.Int, id);
+    
+    const result = await request.execute('sp_Admin_GetEmailTemplate');
     
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'Template not found' });
@@ -2418,39 +1542,13 @@ router.put('/notifications/template/:id', async (req, res) => {
     const { subject, bodyHtml, isActive } = req.body;
     const pool = await getPool();
     
-    // Get the body component ID
-    const templateResult = await pool.request()
-      .input('id', sql.Int, id)
-      .query('SELECT BodyComponentID FROM EmailTemplates WHERE TemplateID = @id');
+    const request = pool.request();
+    request.input('TemplateID', sql.Int, id);
+    request.input('Subject', sql.NVarChar(500), subject || null);
+    request.input('BodyHtml', sql.NVarChar(sql.MAX), bodyHtml || null);
+    request.input('IsActive', sql.Bit, isActive !== false);
     
-    if (templateResult.recordset.length === 0) {
-      return res.status(404).json({ error: 'Template not found' });
-    }
-    
-    const bodyComponentId = templateResult.recordset[0].BodyComponentID;
-    
-    // Update the template subject and active status
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('subject', sql.NVarChar, subject)
-      .input('isActive', sql.Bit, isActive !== false)
-      .query(`
-        UPDATE EmailTemplates 
-        SET Subject = @subject, IsActive = @isActive, UpdatedAt = GETUTCDATE()
-        WHERE TemplateID = @id
-      `);
-    
-    // Update the body component HTML if provided
-    if (bodyHtml && bodyComponentId) {
-      await pool.request()
-        .input('componentId', sql.Int, bodyComponentId)
-        .input('htmlContent', sql.NVarChar, bodyHtml)
-        .query(`
-          UPDATE EmailTemplateComponents 
-          SET HtmlContent = @htmlContent, UpdatedAt = GETUTCDATE()
-          WHERE ComponentID = @componentId
-        `);
-    }
+    await request.execute('sp_Admin_UpdateEmailTemplate');
     
     res.json({ success: true });
   } catch (error) {
@@ -2464,42 +1562,18 @@ router.get('/notifications/logs', async (req, res) => {
   try {
     const { page = 1, limit = 50, templateKey, status } = req.query;
     const pool = await getPool();
-    const offset = (page - 1) * limit;
     
-    let whereConditions = ['1=1'];
-    if (templateKey) whereConditions.push(`TemplateKey = '${templateKey}'`);
-    if (status) whereConditions.push(`Status = '${status}'`);
+    const request = pool.request();
+    request.input('TemplateKey', sql.NVarChar(100), templateKey || null);
+    request.input('Status', sql.NVarChar(50), status || null);
+    request.input('PageNumber', sql.Int, parseInt(page));
+    request.input('PageSize', sql.Int, parseInt(limit));
     
-    const whereClause = whereConditions.join(' AND ');
-    
-    const result = await pool.request()
-      .input('offset', sql.Int, offset)
-      .input('limit', sql.Int, parseInt(limit))
-      .query(`
-        SELECT 
-          EmailLogID as id,
-          TemplateKey as templateKey,
-          RecipientEmail as recipientEmail,
-          RecipientName as recipientName,
-          Subject as subject,
-          Status as status,
-          ErrorMessage as errorMessage,
-          SentAt as sentAt,
-          UserID as userId,
-          BookingID as bookingId
-        FROM EmailLogs
-        WHERE ${whereClause}
-        ORDER BY SentAt DESC
-        OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
-      `);
-    
-    const countResult = await pool.request().query(`
-      SELECT COUNT(*) as total FROM EmailLogs WHERE ${whereClause}
-    `);
+    const result = await request.execute('sp_Admin_GetEmailLogs');
     
     res.json({ 
-      logs: result.recordset, 
-      total: countResult.recordset[0].total,
+      logs: result.recordsets[0] || [], 
+      total: result.recordsets[1]?.[0]?.total || 0,
       page: parseInt(page),
       limit: parseInt(limit)
     });
@@ -2528,24 +1602,12 @@ router.post('/notifications/send', async (req, res) => {
     const { type, recipientType, subject, message } = req.body;
     const pool = await getPool();
     
-    // Get recipients based on type
-    let recipients = [];
-    if (recipientType === 'all') {
-      const result = await pool.request().query(`SELECT Email FROM Users WHERE IsActive = 1`);
-      recipients = result.recordset.map(r => r.Email);
-    } else if (recipientType === 'vendors') {
-      const result = await pool.request().query(`
-        SELECT u.Email FROM Users u 
-        WHERE u.IsVendor = 1 AND u.IsActive = 1
-      `);
-      recipients = result.recordset.map(r => r.Email);
-    } else if (recipientType === 'clients') {
-      const result = await pool.request().query(`
-        SELECT u.Email FROM Users u 
-        WHERE u.IsVendor = 0 AND u.IsActive = 1
-      `);
-      recipients = result.recordset.map(r => r.Email);
-    }
+    // Get recipients based on type using stored procedure
+    const request = pool.request();
+    request.input('RecipientType', sql.NVarChar(50), recipientType);
+    
+    const result = await request.execute('sp_Admin_GetNotificationRecipients');
+    const recipients = result.recordset.map(r => r.Email).filter(e => e);
     
     // Log notification (in real implementation, send actual emails)
     console.log(`Sending ${type} notification to ${recipients.length} recipients`);
@@ -2650,10 +1712,10 @@ router.post('/bookings/:id/refund', async (req, res) => {
     const { amount, reason } = req.body;
     const pool = await getPool();
     
-    // Get booking details
-    const bookingResult = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`SELECT * FROM Bookings WHERE BookingID = @id`);
+    // Get booking details using stored procedure
+    const getRequest = pool.request();
+    getRequest.input('BookingID', sql.Int, id);
+    const bookingResult = await getRequest.execute('sp_Admin_GetBookingForRefund');
     
     if (bookingResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -2661,20 +1723,13 @@ router.post('/bookings/:id/refund', async (req, res) => {
     
     const booking = bookingResult.recordset[0];
     
-    // Update booking status and record refund
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('refundAmount', sql.Decimal(10,2), amount)
-      .input('reason', sql.NVarChar, reason)
-      .query(`
-        UPDATE Bookings 
-        SET Status = 'Refunded',
-            RefundAmount = @refundAmount,
-            RefundReason = @reason,
-            RefundedAt = GETDATE(),
-            UpdatedAt = GETDATE()
-        WHERE BookingID = @id
-      `);
+    // Process refund using stored procedure
+    const refundRequest = pool.request();
+    refundRequest.input('BookingID', sql.Int, id);
+    refundRequest.input('RefundAmount', sql.Decimal(10,2), amount);
+    refundRequest.input('Reason', sql.NVarChar(sql.MAX), reason);
+    
+    await refundRequest.execute('sp_Admin_ProcessRefund');
     
     // Log the refund action
     console.log(`Refund processed: Booking #${id}, Amount: $${amount}, Reason: ${reason}`);
@@ -2700,10 +1755,10 @@ router.post('/bookings/:id/resolve-dispute', async (req, res) => {
     let newStatus = 'Completed';
     let refundAmount = 0;
     
-    // Get booking details
-    const bookingResult = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`SELECT * FROM Bookings WHERE BookingID = @id`);
+    // Get booking details using stored procedure
+    const getRequest = pool.request();
+    getRequest.input('BookingID', sql.Int, id);
+    const bookingResult = await getRequest.execute('sp_Admin_GetBookingForRefund');
     
     if (bookingResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -2732,21 +1787,14 @@ router.post('/bookings/:id/resolve-dispute', async (req, res) => {
         newStatus = 'Completed';
     }
     
-    // Update booking
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('status', sql.NVarChar, newStatus)
-      .input('refundAmount', sql.Decimal(10,2), refundAmount)
-      .input('resolution', sql.NVarChar, resolution)
-      .query(`
-        UPDATE Bookings 
-        SET Status = @status,
-            RefundAmount = @refundAmount,
-            DisputeResolution = @resolution,
-            DisputeResolvedAt = GETDATE(),
-            UpdatedAt = GETDATE()
-        WHERE BookingID = @id
-      `);
+    // Update booking using stored procedure
+    const resolveRequest = pool.request();
+    resolveRequest.input('BookingID', sql.Int, id);
+    resolveRequest.input('Status', sql.NVarChar(50), newStatus);
+    resolveRequest.input('RefundAmount', sql.Decimal(10,2), refundAmount);
+    resolveRequest.input('Resolution', sql.NVarChar(sql.MAX), resolution);
+    
+    await resolveRequest.execute('sp_Admin_ResolveDispute');
     
     res.json({ 
       success: true, 
@@ -2766,30 +1814,11 @@ router.get('/bookings/export', async (req, res) => {
     const { status } = req.query;
     const pool = await getPool();
     
-    let whereClause = '1=1';
-    if (status && status !== 'all') {
-      whereClause = `b.Status = '${status}'`;
-    }
+    // Use stored procedure for disputes/export
+    const request = pool.request();
+    request.input('Status', sql.NVarChar(50), status && status !== 'all' ? status : null);
     
-    const result = await pool.request().query(`
-      SELECT 
-        b.BookingID,
-        u.Name as ClientName,
-        u.Email as ClientEmail,
-        vp.BusinessName as VendorName,
-        b.EventDate,
-        b.StartTime,
-        b.EndTime,
-        b.TotalAmount,
-        b.DepositAmount,
-        b.Status,
-        b.CreatedAt
-      FROM Bookings b
-      LEFT JOIN Users u ON b.UserID = u.UserID
-      LEFT JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-      WHERE ${whereClause}
-      ORDER BY b.CreatedAt DESC
-    `);
+    const result = await request.execute('sp_Admin_GetDisputes');
     
     // Convert to CSV
     const bookings = result.recordset;
@@ -2832,25 +1861,11 @@ router.get('/categories/:id/services', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    // Get services associated with this category
-    const result = await pool.request()
-      .input('categoryId', sql.Int, id)
-      .query(`
-        SELECT DISTINCT
-          vs.ServiceID,
-          vs.ServiceName,
-          vs.ServiceDescription as Description,
-          vs.Price as DefaultPrice,
-          vs.DurationMinutes,
-          vc.Category as CategoryName
-        FROM VendorServices vs
-        JOIN VendorCategories vc ON vs.VendorProfileID = vc.VendorProfileID
-        WHERE vc.Category = (
-          SELECT TOP 1 Category FROM VendorCategories 
-          WHERE VendorProfileID = @categoryId OR Category LIKE '%' + CAST(@categoryId as NVARCHAR) + '%'
-        )
-        ORDER BY vs.ServiceName
-      `);
+    // Get services associated with this category using stored procedure
+    const request = pool.request();
+    request.input('CategoryID', sql.Int, id);
+    
+    const result = await request.execute('sp_Admin_GetCategoryServices');
     
     res.json({ services: result.recordset });
   } catch (error) {
@@ -2884,9 +1899,10 @@ router.delete('/services/:id', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .query(`DELETE FROM VendorServices WHERE ServiceID = @id`);
+    const request = pool.request();
+    request.input('ServiceID', sql.Int, id);
+    
+    await request.execute('sp_Admin_DeleteService');
     
     res.json({ success: true, message: 'Service deleted' });
   } catch (error) {
@@ -2903,15 +1919,11 @@ router.post('/payments/manual-payout', async (req, res) => {
     const { vendorId, amount } = req.body;
     const pool = await getPool();
     
-    // Get vendor details
-    const vendorResult = await pool.request()
-      .input('vendorId', sql.Int, vendorId)
-      .query(`
-        SELECT vp.BusinessName, vp.StripeAccountId, u.Email
-        FROM VendorProfiles vp
-        LEFT JOIN Users u ON vp.UserID = u.UserID
-        WHERE vp.VendorProfileID = @vendorId
-      `);
+    // Get vendor details using stored procedure
+    const request = pool.request();
+    request.input('VendorProfileID', sql.Int, vendorId);
+    
+    const vendorResult = await request.execute('sp_Admin_GetVendorForPayout');
     
     if (vendorResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Vendor not found' });
@@ -2940,29 +1952,22 @@ router.post('/payments/refund', async (req, res) => {
     const { transactionId, amount, reason } = req.body;
     const pool = await getPool();
     
-    // Get booking/transaction details
-    const bookingResult = await pool.request()
-      .input('id', sql.Int, transactionId)
-      .query(`SELECT * FROM Bookings WHERE BookingID = @id`);
+    // Get booking/transaction details using stored procedure
+    const getRequest = pool.request();
+    getRequest.input('BookingID', sql.Int, transactionId);
+    const bookingResult = await getRequest.execute('sp_Admin_GetBookingForRefund');
     
     if (bookingResult.recordset.length === 0) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
     
-    // Update booking with refund info
-    await pool.request()
-      .input('id', sql.Int, transactionId)
-      .input('refundAmount', sql.Decimal(10,2), amount)
-      .input('reason', sql.NVarChar, reason)
-      .query(`
-        UPDATE Bookings 
-        SET Status = 'Refunded',
-            RefundAmount = @refundAmount,
-            RefundReason = @reason,
-            RefundedAt = GETDATE(),
-            UpdatedAt = GETDATE()
-        WHERE BookingID = @id
-      `);
+    // Process refund using stored procedure
+    const refundRequest = pool.request();
+    refundRequest.input('BookingID', sql.Int, transactionId);
+    refundRequest.input('RefundAmount', sql.Decimal(10,2), amount);
+    refundRequest.input('Reason', sql.NVarChar(sql.MAX), reason);
+    
+    await refundRequest.execute('sp_Admin_ProcessRefund');
     
     res.json({ 
       success: true, 
@@ -2983,26 +1988,24 @@ router.get('/analytics/revenue', async (req, res) => {
     const { range = '30d' } = req.query;
     const pool = await getPool();
     
-    let dateFilter;
+    // Calculate date range
+    let days = 30;
     switch (range) {
-      case '7d': dateFilter = 'DATEADD(day, -7, GETDATE())'; break;
-      case '90d': dateFilter = 'DATEADD(day, -90, GETDATE())'; break;
-      case '1y': dateFilter = 'DATEADD(year, -1, GETDATE())'; break;
-      default: dateFilter = 'DATEADD(day, -30, GETDATE())';
+      case '7d': days = 7; break;
+      case '90d': days = 90; break;
+      case '1y': days = 365; break;
+      default: days = 30;
     }
     
-    // Daily revenue for the period
-    const dailyRevenue = await pool.request().query(`
-      SELECT 
-        CAST(CreatedAt as DATE) as date,
-        COUNT(*) as bookings,
-        ISNULL(SUM(TotalAmount), 0) as revenue,
-        ISNULL(SUM(TotalAmount * 0.1), 0) as platformFees
-      FROM Bookings
-      WHERE CreatedAt >= ${dateFilter}
-      GROUP BY CAST(CreatedAt as DATE)
-      ORDER BY date
-    `);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    // Use stored procedure for revenue report
+    const request = pool.request();
+    request.input('StartDate', sql.Date, startDate);
+    request.input('EndDate', sql.Date, new Date());
+    
+    const dailyRevenue = await request.execute('sp_Admin_GetRevenueReport');
     
     res.json({ dailyRevenue: dailyRevenue.recordset });
   } catch (error) {
@@ -3016,15 +2019,8 @@ router.get('/analytics/users', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().query(`
-      SELECT
-        (SELECT COUNT(*) FROM Users) as totalUsers,
-        (SELECT COUNT(*) FROM Users WHERE IsVendor = 1) as totalVendors,
-        (SELECT COUNT(*) FROM Users WHERE IsVendor = 0) as totalClients,
-        (SELECT COUNT(*) FROM Users WHERE CreatedAt >= DATEADD(day, -7, GETDATE())) as newUsersThisWeek,
-        (SELECT COUNT(*) FROM Users WHERE CreatedAt >= DATEADD(day, -30, GETDATE())) as newUsersThisMonth,
-        (SELECT COUNT(*) FROM Users WHERE LastLogin >= DATEADD(day, -7, GETDATE())) as activeUsersThisWeek
-    `);
+    // Use stored procedure for dashboard stats
+    const result = await pool.request().execute('sp_Admin_GetDashboardStats');
     
     res.json(result.recordset[0]);
   } catch (error) {
@@ -3041,23 +2037,9 @@ router.get('/public/banners', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'ContentBanners'
-    `);
+    const result = await pool.request().execute('sp_Admin_GetPublicBanners');
     
-    if (tableCheck.recordset[0].cnt > 0) {
-      const result = await pool.request().query(`
-        SELECT BannerID, Title, Subtitle, ImageURL, LinkURL, LinkText, BackgroundColor, TextColor, Position
-        FROM ContentBanners
-        WHERE IsActive = 1 
-          AND (StartDate IS NULL OR StartDate <= GETUTCDATE()) 
-          AND (EndDate IS NULL OR EndDate >= GETUTCDATE())
-        ORDER BY DisplayOrder, CreatedAt DESC
-      `);
-      res.json({ banners: result.recordset });
-    } else {
-      res.json({ banners: [] });
-    }
+    res.json({ banners: result.recordset || [] });
   } catch (error) {
     console.error('Error fetching public banners:', error);
     res.status(500).json({ error: 'Failed to fetch banners' });
@@ -3070,33 +2052,12 @@ router.get('/public/announcements', async (req, res) => {
     const { audience = 'all' } = req.query;
     const pool = await getPool();
     
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'Announcements'
-    `);
+    const request = pool.request();
+    request.input('Audience', sql.NVarChar(50), audience);
     
-    if (tableCheck.recordset[0].cnt > 0) {
-      const result = await pool.request()
-        .input('audience', sql.NVarChar, audience)
-        .query(`
-          SELECT AnnouncementID, Title, Content, Type, Icon, LinkURL, LinkText, DisplayType, IsDismissible
-          FROM Announcements
-          WHERE IsActive = 1 
-            AND (StartDate IS NULL OR StartDate <= GETUTCDATE()) 
-            AND (EndDate IS NULL OR EndDate >= GETUTCDATE())
-            AND (TargetAudience = 'all' OR TargetAudience = @audience)
-          ORDER BY DisplayOrder, CreatedAt DESC
-        `);
-      
-      // Update view count
-      if (result.recordset.length > 0) {
-        const ids = result.recordset.map(a => a.AnnouncementID).join(',');
-        await pool.request().query(`UPDATE Announcements SET ViewCount = ViewCount + 1 WHERE AnnouncementID IN (${ids})`);
-      }
-      
-      res.json({ announcements: result.recordset });
-    } else {
-      res.json({ announcements: [] });
-    }
+    const result = await request.execute('sp_Admin_GetPublicAnnouncements');
+    
+    res.json({ announcements: result.recordset || [] });
   } catch (error) {
     console.error('Error fetching public announcements:', error);
     res.status(500).json({ error: 'Failed to fetch announcements' });
@@ -3109,9 +2070,10 @@ router.post('/public/announcements/:id/dismiss', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .query('UPDATE Announcements SET DismissCount = DismissCount + 1 WHERE AnnouncementID = @id');
+    const request = pool.request();
+    request.input('AnnouncementID', sql.Int, id);
+    
+    await request.execute('sp_Admin_DismissAnnouncement');
     
     res.json({ success: true });
   } catch (error) {
@@ -3127,21 +2089,9 @@ router.get('/faqs', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'FAQs'
-    `);
+    const result = await pool.request().execute('sp_Admin_GetPublicFAQs');
     
-    if (tableCheck.recordset[0].cnt === 0) {
-      return res.json({ faqs: [] });
-    }
-    
-    const result = await pool.request().query(`
-      SELECT FAQID, Question, Answer, Category, DisplayOrder, IsActive, CreatedAt, UpdatedAt
-      FROM FAQs
-      ORDER BY DisplayOrder, CreatedAt
-    `);
-    
-    res.json({ faqs: result.recordset });
+    res.json({ faqs: result.recordset || [] });
   } catch (error) {
     console.error('Error fetching FAQs:', error);
     res.status(500).json({ error: 'Failed to fetch FAQs' });
@@ -3154,16 +2104,13 @@ router.post('/faqs', async (req, res) => {
     const { question, answer, category, displayOrder } = req.body;
     const pool = await getPool();
     
-    const result = await pool.request()
-      .input('question', sql.NVarChar, question)
-      .input('answer', sql.NVarChar, answer)
-      .input('category', sql.NVarChar, category || 'General')
-      .input('displayOrder', sql.Int, displayOrder || 0)
-      .query(`
-        INSERT INTO FAQs (Question, Answer, Category, DisplayOrder, IsActive)
-        OUTPUT INSERTED.*
-        VALUES (@question, @answer, @category, @displayOrder, 1)
-      `);
+    const request = pool.request();
+    request.input('Question', sql.NVarChar(500), question);
+    request.input('Answer', sql.NVarChar(sql.MAX), answer);
+    request.input('Category', sql.NVarChar(100), category || 'General');
+    request.input('DisplayOrder', sql.Int, displayOrder || 0);
+    
+    const result = await request.execute('sp_Admin_CreatePublicFAQ');
     
     res.json({ success: true, faq: result.recordset[0] });
   } catch (error) {
@@ -3179,19 +2126,15 @@ router.put('/faqs/:id', async (req, res) => {
     const { question, answer, category, displayOrder, isActive } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('question', sql.NVarChar, question)
-      .input('answer', sql.NVarChar, answer)
-      .input('category', sql.NVarChar, category)
-      .input('displayOrder', sql.Int, displayOrder)
-      .input('isActive', sql.Bit, isActive)
-      .query(`
-        UPDATE FAQs 
-        SET Question = @question, Answer = @answer, Category = @category, 
-            DisplayOrder = @displayOrder, IsActive = @isActive, UpdatedAt = GETUTCDATE()
-        WHERE FAQID = @id
-      `);
+    const request = pool.request();
+    request.input('FAQID', sql.Int, id);
+    request.input('Question', sql.NVarChar(500), question);
+    request.input('Answer', sql.NVarChar(sql.MAX), answer);
+    request.input('Category', sql.NVarChar(100), category);
+    request.input('DisplayOrder', sql.Int, displayOrder);
+    request.input('IsActive', sql.Bit, isActive);
+    
+    await request.execute('sp_Admin_UpdatePublicFAQ');
     
     res.json({ success: true });
   } catch (error) {
@@ -3206,9 +2149,10 @@ router.delete('/faqs/:id', async (req, res) => {
     const { id } = req.params;
     const pool = await getPool();
     
-    await pool.request()
-      .input('id', sql.Int, id)
-      .query('DELETE FROM FAQs WHERE FAQID = @id');
+    const request = pool.request();
+    request.input('FAQID', sql.Int, id);
+    
+    await request.execute('sp_Admin_DeleteFAQ');
     
     res.json({ success: true });
   } catch (error) {
@@ -3224,21 +2168,9 @@ router.get('/commission-settings', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'CommissionSettings'
-    `);
+    const result = await pool.request().execute('sp_Admin_GetCommissionSettings');
     
-    if (tableCheck.recordset[0].cnt === 0) {
-      return res.json({ settings: [] });
-    }
-    
-    const result = await pool.request().query(`
-      SELECT SettingID, SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive, CreatedAt, UpdatedAt
-      FROM CommissionSettings
-      ORDER BY SettingKey
-    `);
-    
-    res.json({ settings: result.recordset });
+    res.json({ settings: result.recordset || [] });
   } catch (error) {
     console.error('Error fetching commission settings:', error);
     res.status(500).json({ error: 'Failed to fetch commission settings' });
@@ -3252,15 +2184,12 @@ router.put('/commission-settings/:key', async (req, res) => {
     const { value, description } = req.body;
     const pool = await getPool();
     
-    await pool.request()
-      .input('key', sql.NVarChar, key)
-      .input('value', sql.NVarChar, value)
-      .input('description', sql.NVarChar, description)
-      .query(`
-        UPDATE CommissionSettings 
-        SET SettingValue = @value, Description = ISNULL(@description, Description), UpdatedAt = GETUTCDATE()
-        WHERE SettingKey = @key
-      `);
+    const request = pool.request();
+    request.input('SettingKey', sql.NVarChar(100), key);
+    request.input('SettingValue', sql.NVarChar(255), value);
+    request.input('Description', sql.NVarChar(500), description || null);
+    
+    await request.execute('sp_Admin_UpdateCommissionSetting');
     
     res.json({ success: true });
   } catch (error) {
@@ -3275,18 +2204,15 @@ router.post('/commission-settings', async (req, res) => {
     const { settingKey, settingValue, description, settingType, minValue, maxValue } = req.body;
     const pool = await getPool();
     
-    const result = await pool.request()
-      .input('settingKey', sql.NVarChar, settingKey)
-      .input('settingValue', sql.NVarChar, settingValue)
-      .input('description', sql.NVarChar, description)
-      .input('settingType', sql.NVarChar, settingType || 'percentage')
-      .input('minValue', sql.Decimal(10, 2), minValue)
-      .input('maxValue', sql.Decimal(10, 2), maxValue)
-      .query(`
-        INSERT INTO CommissionSettings (SettingKey, SettingValue, Description, SettingType, MinValue, MaxValue, IsActive)
-        OUTPUT INSERTED.*
-        VALUES (@settingKey, @settingValue, @description, @settingType, @minValue, @maxValue, 1)
-      `);
+    const request = pool.request();
+    request.input('SettingKey', sql.NVarChar(100), settingKey);
+    request.input('SettingValue', sql.NVarChar(255), settingValue);
+    request.input('Description', sql.NVarChar(500), description || null);
+    request.input('SettingType', sql.NVarChar(50), settingType || 'percentage');
+    request.input('MinValue', sql.Decimal(10, 2), minValue || null);
+    request.input('MaxValue', sql.Decimal(10, 2), maxValue || null);
+    
+    const result = await request.execute('sp_Admin_CreateCommissionSetting');
     
     res.json({ success: true, setting: result.recordset[0] });
   } catch (error) {
@@ -3301,7 +2227,7 @@ router.put('/commission-settings', async (req, res) => {
     const { platformFeePercent, stripeFeePercent, stripeFeeFixed, taxPercent, currency } = req.body;
     const pool = await getPool();
     
-    // Update each setting
+    // Update each setting using stored procedure
     const updates = [
       { key: 'platform_fee_percent', value: platformFeePercent },
       { key: 'stripe_fee_percent', value: stripeFeePercent },
@@ -3311,14 +2237,12 @@ router.put('/commission-settings', async (req, res) => {
     
     for (const update of updates) {
       if (update.value !== undefined) {
-        await pool.request()
-          .input('key', sql.NVarChar, update.key)
-          .input('value', sql.NVarChar, String(update.value))
-          .query(`
-            UPDATE CommissionSettings 
-            SET SettingValue = @value, UpdatedAt = GETUTCDATE()
-            WHERE SettingKey = @key
-          `);
+        const request = pool.request();
+        request.input('SettingKey', sql.NVarChar(100), update.key);
+        request.input('SettingValue', sql.NVarChar(255), String(update.value));
+        request.input('Description', sql.NVarChar(500), null);
+        
+        await request.execute('sp_Admin_UpdateCommissionSetting');
       }
     }
     
@@ -3336,20 +2260,14 @@ router.get('/payment-calculator', async (req, res) => {
     const bookingAmount = parseFloat(amount) || 100;
     const pool = await getPool();
     
-    // Get commission settings
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'CommissionSettings'
-    `);
-    
+    // Get commission settings using stored procedure
     let platformCommission = 15;
     let renterFee = 5;
     let stripeFeeRate = 2.9;
     let stripeFixedFee = 0.30;
     
-    if (tableCheck.recordset[0].cnt > 0) {
-      const settings = await pool.request().query(`
-        SELECT SettingKey, SettingValue FROM CommissionSettings WHERE IsActive = 1
-      `);
+    try {
+      const settings = await pool.request().execute('sp_Admin_GetPaymentCalculatorSettings');
       
       settings.recordset.forEach(s => {
         if (s.SettingKey === 'platform_commission_rate') platformCommission = parseFloat(s.SettingValue);
@@ -3357,6 +2275,8 @@ router.get('/payment-calculator', async (req, res) => {
         if (s.SettingKey === 'stripe_application_fee_rate') stripeFeeRate = parseFloat(s.SettingValue);
         if (s.SettingKey === 'stripe_fixed_fee') stripeFixedFee = parseFloat(s.SettingValue);
       });
+    } catch (e) {
+      console.warn('Could not load commission settings, using defaults');
     }
     
     // Calculate breakdown
@@ -3394,15 +2314,9 @@ router.get('/security/2fa-settings', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Check if SecuritySettings table exists
-    const tableCheck = await pool.request().query(`
-      SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'SecuritySettings'
-    `);
-    
-    if (tableCheck.recordset[0].cnt > 0) {
-      const result = await pool.request().query(`
-        SELECT SettingKey, SettingValue FROM SecuritySettings WHERE IsActive = 1
-      `);
+    // Use stored procedure to get 2FA settings
+    try {
+      const result = await pool.request().execute('sp_Admin_Get2FASettings');
       
       const settings = {};
       result.recordset.forEach(s => {
@@ -3418,8 +2332,8 @@ router.get('/security/2fa-settings', async (req, res) => {
           failedLoginLockout: parseInt(settings.failed_login_lockout) || 5
         }
       });
-    } else {
-      // Return defaults if table doesn't exist
+    } catch (e) {
+      // Return defaults if stored procedure fails
       res.json({
         success: true,
         settings: {
@@ -3442,23 +2356,7 @@ router.post('/security/2fa-settings', async (req, res) => {
     const { require2FAForAdmins, require2FAForVendors, sessionTimeout, failedLoginLockout } = req.body;
     const pool = await getPool();
     
-    // Create SecuritySettings table if it doesn't exist
-    await pool.request().query(`
-      IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SecuritySettings')
-      BEGIN
-        CREATE TABLE SecuritySettings (
-          SettingID INT PRIMARY KEY IDENTITY(1,1),
-          SettingKey NVARCHAR(100) NOT NULL UNIQUE,
-          SettingValue NVARCHAR(500) NOT NULL,
-          Description NVARCHAR(500),
-          IsActive BIT DEFAULT 1,
-          UpdatedAt DATETIME DEFAULT GETUTCDATE(),
-          UpdatedBy INT
-        )
-      END
-    `);
-    
-    // Upsert settings
+    // Upsert settings using stored procedure
     const settings = [
       { key: 'require_2fa_admins', value: String(require2FAForAdmins) },
       { key: 'require_2fa_vendors', value: String(require2FAForVendors) },
@@ -3467,29 +2365,22 @@ router.post('/security/2fa-settings', async (req, res) => {
     ];
     
     for (const setting of settings) {
-      await pool.request()
-        .input('key', sql.NVarChar, setting.key)
-        .input('value', sql.NVarChar, setting.value)
-        .query(`
-          IF EXISTS (SELECT 1 FROM SecuritySettings WHERE SettingKey = @key)
-            UPDATE SecuritySettings SET SettingValue = @value, UpdatedAt = GETUTCDATE() WHERE SettingKey = @key
-          ELSE
-            INSERT INTO SecuritySettings (SettingKey, SettingValue) VALUES (@key, @value)
-        `);
+      const request = pool.request();
+      request.input('SettingKey', sql.NVarChar(100), setting.key);
+      request.input('SettingValue', sql.NVarChar(500), setting.value);
+      await request.execute('sp_Admin_Upsert2FASetting');
     }
     
-    // Log admin action
+    // Log admin action using stored procedure
     try {
-      await pool.request()
-        .input('userId', sql.Int, req.user?.id || null)
-        .input('email', sql.NVarChar, req.user?.email || 'admin')
-        .input('action', sql.NVarChar, 'Admin2FASettingsUpdated')
-        .input('status', sql.NVarChar, 'Success')
-        .input('details', sql.NVarChar, JSON.stringify({ require2FAForAdmins, require2FAForVendors, sessionTimeout, failedLoginLockout }))
-        .query(`
-          INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, Details)
-          VALUES (@userId, @email, @action, @status, @details)
-        `);
+      const logRequest = pool.request();
+      logRequest.input('UserID', sql.Int, req.user?.id || null);
+      logRequest.input('Email', sql.NVarChar(255), req.user?.email || 'admin');
+      logRequest.input('Action', sql.NVarChar(100), 'Admin2FASettingsUpdated');
+      logRequest.input('ActionStatus', sql.NVarChar(50), 'Success');
+      logRequest.input('Details', sql.NVarChar(sql.MAX), JSON.stringify({ require2FAForAdmins, require2FAForVendors, sessionTimeout, failedLoginLockout }));
+      logRequest.input('IPAddress', sql.NVarChar(50), null);
+      await logRequest.execute('sp_Admin_LogSecurityEvent');
     } catch (logErr) { console.error('Failed to log admin action:', logErr.message); }
     
     res.json({ success: true, message: '2FA settings updated successfully' });
@@ -3504,18 +2395,7 @@ router.get('/security/admin-2fa-status', async (req, res) => {
   try {
     const pool = await getPool();
     
-    const result = await pool.request().query(`
-      SELECT 
-        u.UserID,
-        u.Name,
-        u.Email,
-        u.IsAdmin,
-        u.LastLogin,
-        CASE WHEN u.TwoFactorEnabled = 1 THEN 1 ELSE 0 END as TwoFactorEnabled
-      FROM Users u
-      WHERE u.IsAdmin = 1
-      ORDER BY u.Name
-    `);
+    const result = await pool.request().execute('sp_Admin_GetUsersWithTwoFactor');
     
     res.json({ success: true, admins: result.recordset });
   } catch (error) {
@@ -3530,32 +2410,21 @@ router.post('/security/reset-2fa/:userId', async (req, res) => {
     const { userId } = req.params;
     const pool = await getPool();
     
-    // Reset 2FA for user
-    await pool.request()
-      .input('userId', sql.Int, userId)
-      .query(`
-        UPDATE Users SET TwoFactorEnabled = 0, TwoFactorSecret = NULL WHERE UserID = @userId
-      `);
+    // Reset 2FA for user using stored procedure
+    const request = pool.request();
+    request.input('UserID', sql.Int, userId);
+    await request.execute('sp_Admin_ResetUser2FA');
     
-    // Delete any pending 2FA codes
-    await pool.request()
-      .input('userId', sql.Int, userId)
-      .query(`
-        DELETE FROM UserTwoFactorCodes WHERE UserID = @userId
-      `);
-    
-    // Log admin action
+    // Log admin action using stored procedure
     try {
-      await pool.request()
-        .input('adminId', sql.Int, req.user?.id || null)
-        .input('email', sql.NVarChar, req.user?.email || 'admin')
-        .input('action', sql.NVarChar, 'Admin2FAReset')
-        .input('status', sql.NVarChar, 'Success')
-        .input('details', sql.NVarChar, `Reset 2FA for user ID: ${userId}`)
-        .query(`
-          INSERT INTO SecurityLogs (UserID, Email, Action, ActionStatus, Details)
-          VALUES (@adminId, @email, @action, @status, @details)
-        `);
+      const logRequest = pool.request();
+      logRequest.input('UserID', sql.Int, req.user?.id || null);
+      logRequest.input('Email', sql.NVarChar(255), req.user?.email || 'admin');
+      logRequest.input('Action', sql.NVarChar(100), 'Admin2FAReset');
+      logRequest.input('ActionStatus', sql.NVarChar(50), 'Success');
+      logRequest.input('Details', sql.NVarChar(sql.MAX), `Reset 2FA for user ID: ${userId}`);
+      logRequest.input('IPAddress', sql.NVarChar(50), null);
+      await logRequest.execute('sp_Admin_LogSecurityEvent');
     } catch (logErr) { console.error('Failed to log admin action:', logErr.message); }
     
     res.json({ success: true, message: '2FA reset successfully' });
@@ -3570,28 +2439,17 @@ router.get('/security/flagged-items', async (req, res) => {
   try {
     const pool = await getPool();
     
-    // Get flagged items from various sources
-    const flaggedItems = [];
+    // Get flagged items using stored procedure
+    const result = await pool.request().execute('sp_Admin_GetSecurityAudit');
     
-    // Get failed login attempts (potential security issues)
-    const failedLogins = await pool.request().query(`
-      SELECT TOP 10
-        'Account' as type,
-        Email as item,
-        'Multiple failed login attempts' as reason,
-        'high' as severity,
-        CreatedAt as timestamp
-      FROM SecurityLogs
-      WHERE Action = 'LoginFailed'
-      GROUP BY Email, CreatedAt
-      HAVING COUNT(*) >= 3
-      ORDER BY CreatedAt DESC
-    `);
-    
-    flaggedItems.push(...failedLogins.recordset.map(item => ({
+    const flaggedItems = result.recordset.map(item => ({
       id: Math.random().toString(36).substr(2, 9),
-      ...item
-    })));
+      type: item.type,
+      item: item.item,
+      reason: item.issue || 'Multiple failed login attempts',
+      severity: 'high',
+      timestamp: item.lastOccurrence
+    }));
     
     res.json({ success: true, items: flaggedItems });
   } catch (error) {

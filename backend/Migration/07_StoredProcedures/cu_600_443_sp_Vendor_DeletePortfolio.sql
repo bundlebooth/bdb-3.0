@@ -1,0 +1,20 @@
+-- =============================================
+-- Stored Procedure: sp_Vendor_DeletePortfolio
+-- Description: Deletes all portfolio items for a vendor
+-- Phase: 600 (Stored Procedures)
+-- =============================================
+IF EXISTS (SELECT 1 FROM sys.procedures WHERE object_id = OBJECT_ID(N'[dbo].[sp_Vendor_DeletePortfolio]'))
+    DROP PROCEDURE [dbo].[sp_Vendor_DeletePortfolio];
+GO
+
+CREATE PROCEDURE [dbo].[sp_Vendor_DeletePortfolio]
+    @VendorProfileID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    DELETE FROM VendorPortfolio WHERE VendorProfileID = @VendorProfileID;
+    
+    SELECT @@ROWCOUNT AS RowsDeleted;
+END
+GO

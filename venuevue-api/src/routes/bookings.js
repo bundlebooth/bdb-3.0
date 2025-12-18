@@ -140,7 +140,7 @@ router.post('/create-payment-intent', async (req, res) => {
         const pool = await poolPromise;
         const result = await pool.request()
           .input('BookingID', sql.Int, bookingId)
-          .query('SELECT VendorProfileID FROM Bookings WHERE BookingID = @BookingID');
+          .execute('sp_Booking_GetVendorFromBooking');
         if (result.recordset.length > 0) {
           resolvedVendorProfileId = result.recordset[0].VendorProfileID;
         }
@@ -155,7 +155,7 @@ router.post('/create-payment-intent', async (req, res) => {
       const pool = await poolPromise;
       const accRes = await pool.request()
         .input('VendorProfileID', sql.Int, resolvedVendorProfileId)
-        .query('SELECT StripeAccountID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+        .execute('sp_Booking_GetVendorStripeAccount');
       const vendorStripeAccountId = accRes.recordset.length > 0 ? accRes.recordset[0].StripeAccountID : null;
 
       if (!vendorStripeAccountId) {
@@ -168,7 +168,7 @@ router.post('/create-payment-intent', async (req, res) => {
       // Ensure invoice exists and compute totals (subtotal + platform + tax)
       try { if (invoicesRouter && typeof invoicesRouter.upsertInvoiceForBooking === 'function') { await invoicesRouter.upsertInvoiceForBooking(pool, bookingId, { forceRegenerate: true }); } } catch (_) {}
       const invRes = await pool.request().input('BookingID', sql.Int, bookingId)
-        .query(`SELECT TOP 1 InvoiceID, TotalAmount, PlatformFee, Subtotal, TaxAmount FROM Invoices WHERE BookingID=@BookingID ORDER BY IssueDate DESC`);
+        .execute('sp_Booking_GetInvoiceTotals');
       const invRow = invRes.recordset[0] || {};
       const amountCents = Math.round(Number(invRow.TotalAmount != null ? invRow.TotalAmount : amount) * 100);
       const platformFee = Math.round(Number(invRow.PlatformFee || 0) * 100);
@@ -325,23 +325,7 @@ router.post('/requests', async (req, res) => {
         expiresAt.setHours(expiresAt.getHours() + 24);
         request.input('ExpiresAt', sql.DateTime, expiresAt);
 
-        const result = await request.query(`
-          INSERT INTO BookingRequests (
-            UserID, VendorProfileID, Services, EventDate, EventTime, EventEndTime, EventLocation, 
-            AttendeeCount, Budget, SpecialRequests, EventName, EventType, TimeZone, Status, ExpiresAt, CreatedAt
-          )
-          OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
-          VALUES (
-            @UserID, @VendorProfileID, @Services, 
-            TRY_CONVERT(DATE, @EventDate), 
-            TRY_CONVERT(TIME, @EventTime),
-            TRY_CONVERT(TIME, @EventEndTime),
-            @EventLocation,
-            @AttendeeCount, @Budget, @SpecialRequests,
-            @EventName, @EventType, @TimeZone,
-            @Status, @ExpiresAt, GETDATE()
-          )
-        `);
+        const result = await request.execute('sp_Booking_InsertRequest');
 
         if (result.recordset.length > 0) {
           requests.push({
@@ -431,19 +415,7 @@ router.get('/services/:categoryId', async (req, res) => {
     
     request.input('Category', sql.NVarChar(50), categoryKey);
     
-    const result = await request.query(`
-      SELECT DISTINCT
-        vp.VendorProfileID,
-        vp.BusinessName,
-        vp.BusinessDescription,
-        vp.PriceLevel,
-        vc.Category
-      FROM VendorCategories vc
-      INNER JOIN VendorProfiles vp ON vc.VendorProfileID = vp.VendorProfileID
-      WHERE vc.Category LIKE '%' + @Category + '%'
-        AND vp.IsCompleted = 1
-      ORDER BY vp.BusinessName
-    `);
+    const result = await request.execute('sp_Booking_GetVendorsByCategory');
 
     const services = result.recordset.map((vendor, index) => {
       const serviceNames = {
@@ -549,31 +521,7 @@ router.get('/requests/:userId', async (req, res) => {
     
     request.input('UserID', sql.Int, userId);
     
-    const result = await request.query(`
-      SELECT 
-        br.RequestID,
-        br.VendorProfileID,
-        vp.BusinessName as VendorName,
-        br.Services,
-        br.EventDate,
-        CONVERT(VARCHAR(8), br.EventTime, 108) AS EventTime,
-        CONVERT(VARCHAR(8), br.EventEndTime, 108) AS EventEndTime,
-        br.EventLocation,
-        br.AttendeeCount,
-        br.Budget,
-        br.SpecialRequests,
-        br.EventName,
-        br.EventType,
-        br.TimeZone,
-        br.Status,
-        br.CreatedAt,
-        br.ExpiresAt,
-        br.ResponseMessage
-      FROM BookingRequests br
-      LEFT JOIN VendorProfiles vp ON br.VendorProfileID = vp.VendorProfileID
-      WHERE br.UserID = @UserID
-      ORDER BY br.CreatedAt DESC
-    `);
+    const result = await request.execute('sp_Booking_GetUserRequests');
 
     res.json({
       success: true,
@@ -613,16 +561,7 @@ router.put('/requests/:requestId/respond', async (req, res) => {
     request.input('ProposedPrice', sql.Decimal(10, 2), proposedPrice || null);
     request.input('RespondedAt', sql.DateTime, new Date());
 
-    const result = await request.query(`
-      UPDATE BookingRequests 
-      SET 
-        Status = @Status,
-        ResponseMessage = @ResponseMessage,
-        ProposedPrice = @ProposedPrice,
-        RespondedAt = @RespondedAt
-      OUTPUT INSERTED.RequestID, INSERTED.UserID, INSERTED.Status
-      WHERE RequestID = @RequestID AND VendorProfileID = @VendorProfileID
-    `);
+    const result = await request.execute('sp_Booking_RespondToRequest');
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ 
@@ -664,7 +603,7 @@ router.get('/vendor/:vendorId/requests', async (req, res) => {
     if (direction === 'outbound') {
       const vu = await pool.request()
         .input('VendorProfileID', sql.Int, parseInt(vendorId))
-        .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+        .execute('sp_Booking_GetVendorUserId');
       vendorUserId = vu.recordset[0]?.UserID || null;
       if (!vendorUserId) {
         return res.json({ success: true, requests: [] });
@@ -796,17 +735,8 @@ router.post('/requests/send', async (req, res) => {
     request.input('Status', sql.NVarChar(50), 'pending');
     request.input('ExpiresAt', sql.DateTime, expiresAt);
 
-    const result = await request.query(`
-      INSERT INTO BookingRequests (
-        UserID, VendorProfileID, SpecialRequests, EventDate, EventTime, EventEndTime,
-        EventLocation, AttendeeCount, Budget, Services, EventName, EventType, TimeZone, Status, ExpiresAt, CreatedAt
-      )
-      OUTPUT INSERTED.RequestID, INSERTED.CreatedAt, INSERTED.ExpiresAt
-      VALUES (
-        @UserID, @VendorProfileID, @SpecialRequestText, TRY_CONVERT(DATE, @EventDate), TRY_CONVERT(TIME, @EventTime), TRY_CONVERT(TIME, @EventEndTime),
-        @EventLocation, @AttendeeCount, @Budget, @Services, @EventName, @EventType, @TimeZone, @Status, @ExpiresAt, GETDATE()
-      )
-    `);
+    request.input('SpecialRequests', sql.NVarChar(sql.MAX), specialRequestText || null);
+    const result = await request.execute('sp_Booking_InsertRequest');
 
     if (result.recordset.length === 0) {
       throw new Error('Failed to create request');
@@ -820,11 +750,7 @@ router.post('/requests/send', async (req, res) => {
     conversationRequest.input('VendorProfileID', sql.Int, vendorProfileId);
     conversationRequest.input('Subject', sql.NVarChar(255), 'New Booking Request');
 
-    const conversationResult = await conversationRequest.query(`
-      INSERT INTO Conversations (UserID, VendorProfileID, Subject, CreatedAt)
-      OUTPUT INSERTED.ConversationID
-      VALUES (@UserID, @VendorProfileID, @Subject, GETDATE())
-    `);
+    const conversationResult = await conversationRequest.execute('sp_Booking_InsertConversation');
 
     const conversationId = conversationResult.recordset[0].ConversationID;
 
@@ -835,16 +761,13 @@ router.post('/requests/send', async (req, res) => {
       messageRequest.input('SenderID', sql.Int, userId);
       messageRequest.input('Content', sql.NVarChar(sql.MAX), specialRequestText);
 
-      await messageRequest.query(`
-        INSERT INTO Messages (ConversationID, SenderID, Content, CreatedAt)
-        VALUES (@ConversationID, @SenderID, @Content, GETDATE())
-      `);
+      await messageRequest.execute('sp_Booking_InsertMessage');
     }
 
     // Create notification for vendor
     const vendorUserResult = await pool.request()
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+      .execute('sp_Booking_GetVendorUserId');
 
     if (vendorUserResult.recordset.length > 0) {
       const vendorUserId = vendorUserResult.recordset[0].UserID;
@@ -857,10 +780,7 @@ router.post('/requests/send', async (req, res) => {
       notificationRequest.input('RelatedID', sql.Int, newRequest.RequestID);
       notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
 
-      await notificationRequest.query(`
-        INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, RelatedType, CreatedAt)
-        VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
-      `);
+      await notificationRequest.execute('sp_Booking_InsertNotification');
     }
 
     res.json({
@@ -903,12 +823,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
       .input('Status', sql.NVarChar(50), 'approved')
       .input('ResponseMessage', sql.NVarChar(sql.MAX), responseMessage || null)
       .input('RespondedAt', sql.DateTime, new Date())
-      .query(`
-        UPDATE BookingRequests 
-        SET Status = @Status, ResponseMessage = @ResponseMessage, RespondedAt = @RespondedAt
-        OUTPUT INSERTED.UserID, INSERTED.RequestID
-        WHERE RequestID = @RequestID AND VendorProfileID = @VendorProfileID AND Status IN ('pending','expired')
-      `);
+      .execute('sp_Booking_ApproveRequest');
 
     if (updateResult.recordset.length === 0) {
       return res.status(404).json({ 
@@ -928,10 +843,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
     notificationRequest.input('RelatedID', sql.Int, requestId);
     notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
 
-    await notificationRequest.query(`
-      INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, RelatedType, CreatedAt)
-      VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
-    `);
+    await notificationRequest.execute('sp_Booking_InsertNotification');
 
     // Ensure conversation exists and send auto-approval message
     // 1) Find/Create conversation for this user/vendor pair
@@ -939,11 +851,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
     const convLookup = await pool.request()
       .input('UserID', sql.Int, userId)
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query(`
-        SELECT TOP 1 ConversationID FROM Conversations 
-        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
-        ORDER BY CreatedAt DESC
-      `);
+      .execute('sp_Booking_GetConversation');
 
     if (convLookup.recordset.length > 0) {
       conversationId = convLookup.recordset[0].ConversationID;
@@ -952,11 +860,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
         .input('UserID', sql.Int, userId)
         .input('VendorProfileID', sql.Int, vendorProfileId)
         .input('Subject', sql.NVarChar(255), 'Request Approved')
-        .query(`
-          INSERT INTO Conversations (UserID, VendorProfileID, Subject, CreatedAt)
-          OUTPUT INSERTED.ConversationID
-          VALUES (@UserID, @VendorProfileID, @Subject, GETDATE())
-        `);
+        .execute('sp_Booking_InsertConversation');
       conversationId = convCreate.recordset[0].ConversationID;
     }
 
@@ -964,7 +868,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
     let vendorUserId = null;
     const vendorUserRes = await pool.request()
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+      .execute('sp_Booking_GetVendorUserId');
     if (vendorUserRes.recordset.length > 0) {
       vendorUserId = vendorUserRes.recordset[0].UserID;
     }
@@ -975,10 +879,7 @@ router.post('/requests/:requestId/approve', async (req, res) => {
         .input('ConversationID', sql.Int, conversationId)
         .input('SenderID', sql.Int, vendorUserId)
         .input('Content', sql.NVarChar(sql.MAX), 'Hello! Your booking request has been approved. Feel free to ask any questions about your upcoming event.')
-        .query(`
-          INSERT INTO Messages (ConversationID, SenderID, Content, CreatedAt)
-          VALUES (@ConversationID, @SenderID, @Content, GETDATE())
-        `);
+        .execute('sp_Booking_InsertMessage');
     }
 
     res.json({
@@ -1022,12 +923,7 @@ router.post('/requests/:requestId/decline', async (req, res) => {
       .input('Status', sql.NVarChar(50), 'declined')
       .input('ResponseMessage', sql.NVarChar(sql.MAX), responseMessage || null)
       .input('RespondedAt', sql.DateTime, new Date())
-      .query(`
-        UPDATE BookingRequests 
-        SET Status = @Status, ResponseMessage = @ResponseMessage, RespondedAt = @RespondedAt
-        OUTPUT INSERTED.UserID, INSERTED.RequestID
-        WHERE RequestID = @RequestID AND VendorProfileID = @VendorProfileID AND Status = 'pending'
-      `);
+      .execute('sp_Booking_DeclineRequest');
 
     if (updateResult.recordset.length === 0) {
       return res.status(404).json({ 
@@ -1047,10 +943,7 @@ router.post('/requests/:requestId/decline', async (req, res) => {
     notificationRequest.input('RelatedID', sql.Int, requestId);
     notificationRequest.input('RelatedType', sql.NVarChar(50), 'request');
 
-    await notificationRequest.query(`
-      INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, RelatedType, CreatedAt)
-      VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
-    `);
+    await notificationRequest.execute('sp_Booking_InsertNotification');
 
     res.json({
       success: true,
@@ -1088,12 +981,7 @@ router.post('/requests/:requestId/cancel', async (req, res) => {
       .input('UserID', sql.Int, userId)
       .input('Status', sql.NVarChar(50), 'cancelled')
       .input('RespondedAt', sql.DateTime, new Date())
-      .query(`
-        UPDATE BookingRequests 
-        SET Status = @Status, RespondedAt = @RespondedAt
-        OUTPUT INSERTED.VendorProfileID
-        WHERE RequestID = @RequestID AND UserID = @UserID AND Status IN ('pending', 'approved')
-      `);
+      .execute('sp_Booking_CancelRequest');
 
     if (updateResult.recordset.length === 0) {
       return res.status(404).json({ 
@@ -1134,11 +1022,7 @@ router.post('/confirmed', async (req, res) => {
     // Get request details to create booking
     const requestDetails = await pool.request()
       .input('RequestID', sql.Int, requestId)
-      .query(`
-        SELECT EventDate, EventTime, EventLocation, AttendeeCount, Budget, Services, SpecialRequests
-        FROM BookingRequests 
-        WHERE RequestID = @RequestID
-      `);
+      .execute('sp_Booking_GetRequestDetails');
 
     if (requestDetails.recordset.length === 0) {
       return res.status(404).json({ 
@@ -1160,11 +1044,7 @@ router.post('/confirmed', async (req, res) => {
     request.input('SpecialRequests', sql.NVarChar(sql.MAX), requestData.SpecialRequests);
     request.input('TotalAmount', sql.Decimal(10, 2), requestData.Budget || 0);
 
-    const result = await request.query(`
-      INSERT INTO Bookings (UserID, VendorProfileID, ServiceID, EventDate, Status, AttendeeCount, SpecialRequests, TotalAmount)
-      OUTPUT INSERTED.BookingID
-      VALUES (@UserID, @VendorProfileID, @ServiceID, @EventDate, @Status, @AttendeeCount, @SpecialRequests, @TotalAmount)
-    `);
+    const result = await request.execute('sp_Booking_InsertConfirmedBooking');
 
     const bookingId = result.recordset && result.recordset[0] ? result.recordset[0].BookingID : null;
 
@@ -1173,11 +1053,7 @@ router.post('/confirmed', async (req, res) => {
     const convLookup2 = await pool.request()
       .input('UserID', sql.Int, userId)
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query(`
-        SELECT TOP 1 ConversationID FROM Conversations 
-        WHERE UserID = @UserID AND VendorProfileID = @VendorProfileID
-        ORDER BY CreatedAt DESC
-      `);
+      .execute('sp_Booking_GetConversation');
 
     if (convLookup2.recordset.length > 0) {
       conversationId = convLookup2.recordset[0].ConversationID;
@@ -1186,11 +1062,7 @@ router.post('/confirmed', async (req, res) => {
         .input('UserID', sql.Int, userId)
         .input('VendorProfileID', sql.Int, vendorProfileId)
         .input('Subject', sql.NVarChar(255), 'Booking Confirmed')
-        .query(`
-          INSERT INTO Conversations (UserID, VendorProfileID, Subject, CreatedAt)
-          OUTPUT INSERTED.ConversationID
-          VALUES (@UserID, @VendorProfileID, @Subject, GETDATE())
-        `);
+        .execute('sp_Booking_InsertConversation');
       conversationId = convCreate2.recordset[0].ConversationID;
     }
 
@@ -1200,7 +1072,7 @@ router.post('/confirmed', async (req, res) => {
     let vendorUserId = null;
     const vendorUserRes = await pool.request()
       .input('VendorProfileID', sql.Int, vendorProfileId)
-      .query('SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID');
+      .execute('sp_Booking_GetVendorUserId');
     if (vendorUserRes.recordset.length > 0) {
       vendorUserId = vendorUserRes.recordset[0].UserID;
     }
@@ -1215,10 +1087,7 @@ router.post('/confirmed', async (req, res) => {
         .input('Message', sql.NVarChar(sql.MAX), 'Your booking has been confirmed.')
         .input('RelatedID', sql.Int, bookingId)
         .input('RelatedType', sql.NVarChar(50), 'booking')
-        .query(`
-          INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, RelatedType, CreatedAt)
-          VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
-        `);
+        .execute('sp_Booking_InsertNotification');
 
       // Notify vendor
       if (vendorUserId) {
@@ -1229,10 +1098,7 @@ router.post('/confirmed', async (req, res) => {
           .input('Message', sql.NVarChar(sql.MAX), 'A user has confirmed a booking with you.')
           .input('RelatedID', sql.Int, bookingId)
           .input('RelatedType', sql.NVarChar(50), 'booking')
-          .query(`
-            INSERT INTO Notifications (UserID, Type, Title, Message, RelatedID, RelatedType, CreatedAt)
-            VALUES (@UserID, @Type, @Title, @Message, @RelatedID, @RelatedType, GETDATE())
-          `);
+          .execute('sp_Booking_InsertNotification');
       }
     }
 
@@ -1264,17 +1130,7 @@ router.get('/:id/invoice', async (req, res) => {
     const pool = await poolPromise;
     const bookingInfoRes = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .query(`
-        SELECT b.BookingID, b.UserID AS ClientUserID, b.VendorProfileID, b.EventDate, b.EndDate, b.Status,
-               b.TotalAmount, b.DepositAmount, b.DepositPaid, b.FullAmountPaid, b.StripePaymentIntentID,
-               u.Name AS ClientName, u.Email AS ClientEmail, u.Phone AS ClientPhone,
-               vp.BusinessName AS VendorName, vp.BusinessEmail AS VendorEmail, vp.BusinessPhone AS VendorPhone,
-               vp.UserID AS VendorUserID
-        FROM Bookings b
-        JOIN Users u ON b.UserID = u.UserID
-        JOIN VendorProfiles vp ON b.VendorProfileID = vp.VendorProfileID
-        WHERE b.BookingID = @BookingID
-      `);
+      .execute('sp_Booking_GetBookingInfo');
 
     if (bookingInfoRes.recordset.length === 0) {
       return res.status(404).json({ success: false, message: 'Booking not found' });
@@ -1289,24 +1145,17 @@ router.get('/:id/invoice', async (req, res) => {
     // Load services
     const servicesRes = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .query(`
-        SELECT bs.BookingServiceID, bs.ServiceID, s.Name AS ServiceName,
-               bs.AddOnID, sa.Name AS AddOnName, bs.Quantity, bs.PriceAtBooking
-        FROM BookingServices bs
-        LEFT JOIN Services s ON bs.ServiceID = s.ServiceID
-        LEFT JOIN ServiceAddOns sa ON bs.AddOnID = sa.AddOnID
-        WHERE bs.BookingID = @BookingID
-      `);
+      .execute('sp_Booking_GetBookingServices');
 
     // Load expenses (vendor-added)
     const expensesRes = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .query(`SELECT BookingExpenseID, Title, Amount, Notes, CreatedAt FROM BookingExpenses WHERE BookingID = @BookingID ORDER BY CreatedAt`);
+      .execute('sp_Booking_GetBookingExpenses');
 
     // Load transactions (payments)
     const txRes = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .query(`SELECT Amount, FeeAmount, NetAmount, Currency, CreatedAt FROM Transactions WHERE BookingID = @BookingID ORDER BY CreatedAt`);
+      .execute('sp_Booking_GetTransactions');
 
     // Compute totals
     const serviceItems = servicesRes.recordset.map(row => {
@@ -1400,17 +1249,17 @@ router.get('/:id/expenses', async (req, res) => {
     const pool = await poolPromise;
     const bres = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .query(`SELECT UserID AS ClientUserID, VendorProfileID FROM Bookings WHERE BookingID = @BookingID`);
+      .execute('sp_Booking_GetBookingClientVendor');
     if (bres.recordset.length === 0) return res.status(404).json({ success: false, message: 'Booking not found' });
     const clientId = bres.recordset[0].ClientUserID;
     const vpid = bres.recordset[0].VendorProfileID;
-    const vuserRes = await pool.request().input('VendorProfileID', sql.Int, vpid).query(`SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
+    const vuserRes = await pool.request().input('VendorProfileID', sql.Int, vpid).execute('sp_Booking_GetVendorUserId');
     const vendorUserId = vuserRes.recordset[0]?.UserID || 0;
     if (requesterUserId !== clientId && requesterUserId !== vendorUserId) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    const exRes = await pool.request().input('BookingID', sql.Int, parseInt(id)).query(`SELECT BookingExpenseID, Title, Amount, Notes, CreatedAt FROM BookingExpenses WHERE BookingID = @BookingID ORDER BY CreatedAt`);
+    const exRes = await pool.request().input('BookingID', sql.Int, parseInt(id)).execute('sp_Booking_GetBookingExpenses');
     res.json({ success: true, expenses: exRes.recordset });
   } catch (err) {
     console.error('Get expenses error:', err);
@@ -1432,10 +1281,10 @@ router.post('/:id/expenses', async (req, res) => {
     const pool = await poolPromise;
     const bres = await pool.request()
       .input('BookingID', sql.Int, parseInt(id))
-      .query(`SELECT VendorProfileID FROM Bookings WHERE BookingID = @BookingID`);
+      .execute('sp_Booking_GetVendorFromBooking');
     if (bres.recordset.length === 0) return res.status(404).json({ success: false, message: 'Booking not found' });
     const vendorProfileId = bres.recordset[0].VendorProfileID;
-    const vuserRes = await pool.request().input('VendorProfileID', sql.Int, vendorProfileId).query(`SELECT UserID FROM VendorProfiles WHERE VendorProfileID = @VendorProfileID`);
+    const vuserRes = await pool.request().input('VendorProfileID', sql.Int, vendorProfileId).execute('sp_Booking_GetVendorUserId');
     const vendorUserId = vuserRes.recordset[0]?.UserID || 0;
     if (userId !== vendorUserId) return res.status(403).json({ success: false, message: 'Only vendor can add expenses' });
 
@@ -1445,11 +1294,7 @@ router.post('/:id/expenses', async (req, res) => {
       .input('Title', sql.NVarChar(255), title.trim())
       .input('Amount', sql.Decimal(10, 2), amt)
       .input('Notes', sql.NVarChar(sql.MAX), notes || null)
-      .query(`
-        INSERT INTO BookingExpenses (BookingID, VendorProfileID, Title, Amount, Notes, CreatedAt)
-        OUTPUT INSERTED.BookingExpenseID, INSERTED.Title, INSERTED.Amount, INSERTED.Notes, INSERTED.CreatedAt
-        VALUES (@BookingID, @VendorProfileID, @Title, @Amount, @Notes, GETDATE())
-      `);
+      .execute('sp_Booking_InsertExpense');
 
     res.json({ success: true, expense: insertRes.recordset[0] });
   } catch (err) {

@@ -87,34 +87,52 @@ GRANT EXECUTE ON SCHEMA::dbo TO [VV_DB_Executor];
 PRINT 'EXECUTE permissions granted to [VV_DB_Executor].';
 GO
 
--- Admin Role: Full control
+-- Admin Role: Full control on dbo
 GRANT CONTROL ON SCHEMA::dbo TO [VV_DB_Admin];
-GRANT CONTROL ON SCHEMA::staging TO [VV_DB_Admin];
-GRANT CONTROL ON SCHEMA::audit TO [VV_DB_Admin];
-GRANT CONTROL ON SCHEMA::archive TO [VV_DB_Admin];
-PRINT 'CONTROL permissions granted to [VV_DB_Admin].';
+PRINT 'CONTROL permissions granted to [VV_DB_Admin] on dbo schema.';
 GO
 
--- =============================================
--- Grant Permissions on Schemas
--- =============================================
-
+-- Grant permissions on additional schemas only if they exist
 -- Staging schema permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::staging TO [VV_DB_Writer];
-GRANT SELECT ON SCHEMA::staging TO [VV_DB_Reader];
-PRINT 'Staging schema permissions granted.';
+IF EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'staging')
+BEGIN
+    GRANT CONTROL ON SCHEMA::staging TO [VV_DB_Admin];
+    GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::staging TO [VV_DB_Writer];
+    GRANT SELECT ON SCHEMA::staging TO [VV_DB_Reader];
+    PRINT 'Staging schema permissions granted.';
+END
+ELSE
+BEGIN
+    PRINT 'Schema [staging] does not exist. Skipping staging permissions.';
+END
 GO
 
 -- Audit schema permissions (read-only for most, write for admin)
-GRANT SELECT ON SCHEMA::audit TO [VV_DB_Reader];
-GRANT INSERT ON SCHEMA::audit TO [VV_DB_Writer];
-PRINT 'Audit schema permissions granted.';
+IF EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'audit')
+BEGIN
+    GRANT CONTROL ON SCHEMA::audit TO [VV_DB_Admin];
+    GRANT SELECT ON SCHEMA::audit TO [VV_DB_Reader];
+    GRANT INSERT ON SCHEMA::audit TO [VV_DB_Writer];
+    PRINT 'Audit schema permissions granted.';
+END
+ELSE
+BEGIN
+    PRINT 'Schema [audit] does not exist. Skipping audit permissions.';
+END
 GO
 
 -- Archive schema permissions
-GRANT SELECT ON SCHEMA::archive TO [VV_DB_Reader];
-GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::archive TO [VV_DB_Admin];
-PRINT 'Archive schema permissions granted.';
+IF EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'archive')
+BEGIN
+    GRANT CONTROL ON SCHEMA::archive TO [VV_DB_Admin];
+    GRANT SELECT ON SCHEMA::archive TO [VV_DB_Reader];
+    GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::archive TO [VV_DB_Admin];
+    PRINT 'Archive schema permissions granted.';
+END
+ELSE
+BEGIN
+    PRINT 'Schema [archive] does not exist. Skipping archive permissions.';
+END
 GO
 
 PRINT 'Database permissions setup completed.';
